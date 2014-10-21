@@ -1,15 +1,16 @@
 from __future__ import print_function, division
 from datetime import datetime
-from bubblegum.pipeline import (DataMuggler, PipelineComponent,
-                       MuggleWatcherLatest, MuggleWatcherTwoLists
-                       )
+from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
+                                      MuggleWatcherLatest,
+                                      MuggleWatcherTwoLists
+)
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from nsls2 import core
-from bubblegum import QtCore
-from bubblegum.backend.mpl.cross_section_2d import (absolute_limit_factory,
-                                                    CrossSection)
+from enaml.qt import QtCore
+# from bubblegum.backend.mpl.cross_section_2d import (absolute_limit_factory,
+#                                                     CrossSection)
 from nsls2.fitting.model.physics_model import GaussModel
 import lmfit
 
@@ -136,19 +137,16 @@ def plotter(title, xlabel, ylabel, ax=None, N=None, ln_sty=None, fit=False):
 
     return inner
 
-
-def imshower():
-    fig = plt.figure()
-    xsection = CrossSection(fig,
-                frame_source.gen_next_frame(), interpolation='none',
-                limit_func=absolute_limit_factory((0, 1.5))
-                )
-
-    def inner(msg, data):
-        xsection.update_image(data['img'])
-
-    return inner
-
+# def imshower():
+#     fig = plt.figure()
+#     xsection = CrossSection(fig, interpolation='none',
+#                             limit_func=absolute_limit_factory((0, 1.5))
+#     )
+#
+#     def inner(msg, data):
+#         xsection.update_image(data['img'])
+#
+#     return inner
 
 # stolen from other live demo
 class FrameSourcerBrownian(QtCore.QObject):
@@ -342,25 +340,41 @@ p1.source_signal.connect(p2.sink_slot)
 p2.source_signal.connect(dm2.append_data)
 
 
+from replay.api import make_image_view, make_line_view, make_cross_section_view
+from enaml.qt.qt_application import QtApplication
+import numpy as np
+app = QtApplication()
+image_model, image_view = make_image_view()
+cs_model, cs_view = make_cross_section_view()
+line_model, line_view = make_line_view()
+line_model2, line_view2 = make_line_view()
+line_model3, line_view3 = make_line_view()
+# image_view.show()
+
+
 # connect the cross section viewer to the first DataMuggler
-mw.sig.connect(imshower())
+# mw.sig.connect(imshower())
+mw.sig.connect(lambda msg, data: cs_model.set_data(data['img']))
 
 # construct a watcher + viewer of the center
-mw4 = MuggleWatcherTwoLists(dm2, 'count', 'y', 'x')
-mw4.sig.connect(plotter('center', 'x', 'y'))
+mw4 = MuggleWatcherTwoLists(dm2, 'count', 'x', 'y')
+# mw4.sig.connect(plotter('center', 'x', 'y'))
+mw4.sig.connect(line_model.set_xy)
 
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
 
 # construct a watcher + viewer of the max
-mw3 = MuggleWatcherTwoLists(dm2, 'count', 'max', 'count')
-mw3.sig.connect(plotter("maximum intensity", "frame #", 'max', ax=ax1, fit=True))
-
+mw3 = MuggleWatcherTwoLists(dm2, 'count', 'count', 'max')
+# mw3.sig.connect(plotter("maximum intensity", "frame #", 'max', ax=ax1, fit=True))
+mw3.sig.connect(line_model2.set_xy)
 
 # construct a watcher + viewer of the temperature
-mw5 = MuggleWatcherTwoLists(dm, 'count', 'T', 'count')
-mw5.sig.connect(plotter('Temperature', 'count', 'T', ax=ax2))
+mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
+# mw5.sig.connect(plotter('Temperature', 'count', 'T', ax=ax2))
+mw5.sig.connect(line_model3.set_xy)
 
 
 frame_source.start()
-plt.show(block=True)
+# plt.show(block=True)
+
+app.start()

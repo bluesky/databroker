@@ -10,27 +10,10 @@
 << autodoc-me >>
 """
 from enaml.layout.api import vbox, hbox, spacer
-from enaml.widgets.api import (Window, Container, MPLCanvas, CheckBox, ComboBox,
+from enaml.widgets.api import (Window, Container, MPLCanvas, CheckBox,
                                PushButton)
 
-from matplotlib.figure import Figure
-from bubblegum.enaml.control.data import LineData
-from atom.api import List, observe
 import numpy as np
-
-fig1 = Figure()
-ax1 = fig1.add_subplot(111)
-ax1.plot([1, 2, 3])
-
-fig2 = Figure()
-ax2 = fig2.add_subplot(111)
-ax2.plot([5, 2, 8, 1])
-
-figures = {
-    'one': fig1,
-    'two': fig2,
-}
-
 
 enamldef LineView(Window):
     attr line_model

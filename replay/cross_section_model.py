@@ -94,3 +94,9 @@ class CrossSectionModel(Atom):
     @observe('limit_func')
     def update_limit(self, update):
         self.cs.set_limit_func(self.limit_func)
+
+    def set_data(self, data):
+        if isinstance(data, np.ndarray):
+            data = [data, ]
+        self.data = data
+
