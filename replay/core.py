@@ -1,8 +1,9 @@
 __author__ = 'edill'
 
-from atom.api import Atom, observe, Bool, Typed
+from atom.api import Atom, observe, Bool, Typed, List
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import logging
 logger = logging.getLogger(__name__)
 
@@ -10,18 +11,24 @@ class LineModel(Atom):
     """ A class representing line data
 
     """
-    x = Typed(np.ndarray)
+    x = List()
 
-    y = Typed(np.ndarray)
+    y = List()
 
     draw_single_line = Bool(False)
 
-    _fig = Figure()
-
-    _ax = _fig.add_subplot(111)
+    # mpl setup
+    _fig = Typed(Figure)
+    _ax = Typed(Axes)
 
     _changed_x = Bool(False)
     _changed_y = Bool(False)
+
+    def __init__(self, x=None, y=None):
+        self._fig = Figure()
+        self._ax = self._fig.add_subplot(111)
+        self.y = y
+        self.x = x
 
     def set_xy(self, x, y):
         """
@@ -59,7 +66,7 @@ class LineModel(Atom):
         # make sure the axes are the same length
         if self.x is None or self.y is None:
             return
-        if self.x.shape == self.y.shape:
+        if len(self.x) == len(self.y):
             self._ax.plot(self.x, self.y)
             self._changed_x = False
             self._changed_y = False
@@ -74,11 +81,16 @@ class LineModel(Atom):
 
 class ImageModel(Atom):
     data = Typed(np.ndarray)
-    # mpl setup
-    _fig = Figure()
-    _ax = _fig.add_subplot(111)
-    _im = _ax.imshow([[np.random.rand()]])
-    _ax.hold(False)
+    _fig = Typed(Figure)
+    _ax = Typed(Axes)
+
+    def __init__(self):
+        super(ImageModel, self).__init__()
+        # mpl setup
+        self._fig = Figure()
+        self._ax = self._fig.add_subplot(111)
+        self._ax.imshow([[np.random.rand()]])
+        self._ax.hold(False)
 
     @observe('data')
     def _new_data(self, change):
@@ -90,3 +102,6 @@ class ImageModel(Atom):
         except AttributeError:
             # should only occur once
             pass
+
+    def set_data(self, data):
+        self.data = data

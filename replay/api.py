@@ -46,7 +46,7 @@ def make_line_view(init_view=True):
 
     x = np.arange(0, 10, .01)
     y = np.sin(x)
-    line_model = LineModel(x=x, y=y)
+    line_model = LineModel(x=x.tolist(), y=y.tolist())
     line_view = LineView(line_model=line_model)
     if init_view:
         initialize_view(line_view)
@@ -100,4 +100,5 @@ def make_cross_section_view(init_view=True):
     xs_view = CrossSectionMain(model=xs_model)
     if init_view:
         initialize_view(xs_view)
+        xs_model.image_index = len(xs_model.data)-1
     return xs_model, xs_view

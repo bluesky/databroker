@@ -35,7 +35,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from . import QtCore
+from enaml.qt import QtCore
 
 import pandas as pd
 from datetime import datetime
