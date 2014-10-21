@@ -35,7 +35,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from . import QtCore
+from bubblegum import QtCore
 
 import pandas as pd
 
@@ -353,7 +353,7 @@ class MuggleWatcherTwoLists(QtCore.QObject):
     """
 
     """
-    sig = QtCore.QSignal(list, list)
+    sig = QtCore.Signal(list, list)
 
     def __init__(self, muggler, col1, col2):
         """

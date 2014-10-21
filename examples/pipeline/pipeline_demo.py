@@ -1,8 +1,9 @@
 from __future__ import print_function, division
 from datetime import datetime
-from bubblegum.pipeline import (DataMuggler, PipelineComponent,
-                       MuggleWatcherLatest, MuggleWatcherTwoLists
-                       )
+from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
+                                      MuggleWatcherLatest,
+                                      MuggleWatcherTwoLists
+)
 import time
 import numpy as np
 import matplotlib.pyplot as plt
