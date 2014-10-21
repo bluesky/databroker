@@ -1,0 +1,114 @@
+
+""" The Enaml UI code for the Cross Section Viewer and its control panel
+
+<< autodoc-me >>
+"""
+from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+from enaml.layout.api import vbox, hbox, spacer
+from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
+                               CheckBox, DockItem, DockPane, Form, Label,
+                               Slider, MainWindow, ComboBox, SpinBox,
+                               GroupBox
+                               )
+from enaml.stdlib.fields import FloatField
+# valid options for matplotlib imshow interpolation
+interpolation = ['none', 'nearest', 'bilinear', 'bicubic','spline16',
+                 'spline36', 'hanning', 'hamming', 'hermite', 'kaiser',
+                 'quadric', 'catrom', 'gaussian', 'bessel', 'mitchell',
+                 'sinc', 'lanczos']
+# this will be useable instead if PR #3682 gets merged into master
+# from matplotlib.axes.imshow import interpolation
+
+# create the colormap list
+from matplotlib.cm import datad
+cmap = datad.keys()
+cmap.sort()
+
+
+# create the intensity limits list
+limit_options = ['full range', 'percentile', 'absolute']
+
+
+enamldef SliderWithSpinner(Container): sws:
+    attr model
+    Form:
+        Label: lbl:
+            text = "Frame number"
+        SpinBox: sbox:
+            value := model.image_index
+            minimum := model.minimum
+            maximum := model.maximum
+        CheckBox:
+            text = "Auto-update"
+            checked := model.auto_update
+        Slider: slider:
+            value := model.image_index
+            minimum := model.minimum
+            maximum := model.maximum
+
+
+enamldef CrossSectionControlsDock(DockPane): csdock:
+    title = "Cross Section Controls"
+    attr model
+    Container: c:
+        Form: f:
+            padding = 0
+            Label:
+                text = "Color map"
+            ComboBox: cmb_cmap:
+                items = cmap
+                editable = True
+                index ::
+                    model.cmap = cmap[index]
+            Label:
+                text = "Interpolation"
+            ComboBox:
+                items = interpolation
+                index ::
+                    model.interpolation = interpolation[index]
+        GroupBox:
+            title = "Image intensity"
+            Form:
+                padding = 0
+                Label:
+                    text = "Limit Strategy"
+                ComboBox:
+                    items = limit_options
+                    index ::
+                        model.limit_func = limit_options[index]
+                Label:
+                    text = "I min"
+                FloatField: imin:
+                    minimum << model.img_min
+                    maximum << model.img_max
+                    value := model.disp_min
+                Label:
+                    text = "I max"
+                FloatField: imax:
+                    minimum << model.img_min
+                    maximum << model.img_max
+                    value := model.disp_min
+
+        SliderWithSpinner: sws:
+            model = csdock.model
+
+
+enamldef CrossSectionView(Container):
+    attr model
+    CheckBox: check:
+        text = 'Toolbar Visible'
+        checked := canvas.toolbar_visible
+    MPLCanvas: canvas:
+        figure = model.figure
+
+
+enamldef CrossSectionMain(MainWindow): mw:
+    title = "Cross Section Main Window"
+    attr model
+    CrossSectionControlsDock: csc:
+        dock_area = 'left'
+        model = mw.model
+
+    CrossSectionView: csv:
+        model = mw.model
+
