@@ -35,9 +35,10 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from bubblegum import QtCore
+from . import QtCore
 
 import pandas as pd
+from datetime import datetime
 
 
 class PipelineComponent(QtCore.QObject):
@@ -45,25 +46,48 @@ class PipelineComponent(QtCore.QObject):
     The top-level object to represent a component in the quick-and-dirty
     live-data pipe line.
 
-    This class provides the basic machinery for the signal and slot required for
-    the hooking up the pipeline.
+    WARNING these docs do not match what is written, but are what _should_
+    be written.  Currently the message is serving as the index which should
+    probably be packed in with the data or as it own argument.  In either
+    case we need to talk to the controls group before spending the effort to
+    re-factor.
 
-    This is meant to be sub-classed and sub classes must implement _process_msg
-    which must have the signature::
+    This class provides the basic machinery for the signal and
+    slot required for the hooking up the pipeline.
 
-        def _process_msg(self, message, data_object):
+    The processing function needs to be provided at instantiation:
+
+        def process_msg(message, data_object):
+            # do stuff with message/data
             return result_message, result_data
 
-    This function can also return `None`
+    This function can also return `None` to indicate that there is no
+    output for further processing.
 
-    The scheme for managing the messages will be pinned down at a later date.
+    The schema for managing the content of the messages will be pinned down
+    at a later date.
 
-    Currently this scheme does no checking to ensure types are correct or
-    valid pre-running
+    Currently this scheme does not type-check to ensure that the pipeline
+    connections are correct or valid before the pipeline is executed
+
+    Parameters
+    ----------
+    process_function : callable
+        Must have the following signature:
+
+        def process_msg(message, data_object):
+            # do stuff with message/data
+            return result_message, result_data
+            # return None
+
     """
-    source_signal = QtCore.Signal(str, object)
+    source_signal = QtCore.Signal(object, object)
 
-    @QtCore.Slot(str, object)
+    def __init__(self, process_function, **kwargs):
+        super(PipelineComponent, self).__init__(**kwargs)
+        self._process_msg = process_function
+
+    @QtCore.Slot(object, object)
     def sink_slot(self, message, data_payload):
         """
         This function is the entry point for pushing data through
@@ -71,46 +95,23 @@ class PipelineComponent(QtCore.QObject):
 
         Parameters
         ----------
-        message : str
-            Some sort of string describing what the incoming data is
+        timestamp : datetime or sequence of datetime
+            The timestamp that aligns with the data in the data payload
 
         data_payload : object
-            The data to be processed.
+            dict of lists or something that looks like it.
 
 
         """
         try:
             ret = self._process_msg(message, data_payload)
         except Exception as E:
-            # yes, catch them all!!
+            # yes, gotta catch 'em all!!
+            print("something failed")
             print(E)
         else:
             if ret is not None:
                 self.source_signal.emit(*ret)
-
-
-class __muggler_helper(object):
-    """
-    This is a helper class for providing slicable objects
-    out of the muggler.  This is mostly an api translation layer
-    with very little brains, it delegates all useful work back
-    up to it's parent DataMuggler.
-
-    It might be worth (down the road) refactoring some of the PIMS
-    base classes to provide slicing power
-    """
-    def __init__(self, muggler, column):
-        self._muggler = muggler
-        self._col = column
-
-    def __getitem__(self, k):
-        """
-        Make this object slicable
-        """
-        return self._muggler.get_value(self._col, k)
-
-    def __len__(self):
-        return len(self._muggler)
 
 
 class DataMuggler(QtCore.QObject):
@@ -126,48 +127,49 @@ class DataMuggler(QtCore.QObject):
     as the source of reference time stamps.
 
     The language being used through out is that of pandas data frames.
+
     The data model is that of a sparse table keyed on time stamps which
     is 'densified' on demand by propagating the last measured value forward.
 
-
-
     Parameters
     ----------
-    col_spec : list
+    col_info : list
         List of information about the columns. Each entry should
-        be a tuple of the form (name, nafill_mode, is_scalar)
+        be a tuple of the form (col_name, fill_method, is_scalar)
 
     """
 
-    # this is a signal emitted when the muggler has new data that
-    # clients can grab.  The list return is the names of the columns
-    # that have new data
+    # this is a signal emitted when the muggler has new data that clients
+    # can grab.  The names of the columns that have new data are returned
+    # as a list
     new_data = QtCore.Signal(list)
 
-    # make the muggler slicable so we can directly pass it to
-    # 2D viewers
-    def __init__(self, col_spec):
-        valid_na_fill = {'pad', 'ffill', 'bfill', 'back pad'}
+    # this is the function that gets called to validate that the row labels
+    # are something that the internal pandas dataframe will understand
+    _time_validator = datetime
 
-        self._fill_methods = dict()
-        self._nonscalar_lookup = dict()
-        self._is_not_scalar = set()
+    def __init__(self, col_info, **kwargs):
+        super(DataMuggler, self).__init__(**kwargs)
+        valid_fill_methods = {'pad', 'ffill', 'bfill', 'backpad'}
+
+        self._col_fill = dict()
+        self._nonscalar_col_lookup = dict()
+        self._is_col_nonscalar = set()
         names = []
-        for c_name, fill_method, is_scalar in col_spec:
+        for col_name, fill_method, is_scalar in col_info:
             # validate fill methods
-            if fill_method not in valid_na_fill:
-                raise ValueError(("{} is not a valid fill method "
-                                 "must be one of {}").format(fill_method,
-                                                             valid_na_fill))
+            if fill_method not in valid_fill_methods:
+                raise ValueError("{} is not a valid fill method must be one of "
+                                 "{}".format(fill_method, valid_fill_methods))
             # used to sort out which way filling should be done.
             # forward for motor-like, backwards from image-like
-            self._fill_methods[c_name] = fill_method
+            self._col_fill[col_name] = fill_method
             # determine if the value should be stored directly in the data
             # frame or in a separate data structure
             if not is_scalar:
-                self._is_not_scalar.add(c_name)
-                self._nonscalar_lookup[c_name] = dict()
-            names.append(c_name)
+                self._is_col_nonscalar.add(col_name)
+                self._nonscalar_col_lookup[col_name] = dict()
+            names.append(col_name)
 
         # make an empty data frame
         self._dataframe = pd.DataFrame({n: [] for n in names}, index=[])
@@ -188,24 +190,35 @@ class DataMuggler(QtCore.QObject):
             object then the values must be single values
         """
         if not all(k in self._dataframe for k in data_dict):
-            # TODO dillify this error checking
-            raise ValueError("trying to pass in invalid key")
+            k_dataframe = set(list(six.iterkeys(dataframe)))
+            k_input = set(list(six.iterkeys(data_dict)))
+            bogus_keys = k_input - k_dataframe
+            raise ValueError('Passing in a key that the dataframe doesn\'t '
+                             'know about. Key(s): {}'.format(bogus_keys))
         try:
             iter(time_stamp)
         except TypeError:
-            # if time_stamp is not iterable, assume is a datime object
+            # if time_stamp is not iterable, assume it is a datetime object
             # and we only have one data point to deal with so up-convert
             time_stamp = [time_stamp, ]
             data_dict = {k: [v, ] for k, v in six.iteritems(data_dict)}
 
-        # deal with none-scalar look up magic
+        # TODO time step validation:
+        # A better way to do this to make the data frame and then check that
+        # the index it time like, then do something like this to sort out
+        # which ones are bad.
+
+        # deal with non-scalar look up magic
         for k in data_dict:
-            # if none-scalar shove tha data into the storage
-            # and replace the data with the time stamp
-            if k in self._is_not_scalar:
-                for t, v in zip(time_stamp, data_dict[k]):
-                    self._nonscalar_lookup[k][t] = v
-                data_dict[k] = time_stamp
+            # if non-scalar shove tha data into the storage
+            # and replace the data with the id of the value object
+            # this should probably be a hash, but this is quick and dirty
+            if k in self._is_col_nonscalar:
+                ids = []
+                for v in data_dict[k]:
+                    ids.append(id(v))
+                    self._nonscalar_col_lookup[k][id(v)] = v
+                data_dict[k] = ids
 
         # make a new data frame with the input data and append it to the
         # existing data
@@ -215,75 +228,79 @@ class DataMuggler(QtCore.QObject):
         # emit that we have new data!
         self.new_data.emit(list(data_dict))
 
-    def __len__(self):
-        pass
-
-    def get_values(self, reference_column, other_columns, time_range=None):
+    def get_values(self, ref_col, other_cols, t_start=None, t_finish=None):
         """
         Return a dictionary of data resampled (filled) to the times which have
         non-NaN values in the reference column
 
         Parameters
         ----------
-        reference_column : str
-            The 'master' column to get time stamps from
+        ref_col : str
+            The name of the 'master' column to get time stamps from
 
-        other_columns : list of str
-            A list of the other columns to return
+        other_cols : list of str
+            A list of column names to return data from
 
-        time_range : tuple or None
-            Times to limit returned data to.  This is not implemented.
+        t_start : datetime or None
+            Start time to obtain data for. This is not implemented
+
+        t_finish : datetime or None
+            End time to obtain data for. This is not implemented
 
         Returns
         -------
-        index : list
+        indices : list
             Nominally the times of each of data points
 
         out_data : dict
-            A dictionary of the
+            A dictionary of the data keyed on the column name with values
+            as lists whose length is the same as 'indices'
         """
-        if time_range is not None:
-            raise NotImplementedError("you can only get all data right now")
+        if t_start is not None:
+            raise NotImplementedError("t_start is not implemented. You can only "
+                                      "get all data right now")
+        if t_finish is not None:
+            raise NotImplementedError("t_finish is not implemented. You can "
+                                      "only get all data right now")
 
-        # grab the times/index where the primary key has a value
-        index = self._dataframe[reference_column].dropna().index
+        # drop duplicate keys
+        other_cols = list(set(other_cols))
+        # grab the times/indices where the primary key has a value
+        indices = self._dataframe[ref_col].dropna().index
         # make output dictionary
         out_data = dict()
-        # for the keys we care about
-        for k in [reference_column, ] + other_columns:
-            # pull out the DataSeries
-            work_series = self._dataframe[k]
+        # get data only for the keys we care about
+        for k in [ref_col, ] + other_cols:
+            # pull out the pandas.Series
+            working_series = self._dataframe[k]
             # fill in the NaNs using what ever method needed
-            work_series = work_series.fillna(method=self._fill_methods[k])
+            working_series = working_series.fillna(method=self._col_fill[k])
             # select it only at the times we care about
-            work_series = work_series[index]
+            working_series = working_series[indices]
             # if it is not a scalar, do the look up
-            if k in self._is_not_scalar:
-                out_data[k] = [self._nonscalar_lookup[k][t]
-                               for t in work_series]
+            if k in self._is_col_nonscalar:
+                out_data[k] = [self._nonscalar_col_lookup[k][t]
+                               for t in working_series]
             # else, just turn the series into a list so we have uniform
             # return types
             else:
-                out_data[k] = list(work_series.values)
+                out_data[k] = list(working_series.values)
 
-        # return the index an the dictionary
-        return list(index), out_data
+        # return the times/indices and the dictionary
+        return list(indices), out_data
 
-    def get_last_value(self, reference_column, other_columns):
+    def get_last_value(self, ref_col, other_cols):
         """
-        Return a dictionary of the dessified row an the most recent
+        Return a dictionary of the dessified row and the most recent
         time where reference column has a valid value
 
         Parameters
         ----------
-        reference_column : str
-            The 'master' column to get time stamps from
+        ref_col : str
+            The name of the 'master' column to get time stamps from
 
-        other_columns : list of str
-            A list of the other columns to return
-
-        time_range : tuple or None
-            Times to limit returned data to.  This is not implemented.
+        other_cols : list of str
+            A list of column names to return data from
 
         Returns
         -------
@@ -291,44 +308,63 @@ class DataMuggler(QtCore.QObject):
             The time associated with the data
 
         out_data : dict
-            A dictionary of the
+            A dictionary of the data keyed on the column name with values
+            as lists whose length is the same as 'indices'
         """
+        # drop duplicate keys
+        other_cols = list(set(other_cols))
         # grab the times/index where the primary key has a value
-        index = self._dataframe[reference_column].dropna().index
+        index = self._dataframe[ref_col].dropna().index
         # make output dictionary
         out_data = dict()
         # for the keys we care about
-        for k in [reference_column, ] + other_columns:
-            # pull out the DataSeries
+        for k in [ref_col, ] + other_cols:
+            # pull out the pandas.Series
             work_series = self._dataframe[k]
             # fill in the NaNs using what ever method needed
-            work_series = work_series.fillna(method=self._fill_methods[k])
+            work_series = work_series.fillna(method=self._col_fill[k])
             # select it only at the times we care about
             work_series = work_series[index]
             # if it is not a scalar, do the look up
-            if k in self._is_not_scalar:
-                out_data[k] = self._nonscalar_lookup[k][work_series.value[-1]]
+            if k in self._is_col_nonscalar:
+                out_data[k] = self._nonscalar_col_lookup[k][work_series.values[-1]]
 
             # else, just turn the series into a list so we have uniform
             # return types
             else:
-                out_data[k] = list(work_series.values[-1])
+                out_data[k] = work_series.values[-1]
 
-        # return the index an the dictionary
-        return list(index), out_data
+        # return the time and the dictionary
+        return index[-1], out_data
 
 
 class MuggleWatcherLatest(QtCore.QObject):
     """
-    This is a class that watches DataMuggler's for the `new_data` signal, grabs
-    the lastest
-    """
-    sig = QtCore.Signal(list, dict)
+    This is a class that watches a DataMuggler for the `new_data` signal, grabs
+    the lastest row (filling in data from other rows as needed) for the
+    selected columns.  You probably should not extract columns which fill back
+    as they will come out as NaN (I think).
 
-    def __init__(self, muggler, watch_column, extract_colums):
+    Parameters
+    ----------
+    muggler : DataMuggler
+        The muggler to keep tabs on
+
+    ref_col : str
+        The name of the 'master' column to watch for new data
+
+    other_cols : list of str
+        A list of column names to return data from in addition to 'ref_col'
+    """
+
+    # signal to emit index (time) + data
+    sig = QtCore.Signal(object, dict)
+
+    def __init__(self, muggler, ref_col, other_cols, **kwargs):
+        super(MuggleWatcherLatest, self).__init__(**kwargs)
         self._muggler = muggler
-        self._ref_col = watch_column
-        self._other_cols = extract_colums
+        self._ref_col = ref_col
+        self._other_cols = other_cols
         self._muggler.new_data.connect(self.process_message)
 
     @QtCore.Slot(list)
@@ -344,33 +380,100 @@ class MuggleWatcherLatest(QtCore.QObject):
 
         """
         if self._ref_col in updated_cols:
-            ind, res_dict = self._muggler.get_last_value(self._ref_col,
-                                                         self._other_cols)
-            self.sig.emit(ind, res_dict)
+            indices, results_dict = self._muggler.get_last_value(
+                self._ref_col, self._other_cols)
+            self.sig.emit(indices, results_dict)
 
 
 class MuggleWatcherTwoLists(QtCore.QObject):
     """
+    This class watches a DataMuggler and when it gets new data extracts
+    all of the time series data, for two columns and emits both as lists
 
+    Parameters
+    ----------
+    muggler : DataMuggler
+        The muggler to keep tabs on
+
+    ref_col : str
+        The name of the 'master' column to watch for new data
+
+    col1 : str
+        The name of the first extra column to extract data from when ref_col
+        gets pinged
+
+    col2 : str
+        The name of the second extra column to extract data from when ref_col
+        gets pinged
     """
+    # Signal that emits lists of two datasets
     sig = QtCore.Signal(list, list)
 
-    def __init__(self, muggler, col1, col2):
+    def __init__(self, muggler, ref_col, col1, col2, **kwargs):
+        super(MuggleWatcherTwoLists, self).__init__(**kwargs)
+        self._muggler = muggler
+        self._ref_col = ref_col
+        self._other_cols = [col1, col2]
+        self._muggler.new_data.connect(self.process_message)
+
+    @QtCore.Slot(list)
+    def process_message(self, updated_cols):
         """
+        Process the updates from the muggler to see if there
+        is anything we need to deal with.
+
         Parameters
         ----------
-        muggler : DataMuggler
-            The data
+        updated_cols : list
+            Updated columns
+
         """
-        self._muggler = muggler
-        self._ref_col = col1
-        self._other_cols = [col2,]
-        self._muggler.new_data.connect(self.process_message)
+        if self._ref_col in updated_cols:
+            ind, res_dict = self._muggler.get_values(self._ref_col,
+                                                         self._other_cols)
+            self.sig.emit(res_dict[self._other_cols[0]],
+                          res_dict[self._other_cols[1]])
 
 
 class MuggleWatcherAll(QtCore.QObject):
     """
-    This class watches a DataMunggler and when it gets new data extracts
+    This class watches a DataMuggler and when it gets new data extracts
     all of the time series data, not just the latest.
+
+    Parameters
+    ----------
+    muggler : DataMuggler
+        The muggler to keep tabs on
+
+    ref_col : str
+        The name of the 'master' column to watch for new data
+
+    other_cols : list of str
+        The other columns to extract data from when ref_col gets pinged with
+        new data
     """
-    pass
+    sig = QtCore.Signal(list, dict)
+
+    def __init__(self, muggler, ref_col, other_cols, **kwargs):
+        super(MuggleWatcherAll, self).__init__(**kwargs)
+        self._muggler = muggler
+        self._ref_col = ref_col
+        self._other_cols = other_cols
+        self._muggler.new_data.connect(self.process_message)
+
+    @QtCore.Slot(list)
+    def process_message(self, updated_cols):
+        """
+        Process the updates from the muggler to see if there
+        is anything we need to deal with.
+
+        Parameters
+        ----------
+        updated_cols : list
+            Columns that were updated in the data muggler
+
+        """
+        if self._ref_col in updated_cols:
+            ind, res_dict = self._muggler.get_values(self._ref_col,
+                                                     self._other_cols)
+            self.sig.emit(ind, res_dict)
