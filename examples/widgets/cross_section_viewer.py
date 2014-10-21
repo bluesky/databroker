@@ -1,6 +1,8 @@
-from replay.api import make_cross_section_view
 from enaml.qt.qt_application import QtApplication
 import numpy as np
+
+from replay.gui.api import make_cross_section_view
+
 
 def change_data(data_lst):
     nx = np.random.randint(1000)+1

@@ -1,8 +1,10 @@
 __author__ = 'edill'
 
-from replay.api import make_line_view
 from enaml.qt.qt_application import QtApplication
 import numpy as np
+
+from replay.gui.api import make_line_view
+
 
 def change_data(model):
     x0 = np.random.random() * 2

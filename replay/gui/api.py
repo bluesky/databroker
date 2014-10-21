@@ -38,8 +38,7 @@ def make_line_view(init_view=True):
     """
     import numpy as np
     import enaml
-    from enaml.qt.qt_application import QtApplication
-    from replay.core import LineModel, ImageModel
+    from replay.model.core import LineModel
 
     with enaml.imports():
         from replay.gui.core import LineView
@@ -65,7 +64,7 @@ def make_image_view(init_view=True):
         enaml.widgets.api.MainWindow
     """
     import enaml
-    from replay.core import ImageModel
+    from replay.model.core import ImageModel
 
     with enaml.imports():
         from replay.gui.core import ImView
@@ -90,7 +89,7 @@ def make_cross_section_view(init_view=True):
         enaml.widgets.api.MainWindow
     """
     import enaml
-    from replay.cross_section_model import CrossSectionModel
+    from replay.model.cross_section_model import CrossSectionModel
 
     with enaml.imports():
         from replay.gui.cross_section_view import CrossSectionMain

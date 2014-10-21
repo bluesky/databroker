@@ -1,8 +1,10 @@
 __author__ = 'edill'
 
-from replay.api import make_image_view
 from enaml.qt.qt_application import QtApplication
 import numpy as np
+
+from replay.gui.api import make_image_view
+
 
 def change_data(model):
     nx = np.random.randint(1000)
