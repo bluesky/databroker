@@ -1,6 +1,7 @@
 from __future__ import unicode_literals, print_function, absolute_import
 import six
 import numpy as np
+import enaml
 __author__ = 'edill'
 
 def initialize_view(view):
@@ -36,8 +37,6 @@ def make_line_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    import numpy as np
-    import enaml
     from replay.model.core import LineModel
 
     with enaml.imports():
@@ -63,7 +62,6 @@ def make_image_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    import enaml
     from replay.model.core import ImageModel
 
     with enaml.imports():
@@ -88,7 +86,6 @@ def make_cross_section_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    import enaml
     from replay.model.cross_section_model import CrossSectionModel
 
     with enaml.imports():

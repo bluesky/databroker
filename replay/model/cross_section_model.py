@@ -50,7 +50,7 @@ class CrossSectionModel(Atom):
     # currently displayed maximum of the currently selected image
     disp_max = Float()
 
-    def __init__(self, data):
+    def __init__(self, data=None):
         with self.suppress_notifications():
             self.figure = Figure()
             self.cs = CrossSection(fig=self.figure)

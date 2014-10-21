@@ -9,13 +9,13 @@
 
 << autodoc-me >>
 """
-from enaml.layout.api import vbox, hbox, spacer
+from enaml.layout.api import vbox, hbox, spacer, InsertItem
 from enaml.widgets.api import (Window, Container, MPLCanvas, CheckBox,
-                               PushButton)
+                               PushButton, DockItem, DockArea, Field)
 
 import numpy as np
 
-enamldef LineView(Window):
+enamldef LineView(Container):
     attr line_model
 
     Container:
@@ -33,7 +33,7 @@ enamldef LineView(Window):
                 modify_line(line_model)
 
 
-enamldef ImView(Window):
+enamldef ImView(Container):
     attr image_model
 
     Container:
@@ -46,6 +46,9 @@ enamldef ImView(Window):
                 modify_image(image_model)
         MPLCanvas: canvas:
             figure = image_model._fig
+
+
+
 
 def modify_image(image_model):
     num_pix = 500

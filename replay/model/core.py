@@ -27,6 +27,10 @@ class LineModel(Atom):
     def __init__(self, x=None, y=None):
         self._fig = Figure()
         self._ax = self._fig.add_subplot(111)
+        if x is None:
+            x = np.arange(0, 10, .01).tolist()
+        if y is None:
+            y = np.sin(x).tolist()
         self.y = y
         self.x = x
 
