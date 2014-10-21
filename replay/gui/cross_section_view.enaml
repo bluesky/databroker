@@ -37,14 +37,14 @@ enamldef SliderWithSpinner(Container): sws:
         SpinBox: sbox:
             value := model.image_index
             minimum := model.minimum
-            maximum := model.maximum
+            maximum := model.num_images
         CheckBox:
             text = "Auto-update"
             checked := model.auto_update
         Slider: slider:
             value := model.image_index
             minimum := model.minimum
-            maximum := model.maximum
+            maximum := model.num_images
 
 
 enamldef CrossSectionControlsDock(DockPane): csdock:
