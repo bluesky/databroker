@@ -1,12 +1,10 @@
 __author__ = 'edill'
 
-from atom.api import Atom, List, observe, Bool, Enum, Str, Int, Range, Float, \
-    Typed
+from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
+                      Typed)
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib import colors
-import enaml
-from enaml.qt.qt_application import QtApplication
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
 import logging
 logger = logging.getLogger(__name__)
@@ -96,24 +94,3 @@ class CrossSectionModel(Atom):
     @observe('limit_func')
     def update_limit(self, update):
         self.cs.set_limit_func(self.limit_func)
-
-
-if __name__ == "__main__":
-    with enaml.imports():
-        from  replay.gui.cross_section_view import (
-            CrossSectionView, CrossSectionControlsDock, CrossSectionMain)
-    pixels = 1000
-    data = [np.random.rand(pixels,pixels) for _ in range(10)]
-    model = CrossSectionModel(data=data)
-    app = QtApplication()
-    view = CrossSectionView(model=model)
-
-    # controls = CrossSectionControls(model=model)
-    main = CrossSectionMain(model=model)
-    main.show()
-    # model.cs._fig.canvas.draw()
-    model.image_index = len(model.data)-1
-    # model.update_image(None)
-    # model.cs.init_artists(data[0])
-    #model.cs.init()
-    app.start()

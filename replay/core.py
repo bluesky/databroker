@@ -1,10 +1,8 @@
 __author__ = 'edill'
 
-from atom.api import Atom, List, observe, Bool, Typed
+from atom.api import Atom, observe, Bool, Typed
 import numpy as np
 from matplotlib.figure import Figure
-import enaml
-from enaml.qt.qt_application import QtApplication
 import logging
 logger = logging.getLogger(__name__)
 
