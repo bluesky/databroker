@@ -13,6 +13,6 @@ def change_data(data_lst):
 app = QtApplication()
 model, view = make_cross_section_view()
 model.image_index = len(model.data)-1
-for _ in np.arange(500, 10000, 500):
-    app.timed_call(_, change_data, model)
+# for _ in np.arange(500, 10000, 500):
+#     app.timed_call(_, change_data, model)
 app.start()

@@ -37,17 +37,45 @@ def make_line_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.core import LineModel
+    from replay.model.line_model import LineModel
 
     with enaml.imports():
-        from replay.gui.core import LineView
+        from replay.gui.line_view import LineView
 
     x = np.arange(0, 10, .01)
     y = np.sin(x)
-    line_model = LineModel(x=x.tolist(), y=y.tolist())
+    xy = {'init': (x.tolist(), y.tolist())}
+    line_model = LineModel(xy=xy)
     line_view = LineView(line_model=line_model)
-    if init_view:
-        initialize_view(line_view)
+    # if init_view:
+    #     initialize_view(line_view)
+    return line_model, line_view
+
+
+def make_line_window(init_view=True):
+    """
+
+    Create a LineView and its LineModel. Call LineView.show() and return
+    LineModel which is the back-end for the LineView
+
+    Returns
+    -------
+    model : replay.core.image_model
+    window : replay.gui.core.ImageView
+        enaml.widgets.api.MainWindow
+    """
+    from replay.model.line_model import LineModel
+
+    with enaml.imports():
+        from replay.gui.line_view import LineWindow
+
+    x = np.arange(0, 10, .01)
+    y = np.sin(x)
+    xy = {'init': (x.tolist(), y.tolist())}
+    line_model = LineModel(xy=xy)
+    line_view = LineWindow(line_model=line_model)
+    # if init_view:
+    #     initialize_view(line_view)
     return line_model, line_view
 
 def make_image_view(init_view=True):
@@ -62,13 +90,36 @@ def make_image_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.core import ImageModel
+    from replay.model.image_model import ImageModel
 
     with enaml.imports():
-        from replay.gui.core import ImView
+        from replay.gui.image_view import ImView
 
     image_model = ImageModel()
     image_view = ImView(image_model=image_model)
+    if init_view:
+        initialize_view(image_view)
+    return image_model, image_view
+
+def make_image_window(init_view=True):
+    """
+
+    Create a LineView and its LineModel. Call LineView.show() and return
+    LineModel which is the back-end for the LineView
+
+    Returns
+    -------
+    model : replay.core.image_model
+    window : replay.gui.core.ImageView
+        enaml.widgets.api.MainWindow
+    """
+    from replay.model.image_model import ImageModel
+
+    with enaml.imports():
+        from replay.gui.image_view import ImWindow
+
+    image_model = ImageModel()
+    image_view = ImWindow(image_model=image_model)
     if init_view:
         initialize_view(image_view)
     return image_model, image_view

@@ -342,7 +342,7 @@ p1.source_signal.connect(p2.sink_slot)
 p2.source_signal.connect(dm2.append_data)
 
 
-from replay.model.core import LineModel
+from replay.model.line_model import LineModel
 from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
 import enaml
