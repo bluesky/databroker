@@ -342,31 +342,40 @@ p1.source_signal.connect(p2.sink_slot)
 p2.source_signal.connect(dm2.append_data)
 
 
-from replay.gui.api import make_image_view, make_line_view, make_cross_section_view
+from replay.model.line_model import LineModel
+from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
+import enaml
 import numpy as np
+
 app = QtApplication()
-cs_model, cs_view = make_cross_section_view()
-line_model, line_view = make_line_view()
-line_model2, line_view2 = make_line_view()
-line_model3, line_view3 = make_line_view()
 # image_view.show()
+temp_model = LineModel()
+max_model = LineModel()
+center_model = LineModel()
+image_model = CrossSectionModel()
 
+with enaml.imports():
+    from replay.gui.csx import CSXView
 
+view = CSXView(temp_line_model=temp_model, max_line_model=max_model,
+               center_line_model=center_model, cross_section_model=image_model)
+
+view.show()
 # connect the cross section viewer to the first DataMuggler
-mw.sig.connect(lambda msg, data: cs_model.set_data(data['img']))
+mw.sig.connect(lambda msg, data: image_model.set_data(data['img']))
 
 # construct a watcher + viewer of the center
 mw4 = MuggleWatcherTwoLists(dm2, 'count', 'x', 'y')
-mw4.sig.connect(line_model.set_xy)
+mw4.sig.connect(center_model.set_xy)
 
 # construct a watcher + viewer of the max
 mw3 = MuggleWatcherTwoLists(dm2, 'count', 'count', 'max')
-mw3.sig.connect(line_model2.set_xy)
+mw3.sig.connect(max_model.set_xy)
 
 # construct a watcher + viewer of the temperature
 mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
-mw5.sig.connect(line_model3.set_xy)
+mw5.sig.connect(temp_model.set_xy)
 
 
 frame_source.start()

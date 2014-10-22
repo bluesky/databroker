@@ -1,0 +1,48 @@
+#------------------------------------------------------------------------------
+# Copyright (c) 2013, Nucleic Development Team.
+#
+# Distributed under the terms of the Modified BSD License.
+#
+# The full license is in the file COPYING.txt, distributed with this software.
+#------------------------------------------------------------------------------
+""" An example of embedding a maplotlib plot inside an Enaml application.
+
+<< autodoc-me >>
+"""
+from enaml.layout.api import vbox, hbox, spacer, InsertItem
+from enaml.widgets.api import (Window, Container, MPLCanvas, CheckBox,
+                               PushButton, DockItem, DockArea, Field)
+
+import numpy as np
+
+enamldef ImView(Container):
+    attr image_model
+
+    Container:
+        CheckBox: check:
+            text = 'Toolbar Visible'
+            checked := canvas.toolbar_visible
+        PushButton:
+            text = 'test redraw functionality'
+            clicked ::
+                modify_image(image_model)
+        MPLCanvas: canvas:
+            figure = image_model._fig
+
+
+
+enamldef ImWindow(Window): window:
+    attr image_model
+    Container:
+        ImView:
+            image_model := window.image_model
+
+
+def modify_image(image_model):
+    num_pix = 500
+    num_x = int(np.random.rand() * num_pix)+1
+    num_y = int(np.random.rand() * num_pix)+1
+
+    I = np.random.rand(num_x, num_y)
+
+    image_model.data = I.tolist()

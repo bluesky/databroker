@@ -9,13 +9,13 @@
 
 << autodoc-me >>
 """
-from enaml.layout.api import vbox, hbox, spacer
+from enaml.layout.api import vbox, hbox, spacer, InsertItem
 from enaml.widgets.api import (Window, Container, MPLCanvas, CheckBox,
-                               PushButton)
+                               PushButton, DockItem, DockArea, Field)
 
 import numpy as np
 
-enamldef LineView(Window):
+enamldef LineView(Container):
     attr line_model
 
     Container:
@@ -33,7 +33,7 @@ enamldef LineView(Window):
                 modify_line(line_model)
 
 
-enamldef ImView(Window):
+enamldef ImView(Container):
     attr image_model
 
     Container:
@@ -46,6 +46,15 @@ enamldef ImView(Window):
                 modify_image(image_model)
         MPLCanvas: canvas:
             figure = image_model._fig
+
+
+
+enamldef LineWindow(Window): window:
+    attr line_model
+    Container:
+        LineView:
+            line_model := window.line_model
+
 
 def modify_image(image_model):
     num_pix = 500
@@ -60,7 +69,8 @@ def modify_image(image_model):
 def modify_line(line_model):
     new_x = np.arange(0, 10 * np.random.rand(), 0.01)
     new_y = np.sin(new_x) * np.random.rand() * 5
-    line_model.set_xy_lst(new_x, new_y)
+    name = 'line' + np.random.randint(100000)
+    line_model.add_xy(new_x, new_y, name)
     #line_data.y = new_y.tolist()
     print('button clicked')
 
