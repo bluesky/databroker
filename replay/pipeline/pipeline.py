@@ -190,7 +190,7 @@ class DataMuggler(QtCore.QObject):
             object then the values must be single values
         """
         if not all(k in self._dataframe for k in data_dict):
-            k_dataframe = set(list(six.iterkeys(dataframe)))
+            k_dataframe = set(list(self._dataframe.columns.values))
             k_input = set(list(six.iterkeys(data_dict)))
             bogus_keys = k_input - k_dataframe
             raise ValueError('Passing in a key that the dataframe doesn\'t '
