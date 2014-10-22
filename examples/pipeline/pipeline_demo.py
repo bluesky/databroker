@@ -7,13 +7,13 @@ from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
                                       MuggleWatcherTwoLists
 )
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from nsls2 import core
 from enaml.qt import QtCore
 import numpy as np
 # from bubblegum.backend.mpl.cross_section_2d import (absolute_limit_factory,
 #                                                     CrossSection)
-from nsls2.fitting.model.physics_model import GaussModel
+from nsls2.fitting.model.physics_model import GaussianModel
 import lmfit
 
 
@@ -89,7 +89,7 @@ def plotter(title, xlabel, ylabel, ax=None, N=None, ln_sty=None, fit=False):
     ln, = ax.plot([], [], ln_sty)
     if fit:
         ln2, = ax.plot([], [], 'g-')
-        m = GaussModel() + lmfit.models.ConstantModel()
+        m = GaussianModel() + lmfit.models.ConstantModel()
         param = m.make_params()
         for k in param:
             param[k].value = 1
@@ -293,7 +293,7 @@ def scale_fluc(scale, count):
 frame_source = FrameSourcerBrownian(img_size, delay=200, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
-                                    max_count=period//2
+                                    max_count=10
                                     )
 
 
@@ -342,6 +342,7 @@ p1.source_signal.connect(p2.sink_slot)
 p2.source_signal.connect(dm2.append_data)
 
 
+from replay.model.variable_model import VariableModel
 from replay.model.line_model import LineModel
 from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
@@ -357,27 +358,30 @@ image_model = CrossSectionModel()
 
 with enaml.imports():
     from replay.gui.csx import CSXView
+    from replay.gui.variable_view import VariableMain
 
-view = CSXView(temp_line_model=temp_model, max_line_model=max_model,
-               center_line_model=center_model, cross_section_model=image_model)
+# view = CSXView(temp_line_model=temp_model, max_line_model=max_model,
+#                center_line_model=center_model, cross_section_model=image_model)
+#
+# view.show()
+# # connect the cross section viewer to the first DataMuggler
+# mw.sig.connect(lambda msg, data: image_model.set_data(data['img']))
+#
+# # construct a watcher + viewer of the center
+# mw4 = MuggleWatcherTwoLists(dm2, 'count', 'x', 'y')
+# mw4.sig.connect(center_model.set_xy)
+#
+# # construct a watcher + viewer of the max
+# mw3 = MuggleWatcherTwoLists(dm2, 'count', 'count', 'max')
+# mw3.sig.connect(max_model.set_xy)
+#
+# # construct a watcher + viewer of the temperature
+# mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
+# mw5.sig.connect(temp_model.set_xy)
 
+model = VariableModel(data_muggler=dm2)
+view = VariableMain(variable_model=model)
 view.show()
-# connect the cross section viewer to the first DataMuggler
-mw.sig.connect(lambda msg, data: image_model.set_data(data['img']))
-
-# construct a watcher + viewer of the center
-mw4 = MuggleWatcherTwoLists(dm2, 'count', 'x', 'y')
-mw4.sig.connect(center_model.set_xy)
-
-# construct a watcher + viewer of the max
-mw3 = MuggleWatcherTwoLists(dm2, 'count', 'count', 'max')
-mw3.sig.connect(max_model.set_xy)
-
-# construct a watcher + viewer of the temperature
-mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
-mw5.sig.connect(temp_model.set_xy)
-
-
 frame_source.start()
 # plt.show(block=True)
 

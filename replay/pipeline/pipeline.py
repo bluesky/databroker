@@ -190,7 +190,7 @@ class DataMuggler(QtCore.QObject):
             object then the values must be single values
         """
         if not all(k in self._dataframe for k in data_dict):
-            k_dataframe = set(list(six.iterkeys(dataframe)))
+            k_dataframe = set(list(six.iterkeys(self._dataframe)))
             k_input = set(list(six.iterkeys(data_dict)))
             bogus_keys = k_input - k_dataframe
             raise ValueError('Passing in a key that the dataframe doesn\'t '
@@ -257,8 +257,8 @@ class DataMuggler(QtCore.QObject):
             as lists whose length is the same as 'indices'
         """
         if t_start is not None:
-            raise NotImplementedError("t_start is not implemented. You can only "
-                                      "get all data right now")
+            raise NotImplementedError("t_start is not implemented. You can "
+                                      "only get all data right now")
         if t_finish is not None:
             raise NotImplementedError("t_finish is not implemented. You can "
                                       "only get all data right now")
