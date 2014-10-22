@@ -1,17 +1,25 @@
 from enaml.layout.api import InsertItem, VSplitLayout, HSplitLayout
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
-                               MainWindow)
+                               MainWindow, ObjectCombo)
 from replay.gui.line_view import LineView
 from replay.gui.variable_view import VariableView
+
+from enaml.stdlib.dock_area_styles import available_styles
+
+def cap_case(name):
+    return ' '.join(s.capitalize() for s in name.split('-'))
 
 enamldef PipelineView(MainWindow): window:
     title = "Live Data Demo"
     attr line_model
     attr variable_model
-
     Container:
-        #padding(0, 0, 0, 10)
+        ObjectCombo: style_c:
+            items = available_styles()
+            to_string = cap_case
+            selected = 'vs-2010'
         DockArea:
+            style << style_c.selected
             layout = HSplitLayout(
                          HSplitLayout('variables', 'line_view')
             )
