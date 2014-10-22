@@ -20,8 +20,9 @@ enamldef VariableContainer(Container):
             ComboBox:
                 items << variable_model.vars
                 editable = True
-                index = 0
                 selected_item >> variable_model.x
+                index = variable_model.vars.index(variable_model.x)
+
             Label:
                 text = "fit"
             ComboBox:
@@ -44,7 +45,8 @@ enamldef VariableContainer(Container):
                 Label: lbl:
                     text = loop_item
                 CheckBox: cb:
-                    checked ::
+                    checked := variable_model.y_to_plot[loop_item]
+                    toggled ::
                         variable_model.y_to_plot[loop_item] = checked
                         variable_model.update_y_list(checked, loop_item)
 

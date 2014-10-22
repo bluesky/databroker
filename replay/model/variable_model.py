@@ -41,15 +41,19 @@ class VariableModel(Atom):
         # stash the data muggler
         self.data_muggler = data_muggler
         self.vars = self.data_muggler.keys() + ['time',]
-        self.x = self.vars[0]
         self.y_to_plot = dict.fromkeys(self.vars, False)
         self.line_model = line_model
         # connect the new data signal of the muggler to the new data processor
         # of the VariableModel
         self.data_muggler.new_data.connect(self.notify_new_data)
+        # do some init magic
+        self.x = self.vars[1]
+        self.y_to_plot['max'] = True
+        self.update_y_list(is_checked=True, var_name='max')
 
     @observe('x')
     def update_x(self, changed):
+        print(changed)
         self.get_new_data_and_plot(self.y)
         self.print_state()
 
