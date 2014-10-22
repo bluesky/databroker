@@ -337,6 +337,9 @@ class DataMuggler(QtCore.QObject):
         # return the time and the dictionary
         return index[-1], out_data
 
+    def get_keys(self):
+        return list(self._dataframe.columns.values)
+
 
 class MuggleWatcherLatest(QtCore.QObject):
     """
