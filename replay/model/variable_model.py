@@ -40,7 +40,7 @@ class VariableModel(Atom):
         self.fit_data = []
         # stash the data muggler
         self.data_muggler = data_muggler
-        self.vars = list(data_muggler._dataframe.axes[1])
+        self.vars = self.data_muggler.keys() + ['time',]
         self.x = self.vars[0]
         self.y_to_plot = dict.fromkeys(self.vars, False)
         # connect the new data signal of the muggler to the new data processor
@@ -66,6 +66,7 @@ class VariableModel(Atom):
         print('x: {}'.format(self.x))
         print('y: {}'.format(self.y))
         print('ploty: {}'.format(self.y_to_plot))
+        print('vars: {}'.format(self.vars))
         print("fit: {}".format(self.fit_name))
 
     def update_y_list(self, is_checked, var_name):
@@ -108,10 +109,16 @@ class VariableModel(Atom):
         """
         print("get_new_data_and_plot")
         self.print_state()
+        ref_col = self.x
+        if self.x == 'time':
+            ref_col = self.vars[0]
         if y_names and self.x is not "":
-            time, data = self.data_muggler.get_values(ref_col=self.x,
+            time, data = self.data_muggler.get_values(ref_col=ref_col,
                                                 other_cols=y_names)
-            ref_data = data.pop(self.x)
+            if self.x != 'time':
+                ref_data = data.pop(self.x)
+            else:
+                ref_data = time
             print('data from muggler: \ntime: {}\nx: {}\ny: {}'
                   ''.format(time, ref_data, data))
             for y_name, y_data in six.iteritems(data):

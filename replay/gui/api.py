@@ -69,10 +69,7 @@ def make_line_window(init_view=True):
     with enaml.imports():
         from replay.gui.line_view import LineWindow
 
-    x = np.arange(0, 10, .01)
-    y = np.sin(x)
-    xy = {'init': (x.tolist(), y.tolist())}
-    line_model = LineModel(xy=xy)
+    line_model = LineModel()
     line_view = LineWindow(line_model=line_model)
     # if init_view:
     #     initialize_view(line_view)

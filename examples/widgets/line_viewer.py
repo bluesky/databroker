@@ -15,6 +15,10 @@ def change_data(model, time):
 
 app = QtApplication()
 model, view = make_line_window()
+x = np.arange(0, 10, .01)
+y = np.sin(x)
+xy = {'init': (x.tolist(), y.tolist())}
+model.set_xy(x.tolist(), y.tolist())
 view.show()
 step = 400
 for ms in np.arange(500, 10000, step):

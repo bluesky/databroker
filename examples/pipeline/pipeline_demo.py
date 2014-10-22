@@ -290,10 +290,10 @@ def scale_fluc(scale, count):
         return scale + .5
     return None
 
-frame_source = FrameSourcerBrownian(img_size, delay=200, step_scale=.5,
+frame_source = FrameSourcerBrownian(img_size, delay=500, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
-                                    max_count=10
+                                    max_count=sigma/2
                                     )
 
 
@@ -359,7 +359,7 @@ image_model = CrossSectionModel()
 with enaml.imports():
     from replay.gui.csx import CSXView
     from replay.gui.variable_view import VariableMain
-
+from replay.gui.api import make_line_window
 # view = CSXView(temp_line_model=temp_model, max_line_model=max_model,
 #                center_line_model=center_model, cross_section_model=image_model)
 #
@@ -379,9 +379,13 @@ with enaml.imports():
 # mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
 # mw5.sig.connect(temp_model.set_xy)
 
-model = VariableModel(data_muggler=dm2)
-view = VariableMain(variable_model=model)
-view.show()
+line_model, line_view = make_line_window()
+
+var_model = VariableModel(data_muggler=dm2)
+var_model.line_model = line_model
+var_view = VariableMain(variable_model=var_model)
+var_view.show()
+line_view.show()
 frame_source.start()
 # plt.show(block=True)
 
