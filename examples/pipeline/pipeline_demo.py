@@ -278,7 +278,7 @@ class FrameSourcerBrownian(QtCore.QObject):
 img_size = (150, 150)
 period = 150
 I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
-center = 30
+center = 75
 sigma = 100
 I_func_gaus = lambda count: (1 + np.exp(-(count - center) ** 2 / sigma))
 
@@ -290,10 +290,10 @@ def scale_fluc(scale, count):
         return scale + .5
     return None
 
-frame_source = FrameSourcerBrownian(img_size, delay=500, step_scale=.5,
+frame_source = FrameSourcerBrownian(img_size, delay=100, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
-                                    max_count=sigma/2
+                                    max_count=center * 2
                                     )
 
 
@@ -357,11 +357,12 @@ center_model = LineModel()
 image_model = CrossSectionModel()
 
 with enaml.imports():
-    from replay.gui.csx import CSXView
+    from pipeline import PipelineView
     from replay.gui.variable_view import VariableMain
-from replay.gui.api import make_line_window
-# view = CSXView(temp_line_model=temp_model, max_line_model=max_model,
-#                center_line_model=center_model, cross_section_model=image_model)
+line_model = LineModel()
+variable_model = VariableModel(data_muggler=dm2, line_model=line_model)
+view = PipelineView(line_model=line_model, variable_model=variable_model)
+view.show()
 #
 # view.show()
 # # connect the cross section viewer to the first DataMuggler
@@ -379,13 +380,13 @@ from replay.gui.api import make_line_window
 # mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
 # mw5.sig.connect(temp_model.set_xy)
 
-line_model, line_view = make_line_window()
+# line_model, line_view = make_line_window()
 
-var_model = VariableModel(data_muggler=dm2)
-var_model.line_model = line_model
-var_view = VariableMain(variable_model=var_model)
-var_view.show()
-line_view.show()
+# var_model = VariableModel(data_muggler=dm2)
+# var_model.line_model = line_model
+# var_view = VariableMain(variable_model=var_model)
+# var_view.show()
+# line_view.show()
 frame_source.start()
 # plt.show(block=True)
 

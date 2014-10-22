@@ -35,7 +35,7 @@ class VariableModel(Atom):
     # location where the data is stored
     data_muggler = Typed(DataMuggler)
 
-    def __init__(self, data_muggler):
+    def __init__(self, data_muggler, line_model=None):
         super(VariableModel, self).__init__()
         self.fit_data = []
         # stash the data muggler
@@ -43,6 +43,7 @@ class VariableModel(Atom):
         self.vars = self.data_muggler.keys() + ['time',]
         self.x = self.vars[0]
         self.y_to_plot = dict.fromkeys(self.vars, False)
+        self.line_model = line_model
         # connect the new data signal of the muggler to the new data processor
         # of the VariableModel
         self.data_muggler.new_data.connect(self.notify_new_data)

@@ -1,0 +1,29 @@
+from enaml.layout.api import InsertItem, VSplitLayout, HSplitLayout
+from enaml.widgets.api import (Window, Container, DockItem, DockArea,
+                               MainWindow)
+from replay.gui.line_view import LineView
+from replay.gui.variable_view import VariableView
+
+enamldef PipelineView(MainWindow): window:
+    title = "Live Data Demo"
+    attr line_model
+    attr variable_model
+
+    Container:
+        #padding(0, 0, 0, 10)
+        DockArea:
+            layout = HSplitLayout(
+                         HSplitLayout('variables', 'line_view')
+            )
+            DockItem:
+                name = 'line_view'
+                title = 'Plotter'
+                Container:
+                    LineView:
+                        line_model = window.line_model
+            DockItem:
+                name = 'variables'
+                title = 'Data Muggler'
+                Container:
+                    VariableView:
+                        variable_model = window.variable_model
