@@ -36,9 +36,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from enaml.qt import QtCore
-
+from collections import namedtuple
 import pandas as pd
 from datetime import datetime
+import numpy as np
 
 
 class PipelineComponent(QtCore.QObject):
@@ -114,6 +115,45 @@ class PipelineComponent(QtCore.QObject):
                 self.source_signal.emit(*ret)
 
 
+class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
+    """
+    Named-tuple sub-class to validate the column specifications for the
+    DataMuggler
+
+    Parameters
+    ----------
+    name : hashable
+    fill_method : {'pad', 'ffill', None}
+        None means that no filling is done
+    dims : uint
+        Dimensionality of the data stored in the column
+    """
+    # removed the back-fill ones (even though pandas allows them)
+    valid_fill_methods = {'pad', 'ffill', None}  # , 'bfill', 'backpad'}
+
+    __slots__ = ()
+
+    def __new__(cls, *args, **kwargs):
+        if len(args) > 1:
+            name, fill_method = args[:2]
+        else:
+            fill_method = kwargs['fill_method']
+        if len(args) > 2:
+            name, fill_method, dims = args
+        else:
+            dims = kwargs['dims']
+
+        if int(dims) < 0:
+            raise ValueError("Dims must be positive not {}".format(dims))
+
+        if fill_method not in cls.valid_fill_methods:
+            raise ValueError("{} is not a valid fill method must be one of "
+                                 "{}".format(fill_method,
+                                             cls.valid_fill_methods))
+
+        return super(ColSpec, cls).__new__(cls, *args, **kwargs)
+
+
 class DataMuggler(QtCore.QObject):
     """
     This class provides a wrapper layer of signals and slots
@@ -122,20 +162,22 @@ class DataMuggler(QtCore.QObject):
 
     The data collection/event model being used is all measurements
     (that is values that come off of the hardware) are time stamped
-    to ring time.  The assumption that there will be one measurement
-    (ex an area detector) which can not be interpolated and will serve
-    as the source of reference time stamps.
+    to ring time.
 
     The language being used through out is that of pandas data frames.
 
     The data model is that of a sparse table keyed on time stamps which
-    is 'densified' on demand by propagating the last measured value forward.
+    is 'densified' on demand by propagating measurements forwards.  Not
+    all measurements (ex images) can be filled.  This behavior is controlled
+    by the `col_info` tuple.
+
+    The tuples used to im
 
     Parameters
     ----------
     col_info : list
         List of information about the columns. Each entry should
-        be a tuple of the form (col_name, fill_method, is_scalar)
+        be a tuple of the form (col_name, fill_method, dimensionality)
 
     """
 
@@ -150,29 +192,74 @@ class DataMuggler(QtCore.QObject):
 
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
-        valid_fill_methods = {'pad', 'ffill', 'bfill', 'backpad'}
 
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
         self._is_col_nonscalar = set()
+        self._col_dims = dict()
         names = []
-        for col_name, fill_method, is_scalar in col_info:
+        for ci in col_info:
             # validate fill methods
-            if fill_method not in valid_fill_methods:
-                raise ValueError("{} is not a valid fill method must be one of "
-                                 "{}".format(fill_method, valid_fill_methods))
+            ci = ColSpec(*ci)
             # used to sort out which way filling should be done.
             # forward for motor-like, backwards from image-like
-            self._col_fill[col_name] = fill_method
+            self._col_fill[ci.name] = ci.fill_method
             # determine if the value should be stored directly in the data
             # frame or in a separate data structure
-            if not is_scalar:
-                self._is_col_nonscalar.add(col_name)
-                self._nonscalar_col_lookup[col_name] = dict()
-            names.append(col_name)
+            if ci.dims > 0:
+                self._is_col_nonscalar.add(ci.name)
+                self._nonscalar_col_lookup[ci.name] = dict()
+            self._col_dims[ci.name] = ci.dims
+            names.append(ci.name)
 
         # make an empty data frame
         self._dataframe = pd.DataFrame({n: [] for n in names}, index=[])
+
+    @property
+    def cols_dims(self):
+        """
+        The dimensionality of the data stored in this column.
+
+         0 -> scaler
+         1 -> line (MCA spectra)
+         2 -> image
+         3 -> volume
+        """
+        return dict(self._col_dims)
+
+    @property
+    def col_fill_rules(self):
+        """
+        Fill rules for all of the columns.
+        """
+        return dict(self._col_fill)
+
+    def slice_against(self, col_name):
+        """
+        Determine what columns can be sliced against another column.
+
+        This matters because not all columns can be filled and would
+        result in getting back non-dense events.
+
+        Currently this just decides based on if the column can be filled,
+        but this might need to be made smarter to deal with synchronous
+        collection of multiple un-fillable measurements.
+
+        Parameters
+        ----------
+        col_name : str
+            The name of the proposed reference column
+
+        Returns
+        -------
+        dict
+            Keyed on column name, True if that column can be sliced at
+            the times of the input column.
+        """
+        tmp_dict = {k: v is not None
+                    for k, v in six.iteritems(self._col_fill)}
+        tmp_dict[col_name] = True
+        return tmp_dict
 
     def append_data(self, time_stamp, data_dict):
         """
@@ -273,13 +360,17 @@ class DataMuggler(QtCore.QObject):
         for k in [ref_col, ] + other_cols:
             # pull out the pandas.Series
             working_series = self._dataframe[k]
-            # fill in the NaNs using what ever method needed
-            working_series = working_series.fillna(method=self._col_fill[k])
+            # fill in the NaNs using what ever method needed (or at all)
+            # if we add interpolation it would go here.
+            if self._col_fill[k] is not None:
+                working_series = working_series.fillna(
+                                                 method=self._col_fill[k])
             # select it only at the times we care about
             working_series = working_series[indices]
             # if it is not a scalar, do the look up
             if k in self._is_col_nonscalar:
                 out_data[k] = [self._nonscalar_col_lookup[k][t]
+                               if not np.isnan(t) else None
                                for t in working_series]
             # else, just turn the series into a list so we have uniform
             # return types
