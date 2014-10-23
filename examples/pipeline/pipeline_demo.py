@@ -299,15 +299,15 @@ frame_source = FrameSourcerBrownian(img_size, delay=100, step_scale=.5,
 
 # set up mugglers
 dm = DataMuggler((('T', 'pad', True),
-                  ('img', 'bfill', False),
-                  ('count', 'bfill', True)
+                  ('img', None, False),
+                  ('count', None, True)
                   )
                  )
 dm2 = DataMuggler((('T', 'pad', True),
-                   ('max', 'bfill', True),
-                   ('x', 'bfill', True),
-                   ('y', 'bfill', True),
-                   ('count', 'bfill', True)
+                   ('max', None, True),
+                   ('x', None, True),
+                   ('y', None, True),
+                   ('count', None, True)
                    )
                   )
 # construct a watcher for the image + count on the main DataMuggler

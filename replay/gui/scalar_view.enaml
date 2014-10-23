@@ -48,7 +48,8 @@ enamldef ScalarController(Container):
                 Label: lbl:
                     text = loop_item
                 CheckBox: cb:
-                    checked := scalar_model.y_to_plot[loop_item]
+                    checked := scalar_model.should_i_plot_this_y[loop_item]
+                    enabled := scalar_model.is_y_plottable[loop_item]
                     toggled ::
                         scalar_model.update_y_list(checked, loop_item)
 

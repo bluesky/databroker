@@ -35,16 +35,12 @@ class ScalarModel(Atom):
     y = List()
     # scalar variables that this model knows about
     scalar_vars = List()
-    # line variables that this model knows about
-    line_vars = List()
-    # image variables that this model knows about
-    image_vars = List()
-    # volume variables that this model knows about
-    volume_vars = List()
 
     x_time = Constant('time')
     # y values to plot. dictionary keyed on values from y
-    y_to_plot = Dict(value=Bool())
+    should_i_plot_this_y = Dict(value=Bool())
+    # enable/disable check boxes based on this dict
+    is_y_plottable = Dict(value=Bool())
     # y-values of the fit
     fit_data = List()
     # the model has values to fit
@@ -63,13 +59,14 @@ class ScalarModel(Atom):
             # stash the data muggler
             self.data_muggler = data_muggler
             self.scalar_vars = self.data_muggler.keys() + [self.x_time, ]
-            self.y_to_plot = dict.fromkeys(self.scalar_vars, False)
+            self.should_i_plot_this_y = dict.fromkeys(self.scalar_vars, False)
+            self.is_y_plottable = dict.fromkeys(self.scalar_vars, True)
             # connect the new data signal of the muggler to the new data processor
             # of the VariableModel
             self.data_muggler.new_data.connect(self.notify_new_data)
             # do some init magic
             self.x = self.scalar_vars[1]
-            self.y_to_plot['max'] = True
+            self.should_i_plot_this_y['max'] = True
             self.update_y_list(is_checked=True, var_name='max')
         self.get_new_data_and_plot(self.y)
 
@@ -85,6 +82,13 @@ class ScalarModel(Atom):
             # let line_model use matplotlib's plotter
             self.time = False
             self.xy = {}
+        # check with the muggler for the columns that can be plotted against
+        sliceable = self.data_muggler.slice_against(self.x)
+        for var_name, is_plottable in six.iteritems(sliceable):
+            if not is_plottable:
+                self.should_i_plot_this_y[var_name] = False
+
+        self.is_y_plottable.update(sliceable)
         # grab new data from the data muggler
         self.get_new_data_and_plot(self.y)
         self.print_state()
@@ -102,7 +106,7 @@ class ScalarModel(Atom):
         print('\n\n---printing state---\n')
         print('x: {}'.format(self.x))
         print('y: {}'.format(self.y))
-        print('ploty: {}'.format(self.y_to_plot))
+        print('ploty: {}'.format(self.should_i_plot_this_y))
         print('vars: {}'.format(self.scalar_vars))
         print("fit: {}".format(self.fit_name))
 
@@ -120,7 +124,7 @@ class ScalarModel(Atom):
             Name of the variable whose checkbox got checked
         """
         self.y = [var for var, is_enabled
-                in six.iteritems(self.y_to_plot) if is_enabled]
+                in six.iteritems(self.should_i_plot_this_y) if is_enabled]
         if is_checked:
             # get the data and add a new line to the plot
             self.get_new_data_and_plot([var_name, ])
