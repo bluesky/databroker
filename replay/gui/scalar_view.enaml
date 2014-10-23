@@ -1,0 +1,94 @@
+
+""" The Enaml UI code for the scalar viewer
+
+"""
+
+from enaml.core.api import Looper
+from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout
+from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
+                               CheckBox, DockItem, DockPane, Form, Label,
+                               Slider, MainWindow, ComboBox, SpinBox,
+                               GroupBox, ScrollArea
+                               )
+
+enamldef ScalarController(Container):
+    attr scalar_model
+    ScrollArea: scroller:
+        Form:
+            Label:
+                text = "x axis"
+            ComboBox:
+                items << scalar_model.scalar_vars
+                editable = True
+                selected_item >> scalar_model.x
+                # this scalar allows the plotter to come up with guns blazing
+                # (plotting)
+                index = scalar_model.scalar_vars.index(scalar_model.x)
+
+            Label:
+                text = "fit"
+            ComboBox:
+                items << scalar_model.scalar_vars
+                editable = True
+                selected_item ::
+                    scalar_model.fit_name = selected_item
+                    lbl_fit.text = ('fit_' + selected_item)
+            Label:
+                text = "y axis"
+            Label:
+                text = "plot?"
+            Label: lbl_fit:
+                text = "fit"
+            CheckBox:
+                checked := scalar_model.plot_fit
+                checkable << scalar_model.has_fit
+            Looper: looper:
+                iterable << scalar_model.scalar_vars
+                Label: lbl:
+                    text = loop_item
+                CheckBox: cb:
+                    checked := scalar_model.y_to_plot[loop_item]
+                    toggled ::
+                        scalar_model.update_y_list(checked, loop_item)
+
+
+enamldef ScalarView(Container):
+    attr scalar_model
+
+    Container:
+        constraints = [
+            vbox(
+                hbox(check, hold, spacer),
+                canvas,
+            ),
+        ]
+        CheckBox: check:
+            text = 'Toolbar Visible'
+            checked := canvas.toolbar_visible
+        CheckBox: hold:
+            text = 'Plot multiple scalars'
+            checked := scalar_model.draw_single_line
+        MPLCanvas: canvas:
+            figure = scalar_model._fig
+
+
+enamldef ScalarContainer(Window): window:
+    attr scalar_model
+    attr scalar_view
+    attr scalar_controller
+    Container:
+        DockArea: da:
+            layout = HSplitLayout('controls', 'views')
+            DockItem:
+                name = 'views'
+                title = 'Scalar View'
+                Container:
+                    ScalarView: contains:
+                        scalar_model = window.scalar_model
+            DockItem:
+                name = 'controls'
+                title = 'Scalar Controller'
+                Container:
+                    ScalarController: controls:
+                        scalar_model = window.scalar_model

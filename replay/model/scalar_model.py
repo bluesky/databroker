@@ -4,24 +4,43 @@ from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
                       Typed, Dict, Constant)
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
 from lmfit import Model
+import pandas as pd
 import six
 from ..pipeline.pipeline import DataMuggler
-from .line_model import LineModel
 import logging
 logger = logging.getLogger(__name__)
 
-class DataModel(Atom):
+class ScalarModel(Atom):
+    xy = Dict()
+
+    draw_single_line = Bool(False)
+
+    # flag that defines the x-axis as time or not time
+    time = Bool(False)
+
+    # mpl setup
+    _fig = Typed(Figure)
+    _ax = Typed(Axes)
+
+    # SCALAR METHODS
     # value to use as the x-axis
     x = Str()
     # y value to fit against
     fit_name = Str()
     # list of y values to plot
     y = List()
-    # variables that this model knows about
-    vars = List()
+    # scalar variables that this model knows about
+    scalar_vars = List()
+    # line variables that this model knows about
+    line_vars = List()
+    # image variables that this model knows about
+    image_vars = List()
+    # volume variables that this model knows about
+    volume_vars = List()
 
     x_time = Constant('time')
     # y values to plot. dictionary keyed on values from y
@@ -32,25 +51,24 @@ class DataModel(Atom):
     has_fit = Bool(False)
     # toggle to show or hide the fit
     plot_fit = Bool(False)
-    # line model that backs the line plot
-    line_model = Typed(LineModel)
     # location where the data is stored
     data_muggler = Typed(DataMuggler)
 
-    def __init__(self, data_muggler, line_model=None):
+    def __init__(self, data_muggler):
         with self.suppress_notifications():
-            super(DataModel, self).__init__()
+            super(ScalarModel, self).__init__()
+            self._fig = Figure(figsize=(1,1))
+            self._ax = self._fig.add_subplot(111)
             self.fit_data = []
             # stash the data muggler
             self.data_muggler = data_muggler
-            self.vars = self.data_muggler.keys() + [self.x_time, ]
-            self.y_to_plot = dict.fromkeys(self.vars, False)
-            self.line_model = line_model
+            self.scalar_vars = self.data_muggler.keys() + [self.x_time, ]
+            self.y_to_plot = dict.fromkeys(self.scalar_vars, False)
             # connect the new data signal of the muggler to the new data processor
             # of the VariableModel
             self.data_muggler.new_data.connect(self.notify_new_data)
             # do some init magic
-            self.x = self.vars[1]
+            self.x = self.scalar_vars[1]
             self.y_to_plot['max'] = True
             self.update_y_list(is_checked=True, var_name='max')
         self.get_new_data_and_plot(self.y)
@@ -61,12 +79,12 @@ class DataModel(Atom):
         if self.x == self.x_time:
             # let line_model know that its x-axis is time so that it can use
             # pandas great built-in time plotter
-            self.line_model.time = True
-            self.line_model.xy = {}
+            self.time = True
+            self.xy = {}
         else:
             # let line_model use matplotlib's plotter
-            self.line_model.time = False
-            self.line_model.xy = {}
+            self.time = False
+            self.xy = {}
         # grab new data from the data muggler
         self.get_new_data_and_plot(self.y)
         self.print_state()
@@ -85,7 +103,7 @@ class DataModel(Atom):
         print('x: {}'.format(self.x))
         print('y: {}'.format(self.y))
         print('ploty: {}'.format(self.y_to_plot))
-        print('vars: {}'.format(self.vars))
+        print('vars: {}'.format(self.scalar_vars))
         print("fit: {}".format(self.fit_name))
 
     def update_y_list(self, is_checked, var_name):
@@ -106,9 +124,9 @@ class DataModel(Atom):
         if is_checked:
             # get the data and add a new line to the plot
             self.get_new_data_and_plot([var_name, ])
-        elif self.line_model is not None:
+        elif self.scalar_model is not None:
             # remove the line from the plot
-            self.line_model.remove_xy(var_name)
+            self.remove_xy(var_name)
 
 
     def notify_new_data(self, new_data):
@@ -143,10 +161,10 @@ class DataModel(Atom):
         self.print_state()
         if y_names and self.x is not "":
             if self.x == self.x_time:
-                self.line_model.time = True
+                self.time = True
                 for col_name in y_names:
                     x, y = self.data_muggler.get_column(col_name)
-                    self.line_model.add_xy(x, y, col_name)
+                    self.add_xy(x, y, col_name)
 
             else:
                 time, data = self.data_muggler.get_values(ref_col=self.x,
@@ -154,8 +172,77 @@ class DataModel(Atom):
                 ref_data = data.pop(self.x)
                 for y_name, y_data in six.iteritems(data):
                     # add xy data to the line model named `y_name`
-                    if self.line_model is not None:
-                        self.line_model.add_xy(ref_data, y_data, y_name)
-        if self.plot_fit and self.line_model is not None:
+                    self.add_xy(ref_data, y_data, y_name)
+        if self.plot_fit and self.scalar_model is not None:
             # plot the fit
-            self.line_model.add_xy(self.ref_data, self.fit_data, self.fit_name)
+            self.add_xy(self.ref_data, self.fit_data, self.fit_name)
+
+    def set_xy(self, x, y):
+        """Set the xy data to plot. Will only draw a single line
+
+        Parameters
+        ----------
+        x : list
+            x-values
+        y : list
+            y-values
+        """
+        self.xy = {'data': (x, y)}
+        self.plot()
+
+    def add_xy(self, x, y, name):
+        """Add a new xy pair to plot
+
+        Parameters
+        ----------
+        x : list
+            x-values
+        y : list
+            y-values
+        name : str
+            Name of the data set
+        """
+        # check the length of x and y
+        if len(x) != len(y):
+            raise ValueError('x and y must be the same length. len(x) = {}, '
+                             'len(y) = {}'.format(len(x), len(y)))
+        # empty the dictionary if draw_single_line is on
+        if self.draw_single_line:
+            self.xy = {}
+
+        self.xy[name] = (x, y)
+        self.plot()
+
+    def remove_xy(self, name):
+        """Remove the xy pair specified by 'name' from the LineModel
+
+        Parameters
+        ----------
+        name : str
+            Name of the data set
+
+        Return
+        ------
+        xy : tuple
+            Tuple of (x, y) where x and y are lists or ndarrays
+            Returns none if this LineModel does not understand `name`
+        """
+        xy = self.xy.pop(name, None)
+        self.plot()
+        return xy
+
+    def plot(self):
+        self._ax.cla()
+        if self.time:
+            series_dict = {col_name: pd.Series(data=xy[1], index=xy[0])
+                           for col_name, xy in six.iteritems(self.xy)}
+            df = pd.DataFrame(series_dict)
+            df.plot(ax=self._ax)
+        else:
+            for name, xy in six.iteritems(self.xy):
+                self._ax.plot(xy[0], xy[1], label=name)
+        try:
+            self._ax.figure.canvas.draw()
+        except AttributeError:
+            # should only occur once
+            pass

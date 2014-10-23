@@ -2,7 +2,7 @@ from enaml.layout.api import InsertItem, VSplitLayout, HSplitLayout
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
                                MainWindow, ObjectCombo)
 from replay.gui.line_view import LineView
-from replay.gui.variable_view import VariableView
+from replay.gui.scalar_view import ScalarView, ScalarController
 
 from enaml.stdlib.dock_area_styles import available_styles
 
@@ -11,8 +11,7 @@ def cap_case(name):
 
 enamldef PipelineView(MainWindow): window:
     title = "Live Data Demo"
-    attr line_model
-    attr variable_model
+    attr scalar_model
     Container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -20,18 +19,16 @@ enamldef PipelineView(MainWindow): window:
             selected = 'vs-2010'
         DockArea:
             style << style_c.selected
-            layout = HSplitLayout(
-                         HSplitLayout('variables', 'line_view')
-            )
+            layout = HSplitLayout('scalar controller', 'scalar view')
             DockItem:
-                name = 'line_view'
-                title = 'Plotter'
+                name = 'scalar view'
+                title = 'Scalar View'
                 Container:
-                    LineView:
-                        line_model = window.line_model
+                    ScalarView:
+                        scalar_model = window.scalar_model
             DockItem:
-                name = 'variables'
-                title = 'Data Muggler'
+                name = 'scalar controller'
+                title = 'Scalar Controller'
                 Container:
-                    VariableView:
-                        variable_model = window.variable_model
+                    ScalarController:
+                        scalar_model = window.scalar_model

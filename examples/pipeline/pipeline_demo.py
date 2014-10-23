@@ -342,8 +342,8 @@ p1.source_signal.connect(p2.sink_slot)
 p2.source_signal.connect(dm2.append_data)
 
 
-from replay.model.data_model import DataModel
-from replay.model.line_model import LineModel
+from replay.model.scalar_model import ScalarModel
+from replay.model.scalar_model import ScalarModel
 from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
 import enaml
@@ -351,18 +351,16 @@ import numpy as np
 
 app = QtApplication()
 # image_view.show()
-temp_model = LineModel()
-max_model = LineModel()
-center_model = LineModel()
+# temp_model = ScalarModel()
+# max_model = ScalarModel()
+# center_model = ScalarModel()
 image_model = CrossSectionModel()
 
 with enaml.imports():
     from pipeline import PipelineView
-    from replay.gui.variable_view import VariableMain
 
-line_model = LineModel()
-variable_model = DataModel(data_muggler=dm2, line_model=line_model)
-view = PipelineView(line_model=line_model, variable_model=variable_model)
+scalar_model = ScalarModel(data_muggler=dm2)
+view = PipelineView(scalar_model=scalar_model)
 view.show()
 #
 # view.show()
