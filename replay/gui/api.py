@@ -69,10 +69,7 @@ def make_line_window(init_view=True):
     with enaml.imports():
         from replay.gui.line_view import LineWindow
 
-    x = np.arange(0, 10, .01)
-    y = np.sin(x)
-    xy = {'init': (x.tolist(), y.tolist())}
-    line_model = LineModel(xy=xy)
+    line_model = LineModel()
     line_view = LineWindow(line_model=line_model)
     # if init_view:
     #     initialize_view(line_view)
@@ -149,3 +146,29 @@ def make_cross_section_view(init_view=True):
         initialize_view(xs_view)
         xs_model.image_index = len(xs_model.data)-1
     return xs_model, xs_view
+
+def make_param_view(data_muggler, init_view=True):
+    """
+
+    Create a VariableView and its VariableModel. Call VariableView.show()
+    and return the VariableView and its VariableModel.
+
+    Returns
+    -------
+    model : replay.core.image_model
+    window : replay.gui.core.ImageView
+        enaml.widgets.api.MainWindow
+    """
+    from replay.model.variable_model import VariableModel
+
+    with enaml.imports():
+        from replay.gui.variable_view import VariableMain
+    pixels = 1000
+    data = [np.random.rand(pixels,pixels) for _ in range(10)]
+    var_model = VariableModel(data_muggler=data_muggler)
+    var_view = VariableMain(model=var_model)
+    if init_view:
+        initialize_view(var_view)
+        var_model.image_index = len(var_model.data)-1
+    return var_model, var_view
+

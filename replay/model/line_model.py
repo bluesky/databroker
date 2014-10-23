@@ -1,9 +1,10 @@
 __author__ = 'edill'
 
-from atom.api import Atom, Bool, Typed, Dict
+from atom.api import Atom, Bool, Typed, Dict, observe
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import six
+from pprint import pprint
 import logging
 logger = logging.getLogger(__name__)
 
@@ -20,16 +21,32 @@ class LineModel(Atom):
     _ax = Typed(Axes)
 
     def __init__(self, xy=None):
+        super(LineModel, self).__init__()
         self._fig = Figure()
         self._ax = self._fig.add_subplot(111)
         if xy is None:
             xy = {}
         self.xy = xy
 
-    def add_xy(self, x, y, name):
-        """
+    @observe('xy')
+    def update_xy(self, changed):
+        pprint('changed: {}'.format(changed))
 
-        Add a new xy pair to plot
+    def set_xy(self, x, y):
+        """Set the xy data to plot. Will only draw a single line
+
+        Parameters
+        ----------
+        x : list
+            x-values
+        y : list
+            y-values
+        """
+        self.xy = {'data': (x, y)}
+        self.plot()
+
+    def add_xy(self, x, y, name):
+        """Add a new xy pair to plot
 
         Parameters
         ----------
@@ -52,9 +69,7 @@ class LineModel(Atom):
         self.plot()
 
     def remove_xy(self, name):
-        """
-
-        Remove the xy pair specified by 'name' from the LineModel and
+        """Remove the xy pair specified by 'name' from the LineModel
 
         Parameters
         ----------
@@ -72,7 +87,7 @@ class LineModel(Atom):
         return xy
 
     def plot(self):
-        # self._ax.cla()
+        self._ax.cla()
         for name, xy in six.iteritems(self.xy):
             self._ax.plot(xy[0], xy[1], label=name)
         try:

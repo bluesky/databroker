@@ -257,8 +257,8 @@ class DataMuggler(QtCore.QObject):
             as lists whose length is the same as 'indices'
         """
         if t_start is not None:
-            raise NotImplementedError("t_start is not implemented. You can only "
-                                      "get all data right now")
+            raise NotImplementedError("t_start is not implemented. You can "
+                                      "only get all data right now")
         if t_finish is not None:
             raise NotImplementedError("t_finish is not implemented. You can "
                                       "only get all data right now")
