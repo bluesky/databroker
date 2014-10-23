@@ -122,14 +122,15 @@ class DataMuggler(QtCore.QObject):
 
     The data collection/event model being used is all measurements
     (that is values that come off of the hardware) are time stamped
-    to ring time.  The assumption that there will be one measurement
-    (ex an area detector) which can not be interpolated and will serve
-    as the source of reference time stamps.
+    to ring time.
 
     The language being used through out is that of pandas data frames.
 
     The data model is that of a sparse table keyed on time stamps which
-    is 'densified' on demand by propagating the last measured value forward.
+    is 'densified' on demand by propagating measurements forwards.  Not
+    all measurements (ex images) can be filled.  This behavior is controlled
+    by the `col_info` tuple.
+
 
     Parameters
     ----------
@@ -150,7 +151,7 @@ class DataMuggler(QtCore.QObject):
 
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
-        valid_fill_methods = {'pad', 'ffill', 'bfill', 'backpad'}
+        valid_fill_methods = {'pad', 'ffill', None}  # , 'bfill', 'backpad'}
 
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
@@ -273,8 +274,11 @@ class DataMuggler(QtCore.QObject):
         for k in [ref_col, ] + other_cols:
             # pull out the pandas.Series
             working_series = self._dataframe[k]
-            # fill in the NaNs using what ever method needed
-            working_series = working_series.fillna(method=self._col_fill[k])
+            # fill in the NaNs using what ever method needed (or at all)
+            # if we add interpolation it would go here.
+            if self._col_fill[k] is not None:
+                working_series = working_series.fillna(
+                                                 method=self._col_fill[k])
             # select it only at the times we care about
             working_series = working_series[indices]
             # if it is not a scalar, do the look up
