@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import six
 from pprint import pprint
+import pandas as pd
 import logging
 logger = logging.getLogger(__name__)
 
@@ -16,13 +17,19 @@ class LineModel(Atom):
 
     draw_single_line = Bool(False)
 
+    # flag that defines the x-axis as time or not time
+    time = Bool(False)
+    
     # mpl setup
     _fig = Typed(Figure)
     _ax = Typed(Axes)
 
+
+
     def __init__(self, xy=None):
         super(LineModel, self).__init__()
-        self._fig = Figure()
+        self._fig = Figure(figsize=(1,1))
+
         self._ax = self._fig.add_subplot(111)
         if xy is None:
             xy = {}
@@ -88,8 +95,14 @@ class LineModel(Atom):
 
     def plot(self):
         self._ax.cla()
-        for name, xy in six.iteritems(self.xy):
-            self._ax.plot(xy[0], xy[1], label=name)
+        if self.time:
+            series_dict = {col_name: pd.Series(data=xy[1], index=xy[0])
+                           for col_name, xy in six.iteritems(self.xy)}
+            df = pd.DataFrame(series_dict)
+            df.plot(ax=self._ax)
+        else:
+            for name, xy in six.iteritems(self.xy):
+                self._ax.plot(xy[0], xy[1], label=name)
         try:
             self._ax.figure.canvas.draw()
         except AttributeError:
