@@ -289,6 +289,37 @@ class DataMuggler(QtCore.QObject):
         # return the times/indices and the dictionary
         return list(indices), out_data
 
+    def get_column(self, col_name):
+        """
+        Return the time and values where the given column is non-nan
+
+        Parameters
+        ----------
+        col_name : str
+            The name of the column to return
+
+        Returns
+        -------
+        time : array-like
+            The time stamps of the non-nan values
+
+        out_vals : array-like
+            The values at those times
+        """
+        if col_name not in self._dataframe:
+            raise ValueError(("The column {} does not exist. "
+                              "Possible values are {}").format(
+                                  col_name, self.keys()))
+
+        out_series = self._dataframe[col_name].dropna()
+        time = out_series.index.values
+        out_vals = out_series.values
+        if col_name in self._is_col_nonscalar:
+            out_vals = [self._nonscalar_col_lookup[col_name][t]
+                               for t in out_vals]
+
+        return time, out_vals
+
     def get_last_value(self, ref_col, other_cols):
         """
         Return a dictionary of the dessified row and the most recent
