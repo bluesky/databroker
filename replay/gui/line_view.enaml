@@ -19,6 +19,12 @@ enamldef LineView(Container):
     attr line_model
 
     Container:
+        constraints = [
+            vbox(
+                hbox(check, hold, spacer),
+                canvas,
+            ),
+        ]
         CheckBox: check:
             text = 'Toolbar Visible'
             checked := canvas.toolbar_visible
@@ -27,10 +33,6 @@ enamldef LineView(Container):
             checked := line_model.draw_single_line
         MPLCanvas: canvas:
             figure = line_model._fig
-        PushButton:
-            text = 'test redraw functionality'
-            clicked ::
-                modify_line(line_model)
 
 
 enamldef LineWindow(Window): window:
@@ -38,13 +40,3 @@ enamldef LineWindow(Window): window:
     Container:
         LineView:
             line_model := window.line_model
-
-
-def modify_line(line_model):
-    new_x = np.arange(0, 10 * np.random.rand(), 0.01)
-    new_y = np.sin(new_x) * np.random.rand() * 5
-    name = 'line' + np.random.randint(100000)
-    line_model.add_xy(new_x, new_y, name)
-    #line_data.y = new_y.tolist()
-    print('button clicked')
-
