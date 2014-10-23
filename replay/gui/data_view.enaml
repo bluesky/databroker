@@ -1,5 +1,5 @@
 
-""" The Enaml UI code for the variable viewer
+""" The Enaml UI code for the data viewer
 
 """
 
@@ -11,25 +11,27 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                Slider, MainWindow, ComboBox, SpinBox,
                                GroupBox, ScrollArea
                                )
-enamldef VariableContainer(Container):
-    attr variable_model
+enamldef DataContainer(Container):
+    attr data_model
     ScrollArea: scroller:
         Form:
             Label:
                 text = "x axis"
             ComboBox:
-                items << variable_model.vars
+                items << data_model.vars
                 editable = True
-                selected_item >> variable_model.x
-                index = variable_model.vars.index(variable_model.x)
+                selected_item >> data_model.x
+                # this line allows the plotter to come up with guns blazing
+                # (plotting)
+                index = data_model.vars.index(data_model.x)
 
             Label:
                 text = "fit"
             ComboBox:
-                items << variable_model.vars
+                items << data_model.vars
                 editable = True
                 selected_item ::
-                    variable_model.fit_name = selected_item
+                    data_model.fit_name = selected_item
                     lbl_fit.text = ('fit_' + selected_item)
             Label:
                 text = "y axis"
@@ -38,26 +40,25 @@ enamldef VariableContainer(Container):
             Label: lbl_fit:
                 text = "fit"
             CheckBox:
-                checked := variable_model.plot_fit
-                checkable << variable_model.has_fit
+                checked := data_model.plot_fit
+                checkable << data_model.has_fit
             Looper: looper:
-                iterable << variable_model.vars
+                iterable << data_model.vars
                 Label: lbl:
                     text = loop_item
                 CheckBox: cb:
-                    checked := variable_model.y_to_plot[loop_item]
+                    checked := data_model.y_to_plot[loop_item]
                     toggled ::
-                        variable_model.y_to_plot[loop_item] = checked
-                        variable_model.update_y_list(checked, loop_item)
+                        data_model.update_y_list(checked, loop_item)
 
-enamldef VariableView(Container): view:
-    attr variable_model
+enamldef DataView(Container): view:
+    attr data_model
     Container: c:
-        VariableContainer: vc:
-            variable_model = view.variable_model
+        DataContainer: vc:
+            data_model = view.data_model
 
-enamldef VariableMain(Window): window:
-    attr variable_model
+enamldef DataMain(Window): window:
+    attr data_model
     Container: c:
-        VariableView:
-            variable_model := window.variable_model
+        DataView:
+            data_model := window.data_model

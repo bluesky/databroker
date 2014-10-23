@@ -159,13 +159,13 @@ def make_param_view(data_muggler, init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.variable_model import VariableModel
+    from replay.model.data_model import DataModel
 
     with enaml.imports():
         from replay.gui.variable_view import VariableMain
     pixels = 1000
     data = [np.random.rand(pixels,pixels) for _ in range(10)]
-    var_model = VariableModel(data_muggler=data_muggler)
+    var_model = DataModel(data_muggler=data_muggler)
     var_view = VariableMain(model=var_model)
     if init_view:
         initialize_view(var_view)

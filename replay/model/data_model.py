@@ -1,7 +1,7 @@
 __author__ = 'edill'
 
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed, Dict)
+                      Typed, Dict, Constant)
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib import colors
@@ -13,7 +13,7 @@ from .line_model import LineModel
 import logging
 logger = logging.getLogger(__name__)
 
-class VariableModel(Atom):
+class DataModel(Atom):
     # value to use as the x-axis
     x = Str()
     # y value to fit against
@@ -23,6 +23,8 @@ class VariableModel(Atom):
     # variables that this model knows about
     vars = List()
 
+    x_time = Constant('time')
+    # y values to plot. dictionary keyed on values from y
     y_to_plot = Dict(value=Bool())
     # y-values of the fit
     fit_data = List()
@@ -36,24 +38,36 @@ class VariableModel(Atom):
     data_muggler = Typed(DataMuggler)
 
     def __init__(self, data_muggler, line_model=None):
-        super(VariableModel, self).__init__()
-        self.fit_data = []
-        # stash the data muggler
-        self.data_muggler = data_muggler
-        self.vars = self.data_muggler.keys() + ['time',]
-        self.y_to_plot = dict.fromkeys(self.vars, False)
-        self.line_model = line_model
-        # connect the new data signal of the muggler to the new data processor
-        # of the VariableModel
-        self.data_muggler.new_data.connect(self.notify_new_data)
-        # do some init magic
-        self.x = self.vars[1]
-        self.y_to_plot['max'] = True
-        self.update_y_list(is_checked=True, var_name='max')
+        with self.suppress_notifications():
+            super(DataModel, self).__init__()
+            self.fit_data = []
+            # stash the data muggler
+            self.data_muggler = data_muggler
+            self.vars = self.data_muggler.keys() + [self.x_time, ]
+            self.y_to_plot = dict.fromkeys(self.vars, False)
+            self.line_model = line_model
+            # connect the new data signal of the muggler to the new data processor
+            # of the VariableModel
+            self.data_muggler.new_data.connect(self.notify_new_data)
+            # do some init magic
+            self.x = self.vars[1]
+            self.y_to_plot['max'] = True
+            self.update_y_list(is_checked=True, var_name='max')
+        self.get_new_data_and_plot(self.y)
 
     @observe('x')
     def update_x(self, changed):
         print(changed)
+        if self.x == self.x_time:
+            # let line_model know that its x-axis is time so that it can use
+            # pandas great built-in time plotter
+            self.line_model.time = True
+            self.line_model.xy = {}
+        else:
+            # let line_model use matplotlib's plotter
+            self.line_model.time = False
+            self.line_model.xy = {}
+        # grab new data from the data muggler
         self.get_new_data_and_plot(self.y)
         self.print_state()
 
@@ -75,6 +89,18 @@ class VariableModel(Atom):
         print("fit: {}".format(self.fit_name))
 
     def update_y_list(self, is_checked, var_name):
+        """
+
+        Should only get called from the view when a y-value checkbox gets
+        checked. This function re-computes
+
+        Parameters
+        ----------
+        is_checked : bool
+            Is the checkbox that called this checked?
+        var_name : str
+            Name of the variable whose checkbox got checked
+        """
         self.y = [var for var, is_enabled
                 in six.iteritems(self.y_to_plot) if is_enabled]
         if is_checked:
@@ -83,6 +109,7 @@ class VariableModel(Atom):
         elif self.line_model is not None:
             # remove the line from the plot
             self.line_model.remove_xy(var_name)
+
 
     def notify_new_data(self, new_data):
         """ Function to call when there is new data in the data muggler
@@ -114,22 +141,21 @@ class VariableModel(Atom):
         """
         print("get_new_data_and_plot")
         self.print_state()
-        ref_col = self.x
-        if self.x == 'time':
-            ref_col = self.vars[0]
         if y_names and self.x is not "":
-            time, data = self.data_muggler.get_values(ref_col=ref_col,
-                                                other_cols=y_names)
-            if self.x != 'time':
-                ref_data = data.pop(self.x)
+            if self.x == self.x_time:
+                self.line_model.time = True
+                for col_name in y_names:
+                    x, y = self.data_muggler.get_column(col_name)
+                    self.line_model.add_xy(x, y, col_name)
+
             else:
-                ref_data = time
-            print('data from muggler: \ntime: {}\nx: {}\ny: {}'
-                  ''.format(time, ref_data, data))
-            for y_name, y_data in six.iteritems(data):
-                # add xy data to the line model named `y_name`
-                if self.line_model is not None:
-                    self.line_model.add_xy(ref_data, y_data, y_name)
+                time, data = self.data_muggler.get_values(ref_col=self.x,
+                                                          other_cols=y_names)
+                ref_data = data.pop(self.x)
+                for y_name, y_data in six.iteritems(data):
+                    # add xy data to the line model named `y_name`
+                    if self.line_model is not None:
+                        self.line_model.add_xy(ref_data, y_data, y_name)
         if self.plot_fit and self.line_model is not None:
             # plot the fit
             self.line_model.add_xy(self.ref_data, self.fit_data, self.fit_name)
