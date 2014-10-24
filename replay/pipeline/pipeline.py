@@ -256,9 +256,18 @@ class DataMuggler(QtCore.QObject):
             Keyed on column name, True if that column can be sliced at
             the times of the input column.
         """
-        tmp_dict = {k: v is not None
-                    for k, v in six.iteritems(self._col_fill)}
-        tmp_dict[col_name] = True
+        if col_name not in self._dataframe:
+            raise ValueError("none existent columnn")
+        ref_index = self._dataframe[col_name]
+        tmp_dict = {}
+        for k, v in six.iteritems(self._col_fill):
+            if k == col_name:
+                tmp_dict[k] = True
+            if v is not None:
+                tmp_dict[k] = True
+            else:
+                tmp_dict = self._dataframe[k][ref_index].notnull().all()
+
         return tmp_dict
 
     def append_data(self, time_stamp, data_dict):
