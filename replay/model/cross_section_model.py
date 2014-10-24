@@ -1,5 +1,6 @@
 __author__ = 'edill'
 
+from pims import FramesSequence
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
                       Typed)
 import numpy as np
@@ -16,7 +17,7 @@ class CrossSectionModel(Atom):
     """
     # PARAMETERS -- VIEWER
     # List of 2-D images
-    data = List()
+    sliceable_data = Typed(FramesSequence)
     # interpolation routine to use
     interpolation = Str()
     # color map to use
@@ -37,9 +38,9 @@ class CrossSectionModel(Atom):
     # maximum value for the slider
     num_images = Int()
     # slider value
-    image_index = Int()
+    image_index = Int(0)
     # auto-update image
-    auto_update = Bool()
+    auto_update = Bool(False)
 
     # absolute minimum of the currently selected image
     img_min = Float()
@@ -50,32 +51,33 @@ class CrossSectionModel(Atom):
     # currently displayed maximum of the currently selected image
     disp_max = Float()
 
-    def __init__(self, data=None):
+    def __init__(self, sliceable_data=None):
         with self.suppress_notifications():
             self.figure = Figure()
             self.cs = CrossSection(fig=self.figure)
-            if data is None:
-                data = [np.random.random((1000, 1000)),]
-
+            if sliceable_data is None:
+                sliceable_data = [np.random.random((1000, 1000)),]
+            self.num_images = len(sliceable_data)
             self.image_index = 0
-            self.img_max = np.max(data[self.image_index])
-            self.img_min = np.min(data[self.image_index])
-        self.data = data
+            self.img_max = np.max(sliceable_data[self.image_index])
+            self.img_min = np.min(sliceable_data[self.image_index])
+
+        self.sliceable_data = sliceable_data
 
     # OBSERVATION METHODS
     @observe('image_index')
     def update_image(self, update):
         print('self.image_index: {}'.format(self.image_index))
         # try:
-        self.cs.update_image(self.data[self.image_index])
+        self.cs.update_image(self.sliceable_data[self.image_index])
         # except AttributeError:
             # thrown at initiation because the figure has not yet been
             # added to the canvas
     @observe('data')
     def update_num_images(self, update):
-        print("len(self.data): {}".format(len(self.data)))
+        print("len(self.data): {}".format(len(self.sliceable_data)))
         # update the number of images
-        self.num_images = len(self.data)-1
+        self.num_images = len(self.sliceable_data)-1
         if self.image_index >= self.num_images:
             # this would be the case when a completely new image stack is thrown
             # at this model
@@ -84,7 +86,7 @@ class CrossSectionModel(Atom):
             # move to the last image in the stack
             self.image_index = self.num_images
         # repaint the canvas with a new set of images
-        self.cs.update_image(self.data[self.image_index])
+        self.cs.update_image(self.sliceable_data[self.image_index])
     @observe('cmap')
     def update_cmap(self, update):
         self.cs.update_cmap(self.cmap)
@@ -94,9 +96,3 @@ class CrossSectionModel(Atom):
     @observe('limit_func')
     def update_limit(self, update):
         self.cs.set_limit_func(self.limit_func)
-
-    def set_data(self, data):
-        if isinstance(data, np.ndarray):
-            data = [data, ]
-        self.data = data
-

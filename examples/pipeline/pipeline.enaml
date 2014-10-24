@@ -11,7 +11,7 @@ def cap_case(name):
 
 enamldef PipelineView(MainWindow): window:
     title = "Live Data Demo"
-    attr scalar_model
+    attr scalar_collection
     Container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -25,10 +25,10 @@ enamldef PipelineView(MainWindow): window:
                 title = 'Scalar View'
                 Container:
                     ScalarView:
-                        scalar_model = window.scalar_model
+                        scalar_collection = window.scalar_collection
             DockItem:
                 name = 'scalar controller'
                 title = 'Scalar Controller'
                 Container:
                     ScalarController:
-                        scalar_model = window.scalar_model
+                        scalar_collection = window.scalar_collection

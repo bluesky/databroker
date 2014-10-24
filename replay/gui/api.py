@@ -37,7 +37,7 @@ def make_line_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.scalar_model import ScalarModel
+    from replay.model.scalar_model import ScalarCollection
 
     with enaml.imports():
         from replay.gui.line_view import LineView
@@ -45,7 +45,7 @@ def make_line_view(init_view=True):
     x = np.arange(0, 10, .01)
     y = np.sin(x)
     xy = {'init': (x.tolist(), y.tolist())}
-    line_model = ScalarModel(xy=xy)
+    line_model = ScalarCollection(xy=xy)
     line_view = LineView(line_model=line_model)
     # if init_view:
     #     initialize_view(line_view)
@@ -64,12 +64,12 @@ def make_line_window(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.scalar_model import ScalarModel
+    from replay.model.scalar_model import ScalarCollection
 
     with enaml.imports():
         from replay.gui.line_view import LineWindow
 
-    line_model = ScalarModel()
+    line_model = ScalarCollection()
     line_view = LineWindow(line_model=line_model)
     # if init_view:
     #     initialize_view(line_view)
@@ -141,10 +141,10 @@ def make_cross_section_view(init_view=True):
     pixels = 1000
     data = [np.random.rand(pixels,pixels) for _ in range(10)]
     xs_model = CrossSectionModel(data=data)
-    xs_view = CrossSectionMain(model=xs_model)
+    xs_view = CrossSectionMain(cross_section_model=xs_model)
     if init_view:
         initialize_view(xs_view)
-        xs_model.image_index = len(xs_model.data)-1
+        xs_model.image_index = len(xs_model.sliceable_data)-1
     return xs_model, xs_view
 
 def make_param_view(data_muggler, init_view=True):
@@ -159,13 +159,13 @@ def make_param_view(data_muggler, init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.scalar_model import ScalarModel
+    from replay.model.scalar_model import ScalarCollection
 
     with enaml.imports():
         from replay.gui.variable_view import VariableMain
     pixels = 1000
     data = [np.random.rand(pixels,pixels) for _ in range(10)]
-    var_model = ScalarModel(data_muggler=data_muggler)
+    var_model = ScalarCollection(data_muggler=data_muggler)
     var_view = VariableMain(model=var_model)
     if init_view:
         initialize_view(var_view)
