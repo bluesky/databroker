@@ -115,6 +115,14 @@ class PipelineComponent(QtCore.QObject):
                 self.source_signal.emit(*ret)
 
 
+class Unalignable(Exception):
+    """
+    An exception to raise if you try to align a non-fillable column
+    to a non-pre-aligned column
+    """
+    pass
+
+
 class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
     """
     Named-tuple sub-class to validate the column specifications for the
@@ -263,10 +271,10 @@ class DataMuggler(QtCore.QObject):
         for k, v in six.iteritems(self._col_fill):
             if k == col_name:
                 tmp_dict[k] = True
-            if v is not None:
+            elif v is not None:
                 tmp_dict[k] = True
             else:
-                tmp_dict = self._dataframe[k][ref_index].notnull().all()
+                tmp_dict[k] = self._dataframe[k][ref_index].notnull().all()
 
         return tmp_dict
 
