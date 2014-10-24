@@ -16,6 +16,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ScalarModel(Atom):
+    """
+    ScalarModel is the model in the Model-View-Controller pattern that backs
+    a scalar versus some x-value, i.e., an (x,y) plot.  ScalarModel requires
+    a line artist
+    Parameters
+    ----------
+    line_artist : mpl.lines.Line2D
+        The line_artist that the ScalarModel is in charge of bossing around
+    name : atom.scalars.Str
+        The name of the data set represented by this ScalarModel
+    """
 
     # name of the data set being plotted
     name = Str()
@@ -55,6 +66,13 @@ class ScalarModel(Atom):
         self.is_plotting = changed['value']
 
     def get_state(self):
+        """Obtain the state of all instance variables in the ScalarModel
+
+        Returns
+        -------
+        state : str
+            The current state of the ScalarModel
+        """
         state = ""
         state += '\nname: {}'.format(self.name)
         state += '\nis_plotting: {}'.format(self.is_plotting)
@@ -66,14 +84,12 @@ class ScalarModel(Atom):
 class ScalarCollection(Atom):
     """
 
-    ScalarModel is the model in Model-View-Controller that backs the ScalarView
-    which is basically just mpl.plot. The ScalarModel is bossed around by the
-    ScalarController.  Instances of this class get instantiated with an
-    instance of data_muggler which serves as the data back-end. When
-    instantiated, the ScalarModel asks the data_muggler instance which of its
-    data sets are scalars versus some index. Those data sets can be managed by
-    the ScalarModel, shown by the ScalarView and bossed around by the
-    ScalarController.
+    ScalarCollection is a bundle of ScalarModels. The ScalarCollection has an
+    instance of a DataMuggler which notifies it of new data which then updates
+    its ScalarModels. When instantiated, the data_muggler instance is asked
+    for the names of its columns.  All columns which represent scalar values
+    are then shoved into ScalarModels and the ScalarCollection manages the
+    ScalarModels.
 
     Parameters
     ----------
@@ -169,6 +185,9 @@ class ScalarCollection(Atom):
         self.plot()
 
     def plot(self):
+        """
+        Recompute the limits, rescale the view and redraw the canvas
+        """
         try:
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
