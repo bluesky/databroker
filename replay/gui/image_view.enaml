@@ -29,6 +29,22 @@ enamldef ImView(Container):
         MPLCanvas: canvas:
             figure = image_model._fig
 
+enamldef ImController(Container):
+    attr image_model
+    ScrollArea: scroller:
+        Form:
+            Label:
+                text = 'name'
+            Label:
+                text = 'display'
+            Looper: looper:
+                iterable << image_model.vars
+                Label: lbl:
+                    text = loop_item
+                CheckBox: cb:
+                    checked
+
+
 
 
 enamldef ImWindow(Window): window:

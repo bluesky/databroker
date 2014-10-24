@@ -226,9 +226,10 @@ class DataMuggler(QtCore.QObject):
     @property
     def cols_dims(self):
         """
-        The dimensionality of the data stored in this column.
+        The dimensionality of the data stored in all columns. Returned as a
+        dictionary keyed on column name.
 
-         0 -> scaler
+         0 -> scalar
          1 -> line (MCA spectra)
          2 -> image
          3 -> volume
@@ -242,7 +243,7 @@ class DataMuggler(QtCore.QObject):
         """
         return dict(self._col_fill)
 
-    def slice_against(self, col_name):
+    def align_against(self, col_name):
         """
         Determine what columns can be sliced against another column.
 
@@ -265,7 +266,7 @@ class DataMuggler(QtCore.QObject):
             the times of the input column.
         """
         if col_name not in self._dataframe:
-            raise ValueError("none existent columnn")
+            raise ValueError("non-existent columnn: [[{}]]".format(col_name))
         ref_index = self._dataframe[col_name]
         tmp_dict = {}
         for k, v in six.iteritems(self._col_fill):
@@ -274,7 +275,7 @@ class DataMuggler(QtCore.QObject):
             elif v is not None:
                 tmp_dict[k] = True
             else:
-                tmp_dict[k] = self._dataframe[k][ref_index].notnull().all()
+                tmp_dict[k] = bool(self._dataframe[k][ref_index].notnull().all())
 
         return tmp_dict
 
@@ -461,7 +462,8 @@ class DataMuggler(QtCore.QObject):
             # pull out the pandas.Series
             work_series = self._dataframe[k]
             # fill in the NaNs using what ever method needed
-            work_series = work_series.fillna(method=self._col_fill[k])
+            if self._col_fill[k] is not None:
+                work_series = work_series.fillna(method=self._col_fill[k])
             # select it only at the times we care about
             work_series = work_series[index]
             # if it is not a scalar, do the look up

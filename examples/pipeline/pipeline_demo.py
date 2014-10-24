@@ -278,9 +278,9 @@ class FrameSourcerBrownian(QtCore.QObject):
 img_size = (150, 150)
 period = 150
 I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
-center = 75
-sigma = 100
-I_func_gaus = lambda count: (1 + np.exp(-(count - center) ** 2 / sigma))
+center = 2000
+sigma = 1250
+I_func_gaus = lambda count: (1 + np.exp(-((count - center)/sigma) ** 2))
 
 
 def scale_fluc(scale, count):
@@ -290,7 +290,7 @@ def scale_fluc(scale, count):
         return scale + .5
     return None
 
-frame_source = FrameSourcerBrownian(img_size, delay=100, step_scale=.5,
+frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
                                     max_count=center * 2
@@ -299,15 +299,15 @@ frame_source = FrameSourcerBrownian(img_size, delay=100, step_scale=.5,
 
 # set up mugglers
 dm = DataMuggler((('T', 'pad', True),
-                  ('img', None, False),
-                  ('count', None, True)
+                  ('img', 'bfill', False),
+                  ('count', 'bfill', True)
                   )
                  )
 dm2 = DataMuggler((('T', 'pad', True),
-                   ('max', None, True),
-                   ('x', None, True),
-                   ('y', None, True),
-                   ('count', None, True)
+                   ('max', 'bfill', True),
+                   ('x', 'bfill', True),
+                   ('y', 'bfill', True),
+                   ('count', 'bfill', True)
                    )
                   )
 # construct a watcher for the image + count on the main DataMuggler
@@ -342,8 +342,8 @@ p1.source_signal.connect(p2.sink_slot)
 p2.source_signal.connect(dm2.append_data)
 
 
-from replay.model.scalar_model import ScalarModel
-from replay.model.scalar_model import ScalarModel
+from replay.model.scalar_model import ScalarCollection
+from replay.model.scalar_model import ScalarCollection
 from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
 import enaml
@@ -354,13 +354,13 @@ app = QtApplication()
 # temp_model = ScalarModel()
 # max_model = ScalarModel()
 # center_model = ScalarModel()
-image_model = CrossSectionModel()
+# image_model = CrossSectionModel()
 
 with enaml.imports():
     from pipeline import PipelineView
 
-scalar_model = ScalarModel(data_muggler=dm2)
-view = PipelineView(scalar_model=scalar_model)
+scalar_collection = ScalarCollection(data_muggler=dm2)
+view = PipelineView(scalar_collection=scalar_collection)
 view.show()
 #
 # view.show()

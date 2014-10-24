@@ -8,6 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
 from lmfit import Model
+from matplotlib.lines import Line2D
 import pandas as pd
 import six
 from ..pipeline.pipeline import DataMuggler
@@ -15,123 +16,116 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ScalarModel(Atom):
-    xy = Dict()
 
-    draw_single_line = Bool(False)
+    # name of the data set being plotted
+    name = Str()
+    # visibility of the data set on the canvas
+    is_plotting = Bool()
+    # if the data set can be shown on the canvas
+    can_plot = Bool()
+    # the visual representation of the scalar model (the view!)
+    line_artist = Typed(Line2D)
 
-    # flag that defines the x-axis as time or not time
-    time = Bool(False)
+    def __init__(self, line_artist, name):
+        self.line_artist = line_artist
+        self.is_plotting = line_artist.get_visible()
+        self.can_plot = True
+        self.name = name
 
-    # mpl setup
-    _fig = Typed(Figure)
-    _ax = Typed(Axes)
-
-    # SCALAR METHODS
-    # value to use as the x-axis
-    x = Str()
-    # y value to fit against
-    fit_name = Str()
-    # list of y values to plot
-    y = List()
-    # scalar variables that this model knows about
-    scalar_vars = List()
-
-    x_time = Constant('time')
-    # y values to plot. dictionary keyed on values from y
-    should_i_plot_this_y = Dict(value=Bool())
-    # enable/disable check boxes based on this dict
-    is_y_plottable = Dict(value=Bool())
-    # y-values of the fit
-    fit_data = List()
-    # the model has values to fit
-    has_fit = Bool(False)
-    # toggle to show or hide the fit
-    plot_fit = Bool(False)
-    # location where the data is stored
-    data_muggler = Typed(DataMuggler)
-
-    def __init__(self, data_muggler):
-        with self.suppress_notifications():
-            super(ScalarModel, self).__init__()
-            self._fig = Figure(figsize=(1,1))
-            self._ax = self._fig.add_subplot(111)
-            self.fit_data = []
-            # stash the data muggler
-            self.data_muggler = data_muggler
-            self.scalar_vars = self.data_muggler.keys() + [self.x_time, ]
-            self.should_i_plot_this_y = dict.fromkeys(self.scalar_vars, False)
-            self.is_y_plottable = dict.fromkeys(self.scalar_vars, True)
-            # connect the new data signal of the muggler to the new data processor
-            # of the VariableModel
-            self.data_muggler.new_data.connect(self.notify_new_data)
-            # do some init magic
-            self.x = self.scalar_vars[1]
-            self.should_i_plot_this_y['max'] = True
-            self.update_y_list(is_checked=True, var_name='max')
-        self.get_new_data_and_plot(self.y)
-
-    @observe('x')
-    def update_x(self, changed):
-        print(changed)
-        if self.x == self.x_time:
-            # let line_model know that its x-axis is time so that it can use
-            # pandas great built-in time plotter
-            self.time = True
-            self.xy = {}
-        else:
-            # let line_model use matplotlib's plotter
-            self.time = False
-            self.xy = {}
-        # check with the muggler for the columns that can be plotted against
-        sliceable = self.data_muggler.slice_against(self.x)
-        for var_name, is_plottable in six.iteritems(sliceable):
-            if not is_plottable:
-                self.should_i_plot_this_y[var_name] = False
-
-        self.is_y_plottable.update(sliceable)
-        # grab new data from the data muggler
-        self.get_new_data_and_plot(self.y)
-        self.print_state()
-
-    @observe('fit')
-    def update_fit(self, changed):
-        pass
-
-    @observe('fit_data')
-    def update_fit_data(self, changed):
-        if self.fit_data is not None:
-            self.has_fit = True
-
-    def print_state(self):
-        print('\n\n---printing state---\n')
-        print('x: {}'.format(self.x))
-        print('y: {}'.format(self.y))
-        print('ploty: {}'.format(self.should_i_plot_this_y))
-        print('vars: {}'.format(self.scalar_vars))
-        print("fit: {}".format(self.fit_name))
-
-    def update_y_list(self, is_checked, var_name):
-        """
-
-        Should only get called from the view when a y-value checkbox gets
-        checked. This function re-computes
+    def set_data(self, x, y):
+        """Update the data stored in line_artist
 
         Parameters
         ----------
-        is_checked : bool
-            Is the checkbox that called this checked?
-        var_name : str
-            Name of the variable whose checkbox got checked
+        x : np.ndarray
+        y : np.ndarray
         """
-        self.y = [var for var, is_enabled
-                in six.iteritems(self.should_i_plot_this_y) if is_enabled]
-        if is_checked:
-            # get the data and add a new line to the plot
-            self.get_new_data_and_plot([var_name, ])
-        elif self.scalar_model is not None:
-            # remove the line from the plot
-            self.remove_xy(var_name)
+        self.line_artist.set_data(x, y)
 
+    @observe('is_plotting')
+    def set_visible(self, changed):
+        self.line_artist.set_visible(changed['value'])
+        try:
+            self.line_artist.axes.figure.canvas.draw()
+        except AttributeError:
+            pass
+
+    @observe('can_plot')
+    def set_plottable(self, changed):
+        self.is_plotting = changed['value']
+
+    def get_state(self):
+        state = ""
+        state += '\nname: {}'.format(self.name)
+        state += '\nis_plotting: {}'.format(self.is_plotting)
+        state += '\ncan_plot: {}'.format(self.can_plot)
+        state += '\nline_artist: {}'.format(self.line_artist)
+        return state
+
+
+class ScalarCollection(Atom):
+    """
+
+    ScalarModel is the model in Model-View-Controller that backs the ScalarView
+    which is basically just mpl.plot. The ScalarModel is bossed around by the
+    ScalarController.  Instances of this class get instantiated with an
+    instance of data_muggler which serves as the data back-end. When
+    instantiated, the ScalarModel asks the data_muggler instance which of its
+    data sets are scalars versus some index. Those data sets can be managed by
+    the ScalarModel, shown by the ScalarView and bossed around by the
+    ScalarController.
+
+    Parameters
+    ----------
+    data_muggler : replay.pipeline.pipeline.DataMuggler
+        The data manager backing the ScalarModel. The DataMuggler's new_data
+        signal is connected to the notify_new_data function of the ScalarModel
+        so that the ScalarModel can decide what to do when the DataMuggler
+        receives new data.
+    """
+    scalar_models = Dict(key=Str(), value=ScalarModel)
+    # current x-axis of the scalar_models
+    x = Str()
+    # location where the data is stored
+    data_muggler = Typed(DataMuggler)
+    # mpl
+    _fig = Typed(Figure)
+    _ax = Typed(Axes)
+
+    def __init__(self, data_muggler):
+        with self.suppress_notifications():
+            super(ScalarCollection, self).__init__()
+            self._fig = Figure(figsize=(1,1))
+            self._ax = self._fig.add_subplot(111)
+            # self._ax.hold()
+            # stash the data muggler
+            self.data_muggler = data_muggler
+            self.data_muggler.new_data.connect(self.notify_new_data)
+            self.x = self.data_muggler.keys()[0]
+            alignable = self.data_muggler.align_against(self.x)
+            for name, is_plottable in six.iteritems(alignable):
+                line_artist = self._ax.plot([], [])[0]
+                self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+                                                       name=name)
+                self.scalar_models[name].can_plot = is_plottable
+
+    @observe('x')
+    def update_x(self, changed):
+        # check with the muggler for the columns that can be plotted against
+        sliceable = self.data_muggler.align_against(self.x)
+        for name, scalar_model in six.iteritems(self.scalar_models):
+            if not sliceable[name]:
+                # turn off the plotting and disable the check box
+                scalar_model.is_plotting = False
+                scalar_model.can_plot = False
+            else:
+                # enable the check box but don't turn on the plotting
+                scalar_model.can_plot = True
+        self.get_new_data_and_plot()
+
+    def print_state(self):
+        for model_name, model in six.iteritems(self.scalar_models):
+            print(model.get_state())
 
     def notify_new_data(self, new_data):
         """ Function to call when there is new data in the data muggler
@@ -143,110 +137,42 @@ class ScalarModel(Atom):
         """
         if self.x in new_data:
             # update all the data in the line plot
-            self.get_new_data_and_plot(self.y)
+            self.get_new_data_and_plot()
         else:
             # find out which new_data keys overlap with the data that is
             # supposed to be shown on the plot
-            intersection = [_ for _ in self.y if _ in new_data]
+            intersection = [_ for _ in list(self.scalar_models)
+                            if _ in new_data]
             self.get_new_data_and_plot(intersection)
 
-
-    def get_new_data_and_plot(self, y_names):
+    def get_new_data_and_plot(self, y_names=None):
         """
         Get the data from the data muggler for column `data_name` sampled
         at the time_stamps of `VariableModel.x`
 
         Parameters
         ----------
-        data_name : list
-            List of the names of columns in the data muggler
+        data_name : list, optional
+            List of the names of columns in the data muggler. If None, get all
+            data from the data muggler
         """
-        print("get_new_data_and_plot")
-        self.print_state()
-        if y_names and self.x is not "":
-            if self.x == self.x_time:
-                self.time = True
-                for col_name in y_names:
-                    x, y = self.data_muggler.get_column(col_name)
-                    self.add_xy(x, y, col_name)
-
-            else:
-                time, data = self.data_muggler.get_values(ref_col=self.x,
-                                                          other_cols=y_names)
-                ref_data = data.pop(self.x)
-                for y_name, y_data in six.iteritems(data):
-                    # add xy data to the line model named `y_name`
-                    self.add_xy(ref_data, y_data, y_name)
-        if self.plot_fit and self.scalar_model is not None:
-            # plot the fit
-            self.add_xy(self.ref_data, self.fit_data, self.fit_name)
-
-    def set_xy(self, x, y):
-        """Set the xy data to plot. Will only draw a single line
-
-        Parameters
-        ----------
-        x : list
-            x-values
-        y : list
-            y-values
-        """
-        self.xy = {'data': (x, y)}
+        # self.print_state()
+        if y_names is None:
+            y_names = six.iterkeys(self.scalar_models)
+        time, data = self.data_muggler.get_values(ref_col=self.x,
+                                                  other_cols=y_names)
+        ref_data = data.pop(self.x)
+        if self.scalar_models[self.x].is_plotting:
+            self.scalar_models[self.x].set_data(x=ref_data, y=ref_data)
+        for dname, dvals in six.iteritems(data):
+            self.scalar_models[dname].set_data(x=ref_data, y=dvals)
         self.plot()
-
-    def add_xy(self, x, y, name):
-        """Add a new xy pair to plot
-
-        Parameters
-        ----------
-        x : list
-            x-values
-        y : list
-            y-values
-        name : str
-            Name of the data set
-        """
-        # check the length of x and y
-        if len(x) != len(y):
-            raise ValueError('x and y must be the same length. len(x) = {}, '
-                             'len(y) = {}'.format(len(x), len(y)))
-        # empty the dictionary if draw_single_line is on
-        if self.draw_single_line:
-            self.xy = {}
-
-        self.xy[name] = (x, y)
-        self.plot()
-
-    def remove_xy(self, name):
-        """Remove the xy pair specified by 'name' from the LineModel
-
-        Parameters
-        ----------
-        name : str
-            Name of the data set
-
-        Return
-        ------
-        xy : tuple
-            Tuple of (x, y) where x and y are lists or ndarrays
-            Returns none if this LineModel does not understand `name`
-        """
-        xy = self.xy.pop(name, None)
-        self.plot()
-        return xy
 
     def plot(self):
-        self._ax.cla()
-        if self.time:
-            series_dict = {col_name: pd.Series(data=xy[1], index=xy[0])
-                           for col_name, xy in six.iteritems(self.xy)}
-            df = pd.DataFrame(series_dict)
-            df.plot(ax=self._ax)
-        else:
-            for name, xy in six.iteritems(self.xy):
-                self._ax.plot(xy[0], xy[1], label=name)
         try:
-            self._ax.figure.canvas.draw()
-        except AttributeError:
-            # should only occur once
+            self._ax.relim(visible_only=True)
+            self._ax.autoscale_view(tight=True)
+            self._fig.canvas.draw()
+        except AttributeError as ae:
+            # should only happen once
             pass
