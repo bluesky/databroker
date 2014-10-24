@@ -115,6 +115,14 @@ class PipelineComponent(QtCore.QObject):
                 self.source_signal.emit(*ret)
 
 
+class Unalignable(Exception):
+    """
+    An exception to raise if you try to align a non-fillable column
+    to a non-pre-aligned column
+    """
+    pass
+
+
 class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
     """
     Named-tuple sub-class to validate the column specifications for the
@@ -129,7 +137,7 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
         Dimensionality of the data stored in the column
     """
     # removed the back-fill ones (even though pandas allows them)
-    valid_fill_methods = {'pad', 'ffill', None}  # , 'bfill', 'backpad'}
+    valid_fill_methods = {'pad', 'ffill', None, 'bfill', 'backpad'}
 
     __slots__ = ()
 
@@ -256,9 +264,18 @@ class DataMuggler(QtCore.QObject):
             Keyed on column name, True if that column can be sliced at
             the times of the input column.
         """
-        tmp_dict = {k: v is not None
-                    for k, v in six.iteritems(self._col_fill)}
-        tmp_dict[col_name] = True
+        if col_name not in self._dataframe:
+            raise ValueError("none existent columnn")
+        ref_index = self._dataframe[col_name]
+        tmp_dict = {}
+        for k, v in six.iteritems(self._col_fill):
+            if k == col_name:
+                tmp_dict[k] = True
+            elif v is not None:
+                tmp_dict[k] = True
+            else:
+                tmp_dict[k] = self._dataframe[k][ref_index].notnull().all()
+
         return tmp_dict
 
     def append_data(self, time_stamp, data_dict):
