@@ -129,7 +129,7 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
         Dimensionality of the data stored in the column
     """
     # removed the back-fill ones (even though pandas allows them)
-    valid_fill_methods = {'pad', 'ffill', None}  # , 'bfill', 'backpad'}
+    valid_fill_methods = {'pad', 'ffill', None, 'bfill', 'backpad'}
 
     __slots__ = ()
 
