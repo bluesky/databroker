@@ -40,6 +40,8 @@ from collections import namedtuple
 import pandas as pd
 from datetime import datetime
 import numpy as np
+from pims.base_frames import FramesSequence
+from pims.frame import Frame
 
 
 class PipelineComponent(QtCore.QObject):
@@ -406,6 +408,13 @@ class DataMuggler(QtCore.QObject):
 
         return time, out_vals
 
+    def get_times(self, col):
+        """
+        Return the time stamps that a column has non-null data
+        at.
+        """
+        return self._dataframe[col].dropna().index
+
     def get_last_value(self, ref_col, other_cols):
         """
         Return a dictionary of the dessified row and the most recent
@@ -444,8 +453,16 @@ class DataMuggler(QtCore.QObject):
         """
         # this should be made a bit more clever to only look at region
         # around the row we care about, not _everything_
-        df = self._nonscalar_col_lookup(self._densify_sub_df(cols))
-        return dict(df[index])
+        dense_array = self._densify_sub_df(cols)
+        row = dense_array.loc[index]
+        out_dict = dict()
+        for k, v in zip(row.index, row):
+            if k in self._is_col_nonscalar:
+                out_dict[k] = self._nonscalar_col_lookup[k][v]
+            else:
+                out_dict[k] = v
+
+        return out_dict
 
     def keys(self):
         return list(self._dataframe)
@@ -667,3 +684,50 @@ class MuggleWatcherAll(QtCore.QObject):
             ind, res_dict = self._muggler.get_values(self._ref_col,
                                                      self._other_cols)
             self.sig.emit(ind, res_dict)
+
+
+class DmImgSequence(FramesSequence):
+    """
+    This is a PIMS class for dealing with images stored in a DataMuggler.
+
+    Parameters
+    ----------
+    dm : DataMuggler
+        Where to get the data from
+    """
+    @classmethod
+    def class_exts(cls):
+        # does not do files
+        return set()
+
+    def __init__(self, dm, col, shape, process_func=None,
+                 dtype=None, as_grey=False):
+        # stash the DataMuggler
+        self._dm = dm
+        # stash the column we care about
+        self._col = col
+        # assume is floats (for now)
+        self._pixel_type = np.float
+        # frame shape is passed in
+        self._frame_shape = shape
+
+        self._validate_process_func(process_func)
+        self._as_grey(as_grey, process_func)
+
+    @property
+    def frame_shape(self):
+        return self._frame_shape
+
+    @property
+    def pixel_type(self):
+        return self._pixel_type
+
+    def get_frame(self, n):
+        time = self._dm.get_times(self._col)
+        data = self._dm.get_row(time[n], self._col)
+        raw_data = data[self._col]
+        return Frame(self.process_func(raw_data).astype(self._pixel_type),
+                     frame_no=n)
+
+    def __len__(self):
+        return len(self._dm.get_times(self._col))
