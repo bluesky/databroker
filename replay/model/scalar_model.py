@@ -174,7 +174,7 @@ class ScalarCollection(Atom):
         """
         # self.print_state()
         if y_names is None:
-            y_names = six.iterkeys(self.scalar_models)
+            y_names = list(six.iterkeys(self.scalar_models))
         time, data = self.data_muggler.get_values(ref_col=self.x,
                                                   other_cols=y_names)
         ref_data = data.pop(self.x)

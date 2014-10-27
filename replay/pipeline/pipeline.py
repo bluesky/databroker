@@ -112,6 +112,7 @@ class PipelineComponent(QtCore.QObject):
             # yes, gotta catch 'em all!!
             print("something failed")
             print(E)
+            print(message, data_payload)
         else:
             if ret is not None:
                 self.source_signal.emit(*ret)
@@ -451,7 +452,7 @@ class DataMuggler(QtCore.QObject):
         dense_table = self._densify_sub_df(cols)
         reduced_table = dense_table.loc[index[-1:]]
         out_index, data = self._lookup_non_scalar(reduced_table)
-        return out_index[-1], data
+        return out_index[-1], {k: v[0] for k, v in six.iteritems(data)}
 
     def get_row(self, index, cols):
         """
@@ -541,7 +542,8 @@ class DataMuggler(QtCore.QObject):
         for col in df:
             ws = df[col]
             if ws.isnull().any():
-                print (ws)
+                print(col)
+                print(ws)
                 raise Unalignable("columns aren't aligned correctly")
 
             if col in self._is_col_nonscalar:

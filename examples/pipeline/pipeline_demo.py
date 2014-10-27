@@ -246,7 +246,9 @@ class FrameSourcerBrownian(QtCore.QObject):
 
         if self._count > self._max_count:
             self.stop()
-        print('fired {}'.format(self._count))
+        print('fired {}, scale: {}, cur_pos: {}'.format(self._count,
+                                                        self._scale,
+                                                        self._cur_position))
         return True
 
     def gen_next_frame(self):
@@ -298,36 +300,43 @@ frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
 
 
 # set up mugglers
-dm = DataMuggler((('T', 'pad', True),
-                  ('img', 'bfill', False),
-                  ('count', 'bfill', True)
+dm = DataMuggler((('T', 'pad', 0),
+                  ('img', 'bfill', 2),
+                  ('count', 'bfill', 0)
                   )
                  )
-dm2 = DataMuggler((('T', 'pad', True),
-                   ('max', 'bfill', True),
-                   ('x', 'bfill', True),
-                   ('y', 'bfill', True),
-                   ('count', 'bfill', True)
+dm2 = DataMuggler((('T', 'pad', 0),
+                   ('max', 'bfill', 0),
+                   ('x', 'bfill', 0),
+                   ('y', 'bfill', 0),
+                   ('count', 'bfill', 0)
                    )
                   )
 # construct a watcher for the image + count on the main DataMuggler
-mw = MuggleWatcherLatest(dm, 'img', ['count', ])
+mw = MuggleWatcherLatest(dm, 'img', ['count', 'T'])
 
 # set up pipe line components
 # multiply the image by 5 because we can
 p1 = PipelineComponent(lambda msg, data: (msg,
                                           {'img': data['img'] * 5,
-                                           'count': data['count']}))
+                                           'count': data['count'],
+                                           'T': data['T']}))
+
+
+def rough_center(img, axis):
+    ret = np.mean(np.argmax(img, axis=axis))
+    return ret
 
 # find the max and estimate (badly) the center of the blob
 p2 = PipelineComponent(lambda msg, data: (msg,
                                           {'max':
                                              np.max(data['img']),
                                           'count': data['count'],
-                                          'x': np.mean(np.argmax(data['img'],
-                                                                 axis=0)),
-                                          'y': np.mean(np.argmax(data['img'],
-                                                                 axis=1)),
+                                          'x': rough_center(data['img'],
+                                                                 axis=0),
+                                          'y': rough_center(data['img'],
+                                                                 axis=1),
+                                          'T': data['T']
                                           }))
 
 
@@ -343,8 +352,6 @@ p2.source_signal.connect(dm2.append_data)
 
 
 from replay.model.scalar_model import ScalarCollection
-from replay.model.scalar_model import ScalarCollection
-from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
 import enaml
 import numpy as np
