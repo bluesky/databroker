@@ -412,6 +412,12 @@ class DataMuggler(QtCore.QObject):
         """
         Return the time stamps that a column has non-null data
         at.
+
+
+        Parameters
+        ----------
+        col : str
+            The name of the column to extract the times for.
         """
         return self._dataframe[col].dropna().index
 
@@ -479,7 +485,7 @@ class DataMuggler(QtCore.QObject):
         col_names : list
              List of strings naming the columns to extract
 
-        index : padas index or None
+        index : pandas index or None
             If None, do whole frame, else, only work on the
             subset specified by index.  This is applied _before_ filling
             so this should be a continious range (or mask out rows you don't
@@ -524,7 +530,8 @@ class DataMuggler(QtCore.QObject):
 
         Returns
         -------
-        index
+        index : pandas.core.index.Index
+            The index of the data frame
         data : dict
             Dictionary keyed on column name of the column.  The value is
             one of (ndarray, list, pd.Series)
