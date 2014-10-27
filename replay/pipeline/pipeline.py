@@ -40,6 +40,8 @@ from collections import namedtuple
 import pandas as pd
 from datetime import datetime
 import numpy as np
+from pims.base_frames import FramesSequence
+from pims.frame import Frame
 
 
 class PipelineComponent(QtCore.QObject):
@@ -367,36 +369,13 @@ class DataMuggler(QtCore.QObject):
         if t_finish is not None:
             raise NotImplementedError("t_finish is not implemented. You can "
                                       "only get all data right now")
-
-        # drop duplicate keys
-        other_cols = list(set(other_cols))
-        # grab the times/indices where the primary key has a value
-        indices = self._dataframe[ref_col].dropna().index
-        # make output dictionary
-        out_data = dict()
-        # get data only for the keys we care about
-        for k in [ref_col, ] + other_cols:
-            # pull out the pandas.Series
-            working_series = self._dataframe[k]
-            # fill in the NaNs using what ever method needed (or at all)
-            # if we add interpolation it would go here.
-            if self._col_fill[k] is not None:
-                working_series = working_series.fillna(
-                                                 method=self._col_fill[k])
-            # select it only at the times we care about
-            working_series = working_series[indices]
-            # if it is not a scalar, do the look up
-            if k in self._is_col_nonscalar:
-                out_data[k] = [self._nonscalar_col_lookup[k][t]
-                               if not np.isnan(t) else None
-                               for t in working_series]
-            # else, just turn the series into a list so we have uniform
-            # return types
-            else:
-                out_data[k] = list(working_series.values)
-
+        cols = list(set(other_cols + [ref_col, ]))
+        index = self._dataframe[ref_col].dropna().index
+        dense_table = self._densify_sub_df(cols)
+        reduced_table = dense_table.loc[index]
+        out_index, out_data = self._lookup_non_scalar(reduced_table)
         # return the times/indices and the dictionary
-        return list(indices), out_data
+        return out_index, out_data
 
     def get_column(self, col_name):
         """
@@ -429,6 +408,19 @@ class DataMuggler(QtCore.QObject):
 
         return time, out_vals
 
+    def get_times(self, col):
+        """
+        Return the time stamps that a column has non-null data
+        at.
+
+
+        Parameters
+        ----------
+        col : str
+            The name of the column to extract the times for.
+        """
+        return self._dataframe[col].dropna().index
+
     def get_last_value(self, ref_col, other_cols):
         """
         Return a dictionary of the dessified row and the most recent
@@ -452,37 +444,112 @@ class DataMuggler(QtCore.QObject):
             as lists whose length is the same as 'indices'
         """
         # drop duplicate keys
-        other_cols = list(set(other_cols))
+        cols = list(set(other_cols + [ref_col, ]))
+
         # grab the times/index where the primary key has a value
         index = self._dataframe[ref_col].dropna().index
-        # make output dictionary
-        out_data = dict()
-        # for the keys we care about
-        for k in [ref_col, ] + other_cols:
-            # pull out the pandas.Series
-            work_series = self._dataframe[k]
-            # fill in the NaNs using what ever method needed
-            if self._col_fill[k] is not None:
-                work_series = work_series.fillna(method=self._col_fill[k])
-            # select it only at the times we care about
-            work_series = work_series[index]
-            # if it is not a scalar, do the look up
+        dense_table = self._densify_sub_df(cols)
+        reduced_table = dense_table.loc[index[-1:]]
+        out_index, data = self._lookup_non_scalar(reduced_table)
+        return out_index[-1], data
+
+    def get_row(self, index, cols):
+        """
+        Return a row with the selected columns
+        """
+        # this should be made a bit more clever to only look at region
+        # around the row we care about, not _everything_
+        dense_array = self._densify_sub_df(cols)
+        row = dense_array.loc[index]
+        out_dict = dict()
+        for k, v in zip(row.index, row):
             if k in self._is_col_nonscalar:
-                out_data[k] = self._nonscalar_col_lookup[k][work_series.values[-1]]
-
-            # else, just turn the series into a list so we have uniform
-            # return types
+                out_dict[k] = self._nonscalar_col_lookup[k][v]
             else:
-                out_data[k] = work_series.values[-1]
+                out_dict[k] = v
 
-        # return the time and the dictionary
-        return index[-1], out_data
+        return out_dict
 
     def keys(self):
         return list(self._dataframe)
 
     def __iter__(self):
         return iter(self._dataframe)
+
+    def _densify_sub_df(self, col_names, index=None):
+        """
+        Internal function to fill and hack-down the data frame-as-needed
+
+        Parameters
+        ----------
+        col_names : list
+             List of strings naming the columns to extract
+
+        index : pandas index or None
+            If None, do whole frame, else, only work on the
+            subset specified by index.  This is applied _before_ filling
+            so this should be a continious range (or mask out rows you don't
+            want included) _not_ for reducing the result to the times based
+            on a reference column.
+
+        Returns
+        -------
+        DataFrame
+            A filled data frame
+        """
+        tmp_data = dict()
+        if index is not None:
+            work_df = self._dataframe[index]
+        else:
+            work_df = self._dataframe
+        for col in col_names:
+            # grab the column
+            work_series = work_df[col]
+            # fill in the NaNs using what ever method needed
+            if self._col_fill[col] is not None:
+                work_series = work_series.fillna(
+                    method=self._col_fill[col])
+            tmp_data[col] = work_series
+        return pd.DataFrame(tmp_data)
+
+    def _lookup_non_scalar(self, df):
+        """
+        Given a data frame (which is assumed to be a hacked-down
+        version of self._dataframe which has been densified)
+
+        This does very little validation as it is an internal function.
+
+        This is intended to be used _after_ the data frame has been reduced
+        to only the rows where the reference column has values.
+
+        Parameters
+        ----------
+        df : DataFrame
+            This needs to be a densified version the `_dataframe` possibly
+            with a reduced number of columns.
+
+        Returns
+        -------
+        index : pandas.core.index.Index
+            The index of the data frame
+        data : dict
+            Dictionary keyed on column name of the column.  The value is
+            one of (ndarray, list, pd.Series)
+        """
+        ret_dict = dict()
+
+        for col in df:
+            ws = df[col]
+            if ws.isnull().any():
+                print (ws)
+                raise Unalignable("columns aren't aligned correctly")
+
+            if col in self._is_col_nonscalar:
+                lookup_dict = self._nonscalar_col_lookup[col]
+                ret_dict[col] = [lookup_dict[t] for t in ws]
+            else:
+                ret_dict[col] = ws
+        return df.index, ret_dict
 
 
 class MuggleWatcherLatest(QtCore.QObject):
@@ -624,3 +691,50 @@ class MuggleWatcherAll(QtCore.QObject):
             ind, res_dict = self._muggler.get_values(self._ref_col,
                                                      self._other_cols)
             self.sig.emit(ind, res_dict)
+
+
+class DmImgSequence(FramesSequence):
+    """
+    This is a PIMS class for dealing with images stored in a DataMuggler.
+
+    Parameters
+    ----------
+    dm : DataMuggler
+        Where to get the data from
+    """
+    @classmethod
+    def class_exts(cls):
+        # does not do files
+        return set()
+
+    def __init__(self, dm, col, shape, process_func=None,
+                 dtype=None, as_grey=False):
+        # stash the DataMuggler
+        self._dm = dm
+        # stash the column we care about
+        self._col = col
+        # assume is floats (for now)
+        self._pixel_type = np.float
+        # frame shape is passed in
+        self._frame_shape = shape
+
+        self._validate_process_func(process_func)
+        self._as_grey(as_grey, process_func)
+
+    @property
+    def frame_shape(self):
+        return self._frame_shape
+
+    @property
+    def pixel_type(self):
+        return self._pixel_type
+
+    def get_frame(self, n):
+        time = self._dm.get_times(self._col)
+        data = self._dm.get_row(time[n], self._col)
+        raw_data = data[self._col]
+        return Frame(self.process_func(raw_data).astype(self._pixel_type),
+                     frame_no=n)
+
+    def __len__(self):
+        return len(self._dm.get_times(self._col))
