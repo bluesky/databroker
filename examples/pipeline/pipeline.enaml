@@ -25,22 +25,32 @@ enamldef PipelineView(MainWindow): window:
             layout = HSplitLayout(VSplitLayout('cs controller',
                                                'scalar controller'),
                                   HSplitLayout('cs view', 'scalar view')
-                                  )
+            )
             DockItem:
                 name = 'scalar view'
                 title = 'Scalar View'
                 Container:
+                    hug_width = 'strong'
                     ScalarView:
                         scalar_collection = window.scalar_collection
             DockItem:
                 name = 'scalar controller'
                 title = 'Scalar Controller'
                 Container:
+                    hug_width = 'strong'
                     ScalarController:
                         scalar_collection = window.scalar_collection
-            CrossSectionController:
+            DockItem:
                 name = 'cs controller'
-                cross_section_model = window.cross_section_model
-            CrossSectionView:
+                title = 'Cross Section Controller'
+                Container:
+                    hug_width = 'strong'
+                    CrossSectionController:
+                        name = 'cs controller'
+                        cross_section_model = window.cross_section_model
+            DockItem:
                 name = 'cs view'
-                cross_section_model = window.cross_section_model
+                title = 'Cross Section View'
+                CrossSectionView:
+                    hug_width = 'strong'
+                    cross_section_model = window.cross_section_model

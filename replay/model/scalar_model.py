@@ -125,6 +125,7 @@ class ScalarCollection(Atom):
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name)
                 self.scalar_models[name].can_plot = is_plottable
+        self.x = self.data_muggler.keys()[1]
 
     @observe('x')
     def update_x(self, changed):
@@ -138,6 +139,7 @@ class ScalarCollection(Atom):
             else:
                 # enable the check box but don't turn on the plotting
                 scalar_model.can_plot = True
+        self._ax.set_xlabel(self.x)
         self.get_new_data_and_plot()
 
     def print_state(self):
@@ -193,6 +195,7 @@ class ScalarCollection(Atom):
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()
+            self._ax.legend()
         except AttributeError as ae:
             # should only happen once
             pass

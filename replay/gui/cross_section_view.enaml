@@ -47,61 +47,57 @@ enamldef SliderWithSpinner(Container): sws:
             maximum := cross_section_model.num_images
 
 
-enamldef CrossSectionController(DockItem): csdock:
-    title = "Cross Section Controls"
+enamldef CrossSectionController(Container): csdock:
     attr cross_section_model
-    Container: c:
-        Form: f:
+    Form: f:
+        padding = 0
+        Label:
+            text = "Color map"
+        ComboBox: cmb_cmap:
+            items = cmap
+            editable = True
+            index ::
+                cross_section_model.cmap = cmap[index]
+        Label:
+            text = "Interpolation"
+        ComboBox:
+            items = interpolation
+            index ::
+                cross_section_model.interpolation = interpolation[index]
+    GroupBox:
+        title = "Image intensity"
+        Form:
             padding = 0
             Label:
-                text = "Color map"
-            ComboBox: cmb_cmap:
-                items = cmap
-                editable = True
-                index ::
-                    cross_section_model.cmap = cmap[index]
-            Label:
-                text = "Interpolation"
+                text = "Limit Strategy"
             ComboBox:
-                items = interpolation
+                items = limit_options
                 index ::
-                    cross_section_model.interpolation = interpolation[index]
-        GroupBox:
-            title = "Image intensity"
-            Form:
-                padding = 0
-                Label:
-                    text = "Limit Strategy"
-                ComboBox:
-                    items = limit_options
-                    index ::
-                        cross_section_model.limit_func = limit_options[index]
-                Label:
-                    text = "I min"
-                FloatField: imin:
-                    minimum << cross_section_model.img_min
-                    maximum << cross_section_model.img_max
-                    value := cross_section_model.disp_min
-                Label:
-                    text = "I max"
-                FloatField: imax:
-                    minimum << cross_section_model.img_min
-                    maximum << cross_section_model.img_max
-                    value := cross_section_model.disp_max
+                    cross_section_model.limit_func = limit_options[index]
+            Label:
+                text = "I min"
+            FloatField: imin:
+                minimum << cross_section_model.img_min
+                maximum << cross_section_model.img_max
+                value := cross_section_model.disp_min
+            Label:
+                text = "I max"
+            FloatField: imax:
+                minimum << cross_section_model.img_min
+                maximum << cross_section_model.img_max
+                value := cross_section_model.disp_max
 
-        SliderWithSpinner: sws:
-            cross_section_model = csdock.cross_section_model
+    SliderWithSpinner: sws:
+        cross_section_model = csdock.cross_section_model
 
 
-enamldef CrossSectionView(DockItem):
+enamldef CrossSectionView(Container):
     attr cross_section_model
-    title = 'Cross Section View'
-    Container:
-        CheckBox: check:
-            text = 'Toolbar Visible'
-            checked := canvas.toolbar_visible
-        MPLCanvas: canvas:
-            figure = cross_section_model.figure
+    CheckBox: check:
+        text = 'Toolbar Visible'
+        checked := canvas.toolbar_visible
+    MPLCanvas: canvas:
+        figure = cross_section_model.figure
 
 
 enamldef CrossSectionMain(MainWindow): mw:
