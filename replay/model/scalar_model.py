@@ -192,10 +192,10 @@ class ScalarCollection(Atom):
         Recompute the limits, rescale the view and redraw the canvas
         """
         try:
+            self._ax.legend()
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()
-            self._ax.legend()
         except AttributeError as ae:
             # should only happen once
             pass
