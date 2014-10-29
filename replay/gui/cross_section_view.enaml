@@ -87,7 +87,7 @@ enamldef CrossSectionController(DockItem): csdock:
                 FloatField: imax:
                     minimum << cross_section_model.img_min
                     maximum << cross_section_model.img_max
-                    value := cross_section_model.disp_min
+                    value := cross_section_model.disp_max
 
         SliderWithSpinner: sws:
             cross_section_model = csdock.cross_section_model

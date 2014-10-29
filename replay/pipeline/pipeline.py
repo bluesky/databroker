@@ -709,34 +709,50 @@ class DmImgSequence(FramesSequence):
         # does not do files
         return set()
 
-    def __init__(self, dm, col, shape, process_func=None,
-                 dtype=None, as_grey=False):
+    def __init__(self, data_muggler, data_name=None, image_shape=None,
+                 process_func=None, dtype=None, as_grey=False):
         # stash the DataMuggler
-        self._dm = dm
+        self._data_muggler = data_muggler
         # stash the column we care about
-        self._col = col
+        self._data_name = data_name
         # assume is floats (for now)
         self._pixel_type = np.float
         # frame shape is passed in
-        self._frame_shape = shape
+        if image_shape is None:
+            image_shape = (1,1)
+        self._image_shape = image_shape
 
         self._validate_process_func(process_func)
         self._as_grey(as_grey, process_func)
 
     @property
+    def data_name(self):
+        return self._data_name
+    @property
+    def data_muggler(self):
+        return self._data_muggler
+    @property
     def frame_shape(self):
-        return self._frame_shape
-
+        return self._image_shape
     @property
     def pixel_type(self):
         return self._pixel_type
 
     def get_frame(self, n):
-        time = self._dm.get_times(self._col)
-        data = self._dm.get_row(time[n], self._col)
-        raw_data = data[self._col]
+        time = self._data_muggler.get_times(self.data_name)
+        data = self._data_muggler.get_row(time[n], self.data_name)
+        self._image_shape = data[0].shape
+        raw_data = data[self.data_name]
         return Frame(self.process_func(raw_data).astype(self._pixel_type),
                      frame_no=n)
 
     def __len__(self):
-        return len(self._dm.get_times(self._col))
+        return len(self._data_muggler.get_times(self.data_name))
+
+    def __repr__(self):
+        state = "Current state of DmImgSequence object"
+        state += "\nData Muggler: {}".format(self._data_muggler)
+        state += "\nData Name: {}".format(self._data_name)
+        state += "\nPixel Type: {}".format(self._pixel_type)
+        state += "\nImage Shape: {}".format(self._image_shape)
+        return state

@@ -4,7 +4,8 @@ import time
 
 from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
                                       MuggleWatcherLatest,
-                                      MuggleWatcherTwoLists
+                                      MuggleWatcherTwoLists,
+                                      DmImgSequence
 )
 
 import matplotlib.pyplot as plt
@@ -298,7 +299,6 @@ frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
                                     max_count=center * 2
                                     )
 
-
 # set up mugglers
 dm = DataMuggler((('T', 'pad', 0),
                   ('img', 'bfill', 2),
@@ -352,48 +352,23 @@ p2.source_signal.connect(dm2.append_data)
 
 
 from replay.model.scalar_model import ScalarCollection
+from replay.model.cross_section_model import CrossSectionModel
 from enaml.qt.qt_application import QtApplication
 import enaml
 import numpy as np
 
 app = QtApplication()
-# image_view.show()
-# temp_model = ScalarModel()
-# max_model = ScalarModel()
-# center_model = ScalarModel()
-# image_model = CrossSectionModel()
 
 with enaml.imports():
     from pipeline import PipelineView
 
 scalar_collection = ScalarCollection(data_muggler=dm2)
-view = PipelineView(scalar_collection=scalar_collection)
+img_seq = DmImgSequence(data_muggler=dm, data_name='img')
+cross_section_model = CrossSectionModel(data_muggler=dm, name='img',
+                                        sliceable_data=img_seq)
+view = PipelineView(scalar_collection=scalar_collection,
+                    cross_section_model=cross_section_model)
 view.show()
-#
-# view.show()
-# # connect the cross section viewer to the first DataMuggler
-# mw.sig.connect(lambda msg, data: image_model.set_data(data['img']))
-#
-# # construct a watcher + viewer of the center
-# mw4 = MuggleWatcherTwoLists(dm2, 'count', 'x', 'y')
-# mw4.sig.connect(center_model.set_xy)
-#
-# # construct a watcher + viewer of the max
-# mw3 = MuggleWatcherTwoLists(dm2, 'count', 'count', 'max')
-# mw3.sig.connect(max_model.set_xy)
-#
-# # construct a watcher + viewer of the temperature
-# mw5 = MuggleWatcherTwoLists(dm, 'count', 'count', 'T')
-# mw5.sig.connect(temp_model.set_xy)
-
-# line_model, line_view = make_line_window()
-
-# var_model = VariableModel(data_muggler=dm2)
-# var_model.line_model = line_model
-# var_view = VariableMain(variable_model=var_model)
-# var_view.show()
-# line_view.show()
 frame_source.start()
-# plt.show(block=True)
 
 app.start()

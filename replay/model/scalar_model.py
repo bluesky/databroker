@@ -15,6 +15,7 @@ from ..pipeline.pipeline import DataMuggler
 import logging
 logger = logging.getLogger(__name__)
 
+
 class ScalarModel(Atom):
     """
     ScalarModel is the model in the Model-View-Controller pattern that backs

@@ -24,7 +24,7 @@ enamldef ScalarController(Container):
                 selected_item >> scalar_collection.x
                 # this scalar allows the plotter to come up with guns blazing
                 # (plotting)
-                # index = scalar_collection.vars.index(scalar_collection.x)
+                index = 0
 
             Label:
                 text = "y axis"
@@ -37,6 +37,7 @@ enamldef ScalarController(Container):
                 CheckBox: cb:
                     checked := scalar_collection.scalar_models[loop_item].is_plotting
                     enabled := scalar_collection.scalar_models[loop_item].can_plot
+
 
 enamldef ScalarView(Container):
     attr scalar_collection
