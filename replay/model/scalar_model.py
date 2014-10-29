@@ -121,7 +121,7 @@ class ScalarCollection(Atom):
             self.x = self.data_muggler.keys()[0]
             alignable = self.data_muggler.align_against(self.x)
             for name, is_plottable in six.iteritems(alignable):
-                line_artist = self._ax.plot([], [])[0]
+                line_artist,  = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name)
                 self.scalar_models[name].can_plot = is_plottable
