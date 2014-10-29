@@ -192,7 +192,12 @@ class ScalarCollection(Atom):
         Recompute the limits, rescale the view and redraw the canvas
         """
         try:
-            self._ax.legend()
+            arts, labs = zip(*[(v.line_artist, k)
+                               for k, v in six.iteritems(self.scalar_models)
+                               if v.line_artist.get_visible()])
+            print(arts)
+            print(labs)
+            self._ax.legend(arts, labs)
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()
