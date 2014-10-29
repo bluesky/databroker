@@ -709,7 +709,7 @@ class DmImgSequence(FramesSequence):
         # does not do files
         return set()
 
-    def __init__(self, data_muggler, data_name=None, image_shape=None,
+    def __init__(self, data_muggler, data_name, image_shape=None,
                  process_func=None, dtype=None, as_grey=False):
         # stash the DataMuggler
         self._data_muggler = data_muggler
@@ -719,7 +719,7 @@ class DmImgSequence(FramesSequence):
         self._pixel_type = np.float
         # frame shape is passed in
         if image_shape is None:
-            image_shape = (1,1)
+            image_shape = (1, 1)
         self._image_shape = image_shape
 
         self._validate_process_func(process_func)
@@ -728,21 +728,24 @@ class DmImgSequence(FramesSequence):
     @property
     def data_name(self):
         return self._data_name
+
     @property
     def data_muggler(self):
         return self._data_muggler
+
     @property
     def frame_shape(self):
         return self._image_shape
+
     @property
     def pixel_type(self):
         return self._pixel_type
 
     def get_frame(self, n):
         time = self._data_muggler.get_times(self.data_name)
-        data = self._data_muggler.get_row(time[n], self.data_name)
-        self._image_shape = data[0].shape
+        data = self._data_muggler.get_row(time[n], [self.data_name, ])
         raw_data = data[self.data_name]
+        self._image_shape = raw_data.shape
         return Frame(self.process_func(raw_data).astype(self._pixel_type),
                      frame_no=n)
 

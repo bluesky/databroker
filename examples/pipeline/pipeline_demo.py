@@ -300,6 +300,7 @@ frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
                                     )
 
 # set up mugglers
+# (name, fill_type, #num dims)
 dm = DataMuggler((('T', 'pad', 0),
                   ('img', 'bfill', 2),
                   ('count', 'bfill', 0)
