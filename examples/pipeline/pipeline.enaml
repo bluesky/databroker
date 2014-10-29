@@ -22,7 +22,10 @@ enamldef PipelineView(MainWindow): window:
             selected = 'vs-2010'
         DockArea:
             style << style_c.selected
-            layout = HSplitLayout('scalar controller', 'scalar view')
+            layout = HSplitLayout(VSplitLayout('cs controller',
+                                               'scalar controller'),
+                                  HSplitLayout('cs view', 'scalar view')
+                                  )
             DockItem:
                 name = 'scalar view'
                 title = 'Scalar View'
