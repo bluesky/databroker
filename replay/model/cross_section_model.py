@@ -107,7 +107,8 @@ class CrossSectionModel(Atom):
             self.img_min = np.min(self.sliceable_data[self.image_index])
         except IndexError as ie:
             # thrown when the data frame doesn't understand the column name
-            msg = "Key Error thrown in _update_sliceable_data\n"
+            msg = ("Index Error thrown in _update_sliceable_data. Printing "
+                   "current state of the cross section model\n")
             msg = self.get_state()
             print(msg)
     @observe('name')
