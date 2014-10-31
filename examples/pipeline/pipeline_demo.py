@@ -8,6 +8,7 @@ from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
                                       DmImgSequence
 )
 
+from atom.api import Atom, Float, Typed, observe
 import matplotlib.pyplot as plt
 from nsls2 import core
 from enaml.qt import QtCore
@@ -341,6 +342,20 @@ p2 = PipelineComponent(lambda msg, data: (msg,
                                           }))
 
 
+def roi_callback(value):
+    print('roi_callback. value = {}'.format(value))
+
+
+class RegionOfInterestModel(Atom):
+    value = Float(1)
+    callback = Typed(object)
+
+    @observe('value')
+    def value_updated(self, changed):
+        self.callback(self.value)
+
+
+
 # hook up everything
 # input
 frame_source.event.connect(dm.append_data)
@@ -367,8 +382,11 @@ scalar_collection = ScalarCollection(data_muggler=dm2)
 img_seq = DmImgSequence(data_muggler=dm, data_name='img')
 cross_section_model = CrossSectionModel(data_muggler=dm, name='img',
                                         sliceable_data=img_seq)
+roi_model = RegionOfInterestModel(callback = roi_callback)
+
 view = PipelineView(scalar_collection=scalar_collection,
-                    cross_section_model=cross_section_model)
+                    cross_section_model=cross_section_model,
+                    roi_model=roi_model)
 print('dir(view): {}'.format(dir(view)))
 # view.container.area.InsertDockItem(item=view.container.scalar_view,
 #                                           target=view.container.area,

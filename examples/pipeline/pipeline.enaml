@@ -1,7 +1,8 @@
 from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
                               InsertDockBarItem)
+from enaml.stdlib.fields import FloatField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
-                               MainWindow, ObjectCombo)
+                               MainWindow, ObjectCombo, PushButton)
 from replay.gui.line_view import LineView
 from replay.gui.scalar_view import ScalarView, ScalarController
 from replay.gui.cross_section_view import (CrossSectionView,
@@ -19,11 +20,22 @@ def add_dock_bars(area, cross_section_view, cross_section_controller,
     area.update_layout(InsertDockBarItem(item=scalar_view,
                                          target=scalar_controller))
 
+enamldef RegionOfInterest(Container):
+    attr roi_model
+
+    FloatField: input:
+        value := roi_model.value
+    PushButton: btn:
+        text = "Update Scaling Factor"
+        clicked ::
+            roi_model.value = input.value
+
 
 enamldef PipelineView(MainWindow): window:
     title = "Live Data Demo"
     attr scalar_collection
     attr cross_section_model
+    attr roi_model
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -32,7 +44,8 @@ enamldef PipelineView(MainWindow): window:
         DockArea: area:
             style << style_c.selected
             layout = HSplitLayout(VSplitLayout('cs controller',
-                                               'scalar controller'),
+                                               'scalar controller',
+                                               'roi view'),
                                   HSplitLayout('cs view', 'scalar view')
             )
             DockItem: scalar_view:
@@ -66,3 +79,9 @@ enamldef PipelineView(MainWindow): window:
                 CrossSectionView:
                     hug_width = 'strong'
                     cross_section_model = window.cross_section_model
+            DockItem: roi_view:
+                name = 'roi view'
+                title = "Region Of Interest"
+                closable = False
+                RegionOfInterest:
+                    roi_model = window.roi_model
