@@ -177,9 +177,16 @@ class ScalarCollection(Atom):
         """
         # self.print_state()
         if y_names is None:
-            y_names = list(six.iterkeys(self.scalar_models))
+            y_names = set(six.iterkeys(self.scalar_models))
+        valid_name = set(k for k, v in six.iteritems(
+                                 self.data_muggler.align_against(self.x))
+                         if v)
+
+        other_cols = list(y_names & valid_name)
+
         time, data = self.data_muggler.get_values(ref_col=self.x,
-                                                  other_cols=y_names)
+                                                  other_cols=other_cols)
+
         ref_data = data.pop(self.x)
         if self.scalar_models[self.x].is_plotting:
             self.scalar_models[self.x].set_data(x=ref_data, y=ref_data)
