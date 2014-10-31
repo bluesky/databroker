@@ -5,38 +5,57 @@
 
 from enaml.core.api import Looper
 from atom.api import Atom, List, observe, Bool, Enum, Str, Int
-from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout
+from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
-                               GroupBox, ScrollArea
+                               GroupBox, ScrollArea, PushButton, RadioButton
                                )
 
 enamldef ScalarController(Container):
     attr scalar_collection
     ScrollArea: scroller:
-        Form:
-            Label:
-                text = "x axis"
-            ComboBox:
-                items << list(scalar_collection.scalar_models)
-                editable = True
-                selected_item >> scalar_collection.x
-                # this scalar allows the plotter to come up with guns blazing
-                # (plotting)
-                # index = scalar_collection.vars.index(scalar_collection.x)
-
-            Label:
-                text = "y axis"
-            Label:
-                text = "plot?"
-            Looper: looper:
-                iterable << list(scalar_collection.scalar_models)
-                Label: lbl:
-                    text = scalar_collection.scalar_models[loop_item].name
-                CheckBox: cb:
-                    checked := scalar_collection.scalar_models[loop_item].is_plotting
-                    enabled := scalar_collection.scalar_models[loop_item].can_plot
+        Container:
+            Form:
+                Label: xlbl:
+                    text = "x axis"
+                ComboBox: xcmb:
+                    items << list(scalar_collection.scalar_models)
+                    editable = True
+                    selected_item >> scalar_collection.x
+                    # this scalar allows the plotter to come up with guns blazing
+                    # (plotting)
+                    index = 0
+            GroupBox: plot:
+                title_align = 'center'
+                title = 'Plot'
+                padding = Box(0, 0, 0, 0)
+                Form:
+                    Label:
+                        text = "Y axis"
+                    Label:
+                        text = "Fit"
+                    row_spacing = 0
+                    Looper: looper:
+                        iterable << list(scalar_collection.scalar_models)
+                        PushButton: cb_plot:
+                            text = scalar_collection.scalar_models[loop_item].name
+                            checked := (
+                                scalar_collection.
+                                    scalar_models[loop_item].is_plotting
+                            )
+                            checkable := (
+                                scalar_collection.
+                                    scalar_models[loop_item].can_plot
+                            )
+                        RadioButton: cb_fit:
+                            text = loop_item
+                            checked ::
+                               print('cb_fit clicked for {}'.format(text))
+            GroupBox: fit:
+                title_align = 'center'
+                title = 'Fit'
+                padding = Box(0, 0, 0, 0)
 
 enamldef ScalarView(Container):
     attr scalar_collection

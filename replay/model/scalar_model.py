@@ -15,6 +15,7 @@ from ..pipeline.pipeline import DataMuggler
 import logging
 logger = logging.getLogger(__name__)
 
+
 class ScalarModel(Atom):
     """
     ScalarModel is the model in the Model-View-Controller pattern that backs
@@ -120,10 +121,11 @@ class ScalarCollection(Atom):
             self.x = self.data_muggler.keys()[0]
             alignable = self.data_muggler.align_against(self.x)
             for name, is_plottable in six.iteritems(alignable):
-                line_artist = self._ax.plot([], [])[0]
+                line_artist,  = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name)
                 self.scalar_models[name].can_plot = is_plottable
+        self.x = self.data_muggler.keys()[1]
 
     @observe('x')
     def update_x(self, changed):
@@ -137,6 +139,7 @@ class ScalarCollection(Atom):
             else:
                 # enable the check box but don't turn on the plotting
                 scalar_model.can_plot = True
+        self._ax.set_xlabel(self.x)
         self.get_new_data_and_plot()
 
     def print_state(self):
@@ -189,6 +192,10 @@ class ScalarCollection(Atom):
         Recompute the limits, rescale the view and redraw the canvas
         """
         try:
+            arts, labs = zip(*[(v.line_artist, k)
+                               for k, v in six.iteritems(self.scalar_models)
+                               if v.line_artist.get_visible()])
+            self._ax.legend(arts, labs)
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()
