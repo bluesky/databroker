@@ -19,139 +19,6 @@ from nsls2.fitting.model.physics_model import GaussianModel
 import lmfit
 
 
-def plotter(title, xlabel, ylabel, ax=None, N=None, ln_sty=None, fit=False):
-    """
-    This function generates a function which will
-    take two lists and plot them against each other.
-
-    If an axes is not passed in, create a new figure + axes
-    else, use the one that is passed in.
-
-    .. Warning : If ax axes is passed in, the labels are ignored.  This
-        is bad API design.  What idiot wrote this?
-
-    Parameters
-    ----------
-    title : str
-        Axes title
-
-    xlabel : str
-        X-axis label
-
-    ylabel : str
-        Y-axis label
-
-    ax : Axes, optional
-        if not given or None, create new figure, else draw to the one
-        passed in.
-
-    N : int, optional
-        Only plot the last N points
-
-    ln_sty : dict, optional
-        dictionary of kwargs to be unpacked into the plot call
-
-        CURRENTLY IGNORED
-
-    fit : bool, optional
-        If should try to fit
-
-    Returns
-    -------
-    callabale
-        A callable with the signature ::
-
-            def inner(x, y):
-                '''
-                Parameters
-                ----------
-                x : list
-                    x-data
-                y : list
-                    y-data
-
-                '''
-                return None
-    """
-    if ax is None:
-        fig, ax = plt.subplots(1, 1)
-
-    if ln_sty is None:
-        ln_sty = dict()
-
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        txt = ax.annotate('', (0, 0), xytext=(1, 1), xycoords='axes fraction')
-
-    ln_sty = 'bo-'
-    if fit:
-        ln_sty = 'bo'
-
-    ln, = ax.plot([], [], ln_sty)
-    if fit:
-        ln2, = ax.plot([], [], 'g-')
-        m = GaussianModel() + lmfit.models.ConstantModel()
-        param = m.make_params()
-        for k in param:
-            param[k].value = 1
-
-        param['area'].min = 1
-        param['area'].max = 150
-        param['sigma'].min = 1
-        param['sigma'].max = 150
-        param['center'].min = 0
-        param['center'].max = 150
-    time_tracker = {'old': time.time()}
-
-    def inner(y, x):
-        '''
-        Update line with this data.  relim, autoscale, trigger redraw
-
-        Parameters
-        ----------
-        x : list
-            x-data
-        y : list
-            y-data
-
-        '''
-        if N is not None:
-            x = x[:N]
-            y = y[:N]
-
-        ln.set_data(x, y)
-        if fit and len(x) > 4:
-            param['c'].value = np.min(y)
-            param['center'].value = x[np.argmax(y)]
-            res = m.fit(y, x=x, params=param)
-            # try to be clever and iterative
-            param.update(res.params)
-            ft_y = res.eval()
-            ln2.set_data(x, ft_y)
-
-        # this should include blitting logic
-        ax.relim()
-        ax.autoscale_view(False, True, True)
-        cur = time.time()
-        txt.set_text(str(cur - time_tracker['old']))
-        time_tracker['old'] = cur
-        ax.figure.canvas.draw()
-        #        plt.pause(.1)
-
-    return inner
-
-# def imshower():
-#     fig = plt.figure()
-#     xsection = CrossSection(fig, interpolation='none',
-#                             limit_func=absolute_limit_factory((0, 1.5))
-#     )
-#
-#     def inner(msg, data):
-#         xsection.update_image(data['img'])
-#
-#     return inner
-
 # stolen from other live demo
 class FrameSourcerBrownian(QtCore.QObject):
     """
@@ -355,7 +222,6 @@ class RegionOfInterestModel(Atom):
         self.callback(self.value)
 
 
-
 # hook up everything
 # input
 frame_source.event.connect(dm.append_data)
@@ -387,10 +253,6 @@ roi_model = RegionOfInterestModel(callback = roi_callback)
 view = PipelineView(scalar_collection=scalar_collection,
                     cross_section_model=cross_section_model,
                     roi_model=roi_model)
-print('dir(view): {}'.format(dir(view)))
-# view.container.area.InsertDockItem(item=view.container.scalar_view,
-#                                           target=view.container.area,
-#                                           position='top')
 view.show()
 frame_source.start()
 
