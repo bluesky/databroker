@@ -2,7 +2,7 @@ from __future__ import (print_function, absolute_import, division)
 import six
 from pims import FramesSequence
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed)
+                      Typed, Dict)
 import numpy as np
 import sys
 from matplotlib.figure import Figure
@@ -39,6 +39,7 @@ class CrossSectionModel(Atom):
     name = Str()
     # data muggler
     dm = Typed(DataMuggler)
+    visible = Bool(True)
 
     # PARAMETERS -- CONTROL DOCK
     # minimum value for the slider
@@ -151,3 +152,19 @@ class CrossSectionModel(Atom):
     def _update_max(self, update):
         # todo get image limits working
         pass
+
+
+class CrossSectionCollection(Atom):
+    cs_models = Dict(key=Str(), value=CrossSectionModel)
+    data_muggler = Typed(DataMuggler)
+
+    def __init__(self, data_muggler):
+        super(CrossSectionCollection, self).__init__()
+        self.data_muggler = data_muggler
+        image_cols = [name for name, dim
+                      in six.iteritems(self.data_muggler.col_dims)
+                      if dim == 2]
+
+
+
+

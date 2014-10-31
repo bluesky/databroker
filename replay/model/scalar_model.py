@@ -1,12 +1,13 @@
 __author__ = 'edill'
 
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed, Dict, Constant)
+                      Typed, Dict, Constant, Coerced)
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
+from ..model.cross_section_model import CrossSectionModel
 from lmfit import Model
 from matplotlib.lines import Line2D
 import pandas as pd
@@ -38,11 +39,12 @@ class ScalarModel(Atom):
     # the visual representation of the scalar model (the view!)
     line_artist = Typed(Line2D)
 
-    def __init__(self, line_artist, name):
+    def __init__(self, line_artist, **kwargs):
         self.line_artist = line_artist
         self.is_plotting = line_artist.get_visible()
-        self.can_plot = True
-        self.name = name
+        print(kwargs)
+        for name, val in six.iteritems(kwargs):
+            setattr(self, name, val)
 
     def set_data(self, x, y):
         """Update the data stored in line_artist
@@ -101,31 +103,40 @@ class ScalarCollection(Atom):
         receives new data.
     """
     scalar_models = Dict(key=Str(), value=ScalarModel)
+    data_muggler = Typed(DataMuggler)
     # current x-axis of the scalar_models
     x = Str()
-    # location where the data is stored
-    data_muggler = Typed(DataMuggler)
     # mpl
     _fig = Typed(Figure)
     _ax = Typed(Axes)
+    col_names = List(item=str)
 
     def __init__(self, data_muggler):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
+            self.data_muggler = data_muggler
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             # self._ax.hold()
-            # stash the data muggler
-            self.data_muggler = data_muggler
+            # connect the signals from the muggler to the appropriate slots
+            # in this class
             self.data_muggler.new_data.connect(self.notify_new_data)
-            self.x = self.data_muggler.keys()[0]
-            alignable = self.data_muggler.align_against(self.x)
+            self.data_muggler.new_columns.connect(self.notify_new_column)
+            # get the column names
+            self.col_names = self.data_muggler.keys(dim=0)
+            self.col_names.sort()
+            # default to the first column name
+            self.x = self.col_names[0]
+            # get the alignability of the columns that this model cares about
+            alignable = self.data_muggler.align_against(self.x, self.col_names)
             for name, is_plottable in six.iteritems(alignable):
-                line_artist,  = self._ax.plot([], [], label=name)
+                # create a new line artist and scalar model
+                line_artist, = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                       name=name)
-                self.scalar_models[name].can_plot = is_plottable
-        self.x = self.data_muggler.keys()[1]
+                                                       name=name,
+                                                       can_plot=is_plottable,
+                                                       is_plotting=True)
+        self.update_x(None)
 
     @observe('x')
     def update_x(self, changed):
@@ -145,6 +156,23 @@ class ScalarCollection(Atom):
     def print_state(self):
         for model_name, model in six.iteritems(self.scalar_models):
             print(model.get_state())
+
+    def notify_new_column(self, new_columns):
+        """Function to call when there is a new column in the data muggler
+
+        Parameters
+        ----------
+        new_columns: list
+            The new column name that the data muggler knows about
+        """
+        scalar_cols = self.data_muggler.keys(dim=0)
+        alignable = self.data_muggler.align_against(self.x, self.col_names)
+        for name, is_plottable in six.iteritems(alignable):
+            if name in new_columns and not self.data_muggler.col_dims[name]:
+                line_artist,  = self._ax.plot([], [], label=name)
+                self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+                                                       name=name)
+                self.scalar_models[name].can_plot = is_plottable
 
     def notify_new_data(self, new_data):
         """ Function to call when there is new data in the data muggler
@@ -192,10 +220,14 @@ class ScalarCollection(Atom):
         Recompute the limits, rescale the view and redraw the canvas
         """
         try:
-            arts, labs = zip(*[(v.line_artist, k)
-                               for k, v in six.iteritems(self.scalar_models)
-                               if v.line_artist.get_visible()])
-            self._ax.legend(arts, labs)
+            legend_pairs = [(v.line_artist, k)
+                            for k, v in six.iteritems(self.scalar_models)
+                            if v.line_artist.get_visible()]
+            if legend_pairs:
+                arts, labs = zip(*legend_pairs)
+                self._ax.legend(arts, labs)
+            else:
+                self._ax.legend(legend_pairs)
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()

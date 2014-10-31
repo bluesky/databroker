@@ -193,9 +193,14 @@ class DataMuggler(QtCore.QObject):
     """
 
     # this is a signal emitted when the muggler has new data that clients
-    # can grab.  The names of the columns that have new data are returned
+    # can grab.  The names of the columns that have new data are emitted
     # as a list
     new_data = QtCore.Signal(list)
+
+    # this is a signal emitted when the muggler has new data sets that clients
+    # can grab. The names of the new columns are emitted as a list
+    new_columns = QtCore.Signal(list)
+
 
     # this is the function that gets called to validate that the row labels
     # are something that the internal pandas dataframe will understand
@@ -227,7 +232,7 @@ class DataMuggler(QtCore.QObject):
         self._dataframe = pd.DataFrame({n: [] for n in names}, index=[])
 
     @property
-    def cols_dims(self):
+    def col_dims(self):
         """
         The dimensionality of the data stored in all columns. Returned as a
         dictionary keyed on column name.
@@ -246,7 +251,7 @@ class DataMuggler(QtCore.QObject):
         """
         return dict(self._col_fill)
 
-    def align_against(self, col_name):
+    def align_against(self, ref_col, other_cols=None):
         """
         Determine what columns can be sliced against another column.
 
@@ -259,8 +264,10 @@ class DataMuggler(QtCore.QObject):
 
         Parameters
         ----------
-        col_name : str
+        ref_col : str
             The name of the proposed reference column
+        other_cols : list
+            The names of the columns to test for alignment
 
         Returns
         -------
@@ -268,17 +275,20 @@ class DataMuggler(QtCore.QObject):
             Keyed on column name, True if that column can be sliced at
             the times of the input column.
         """
-        if col_name not in self._dataframe:
-            raise ValueError("non-existent columnn: [[{}]]".format(col_name))
-        ref_index = self._dataframe[col_name]
+        if ref_col not in self._dataframe:
+            raise ValueError("non-existent columnn: [[{}]]".format(ref_col))
+        ref_index = self._dataframe[ref_col]
         tmp_dict = {}
-        for k, v in six.iteritems(self._col_fill):
-            if k == col_name:
-                tmp_dict[k] = True
+        for col_name, v in six.iteritems(self._col_fill):
+            if col_name == ref_col:
+                tmp_dict[col_name] = True
+            elif other_cols and not col_name in other_cols:
+                # skip column names that are not in other_cols, if it passed in
+                continue
             elif v is not None:
-                tmp_dict[k] = True
+                tmp_dict[col_name] = True
             else:
-                tmp_dict[k] = bool(self._dataframe[k][ref_index].notnull().all())
+                tmp_dict[col_name] = bool(self._dataframe[col_name][ref_index].notnull().all())
 
         return tmp_dict
 
@@ -471,8 +481,30 @@ class DataMuggler(QtCore.QObject):
 
         return out_dict
 
-    def keys(self):
-        return list(self._dataframe)
+    def keys(self, dim=None):
+        """
+        Get the column names in the data muggler
+
+        Parameters
+        ----------
+        dim : int
+            0 -> scalar
+            1 -> line (MCA spectra)
+            2 -> image
+            3 -> volume
+
+        Returns
+        -------
+        keys : list
+            Column names in the data muggler that match the desired
+            dimensionality, or all column names if dim is None
+        """
+        cols = list(self._dataframe)
+        if dim is not None:
+            cols = [name for (name, dim)
+                    in six.iteritems(self.col_dims) if dim == dim]
+        cols = sorted(cols, key=lambda s: s.lower())
+        return cols
 
     def __iter__(self):
         return iter(self._dataframe)

@@ -20,7 +20,7 @@ enamldef ScalarController(Container):
                 Label: xlbl:
                     text = "x axis"
                 ComboBox: xcmb:
-                    items << list(scalar_collection.scalar_models)
+                    items << list(scalar_collection.col_names)
                     editable = True
                     selected_item >> scalar_collection.x
                     # this scalar allows the plotter to come up with guns blazing
@@ -37,9 +37,9 @@ enamldef ScalarController(Container):
                         text = "Fit"
                     row_spacing = 0
                     Looper: looper:
-                        iterable << list(scalar_collection.scalar_models)
+                        iterable << list(scalar_collection.col_names)
                         PushButton: cb_plot:
-                            text = scalar_collection.scalar_models[loop_item].name
+                            text = loop_item
                             checked := (
                                 scalar_collection.
                                     scalar_models[loop_item].is_plotting

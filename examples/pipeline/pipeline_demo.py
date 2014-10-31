@@ -111,12 +111,12 @@ with enaml.imports():
 
 scalar_collection = ScalarCollection(data_muggler=dm2)
 img_seq = DmImgSequence(data_muggler=dm, data_name='img')
-cross_section_model = CrossSectionModel(data_muggler=dm, name='img',
+cs_model = CrossSectionModel(data_muggler=dm, name='img',
                                         sliceable_data=img_seq)
 roi_model = RegionOfInterestModel(callback=roi_callback)
 
 view = PipelineView(scalar_collection=scalar_collection,
-                    cross_section_model=cross_section_model,
+                    cs_model=cs_model,
                     roi_model=roi_model)
 view.show()
 frame_source.start()

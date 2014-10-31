@@ -34,7 +34,7 @@ enamldef RegionOfInterest(Container):
 enamldef PipelineView(MainWindow): window:
     title = "Live Data Demo"
     attr scalar_collection
-    attr cross_section_model
+    attr cs_model
     attr roi_model
     Container: container:
         ObjectCombo: style_c:
@@ -63,25 +63,26 @@ enamldef PipelineView(MainWindow): window:
                     hug_width = 'strong'
                     ScalarController:
                         scalar_collection = window.scalar_collection
-            DockItem: cross_section_controller:
+            CrossSectionController:
                 name = 'cs controller'
                 title = 'Cross Section Controller'
                 closable = False
-                Container:
-                    hug_width = 'strong'
-                    CrossSectionController:
-                        name = 'cs controller'
-                        cross_section_model = window.cross_section_model
-            DockItem: cross_section_view:
+                name = 'cs controller'
+                cs_model = window.cs_model
+                visible << cs_model.visible
+            CrossSectionView:
                 name = 'cs view'
                 title = 'Cross Section View'
-                closable = False
-                CrossSectionView:
-                    hug_width = 'strong'
-                    cross_section_model = window.cross_section_model
+                cs_model = window.cs_model
+                visible << cs_model.visible
+            PushButton:
+                text = "Show cross section"
+                checkable = True
+                checked := cs_model.visible
+                clicked ::
+                    print('cs_model.visible: {}'.format(cs_model.visible))
             DockItem: roi_view:
                 name = 'roi view'
                 title = "Region Of Interest"
-                closable = False
                 RegionOfInterest:
                     roi_model = window.roi_model
