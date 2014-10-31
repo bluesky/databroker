@@ -275,8 +275,8 @@ class DataMuggler(QtCore.QObject):
         for k, v in six.iteritems(self._col_fill):
             if k == col_name:
                 tmp_dict[k] = True
-            elif v is not None:
-                tmp_dict[k] = True
+            elif v is None:
+                tmp_dict[k] = False
             else:
                 tmp_dict[k] = bool(self._dataframe[k][ref_index].notnull().all())
 
