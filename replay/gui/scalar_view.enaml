@@ -5,7 +5,7 @@
 
 from enaml.core.api import Looper
 from atom.api import Atom, List, observe, Bool, Enum, Str, Int
-from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout
+from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
@@ -17,29 +17,29 @@ enamldef ScalarController(Container):
     ScrollArea: scroller:
         Container:
             Form:
-                Label:
+                Label: xlbl:
                     text = "x axis"
-                ComboBox:
+                ComboBox: xcmb:
                     items << list(scalar_collection.scalar_models)
                     editable = True
                     selected_item >> scalar_collection.x
                     # this scalar allows the plotter to come up with guns blazing
                     # (plotting)
                     index = 0
-
-                Label:
-                    text = "y axis"
-                Label:
-                    text = "plot?"
-            GroupBox:
-                title = 'Plot/fit'
+            GroupBox: plot:
+                title_align = 'center'
+                title = 'Plot'
+                padding = Box(0, 0, 0, 0)
                 Form:
+                    Label:
+                        text = "Y axis"
+                    Label:
+                        text = "Fit"
+                    row_spacing = 0
                     Looper: looper:
                         iterable << list(scalar_collection.scalar_models)
                         PushButton: cb_plot:
-                            text = "Plot {}?".format(
-                                scalar_collection.
-                                    scalar_models[loop_item].name)
+                            text = scalar_collection.scalar_models[loop_item].name
                             checked := (
                                 scalar_collection.
                                     scalar_models[loop_item].is_plotting
@@ -49,9 +49,13 @@ enamldef ScalarController(Container):
                                     scalar_models[loop_item].can_plot
                             )
                         RadioButton: cb_fit:
-                            text = "fit {}?".format(loop_item)
+                            text = loop_item
                             checked ::
                                print('cb_fit clicked for {}'.format(text))
+            GroupBox: fit:
+                title_align = 'center'
+                title = 'Fit'
+                padding = Box(0, 0, 0, 0)
 
 enamldef ScalarView(Container):
     attr scalar_collection

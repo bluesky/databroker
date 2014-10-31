@@ -370,9 +370,9 @@ cross_section_model = CrossSectionModel(data_muggler=dm, name='img',
 view = PipelineView(scalar_collection=scalar_collection,
                     cross_section_model=cross_section_model)
 print('dir(view): {}'.format(dir(view)))
-view.container.area.InsertDockItem(item=view.container.scalar_view,
-                                          target=view.container.area,
-                                          position='top')
+# view.container.area.InsertDockItem(item=view.container.scalar_view,
+#                                           target=view.container.area,
+#                                           position='top')
 view.show()
 frame_source.start()
 
