@@ -270,7 +270,7 @@ class DataMuggler(QtCore.QObject):
         """
         if col_name not in self._dataframe:
             raise ValueError("non-existent columnn: [[{}]]".format(col_name))
-        ref_index = self._dataframe[col_name]
+        ref_index = self._dataframe[col_name].dropna().index
         tmp_dict = {}
         for k, v in six.iteritems(self._col_fill):
             if k == col_name:
@@ -278,8 +278,8 @@ class DataMuggler(QtCore.QObject):
             elif v is None:
                 tmp_dict[k] = False
             else:
-                tmp_dict[k] = bool(self._dataframe[k][ref_index].notnull().all())
-
+                algnable = self._dataframe[k][ref_index].notnull().all()
+                tmp_dict[k] = bool(algnable)
         return tmp_dict
 
     def append_data(self, time_stamp, data_dict):
@@ -330,8 +330,10 @@ class DataMuggler(QtCore.QObject):
 
         # make a new data frame with the input data and append it to the
         # existing data
-        self._dataframe = self._dataframe.append(
+        df, new = self._dataframe.align(
             pd.DataFrame(data_dict, index=time_stamp))
+        df.update(new)
+        self._dataframe = df
         self._dataframe.sort(inplace=True)
         # emit that we have new data!
         self.new_data.emit(list(data_dict))

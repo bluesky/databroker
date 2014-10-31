@@ -120,8 +120,11 @@ class ScalarCollection(Atom):
             self.data_muggler.new_data.connect(self.notify_new_data)
             self.x = self.data_muggler.keys()[0]
             alignable = self.data_muggler.align_against(self.x)
+            dims = data_muggler.cols_dims
             for name, is_plottable in six.iteritems(alignable):
-                line_artist,  = self._ax.plot([], [], label=name)
+                if dims[name] > 0:
+                    continue
+                line_artist, = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name)
                 self.scalar_models[name].can_plot = is_plottable
@@ -177,13 +180,14 @@ class ScalarCollection(Atom):
         """
         # self.print_state()
         if y_names is None:
-            y_names = set(six.iterkeys(self.scalar_models))
+            y_names = list(six.iterkeys(self.scalar_models))
+        y_names = set(y_names)
         valid_name = set(k for k, v in six.iteritems(
                                  self.data_muggler.align_against(self.x))
                          if v)
 
         other_cols = list(y_names & valid_name)
-
+        print(other_cols)
         time, data = self.data_muggler.get_values(ref_col=self.x,
                                                   other_cols=other_cols)
 

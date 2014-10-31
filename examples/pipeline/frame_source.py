@@ -104,6 +104,7 @@ class FrameSourcerBrownian(QtCore.QObject):
         print('fired {}, scale: {}, cur_pos: {}'.format(self._count,
                                                         self._scale,
                                                         self._cur_position))
+
         return True
 
     def gen_next_frame(self):
