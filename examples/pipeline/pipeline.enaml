@@ -1,4 +1,5 @@
-from enaml.layout.api import InsertItem, VSplitLayout, HSplitLayout
+from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
+                              InsertDockBarItem)
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
                                MainWindow, ObjectCombo)
 from replay.gui.line_view import LineView
@@ -11,46 +12,57 @@ from enaml.stdlib.dock_area_styles import available_styles
 def cap_case(name):
     return ' '.join(s.capitalize() for s in name.split('-'))
 
+def add_dock_bars(area, cross_section_view, cross_section_controller,
+           scalar_view, scalar_controller):
+    area.update_layout(InsertDockBarItem(item=cross_section_view,
+                                         target=cross_section_controller))
+    area.update_layout(InsertDockBarItem(item=scalar_view,
+                                         target=scalar_controller))
+
+
 enamldef PipelineView(MainWindow): window:
     title = "Live Data Demo"
     attr scalar_collection
     attr cross_section_model
-    Container:
+    Container: container:
         ObjectCombo: style_c:
             items = available_styles()
             to_string = cap_case
             selected = 'vs-2010'
-        DockArea:
+        DockArea: area:
             style << style_c.selected
             layout = HSplitLayout(VSplitLayout('cs controller',
                                                'scalar controller'),
                                   HSplitLayout('cs view', 'scalar view')
             )
-            DockItem:
+            DockItem: scalar_view:
                 name = 'scalar view'
                 title = 'Scalar View'
+                closable = False
                 Container:
-                    hug_width = 'strong'
                     ScalarView:
                         scalar_collection = window.scalar_collection
-            DockItem:
+            DockItem: scalar_controller:
                 name = 'scalar controller'
                 title = 'Scalar Controller'
+                closable = False
                 Container:
                     hug_width = 'strong'
                     ScalarController:
                         scalar_collection = window.scalar_collection
-            DockItem:
+            DockItem: cross_section_controller:
                 name = 'cs controller'
                 title = 'Cross Section Controller'
+                closable = False
                 Container:
                     hug_width = 'strong'
                     CrossSectionController:
                         name = 'cs controller'
                         cross_section_model = window.cross_section_model
-            DockItem:
+            DockItem: cross_section_view:
                 name = 'cs view'
                 title = 'Cross Section View'
+                closable = False
                 CrossSectionView:
                     hug_width = 'strong'
                     cross_section_model = window.cross_section_model

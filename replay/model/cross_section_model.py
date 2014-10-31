@@ -50,7 +50,7 @@ class CrossSectionModel(Atom):
     # auto-update image
     auto_update = Bool(False)
 
-    # absolute minimum of the currently selected image
+    # absolute minimum of the  currently selected image
     img_min = Float()
     # absolute minimum of the currently selected image
     img_max = Float()
@@ -93,8 +93,8 @@ class CrossSectionModel(Atom):
             try:
                 state += "\n{}: {}".format(var, self.__getattribute__(var))
             except Exception as e:
-                state += "\n{}: attribute not available because an exception " \
-                         "was raised: {}".format(var, e)
+                state += ("\n{}: attribute not available because an exception "
+                         "was raised: {}".format(var, e))
         return state
 
     # OBSERVATION METHODS
