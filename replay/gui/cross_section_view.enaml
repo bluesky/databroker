@@ -53,6 +53,8 @@ enamldef SliderWithSpinner(Container): sws:
         ComboBox:
             items << list(CrossSectionModel.redraw_type.items)
             selected_item >> cs_model.redraw_type
+            index := CrossSectionModel.redraw_type.items.index(
+                cs_model.redraw_type)
 
 
 

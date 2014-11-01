@@ -13,6 +13,7 @@ from matplotlib.lines import Line2D
 import pandas as pd
 import six
 from ..pipeline.pipeline import DataMuggler
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,12 @@ class ScalarCollection(Atom):
     _ax = Typed(Axes)
     col_names = List(item=str)
 
+    # UPDATE SPEED CONTROL
+    redraw_every = Float(default=1)
+    redraw_type = Enum('max rate', 's')
+    last_update_time = Typed(datetime)
+    last_update_frame = Int()
+
     def __init__(self, data_muggler):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
@@ -136,6 +143,7 @@ class ScalarCollection(Atom):
                                                        can_plot=is_plottable,
                                                        is_plotting=True)
         self.update_x(None)
+        self.redraw_type = 's'
 
     @observe('x')
     def update_x(self, changed):
@@ -181,14 +189,25 @@ class ScalarCollection(Atom):
         new_data : list
             List of names of updated columns from the data muggler
         """
+        redraw = False
+        if self.redraw_type == 's':
+            if ((datetime.utcnow() - self.last_update_time).total_seconds()
+                    >= self.redraw_every):
+                redraw = True
+            else:
+                # do nothing
+                pass
+        elif self.redraw_type == 'max rate':
+            redraw = True
         if self.x in new_data:
             # update all the data in the line plot
-            self.get_new_data_and_plot()
+            intersection = list(self.scalar_models)
         else:
             # find out which new_data keys overlap with the data that is
             # supposed to be shown on the plot
             intersection = [_ for _ in list(self.scalar_models)
                             if _ in new_data]
+        if redraw:
             self.get_new_data_and_plot(intersection)
 
     def get_new_data_and_plot(self, y_names=None):
@@ -221,6 +240,7 @@ class ScalarCollection(Atom):
         for dname, dvals in six.iteritems(data):
             self.scalar_models[dname].set_data(x=ref_data, y=dvals)
         self.plot()
+        self.last_update_time = datetime.utcnow()
 
     def plot(self):
         """

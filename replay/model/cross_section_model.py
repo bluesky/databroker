@@ -83,6 +83,7 @@ class CrossSectionModel(Atom):
             # hook up the data muggler's 'I have new data' signal
             self.dm.new_data.connect(self.notify_new_data)
         self.sliceable_data = sliceable_data
+        self.redraw_type = 's'
 
     # slot to hook the data muggler into
     def notify_new_data(self, new_data):

@@ -9,8 +9,10 @@ from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
-                               GroupBox, ScrollArea, PushButton, RadioButton
+                               GroupBox, ScrollArea, PushButton, RadioButton,
                                )
+from enaml.stdlib.fields import FloatField
+from replay.model.scalar_model import ScalarCollection
 
 enamldef ScalarController(Container):
     attr scalar_collection
@@ -26,6 +28,14 @@ enamldef ScalarController(Container):
                     # this scalar allows the plotter to come up with guns blazing
                     # (plotting)
                     index = 0
+                FloatField:
+                    value := scalar_collection.redraw_every
+                    minimum = 0.0
+                ComboBox:
+                    items << list(ScalarCollection.redraw_type.items)
+                    selected_item >> scalar_collection.redraw_type
+                    index := ScalarCollection.redraw_type.items.index(
+                        scalar_collection.redraw_type)
             GroupBox: plot:
                 title_align = 'center'
                 title = 'Plot'
