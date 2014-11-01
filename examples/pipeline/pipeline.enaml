@@ -75,14 +75,15 @@ enamldef PipelineView(MainWindow): window:
                 title = 'Cross Section View'
                 cs_model = window.cs_model
                 visible << cs_model.visible
-            PushButton:
-                text = "Show cross section"
-                checkable = True
-                checked := cs_model.visible
-                clicked ::
-                    print('cs_model.visible: {}'.format(cs_model.visible))
             DockItem: roi_view:
                 name = 'roi view'
                 title = "Region Of Interest"
-                RegionOfInterest:
-                    roi_model = window.roi_model
+                Container:
+                    RegionOfInterest:
+                        roi_model = window.roi_model
+                    PushButton:
+                        text = "Show cross section"
+                        checkable = True
+                        checked := cs_model.visible
+                        clicked ::
+                            print('cs_model.visible: {}'.format(cs_model.visible))

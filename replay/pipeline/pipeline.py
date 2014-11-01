@@ -277,19 +277,19 @@ class DataMuggler(QtCore.QObject):
         """
         if ref_col not in self._dataframe:
             raise ValueError("non-existent columnn: [[{}]]".format(ref_col))
-        ref_index = self._dataframe[ref_col]
+        ref_index = self._dataframe[ref_col].dropna().index
         tmp_dict = {}
-        for col_name, v in six.iteritems(self._col_fill):
+        for col_name, col_fill_type in six.iteritems(self._col_fill):
             if col_name == ref_col:
                 tmp_dict[col_name] = True
             elif other_cols and not col_name in other_cols:
                 # skip column names that are not in other_cols, if it passed in
                 continue
-            elif v is not None:
-                tmp_dict[col_name] = True
+            elif col_fill_type is None:
+                tmp_dict[col_name] = False
             else:
-                tmp_dict[col_name] = bool(self._dataframe[col_name][ref_index].notnull().all())
-
+                algnable = self._dataframe[col_name][ref_index].notnull().all()
+                tmp_dict[col_name] = bool(algnable)
         return tmp_dict
 
     def append_data(self, time_stamp, data_dict):
@@ -340,8 +340,10 @@ class DataMuggler(QtCore.QObject):
 
         # make a new data frame with the input data and append it to the
         # existing data
-        self._dataframe = self._dataframe.append(
+        df, new = self._dataframe.align(
             pd.DataFrame(data_dict, index=time_stamp))
+        df.update(new)
+        self._dataframe = df
         self._dataframe.sort(inplace=True)
         # emit that we have new data!
         self.new_data.emit(list(data_dict))
@@ -501,8 +503,8 @@ class DataMuggler(QtCore.QObject):
         """
         cols = list(self._dataframe)
         if dim is not None:
-            cols = [name for (name, dim)
-                    in six.iteritems(self.col_dims) if dim == dim]
+            cols = [col_name for (col_name, col_dim)
+                    in six.iteritems(self.col_dims) if col_dim == dim]
         cols = sorted(cols, key=lambda s: s.lower())
         return cols
 

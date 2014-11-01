@@ -35,23 +35,20 @@ def scale_fluc(scale, count):
 frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
-                                    max_count=center * 2
+                                    max_count=center*2
                                     )
 
 # set up mugglers
 # (name, fill_type, #num dims)
 dm = DataMuggler((('T', 'pad', 0),
                   ('img', 'bfill', 2),
-                  ('count', 'bfill', 0)
+                  ('count', 'bfill', 0),
+                  ('max', 'bfill', 0),
+                  ('x', 'bfill', 0),
+                  ('y', 'bfill', 0),
                   )
                  )
-dm2 = DataMuggler((('T', 'pad', 0),
-                   ('max', 'bfill', 0),
-                   ('x', 'bfill', 0),
-                   ('y', 'bfill', 0),
-                   ('count', 'bfill', 0)
-                   )
-                  )
+
 # construct a watcher for the image + count on the main DataMuggler
 mw = MuggleWatcherLatest(dm, 'img', ['count', 'T'])
 
@@ -59,8 +56,7 @@ mw = MuggleWatcherLatest(dm, 'img', ['count', 'T'])
 # multiply the image by 5 because we can
 p1 = PipelineComponent(lambda msg, data: (msg,
                                           {'img': data['img'] * 5,
-                                           'count': data['count'],
-                                           'T': data['T']}))
+                                           }))
 
 
 def rough_center(img, axis):
@@ -71,12 +67,11 @@ def rough_center(img, axis):
 p2 = PipelineComponent(lambda msg, data: (msg,
                                           {'max':
                                              np.max(data['img']),
-                                          'count': data['count'],
                                           'x': rough_center(data['img'],
                                                                  axis=0),
                                           'y': rough_center(data['img'],
                                                                  axis=1),
-                                          'T': data['T']
+
                                           }))
 
 
@@ -101,7 +96,7 @@ mw.sig.connect(p1.sink_slot)
 # p1 output -> p2 input
 p1.source_signal.connect(p2.sink_slot)
 # p2 output -> dm2
-p2.source_signal.connect(dm2.append_data)
+p2.source_signal.connect(dm.append_data)
 
 
 app = QtApplication()
@@ -109,7 +104,7 @@ app = QtApplication()
 with enaml.imports():
     from pipeline import PipelineView
 
-scalar_collection = ScalarCollection(data_muggler=dm2)
+scalar_collection = ScalarCollection(data_muggler=dm)
 img_seq = DmImgSequence(data_muggler=dm, data_name='img')
 cs_model = CrossSectionModel(data_muggler=dm, name='img',
                                         sliceable_data=img_seq)
