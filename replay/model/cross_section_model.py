@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 __author__ = 'edill'
 
+
 class CrossSectionModel(Atom):
     """ Back-end for the Cross Section viewer and its control panel
 
@@ -58,6 +59,8 @@ class CrossSectionModel(Atom):
     redraw_type = Enum('max rate', 's', 'frames')
     last_update_time = Typed(datetime)
     last_update_frame = Int()
+    update_rate = Str()
+    num_updates = Int()
 
     # absolute minimum of the  currently selected image
     img_min = Float()
@@ -87,6 +90,7 @@ class CrossSectionModel(Atom):
 
     # slot to hook the data muggler into
     def notify_new_data(self, new_data):
+        self.num_updates += 1
         if self.name in new_data:
             self.num_images = len(self.sliceable_data)
             redraw = False
@@ -94,7 +98,6 @@ class CrossSectionModel(Atom):
                 if ((datetime.utcnow() - self.last_update_time).total_seconds()
                         >= self.redraw_every):
                     redraw = True
-                    self.last_update_time = datetime.utcnow()
                 else:
                     # do nothing
                     pass
@@ -111,6 +114,15 @@ class CrossSectionModel(Atom):
                 redraw = True
             if self.auto_update and redraw:
                 self.image_index = self.num_images-1
+
+            if redraw:
+                # process the update timer
+                self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
+                    self.num_images - self.last_update_frame) /
+                    (datetime.utcnow() -self.last_update_time).total_seconds())
+                self.last_update_frame = self.num_images-1
+                self.last_update_time = datetime.utcnow()
+                self.num_updates = 0
 
     def get_state(self):
         state = "Current state of CrossSectionModel"

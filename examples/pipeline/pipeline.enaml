@@ -68,12 +68,12 @@ enamldef PipelineView(MainWindow): window:
                 title = 'Cross Section Controller'
                 closable = False
                 name = 'cs controller'
-                cs_model = window.cs_model
+                # cs_model = window.cs_model
                 visible << cs_model.visible
             CrossSectionView:
                 name = 'cs view'
                 title = 'Cross Section View'
-                cs_model = window.cs_model
+                # cs_model = window.cs_model
                 visible << cs_model.visible
             DockItem: roi_view:
                 name = 'roi view'

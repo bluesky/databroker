@@ -32,8 +32,8 @@ limit_options = ['full range', 'percentile', 'absolute']
 
 
 enamldef SliderWithSpinner(Container): sws:
-    attr cs_model
     Form:
+        row_spacing = 0
         Label: lbl:
             text = "Frame number"
         SpinBox: sbox:
@@ -47,23 +47,31 @@ enamldef SliderWithSpinner(Container): sws:
             value := cs_model.image_index
             minimum := cs_model.minimum
             maximum := cs_model.num_images
+        Label:
+            text = 'update rate'
         FloatField:
             value := cs_model.redraw_every
             minimum = 0.0
+        Label:
+            text = 'update unit'
         ComboBox:
             items << list(CrossSectionModel.redraw_type.items)
             selected_item >> cs_model.redraw_type
-            index := CrossSectionModel.redraw_type.items.index(
+            index << CrossSectionModel.redraw_type.items.index(
                 cs_model.redraw_type)
+        Label:
+            text = 'update rate'
+        Label:
+            text := cs_model.update_rate
 
 
 
 
 enamldef CrossSectionController(DockItem): csdock:
-    attr cs_model
     visible << cs_model.visible
     Container:
         Form: f:
+            row_spacing = 0
             padding = 0
             Label:
                 text = "Color map"
@@ -81,6 +89,7 @@ enamldef CrossSectionController(DockItem): csdock:
         GroupBox:
             title = "Image intensity"
             Form:
+                row_spacing = 0
                 padding = 0
                 Label:
                     text = "Limit Strategy"
@@ -102,11 +111,10 @@ enamldef CrossSectionController(DockItem): csdock:
                     value := cs_model.disp_max
 
         SliderWithSpinner: sws:
-            cs_model = csdock.cs_model
+            pass
 
 
 enamldef CrossSectionView(DockItem):
-    attr cs_model
     visible << cs_model.visible
     Container:
         CheckBox: check:
@@ -136,8 +144,6 @@ enamldef CrossSectionMain(MainWindow): mw:
             layout = HSplitLayout('controller', 'view')
             CrossSectionController:
                 name = 'controller'
-                cs_model = mw.cs_model
             CrossSectionView:
                 name = 'view'
-                cs_model = mw.cs_model
 

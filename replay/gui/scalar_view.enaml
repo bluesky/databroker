@@ -14,11 +14,16 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
 
+enamldef TimedUpdate(Container):
+    attr model
+    Form:
+        row_spacing = 0
 enamldef ScalarController(Container):
     attr scalar_collection
     ScrollArea: scroller:
         Container:
             Form:
+                row_spacing = 0
                 Label: xlbl:
                     text = "x axis"
                 ComboBox: xcmb:
@@ -28,14 +33,23 @@ enamldef ScalarController(Container):
                     # this scalar allows the plotter to come up with guns blazing
                     # (plotting)
                     index = 0
-                FloatField:
+                Label:
+                    text = 'update frequency'
+                FloatField: rate:
                     value := scalar_collection.redraw_every
                     minimum = 0.0
+                Label:
+                    text = 'update unit'
                 ComboBox:
                     items << list(ScalarCollection.redraw_type.items)
                     selected_item >> scalar_collection.redraw_type
-                    index := ScalarCollection.redraw_type.items.index(
+                    index << ScalarCollection.redraw_type.items.index(
                         scalar_collection.redraw_type)
+                Label:
+                    text = 'update rate'
+                Label:
+                    text := scalar_collection.update_rate
+
             GroupBox: plot:
                 title_align = 'center'
                 title = 'Plot'

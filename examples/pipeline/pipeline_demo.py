@@ -32,7 +32,7 @@ def scale_fluc(scale, count):
         return scale + .5
     return None
 
-frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
+frame_source = FrameSourcerBrownian(img_size, delay=100, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
                                     max_count=center*2
