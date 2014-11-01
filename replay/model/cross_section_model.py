@@ -118,8 +118,8 @@ class CrossSectionModel(Atom):
             if redraw:
                 # process the update timer
                 self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
-                    self.num_images - self.last_update_frame) /
-                    (datetime.utcnow() -self.last_update_time).total_seconds())
+                    self.num_updates) / (
+                    datetime.utcnow() - self.last_update_time).total_seconds())
                 self.last_update_frame = self.num_images-1
                 self.last_update_time = datetime.utcnow()
                 self.num_updates = 0
