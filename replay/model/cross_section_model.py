@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
 from ..pipeline.pipeline import DataMuggler, DmImgSequence
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class CrossSectionModel(Atom):
     """ Back-end for the Cross Section viewer and its control panel
 
     """
+    redraw_type = Enum('s', 'frames')
     # PARAMETERS -- VIEWER
     # List of 2-D images
     sliceable_data = Typed(DmImgSequence)
@@ -51,6 +53,12 @@ class CrossSectionModel(Atom):
     # auto-update image
     auto_update = Bool(False)
 
+    # UPDATE SPEED CONTROL
+    redraw_every = Float(default=1)
+    redraw_type = Enum('max rate', 's', 'frames')
+    last_update_time = Typed(datetime)
+    last_update_frame = Int()
+
     # absolute minimum of the  currently selected image
     img_min = Float()
     # absolute minimum of the currently selected image
@@ -80,7 +88,27 @@ class CrossSectionModel(Atom):
     def notify_new_data(self, new_data):
         if self.name in new_data:
             self.num_images = len(self.sliceable_data)
-            if self.auto_update:
+            redraw = False
+            if self.redraw_type == 's':
+                if ((datetime.utcnow() - self.last_update_time).total_seconds()
+                        >= self.redraw_every):
+                    redraw = True
+                    self.last_update_time = datetime.utcnow()
+                else:
+                    # do nothing
+                    pass
+            elif self.redraw_type == 'frames':
+                if ((self.num_images - self.last_update_frame)
+                        >= self.redraw_every):
+                    redraw = True
+                    self.last_update_frame = self.num_images-1
+                else:
+                    # do nothing
+                    pass
+
+            elif self.redraw_type == 'max rate':
+                redraw = True
+            if self.auto_update and redraw:
                 self.image_index = self.num_images-1
 
     def get_state(self):
@@ -99,6 +127,14 @@ class CrossSectionModel(Atom):
         return state
 
     # OBSERVATION METHODS
+    @observe('redraw_type')
+    def _update_redraw_type(self, update):
+        self.last_update_time = datetime.utcnow()
+        self.last_update_frame = self.image_index
+        print('self.redraw_type: {}'.format(self.redraw_type))
+    @observe('redraw_every')
+    def _update_redraw_delay(self, update):
+        print('self.redraw_every: {}'.format(self.redraw_every))
     @observe('sliceable_data')
     def _update_sliceable_data(self, update):
         print('sliceable data updated')
