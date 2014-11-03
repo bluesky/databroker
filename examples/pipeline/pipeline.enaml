@@ -21,8 +21,6 @@ def add_dock_bars(area, cross_section_view, cross_section_controller,
                                          target=scalar_controller))
 
 enamldef RegionOfInterest(Container):
-    attr roi_model
-
     FloatField: input:
         value := roi_model.value
     PushButton: btn:
@@ -36,6 +34,7 @@ enamldef PipelineView(MainWindow): window:
     attr scalar_collection
     attr cs_model
     attr roi_model
+    attr fitting_model
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -54,7 +53,7 @@ enamldef PipelineView(MainWindow): window:
                 closable = False
                 Container:
                     ScalarView:
-                        scalar_collection = window.scalar_collection
+                        pass
             DockItem: scalar_controller:
                 name = 'scalar controller'
                 title = 'Scalar Controller'
@@ -62,25 +61,23 @@ enamldef PipelineView(MainWindow): window:
                 Container:
                     hug_width = 'strong'
                     ScalarController:
-                        scalar_collection = window.scalar_collection
+                        pass
             CrossSectionController:
                 name = 'cs controller'
                 title = 'Cross Section Controller'
                 closable = False
                 name = 'cs controller'
-                # cs_model = window.cs_model
                 visible << cs_model.visible
             CrossSectionView:
                 name = 'cs view'
                 title = 'Cross Section View'
-                # cs_model = window.cs_model
                 visible << cs_model.visible
             DockItem: roi_view:
                 name = 'roi view'
                 title = "Region Of Interest"
                 Container:
                     RegionOfInterest:
-                        roi_model = window.roi_model
+                        pass
                     PushButton:
                         text = "Show cross section"
                         checkable = True

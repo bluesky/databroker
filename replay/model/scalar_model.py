@@ -115,10 +115,10 @@ class ScalarCollection(Atom):
     # UPDATE SPEED CONTROL
     redraw_every = Float(default=1)
     redraw_type = Enum('max rate', 's')
-    last_update_time = Typed(datetime)
-    last_update_frame = Int()
     update_rate = Str()
-    num_updates = Int()
+    _last_update_time = Typed(datetime)
+    _last_update_frame = Int()
+    _num_updates = Int()
 
     def __init__(self, data_muggler):
         with self.suppress_notifications():
@@ -144,7 +144,7 @@ class ScalarCollection(Atom):
                                                        name=name,
                                                        can_plot=is_plottable,
                                                        is_plotting=True)
-            self.last_update_time = datetime.utcnow()
+            self._last_update_time = datetime.utcnow()
         self.update_x(None)
         self.redraw_type = 's'
 
@@ -192,10 +192,10 @@ class ScalarCollection(Atom):
         new_data : list
             List of names of updated columns from the data muggler
         """
-        self.num_updates += 1
+        self._num_updates += 1
         redraw = False
         if self.redraw_type == 's':
-            if ((datetime.utcnow() - self.last_update_time).total_seconds()
+            if ((datetime.utcnow() - self._last_update_time).total_seconds()
                     >= self.redraw_every):
                 redraw = True
             else:
@@ -245,10 +245,10 @@ class ScalarCollection(Atom):
             self.scalar_models[dname].set_data(x=ref_data, y=dvals)
         self.plot()
         self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
-            self.num_updates) / (datetime.utcnow() -
-                                 self.last_update_time).total_seconds())
-        self.num_updates = 0
-        self.last_update_time = datetime.utcnow()
+            self._num_updates) / (datetime.utcnow() -
+                                 self._last_update_time).total_seconds())
+        self._num_updates = 0
+        self._last_update_time = datetime.utcnow()
 
     def plot(self):
         """

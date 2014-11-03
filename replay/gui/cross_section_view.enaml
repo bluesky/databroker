@@ -47,6 +47,7 @@ enamldef SliderWithSpinner(Container): sws:
             value := cs_model.image_index
             minimum := cs_model.minimum
             maximum := cs_model.num_images
+            tick_interval << int(value / 10)
         Label:
             text = 'update rate'
         FloatField:

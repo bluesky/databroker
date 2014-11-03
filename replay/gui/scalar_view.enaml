@@ -14,12 +14,20 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
 
-enamldef TimedUpdate(Container):
-    attr model
-    Form:
-        row_spacing = 0
+#enamldef FitView(Container):
+
+enamldef FitController(Container):
+    attr show_fit: bool = True
+    Container:
+        visible := show_fit
+        Form:
+            Label:
+                text = 'Fit model'
+            ComboBox:
+                items << fitting_model.model_names
+
+
 enamldef ScalarController(Container):
-    attr scalar_collection
     ScrollArea: scroller:
         Container:
             Form:
@@ -82,20 +90,23 @@ enamldef ScalarController(Container):
                 padding = Box(0, 0, 0, 0)
 
 enamldef ScalarView(Container):
-    attr scalar_collection
-
     Container:
         constraints = [
             vbox(
-                hbox(check, spacer),
-                canvas,
+                hbox(check, spacer, fit),
+                vbox(canvas, fitter),
             ),
         ]
         CheckBox: check:
             text = 'Toolbar Visible'
             checked := canvas.toolbar_visible
+        CheckBox: fit:
+            text = 'Fitting Visible'
+            checked := fitter.show_fit
         MPLCanvas: canvas:
             figure << scalar_collection._fig
+        FitController: fitter:
+            pass
 
 
 enamldef ScalarContainer(Window): window:
@@ -108,10 +119,10 @@ enamldef ScalarContainer(Window): window:
                 title = 'Scalar View'
                 Container:
                     ScalarView: contains:
-                        scalar_collection = window.scalar_collection
+                        pass
             DockItem:
                 name = 'controls'
                 title = 'Scalar Controller'
                 Container:
                     ScalarController: controls:
-                        scalar_collection = window.scalar_collection
+                        pass

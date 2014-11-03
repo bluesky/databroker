@@ -6,23 +6,63 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
+import six
+import sys
 from lmfit import Model
 import logging
 logger = logging.getLogger(__name__)
 
-class FittingModel(Atom):
+
+
+class FitModel(Atom):
+    """Back-end for the FitController
+
+    """
+    params = Dict()
+    model = Typed(Model)
+
+    def __init__(self, model, *args, **kwargs):
+        print(model)
+        if type(model) is type:
+            self.model = model()
+        else:
+            self.model = model
+        print(self.model.name)
+        self.params.update(self.model.make_params())
+        super(FitModel, self).__init__()
+
+class PolynomialModel(FitModel):
+    """Back-end specific to the polynomial model
+    """
+    polynomial_order = Int(2)
+    def __init__(self, model, poly_order=None):
+        if poly_order is None:
+            poly_order = self.polynomial_order
+        self.polynomial_order = poly_order
+        model = model(degree=self.polynomial_order)
+        super(PolynomialModel, self).__init__(model)
+
+class FitController(Atom):
     """ Back-end for the enaml fitting viewer
 
     """
 
-    # PARAMETERS -- VIEWER
-    _fit_x = List()
-    _fit_y = List()
+    models = Dict()
+    model_names = List()
+    _valid_models = List()
+    current_model = Enum(_valid_models)
 
-    model = Typed(Model)
-    p_dict = Dict()
 
-    def __init__(self, fit_model):
-        self.model = fit_model
-        self.p_dict = self.model().make_params()
-
+    def __init__(self, valid_models):
+        self._valid_models = valid_models
+        for model in self._valid_models:
+            try:
+                the_model = FitModel(model)
+            except TypeError as te:
+                if model.__name__ == 'PolynomialModel':
+                    the_model = PolynomialModel(model=model)
+                else:
+                    six.reraise(TypeError, te, sys.exc_info()[2])
+            self.models[model.__name__] = the_model
+        self.model_names = list(self.models)
+        self.model_names.sort()

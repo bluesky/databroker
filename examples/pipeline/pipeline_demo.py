@@ -32,7 +32,7 @@ def scale_fluc(scale, count):
         return scale + .5
     return None
 
-frame_source = FrameSourcerBrownian(img_size, delay=100, step_scale=.5,
+frame_source = FrameSourcerBrownian(img_size, delay=1, step_scale=.5,
                                     I_fluc_function=I_func_gaus,
                                     step_fluc_function=scale_fluc,
                                     max_count=center*2
@@ -109,10 +109,14 @@ img_seq = DmImgSequence(data_muggler=dm, data_name='img')
 cs_model = CrossSectionModel(data_muggler=dm, name='img',
                                         sliceable_data=img_seq)
 roi_model = RegionOfInterestModel(callback=roi_callback)
+from nsls2.fitting.model.physics_model import model_list as valid_models
+from replay.model.fitting_model import FitController
+fitting_model = FitController(valid_models=valid_models)
 
 view = PipelineView(scalar_collection=scalar_collection,
                     cs_model=cs_model,
-                    roi_model=roi_model)
+                    roi_model=roi_model,
+                    fitting_model=fitting_model)
 view.show()
 frame_source.start()
 
