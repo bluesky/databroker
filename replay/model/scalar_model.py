@@ -20,6 +20,8 @@ class ScalarModel(Atom):
 
     Attributes
     ----------
+    line_artist : matplotlib.lines.Line2D
+        The visual representation of the scalar model (the view!)
     name : atom.scalars.Str
         The name of the data set represented by this ScalarModel
     is_plotting : atom.Bool
@@ -31,11 +33,10 @@ class ScalarModel(Atom):
     name = Str()
     is_plotting = Bool()
     can_plot = Bool()
-    #The visual representation of the scalar model (the view!)
-    _line_artist = Typed(Line2D)
+    line_artist = Typed(Line2D)
 
     def __init__(self, line_artist, **kwargs):
-        self._line_artist = line_artist
+        self.line_artist = line_artist
         self.is_plotting = line_artist.get_visible()
         print(kwargs)
         for name, val in six.iteritems(kwargs):
@@ -49,13 +50,13 @@ class ScalarModel(Atom):
         x : np.ndarray
         y : np.ndarray
         """
-        self._line_artist.set_data(x, y)
+        self.line_artist.set_data(x, y)
 
     @observe('is_plotting')
     def set_visible(self, changed):
-        self._line_artist.set_visible(changed['value'])
+        self.line_artist.set_visible(changed['value'])
         try:
-            self._line_artist.axes.figure.canvas.draw()
+            self.line_artist.axes.figure.canvas.draw()
         except AttributeError:
             pass
 
@@ -75,7 +76,7 @@ class ScalarModel(Atom):
         state += '\nname: {}'.format(self.name)
         state += '\nis_plotting: {}'.format(self.is_plotting)
         state += '\ncan_plot: {}'.format(self.can_plot)
-        state += '\nline_artist: {}'.format(self._line_artist)
+        state += '\nline_artist: {}'.format(self.line_artist)
         return state
 
 
