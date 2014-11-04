@@ -22,7 +22,8 @@ class Parameter(Atom):
     init_value = Float()
     min = Float()
     max = Float()
-    vary
+    vary = Bool()
+
 
 class FitModel(Atom):
     """Back-end for the FitController

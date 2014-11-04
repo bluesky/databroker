@@ -2,15 +2,9 @@ __author__ = 'edill'
 
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
                       Typed, Dict, Constant, Coerced)
-import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from matplotlib import colors
-from bubblegum.backend.mpl.cross_section_2d import CrossSection
-from ..model.cross_section_model import CrossSectionModel
-from lmfit import Model
 from matplotlib.lines import Line2D
-import pandas as pd
 import six
 from ..pipeline.pipeline import DataMuggler
 from datetime import datetime
@@ -23,11 +17,9 @@ class ScalarModel(Atom):
     ScalarModel is the model in the Model-View-Controller pattern that backs
     a scalar versus some x-value, i.e., an (x,y) plot.  ScalarModel requires
     a line artist
-    Parameters
+
+    Attributes
     ----------
-    line_artist : mpl.lines.Line2D
-        The line_artist that the ScalarModel is in charge of bossing around.
-        The visual representation of the scalar model (the view!)
     name : atom.scalars.Str
         The name of the data set represented by this ScalarModel
     is_plotting : atom.Bool
@@ -39,10 +31,11 @@ class ScalarModel(Atom):
     name = Str()
     is_plotting = Bool()
     can_plot = Bool()
-    line_artist = Typed(Line2D)
+    #The visual representation of the scalar model (the view!)
+    _line_artist = Typed(Line2D)
 
     def __init__(self, line_artist, **kwargs):
-        self.line_artist = line_artist
+        self._line_artist = line_artist
         self.is_plotting = line_artist.get_visible()
         print(kwargs)
         for name, val in six.iteritems(kwargs):
@@ -56,13 +49,13 @@ class ScalarModel(Atom):
         x : np.ndarray
         y : np.ndarray
         """
-        self.line_artist.set_data(x, y)
+        self._line_artist.set_data(x, y)
 
     @observe('is_plotting')
     def set_visible(self, changed):
-        self.line_artist.set_visible(changed['value'])
+        self._line_artist.set_visible(changed['value'])
         try:
-            self.line_artist.axes.figure.canvas.draw()
+            self._line_artist.axes.figure.canvas.draw()
         except AttributeError:
             pass
 
@@ -82,7 +75,7 @@ class ScalarModel(Atom):
         state += '\nname: {}'.format(self.name)
         state += '\nis_plotting: {}'.format(self.is_plotting)
         state += '\ncan_plot: {}'.format(self.can_plot)
-        state += '\nline_artist: {}'.format(self.line_artist)
+        state += '\nline_artist: {}'.format(self._line_artist)
         return state
 
 
@@ -96,7 +89,7 @@ class ScalarCollection(Atom):
     are then shoved into ScalarModels and the ScalarCollection manages the
     ScalarModels.
 
-    Parameters
+    Attributes
     ----------
     data_muggler : replay.pipeline.pipeline.DataMuggler
         The data manager backing the ScalarModel. The DataMuggler's new_data
@@ -128,17 +121,22 @@ class ScalarCollection(Atom):
     scalar_models = Dict(key=Str(), value=ScalarModel)
     data_muggler = Typed(DataMuggler)
     x = Str()
-    # mpl
-    _fig = Typed(Figure)
-    _ax = Typed(Axes)
     col_names = List(item=str)
 
-    # UPDATE SPEED CONTROL
+    # MPL PLOTTING STUFF
+    _fig = Typed(Figure)
+    _ax = Typed(Axes)
+
+    # CONTROL OF THE PLOT UPDATE SPEED
     redraw_every = Float(default=1)
     redraw_type = Enum('max rate', 's')
     update_rate = Str()
+    # the last time that the plot was updated
     _last_update_time = Typed(datetime)
+    # the last frame that the plot was updated
     _last_update_frame = Int()
+    # the number of times that `notify_new_data` has been called since the last
+    # update
     _num_updates = Int()
 
     def __init__(self, data_muggler):
@@ -275,7 +273,8 @@ class ScalarCollection(Atom):
 
     def plot(self):
         """
-        Recompute the limits, rescale the view and redraw the canvas
+        Recompute the limits, rescale the view, reformat the legend and redraw
+        the canvas
         """
         try:
             legend_pairs = [(v.line_artist, k)
