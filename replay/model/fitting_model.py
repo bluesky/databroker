@@ -13,6 +13,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class Parameter(Atom):
+    """Atom version of the lm-fit Parameter class
+
+    """
+    name = Str()
+    user_value = Float()
+    init_value = Float()
+    min = Float()
+    max = Float()
+    vary
 
 class FitModel(Atom):
     """Back-end for the FitController

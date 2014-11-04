@@ -26,18 +26,19 @@ class ScalarModel(Atom):
     Parameters
     ----------
     line_artist : mpl.lines.Line2D
-        The line_artist that the ScalarModel is in charge of bossing around
+        The line_artist that the ScalarModel is in charge of bossing around.
+        The visual representation of the scalar model (the view!)
     name : atom.scalars.Str
         The name of the data set represented by this ScalarModel
-    """
+    is_plotting : atom.Bool
+        Visibility of the data set on the canvas
+    can_plot : atom.Bool
+        If the data set can be shown on the canvas
 
-    # name of the data set being plotted
+    """
     name = Str()
-    # visibility of the data set on the canvas
     is_plotting = Bool()
-    # if the data set can be shown on the canvas
     can_plot = Bool()
-    # the visual representation of the scalar model (the view!)
     line_artist = Typed(Line2D)
 
     def __init__(self, line_artist, **kwargs):
@@ -102,10 +103,30 @@ class ScalarCollection(Atom):
         signal is connected to the notify_new_data function of the ScalarModel
         so that the ScalarModel can decide what to do when the DataMuggler
         receives new data.
+    scalar_models : atom.Dict
+        The collection of scalar_models that the ScalarCollection knows about
+    col_names : atom.List
+        The names of the data sets that are in the DataMuggler
+    redraw_every : atom.Float
+        The frequency with which to redraw the plot. The meaning of this
+        parameter changes based on `redraw_type`
+    redraw_type : {'max rate', 's'}
+        Gives meaning to the float stored in `redraw_every`. Should be read as
+        'Update the plot at a rate of `redraw_every` per `redraw_type`'. Since
+        there are only the two options in `ScalarCollection`, it should be
+        understood that the previous statement is only relevant when 's' is
+        selected as the `redraw_type`. If `max_rate` is selected, then the plot
+        will attempt to update itself as fast as data is coming in. Beware that
+        this may cause significant performance issues if your data rate is
+        > 20 Hz
+    update_rate : atom.Str
+        Formatted rate that new data is coming in.
+    x : atom.Str
+        The name of the x-axis that the `scalar_models` should be plotted
+        against
     """
     scalar_models = Dict(key=Str(), value=ScalarModel)
     data_muggler = Typed(DataMuggler)
-    # current x-axis of the scalar_models
     x = Str()
     # mpl
     _fig = Typed(Figure)
@@ -164,6 +185,8 @@ class ScalarCollection(Atom):
         self.get_new_data_and_plot()
 
     def print_state(self):
+        """Print the, uh, state
+        """
         for model_name, model in six.iteritems(self.scalar_models):
             print(model.get_state())
 
