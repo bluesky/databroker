@@ -1,0 +1,55 @@
+
+from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+from replay.model.fitting_model import ParameterModel
+from enaml.layout.api import vbox, hbox, spacer, align
+from enaml.stdlib.fields import FloatField
+from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
+                               CheckBox, DockItem, DockPane, Form, Label,
+                               Slider, MainWindow, ComboBox, SpinBox,
+                               GroupBox, Field
+                               )
+
+
+""" The Enaml UI code for the fitting viewer and control panel
+"""
+
+enamldef ParameterView(Container):
+    attr param
+    constraints = [
+        hbox(txt, min, cmb_min, value, cmb_max, max),
+        align('v_center', txt, value, min, max, cmb_min, cmb_max),
+    ]
+    Label: txt:
+        text << param.name
+    FloatField: value:
+        value := param.init_value
+    FloatField: min:
+        value := param.min
+        enabled := param.bounded_min
+    FloatField: max:
+        value := param.max
+        enabled := param.bounded_max
+    ComboBox: cmb_min:
+        items = list(ParameterModel.min_bound_type.items)
+        index = 0
+        selected_item >> param.min_bound_type
+        index ::
+            param.bounded_min = not (items[index] == ParameterModel.disabled)
+    ComboBox: cmb_max:
+        items = list(ParameterModel.max_bound_type.items)
+        selected_item >> param.max_bound_type
+        index = 0
+        index ::
+            param.bounded_max = not (items[index] == ParameterModel.disabled)
+            if items[index] == '=':
+                param.bounded_min = False
+                cmb_min.index = cmb_min.items.index(ParameterModel.disabled)
+
+
+enamldef FittingParameters(Container):
+    attr fitting_model
+
+enamldef ParameterMain(MainWindow): main:
+    attr param
+    ParameterView:
+        param = main.param

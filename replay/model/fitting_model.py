@@ -1,7 +1,7 @@
 __author__ = 'edill'
 
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed, Dict)
+                      Typed, Dict, Coerced)
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib import colors
@@ -13,16 +13,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Parameter(Atom):
+class ParameterModel(Atom):
     """Atom version of the lm-fit Parameter class
 
     """
+    disabled = 'disabled'
     name = Str()
-    user_value = Float()
     init_value = Float()
     min = Float()
     max = Float()
-    vary = Bool()
+    vary = Bool(True)
+    bounded_min = Bool(True)
+    bounded_max = Bool(True)
+    min_bound_type = Enum('<', '<=', disabled)
+    max_bound_type = Enum('<', '<=', '=', disabled)
+
+    @observe('init_value', 'min', 'max', 'vary', 'bounded_min', 'bounded_max',
+             'min_bound_type', 'max_bound_type')
+    def observe_changeables(self, changed):
+        print(changed)
 
 
 class FitModel(Atom):
