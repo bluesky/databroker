@@ -34,7 +34,7 @@ enamldef PipelineView(MainWindow): window:
     attr scalar_collection
     attr cs_model
     attr roi_model
-    attr fitting_model
+    attr fit_controller
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()

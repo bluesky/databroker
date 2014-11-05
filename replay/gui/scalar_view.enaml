@@ -13,18 +13,8 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                )
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
+from replay.gui.fitting_view import FitController
 
-#enamldef FitView(Container):
-
-enamldef FitController(Container):
-    attr show_fit: bool = True
-    Container:
-        visible := show_fit
-        Form:
-            Label:
-                text = 'Fit model'
-            ComboBox:
-                items << fitting_model.model_names
 
 
 enamldef ScalarController(Container):
@@ -83,7 +73,8 @@ enamldef ScalarController(Container):
                         RadioButton: cb_fit:
                             text = loop_item
                             checked ::
-                               print('cb_fit clicked for {}'.format(text))
+                                scalar_collection.fit_target = text
+                                print('cb_fit clicked for {}'.format(text))
             GroupBox: fit:
                 title_align = 'center'
                 title = 'Fit'

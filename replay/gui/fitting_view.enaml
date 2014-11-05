@@ -1,12 +1,14 @@
 
 from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+import six
 from replay.model.fitting_model import ParameterModel
+from enaml.core.api import Looper
 from enaml.layout.api import vbox, hbox, spacer, align
 from enaml.stdlib.fields import FloatField
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
-                               GroupBox, Field
+                               GroupBox, Field, PushButton
                                )
 
 
@@ -16,13 +18,12 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
 enamldef ParameterView(Container):
     attr param
     constraints = [
-        hbox(txt, min, cmb_min, value, cmb_max, max),
-        align('v_center', txt, value, min, max, cmb_min, cmb_max),
+        hbox(min, cmb_min, value, cmb_max, max, spacer),
+        align('v_center', value, min, max, cmb_min, cmb_max),
     ]
-    Label: txt:
-        text << param.name
+    padding = (0, 0, 0, 0)
     FloatField: value:
-        value := param.init_value
+        value := param.value
     FloatField: min:
         value := param.min
         enabled := param.bounded_min
@@ -45,11 +46,61 @@ enamldef ParameterView(Container):
                 param.bounded_min = False
                 cmb_min.index = cmb_min.items.index(ParameterModel.disabled)
 
+enamldef ModelView(Container):
+    attr model
+    GroupBox: gb:
+        title_align = 'center'
+        title << model.name
+        Form:
+            row_spacing = 0
+            Looper:
+                iterable << six.iterkeys(model.params)
+                Label:
+                    text = model.params[loop_item].name
+                ParameterView: pv:
+                    param = model.params[loop_item]
 
-enamldef FittingParameters(Container):
-    attr fitting_model
 
-enamldef ParameterMain(MainWindow): main:
+enamldef FitController(Container):
+    attr show_fit: bool = True
+    Container:
+        visible << show_fit
+        constraints = [
+            vbox(hbox(cmb_models, btn_auto, btn_fit, btn_guess, spacer), mv)
+        ]
+        ComboBox: cmb_models:
+            items << fit_controller.model_names
+            index = fit_controller.model_names.index('GaussianModel')
+            selected_item >> fit_controller.current_model
+        PushButton: btn_auto:
+            text = "Auto Fit"
+            checkable = True
+            checked := fit_controller.autofit
+        PushButton: btn_fit:
+            text = "Fit"
+            clicked ::
+                fit_controller.fit()
+                print('btn_fit clicked')
+        PushButton: btn_guess:
+            text = "Guess"
+            checkable = True
+            checked := fit_controller.guess
+        ModelView: mv:
+            model << fit_controller.atom_models[
+                fit_controller.model_names[cmb_models.index]]
+
+
+enamldef ParameterMain(MainWindow): param_main:
     attr param
     ParameterView:
-        param = main.param
+        param = param_main.param
+
+enamldef ModelMain(MainWindow): model_main:
+    attr fit_controller
+    Container:
+        ComboBox: cmb_models:
+            items << fit_controller.model_names
+            index = 0
+        ModelView: mv:
+            model << fit_controller.models[
+                fit_controller.model_names[cmb_models.index]]

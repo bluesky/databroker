@@ -9,6 +9,7 @@ import six
 from ..pipeline.pipeline import DataMuggler
 from datetime import datetime
 import logging
+from .fitting_model import FitController
 logger = logging.getLogger(__name__)
 
 
@@ -128,6 +129,10 @@ class ScalarCollection(Atom):
     _fig = Typed(Figure)
     _ax = Typed(Axes)
 
+    # FITTING
+    fit_target = Str()
+    fit_controller = Typed(FitController)
+
     # CONTROL OF THE PLOT UPDATE SPEED
     redraw_every = Float(default=1)
     redraw_type = Enum('max rate', 's')
@@ -140,10 +145,11 @@ class ScalarCollection(Atom):
     # update
     _num_updates = Int()
 
-    def __init__(self, data_muggler):
+    def __init__(self, data_muggler, fit_controller):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             self.data_muggler = data_muggler
+            self.fit_controller = fit_controller
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             # self._ax.hold()
@@ -153,6 +159,7 @@ class ScalarCollection(Atom):
             self.data_muggler.new_columns.connect(self.notify_new_column)
             # get the column names with dimensionality equal to zero
             self.col_names = self.data_muggler.keys(dim=0)
+            self.col_names.append('fit')
             # default to the first column name
             self.x = self.col_names[0]
             # get the alignability of the columns that this model cares about
@@ -164,6 +171,13 @@ class ScalarCollection(Atom):
                                                        name=name,
                                                        can_plot=is_plottable,
                                                        is_plotting=True)
+            # add the fit
+            name = 'fit'
+            line_artist, = self._ax.plot([], [], label=name)
+            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+                                                   name=name,
+                                                   can_plot=True,
+                                                   is_plotting=True)
             self._last_update_time = datetime.utcnow()
         self.update_x(None)
         self.redraw_type = 's'
@@ -173,6 +187,8 @@ class ScalarCollection(Atom):
         # check with the muggler for the columns that can be plotted against
         sliceable = self.data_muggler.align_against(self.x)
         for name, scalar_model in six.iteritems(self.scalar_models):
+            if name == 'fit':
+                continue
             if not sliceable[name]:
                 # turn off the plotting and disable the check box
                 scalar_model.is_plotting = False
@@ -250,6 +266,7 @@ class ScalarCollection(Atom):
         # self.print_state()
         if y_names is None:
             y_names = list(six.iterkeys(self.scalar_models))
+
         y_names = set(y_names)
         valid_name = set(k for k, v in six.iteritems(
                                  self.data_muggler.align_against(self.x))
@@ -259,12 +276,24 @@ class ScalarCollection(Atom):
         print(other_cols)
         time, data = self.data_muggler.get_values(ref_col=self.x,
                                                   other_cols=other_cols)
-
         ref_data = data.pop(self.x)
         if self.scalar_models[self.x].is_plotting:
             self.scalar_models[self.x].set_data(x=ref_data, y=ref_data)
         for dname, dvals in six.iteritems(data):
             self.scalar_models[dname].set_data(x=ref_data, y=dvals)
+
+        # manage the fitting
+        if self.fit_target is not '':
+            target_data = ref_data
+            if self.fit_target != self.x:
+                target_data = data[self.fit_target]
+            self.fit_controller.set_xy(x=ref_data.values, y=target_data.values)
+        if self.fit_controller.guess:
+            self.fit_controller.do_guess()
+        if self.fit_controller.autofit:
+            self.fit_controller.fit()
+            self.scalar_models['fit'].set_data(x=ref_data.values,
+                                               y=self.fit_controller.best_fit)
         self.plot()
         self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
             self._num_updates) / (datetime.utcnow() -

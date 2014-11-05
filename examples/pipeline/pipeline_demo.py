@@ -20,8 +20,8 @@ import enaml
 img_size = (150, 150)
 period = 150
 I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
-center = 2000
-sigma = 1250
+center = 500
+sigma = center / 4
 I_func_gaus = lambda count: (1 + np.exp(-((count - center)/sigma) ** 2))
 
 
@@ -104,19 +104,20 @@ app = QtApplication()
 with enaml.imports():
     from pipeline import PipelineView
 
-scalar_collection = ScalarCollection(data_muggler=dm)
 img_seq = DmImgSequence(data_muggler=dm, data_name='img')
 cs_model = CrossSectionModel(data_muggler=dm, name='img',
                                         sliceable_data=img_seq)
 roi_model = RegionOfInterestModel(callback=roi_callback)
 from nsls2.fitting.model.physics_model import model_list as valid_models
 from replay.model.fitting_model import FitController
-fitting_model = FitController(valid_models=valid_models)
+fit_controller = FitController(valid_models=valid_models)
+scalar_collection = ScalarCollection(data_muggler=dm,
+                                     fit_controller=fit_controller)
 
 view = PipelineView(scalar_collection=scalar_collection,
                     cs_model=cs_model,
                     roi_model=roi_model,
-                    fitting_model=fitting_model)
+                    fit_controller=fit_controller)
 view.show()
 frame_source.start()
 
