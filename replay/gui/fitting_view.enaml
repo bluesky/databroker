@@ -8,14 +8,14 @@ from enaml.stdlib.fields import FloatField
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
-                               GroupBox, Field, PushButton
+                               GroupBox, Field, PushButton, ScrollArea
                                )
 
 
 """ The Enaml UI code for the fitting viewer and control panel
 """
 
-enamldef ParameterView(Container):
+enamldef ParameterViewVerbose(Container):
     attr param
     constraints = [
         hbox(min, cmb_min, value, cmb_max, max, spacer),
@@ -46,54 +46,120 @@ enamldef ParameterView(Container):
                 param.bounded_min = False
                 cmb_min.index = cmb_min.items.index(ParameterModel.disabled)
 
+enamldef ParameterViewSimple(Container):
+    attr param
+    padding = (0, 0, 0, 0)
+    FloatField: value:
+        value := param.value
+
 enamldef ModelView(Container):
     attr model
-    GroupBox: gb:
-        title_align = 'center'
-        title << model.name
+    attr verbose: bool = False
+    GroupBox: advanced_group:
+        # visible << model.show_advanced
+        visible = True
+        padding = (0, 0, 0, 0)
         Form:
             row_spacing = 0
+            column_spacing = 0
             Looper:
                 iterable << six.iterkeys(model.params)
                 Label:
                     text = model.params[loop_item].name
-                ParameterView: pv:
+                ParameterViewVerbose: pv:
+                    param = model.params[loop_item]
+    GroupBox: basic_group:
+        # visible =  model.show_basic
+        visible = False
+        padding = (0, 0, 0, 0)
+        Form:
+            row_spacing = 0
+            column_spacing = 0
+            Looper:
+                iterable << six.iterkeys(model.params)
+                Label:
+                    text = model.params[loop_item].name
+                ParameterViewSimple: value:
                     param = model.params[loop_item]
 
 
-enamldef FitController(Container):
-    attr show_fit: bool = True
+
+enamldef FitController(GroupBox): controller:
+    attr fit_controller
     Container:
-        visible << show_fit
         constraints = [
-            vbox(hbox(cmb_models, btn_auto, btn_fit, btn_guess, spacer), mv)
+            vbox(hbox(cmb_models, btn_show, btn_verbose, spacer),
+                 mv),
         ]
+        padding = (0, 0, 0, 0)
         ComboBox: cmb_models:
             items << fit_controller.model_names
-            index = fit_controller.model_names.index('GaussianModel')
+            index = fit_controller.model_names.index(
+                fit_controller.current_model)
             selected_item >> fit_controller.current_model
-        PushButton: btn_auto:
-            text = "Auto Fit"
+        PushButton: btn_show:
+            text = 'Show Parameters'
             checkable = True
-            checked := fit_controller.autofit
-        PushButton: btn_fit:
-            text = "Fit"
-            clicked ::
-                fit_controller.fit()
-                print('btn_fit clicked')
-        PushButton: btn_guess:
-            text = "Guess"
+            checked := mv.visible
+            clicked::
+                if checked:
+                    controller.request_relayout()
+        PushButton: btn_verbose:
+            text = "Verbose"
             checkable = True
-            checked := fit_controller.guess
+            checked >> mv.verbose
+            enabled = False
         ModelView: mv:
             model << fit_controller.atom_models[
                 fit_controller.model_names[cmb_models.index]]
 
+def listify(lst):
+    return list(lst)
+
+enamldef MultiFitController(Container): mfc:
+    attr multi_fit_controller
+    attr fit_controllers = multi_fit_controller.models
+    attr show_fit: bool = True
+    Container:
+        constraints = [
+            vbox(hbox(btn_add, btn_auto, btn_guess, btn_fit, spacer),
+                 scroll),
+        ]
+        padding = (0, 0, 0, 0)
+        visible << show_fit
+        PushButton: btn_auto:
+            text = "Auto Fit"
+            checkable = True
+            checked := multi_fit_controller.autofit
+        PushButton: btn_guess:
+            text = "Auto Guess"
+            checkable = True
+            checked := multi_fit_controller.guess
+        PushButton: btn_fit:
+            text = "Fit"
+            clicked ::
+                multi_fit_controller.fit()
+                print('btn_fit clicked')
+        ScrollArea: scroll:
+            Container:
+                Looper:
+                    iterable << fit_controllers
+                    FitController:
+                        fit_controller = loop_item
+        PushButton: btn_add:
+            text = 'Add model'
+            clicked ::
+                multi_fit_controller.add_model()
+                mfc.fit_controllers = listify(multi_fit_controller.models)
+                print fit_controllers
+
+# MAIN WINDOWS -- DEBUGGING/DEMO ONLT
 
 enamldef ParameterMain(MainWindow): param_main:
     attr param
-    ParameterView:
+    ParameterViewVerbose:
         param = param_main.param
+
 
 enamldef ModelMain(MainWindow): model_main:
     attr fit_controller
@@ -102,5 +168,21 @@ enamldef ModelMain(MainWindow): model_main:
             items << fit_controller.model_names
             index = 0
         ModelView: mv:
-            model << fit_controller.models[
+            model << fit_controller.atom_models[
                 fit_controller.model_names[cmb_models.index]]
+
+
+enamldef FitControllerMain(MainWindow): fit_controller_main:
+    attr fit_controller
+    Container:
+        ComboBox: cmb_models:
+            items << fit_controller.model_names
+            index = 0
+        FitController: mv:
+            fit_controller = fit_controller_main.fit_controller
+
+
+enamldef MultiFitControllerMain(MainWindow): mfc_main:
+    attr multi_fit_controller
+    MultiFitController:
+        multi_fit_controller = mfc_main.multi_fit_controller

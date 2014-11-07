@@ -29,12 +29,12 @@ enamldef RegionOfInterest(Container):
             roi_model.value = input.value
 
 
-enamldef PipelineView(MainWindow): window:
+enamldef PipelineView(MainWindow): main:
     title = "Live Data Demo"
     attr scalar_collection
     attr cs_model
     attr roi_model
-    attr fit_controller
+    attr multi_fit_controller
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -45,7 +45,7 @@ enamldef PipelineView(MainWindow): window:
             layout = HSplitLayout(VSplitLayout('cs controller',
                                                'scalar controller',
                                                'roi view'),
-                                  HSplitLayout('cs view', 'scalar view')
+                                  VSplitLayout('cs view', 'scalar view')
             )
             DockItem: scalar_view:
                 name = 'scalar view'
@@ -53,6 +53,7 @@ enamldef PipelineView(MainWindow): window:
                 closable = False
                 Container:
                     ScalarView:
+                        fitter.multi_fit_controller = main.multi_fit_controller
                         pass
             DockItem: scalar_controller:
                 name = 'scalar controller'

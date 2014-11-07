@@ -12,6 +12,7 @@ import numpy as np
 
 from replay.model.scalar_model import ScalarCollection
 from replay.model.cross_section_model import CrossSectionModel
+from replay.model.fitting_model import MultiFitController
 from enaml.qt.qt_application import QtApplication
 import enaml
 
@@ -110,14 +111,19 @@ cs_model = CrossSectionModel(data_muggler=dm, name='img',
 roi_model = RegionOfInterestModel(callback=roi_callback)
 from nsls2.fitting.model.physics_model import model_list as valid_models
 from replay.model.fitting_model import FitController
-fit_controller = FitController(valid_models=valid_models)
+multi_fit_controller = MultiFitController(valid_models=valid_models)
 scalar_collection = ScalarCollection(data_muggler=dm,
-                                     fit_controller=fit_controller)
+                                     multi_fit_controller=multi_fit_controller)
+scalar_collection.scalar_models['count'].is_plotting = False
+scalar_collection.scalar_models['T'].is_plotting = False
+scalar_collection.scalar_models['x'].is_plotting = False
+scalar_collection.scalar_models['y'].is_plotting = False
+scalar_collection.fit_target = 'max'
 
 view = PipelineView(scalar_collection=scalar_collection,
                     cs_model=cs_model,
                     roi_model=roi_model,
-                    fit_controller=fit_controller)
+                    multi_fit_controller=multi_fit_controller)
 view.show()
 frame_source.start()
 

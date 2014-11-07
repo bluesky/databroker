@@ -13,7 +13,7 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                )
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
-from replay.gui.fitting_view import FitController
+from replay.gui.fitting_view import MultiFitController
 
 
 
@@ -81,6 +81,7 @@ enamldef ScalarController(Container):
                 padding = Box(0, 0, 0, 0)
 
 enamldef ScalarView(Container):
+    alias fitter
     Container:
         constraints = [
             vbox(
@@ -96,7 +97,7 @@ enamldef ScalarView(Container):
             checked := fitter.show_fit
         MPLCanvas: canvas:
             figure << scalar_collection._fig
-        FitController: fitter:
+        MultiFitController: fitter:
             pass
 
 

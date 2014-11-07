@@ -9,7 +9,7 @@ import six
 from ..pipeline.pipeline import DataMuggler
 from datetime import datetime
 import logging
-from .fitting_model import FitController
+from .fitting_model import MultiFitController
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +131,7 @@ class ScalarCollection(Atom):
 
     # FITTING
     fit_target = Str()
-    fit_controller = Typed(FitController)
+    multi_fit_controller = Typed(MultiFitController)
 
     # CONTROL OF THE PLOT UPDATE SPEED
     redraw_every = Float(default=1)
@@ -145,11 +145,11 @@ class ScalarCollection(Atom):
     # update
     _num_updates = Int()
 
-    def __init__(self, data_muggler, fit_controller):
+    def __init__(self, data_muggler, multi_fit_controller):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             self.data_muggler = data_muggler
-            self.fit_controller = fit_controller
+            self.multi_fit_controller = multi_fit_controller
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             # self._ax.hold()
@@ -287,13 +287,17 @@ class ScalarCollection(Atom):
             target_data = ref_data
             if self.fit_target != self.x:
                 target_data = data[self.fit_target]
-            self.fit_controller.set_xy(x=ref_data.values, y=target_data.values)
-        if self.fit_controller.guess:
-            self.fit_controller.do_guess()
-        if self.fit_controller.autofit:
-            self.fit_controller.fit()
+            self.multi_fit_controller.set_xy(x=ref_data.values, y=target_data.values)
+        if self.multi_fit_controller.guess:
+            self.multi_fit_controller.do_guess()
+        if self.multi_fit_controller.autofit:
+            self.multi_fit_controller.fit()
+        try:
             self.scalar_models['fit'].set_data(x=ref_data.values,
-                                               y=self.fit_controller.best_fit)
+                                               y=self.multi_fit_controller.best_fit)
+        except RuntimeError:
+            # thrown when x and y are not the same length
+            pass
         self.plot()
         self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
             self._num_updates) / (datetime.utcnow() -
