@@ -1,6 +1,6 @@
 __author__ = 'edill'
 from replay.model.fitting_model import FitController
-from nsls2.fitting.model.physics_model import model_list
+from skxray.fitting.model.physics_model import model_list
 fc = FitController(model_list)
 import numpy as np
 x = np.arange(0, 10, .01)

@@ -2,7 +2,7 @@ from __future__ import unicode_literals, print_function, absolute_import
 import six
 from enaml.qt.qt_application import QtApplication
 import numpy as np
-from nsls2.fitting.model.physics_model import model_list
+from skxray.fitting.model.physics_model import model_list
 import numpy as np
 import enaml
 from replay.model.fitting_model import (ParameterModel, FitModel,

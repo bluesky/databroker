@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 from enaml.qt import QtCore
 import numpy as np
-from nsls2 import core
+from skxray import core
 from datetime import datetime
 
 
