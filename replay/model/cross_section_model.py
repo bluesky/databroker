@@ -72,6 +72,8 @@ class CrossSectionModel(Atom):
 
     def __init__(self, data_muggler, sliceable_data=None, name=None):
         with self.suppress_notifications():
+            if name is None:
+                name = data_muggler.keys(dim=2)[0]
             self.name = name
             self.figure = Figure()
             self.cs = CrossSection(fig=self.figure)
@@ -92,7 +94,7 @@ class CrossSectionModel(Atom):
     def notify_new_data(self, new_data):
         self.num_updates += 1
         if self.name in new_data:
-            self.num_images = len(self.sliceable_data)
+            self.num_images = len(self.sliceable_data) - 1
             redraw = False
             if self.redraw_type == 's':
                 if ((datetime.utcnow() - self.last_update_time).total_seconds()
@@ -152,7 +154,7 @@ class CrossSectionModel(Atom):
     def _update_sliceable_data(self, update):
         print('sliceable data updated')
         try:
-            self.num_images = len(self.sliceable_data)
+            self.num_images = len(self.sliceable_data) - 1
             self.img_max = np.max(self.sliceable_data[self.image_index])
             self.img_min = np.min(self.sliceable_data[self.image_index])
         except IndexError as ie:
@@ -167,20 +169,6 @@ class CrossSectionModel(Atom):
     @observe('image_index')
     def _update_image(self, update):
         print('self.image_index: {}'.format(self.image_index))
-        self.cs.update_image(self.sliceable_data[self.image_index])
-    @observe('data')
-    def _update_num_images(self, update):
-        print("len(self.data): {}".format(len(self.sliceable_data)))
-        # update the number of images
-        self.num_images = len(self.sliceable_data)-1
-        if self.image_index >= self.num_images:
-            # this would be the case when a completely new image stack is thrown
-            # at this model
-            self.image_index = 0
-        if self.auto_update:
-            # move to the last image in the stack
-            self.image_index = self.num_images
-        # repaint the canvas with a new set of images
         self.cs.update_image(self.sliceable_data[self.image_index])
     @observe('cmap')
     def _update_cmap(self, update):

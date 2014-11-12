@@ -188,7 +188,8 @@ class DataMuggler(QtCore.QObject):
     ----------
     col_info : list
         List of information about the columns. Each entry should
-        be a tuple of the form (col_name, fill_method, dimensionality)
+        be a tuple of the form (col_name, fill_method, dimensionality). See
+        `ColSpec` class docstring
 
     """
 

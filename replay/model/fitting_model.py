@@ -8,7 +8,7 @@ from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
 from skxray.spectroscopy import find_largest_peak
 from matplotlib.lines import Line2D
-from skxray.fitting.model.physics_model import model_list
+from skxray.fitting.api import model_list
 import six
 import sys
 from lmfit import Model, Parameter, Parameters

@@ -1,8 +1,10 @@
+
+
 from __future__ import print_function, division
+from skxray.fitting.api import model_list as valid_models
 
 from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
-                                      MuggleWatcherLatest,
-                                        DmImgSequence)
+                                      MuggleWatcherLatest, DmImgSequence)
 
 from atom.api import Atom, Float, Typed, observe
 
@@ -109,7 +111,6 @@ img_seq = DmImgSequence(data_muggler=dm, data_name='img')
 cs_model = CrossSectionModel(data_muggler=dm, name='img',
                                         sliceable_data=img_seq)
 roi_model = RegionOfInterestModel(callback=roi_callback)
-from skxray.fitting.model.physics_model import model_list as valid_models
 from replay.model.fitting_model import FitController
 multi_fit_controller = MultiFitController(valid_models=valid_models)
 scalar_collection = ScalarCollection(data_muggler=dm,
