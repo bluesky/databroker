@@ -27,6 +27,7 @@ requirements:
     - bubblegum
     - scikit-xray
     - pims
+    - broker
 
 test:
   imports:
