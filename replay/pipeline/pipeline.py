@@ -829,8 +829,11 @@ class SocketWorker(QtCore.QObject):
     def read_socket(self):
         """ Read data from the broker stream server
         """
-        self.event.emit(datetime.now(),
-                        read_json_from_socket(self.host_name, self.host_port))
+        time_stamp, data = read_json_from_socket(self.host_name,
+                                                 self.host_port)[0]
+        time_stamp = datetime.utcnow()
+        print('{}: {}'.format(time_stamp, data))
+        self.event.emit(time_stamp, data)
         self.read_finished.emit()
 
 

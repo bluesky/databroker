@@ -11,15 +11,16 @@ import enaml
 from replay.pipeline.pipeline import SocketListener
 
 # set up mugglers
-keys = [('s {}'.format(idx), 'ffill', 0) for idx in range(1, 8)]
+keys = [('s{}'.format(idx), 'ffill', 0) for idx in range(1, 8)]
+keys.append(('p0', 'ffill', 0))
 dm = DataMuggler(keys)
 
-def parse_socket_value(socket_val):
-    for (time_stamp, data_dict) in socket_val:
-        dm.append_data(time_stamp, data_dict)
+def print_socket_value(time_stamp, data):
+    print('{}: {}'.format(time_stamp, data))
+    dm.append_data(time_stamp, data)
 
 data_source = SocketListener(cfg.SEND_HOST, cfg.SEND_PORT)
-data_source.event.connect(dm.append_data)
+data_source.event.connect(print_socket_value)
 
 app = QtApplication()
 
