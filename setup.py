@@ -62,5 +62,9 @@ setup(
     version=FULLVERSION,
     author='Brookhaven National Laboratory',
     packages=['replay',
+              'replay.pipeline',
+              'replay.gui',
+              'replay.model'
               ],
+    package_data={'replay.gui': ['*.enaml']}
 )
