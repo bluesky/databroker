@@ -177,7 +177,7 @@ class ScalarCollection(Atom):
             self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                    name=name,
                                                    can_plot=True,
-                                                   is_plotting=True)
+                                                   is_plotting=False)
             self._last_update_time = datetime.utcnow()
         self.update_x(None)
         self.redraw_type = 's'
