@@ -203,7 +203,6 @@ class DataMuggler(QtCore.QObject):
     # can grab. The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
 
-
     # this is the function that gets called to validate that the row labels
     # are something that the internal pandas dataframe will understand
     _time_validator = datetime
@@ -211,12 +210,20 @@ class DataMuggler(QtCore.QObject):
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
 
+        self._col_info = col_info
+        self.clear()
+
+    def clear(self):
+        """
+        Clear all of the data by re-initializing all of the internal
+        data structures.
+        """
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
         self._is_col_nonscalar = set()
         self._col_dims = dict()
         names = []
-        for ci in col_info:
+        for ci in self.col_info:
             # validate fill methods
             ci = ColSpec(*ci)
             # used to sort out which way filling should be done.
