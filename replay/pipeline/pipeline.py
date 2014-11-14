@@ -42,6 +42,7 @@ from datetime import datetime
 import numpy as np
 from pims.base_frames import FramesSequence
 from pims.frame import Frame
+from broker.client import read_json_from_socket
 
 
 class PipelineComponent(QtCore.QObject):
@@ -794,3 +795,108 @@ class DmImgSequence(FramesSequence):
         state += "\nPixel Type: {}".format(self._pixel_type)
         state += "\nImage Shape: {}".format(self._image_shape)
         return state
+
+
+class SocketWorker(QtCore.QObject):
+    """
+    Worker that pings the broker stream server
+
+    Parameters
+    ----------
+    bss_name : str
+        host name or host ip address for the broker stream server
+    bss_port : int
+        port to connect to the broker stream server on
+    parent : QtCore.QObject, optional
+
+    Attributes
+    ----------
+    event : QtCore.Signal
+        Signal that emits an object and a dictionary. Ostensibly the object is
+        a datetime object and the dict is something that a data muggler will
+        understand
+    read : QtCore.Signal
+        Signal that indicates the data from the socket was successfully acquired
+    """
+    event = QtCore.Signal(object, dict)
+    read = QtCore.Signal()
+
+    def __init__(self, bss_name, bss_port, parent=None):
+        QtCore.QObject.__init__(self, parent)
+        self.host_name = bss_name
+        self.host_port = bss_port
+
+    def read_socket(self):
+        """ Read data from the broker stream server
+        """
+        self.event.emit(datetime.now(),
+                        read_json_from_socket(self.host_name, self.host_port))
+        self.read.emit()
+
+
+class SocketListener(QtCore.QObject):
+    """
+    Listener that a user can hook in to for the purpose of gathering live data
+
+    Parameters
+    ----------
+    bss_name : str
+        host name or host ip address for the broker stream server
+    bss_port : int
+        port to connect to the broker stream server on
+    parent : QtCore.QObject, optional
+
+    Attributes
+    ----------
+    event : QtCore.Signal
+        Signal that emits an object and a dictionary. Ostensibly the object is
+        a datetime object and the dict is something that a data muggler will
+        understand
+    trigger : QtCore.Signal
+    """
+    event = QtCore.Signal(object, dict)
+    trigger = QtCore.Signal()
+    _is_alive = True
+
+    def __init__(self, bss_name, bss_port, parent=None, **kwargs):
+        QtCore.QObject.__init__(self, parent=parent, **kwargs)
+        self.svr_name = bss_name
+        self.svr_port = bss_port
+        self.worker = SocketWorker(self.svr_name, self.svr_port)
+
+        self.thread = QtCore.QThread(parent=self)
+        self.worker.moveToThread(self.thread)
+
+        self.worker.event.connect(self.event)
+
+        self.worker.event.connect(self.event.emit)
+        self.worker.read.connect(self._feedback)
+        self.trigger.connect(self.worker.read_socket)
+        self.thread.start()
+
+    def start(self):
+        """Start popping data off of the broker stream server
+        """
+        self.trigger.emit()
+
+    def is_alive(self, is_alive, autostart=False):
+        """
+        Allow the loop to proceed no further
+
+        Parameters
+        ----------
+        is_alive : bool
+            true: remove the block from the feedback loop and restart the loop
+                  if autostart is True
+            false: put a block on feedback() so that the loop stops execution
+        """
+        self._is_alive = is_alive
+        # restart the loop
+        if autostart and self._is_alive:
+            self._feedback()
+
+    def _feedback(self):
+        """Trigger the worker thread to try to read data from the socket
+        """
+        if self._is_alive:
+            self.trigger.emit()
