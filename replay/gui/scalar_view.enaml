@@ -9,23 +9,45 @@ from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
-                               GroupBox, ScrollArea, PushButton, RadioButton
+                               GroupBox, ScrollArea, PushButton, RadioButton,
                                )
+from enaml.stdlib.fields import FloatField
+from replay.model.scalar_model import ScalarCollection
+from replay.gui.fitting_view import MultiFitController
+
+
 
 enamldef ScalarController(Container):
-    attr scalar_collection
     ScrollArea: scroller:
         Container:
             Form:
+                row_spacing = 0
                 Label: xlbl:
                     text = "x axis"
                 ComboBox: xcmb:
-                    items << list(scalar_collection.scalar_models)
+                    items << list(scalar_collection.col_names)
                     editable = True
                     selected_item >> scalar_collection.x
                     # this scalar allows the plotter to come up with guns blazing
                     # (plotting)
                     index = 0
+                Label:
+                    text = 'update frequency'
+                FloatField: rate:
+                    value := scalar_collection.redraw_every
+                    minimum = 0.0
+                Label:
+                    text = 'update unit'
+                ComboBox:
+                    items << list(ScalarCollection.redraw_type.items)
+                    selected_item >> scalar_collection.redraw_type
+                    index << ScalarCollection.redraw_type.items.index(
+                        scalar_collection.redraw_type)
+                Label:
+                    text = 'update rate'
+                Label:
+                    text := scalar_collection.update_rate
+
             GroupBox: plot:
                 title_align = 'center'
                 title = 'Plot'
@@ -37,9 +59,9 @@ enamldef ScalarController(Container):
                         text = "Fit"
                     row_spacing = 0
                     Looper: looper:
-                        iterable << list(scalar_collection.scalar_models)
+                        iterable << list(scalar_collection.col_names)
                         PushButton: cb_plot:
-                            text = scalar_collection.scalar_models[loop_item].name
+                            text = loop_item
                             checked := (
                                 scalar_collection.
                                     scalar_models[loop_item].is_plotting
@@ -51,27 +73,32 @@ enamldef ScalarController(Container):
                         RadioButton: cb_fit:
                             text = loop_item
                             checked ::
-                               print('cb_fit clicked for {}'.format(text))
+                                scalar_collection.fit_target = text
+                                print('cb_fit clicked for {}'.format(text))
             GroupBox: fit:
                 title_align = 'center'
                 title = 'Fit'
                 padding = Box(0, 0, 0, 0)
 
 enamldef ScalarView(Container):
-    attr scalar_collection
-
+    alias fitter
     Container:
         constraints = [
             vbox(
-                hbox(check, spacer),
-                canvas,
+                hbox(check, spacer, fit),
+                vbox(canvas, fitter),
             ),
         ]
         CheckBox: check:
             text = 'Toolbar Visible'
             checked := canvas.toolbar_visible
+        CheckBox: fit:
+            text = 'Fitting Visible'
+            checked := fitter.show_fit
         MPLCanvas: canvas:
             figure << scalar_collection._fig
+        MultiFitController: fitter:
+            pass
 
 
 enamldef ScalarContainer(Window): window:
@@ -84,10 +111,10 @@ enamldef ScalarContainer(Window): window:
                 title = 'Scalar View'
                 Container:
                     ScalarView: contains:
-                        scalar_collection = window.scalar_collection
+                        pass
             DockItem:
                 name = 'controls'
                 title = 'Scalar Controller'
                 Container:
                     ScalarController: controls:
-                        scalar_collection = window.scalar_collection
+                        pass

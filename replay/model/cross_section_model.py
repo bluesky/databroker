@@ -2,22 +2,25 @@ from __future__ import (print_function, absolute_import, division)
 import six
 from pims import FramesSequence
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed)
+                      Typed, Dict)
 import numpy as np
 import sys
 from matplotlib.figure import Figure
 from matplotlib import colors
 from bubblegum.backend.mpl.cross_section_2d import CrossSection
 from ..pipeline.pipeline import DataMuggler, DmImgSequence
+from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
 
 __author__ = 'edill'
 
+
 class CrossSectionModel(Atom):
     """ Back-end for the Cross Section viewer and its control panel
 
     """
+    redraw_type = Enum('s', 'frames')
     # PARAMETERS -- VIEWER
     # List of 2-D images
     sliceable_data = Typed(DmImgSequence)
@@ -39,6 +42,7 @@ class CrossSectionModel(Atom):
     name = Str()
     # data muggler
     dm = Typed(DataMuggler)
+    visible = Bool(True)
 
     # PARAMETERS -- CONTROL DOCK
     # minimum value for the slider
@@ -50,6 +54,14 @@ class CrossSectionModel(Atom):
     # auto-update image
     auto_update = Bool(False)
 
+    # UPDATE SPEED CONTROL
+    redraw_every = Float(default=1)
+    redraw_type = Enum('max rate', 's', 'frames')
+    last_update_time = Typed(datetime)
+    last_update_frame = Int()
+    update_rate = Str()
+    num_updates = Int()
+
     # absolute minimum of the  currently selected image
     img_min = Float()
     # absolute minimum of the currently selected image
@@ -60,6 +72,8 @@ class CrossSectionModel(Atom):
 
     def __init__(self, data_muggler, sliceable_data=None, name=None):
         with self.suppress_notifications():
+            if name is None:
+                name = data_muggler.keys(dim=2)[0]
             self.name = name
             self.figure = Figure()
             self.cs = CrossSection(fig=self.figure)
@@ -74,13 +88,43 @@ class CrossSectionModel(Atom):
             # hook up the data muggler's 'I have new data' signal
             self.dm.new_data.connect(self.notify_new_data)
         self.sliceable_data = sliceable_data
+        self.redraw_type = 's'
 
     # slot to hook the data muggler into
     def notify_new_data(self, new_data):
+        self.num_updates += 1
         if self.name in new_data:
-            self.num_images = len(self.sliceable_data)
-            if self.auto_update:
+            self.num_images = len(self.sliceable_data) - 1
+            redraw = False
+            if self.redraw_type == 's':
+                if ((datetime.utcnow() - self.last_update_time).total_seconds()
+                        >= self.redraw_every):
+                    redraw = True
+                else:
+                    # do nothing
+                    pass
+            elif self.redraw_type == 'frames':
+                if ((self.num_images - self.last_update_frame)
+                        >= self.redraw_every):
+                    redraw = True
+                    self.last_update_frame = self.num_images-1
+                else:
+                    # do nothing
+                    pass
+
+            elif self.redraw_type == 'max rate':
+                redraw = True
+            if self.auto_update and redraw:
                 self.image_index = self.num_images-1
+
+            if redraw:
+                # process the update timer
+                self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
+                    self.num_updates) / (
+                    datetime.utcnow() - self.last_update_time).total_seconds())
+                self.last_update_frame = self.num_images-1
+                self.last_update_time = datetime.utcnow()
+                self.num_updates = 0
 
     def get_state(self):
         state = "Current state of CrossSectionModel"
@@ -98,11 +142,19 @@ class CrossSectionModel(Atom):
         return state
 
     # OBSERVATION METHODS
+    @observe('redraw_type')
+    def _update_redraw_type(self, update):
+        self.last_update_time = datetime.utcnow()
+        self.last_update_frame = self.image_index
+        print('self.redraw_type: {}'.format(self.redraw_type))
+    @observe('redraw_every')
+    def _update_redraw_delay(self, update):
+        print('self.redraw_every: {}'.format(self.redraw_every))
     @observe('sliceable_data')
     def _update_sliceable_data(self, update):
         print('sliceable data updated')
         try:
-            self.num_images = len(self.sliceable_data)
+            self.num_images = len(self.sliceable_data) - 1
             self.img_max = np.max(self.sliceable_data[self.image_index])
             self.img_min = np.min(self.sliceable_data[self.image_index])
         except IndexError as ie:
@@ -117,20 +169,6 @@ class CrossSectionModel(Atom):
     @observe('image_index')
     def _update_image(self, update):
         print('self.image_index: {}'.format(self.image_index))
-        self.cs.update_image(self.sliceable_data[self.image_index])
-    @observe('data')
-    def _update_num_images(self, update):
-        print("len(self.data): {}".format(len(self.sliceable_data)))
-        # update the number of images
-        self.num_images = len(self.sliceable_data)-1
-        if self.image_index >= self.num_images:
-            # this would be the case when a completely new image stack is thrown
-            # at this model
-            self.image_index = 0
-        if self.auto_update:
-            # move to the last image in the stack
-            self.image_index = self.num_images
-        # repaint the canvas with a new set of images
         self.cs.update_image(self.sliceable_data[self.image_index])
     @observe('cmap')
     def _update_cmap(self, update):
@@ -151,3 +189,19 @@ class CrossSectionModel(Atom):
     def _update_max(self, update):
         # todo get image limits working
         pass
+
+
+class CrossSectionCollection(Atom):
+    cs_models = Dict(key=Str(), value=CrossSectionModel)
+    data_muggler = Typed(DataMuggler)
+
+    def __init__(self, data_muggler):
+        super(CrossSectionCollection, self).__init__()
+        self.data_muggler = data_muggler
+        image_cols = [name for name, dim
+                      in six.iteritems(self.data_muggler.col_dims)
+                      if dim == 2]
+
+
+
+

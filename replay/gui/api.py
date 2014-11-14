@@ -2,6 +2,7 @@ from __future__ import unicode_literals, print_function, absolute_import
 import six
 import numpy as np
 import enaml
+from datetime import datetime
 __author__ = 'edill'
 
 def initialize_view(view):
@@ -135,13 +136,23 @@ def make_cross_section_view(init_view=True):
         enaml.widgets.api.MainWindow
     """
     from replay.model.cross_section_model import CrossSectionModel
+    from replay.pipeline.pipeline import DataMuggler
 
     with enaml.imports():
         from replay.gui.cross_section_view import CrossSectionMain
+
+    dm = DataMuggler((('T', 'pad', True),
+                      ('img', None, False),
+                      ('count', None, True)
+                      )
+    )
     pixels = 1000
-    data = [np.random.rand(pixels,pixels) for _ in range(10)]
-    xs_model = CrossSectionModel(data=data)
-    xs_view = CrossSectionMain(cross_section_model=xs_model)
+    data = [np.random.rand(pixels,pixels) * 10 * np.random.rand()
+            for _ in range(10)]
+    for img in data:
+        dm.append_data(datetime.utcnow(), data_dict = {'img': img})
+    xs_model = CrossSectionModel(data_muggler=dm, name='img')
+    xs_view = CrossSectionMain(cs_model=xs_model)
     if init_view:
         initialize_view(xs_view)
         xs_model.image_index = len(xs_model.sliceable_data)-1

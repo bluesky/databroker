@@ -1,18 +1,15 @@
 __author__ = 'edill'
 
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed, Dict, Constant)
-import numpy as np
+                      Typed, Dict, Constant, Coerced)
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from matplotlib import colors
-from bubblegum.backend.mpl.cross_section_2d import CrossSection
-from lmfit import Model
 from matplotlib.lines import Line2D
-import pandas as pd
 import six
 from ..pipeline.pipeline import DataMuggler
+from datetime import datetime
 import logging
+from .fitting_model import MultiFitController
 logger = logging.getLogger(__name__)
 
 
@@ -21,28 +18,30 @@ class ScalarModel(Atom):
     ScalarModel is the model in the Model-View-Controller pattern that backs
     a scalar versus some x-value, i.e., an (x,y) plot.  ScalarModel requires
     a line artist
-    Parameters
+
+    Attributes
     ----------
-    line_artist : mpl.lines.Line2D
-        The line_artist that the ScalarModel is in charge of bossing around
+    line_artist : matplotlib.lines.Line2D
+        The visual representation of the scalar model (the view!)
     name : atom.scalars.Str
         The name of the data set represented by this ScalarModel
-    """
+    is_plotting : atom.Bool
+        Visibility of the data set on the canvas
+    can_plot : atom.Bool
+        If the data set can be shown on the canvas
 
-    # name of the data set being plotted
+    """
     name = Str()
-    # visibility of the data set on the canvas
     is_plotting = Bool()
-    # if the data set can be shown on the canvas
     can_plot = Bool()
-    # the visual representation of the scalar model (the view!)
     line_artist = Typed(Line2D)
 
-    def __init__(self, line_artist, name):
+    def __init__(self, line_artist, **kwargs):
         self.line_artist = line_artist
         self.is_plotting = line_artist.get_visible()
-        self.can_plot = True
-        self.name = name
+        print(kwargs)
+        for name, val in six.iteritems(kwargs):
+            setattr(self, name, val)
 
     def set_data(self, x, y):
         """Update the data stored in line_artist
@@ -92,46 +91,104 @@ class ScalarCollection(Atom):
     are then shoved into ScalarModels and the ScalarCollection manages the
     ScalarModels.
 
-    Parameters
+    Attributes
     ----------
     data_muggler : replay.pipeline.pipeline.DataMuggler
         The data manager backing the ScalarModel. The DataMuggler's new_data
         signal is connected to the notify_new_data function of the ScalarModel
         so that the ScalarModel can decide what to do when the DataMuggler
         receives new data.
+    scalar_models : atom.Dict
+        The collection of scalar_models that the ScalarCollection knows about
+    col_names : atom.List
+        The names of the data sets that are in the DataMuggler
+    redraw_every : atom.Float
+        The frequency with which to redraw the plot. The meaning of this
+        parameter changes based on `redraw_type`
+    redraw_type : {'max rate', 's'}
+        Gives meaning to the float stored in `redraw_every`. Should be read as
+        'Update the plot at a rate of `redraw_every` per `redraw_type`'. Since
+        there are only the two options in `ScalarCollection`, it should be
+        understood that the previous statement is only relevant when 's' is
+        selected as the `redraw_type`. If `max_rate` is selected, then the plot
+        will attempt to update itself as fast as data is coming in. Beware that
+        this may cause significant performance issues if your data rate is
+        > 20 Hz
+    update_rate : atom.Str
+        Formatted rate that new data is coming in.
+    x : atom.Str
+        The name of the x-axis that the `scalar_models` should be plotted
+        against
     """
     scalar_models = Dict(key=Str(), value=ScalarModel)
-    # current x-axis of the scalar_models
-    x = Str()
-    # location where the data is stored
     data_muggler = Typed(DataMuggler)
-    # mpl
+    x = Str()
+    col_names = List(item=str)
+
+    # MPL PLOTTING STUFF
     _fig = Typed(Figure)
     _ax = Typed(Axes)
 
-    def __init__(self, data_muggler):
+    # FITTING
+    fit_target = Str()
+    multi_fit_controller = Typed(MultiFitController)
+
+    # CONTROL OF THE PLOT UPDATE SPEED
+    redraw_every = Float(default=1)
+    redraw_type = Enum('max rate', 's')
+    update_rate = Str()
+    # the last time that the plot was updated
+    _last_update_time = Typed(datetime)
+    # the last frame that the plot was updated
+    _last_update_frame = Int()
+    # the number of times that `notify_new_data` has been called since the last
+    # update
+    _num_updates = Int()
+
+    def __init__(self, data_muggler, multi_fit_controller):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
+            self.data_muggler = data_muggler
+            self.multi_fit_controller = multi_fit_controller
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             # self._ax.hold()
-            # stash the data muggler
-            self.data_muggler = data_muggler
+            # connect the signals from the muggler to the appropriate slots
+            # in this class
             self.data_muggler.new_data.connect(self.notify_new_data)
-            self.x = self.data_muggler.keys()[0]
-            alignable = self.data_muggler.align_against(self.x)
+            self.data_muggler.new_columns.connect(self.notify_new_column)
+            # get the column names with dimensionality equal to zero
+            self.col_names = self.data_muggler.keys(dim=0)
+            self.col_names.append('fit')
+            # default to the first column name
+            self.x = self.col_names[0]
+            # get the alignability of the columns that this model cares about
+            alignable = self.data_muggler.align_against(self.x, self.col_names)
             for name, is_plottable in six.iteritems(alignable):
-                line_artist,  = self._ax.plot([], [], label=name)
+                # create a new line artist and scalar model
+                line_artist, = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                       name=name)
-                self.scalar_models[name].can_plot = is_plottable
-        self.x = self.data_muggler.keys()[1]
+                                                       name=name,
+                                                       can_plot=is_plottable,
+                                                       is_plotting=True)
+            # add the fit
+            name = 'fit'
+            line_artist, = self._ax.plot([], [], label=name)
+            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+                                                   name=name,
+                                                   can_plot=True,
+                                                   is_plotting=True)
+            self._last_update_time = datetime.utcnow()
+        self.update_x(None)
+        self.redraw_type = 's'
 
     @observe('x')
     def update_x(self, changed):
         # check with the muggler for the columns that can be plotted against
         sliceable = self.data_muggler.align_against(self.x)
         for name, scalar_model in six.iteritems(self.scalar_models):
+            if name == 'fit':
+                continue
             if not sliceable[name]:
                 # turn off the plotting and disable the check box
                 scalar_model.is_plotting = False
@@ -143,8 +200,27 @@ class ScalarCollection(Atom):
         self.get_new_data_and_plot()
 
     def print_state(self):
+        """Print the, uh, state
+        """
         for model_name, model in six.iteritems(self.scalar_models):
             print(model.get_state())
+
+    def notify_new_column(self, new_columns):
+        """Function to call when there is a new column in the data muggler
+
+        Parameters
+        ----------
+        new_columns: list
+            The new column name that the data muggler knows about
+        """
+        scalar_cols = self.data_muggler.keys(dim=0)
+        alignable = self.data_muggler.align_against(self.x, self.col_names)
+        for name, is_plottable in six.iteritems(alignable):
+            if name in new_columns and not self.data_muggler.col_dims[name]:
+                line_artist,  = self._ax.plot([], [], label=name)
+                self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+                                                       name=name)
+                self.scalar_models[name].can_plot = is_plottable
 
     def notify_new_data(self, new_data):
         """ Function to call when there is new data in the data muggler
@@ -154,14 +230,26 @@ class ScalarCollection(Atom):
         new_data : list
             List of names of updated columns from the data muggler
         """
+        self._num_updates += 1
+        redraw = False
+        if self.redraw_type == 's':
+            if ((datetime.utcnow() - self._last_update_time).total_seconds()
+                    >= self.redraw_every):
+                redraw = True
+            else:
+                # do nothing
+                pass
+        elif self.redraw_type == 'max rate':
+            redraw = True
         if self.x in new_data:
             # update all the data in the line plot
-            self.get_new_data_and_plot()
+            intersection = list(self.scalar_models)
         else:
             # find out which new_data keys overlap with the data that is
             # supposed to be shown on the plot
             intersection = [_ for _ in list(self.scalar_models)
                             if _ in new_data]
+        if redraw:
             self.get_new_data_and_plot(intersection)
 
     def get_new_data_and_plot(self, y_names=None):
@@ -178,24 +266,59 @@ class ScalarCollection(Atom):
         # self.print_state()
         if y_names is None:
             y_names = list(six.iterkeys(self.scalar_models))
+
+        y_names = set(y_names)
+        valid_name = set(k for k, v in six.iteritems(
+                                 self.data_muggler.align_against(self.x))
+                         if v)
+
+        other_cols = list(y_names & valid_name)
+        print(other_cols)
         time, data = self.data_muggler.get_values(ref_col=self.x,
-                                                  other_cols=y_names)
+                                                  other_cols=other_cols)
         ref_data = data.pop(self.x)
         if self.scalar_models[self.x].is_plotting:
             self.scalar_models[self.x].set_data(x=ref_data, y=ref_data)
         for dname, dvals in six.iteritems(data):
             self.scalar_models[dname].set_data(x=ref_data, y=dvals)
+
+        # manage the fitting
+        if self.fit_target is not '':
+            target_data = ref_data
+            if self.fit_target != self.x:
+                target_data = data[self.fit_target]
+            self.multi_fit_controller.set_xy(x=ref_data.values, y=target_data.values)
+        if self.multi_fit_controller.guess:
+            self.multi_fit_controller.do_guess()
+        if self.multi_fit_controller.autofit:
+            self.multi_fit_controller.fit()
+        try:
+            self.scalar_models['fit'].set_data(x=ref_data.values,
+                                               y=self.multi_fit_controller.best_fit)
+        except RuntimeError:
+            # thrown when x and y are not the same length
+            pass
         self.plot()
+        self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
+            self._num_updates) / (datetime.utcnow() -
+                                 self._last_update_time).total_seconds())
+        self._num_updates = 0
+        self._last_update_time = datetime.utcnow()
 
     def plot(self):
         """
-        Recompute the limits, rescale the view and redraw the canvas
+        Recompute the limits, rescale the view, reformat the legend and redraw
+        the canvas
         """
         try:
-            arts, labs = zip(*[(v.line_artist, k)
-                               for k, v in six.iteritems(self.scalar_models)
-                               if v.line_artist.get_visible()])
-            self._ax.legend(arts, labs)
+            legend_pairs = [(v.line_artist, k)
+                            for k, v in six.iteritems(self.scalar_models)
+                            if v.line_artist.get_visible()]
+            if legend_pairs:
+                arts, labs = zip(*legend_pairs)
+                self._ax.legend(arts, labs)
+            else:
+                self._ax.legend(legend_pairs)
             self._ax.relim(visible_only=True)
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()
