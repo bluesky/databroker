@@ -819,7 +819,7 @@ class SocketWorker(QtCore.QObject):
         Signal that indicates the data from the socket was successfully acquired
     """
     event = QtCore.Signal(object, dict)
-    read = QtCore.Signal()
+    read_finished = QtCore.Signal()
 
     def __init__(self, bss_name, bss_port, parent=None):
         QtCore.QObject.__init__(self, parent)
@@ -831,7 +831,7 @@ class SocketWorker(QtCore.QObject):
         """
         self.event.emit(datetime.now(),
                         read_json_from_socket(self.host_name, self.host_port))
-        self.read.emit()
+        self.read_finished.emit()
 
 
 class SocketListener(QtCore.QObject):
@@ -853,6 +853,11 @@ class SocketListener(QtCore.QObject):
         a datetime object and the dict is something that a data muggler will
         understand
     trigger : QtCore.Signal
+
+    Notes
+    -----
+    For the interaction between the external user, the `SocketListener` and the
+    `SocketWorker` see /doc/diagram/SocketListener.png
     """
     event = QtCore.Signal(object, dict)
     trigger = QtCore.Signal()
@@ -870,7 +875,7 @@ class SocketListener(QtCore.QObject):
         self.worker.event.connect(self.event.emit)
 
         self.worker.event.connect(self.event.emit)
-        self.worker.read.connect(self._feedback)
+        self.worker.read_finished.connect(self._feedback)
         self.trigger.connect(self.worker.read_socket)
         self.thread.start()
 
@@ -879,9 +884,10 @@ class SocketListener(QtCore.QObject):
         """
         self.trigger.emit()
 
-    def is_alive(self, is_alive, autostart=False):
+    def set_alive(self, alive, restart=False):
         """
-        Allow the loop to proceed no further
+        Allow the loop to proceed no further if `alive` is False (after the
+        current loop, of course)
 
         Parameters
         ----------
@@ -890,9 +896,9 @@ class SocketListener(QtCore.QObject):
                   if autostart is True
             false: put a block on feedback() so that the loop stops execution
         """
-        self._is_alive = is_alive
+        self._is_alive = alive
         # restart the loop
-        if autostart and self._is_alive:
+        if restart and self._is_alive:
             self._feedback()
 
     def _feedback(self):
