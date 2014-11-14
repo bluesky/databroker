@@ -43,7 +43,7 @@ import numpy as np
 from pims.base_frames import FramesSequence
 from pims.frame import Frame
 from broker.client import read_json_from_socket
-
+import time
 
 class PipelineComponent(QtCore.QObject):
     """
@@ -867,7 +867,7 @@ class SocketListener(QtCore.QObject):
         self.thread = QtCore.QThread(parent=self)
         self.worker.moveToThread(self.thread)
 
-        self.worker.event.connect(self.event)
+        self.worker.event.connect(self.event.emit)
 
         self.worker.event.connect(self.event.emit)
         self.worker.read.connect(self._feedback)
@@ -898,5 +898,6 @@ class SocketListener(QtCore.QObject):
     def _feedback(self):
         """Trigger the worker thread to try to read data from the socket
         """
+        time.sleep(0.1)
         if self._is_alive:
             self.trigger.emit()

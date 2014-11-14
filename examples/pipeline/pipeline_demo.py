@@ -62,7 +62,11 @@ p2.source_signal.connect(dm.append_data)
 keys = [('s {}'.format(idx), 'ffill', 0) for idx in range(1, 8)]
 dm = DataMuggler(keys)
 
-data_source = SocketListener(cfg.HOST, cfg.PORT)
+def parse_socket_value(socket_val):
+    for (time_stamp, data_dict) in socket_val:
+        dm.append_data(time_stamp, data_dict)
+
+data_source = SocketListener(cfg.SEND_HOST, cfg.SEND_PORT)
 data_source.event.connect(dm.append_data)
 
 app = QtApplication()
