@@ -290,7 +290,7 @@ class DataMuggler(QtCore.QObject):
             elif col_fill_type is None:
                 tmp_dict[col_name] = False
             else:
-                algnable = self._dataframe[col_name][ref_index].notnull().all()
+                algnable = self._dataframe[col_name].fillna(col_fill_type)[ref_index].notnull().all()
                 tmp_dict[col_name] = bool(algnable)
         return tmp_dict
 
