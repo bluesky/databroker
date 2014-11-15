@@ -1,7 +1,7 @@
 
 from __future__ import print_function, division
 import six
-import broker.config as cfg
+
 from skxray.fitting.api import model_list as valid_models
 from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
                                       MuggleWatcherLatest, DmImgSequence)
@@ -17,6 +17,7 @@ from calendar import timegm
 import time
 # this must appear before the cothread import
 os.environ['EPICS_BASE'] = '/usr/lib/epics'
+os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '10000000000'
 
 import cothread
 import cothread.catools as ca
@@ -28,8 +29,10 @@ cothread.iqt()
 # keys.append(('p0', 'ffill', 0))
 
 PV_TRIGGER = 'XF:23ID-CT{Replay}Val:trigger-I'
-PVS = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx) for idx in range(0, 4)]
+PVS = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx) for idx in range(0, 0)]
+IM_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(9), ]
 dm_keys = [(pv, 'ffill', 0) for pv in PVS]
+dm_keys.extend((pv, 'bfill', 2) for pv in IM_pvs)
 dm_keys.append(('count', 'ffill', 0))
 
 dm = DataMuggler(dm_keys)
@@ -49,11 +52,26 @@ def process(pv_value):
         elif pv_value == 'stop':
             stop_observation()
     name = dm_map[pv_value.name]
+
     time_stamp = datetime(*time.gmtime(pv_value.timestamp)[:6])
-    value = float(pv_value)
+    if name in IM_pvs:
+        pv_name = pv_value.name
+        if 'ArrayData' in pv_name:
+            base = pv_name[:-9]
+            x_dim = int(ca.caget(base+'ArraySize0_RBV'))
+            y_dim = int(ca.caget(base+'ArraySize1_RBV'))
+            value = np.asarray(pv_value).reshape((x_dim, y_dim))
+        else:
+            print('inconceivable')
+    elif name in PVS:
+        value = float(pv_value)
+        print('value: {}'.format(pv_value))
+    else:
+        print('inconceivable')
+
     print('name: {}'.format(name))
     print('time_stamp: {}'.format(time_stamp))
-    print('value: {}'.format(pv_value))
+
     dm.append_data(time_stamp, {name: value, 'count': count})
     count = count + 1
     print("hello!")
@@ -104,5 +122,5 @@ view.stop_observation = stop_observation
 view.clear_data = clear_datamuggler
 view.show()
 
-app.start()
+#app.start()
 cothread.WaitForQuit()
