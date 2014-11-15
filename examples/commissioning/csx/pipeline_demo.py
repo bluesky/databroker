@@ -13,6 +13,7 @@ import enaml
 from replay.pipeline.pipeline import SocketListener
 from datetime import datetime, timedelta
 import os
+from calendar import timegm
 import time
 # this must appear before the cothread import
 os.environ['EPICS_BASE'] = '/usr/lib/epics'
@@ -27,7 +28,7 @@ cothread.iqt()
 # keys.append(('p0', 'ffill', 0))
 
 PV_TRIGGER = 'XF:23ID-CT{Replay}Val:trigger-I'
-PVS = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx) for idx in range(0, 10)]
+PVS = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx) for idx in range(0, 4)]
 dm_keys = [(pv, 'ffill', 0) for pv in PVS]
 dm_keys.append(('count', 'ffill', 0))
 
@@ -48,7 +49,7 @@ def process(pv_value):
         elif pv_value == 'stop':
             stop_observation()
     name = dm_map[pv_value.name]
-    time_stamp = pv_value.timestamp
+    time_stamp = datetime(*time.gmtime(pv_value.timestamp)[:6])
     value = float(pv_value)
     print('name: {}'.format(name))
     print('time_stamp: {}'.format(time_stamp))
@@ -61,13 +62,19 @@ subscription_obj = []
 
 def start_observation():
     print('start_observation')
+    pvs_to_watch = []
+    init_data = {}
     for pv in PVS:
         pv_val = ca.caget(pv)
-        if len(pv_val) > 0:
-            pv_name = ''.join(chr(_) for _ in pv_val)
+        pv_name = ''.join(chr(_) for _ in pv_val).strip()
+        if len(pv_name) > 0:
             print('pv_name: {}'.format(pv_name))
             dm_map[pv_name] = pv
-            subscription_obj.append(ca.camonitor(str(pv_name), process, format=ca.FORMAT_TIME))
+            pvs_to_watch.append(pv_name)
+            init_data[pv] = ca.caget(pv_name)
+    dm.append_data(datetime.utcnow(), init_data)
+    for pv_name in pvs_to_watch:
+        subscription_obj.append(ca.camonitor(str(pv_name), process, format=ca.FORMAT_TIME))
 
 def stop_observation():
     print('stop_observation')
@@ -88,9 +95,10 @@ with enaml.imports():
 multi_fit_controller = MultiFitController(valid_models=valid_models)
 scalar_collection = ScalarCollection(data_muggler=dm,
                                      multi_fit_controller=multi_fit_controller)
-
+cs_model = CrossSectionModel(data_muggler=dm)
 view = PipelineView(scalar_collection=scalar_collection,
                     multi_fit_controller=multi_fit_controller)
+view.cs_model = cs_model
 view.start_observation = start_observation
 view.stop_observation = stop_observation
 view.clear_data = clear_datamuggler

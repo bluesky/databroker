@@ -28,6 +28,7 @@ enamldef PipelineView(MainWindow): main:
     attr clear_data
     attr start_observation
     attr stop_observation
+    attr cs_model
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -68,3 +69,13 @@ enamldef PipelineView(MainWindow): main:
                     PushButton: btn_clear:
                         text = "Clear"
                         clicked :: clear_data()
+            CrossSectionController:
+                name = 'cs controller'
+                title = 'Cross Section Controller'
+                closable = False
+                name = 'cs controller'
+                visible << cs_model.visible
+            CrossSectionView:
+                name = 'cs view'
+                title = 'Cross Section View'
+                visible << cs_model.visible

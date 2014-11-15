@@ -223,7 +223,7 @@ class DataMuggler(QtCore.QObject):
         self._is_col_nonscalar = set()
         self._col_dims = dict()
         names = []
-        for ci in self.col_info:
+        for ci in self._col_info:
             # validate fill methods
             ci = ColSpec(*ci)
             # used to sort out which way filling should be done.
@@ -297,7 +297,8 @@ class DataMuggler(QtCore.QObject):
             elif col_fill_type is None:
                 tmp_dict[col_name] = False
             else:
-                algnable = self._dataframe[col_name].fillna(col_fill_type)[ref_index].notnull().all()
+                filled = self._dataframe[col_name].fillna(method=col_fill_type)
+                algnable = filled[ref_index].notnull().all()
                 tmp_dict[col_name] = bool(algnable)
         return tmp_dict
 
