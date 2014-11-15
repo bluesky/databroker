@@ -25,6 +25,9 @@ enamldef PipelineView(MainWindow): main:
     title = "Live Data Demo"
     attr scalar_collection
     attr multi_fit_controller
+    attr clear_data
+    attr start_observation
+    attr stop_observation
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -32,7 +35,7 @@ enamldef PipelineView(MainWindow): main:
             selected = 'vs-2010'
         DockArea: area:
             style << style_c.selected
-            layout = HSplitLayout(VSplitLayout('scalar controller'),
+            layout = HSplitLayout(VSplitLayout('trigger pvs', 'scalar controller'),
                                   VSplitLayout('scalar view')
             )
             DockItem: scalar_view:
@@ -51,3 +54,17 @@ enamldef PipelineView(MainWindow): main:
                     hug_width = 'strong'
                     ScalarController:
                         pass
+            DockItem: triggers:
+                name = 'trigger pvs'
+                title = 'Trigger PVs'
+                Container:
+                    hug_width = 'strong'
+                    PushButton: btn_start:
+                        text = "Start"
+                        clicked ::start_observation()
+                    PushButton: btn_stop:
+                        text = "Stop"
+                        clicked :: stop_observation()
+                    PushButton: btn_clear:
+                        text = "Clear"
+                        clicked :: clear_data()

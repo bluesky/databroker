@@ -26,39 +26,59 @@ cothread.iqt()
 # keys = [('s{}'.format(idx), 'ffill', 0) for idx in range(1, 8)]
 # keys.append(('p0', 'ffill', 0))
 
-pvs = {'XF:23IDA-VA:1{FS:1-CCG:1}P:Raw-I': 'vac1',
-       'FE:C23A-VA{FVS:2}P-I': 'vac2'}
+PV_TRIGGER = 'XF:23ID-CT{Replay}Val:trigger-I'
+PVS = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx) for idx in range(0, 10)]
+dm_keys = [(pv, 'ffill', 0) for pv in PVS]
+dm_keys.append(('count', 'ffill', 0))
 
-keys = [(pv_alias, 'ffill', 0) for pv, pv_alias in six.iteritems(pvs)]
-keys.append(('count', 'ffill', 0))
-dm = DataMuggler(keys)
-
-data_dict = {'count': 0}
-for pv_name, pv_alias in six.iteritems(pvs):
-    data_dict[pv_alias] = ca.caget(pv_name)
-cur_time = datetime.utcnow() - timedelta(seconds=1)
-dm.append_data(cur_time, data_dict)
+dm = DataMuggler(dm_keys)
 
 count = 1
 
-def process_callback(value):
-    global pvs
+dm_map = {}
+
+def process(pv_value):
     global count
-    name = pvs[value.name]
-    time_stamp = datetime.utcnow()
+    if pv_value.name == PV_TRIGGER:
+        if pv_value == 'start':
+            # clear the data muggler
+            clear_datamuggler()
+            # start the PV observation
+            start_observation()
+        elif pv_value == 'stop':
+            stop_observation()
+    name = dm_map[pv_value.name]
+    time_stamp = pv_value.timestamp
+    value = float(pv_value)
     print('name: {}'.format(name))
     print('time_stamp: {}'.format(time_stamp))
-    print('value: {}'.format(value))
+    print('value: {}'.format(pv_value))
     dm.append_data(time_stamp, {name: value, 'count': count})
     count = count + 1
     print("hello!")
 
+subscription_obj = []
 
-# M = [ca.camonitor(pv, process_callback, format=ca.FORMAT_TIME) for pv, pv_alias in six.iteritems(pvs)]
-for pv, pv_alias in six.iteritems(pvs):
-    ca.camonitor(pv, process_callback, format=ca.FORMAT_TIME)
-# data_source = SocketListener(cfg.SEND_HOST, cfg.SEND_PORT)
-# data_source.event.connect(print_socket_value)
+def start_observation():
+    print('start_observation')
+    for pv in PVS:
+        pv_val = ca.caget(pv)
+        if len(pv_val) > 0:
+            pv_name = ''.join(chr(_) for _ in pv_val)
+            print('pv_name: {}'.format(pv_name))
+            dm_map[pv_name] = pv
+            subscription_obj.append(ca.camonitor(str(pv_name), process, format=ca.FORMAT_TIME))
+
+def stop_observation():
+    print('stop_observation')
+    for obj in subscription_obj:
+        obj.close()
+    del subscription_obj[:]
+
+def clear_datamuggler():
+    print("clear_datamuggler")
+    dm.clear()
+    dm_map.clear()
 
 app = QtApplication()
 
@@ -71,8 +91,10 @@ scalar_collection = ScalarCollection(data_muggler=dm,
 
 view = PipelineView(scalar_collection=scalar_collection,
                     multi_fit_controller=multi_fit_controller)
+view.start_observation = start_observation
+view.stop_observation = stop_observation
+view.clear_data = clear_datamuggler
 view.show()
-# data_source.start()
 
 app.start()
 cothread.WaitForQuit()
