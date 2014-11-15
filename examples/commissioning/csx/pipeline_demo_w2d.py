@@ -1,6 +1,12 @@
-
 from __future__ import print_function, division
 import six
+
+import os
+import epics
+gajillion = 10000000000
+os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = str(gajillion)
+epics.ca.AUTOMONITOR_MAXLENGTH = gajillion
+
 
 from skxray.fitting.api import model_list as valid_models
 from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
@@ -11,116 +17,181 @@ from replay.model.fitting_model import MultiFitController
 from enaml.qt.qt_application import QtApplication
 import enaml
 from replay.pipeline.pipeline import SocketListener
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
 from calendar import timegm
 import time
-# this must appear before the cothread import
-os.environ['EPICS_BASE'] = '/usr/lib/epics'
-os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '10000000000'
+import numpy as np
 
-import cothread
-import cothread.catools as ca
+pv_dict = {}
+dm = None
 
-cothread.iqt()
+def outer(dm, pv_dict):
+    def process(**kwargs):
+        """ Process an update from the camonitor
 
-# set up mugglers
-# keys = [('s{}'.format(idx), 'ffill', 0) for idx in range(1, 8)]
-# keys.append(('p0', 'ffill', 0))
+        Parameters
+        ----------
+        kwargs: magical dictionary of awesome from epics
+            Valid keys:
+            'access', 'cb_info', 'char_value', 'chid', 'count', 'enum_strs',
+            'ftype', 'host', 'lower_alarm_limit', 'lower_ctrl_limit',
+            'lower_disp_limit', 'lower_warning_limit', 'nelm', 'precision',
+            'pvname', 'read_access', 'severity', 'status', 'timestamp', 'type',
+            'typefull', 'units', 'upper_alarm_limit', 'upper_ctrl_limit',
+            'upper_disp_limit', 'upper_warning_limit', 'value', 'write_access'
+        """
+        # print(sorted(list(six.iterkeys(kwargs))))
+        # for k, v in six.iteritems(kwargs):
+        #     print('{}: {}'.format(k, v))
+        global count
+        from datetime import datetime
+        import time
+        # convert the timestamp to a datetime object
+        ts = datetime(*time.gmtime(kwargs['timestamp'])[:6])
+        pv_name = kwargs['pvname']
+        value = kwargs['value']
+        try:
+            if len(value) > 1:
+                shape = pv_dict[pv_name]['shape']
+                value = kwargs['value'].reshape(shape)
+        except TypeError:
+            pass
+        dm.append_data(ts, {pv_name: value})
+    return process
 
-PV_TRIGGER = 'XF:23ID-CT{Replay}Val:trigger-I'
-PVS = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx) for idx in range(0, 0)]
-IM_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(9), ]
-dm_keys = [(pv, 'ffill', 0) for pv in PVS]
-dm_keys.extend((pv, 'bfill', 2) for pv in IM_pvs)
-dm_keys.append(('count', 'ffill', 0))
+def create_pvs(scalar_pvs, line_pvs, image_pvs):
+    """
 
-dm = DataMuggler(dm_keys)
+    Parameters
+    ----------
+    pv_names : list
+        list of pv_names from which to get the pv's to monitor
 
-count = 1
+    Returns
+    -------
+    pv_dict : dict
+        dict of pv_names formatted as
+        { 'pv_to_watch' : {'dim': col_dim, 'pv': epics_pv} }
+        col_dim: 0 is scalar, 1 is line, 2 is image, higher is nonsense,
+        because live 3d data? come on...
+    """
+    for pv_name in scalar_pvs + line_pvs + image_pvs:
+        try:
+            pv_to_watch = epics.PV(pv_name).char_value
+            pv = epics.PV(pv_to_watch, auto_monitor=True)
+            this_pv = {'pv': pv}
+            if pv_name in scalar_pvs:
+                this_pv['dim'] = 0
+            elif pv_name in line_pvs:
+                this_pv['dim'] = 1
+            elif pv_name in image_pvs:
+                this_pv['dim'] = 2
+                pv_base = pv_to_watch.rsplit(':', 1)[0] + ':'
+                x_dim = int(epics.PV(pv_base + 'ArraySize0_RBV').get())
+                y_dim = int(epics.PV(pv_base + 'ArraySize1_RBV').get())
+                this_pv['shape'] = (y_dim, x_dim)
+            else:
+                raise ValueError('pv: {} is not in scalar, line or image pvs'
+                                 ''.format(pv_name))
+            pv_dict[pv_to_watch] = this_pv
+        except AttributeError:
+            # thrown if pv_name doesn't have a pv associated with it
+            pass
 
-dm_map = {}
+    return pv_dict
 
-def process(pv_value):
-    global count
-    if pv_value.name == PV_TRIGGER:
-        if pv_value == 'start':
-            # clear the data muggler
-            clear_datamuggler()
-            # start the PV observation
-            start_observation()
-        elif pv_value == 'stop':
-            stop_observation()
-    name = dm_map[pv_value.name]
 
-    time_stamp = datetime(*time.gmtime(pv_value.timestamp)[:6])
-    if name in IM_pvs:
-        pv_name = pv_value.name
-        if 'ArrayData' in pv_name:
-            base = pv_name[:-9]
-            x_dim = int(ca.caget(base+'ArraySize0_RBV'))
-            y_dim = int(ca.caget(base+'ArraySize1_RBV'))
-            value = np.asarray(pv_value).reshape((x_dim, y_dim))
-        else:
-            print('inconceivable')
-    elif name in PVS:
-        value = float(pv_value)
-        print('value: {}'.format(pv_value))
-    else:
-        print('inconceivable')
+def grab_data(pv_dict):
+    """ Get the data associated with each PV when Replay spools up
 
-    print('name: {}'.format(name))
-    print('time_stamp: {}'.format(time_stamp))
+    Parameters
+    ----------
+    pv_dict : dict
+        The pv_dict formatted in `create_pvs()`
 
-    dm.append_data(time_stamp, {name: value, 'count': count})
-    count = count + 1
-    print("hello!")
+    Returns
+    -------
+    data_dict : dict
+        {pv_name : data}
+    """
+    data_dict = {}
+    for pv_name, pv_nest in six.iteritems(pv_dict):
+        pv_val = pv_nest['pv'].get()
+        if pv_nest['dim'] == 2:
+            pv_val = pv_val.reshape(pv_nest['shape'])
+        data_dict[pv_name] = pv_val
 
-subscription_obj = []
+    return data_dict
+
 
 def start_observation():
-    print('start_observation')
-    pvs_to_watch = []
-    init_data = {}
-    for pv in PVS:
-        pv_val = ca.caget(pv)
-        pv_name = ''.join(chr(_) for _ in pv_val).strip()
-        if len(pv_name) > 0:
-            print('pv_name: {}'.format(pv_name))
-            dm_map[pv_name] = pv
-            pvs_to_watch.append(pv_name)
-            init_data[pv] = ca.caget(pv_name)
-    dm.append_data(datetime.utcnow(), init_data)
-    for pv_name in pvs_to_watch:
-        subscription_obj.append(ca.camonitor(str(pv_name), process, format=ca.FORMAT_TIME))
+    process = outer(dm, pv_dict)
+    for pv_name, pv_nest in six.iteritems(pv_dict):
+        pv_nest['pv'].add_callback(process)
+
 
 def stop_observation():
-    print('stop_observation')
-    for obj in subscription_obj:
-        obj.close()
-    del subscription_obj[:]
+    for pv_name, pv_nest in six.iteritems(pv_dict):
+        pv_nest['pv'].clear_callbacks()
+
 
 def clear_datamuggler():
-    print("clear_datamuggler")
     dm.clear()
-    dm_map.clear()
 
-app = QtApplication()
 
-with enaml.imports():
-    from pipeline_w2d import PipelineView
+def reinit_datamuggler():
+    print('HEY THIS ISN\'T IMPLEMENTED YET... STOP CLICKING THE BUTTON')
 
-multi_fit_controller = MultiFitController(valid_models=valid_models)
-scalar_collection = ScalarCollection(data_muggler=dm,
-                                     multi_fit_controller=multi_fit_controller)
-cs_model = CrossSectionModel(data_muggler=dm)
-view = PipelineView(scalar_collection=scalar_collection,
-                    multi_fit_controller=multi_fit_controller)
-view.cs_model = cs_model
-view.start_observation = start_observation
-view.stop_observation = stop_observation
-view.clear_data = clear_datamuggler
-view.show()
+def init_ui():
+    """ Do the enaml import and set up of the UI
+    """
+    with enaml.imports():
+        from pipeline_w2d import PipelineView
 
-#app.start()
-cothread.WaitForQuit()
+    c_c_combo_fitter = MultiFitController(valid_models=valid_models)
+    scalar_collection = ScalarCollection(data_muggler=dm,
+                                         fit_controller=c_c_combo_fitter)
+    cs_model = CrossSectionModel(data_muggler=dm)
+    view = PipelineView()
+    # provide the pipeline view with its attributes
+    view.scalar_collection=scalar_collection
+    view.multi_fit_controller = c_c_combo_fitter
+    view.cs_model = cs_model
+    view.start_observation = start_observation
+    view.stop_observation = stop_observation
+    view.clear_data = clear_datamuggler
+    view.reinit_data = reinit_datamuggler
+    view.show()
+
+
+def init():
+    global dm
+    pv_trigger = 'XF:23ID-CT{Replay}Val:trigger-I'
+    scalar_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
+                  for idx in range(0, 3)]
+    line_pvs = []
+    im_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(9), ]
+
+    pv_dict = create_pvs(scalar_pvs, line_pvs, im_pvs)
+    # create the data muggler
+    dm_keys = []
+    for pv_name, pv_nest in six.iteritems(pv_dict):
+        dim = pv_nest['dim']
+        fill = 'ffill'
+        if dim > 1:
+            fill = 'bfill'
+        dm_keys.append((pv_name, fill, dim))
+    dm = DataMuggler(dm_keys)
+    # init the data
+    data_dict = grab_data(pv_dict)
+    # shove the first round of data into the data muggler
+    dm.append_data(datetime.utcnow(), data_dict)
+
+    # init the UI
+    init_ui()
+
+
+if __name__ == '__main__':
+    app = QtApplication()
+    init()
+    app.start()

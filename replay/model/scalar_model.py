@@ -145,11 +145,11 @@ class ScalarCollection(Atom):
     # update
     _num_updates = Int()
 
-    def __init__(self, data_muggler, multi_fit_controller):
+    def __init__(self, data_muggler, fit_controller):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             self.data_muggler = data_muggler
-            self.multi_fit_controller = multi_fit_controller
+            self.multi_fit_controller = fit_controller
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             # self._ax.hold()

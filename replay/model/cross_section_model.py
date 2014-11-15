@@ -50,7 +50,7 @@ class CrossSectionModel(Atom):
     # maximum value for the slider
     num_images = Int()
     # slider value
-    image_index = Int(0)
+    image_index = Int()
     # auto-update image
     auto_update = Bool(False)
 
@@ -171,7 +171,11 @@ class CrossSectionModel(Atom):
         self.sliceable_data.data_name = self.name
     @observe('image_index')
     def _update_image(self, update):
+        if self.image_index < 0:
+            return
         print('self.image_index: {}'.format(self.image_index))
+        print('self.image_shape: {}'.format(
+            self.sliceable_data[self.image_index].shape))
         self.cs.update_image(self.sliceable_data[self.image_index])
     @observe('cmap')
     def _update_cmap(self, update):

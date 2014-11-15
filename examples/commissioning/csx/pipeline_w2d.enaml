@@ -2,7 +2,7 @@ from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
                               InsertDockBarItem)
 from enaml.stdlib.fields import FloatField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
-                               MainWindow, ObjectCombo, PushButton)
+                               MainWindow, ObjectCombo, PushButton, Form)
 from replay.gui.line_view import LineView
 from replay.gui.scalar_view import ScalarView, ScalarController
 from replay.gui.cross_section_view import (CrossSectionView,
@@ -28,6 +28,7 @@ enamldef PipelineView(MainWindow): main:
     attr clear_data
     attr start_observation
     attr stop_observation
+    attr reinit_data
     attr cs_model
     Container: container:
         ObjectCombo: style_c:
@@ -58,7 +59,7 @@ enamldef PipelineView(MainWindow): main:
             DockItem: triggers:
                 name = 'trigger pvs'
                 title = 'Trigger PVs'
-                Container:
+                Form:
                     hug_width = 'strong'
                     PushButton: btn_start:
                         text = "Start"
@@ -69,6 +70,9 @@ enamldef PipelineView(MainWindow): main:
                     PushButton: btn_clear:
                         text = "Clear"
                         clicked :: clear_data()
+                    PushButton: btn_reinit:
+                        text = "Reinit data"
+                        clicked :: reinit_data()
             CrossSectionController:
                 name = 'cs controller'
                 title = 'Cross Section Controller'
