@@ -18,7 +18,7 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
 enamldef ParameterViewVerbose(Container):
     attr param
     constraints = [
-        hbox(min, cmb_min, value, cmb_max, max, spacer),
+        hbox(min, cmb_min, value, cmb_max, max, stderr, spacer),
         align('v_center', value, min, max, cmb_min, cmb_max),
     ]
     padding = (0, 0, 0, 0)
@@ -30,6 +30,9 @@ enamldef ParameterViewVerbose(Container):
     FloatField: max:
         value := param.max
         enabled := param.bounded_max
+    FloatField: stderr:
+        #value := param.stderr
+        pass
     ComboBox: cmb_min:
         items = list(ParameterModel.min_bound_type.items)
         index = 0

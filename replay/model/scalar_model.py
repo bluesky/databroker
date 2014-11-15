@@ -145,11 +145,11 @@ class ScalarCollection(Atom):
     # update
     _num_updates = Int()
 
-    def __init__(self, data_muggler, multi_fit_controller):
+    def __init__(self, data_muggler, fit_controller):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             self.data_muggler = data_muggler
-            self.multi_fit_controller = multi_fit_controller
+            self.multi_fit_controller = fit_controller
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             # self._ax.hold()
@@ -177,7 +177,7 @@ class ScalarCollection(Atom):
             self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                    name=name,
                                                    can_plot=True,
-                                                   is_plotting=True)
+                                                   is_plotting=False)
             self._last_update_time = datetime.utcnow()
         self.update_x(None)
         self.redraw_type = 's'
@@ -247,8 +247,10 @@ class ScalarCollection(Atom):
         else:
             # find out which new_data keys overlap with the data that is
             # supposed to be shown on the plot
-            intersection = [_ for _ in list(self.scalar_models)
-                            if _ in new_data]
+            intersection = []
+            for model_name, model in six.iteritems(self.scalar_models):
+                if model.is_plotting and model.name in new_data:
+                    intersection.append(model.name)
         if redraw:
             self.get_new_data_and_plot(intersection)
 
@@ -268,12 +270,14 @@ class ScalarCollection(Atom):
             y_names = list(six.iterkeys(self.scalar_models))
 
         y_names = set(y_names)
-        valid_name = set(k for k, v in six.iteritems(
+        valid_names = set(k for k, v in six.iteritems(
                                  self.data_muggler.align_against(self.x))
                          if v)
 
-        other_cols = list(y_names & valid_name)
-        print(other_cols)
+        other_cols = list(y_names & valid_names)
+        print('y_names: {}'.format(y_names))
+        print('valid_names: {}'.format(valid_names))
+        print('other_cols: {}'.format(other_cols))
         time, data = self.data_muggler.get_values(ref_col=self.x,
                                                   other_cols=other_cols)
         ref_data = data.pop(self.x)

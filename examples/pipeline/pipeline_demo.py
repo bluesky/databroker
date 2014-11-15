@@ -76,7 +76,7 @@ with enaml.imports():
 
 multi_fit_controller = MultiFitController(valid_models=valid_models)
 scalar_collection = ScalarCollection(data_muggler=dm,
-                                     multi_fit_controller=multi_fit_controller)
+                                     fit_controller=multi_fit_controller)
 
 view = PipelineView(scalar_collection=scalar_collection,
                     multi_fit_controller=multi_fit_controller)

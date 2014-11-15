@@ -26,6 +26,7 @@ class ParameterModel(Atom):
     value = Float()
     min = Float()
     max = Float()
+    stderr = Float()
     vary = Bool(True)
     bounded_min = Bool(False)
     bounded_max = Bool(False)
@@ -42,6 +43,11 @@ class ParameterModel(Atom):
         self.min = param.min
         self.max = param.max
         self.vary = param.vary
+        # check for none
+        # stderr = param.stderr
+        # if stderr is None:
+        #     stderr = 0
+        # self.stderr = stderr
 
     @observe('init_value', 'min', 'max', 'vary', 'bounded_min', 'bounded_max',
              'min_bound_type', 'max_bound_type')
@@ -189,7 +195,7 @@ class MultiFitController(Atom):
         self.y = y
 
     def update_params(self, params):
-        print(params)
+        print('in update_params. params: {}'.format(params))
         for model in self.models:
             model.get_current_model().update_params(six.itervalues(params))
     def aggregate_models(self):

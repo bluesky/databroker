@@ -50,7 +50,7 @@ class CrossSectionModel(Atom):
     # maximum value for the slider
     num_images = Int()
     # slider value
-    image_index = Int(0)
+    image_index = Int()
     # auto-update image
     auto_update = Bool(False)
 
@@ -73,7 +73,10 @@ class CrossSectionModel(Atom):
     def __init__(self, data_muggler, sliceable_data=None, name=None):
         with self.suppress_notifications():
             if name is None:
-                name = data_muggler.keys(dim=2)[0]
+                try:
+                    name = data_muggler.keys(dim=2)[0]
+                except IndexError:
+                    name = None
             self.name = name
             self.figure = Figure()
             self.cs = CrossSection(fig=self.figure)
@@ -168,7 +171,11 @@ class CrossSectionModel(Atom):
         self.sliceable_data.data_name = self.name
     @observe('image_index')
     def _update_image(self, update):
+        if self.image_index < 0:
+            return
         print('self.image_index: {}'.format(self.image_index))
+        print('self.image_shape: {}'.format(
+            self.sliceable_data[self.image_index].shape))
         self.cs.update_image(self.sliceable_data[self.image_index])
     @observe('cmap')
     def _update_cmap(self, update):
