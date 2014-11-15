@@ -90,7 +90,7 @@ def clear_datamuggler():
 app = QtApplication()
 
 with enaml.imports():
-    from pipeline import PipelineView
+    from pipeline_w2d import PipelineView
 
 multi_fit_controller = MultiFitController(valid_models=valid_models)
 scalar_collection = ScalarCollection(data_muggler=dm,

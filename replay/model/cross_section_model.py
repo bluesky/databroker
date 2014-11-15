@@ -73,7 +73,10 @@ class CrossSectionModel(Atom):
     def __init__(self, data_muggler, sliceable_data=None, name=None):
         with self.suppress_notifications():
             if name is None:
-                name = data_muggler.keys(dim=2)[0]
+                try:
+                    name = data_muggler.keys(dim=2)[0]
+                except IndexError:
+                    name = None
             self.name = name
             self.figure = Figure()
             self.cs = CrossSection(fig=self.figure)
