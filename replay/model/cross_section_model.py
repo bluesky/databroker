@@ -9,11 +9,23 @@ from bubblegum.backend.mpl.cross_section_2d import (CrossSection,
                                                     fullrange_limit_factory,
                                                     absolute_limit_factory,
                                                     percentile_limit_factory)
-
 from ..pipeline.pipeline import DataMuggler, DmImgSequence
 from datetime import datetime
 from matplotlib.figure import Figure
 from matplotlib import colors
+
+# create the colormap list
+from matplotlib.cm import datad
+mpl_colors = datad.keys()
+mpl_colors.sort()
+mpl_colors.pop(mpl_colors.index('jet'))
+mpl_colors.pop(mpl_colors.index('jet_r'))
+
+interpolation = ['none', 'nearest', 'bilinear', 'bicubic','spline16',
+                 'spline36', 'hanning', 'hamming', 'hermite', 'kaiser',
+                 'quadric', 'catrom', 'gaussian', 'bessel', 'mitchell',
+                 'sinc', 'lanczos']
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -29,9 +41,9 @@ class CrossSectionModel(Atom):
     # List of 2-D images
     sliceable_data = Typed(DmImgSequence)
     # interpolation routine to use
-    interpolation = Str()
+    interpolation = Enum(*interpolation)
     # color map to use
-    cmap = Str()
+    cmap = Enum(*mpl_colors)
     # Matplotlib figure to draw the cross section on
     figure = Typed(Figure)
     # figure = Figure()
@@ -75,6 +87,12 @@ class CrossSectionModel(Atom):
     img_min = Float()
     # absolute minimum of the currently selected image
     img_max = Float()
+    disp_min_percentile = Float()
+    disp_max_percentile = Float()
+    disp_min_absolute = Float()
+    disp_max_absolute = Float()
+    min_enabled = Bool(True)
+    max_enabled = Bool(True)
     disp_min = Float()
     # currently displayed maximum of the currently selected image
     disp_max = Float()
@@ -88,7 +106,16 @@ class CrossSectionModel(Atom):
                     name = None
             self.name = name
             self.figure = Figure()
-            self.cs = CrossSection(fig=self.figure)
+            cmap = 'BuPu_r'
+            self.limit_func_type = 'percentile'
+            self.disp_min = 1
+            self.disp_max = 99
+            self.disp_min_percentile = self.disp_min
+            self.disp_max_percentile = self.disp_max
+            limit_func = percentile_limit_factory([self.disp_min, self.disp_max])
+            self.cs = CrossSection(fig=self.figure, cmap=cmap,
+                                   limit_func=limit_func)
+                                   # interpolation=interpolation)
             self.cmap = self.cs._cmap
             self.interpolation = self.cs._interpolation
             self.dm = data_muggler
@@ -99,9 +126,6 @@ class CrossSectionModel(Atom):
             self.auto_update = True
             # hook up the data muggler's 'I have new data' signal
             self.dm.new_data.connect(self.notify_new_data)
-            self.limit_func_type = 'percentile'
-            self.disp_min = 0
-            self.disp_max = 100
         self.sliceable_data = sliceable_data
         self.redraw_type = 's'
 
@@ -206,31 +230,57 @@ class CrossSectionModel(Atom):
         self.recompute_image_stats()
     @observe('cmap')
     def _update_cmap(self, update):
+        print('cmap: {}'.format(self.cmap))
         self.cs.update_cmap(self.cmap)
     @observe('interpolation')
     def _update_interpolation(self, update):
         self.cs.update_interpolation(self.interpolation)
-    @observe('limit_func_type', 'disp_min', 'disp_max')
+    @observe('disp_min', 'disp_max')
+    def _update_disp_lims(self, update):
+        print("update: {}".format(update))
+        if self.limit_func_type == 'full range':
+            pass
+        elif self.limit_func_type == 'percentile':
+            self.disp_min_percentile = self.disp_min
+            self.disp_max_percentile = self.disp_max
+            limit_func = percentile_limit_factory(
+                limit_args=[self.disp_min, self.disp_max])
+        elif self.limit_func_type == 'absolute':
+            self.disp_min_absolute = self.disp_min
+            self.disp_max_absolute = self.disp_max
+            limit_func = absolute_limit_factory(
+                limit_args=[self.disp_min, self.disp_max])
+
+    @observe('limit_func_type')
     def _update_limit(self, update):
         img = self.sliceable_data[self.image_index]
         print('limits changed (func, min, max): {}, {}, {}'
               ''.format(self.limit_func_type, self.disp_min, self.disp_max))
-        if self.limit_func_type == 'full range':
-            self.img_min = np.min(img)
-            self.img_max = np.max(img)
+        min_enabled = True
+        max_enabled = True
+        print("update: {}".format(update))
+        if update['value'] == 'full range':
+            min_enabled = False
+            max_enabled = False
             limit_func = fullrange_limit_factory()
-        elif self.limit_func_type == 'percentile':
+        elif update['value'] == 'percentile':
             self.img_min = 0
             self.img_max = 100
+            self.disp_min = self.disp_min_percentile
+            self.disp_max = self.disp_max_percentile
             limit_func = percentile_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
-        elif self.limit_func_type == 'absolute':
+        elif update['value'] == 'absolute':
             self.img_min = np.min(img)
             self.img_max = np.max(img)
+            self.disp_min = self.disp_min_absolute
+            self.disp_max = self.disp_max_absolute
             limit_func = absolute_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
+
+        self.min_enabled = min_enabled
+        self.max_enabled = max_enabled
         self.cs.update_limit_func(limit_func)
-        # self.recompute_image_stats()
 
     @observe('autoscale_horizontal')
     def _update_horizontal_autoscaling(self, update):

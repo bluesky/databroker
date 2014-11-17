@@ -72,7 +72,7 @@ class FitModel(Atom):
     show_basic = Bool(True)
 
     def __init__(self, lmfit_model, name=None):
-        print(lmfit_model)
+        # print(lmfit_model)
         if name is None:
             name = str(lmfit_model.name)
         self.name = name
@@ -80,7 +80,7 @@ class FitModel(Atom):
             self.lmfit_model = lmfit_model(name=self.name)
         else:
             self.lmfit_model = lmfit_model
-        print(self.lmfit_model.name)
+        # print(self.lmfit_model.name)
         self.lmfit_params = self.lmfit_model.make_params()
         for name, param in six.iteritems(self.lmfit_params):
             p = ParameterModel()

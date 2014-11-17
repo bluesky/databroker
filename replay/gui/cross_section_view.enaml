@@ -14,22 +14,18 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
 from enaml.stdlib.fields import FloatField
 from replay.model.cross_section_model import CrossSectionModel
 # valid options for matplotlib imshow interpolation
-interpolation = ['none', 'nearest', 'bilinear', 'bicubic','spline16',
-                 'spline36', 'hanning', 'hamming', 'hermite', 'kaiser',
-                 'quadric', 'catrom', 'gaussian', 'bessel', 'mitchell',
-                 'sinc', 'lanczos']
 # this will be useable instead if PR #3682 gets merged into master
 # from matplotlib.axes.imshow import interpolation
 
-# create the colormap list
-from matplotlib.cm import datad
-cmap = datad.keys()
-cmap.sort()
 
 
 # create the intensity limits list
 limit_options = ['full range', 'percentile', 'absolute']
 
+cmap = list(CrossSectionModel.cmap.items)
+cmap.sort()
+
+interpolation = list(CrossSectionModel.interpolation.items)
 
 enamldef SliderWithSpinner(Container): sws:
     Form:
@@ -79,14 +75,15 @@ enamldef CrossSectionController(DockItem): csdock:
             ComboBox: cmb_cmap:
                 items = cmap
                 editable = True
-                index ::
-                    cs_model.cmap = cmap[index]
+                index = cmap.index(cs_model.cmap)
+                selected_item >> cs_model.cmap
             Label:
                 text = "Interpolation"
             ComboBox:
                 items = interpolation
-                index ::
-                    cs_model.interpolation = interpolation[index]
+                editable = True
+                index = interpolation.index(cs_model.interpolation)
+                selected_item >> cs_model.interpolation
         GroupBox:
             title = "Image intensity"
             Form:
@@ -106,12 +103,14 @@ enamldef CrossSectionController(DockItem): csdock:
                     minimum << cs_model.img_min
                     maximum << cs_model.img_max
                     value := cs_model.disp_min
+                    enabled << cs_model.min_enabled
                 Label:
                     text = "I max"
                 FloatField: imax:
                     minimum << cs_model.img_min
                     maximum << cs_model.img_max
                     value := cs_model.disp_max
+                    enabled << cs_model.max_enabled
 
         SliderWithSpinner: sws:
             pass
