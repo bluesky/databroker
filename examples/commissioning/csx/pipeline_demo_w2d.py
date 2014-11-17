@@ -137,6 +137,7 @@ def stop_observation():
 
 def clear_datamuggler():
     dm.clear()
+    print('Data muggler cleared. Current data muggler content: {}'.format(dm))
 
 
 def reinit_datamuggler():

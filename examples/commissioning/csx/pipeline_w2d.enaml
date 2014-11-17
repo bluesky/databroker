@@ -1,5 +1,5 @@
 from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
-                              InsertDockBarItem)
+                              InsertDockBarItem, grid)
 from enaml.stdlib.fields import FloatField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
                                MainWindow, ObjectCombo, PushButton, Form)
@@ -59,8 +59,12 @@ enamldef PipelineView(MainWindow): main:
             DockItem: triggers:
                 name = 'trigger pvs'
                 title = 'Trigger PVs'
-                Form:
-                    hug_width = 'strong'
+                Container:
+                    constraints = [
+                        grid(
+                            [btn_start, btn_clear, btn_stop, btn_reinit],
+                        ),
+                    ]
                     PushButton: btn_start:
                         text = "Start"
                         clicked ::start_observation()
