@@ -95,9 +95,11 @@ enamldef CrossSectionController(DockItem): csdock:
                 Label:
                     text = "Limit Strategy"
                 ComboBox:
-                    #items = list(cs_model.limit_func.items)
-                    #selected_item >> cs_model.limit_func
-                    pass
+                    items = list(CrossSectionModel.limit_func_type.items)
+                    index = list(
+                        CrossSectionModel.limit_func_type.items).index(
+                            cs_model.limit_func_type)
+                    selected_item >> cs_model.limit_func_type
                 Label:
                     text = "I min"
                 FloatField: imin:
@@ -118,12 +120,24 @@ enamldef CrossSectionController(DockItem): csdock:
 enamldef CrossSectionView(DockItem):
     visible << cs_model.visible
     Container:
-        CheckBox: check:
+        constraints = [
+            vbox(
+                hbox(toolbar_visible, autoscale_h, autoscale_v, spacer),
+                canvas,
+            ),
+        ]
+        CheckBox: toolbar_visible:
             text = 'Toolbar Visible'
             enabled = False
             checked := canvas.toolbar_visible
+        CheckBox: autoscale_h:
+            text = 'Autoscale Horizontal'
+            checked := cs_model.autoscale_horizontal
+        CheckBox: autoscale_v:
+            text = 'Autoscale Vertical'
+            checked := cs_model.autoscale_vertical
         MPLCanvas: canvas:
-            figure = cs_model.figure
+            figure << cs_model.figure
             toolbar_visible = True
 
 

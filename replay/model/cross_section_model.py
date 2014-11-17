@@ -5,11 +5,15 @@ from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
                       Typed, Dict)
 import numpy as np
 import sys
-from matplotlib.figure import Figure
-from matplotlib import colors
-from bubblegum.backend.mpl.cross_section_2d import CrossSection
+from bubblegum.backend.mpl.cross_section_2d import (CrossSection,
+                                                    fullrange_limit_factory,
+                                                    absolute_limit_factory,
+                                                    percentile_limit_factory)
+
 from ..pipeline.pipeline import DataMuggler, DmImgSequence
 from datetime import datetime
+from matplotlib.figure import Figure
+from matplotlib import colors
 import logging
 logger = logging.getLogger(__name__)
 
@@ -34,7 +38,7 @@ class CrossSectionModel(Atom):
     # normalization routine to use
     norm = Enum([colors.Normalize, colors.LogNorm])
     # limit function to use
-    limit_func = Enum('full range', 'percentile', 'absolute')
+    limit_func_type = Enum('full range', 'percentile', 'absolute')
 
     # back end for plotting. cs holds a figure that paints the cross section
     # viewer
@@ -44,6 +48,10 @@ class CrossSectionModel(Atom):
     # data muggler
     dm = Typed(DataMuggler)
     visible = Bool(True)
+
+    # PARAMETERS -- AUTOSCALING
+    autoscale_horizontal = Bool(True)
+    autoscale_vertical = Bool(True)
 
     # PARAMETERS -- CONTROL DOCK
     # minimum value for the slider
@@ -91,6 +99,9 @@ class CrossSectionModel(Atom):
             self.auto_update = True
             # hook up the data muggler's 'I have new data' signal
             self.dm.new_data.connect(self.notify_new_data)
+            self.limit_func_type = 'percentile'
+            self.disp_min = 0
+            self.disp_max = 100
         self.sliceable_data = sliceable_data
         self.redraw_type = 's'
 
@@ -145,6 +156,20 @@ class CrossSectionModel(Atom):
                          "was raised: {}".format(var, e))
         return state
 
+    def recompute_image_stats(self):
+        """ Function that computes image stats when the image is updated
+        """
+        img = self.sliceable_data[self.image_index]
+        if self.limit_func_type == 'percentile':
+            img_min = 0
+            img_max = 100
+        else:
+            img_min = np.min(img)
+            img_max = np.max(img)
+
+        self.img_min = img_min
+        self.img_max = img_max
+
     # OBSERVATION METHODS
     @observe('redraw_type')
     def _update_redraw_type(self, update):
@@ -178,26 +203,41 @@ class CrossSectionModel(Atom):
         print('self.image_shape: {}'.format(
             self.sliceable_data[self.image_index].shape))
         self.cs.update_image(self.sliceable_data[self.image_index])
+        self.recompute_image_stats()
     @observe('cmap')
     def _update_cmap(self, update):
         self.cs.update_cmap(self.cmap)
     @observe('interpolation')
     def _update_interpolation(self, update):
         self.cs.update_interpolation(self.interpolation)
-    @observe('limit_func')
+    @observe('limit_func_type', 'disp_min', 'disp_max')
     def _update_limit(self, update):
-        print('limit function changed: {}'.format(self.limit_func))
-        # self.cs.set_limit_func(self.limit_func)
+        img = self.sliceable_data[self.image_index]
+        print('limits changed (func, min, max): {}, {}, {}'
+              ''.format(self.limit_func_type, self.disp_min, self.disp_max))
+        if self.limit_func_type == 'full range':
+            self.img_min = np.min(img)
+            self.img_max = np.max(img)
+            limit_func = fullrange_limit_factory()
+        elif self.limit_func_type == 'percentile':
+            self.img_min = 0
+            self.img_max = 100
+            limit_func = percentile_limit_factory(
+                limit_args=[self.disp_min, self.disp_max])
+        elif self.limit_func_type == 'absolute':
+            self.img_min = np.min(img)
+            self.img_max = np.max(img)
+            limit_func = absolute_limit_factory(
+                limit_args=[self.disp_min, self.disp_max])
+        self.cs.update_limit_func(limit_func)
+        # self.recompute_image_stats()
 
-    # NOT IMEPLEMENTED YET
-    @observe('disp_min')
-    def _update_min(self, update):
-        # todo get image limits working
-        pass
-    @observe('disp_max')
-    def _update_max(self, update):
-        # todo get image limits working
-        pass
+    @observe('autoscale_horizontal')
+    def _update_horizontal_autoscaling(self, update):
+        self.cs.autoscale_horizontal(self.autoscale_horizontal)
+    @observe('autoscale_vertical')
+    def _update_vertical_autoscaling(self, update):
+        self.cs.autoscale_vertical(self.autoscale_vertical)
 
 
 class CrossSectionCollection(Atom):
