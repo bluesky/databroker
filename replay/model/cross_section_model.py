@@ -34,7 +34,8 @@ class CrossSectionModel(Atom):
     # normalization routine to use
     norm = Enum([colors.Normalize, colors.LogNorm])
     # limit function to use
-    limit_func = Str()
+    limit_func = Enum('full range', 'percentile', 'absolute')
+
     # back end for plotting. cs holds a figure that paints the cross section
     # viewer
     cs = Typed(CrossSection)
@@ -185,7 +186,8 @@ class CrossSectionModel(Atom):
         self.cs.update_interpolation(self.interpolation)
     @observe('limit_func')
     def _update_limit(self, update):
-        self.cs.set_limit_func(self.limit_func)
+        print('limit function changed: {}'.format(self.limit_func))
+        # self.cs.set_limit_func(self.limit_func)
 
     # NOT IMEPLEMENTED YET
     @observe('disp_min')

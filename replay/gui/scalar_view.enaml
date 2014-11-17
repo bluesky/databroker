@@ -91,12 +91,14 @@ enamldef ScalarView(Container):
         ]
         CheckBox: check:
             text = 'Toolbar Visible'
+            enabled = False
             checked := canvas.toolbar_visible
         CheckBox: fit:
             text = 'Fitting Visible'
             checked := fitter.show_fit
         MPLCanvas: canvas:
             figure << scalar_collection._fig
+            toolbar_visible = True
         MultiFitController: fitter:
             pass
 

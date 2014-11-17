@@ -95,9 +95,9 @@ enamldef CrossSectionController(DockItem): csdock:
                 Label:
                     text = "Limit Strategy"
                 ComboBox:
-                    items = limit_options
-                    index ::
-                        cs_model.limit_func = limit_options[index]
+                    #items = list(cs_model.limit_func.items)
+                    #selected_item >> cs_model.limit_func
+                    pass
                 Label:
                     text = "I min"
                 FloatField: imin:
@@ -120,10 +120,13 @@ enamldef CrossSectionView(DockItem):
     Container:
         CheckBox: check:
             text = 'Toolbar Visible'
+            enabled = False
             checked := canvas.toolbar_visible
         MPLCanvas: canvas:
             figure = cs_model.figure
+            toolbar_visible = True
 
+l
 enamldef CrossSectionCollection(DockItem):
     attr cross_section_collection
     Container:
