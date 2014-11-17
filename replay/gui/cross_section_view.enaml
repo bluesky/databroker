@@ -126,7 +126,7 @@ enamldef CrossSectionView(DockItem):
             figure = cs_model.figure
             toolbar_visible = True
 
-l
+
 enamldef CrossSectionCollection(DockItem):
     attr cross_section_collection
     Container:

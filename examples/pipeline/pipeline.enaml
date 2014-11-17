@@ -20,10 +20,20 @@ def add_dock_bars(area, cross_section_view, cross_section_controller,
     area.update_layout(InsertDockBarItem(item=scalar_view,
                                          target=scalar_controller))
 
+enamldef RegionOfInterest(Container):
+    FloatField: input:
+        value := roi_model.value
+    PushButton: btn:
+        text = "Update Scaling Factor"
+        clicked ::
+            roi_model.value = input.value
+
 
 enamldef PipelineView(MainWindow): main:
     title = "Live Data Demo"
     attr scalar_collection
+    attr cs_model
+    attr roi_model
     attr multi_fit_controller
     Container: container:
         ObjectCombo: style_c:
@@ -53,3 +63,25 @@ enamldef PipelineView(MainWindow): main:
                     hug_width = 'strong'
                     ScalarController:
                         pass
+            CrossSectionController:
+                name = 'cs controller'
+                title = 'Cross Section Controller'
+                closable = False
+                name = 'cs controller'
+                visible << cs_model.visible
+            CrossSectionView:
+                name = 'cs view'
+                title = 'Cross Section View'
+                visible << cs_model.visible
+            DockItem: roi_view:
+                name = 'roi view'
+                title = "Region Of Interest"
+                Container:
+                    RegionOfInterest:
+                        pass
+                    PushButton:
+                        text = "Show cross section"
+                        checkable = True
+                        checked := cs_model.visible
+                        clicked ::
+                            print('cs_model.visible: {}'.format(cs_model.visible))

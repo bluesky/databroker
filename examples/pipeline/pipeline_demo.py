@@ -114,7 +114,7 @@ roi_model = RegionOfInterestModel(callback=roi_callback)
 from replay.model.fitting_model import FitController
 multi_fit_controller = MultiFitController(valid_models=valid_models)
 scalar_collection = ScalarCollection(data_muggler=dm,
-                                     multi_fit_controller=multi_fit_controller)
+                                     fit_controller=multi_fit_controller)
 scalar_collection.scalar_models['count'].is_plotting = False
 scalar_collection.scalar_models['T'].is_plotting = False
 scalar_collection.scalar_models['x'].is_plotting = False
