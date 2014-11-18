@@ -50,8 +50,10 @@ class CrossSectionModel(Atom):
     # figure = Figure()
     # normalization routine to use
     norm = Enum([colors.Normalize, colors.LogNorm])
-    # limit function to use
+    # name of limit function to use
     limit_func_type = Enum('full range', 'percentile', 'absolute')
+    # actual limit function
+    limit_func = Typed(object)
 
     # back end for plotting. cs holds a figure that paints the cross section
     # viewer
@@ -64,7 +66,7 @@ class CrossSectionModel(Atom):
     visible = Bool(True)
 
     # histogram model
-    histo_model = Typed(HistogramModel)
+    histogram_model = Typed(HistogramModel)
 
     # PARAMETERS -- AUTOSCALING
     autoscale_horizontal = Bool(True)
@@ -102,7 +104,8 @@ class CrossSectionModel(Atom):
     # currently displayed maximum of the currently selected image
     disp_max = Float()
 
-    def __init__(self, data_muggler, sliceable_data=None, name=None):
+    def __init__(self, data_muggler, sliceable_data=None, name=None,
+                 histogram_model=histogram_model):
         with self.suppress_notifications():
             # stash the data muggler
             self.dm = data_muggler
@@ -130,15 +133,21 @@ class CrossSectionModel(Atom):
             self.disp_max = 99
             self.disp_min_percentile = self.disp_min
             self.disp_max_percentile = self.disp_max
-            limit_func = percentile_limit_factory([self.disp_min, self.disp_max])
+            self.limit_func = percentile_limit_factory([self.disp_min, self.disp_max])
             self.cs = CrossSection(fig=self._fig, cmap=cmap,
-                                   limit_func=limit_func)
-                                   # interpolation=interpolation)
+                                   limit_func=self.limit_func)
+            # grab the color map and interpolation from the cross section mpl
+            # object
             self.cmap = self.cs._cmap
             self.interpolation = self.cs._interpolation
-
-            # hook up the data muggler's 'I have new data' signal
+            # hook up to the data muggler's 'I have new data' signal
             self.dm.new_data.connect(self.notify_new_data)
+            if histogram_model is not None:
+                self.histogram_model = histogram_model
+                self.histogram_model.limit_func = self.limit_func
+
+        self.img_max = 100
+        self.img_min = 0
         self.sliceable_data = sliceable_data
         self.redraw_type = 's'
 
@@ -246,14 +255,15 @@ class CrossSectionModel(Atom):
         print('self.image_shape: {}'.format(
             self.sliceable_data[self.image_index].shape))
         self.cs.update_image(self.sliceable_data[self.image_index])
-        if self.histo_model is not None:
-            self.histo_model.set_img(self.sliceable_data[self.image_index])
+        if self.histogram_model is not None:
+            self.histogram_model.img = self.sliceable_data[self.image_index]
         self.recompute_image_stats()
 
     @observe('cmap')
     def _update_cmap(self, update):
         print('cmap: {}'.format(self.cmap))
         self.cs.update_cmap(self.cmap)
+        self.histogram_model.cmap = self.cmap
 
     @observe('interpolation')
     def _update_interpolation(self, update):
@@ -267,14 +277,15 @@ class CrossSectionModel(Atom):
         elif self.limit_func_type == 'percentile':
             self.disp_min_percentile = self.disp_min
             self.disp_max_percentile = self.disp_max
-            limit_func = percentile_limit_factory(
+            self.limit_func = percentile_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
         elif self.limit_func_type == 'absolute':
             self.disp_min_absolute = self.disp_min
             self.disp_max_absolute = self.disp_max
-            limit_func = absolute_limit_factory(
+            self.limit_func = absolute_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
-        self.cs.update_limit_func(limit_func)
+        self.cs.update_limit_func(self.limit_func)
+        self.histogram_model.limit_func = self.limit_func
 
     @observe('limit_func_type')
     def _update_limit(self, update):
@@ -287,25 +298,25 @@ class CrossSectionModel(Atom):
         if update['value'] == 'full range':
             min_enabled = False
             max_enabled = False
-            limit_func = fullrange_limit_factory()
+            self.limit_func = fullrange_limit_factory()
         elif update['value'] == 'percentile':
             self.img_min = 0
             self.img_max = 100
             self.disp_min = self.disp_min_percentile
             self.disp_max = self.disp_max_percentile
-            limit_func = percentile_limit_factory(
+            self.limit_func = percentile_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
         elif update['value'] == 'absolute':
             self.img_min = np.min(img)
             self.img_max = np.max(img)
             self.disp_min = self.disp_min_absolute
             self.disp_max = self.disp_max_absolute
-            limit_func = absolute_limit_factory(
+            self.limit_func = absolute_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
 
         self.min_enabled = min_enabled
         self.max_enabled = max_enabled
-        self.cs.update_limit_func(limit_func)
+        self.cs.update_limit_func(self.limit_func)
 
     # TODO fix this @tacaswell :)
     @observe('autoscale_horizontal')

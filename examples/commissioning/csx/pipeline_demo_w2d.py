@@ -198,8 +198,8 @@ def init_ui(data_muggler):
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
     scalar_collection = ScalarCollection(data_muggler=data_muggler,
                                          fit_controller=c_c_combo_fitter)
-    cs_model = CrossSectionModel(data_muggler=data_muggler)
-    cs_model.histo_model = histogram_model
+    cs_model = CrossSectionModel(data_muggler=data_muggler,
+                                 histogram_model=histogram_model)
     view = PipelineView(histogram_model=histogram_model)
     # provide the pipeline view with its attributes
     view.scalar_collection=scalar_collection
