@@ -122,7 +122,12 @@ class ScalarCollection(Atom):
     """
     scalar_models = Dict(key=Str(), value=ScalarModel)
     data_muggler = Typed(DataMuggler)
+    # name of the x axis
     x = Str()
+    # name of the column to align against
+    alignment_col = Str()
+    x_is_data = Bool(True)
+    x_is_time = Bool(False)
     col_names = List(item=str)
 
     # MPL PLOTTING STUFF
@@ -162,6 +167,7 @@ class ScalarCollection(Atom):
             self.col_names.append('fit')
             # default to the first column name
             self.x = self.col_names[0]
+            self.alignment_col = self.col_names[0]
             # get the alignability of the columns that this model cares about
             alignable = self.data_muggler.align_against(self.x, self.col_names)
             for name, is_plottable in six.iteritems(alignable):
@@ -182,10 +188,25 @@ class ScalarCollection(Atom):
         self.update_x(None)
         self.redraw_type = 's'
 
+    @observe('x_is_data', 'x_is_time')
+    def update_x_axis(self, changed):
+        with self.suppress_notifications():
+            if self.x_is_time:
+                self.x_is_data = False
+            elif self.x_is_data:
+                self.x_is_time = False
+        print('x is data: {}\tx is time: {}'.format(self.x_is_data, self.x_is_time))
+        if self.x_is_data or self.x_is_time:
+            self.get_new_data_and_plot()
+
     @observe('x')
     def update_x(self, changed):
+        self._ax.set_xlabel(self.x)
+
+    @observe('alignment_col')
+    def update_alignment_col(self, changed):
         # check with the muggler for the columns that can be plotted against
-        sliceable = self.data_muggler.align_against(self.x)
+        sliceable = self.data_muggler.align_against(self.alignment_col)
         for name, scalar_model in six.iteritems(self.scalar_models):
             if name == 'fit':
                 continue
@@ -196,7 +217,6 @@ class ScalarCollection(Atom):
             else:
                 # enable the check box but don't turn on the plotting
                 scalar_model.can_plot = True
-        self._ax.set_xlabel(self.x)
         self.get_new_data_and_plot()
 
     def print_state(self):
@@ -214,7 +234,8 @@ class ScalarCollection(Atom):
             The new column name that the data muggler knows about
         """
         scalar_cols = self.data_muggler.keys(dim=0)
-        alignable = self.data_muggler.align_against(self.x, self.col_names)
+        alignable = self.data_muggler.align_against(self.alignment_col,
+                                                    self.col_names)
         for name, is_plottable in six.iteritems(alignable):
             if name in new_columns and not self.data_muggler.col_dims[name]:
                 line_artist,  = self._ax.plot([], [], label=name)
@@ -241,7 +262,7 @@ class ScalarCollection(Atom):
                 pass
         elif self.redraw_type == 'max rate':
             redraw = True
-        if self.x in new_data:
+        if self.alignment_col in new_data:
             # update all the data in the line plot
             intersection = list(self.scalar_models)
         else:
@@ -271,45 +292,54 @@ class ScalarCollection(Atom):
 
         y_names = set(y_names)
         valid_names = set(k for k, v in six.iteritems(
-                                 self.data_muggler.align_against(self.x))
-                         if v)
+                                 self.data_muggler.align_against(
+                                     self.alignment_col))
+                          if v)
 
         other_cols = list(y_names & valid_names)
         print('y_names: {}'.format(y_names))
         print('valid_names: {}'.format(valid_names))
         print('other_cols: {}'.format(other_cols))
-        time, data = self.data_muggler.get_values(ref_col=self.x,
+        time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
                                                   other_cols=other_cols)
         ref_data = data.pop(self.x)
+        # switch between x axis as data and x axis as time
+        if self.x_is_data:
+            ref_data_vals = ref_data.values
+        else:
+            ref_data_vals = time
+        print('ref_data_vals: {}'.format(ref_data_vals))
+
         if self.scalar_models[self.x].is_plotting:
-            self.scalar_models[self.x].set_data(x=ref_data, y=ref_data)
+            self.scalar_models[self.x].set_data(x=ref_data_vals, y=ref_data)
         for dname, dvals in six.iteritems(data):
-            self.scalar_models[dname].set_data(x=ref_data, y=dvals)
+            self.scalar_models[dname].set_data(x=ref_data_vals, y=dvals)
 
         # manage the fitting
         if self.fit_target is not '':
             target_data = ref_data
             if self.fit_target != self.x:
                 target_data = data[self.fit_target]
-            self.multi_fit_controller.set_xy(x=ref_data.values, y=target_data.values)
+            self.multi_fit_controller.set_xy(x=ref_data_vals,
+                                             y=target_data.values)
         if self.multi_fit_controller.guess:
             self.multi_fit_controller.do_guess()
         if self.multi_fit_controller.autofit:
             self.multi_fit_controller.fit()
         try:
-            self.scalar_models['fit'].set_data(x=ref_data.values,
-                                               y=self.multi_fit_controller.best_fit)
+            self.scalar_models['fit'].set_data(
+                x=ref_data_vals, y=self.multi_fit_controller.best_fit)
         except RuntimeError:
             # thrown when x and y are not the same length
             pass
-        self.plot()
+        self.reformat_view()
         self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
             self._num_updates) / (datetime.utcnow() -
                                  self._last_update_time).total_seconds())
         self._num_updates = 0
         self._last_update_time = datetime.utcnow()
 
-    def plot(self):
+    def reformat_view(self):
         """
         Recompute the limits, rescale the view, reformat the legend and redraw
         the canvas

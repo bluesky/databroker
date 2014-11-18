@@ -71,16 +71,17 @@ class FitModel(Atom):
     show_advanced = Bool(False)
     show_basic = Bool(True)
 
-    def __init__(self, lmfit_model, name=None):
+    def __init__(self, lmfit_model, prefix, name=None):
         # print(lmfit_model)
         if name is None:
             name = str(lmfit_model.name)
         self.name = name
         if type(lmfit_model) is type:
-            self.lmfit_model = lmfit_model(name=self.name)
+            self.lmfit_model = lmfit_model(name=self.name, prefix=prefix)
         else:
             self.lmfit_model = lmfit_model
         # print(self.lmfit_model.name)
+        # self.lmfit_model.prefix = "1"
         self.lmfit_params = self.lmfit_model.make_params()
         for name, param in six.iteritems(self.lmfit_params):
             p = ParameterModel()
@@ -113,12 +114,12 @@ class PolynomialModel(FitModel):
     """Back-end specific to the polynomial model
     """
     polynomial_order = Int(2)
-    def __init__(self, lmfit_model, poly_order=None, **kwargs):
+    def __init__(self, lmfit_model, prefix, poly_order=None, **kwargs):
         if poly_order is None:
             poly_order = self.polynomial_order
         self.polynomial_order = poly_order
-        lmfit_model = lmfit_model(degree=self.polynomial_order)
-        super(PolynomialModel, self).__init__(lmfit_model, **kwargs)
+        lmfit_model = lmfit_model(degree=self.polynomial_order, prefix=prefix)
+        super(PolynomialModel, self).__init__(lmfit_model, prefix=prefix, **kwargs)
 
 class FitController(Atom):
     """ Back-end for the enaml fitting viewer
@@ -132,7 +133,8 @@ class FitController(Atom):
     show_params = Bool(True)
 
 
-    def __init__(self, valid_models=None, name=None, model_name=None):
+    def __init__(self, prefix, valid_models=None, name=None, model_name=None
+                 ):
         # set some defaults
         if valid_models is None:
             valid_models = default_models
@@ -143,10 +145,11 @@ class FitController(Atom):
         # init the model chooser
         for model in self._valid_models:
             try:
-                the_model = FitModel(model, name=name)
+                the_model = FitModel(model, name=name, prefix=prefix)
             except TypeError as te:
                 if model.__name__ == 'PolynomialModel':
-                    the_model = PolynomialModel(lmfit_model=model, name=name)
+                    the_model = PolynomialModel(lmfit_model=model, name=name,
+                                                prefix=prefix)
                 else:
                     six.reraise(TypeError, te, sys.exc_info()[2])
             self.atom_models[model.__name__] = the_model
@@ -174,8 +177,8 @@ class MultiFitController(Atom):
         if valid_models  is None:
             valid_models = default_models
         self.valid_models = valid_models
-        gaussian = FitController(model_name='GaussianModel')
-        linear = FitController(model_name="LinearModel")
+        gaussian = FitController(model_name='GaussianModel', prefix="a_")
+        linear = FitController(model_name="LinearModel", prefix="b_")
         self.models = [gaussian, linear, ]
 
     def add_model(self):

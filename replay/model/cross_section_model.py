@@ -213,9 +213,11 @@ class CrossSectionModel(Atom):
         self.last_update_time = datetime.utcnow()
         self.last_update_frame = self.image_index
         print('self.redraw_type: {}'.format(self.redraw_type))
+
     @observe('redraw_every')
     def _update_redraw_delay(self, update):
         print('self.redraw_every: {}'.format(self.redraw_every))
+
     @observe('sliceable_data')
     def _update_sliceable_data(self, update):
         print('sliceable data updated')
@@ -229,11 +231,13 @@ class CrossSectionModel(Atom):
                    "current state of the cross section model\n")
             msg = self.get_state()
             print(msg)
+
     @observe('name')
     def _update_name(self, update):
         self.sliceable_data = DmImgSequence(data_muggler=self.dm,
                                             data_name=self.name)
         self.image_index = 0
+
     @observe('image_index')
     def _update_image(self, update):
         if self.image_index < 0:
@@ -245,13 +249,16 @@ class CrossSectionModel(Atom):
         if self.histo_model is not None:
             self.histo_model.set_img(self.sliceable_data[self.image_index])
         self.recompute_image_stats()
+
     @observe('cmap')
     def _update_cmap(self, update):
         print('cmap: {}'.format(self.cmap))
         self.cs.update_cmap(self.cmap)
+
     @observe('interpolation')
     def _update_interpolation(self, update):
         self.cs.update_interpolation(self.interpolation)
+
     @observe('disp_min', 'disp_max')
     def _update_disp_lims(self, update):
         print("update: {}".format(update))
@@ -267,6 +274,7 @@ class CrossSectionModel(Atom):
             self.disp_max_absolute = self.disp_max
             limit_func = absolute_limit_factory(
                 limit_args=[self.disp_min, self.disp_max])
+        self.cs.update_limit_func(limit_func)
 
     @observe('limit_func_type')
     def _update_limit(self, update):
@@ -299,9 +307,11 @@ class CrossSectionModel(Atom):
         self.max_enabled = max_enabled
         self.cs.update_limit_func(limit_func)
 
+    # TODO fix this @tacaswell :)
     @observe('autoscale_horizontal')
     def _update_horizontal_autoscaling(self, update):
         self.cs.autoscale_horizontal(self.autoscale_horizontal)
+
     @observe('autoscale_vertical')
     def _update_vertical_autoscaling(self, update):
         self.cs.autoscale_vertical(self.autoscale_vertical)

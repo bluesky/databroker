@@ -227,7 +227,7 @@ def init():
     global dm, scalar_pvs, line_pvs, im_pvs
     pv_trigger = 'XF:23ID-CT{Replay}Val:trigger-I'
     scalar_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
-                  for idx in range(0, 3)]
+                  for idx in range(0, 7)]
     line_pvs = []
     im_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
               for idx in range(7, 10)]

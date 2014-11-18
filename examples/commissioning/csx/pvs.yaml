@@ -21,6 +21,7 @@ scalar_pvs:
 - name: XF:23ID1-ES{Sclr:1}_cts1.J
 - name: XF:23ID1-ES{Sclr:1}_cts2.G
 - name: XF:23ID1-ES{Sclr:1}_cts2.H
+- name: XF:23ID1-OP{Mono}Enrgy-I
 
 line_pvs:
 
