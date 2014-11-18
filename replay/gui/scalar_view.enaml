@@ -44,9 +44,9 @@ enamldef ScalarController(Container):
                 padding = Box(0, 0, 0, 0)
                 Form:
                     Label:
-                        text = "Column to align against
+                        text = "Column to align against"
                     Label:
-                        text = "Alignment options
+                        text = "Alignment options"
                     ComboBox: xcmb:
                         items << list(scalar_collection.col_names)
                         editable = True
