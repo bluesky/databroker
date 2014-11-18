@@ -57,7 +57,7 @@ class ParameterModel(Atom):
         except KeyError:
             # the parameter doesn't exist in the lmfit parameter
             pass
-        print(changed)
+        # print(changed)
 
 
 class FitModel(Atom):

@@ -13,6 +13,7 @@ from ..pipeline.pipeline import DataMuggler, DmImgSequence
 from datetime import datetime
 from matplotlib.figure import Figure
 from matplotlib import colors
+from .histogram_model import HistogramModel
 
 # create the colormap list
 from matplotlib.cm import datad
@@ -45,7 +46,7 @@ class CrossSectionModel(Atom):
     # color map to use
     cmap = Enum(*mpl_colors)
     # Matplotlib figure to draw the cross section on
-    figure = Typed(Figure)
+    _fig = Typed(Figure)
     # figure = Figure()
     # normalization routine to use
     norm = Enum([colors.Normalize, colors.LogNorm])
@@ -59,7 +60,11 @@ class CrossSectionModel(Atom):
     name = Str()
     # data muggler
     dm = Typed(DataMuggler)
+    dm_names = List()
     visible = Bool(True)
+
+    # histogram model
+    histo_model = Typed(HistogramModel)
 
     # PARAMETERS -- AUTOSCALING
     autoscale_horizontal = Bool(True)
@@ -67,13 +72,13 @@ class CrossSectionModel(Atom):
 
     # PARAMETERS -- CONTROL DOCK
     # minimum value for the slider
-    minimum = Range(low=0)
+    minimum = Int(0)
     # maximum value for the slider
     num_images = Int()
     # slider value
-    image_index = Int()
+    image_index = Int(0)
     # auto-update image
-    auto_update = Bool(False)
+    auto_update = Bool(True)
 
     # UPDATE SPEED CONTROL
     redraw_every = Float(default=1)
@@ -99,31 +104,39 @@ class CrossSectionModel(Atom):
 
     def __init__(self, data_muggler, sliceable_data=None, name=None):
         with self.suppress_notifications():
+            # stash the data muggler
+            self.dm = data_muggler
+            # grab the valid 2-d names from the data muggler
+            self.dm_names = self.dm.keys(dim=2)
+            # set data muggler name default
             if name is None:
                 try:
-                    name = data_muggler.keys(dim=2)[0]
+                    name = self.dm_names[0]
                 except IndexError:
                     name = None
+            # stash the name
             self.name = name
-            self.figure = Figure()
+            # set defaults for sliceable data
+            if sliceable_data is None:
+                sliceable_data = DmImgSequence(data_muggler=self.dm,
+                                               data_name=self.name)
+            # create the mpl figure
+            self._fig = Figure()
+            # set the default color map
             cmap = 'BuPu_r'
+            # init the limit function
             self.limit_func_type = 'percentile'
             self.disp_min = 1
             self.disp_max = 99
             self.disp_min_percentile = self.disp_min
             self.disp_max_percentile = self.disp_max
             limit_func = percentile_limit_factory([self.disp_min, self.disp_max])
-            self.cs = CrossSection(fig=self.figure, cmap=cmap,
+            self.cs = CrossSection(fig=self._fig, cmap=cmap,
                                    limit_func=limit_func)
                                    # interpolation=interpolation)
             self.cmap = self.cs._cmap
             self.interpolation = self.cs._interpolation
-            self.dm = data_muggler
-            if sliceable_data is None:
-                sliceable_data = DmImgSequence(data_muggler=self.dm,
-                                               data_name=self.name)
-            self.image_index = 0
-            self.auto_update = True
+
             # hook up the data muggler's 'I have new data' signal
             self.dm.new_data.connect(self.notify_new_data)
         self.sliceable_data = sliceable_data
@@ -218,7 +231,9 @@ class CrossSectionModel(Atom):
             print(msg)
     @observe('name')
     def _update_name(self, update):
-        self.sliceable_data.data_name = self.name
+        self.sliceable_data = DmImgSequence(data_muggler=self.dm,
+                                            data_name=self.name)
+        self.image_index = 0
     @observe('image_index')
     def _update_image(self, update):
         if self.image_index < 0:
@@ -227,6 +242,8 @@ class CrossSectionModel(Atom):
         print('self.image_shape: {}'.format(
             self.sliceable_data[self.image_index].shape))
         self.cs.update_image(self.sliceable_data[self.image_index])
+        if self.histo_model is not None:
+            self.histo_model.set_img(self.sliceable_data[self.image_index])
         self.recompute_image_stats()
     @observe('cmap')
     def _update_cmap(self, update):

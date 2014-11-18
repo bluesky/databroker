@@ -71,6 +71,12 @@ enamldef CrossSectionController(DockItem): csdock:
             row_spacing = 0
             padding = 0
             Label:
+                text = "Image PV"
+            ComboBox: cmb_imgpv:
+                items << cs_model.dm_names
+                index = cs_model.dm_names.index(cs_model.name)
+                selected_item >> cs_model.name
+            Label:
                 text = "Color map"
             ComboBox: cmb_cmap:
                 items = cmap
@@ -136,7 +142,7 @@ enamldef CrossSectionView(DockItem):
             text = 'Autoscale Vertical'
             checked := cs_model.autoscale_vertical
         MPLCanvas: canvas:
-            figure << cs_model.figure
+            figure << cs_model._fig
             toolbar_visible = True
 
 
