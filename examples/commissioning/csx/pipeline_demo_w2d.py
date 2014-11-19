@@ -88,6 +88,7 @@ def create_pvs(scalar_pvs, line_pvs, image_pvs):
     """
     for pv_name in scalar_pvs + line_pvs + image_pvs:
         try:
+            print('pv_name: {}'.format(pv_name))
             pv_to_watch = epics.PV(pv_name).char_value
             pv = epics.PV(pv_to_watch, auto_monitor=True)
             this_pv = {'pv': pv}
@@ -227,10 +228,10 @@ def init():
     global dm, scalar_pvs, line_pvs, im_pvs
     pv_trigger = 'XF:23ID-CT{Replay}Val:trigger-I'
     scalar_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
-                  for idx in range(0, 7)]
+                  for idx in range(0, 6)]
     line_pvs = []
     im_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
-              for idx in range(7, 10)]
+              for idx in range(6, 10)]
     common_pvs = ['XF:23ID1-OP{Slt:3-Ax:X}Mtr.RBV',
                   'XF:23ID1-ES{Dif-Cam:Beam}Stats5:Total_RBV',
                   'XF:23ID1-OP{Slt:3-Ax:X}Mtr.RBV',

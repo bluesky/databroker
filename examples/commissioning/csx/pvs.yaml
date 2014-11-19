@@ -11,6 +11,12 @@ mailbox_pvs:
 - XF:23ID-CT{Replay}Val:8-I
 - XF:23ID-CT{Replay}Val:9-I
 
+db_pvs:
+- name: XF:23ID-CT{Replay}Val:EventHdr-I
+  alias: event
+- name: XF:23ID-CT{Replay}Val:RunHdr-I
+  alias: runhdr
+
 scalar_pvs:
 - name: XF:23ID1-OP{Slt:3-Ax:X}Mtr.RBV
   alias: slit3x
@@ -33,3 +39,5 @@ image_pvs:
   alias: fluor1
 - name: XF:23ID1-BI{Diag:6-Cam:1}image1:ArrayData
   alias: diag6
+- name: XF23ID1-ES{Dif-Cam:PIMTE}image1:ArrayData
+  alias: ccd
