@@ -45,6 +45,7 @@ from pims.frame import Frame
 from broker.client import read_json_from_socket
 import time
 
+
 class PipelineComponent(QtCore.QObject):
     """
     The top-level object to represent a component in the quick-and-dirty
@@ -145,25 +146,19 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
 
     __slots__ = ()
 
-    def __new__(cls, *args, **kwargs):
-        if len(args) > 1:
-            name, fill_method = args[:2]
-        else:
-            fill_method = kwargs['fill_method']
-        if len(args) > 2:
-            name, fill_method, dims = args
-        else:
-            dims = kwargs['dims']
-
+    def __new__(cls, name, fill_method, dims):
+        # sanity check dims
         if int(dims) < 0:
             raise ValueError("Dims must be positive not {}".format(dims))
 
+        # sanity check fill_method
         if fill_method not in cls.valid_fill_methods:
             raise ValueError("{} is not a valid fill method must be one of "
                                  "{}".format(fill_method,
                                              cls.valid_fill_methods))
 
-        return super(ColSpec, cls).__new__(cls, *args, **kwargs)
+        # pass everything up to base class
+        return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
 
 
 class DataMuggler(QtCore.QObject):
@@ -183,7 +178,6 @@ class DataMuggler(QtCore.QObject):
     all measurements (ex images) can be filled.  This behavior is controlled
     by the `col_info` tuple.
 
-    The tuples used to im
 
     Parameters
     ----------
@@ -200,18 +194,32 @@ class DataMuggler(QtCore.QObject):
     new_data = QtCore.Signal(list)
 
     # this is a signal emitted when the muggler has new data sets that clients
-    # can grab. The names of the new columns are emitted as a list
+    # can grab . The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
-
-    # this is the function that gets called to validate that the row labels
-    # are something that the internal pandas dataframe will understand
-    _time_validator = datetime
 
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
+        # validate column spec
+        self.reset(col_info)
 
-        self._col_info = col_info
+    def recreate_columns(self, col_info):
+        """
+        Recreate the columns with new column information.  This
+        implies a clear and the muggler in empty with the new columns
+        after this call.
+
+        Parameters
+        ----------
+        col_info : list
+           List of information about the columns. Each entry should
+           be a tuple of the form (col_name, fill_method, dimensionality). See
+           `ColSpec` class docstring
+
+        """
+        # validate column spec
+        self._col_info = [ColSpec(*c) for c in col_info]
         self.clear()
+        self.new_columns.emit(self.keys())
 
     def clear(self):
         """
@@ -221,11 +229,8 @@ class DataMuggler(QtCore.QObject):
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
         self._is_col_nonscalar = set()
-        self._col_dims = dict()
         names = []
         for ci in self._col_info:
-            # validate fill methods
-            ci = ColSpec(*ci)
             # used to sort out which way filling should be done.
             # forward for motor-like, backwards from image-like
             self._col_fill[ci.name] = ci.fill_method
@@ -234,7 +239,6 @@ class DataMuggler(QtCore.QObject):
             if ci.dims > 0:
                 self._is_col_nonscalar.add(ci.name)
                 self._nonscalar_col_lookup[ci.name] = dict()
-            self._col_dims[ci.name] = ci.dims
             names.append(ci.name)
 
         # make an empty data frame
@@ -251,14 +255,14 @@ class DataMuggler(QtCore.QObject):
          2 -> image
          3 -> volume
         """
-        return dict(self._col_dims)
+        return {c.name: c.dims for c in self._col_info}
 
     @property
     def col_fill_rules(self):
         """
         Fill rules for all of the columns.
         """
-        return dict(self._col_fill)
+        return {c.name: c.fill_method for c in self._col_info}
 
     def align_against(self, ref_col, other_cols=None):
         """
@@ -291,7 +295,7 @@ class DataMuggler(QtCore.QObject):
         for col_name, col_fill_type in six.iteritems(self._col_fill):
             if col_name == ref_col:
                 tmp_dict[col_name] = True
-            elif other_cols and not col_name in other_cols:
+            elif other_cols and col_name not in other_cols:
                 # skip column names that are not in other_cols, if it passed in
                 continue
             elif col_fill_type is None:
@@ -500,10 +504,14 @@ class DataMuggler(QtCore.QObject):
         Parameters
         ----------
         dim : int
-            0 -> scalar
-            1 -> line (MCA spectra)
-            2 -> image
-            3 -> volume
+            Select out only columns with the given dimensions
+
+            --  ------------------
+            0   scalar
+            1   line (MCA spectra)
+            2   image
+            3   volume
+            --  -------------------
 
         Returns
         -------
@@ -511,11 +519,9 @@ class DataMuggler(QtCore.QObject):
             Column names in the data muggler that match the desired
             dimensionality, or all column names if dim is None
         """
-        cols = list(self._dataframe)
-        if dim is not None:
-            cols = [col_name for (col_name, col_dim)
-                    in six.iteritems(self.col_dims) if col_dim == dim]
-        cols = sorted(cols, key=lambda s: s.lower())
+        cols = [c.name for c in self._col_info
+                if (True if dim is None else dim == c.dims)]
+        cols.sort(key=lambda s: s.lower())
         return cols
 
     def __iter__(self):
