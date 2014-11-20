@@ -204,8 +204,8 @@ class DataMuggler(QtCore.QObject):
 
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
-
-        self._col_info = col_info
+        # validate column spec
+        self._col_info = [ColSpec(*c) for c in col_info]
         self.clear()
 
     def clear(self):
@@ -216,11 +216,8 @@ class DataMuggler(QtCore.QObject):
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
         self._is_col_nonscalar = set()
-        self._col_dims = dict()
         names = []
         for ci in self._col_info:
-            # validate fill methods
-            ci = ColSpec(*ci)
             # used to sort out which way filling should be done.
             # forward for motor-like, backwards from image-like
             self._col_fill[ci.name] = ci.fill_method
@@ -229,7 +226,6 @@ class DataMuggler(QtCore.QObject):
             if ci.dims > 0:
                 self._is_col_nonscalar.add(ci.name)
                 self._nonscalar_col_lookup[ci.name] = dict()
-            self._col_dims[ci.name] = ci.dims
             names.append(ci.name)
 
         # make an empty data frame
@@ -246,14 +242,14 @@ class DataMuggler(QtCore.QObject):
          2 -> image
          3 -> volume
         """
-        return dict(self._col_dims)
+        return {c.name: c.dims for c in self._col_info}
 
     @property
     def col_fill_rules(self):
         """
         Fill rules for all of the columns.
         """
-        return dict(self._col_fill)
+        return {c.name: c.fill_method for c in self._col_info}
 
     def align_against(self, ref_col, other_cols=None):
         """
@@ -286,7 +282,7 @@ class DataMuggler(QtCore.QObject):
         for col_name, col_fill_type in six.iteritems(self._col_fill):
             if col_name == ref_col:
                 tmp_dict[col_name] = True
-            elif other_cols and not col_name in other_cols:
+            elif other_cols and col_name not in other_cols:
                 # skip column names that are not in other_cols, if it passed in
                 continue
             elif col_fill_type is None:
@@ -495,10 +491,14 @@ class DataMuggler(QtCore.QObject):
         Parameters
         ----------
         dim : int
-            0 -> scalar
-            1 -> line (MCA spectra)
-            2 -> image
-            3 -> volume
+            Select out only columns with the given dimensions
+
+            --  ------------------
+            0   scalar
+            1   line (MCA spectra)
+            2   image
+            3   volume
+            --  -------------------
 
         Returns
         -------
@@ -506,11 +506,9 @@ class DataMuggler(QtCore.QObject):
             Column names in the data muggler that match the desired
             dimensionality, or all column names if dim is None
         """
-        cols = list(self._dataframe)
-        if dim is not None:
-            cols = [col_name for (col_name, col_dim)
-                    in six.iteritems(self.col_dims) if col_dim == dim]
-        cols = sorted(cols, key=lambda s: s.lower())
+        cols = [c.name for c in self._col_info
+                if (True if dim is None else dim == c.dims)]
+        cols.sort(key=lambda s: s.lower())
         return cols
 
     def __iter__(self):
