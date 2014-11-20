@@ -178,7 +178,6 @@ class DataMuggler(QtCore.QObject):
     all measurements (ex images) can be filled.  This behavior is controlled
     by the `col_info` tuple.
 
-    The tuples used to im
 
     Parameters
     ----------
@@ -195,18 +194,32 @@ class DataMuggler(QtCore.QObject):
     new_data = QtCore.Signal(list)
 
     # this is a signal emitted when the muggler has new data sets that clients
-    # can grab. The names of the new columns are emitted as a list
+    # can grab . The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
-
-    # this is the function that gets called to validate that the row labels
-    # are something that the internal pandas dataframe will understand
-    _time_validator = datetime
 
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
         # validate column spec
+        self.reset(col_info)
+
+    def recreate_columns(self, col_info):
+        """
+        Recreate the columns with new column information.  This
+        implies a clear and the muggler in empty with the new columns
+        after this call.
+
+        Parameters
+        ----------
+        col_info : list
+           List of information about the columns. Each entry should
+           be a tuple of the form (col_name, fill_method, dimensionality). See
+           `ColSpec` class docstring
+
+        """
+        # validate column spec
         self._col_info = [ColSpec(*c) for c in col_info]
         self.clear()
+        self.new_columns.emit(self.keys())
 
     def clear(self):
         """
