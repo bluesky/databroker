@@ -45,6 +45,7 @@ from pims.frame import Frame
 from broker.client import read_json_from_socket
 import time
 
+
 class PipelineComponent(QtCore.QObject):
     """
     The top-level object to represent a component in the quick-and-dirty
@@ -145,25 +146,19 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
 
     __slots__ = ()
 
-    def __new__(cls, *args, **kwargs):
-        if len(args) > 1:
-            name, fill_method = args[:2]
-        else:
-            fill_method = kwargs['fill_method']
-        if len(args) > 2:
-            name, fill_method, dims = args
-        else:
-            dims = kwargs['dims']
-
+    def __new__(cls, name, fill_method, dims):
+        # sanity check dims
         if int(dims) < 0:
             raise ValueError("Dims must be positive not {}".format(dims))
 
+        # sanity check fill_method
         if fill_method not in cls.valid_fill_methods:
             raise ValueError("{} is not a valid fill method must be one of "
                                  "{}".format(fill_method,
                                              cls.valid_fill_methods))
 
-        return super(ColSpec, cls).__new__(cls, *args, **kwargs)
+        # pass everything up to base class
+        return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
 
 
 class DataMuggler(QtCore.QObject):
