@@ -36,7 +36,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from enaml.qt import QtCore
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import pandas as pd
 from datetime import datetime
 import numpy as np
@@ -186,6 +186,9 @@ class DataMuggler(QtCore.QObject):
         be a tuple of the form (col_name, fill_method, dimensionality). See
         `ColSpec` class docstring
 
+    max_frames : int, optional
+        The maximum number of frames for the non-scalar columns
+
     """
 
     # this is a signal emitted when the muggler has new data that clients
@@ -197,8 +200,9 @@ class DataMuggler(QtCore.QObject):
     # can grab . The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
 
-    def __init__(self, col_info, **kwargs):
+    def __init__(self, col_info, max_frames=1000, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
+        self.max_frames = max_frames
         self.recreate_columns(col_info)
 
     def recreate_columns(self, col_info):
@@ -237,7 +241,7 @@ class DataMuggler(QtCore.QObject):
             # frame or in a separate data structure
             if ci.dims > 0:
                 self._is_col_nonscalar.add(ci.name)
-                self._nonscalar_col_lookup[ci.name] = dict()
+                self._nonscalar_col_lookup[ci.name] = OrderedDict()
             names.append(ci.name)
 
         # make an empty data frame
@@ -358,8 +362,23 @@ class DataMuggler(QtCore.QObject):
         df.update(new)
         self._dataframe = df
         self._dataframe.sort(inplace=True)
+        # get rid of excess frames
+        self._drop_frames()
         # emit that we have new data!
         self.new_data.emit(list(data_dict))
+
+    def _drop_frames(self):
+        """
+        Internal function for dealing with the need to drop old frames
+        to avoid run-away memory usage
+        """
+        for k in self._is_col_nonscalar:
+            work_dict = self._nonscalar_col_lookup[k]
+            while len(work_dict) > self.max_frames:
+                drop_key = next(six.iterkeys(work_dict))
+                del work_dict[drop_key]
+                ts, im_id = drop_key
+                self._dataframe[k][ts] = np.nan
 
     def get_values(self, ref_col, other_cols, t_start=None, t_finish=None):
         """
