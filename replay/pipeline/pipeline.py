@@ -346,9 +346,9 @@ class DataMuggler(QtCore.QObject):
             # this should probably be a hash, but this is quick and dirty
             if k in self._is_col_nonscalar:
                 ids = []
-                for v in data_dict[k]:
+                for t, v in zip(time_stamp, data_dict[k]):
                     ids.append(id(v))
-                    self._nonscalar_col_lookup[k][id(v)] = v
+                    self._nonscalar_col_lookup[k][(t, id(v))] = v
                 data_dict[k] = ids
 
         # make a new data frame with the input data and append it to the
@@ -597,7 +597,8 @@ class DataMuggler(QtCore.QObject):
 
             if col in self._is_col_nonscalar:
                 lookup_dict = self._nonscalar_col_lookup[col]
-                ret_dict[col] = [lookup_dict[t] for t in ws]
+                ret_dict[col] = [lookup_dict[t] for t
+                                 in six.iteritems(ws)]
             else:
                 ret_dict[col] = ws
         return df.index, ret_dict
