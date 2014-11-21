@@ -199,8 +199,7 @@ class DataMuggler(QtCore.QObject):
 
     def __init__(self, col_info, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
-        # validate column spec
-        self.reset(col_info)
+        self.recreate_columns(col_info)
 
     def recreate_columns(self, col_info):
         """
