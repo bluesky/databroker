@@ -8,7 +8,8 @@ setup(
     name='DataBroker',
     version='0.0.x',
     author='Brookhaven National Lab',
-    packages=["databroker",
+    packages=["databroker", 'databroker.api',
+              'databroker.server', 'databroker.commands'
               ],
     include_dirs=[np.get_include()],
     )
