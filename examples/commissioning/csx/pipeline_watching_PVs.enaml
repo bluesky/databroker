@@ -1,0 +1,64 @@
+from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
+                              InsertDockBarItem, grid)
+from enaml.stdlib.fields import FloatField
+from enaml.widgets.api import (Window, Container, DockItem, DockArea,
+                               MainWindow, ObjectCombo, PushButton, Form)
+from replay.gui.line_view import LineView
+from replay.gui.scalar_view import ScalarView, ScalarController
+from replay.gui.cross_section_view import (CrossSectionView,
+                                           CrossSectionController)
+from replay.gui.fitting_view import MultiFitController
+from replay.gui.histogram_view import HistogramView
+
+from enaml.stdlib.dock_area_styles import available_styles
+
+def cap_case(name):
+    return ' '.join(s.capitalize() for s in name.split('-'))
+
+def add_dock_bars(area, cross_section_view, cross_section_controller,
+           scalar_view, scalar_controller):
+    area.update_layout(InsertDockBarItem(item=cross_section_view,
+                                         target=cross_section_controller))
+    area.update_layout(InsertDockBarItem(item=scalar_view,
+                                         target=scalar_controller))
+
+
+enamldef PipelineView(MainWindow): main:
+    title = "Live Data Demo"
+    attr scalar_collection
+    attr multi_fit_controller
+    Container: container:
+        ObjectCombo: style_c:
+            items = available_styles()
+            to_string = cap_case
+            selected = 'vs-2010'
+        DockArea: area:
+            style << style_c.selected
+            layout = HSplitLayout(VSplitLayout('cs controller', 'trigger pvs',
+                                               'scalar controller', 'fitter'),
+                                  HSplitLayout('scalar view',
+                                      VSplitLayout('cs view', 'hist view'),
+                                  ),
+            )
+            DockItem: scalar_view:
+                name = 'scalar view'
+                title = 'Scalar View'
+                closable = False
+                Container:
+                    ScalarView:
+                        #fitter.multi_fit_controller = main.multi_fit_controller
+                        pass
+            DockItem: fit_view:
+                name = 'fitter'
+                title = 'Fit View'
+                Container:
+                    MultiFitController:
+                        multi_fit_controller = main.multi_fit_controller
+            DockItem: scalar_controller:
+                name = 'scalar controller'
+                title = 'Scalar Controller'
+                closable = False
+                Container:
+                    hug_width = 'strong'
+                    ScalarController:
+                        pass
