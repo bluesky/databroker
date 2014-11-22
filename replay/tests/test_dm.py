@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,
 import six
 import numpy as np
 
-from replay.pipeline.pipeline import DataMuggler
+from replay.pipeline.pipeline import DataMuggler, ColSpec
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
 from numpy.testing import assert_array_equal
@@ -135,3 +135,57 @@ def test_bad_col_append():
 
     bad_dict = {'aardvark': 42}
     assert_raises(ValueError, dm.append_data, datetime.now(), bad_dict)
+
+
+def test_colspec():
+    assert_raises(ValueError, ColSpec, 'a', 'ffill', -1)
+    assert_raises(ValueError, ColSpec, 'a', 'aardvark', 1)
+
+
+def test_props():
+    col_list = [(chr(j), vf, j - 97) for
+                j, vf in enumerate(ColSpec.valid_fill_methods, start=97)]
+
+    dm = DataMuggler(col_list)
+
+    fill_dict = {chr(j): vf for
+                j, vf in enumerate(ColSpec.valid_fill_methods, start=97)}
+
+    assert_equal(fill_dict, dm.col_fill_rules)
+
+    dim_dict = {chr(j): j-97 for j, vf
+                in enumerate(ColSpec.valid_fill_methods, start=97)}
+
+    assert_equal(dim_dict, dm.col_dims)
+
+
+def test_align_against():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 0),
+                ('c', 'ffill', 0),
+                ('d', None, 0)]
+
+    dm = DataMuggler(col_list)
+    dm.append_data(datetime.now(), {'a': -1, 'd': -1})
+    for j in range(12):
+        ts = datetime.now()
+        data_dict = {'c': j}
+        if j % 2:
+            data_dict['a'] = j
+        if j % 3:
+            data_dict['b'] = j
+
+        dm.append_data(ts, data_dict)
+
+    ab_dict = dm.align_against('a', ['b', 'd'])
+    assert_equal({'a': True, 'b': False, 'd': False},
+                 ab_dict)
+
+    ba_dict = dm.align_against('b', ['a'])
+    assert_equal({'a': True, 'b': True}, ba_dict)
+
+    d_dict = dm.align_against('d')
+    assert_equal(d_dict,
+                 {'a': True, 'b': False, 'c': False, 'd': True})
+
+    assert_raises(ValueError, dm.align_against, 'aardvark')
