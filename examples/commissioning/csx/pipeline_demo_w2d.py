@@ -202,6 +202,7 @@ def init_ui(data_muggler):
     cs_model = CrossSectionModel(data_muggler=data_muggler,
                                  histogram_model=histogram_model)
     view = PipelineView(histogram_model=histogram_model)
+    histogram_model.cmap = cs_model.cmap
     # provide the pipeline view with its attributes
     view.scalar_collection=scalar_collection
     view.multi_fit_controller = c_c_combo_fitter
@@ -210,6 +211,9 @@ def init_ui(data_muggler):
     view.stop_observation = stop_observation
     view.clear_data = clear_datamuggler
     view.reinit_data = init_datamuggler
+    cmap = cs_model.cmap
+    cs_model.cmap = 'gray'
+    cs_model.cmap = cmap
     view.show()
 
 def read_pv_config(yaml_file=None):
