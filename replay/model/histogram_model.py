@@ -1,106 +1,3 @@
-__author__ = 'edill'
-
-from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range,
-                      Float, Typed)
-import numpy as np
-from matplotlib.figure import Figure, Axes
-from matplotlib.lines import Line2D
-from matplotlib import colors
-import enaml
-from enaml.qt.qt_application import QtApplication
-from bubblegum.backend.mpl.cross_section_2d import (CrossSection,
-                                                    fullrange_limit_factory,
-                                                    absolute_limit_factory,
-                                                    percentile_limit_factory)
-import logging
-from skxray import core
-logger = logging.getLogger(__name__)
-
-
-class HistogramModel(Atom):
-    """
-    ScalarModel is the model in the Model-View-Controller pattern that backs
-    a scalar versus some x-value, i.e., an (x,y) plot.  ScalarModel requires
-    a line artist
-
-    Attributes
-    ----------
-    line_artist : matplotlib.lines.Line2D
-        The visual representation of the scalar model (the view!)
-    name : atom.scalars.Str
-        The name of the data set represented by this ScalarModel
-    is_plotting : atom.Bool
-        Visibility of the data set on the canvas
-    can_plot : atom.Bool
-        If the data set can be shown on the canvas
-
-    """
-    # MPL PLOTTING STUFF
-    _fig = Typed(Figure)
-    _ax = Typed(Axes)
-    line_artist = Typed(Line2D)
-    name = Str()
-    limit_func = Typed(object)
-    img = Typed(np.ndarray)
-
-
-    def __init__(self, name=None):
-        name = "histogram"
-        self._fig = Figure(figsize=(1,1))
-        self._ax = self._fig.add_subplot(111)
-        self.line_artist, = self._ax.plot([], [], label=name,
-                                            drawstyle="steps-mid")
-        self.limit_func = fullrange_limit_factory()
-
-    @observe('img')
-    def update_img(self, changed):
-        self.replot()
-
-    @observe('limit_func')
-    def update_limit_func(self, changed):
-        self.replot()
-
-    def set_data(self, x, y):
-        """Update the data stored in line_artist
-
-        Parameters
-        ----------
-        x : np.ndarray
-        y : np.ndarray
-        """
-        self.line_artist.set_data(x, y)
-        self.replot()
-
-    def replot(self):
-        if self._fig.canvas is not None:
-            vlim = self.limit_func(self.img)
-            bins = np.linspace(vlim[0], vlim[1])
-            vals, bins = np.histogram(self.img.ravel(), bins=bins)
-            bins = core.bin_edges_to_centers(bins)
-            self.line_artist.set_data(bins, vals)
-            self._ax.relim(visible_only=True)
-            self._ax.autoscale_view(tight=True)
-            self._fig.canvas.draw()
-
-
-
-    def get_state(self):
-        """Obtain the state of all instance variables in the ScalarModel
-
-        Returns
-        -------
-        state : str
-            The current state of the ScalarModel
-        """
-        state = ""
-        state += '\nname: {}'.format(self.name)
-        state += '\nis_plotting: {}'.format(self.is_plotting)
-        state += '\ncan_plot: {}'.format(self.can_plot)
-        state += '\nline_artist: {}'.format(self.line_artist)
-        return state
-
-    __author__ = 'edill'
-
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range,
                       Float, Typed)
 import numpy as np
@@ -176,9 +73,10 @@ class HistogramModel(Atom):
     def update_img(self, changed):
         print('image updated')
         self.update_limits()
-        bins = np.linspace(self.min, self.max, num=50)
-        self.vals, bins = np.histogram(self.img.ravel(), bins=bins)
-        self.bins = core.bin_edges_to_centers(bins)
+        bins = np.linspace(self.min, self.max, num=100)
+        self.vals, self.bins = np.histogram(self.img.ravel(), bins=bins)
+        self.bins = self.bins[:-1]
+        # self.bins = core.bin_edges_to_centers(bins)
         print('image pre-formatting complete')
         self.replot_histogram()
 
@@ -186,6 +84,9 @@ class HistogramModel(Atom):
         self.min, self.max = self.limit_func(self.img)
         self.norm = mcolors.Normalize(vmin=self.min, vmax=self.max)
 
+    # todo: Make this faster by utilizing `matplotlib.patches.Rectangle` as long
+    # todo: as the number of bins doesn't change. If it does, blow away the old
+    # todo: set of Rectangle patches and create a new set
     def replot_histogram(self):
         """Update the data stored in line_artist
 
@@ -198,7 +99,8 @@ class HistogramModel(Atom):
         if self.img is not None:
             self._ax.cla()
             colors = self.mycmap(self.norm(self.bins))
-            self._ax.bar(self.bins, self.vals, color=colors, edgecolor='k')
+            self._ax.bar(left=self.bins, height=self.vals, color=colors, edgecolor='k',
+                         width=np.average(np.diff(self.bins)))
                          # align='center')
             self.replot()
         print('formatting histogram complete')
