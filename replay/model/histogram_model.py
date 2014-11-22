@@ -59,35 +59,17 @@ class HistogramModel(Atom):
         self.img = np.random.random((100,100))
 
 
-    @observe('limit_func')
-    def update_limit_func(self, changed):
-        self.update_limits()
-        self.replot_histogram()
-
     @observe('cmap')
     def update_cmap(self, changed):
         self.mycmap = cm.get_cmap(self.cmap)
-        self.replot_histogram()
-
-    @observe('img')
-    def update_img(self, changed):
-        print('image updated')
-        self.update_limits()
-        bins = np.linspace(self.min, self.max, num=100)
-        self.vals, self.bins = np.histogram(self.img.ravel(), bins=bins)
-        self.bins = self.bins[:-1]
-        # self.bins = core.bin_edges_to_centers(bins)
-        print('image pre-formatting complete')
-        self.replot_histogram()
-
-    def update_limits(self):
-        self.min, self.max = self.limit_func(self.img)
-        self.norm = mcolors.Normalize(vmin=self.min, vmax=self.max)
+        self.replot_histogram(changed)
 
     # todo: Make this faster by utilizing `matplotlib.patches.Rectangle` as long
     # todo: as the number of bins doesn't change. If it does, blow away the old
     # todo: set of Rectangle patches and create a new set
-    def replot_histogram(self):
+
+    @observe('img', 'limit_func')
+    def replot_histogram(self, changed):
         """Update the data stored in line_artist
 
         Parameters
@@ -97,6 +79,14 @@ class HistogramModel(Atom):
         """
         print('formatting histogram')
         if self.img is not None:
+            self.min, self.max = self.limit_func(self.img)
+            self.norm = mcolors.Normalize(vmin=self.min, vmax=self.max)
+            bins = np.linspace(start=self.min, stop=self.max, num=100)
+            print('num bins: {}\tmin bin: {}\tmax bin: {}\tmin: {}\tmax: {}'
+                  ''.format(len(bins), np.min(bins), np.max(bins), self.min,
+                  self.max))
+            self.vals, self.bins = np.histogram(self.img.ravel(), bins=bins)
+            self.bins = self.bins[:-1]
             self._ax.cla()
             colors = self.mycmap(self.norm(self.bins))
             self._ax.bar(left=self.bins, height=self.vals, color=colors, edgecolor='k',
