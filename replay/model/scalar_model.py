@@ -13,6 +13,8 @@ from .fitting_model import MultiFitController
 logger = logging.getLogger(__name__)
 
 
+nodata_str = "data_muggler is None"
+
 class ScalarModel(Atom):
     """
     ScalarModel is the model in the Model-View-Controller pattern that backs
@@ -150,14 +152,31 @@ class ScalarCollection(Atom):
     # update
     _num_updates = Int()
 
-    def __init__(self, data_muggler, fit_controller):
+    def __init__(self):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
-            self.data_muggler = data_muggler
-            self.multi_fit_controller = fit_controller
+            # plotting initialization
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
-            # self._ax.hold()
+            self.redraw_type = 's'
+
+    def init_scalar_models(self):
+        self.scalar_models = {}
+        line_artist, = self._ax.plot([], [], label=nodata_str)
+        self.scalar_models[nodata_str] = ScalarModel(line_artist=line_artist,
+                                               name=nodata_str,
+                                               can_plot=True,
+                                               is_plotting=True)
+
+    @observe('data_muggler')
+    def update_datamuggler(self, changed):
+        with self.suppress_notifications():
+            if self.data_muggler is None:
+                self.col_names = [nodata_str]
+                self.x = nodata_str
+                self.alignment_col = self.x
+                self.init_scalar_models()
+                return
             # connect the signals from the muggler to the appropriate slots
             # in this class
             self.data_muggler.new_data.connect(self.notify_new_data)
@@ -184,9 +203,8 @@ class ScalarCollection(Atom):
                                                    name=name,
                                                    can_plot=True,
                                                    is_plotting=False)
-            self._last_update_time = datetime.utcnow()
-        self.update_x(None)
-        self.redraw_type = 's'
+        self._last_update_time = datetime.utcnow()
+        # print('self.scalar_models: {}'.format(self.scalar_models))
 
     @observe('x_is_data', 'x_is_time')
     def update_x_axis(self, changed):
@@ -286,6 +304,8 @@ class ScalarCollection(Atom):
             List of the names of columns in the data muggler. If None, get all
             data from the data muggler
         """
+        if self.data_muggler is None:
+            return
         # self.print_state()
         if y_names is None:
             y_names = list(six.iterkeys(self.scalar_models))

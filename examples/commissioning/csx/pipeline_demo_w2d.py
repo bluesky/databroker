@@ -197,8 +197,9 @@ def init_ui(data_muggler):
 
     histogram_model = HistogramModel()
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
-    scalar_collection = ScalarCollection(data_muggler=data_muggler,
-                                         fit_controller=c_c_combo_fitter)
+    scalar_collection = ScalarCollection()
+    scalar_collection.data_muggler = data_muggler
+    scalar_collection.multi_fit_controller = c_c_combo_fitter
     cs_model = CrossSectionModel(data_muggler=data_muggler,
                                  histogram_model=histogram_model)
     view = PipelineView(histogram_model=histogram_model)
@@ -214,7 +215,7 @@ def init_ui(data_muggler):
     cmap = cs_model.cmap
     cs_model.cmap = 'gray'
     cs_model.cmap = cmap
-    view.show()
+    return view
 
 def read_pv_config(yaml_file=None):
     if yaml_file is None:
@@ -245,7 +246,10 @@ def init():
     print('data_muggler.keys(dim=0): {}'.format(dm.keys(dim=0)))
     print('data_muggler.keys(dim=2): {}'.format(dm.keys(dim=2)))
     # init the UI
-    init_ui(dm)
+    view = init_ui(dm)
+    view.scalar_collection.data_muggler = None
+    # view.scalar_collection.data_muggler = dm
+    view.show()
 
 
 if __name__ == '__main__':
