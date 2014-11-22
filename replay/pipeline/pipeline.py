@@ -448,8 +448,8 @@ class DataMuggler(QtCore.QObject):
         time = out_series.index.values
         out_vals = out_series.values
         if col_name in self._is_col_nonscalar:
-            out_vals = [self._nonscalar_col_lookup[col_name][t]
-                               for t in out_vals]
+            out_vals = [self._nonscalar_col_lookup[col_name][(ts, t)]
+                               for (ts, t) in zip(time, out_vals)]
 
         return time, out_vals
 
@@ -504,12 +504,14 @@ class DataMuggler(QtCore.QObject):
         """
         # this should be made a bit more clever to only look at region
         # around the row we care about, not _everything_
+
+        # this should be re-factored to use _lookup_non_scalar
         dense_array = self._densify_sub_df(cols)
         row = dense_array.loc[index]
         out_dict = dict()
         for k, v in zip(row.index, row):
             if k in self._is_col_nonscalar:
-                out_dict[k] = self._nonscalar_col_lookup[k][v]
+                out_dict[k] = self._nonscalar_col_lookup[k][(index, v)]
             else:
                 out_dict[k] = v
 
