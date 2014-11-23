@@ -18,10 +18,10 @@ lib64/
 parts/
 sdist/
 var/
-.idea/
 *.egg-info/
 .installed.cfg
 *.egg
+doc/_build
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -36,10 +36,12 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
+cover/
 .coverage
 .cache
 nosetests.xml
 coverage.xml
+cover/
 
 # Translations
 *.mo
@@ -60,8 +62,27 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
-# Anaconda?
-*.cfg
+#mac
+.DS_Store
+*~
+
+#pycharm
+.idea/*
+
+#Dolphin browser files
+.directory/
+.directory
+
+#Binary data files
+*.volume
+*.am
+*.tiff
+*.tif
+*.dat
+*.DAT
+
+#generated documntation files
+doc/resource/api/generated/
 
 # Enaml
 __enamlcache__/
