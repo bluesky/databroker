@@ -1,0 +1,23 @@
+
+""" The Enaml UI code for the scalar viewer
+
+"""
+
+from enaml.core.api import Looper
+from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box
+from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
+                               CheckBox, DockItem, DockPane, Form, Label,
+                               Slider, MainWindow, ComboBox, SpinBox,
+                               GroupBox, ScrollArea, PushButton, RadioButton,
+                               )
+from enaml.stdlib.fields import FloatField
+from replay.model.scalar_model import ScalarCollection
+
+
+enamldef HistogramView(Container):
+    attr histogram_model
+    Container:
+        MPLCanvas: canvas:
+            figure << histogram_model._fig
+            toolbar_visible = True

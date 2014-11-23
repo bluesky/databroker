@@ -2,11 +2,14 @@ from __future__ import print_function, division
 import six
 
 import os
+import yaml
+import logging
+logger = logging.getLogger(__name__)
+
 import epics
 gajillion = 10000000000
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = str(gajillion)
 epics.ca.AUTOMONITOR_MAXLENGTH = gajillion
-
 
 from skxray.fitting.api import model_list as valid_models
 from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
@@ -14,6 +17,7 @@ from replay.pipeline.pipeline import (DataMuggler, PipelineComponent,
 from replay.model.scalar_model import ScalarCollection
 from replay.model.cross_section_model import CrossSectionModel
 from replay.model.fitting_model import MultiFitController
+from replay.model.histogram_model import HistogramModel
 from enaml.qt.qt_application import QtApplication
 import enaml
 from replay.pipeline.pipeline import SocketListener
@@ -24,6 +28,9 @@ import numpy as np
 
 pv_dict = {}
 dm = None
+scalar_pvs = []
+line_pvs = []
+im_pvs = []
 
 def outer(dm, pv_dict):
     def process(**kwargs):
@@ -71,12 +78,17 @@ def create_pvs(scalar_pvs, line_pvs, image_pvs):
     -------
     pv_dict : dict
         dict of pv_names formatted as
-        { 'pv_to_watch' : {'dim': col_dim, 'pv': epics_pv} }
+        { 'pv_to_watch' : {'dim': col_dim,
+                           'pv': epics_pv,
+                           'shape': (xdim, ydim),
+                          }
+        }
         col_dim: 0 is scalar, 1 is line, 2 is image, higher is nonsense,
         because live 3d data? come on...
     """
     for pv_name in scalar_pvs + line_pvs + image_pvs:
         try:
+            print('pv_name: {}'.format(pv_name))
             pv_to_watch = epics.PV(pv_name).char_value
             pv = epics.PV(pv_to_watch, auto_monitor=True)
             this_pv = {'pv': pv}
@@ -125,53 +137,38 @@ def grab_data(pv_dict):
 
 
 def start_observation():
+    print('Start observation')
+    print('pv_dict: {}'.format(pv_dict))
     process = outer(dm, pv_dict)
     for pv_name, pv_nest in six.iteritems(pv_dict):
         pv_nest['pv'].add_callback(process)
 
 
 def stop_observation():
+    print('Stop observation')
     for pv_name, pv_nest in six.iteritems(pv_dict):
         pv_nest['pv'].clear_callbacks()
 
 
 def clear_datamuggler():
     dm.clear()
+    print('Data muggler cleared. Current data muggler content: {}'.format(dm))
 
 
-def reinit_datamuggler():
-    print('HEY THIS ISN\'T IMPLEMENTED YET... STOP CLICKING THE BUTTON')
+def init_datamuggler():
+    """ Initialize the data_muggler
 
-def init_ui():
-    """ Do the enaml import and set up of the UI
+    Parameters
+    ----------
+    scalar_pvs : list
+        List of PVs that should be treated as scalars
+    line_pvs : list
+        List of PVs that should be treated as vectors
+    im_pvs : list
+        List of PVs that should be treated as images
     """
-    with enaml.imports():
-        from pipeline_w2d import PipelineView
-
-    c_c_combo_fitter = MultiFitController(valid_models=valid_models)
-    scalar_collection = ScalarCollection(data_muggler=dm,
-                                         fit_controller=c_c_combo_fitter)
-    cs_model = CrossSectionModel(data_muggler=dm)
-    view = PipelineView()
-    # provide the pipeline view with its attributes
-    view.scalar_collection=scalar_collection
-    view.multi_fit_controller = c_c_combo_fitter
-    view.cs_model = cs_model
-    view.start_observation = start_observation
-    view.stop_observation = stop_observation
-    view.clear_data = clear_datamuggler
-    view.reinit_data = reinit_datamuggler
-    view.show()
-
-
-def init():
     global dm
-    pv_trigger = 'XF:23ID-CT{Replay}Val:trigger-I'
-    scalar_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
-                  for idx in range(0, 3)]
-    line_pvs = []
-    im_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(9), ]
-
+    global pv_dict
     pv_dict = create_pvs(scalar_pvs, line_pvs, im_pvs)
     # create the data muggler
     dm_keys = []
@@ -187,8 +184,72 @@ def init():
     # shove the first round of data into the data muggler
     dm.append_data(datetime.utcnow(), data_dict)
 
+
+def init_ui(data_muggler):
+    """ Do the enaml import and set up of the UI
+
+    Parameters
+    ----------
+    data_muggler : replay.pipeline.DataMuggler
+    """
+    with enaml.imports():
+        from pipeline_w2d import PipelineView
+
+    histogram_model = HistogramModel()
+    c_c_combo_fitter = MultiFitController(valid_models=valid_models)
+    scalar_collection = ScalarCollection()
+    scalar_collection.data_muggler = data_muggler
+    scalar_collection.multi_fit_controller = c_c_combo_fitter
+    cs_model = CrossSectionModel(data_muggler=data_muggler,
+                                 histogram_model=histogram_model)
+    view = PipelineView(histogram_model=histogram_model)
+    histogram_model.cmap = cs_model.cmap
+    # provide the pipeline view with its attributes
+    view.scalar_collection=scalar_collection
+    view.multi_fit_controller = c_c_combo_fitter
+    view.cs_model = cs_model
+    view.start_observation = start_observation
+    view.stop_observation = stop_observation
+    view.clear_data = clear_datamuggler
+    view.reinit_data = init_datamuggler
+    cmap = cs_model.cmap
+    cs_model.cmap = 'gray'
+    cs_model.cmap = cmap
+    return view
+
+def read_pv_config(yaml_file=None):
+    if yaml_file is None:
+        yaml_file = os.path.join((os.path.dirname(os.path.realpath(__file__))),
+                                 'pvs.yaml')
+    # read yaml modules
+    with open(yaml_file, 'r') as modules:
+        import_dict = yaml.load(modules)
+        print('import_dict: {0}'.format(import_dict))
+        return import_dict
+
+
+def init():
+    pv_dict = read_pv_config()
+    global dm, scalar_pvs, line_pvs, im_pvs
+    pv_trigger = 'XF:23ID-CT{Replay}Val:trigger-I'
+    scalar_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
+                  for idx in range(0, 6)]
+    line_pvs = []
+    im_pvs = ['XF:23ID-CT{{Replay}}Val:{}-I'.format(idx)
+              for idx in range(6, 10)]
+    common_pvs = ['XF:23ID1-OP{Slt:3-Ax:X}Mtr.RBV',
+                  'XF:23ID1-ES{Dif-Cam:Beam}Stats5:Total_RBV',
+                  'XF:23ID1-OP{Slt:3-Ax:X}Mtr.RBV',
+                  'XF:23ID1-ES{Dif-Cam:Beam}image1:ArrayData']
+
+    init_datamuggler()
+    print('data_muggler.keys(dim=0): {}'.format(dm.keys(dim=0)))
+    print('data_muggler.keys(dim=2): {}'.format(dm.keys(dim=2)))
     # init the UI
-    init_ui()
+    view = init_ui(dm)
+    view.scalar_collection.data_muggler = None
+    # view.scalar_collection.data_muggler = dm
+    view.show()
 
 
 if __name__ == '__main__':

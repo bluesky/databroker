@@ -36,14 +36,14 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from enaml.qt import QtCore
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import pandas as pd
 from datetime import datetime
 import numpy as np
 from pims.base_frames import FramesSequence
 from pims.frame import Frame
-from broker.client import read_json_from_socket
 import time
+
 
 class PipelineComponent(QtCore.QObject):
     """
@@ -145,25 +145,19 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
 
     __slots__ = ()
 
-    def __new__(cls, *args, **kwargs):
-        if len(args) > 1:
-            name, fill_method = args[:2]
-        else:
-            fill_method = kwargs['fill_method']
-        if len(args) > 2:
-            name, fill_method, dims = args
-        else:
-            dims = kwargs['dims']
-
+    def __new__(cls, name, fill_method, dims):
+        # sanity check dims
         if int(dims) < 0:
             raise ValueError("Dims must be positive not {}".format(dims))
 
+        # sanity check fill_method
         if fill_method not in cls.valid_fill_methods:
             raise ValueError("{} is not a valid fill method must be one of "
                                  "{}".format(fill_method,
                                              cls.valid_fill_methods))
 
-        return super(ColSpec, cls).__new__(cls, *args, **kwargs)
+        # pass everything up to base class
+        return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
 
 
 class DataMuggler(QtCore.QObject):
@@ -183,7 +177,6 @@ class DataMuggler(QtCore.QObject):
     all measurements (ex images) can be filled.  This behavior is controlled
     by the `col_info` tuple.
 
-    The tuples used to im
 
     Parameters
     ----------
@@ -191,6 +184,9 @@ class DataMuggler(QtCore.QObject):
         List of information about the columns. Each entry should
         be a tuple of the form (col_name, fill_method, dimensionality). See
         `ColSpec` class docstring
+
+    max_frames : int, optional
+        The maximum number of frames for the non-scalar columns
 
     """
 
@@ -200,18 +196,32 @@ class DataMuggler(QtCore.QObject):
     new_data = QtCore.Signal(list)
 
     # this is a signal emitted when the muggler has new data sets that clients
-    # can grab. The names of the new columns are emitted as a list
+    # can grab . The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
 
-    # this is the function that gets called to validate that the row labels
-    # are something that the internal pandas dataframe will understand
-    _time_validator = datetime
-
-    def __init__(self, col_info, **kwargs):
+    def __init__(self, col_info, max_frames=1000, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
+        self.max_frames = max_frames
+        self.recreate_columns(col_info)
 
-        self._col_info = col_info
+    def recreate_columns(self, col_info):
+        """
+        Recreate the columns with new column information.  This
+        implies a clear and the muggler in empty with the new columns
+        after this call.
+
+        Parameters
+        ----------
+        col_info : list
+           List of information about the columns. Each entry should
+           be a tuple of the form (col_name, fill_method, dimensionality). See
+           `ColSpec` class docstring
+
+        """
+        # validate column spec
+        self._col_info = [ColSpec(*c) for c in col_info]
         self.clear()
+        self.new_columns.emit(self.keys())
 
     def clear(self):
         """
@@ -221,11 +231,8 @@ class DataMuggler(QtCore.QObject):
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
         self._is_col_nonscalar = set()
-        self._col_dims = dict()
         names = []
         for ci in self._col_info:
-            # validate fill methods
-            ci = ColSpec(*ci)
             # used to sort out which way filling should be done.
             # forward for motor-like, backwards from image-like
             self._col_fill[ci.name] = ci.fill_method
@@ -233,8 +240,7 @@ class DataMuggler(QtCore.QObject):
             # frame or in a separate data structure
             if ci.dims > 0:
                 self._is_col_nonscalar.add(ci.name)
-                self._nonscalar_col_lookup[ci.name] = dict()
-            self._col_dims[ci.name] = ci.dims
+                self._nonscalar_col_lookup[ci.name] = OrderedDict()
             names.append(ci.name)
 
         # make an empty data frame
@@ -251,14 +257,14 @@ class DataMuggler(QtCore.QObject):
          2 -> image
          3 -> volume
         """
-        return dict(self._col_dims)
+        return {c.name: c.dims for c in self._col_info}
 
     @property
     def col_fill_rules(self):
         """
         Fill rules for all of the columns.
         """
-        return dict(self._col_fill)
+        return {c.name: c.fill_method for c in self._col_info}
 
     def align_against(self, ref_col, other_cols=None):
         """
@@ -291,7 +297,7 @@ class DataMuggler(QtCore.QObject):
         for col_name, col_fill_type in six.iteritems(self._col_fill):
             if col_name == ref_col:
                 tmp_dict[col_name] = True
-            elif other_cols and not col_name in other_cols:
+            elif other_cols and col_name not in other_cols:
                 # skip column names that are not in other_cols, if it passed in
                 continue
             elif col_fill_type is None:
@@ -343,9 +349,9 @@ class DataMuggler(QtCore.QObject):
             # this should probably be a hash, but this is quick and dirty
             if k in self._is_col_nonscalar:
                 ids = []
-                for v in data_dict[k]:
+                for t, v in zip(time_stamp, data_dict[k]):
                     ids.append(id(v))
-                    self._nonscalar_col_lookup[k][id(v)] = v
+                    self._nonscalar_col_lookup[k][(t, id(v))] = v
                 data_dict[k] = ids
 
         # make a new data frame with the input data and append it to the
@@ -355,8 +361,23 @@ class DataMuggler(QtCore.QObject):
         df.update(new)
         self._dataframe = df
         self._dataframe.sort(inplace=True)
+        # get rid of excess frames
+        self._drop_frames()
         # emit that we have new data!
         self.new_data.emit(list(data_dict))
+
+    def _drop_frames(self):
+        """
+        Internal function for dealing with the need to drop old frames
+        to avoid run-away memory usage
+        """
+        for k in self._is_col_nonscalar:
+            work_dict = self._nonscalar_col_lookup[k]
+            while len(work_dict) > self.max_frames:
+                drop_key = next(six.iterkeys(work_dict))
+                del work_dict[drop_key]
+                ts, im_id = drop_key
+                self._dataframe[k][ts] = np.nan
 
     def get_values(self, ref_col, other_cols, t_start=None, t_finish=None):
         """
@@ -423,13 +444,13 @@ class DataMuggler(QtCore.QObject):
                                   col_name, self.keys()))
 
         out_series = self._dataframe[col_name].dropna()
-        time = out_series.index.values
-        out_vals = out_series.values
         if col_name in self._is_col_nonscalar:
             out_vals = [self._nonscalar_col_lookup[col_name][t]
-                               for t in out_vals]
+                               for t in six.iteritems(out_series)]
+        else:
+            out_vals = list(out_series)
 
-        return time, out_vals
+        return out_series.index, out_vals
 
     def get_times(self, col):
         """
@@ -482,12 +503,14 @@ class DataMuggler(QtCore.QObject):
         """
         # this should be made a bit more clever to only look at region
         # around the row we care about, not _everything_
+
+        # this should be re-factored to use _lookup_non_scalar
         dense_array = self._densify_sub_df(cols)
         row = dense_array.loc[index]
         out_dict = dict()
         for k, v in zip(row.index, row):
             if k in self._is_col_nonscalar:
-                out_dict[k] = self._nonscalar_col_lookup[k][v]
+                out_dict[k] = self._nonscalar_col_lookup[k][(index, v)]
             else:
                 out_dict[k] = v
 
@@ -500,10 +523,14 @@ class DataMuggler(QtCore.QObject):
         Parameters
         ----------
         dim : int
-            0 -> scalar
-            1 -> line (MCA spectra)
-            2 -> image
-            3 -> volume
+            Select out only columns with the given dimensions
+
+            --  ------------------
+            0   scalar
+            1   line (MCA spectra)
+            2   image
+            3   volume
+            --  -------------------
 
         Returns
         -------
@@ -511,11 +538,9 @@ class DataMuggler(QtCore.QObject):
             Column names in the data muggler that match the desired
             dimensionality, or all column names if dim is None
         """
-        cols = list(self._dataframe)
-        if dim is not None:
-            cols = [col_name for (col_name, col_dim)
-                    in six.iteritems(self.col_dims) if col_dim == dim]
-        cols = sorted(cols, key=lambda s: s.lower())
+        cols = [c.name for c in self._col_info
+                if (True if dim is None else dim == c.dims)]
+        cols.sort(key=lambda s: s.lower())
         return cols
 
     def __iter__(self):
@@ -592,7 +617,8 @@ class DataMuggler(QtCore.QObject):
 
             if col in self._is_col_nonscalar:
                 lookup_dict = self._nonscalar_col_lookup[col]
-                ret_dict[col] = [lookup_dict[t] for t in ws]
+                ret_dict[col] = [lookup_dict[t] for t
+                                 in six.iteritems(ws)]
             else:
                 ret_dict[col] = ws
         return df.index, ret_dict
@@ -803,118 +829,3 @@ class DmImgSequence(FramesSequence):
         state += "\nPixel Type: {}".format(self._pixel_type)
         state += "\nImage Shape: {}".format(self._image_shape)
         return state
-
-
-class SocketWorker(QtCore.QObject):
-    """
-    Worker that pings the broker stream server
-
-    Parameters
-    ----------
-    bss_name : str
-        host name or host ip address for the broker stream server
-    bss_port : int
-        port to connect to the broker stream server on
-    parent : QtCore.QObject, optional
-
-    Attributes
-    ----------
-    event : QtCore.Signal
-        Signal that emits an object and a dictionary. Ostensibly the object is
-        a datetime object and the dict is something that a data muggler will
-        understand
-    read : QtCore.Signal
-        Signal that indicates the data from the socket was successfully acquired
-    """
-    event = QtCore.Signal(object, dict)
-    read_finished = QtCore.Signal()
-
-    def __init__(self, bss_name, bss_port, parent=None):
-        QtCore.QObject.__init__(self, parent)
-        self.host_name = bss_name
-        self.host_port = bss_port
-
-    def read_socket(self):
-        """ Read data from the broker stream server
-        """
-        time_stamp, data = read_json_from_socket(self.host_name,
-                                                 self.host_port)[0]
-        time_stamp = datetime.utcnow()
-        print('{}: {}'.format(time_stamp, data))
-        self.event.emit(time_stamp, data)
-        self.read_finished.emit()
-
-
-class SocketListener(QtCore.QObject):
-    """
-    Listener that a user can hook in to for the purpose of gathering live data
-
-    Parameters
-    ----------
-    bss_name : str
-        host name or host ip address for the broker stream server
-    bss_port : int
-        port to connect to the broker stream server on
-    parent : QtCore.QObject, optional
-
-    Attributes
-    ----------
-    event : QtCore.Signal
-        Signal that emits an object and a dictionary. Ostensibly the object is
-        a datetime object and the dict is something that a data muggler will
-        understand
-    trigger : QtCore.Signal
-
-    Notes
-    -----
-    For the interaction between the external user, the `SocketListener` and the
-    `SocketWorker` see /doc/diagram/SocketListener.png
-    """
-    event = QtCore.Signal(object, dict)
-    trigger = QtCore.Signal()
-    _is_alive = True
-
-    def __init__(self, bss_name, bss_port, parent=None, **kwargs):
-        QtCore.QObject.__init__(self, parent=parent, **kwargs)
-        self.svr_name = bss_name
-        self.svr_port = bss_port
-        self.worker = SocketWorker(self.svr_name, self.svr_port)
-
-        self.thread = QtCore.QThread(parent=self)
-        self.worker.moveToThread(self.thread)
-
-        self.worker.event.connect(self.event.emit)
-
-        self.worker.event.connect(self.event.emit)
-        self.worker.read_finished.connect(self._feedback)
-        self.trigger.connect(self.worker.read_socket)
-        self.thread.start()
-
-    def start(self):
-        """Start popping data off of the broker stream server
-        """
-        self.trigger.emit()
-
-    def set_alive(self, alive, restart=False):
-        """
-        Allow the loop to proceed no further if `alive` is False (after the
-        current loop, of course)
-
-        Parameters
-        ----------
-        is_alive : bool
-            true: remove the block from the feedback loop and restart the loop
-                  if autostart is True
-            false: put a block on feedback() so that the loop stops execution
-        """
-        self._is_alive = alive
-        # restart the loop
-        if restart and self._is_alive:
-            self._feedback()
-
-    def _feedback(self):
-        """Trigger the worker thread to try to read data from the socket
-        """
-        time.sleep(0.1)
-        if self._is_alive:
-            self.trigger.emit()

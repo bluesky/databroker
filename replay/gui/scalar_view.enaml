@@ -5,7 +5,7 @@
 
 from enaml.core.api import Looper
 from atom.api import Atom, List, observe, Bool, Enum, Str, Int
-from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box
+from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box, spacer
 from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
@@ -13,7 +13,6 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                )
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
-from replay.gui.fitting_view import MultiFitController
 
 
 
@@ -22,20 +21,12 @@ enamldef ScalarController(Container):
         Container:
             Form:
                 row_spacing = 0
-                Label: xlbl:
-                    text = "x axis"
-                ComboBox: xcmb:
-                    items << list(scalar_collection.col_names)
-                    editable = True
-                    selected_item >> scalar_collection.x
-                    # this scalar allows the plotter to come up with guns blazing
-                    # (plotting)
-                    index = 0
                 Label:
                     text = 'update frequency'
                 FloatField: rate:
                     value := scalar_collection.redraw_every
                     minimum = 0.0
+                    fix_invalid_input = True
                 Label:
                     text = 'update unit'
                 ComboBox:
@@ -54,6 +45,39 @@ enamldef ScalarController(Container):
                 padding = Box(0, 0, 0, 0)
                 Form:
                     Label:
+                        text = "Column to align against"
+                    Label:
+                        text = "Alignment options"
+                    ComboBox: xcmb:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        selected_item >> scalar_collection.alignment_col
+                        # this scalar allows the plotter to come up with guns blazing
+                        # (plotting)
+                        index = 0
+                    Label:
+                        text = "-----"
+                    Label:
+                        text = "X axis"
+                    Label:
+                        text = "X axis options"
+                    ComboBox: x_axis:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        selected_item >> scalar_collection.x
+                        # this scalar allows the plotter to come up with guns blazing
+                        # (plotting)
+                        index = 0
+                    Container:
+                        constraints = [hbox(btn_val, btn_time, spacer)]
+                        RadioButton: btn_val:
+                            text = "data"
+                            checked := scalar_collection.x_is_data
+                        RadioButton: btn_time:
+                            text = "time"
+                            checked := scalar_collection.x_is_time
+
+                    Label:
                         text = "Y axis"
                     Label:
                         text = "Fit"
@@ -62,6 +86,10 @@ enamldef ScalarController(Container):
                         iterable << list(scalar_collection.col_names)
                         PushButton: cb_plot:
                             text = loop_item
+                            enabled := (
+                                scalar_collection.
+                                    scalar_models[loop_item].can_plot
+                            )
                             checked := (
                                 scalar_collection.
                                     scalar_models[loop_item].is_plotting
@@ -81,24 +109,27 @@ enamldef ScalarController(Container):
                 padding = Box(0, 0, 0, 0)
 
 enamldef ScalarView(Container):
-    alias fitter
+    #alias fitter
     Container:
         constraints = [
             vbox(
                 hbox(check, spacer, fit),
-                vbox(canvas, fitter),
+                #vbox(canvas, fitter),
+                vbox(canvas),
             ),
         ]
         CheckBox: check:
             text = 'Toolbar Visible'
+            enabled = False
             checked := canvas.toolbar_visible
         CheckBox: fit:
             text = 'Fitting Visible'
-            checked := fitter.show_fit
+            #checked := fitter.show_fit
         MPLCanvas: canvas:
             figure << scalar_collection._fig
-        MultiFitController: fitter:
-            pass
+            toolbar_visible = True
+#        MultiFitController: fitter:
+#            pass
 
 
 enamldef ScalarContainer(Window): window:
