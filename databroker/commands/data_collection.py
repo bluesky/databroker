@@ -29,8 +29,9 @@ def sleep(sleep_time, sleep_msg):
     print('Sleeping for {} ms. {}'.format(str(sleep_time*1000), sleep_msg))
     time.sleep(sleep_time)
 
+
 def create_event_descriptor(run_header, event_type_id, data_keys,
-                            descriptor_name):
+                            descriptor_name, type_descriptor=None):
     """Create an event descriptor
 
     Parameters
@@ -44,8 +45,13 @@ def create_event_descriptor(run_header, event_type_id, data_keys,
         The names of the data keys that the scan cares about
     descriptor_name : string
         Textual description of this event_descriptor
+    type_descriptor : dict, optional
+        Information bucket for the event descriptor. Should probably hold at
+        least a mapping from PV aliases to PV names
     """
     print('event descriptor data keys: {}'.format(data_keys))
+    if type_descriptor is None:
+        type_descriptor = {}
     scan_id = run_header['scan_id']
     if six.PY2:
         to_str = str
@@ -55,7 +61,8 @@ def create_event_descriptor(run_header, event_type_id, data_keys,
     event_descriptor = {'scan_id': scan_id,
                         'event_type_id': int(event_type_id),
                         'data_keys': data_keys,
-                        'descriptor_name': descriptor_name}
+                        'descriptor_name': descriptor_name,
+                        'type_descriptor': type_descriptor}
     while not search(scan_id=scan_id):
         res = search(scan_id=scan_id)
         sleep(0.5, "Header for scan_id {} not found. Give it a few seconds "
@@ -181,7 +188,7 @@ def create_run_header(scan_id, scan_name=None, owner=None, status=None,
     # get rid of the ObjectID thing that can't be JSON serialized
     databroker_header['_id'] = str(databroker_header['_id'])
 
-    print('databroker_runheader: {}'.format(databroker_header))
+    # print('databroker_runheader: {}'.format(databroker_header))
     return databroker_header
 
 
