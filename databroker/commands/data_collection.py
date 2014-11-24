@@ -47,6 +47,11 @@ def create_event_descriptor(run_header, event_type_id, data_keys,
     """
     print('event descriptor data keys: {}'.format(data_keys))
     scan_id = run_header['scan_id']
+    if six.PY2:
+        to_str = str
+    elif six.PY3:
+        to_str = six.text_type
+    data_keys = [to_str(key) for key in data_keys]
     event_descriptor = {'scan_id': scan_id,
                         'event_type_id': int(event_type_id),
                         'data_keys': data_keys,
