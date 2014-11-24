@@ -9,6 +9,14 @@ from pprint import pprint
 header_PV_name = "XF:23ID-CT{Replay}Val:RunHdr-I"
 event_PV_name = "XF:23ID-CT{Replay}Val:EventHdr-I"
 
+def grab_json(raw_data):
+    try:
+        return json.loads(raw_data)
+    except ValueError:
+        # raised when there is no JSON string on the PV
+        pass
+    return None
+
 
 def header_callback(value, **kw):
     """
@@ -22,7 +30,10 @@ def header_callback(value, **kw):
     """
     raw_data = kw['char_value']
     print raw_data
-    data = json.loads(raw_data)
+    data = grab_json(raw_data)
+    if data is None:
+        print("No data on header PV.")
+        return
     try:
         header = data['header']
         print("\nNew Header Received"
@@ -51,7 +62,10 @@ def header_callback(value, **kw):
 
 def event_callback(value, **kw):
     raw_data = kw['char_value']
-    data = json.loads(raw_data)
+    data = grab_json(raw_data)
+    if data is None:
+        print("No data on event PV")
+        return
     create_event(data)
     print("\nNew Event Received"
           "\n==================")
