@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,
 import six
 import numpy as np
 
-from replay.pipeline.pipeline import DataMuggler, ColSpec
+from replay.pipeline.pipeline import DataMuggler, ColSpec, Unalignable
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
 from numpy.testing import assert_array_equal
@@ -198,6 +198,24 @@ def test_unique_keys():
                 ('d', None, 0)]
 
     assert_raises(ValueError, DataMuggler, col_list)
+
+
+def test__non_scalar_lookup_fail():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 0)]
+
+    dm = DataMuggler(col_list)
+
+    ts = datetime.now()
+    data_dict = {'a': 1, 'b': 1}
+    dm.append_data(ts, data_dict)
+
+    ts = datetime.now()
+    data_dict = {'b': 2}
+    dm.append_data(ts, data_dict)
+
+    assert_raises(Unalignable, dm._lookup_non_scalar, dm._dataframe)
+
 
 def test_add_column():
     col_list = [('a', 'ffill', 0),
