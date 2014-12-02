@@ -198,3 +198,49 @@ def test_unique_keys():
                 ('d', None, 0)]
 
     assert_raises(ValueError, DataMuggler, col_list)
+
+def test_add_column():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 0)]
+
+    new_col = ('c', None, 0)
+    dm = DataMuggler(col_list)
+    dm.add_column(new_col)
+
+    assert_equal(set(['a', 'b', 'c']), set(dm.keys()))
+
+    assert_raises(ValueError, dm.add_column, new_col)
+
+
+def test_add_column_data():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 1)]
+
+    dm = DataMuggler(col_list)
+
+    for j in range(5):
+        ts = datetime.now()
+        data_dict = {'a': j, 'b': np.ones(2) * j}
+
+        dm.append_data(ts, data_dict)
+
+    new_col = ('c', None, 2)
+    dm.add_column(new_col)
+
+    for j in range(5, 10):
+        ts = datetime.now()
+        data_dict = {'a': j, 'b': np.ones(2) * j,
+                     'c': np.ones((2, 2)) * j}
+
+        dm.append_data(ts, data_dict)
+
+        a = dm.get_values('a', [])[1]['a']
+        b = dm.get_values('b', [])[1]['b']
+        c = dm.get_values('c', [])[1]['c']
+
+        assert_equal(len(a), j+1)
+        assert_equal(len(b), j+1)
+        assert_equal(len(c), j+1 - 5)
+        assert_equal(a[-1], j)
+        assert_equal(int(np.mean(b[-1])), j)
+        assert_equal(int(np.mean(c[-1])), j)
