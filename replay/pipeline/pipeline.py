@@ -36,7 +36,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from enaml.qt import QtCore
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, Counter
 import pandas as pd
 from datetime import datetime
 import numpy as np
@@ -219,7 +219,16 @@ class DataMuggler(QtCore.QObject):
 
         """
         # validate column spec
-        self._col_info = [ColSpec(*c) for c in col_info]
+        col_info = [ColSpec(*c) for c in col_info]
+        # make sure the columns are unique
+        if len(col_info) != len(set(c.name for c in col_info)):
+            name_counts = Counter(c.name for c in col_info)
+            dups = [k for k, v in six.iteritems(name_counts)
+                    if v > 1]
+            raise ValueError("There are non-unique keys : "
+                             "{}".format(dups))
+        self._col_info = col_info
+
         self.clear()
         self.new_columns.emit(self.keys())
 

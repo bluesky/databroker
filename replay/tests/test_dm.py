@@ -189,3 +189,12 @@ def test_align_against():
                  {'a': True, 'b': False, 'c': False, 'd': True})
 
     assert_raises(ValueError, dm.align_against, 'aardvark')
+
+
+def test_unique_keys():
+    col_list = [('a', 'ffill', 0),
+                ('a', 'ffill', 0),
+                ('c', 'ffill', 0),
+                ('d', None, 0)]
+
+    assert_raises(ValueError, DataMuggler, col_list)
