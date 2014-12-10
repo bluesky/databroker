@@ -36,7 +36,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from enaml.qt import QtCore
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, Counter
 import pandas as pd
 from datetime import datetime
 import numpy as np
@@ -219,9 +219,50 @@ class DataMuggler(QtCore.QObject):
 
         """
         # validate column spec
-        self._col_info = [ColSpec(*c) for c in col_info]
+        col_info = [ColSpec(*c) for c in col_info]
+        # make sure the columns are unique
+        if len(col_info) != len(set(c.name for c in col_info)):
+            name_counts = Counter(c.name for c in col_info)
+            dups = [k for k, v in six.iteritems(name_counts)
+                    if v > 1]
+            raise ValueError("There are non-unique keys : "
+                             "{}".format(dups))
+        self._col_info = col_info
+
         self.clear()
         self.new_columns.emit(self.keys())
+
+    def add_column(self, col_info):
+        """
+        Adds a column to the DataMuggler
+
+        Parameters
+        ----------
+        col_info : tuple
+            Of the form (col_name, fill_method, dimensionality). See
+           `ColSpec` class docstring
+        """
+        # make sure we got valid input
+        col_info = ColSpec(*col_info)
+
+        # check that the column with the same name does not exist
+        if col_info.name in [c.name for c in self._col_info]:
+            raise ValueError(
+                "The key {} already exists in the DM".format(col_info.name))
+
+        # stash the info so clear will work properly
+        self._col_info.append(col_info)
+        # stash the fill method
+        self._col_fill[col_info.name] = col_info.fill_method
+        # check if we need to deal with none-scalar data
+        if col_info.dims > 0:
+            self._is_col_nonscalar.add(col_info.name)
+            self._nonscalar_col_lookup[col_info.name] = OrderedDict()
+
+        self._dataframe[col_info.name] = pd.Series(np.nan,
+                                                   index=self._dataframe.index)
+        # emit a signal that we have a new column
+        self.new_columns.emit([col_info.name])
 
     def clear(self):
         """
@@ -812,8 +853,8 @@ class DmImgSequence(FramesSequence):
         return self._pixel_type
 
     def get_frame(self, n):
-        time = self._data_muggler.get_times(self.data_name)
-        data = self._data_muggler.get_row(time[n], [self.data_name, ])
+        ts = self._data_muggler.get_times(self.data_name)
+        data = self._data_muggler.get_row(ts[n], [self.data_name, ])
         raw_data = data[self.data_name]
         self._image_shape = raw_data.shape
         return Frame(self.process_func(raw_data).astype(self._pixel_type),

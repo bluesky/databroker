@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,
 import six
 import numpy as np
 
-from replay.pipeline.pipeline import DataMuggler, ColSpec
+from replay.pipeline.pipeline import DataMuggler, ColSpec, Unalignable
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
 from numpy.testing import assert_array_equal
@@ -189,3 +189,76 @@ def test_align_against():
                  {'a': True, 'b': False, 'c': False, 'd': True})
 
     assert_raises(ValueError, dm.align_against, 'aardvark')
+
+
+def test_unique_keys():
+    col_list = [('a', 'ffill', 0),
+                ('a', 'ffill', 0),
+                ('c', 'ffill', 0),
+                ('d', None, 0)]
+
+    assert_raises(ValueError, DataMuggler, col_list)
+
+
+def test__non_scalar_lookup_fail():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 0)]
+
+    dm = DataMuggler(col_list)
+
+    ts = datetime.now()
+    data_dict = {'a': 1, 'b': 1}
+    dm.append_data(ts, data_dict)
+
+    ts = datetime.now()
+    data_dict = {'b': 2}
+    dm.append_data(ts, data_dict)
+
+    assert_raises(Unalignable, dm._lookup_non_scalar, dm._dataframe)
+
+
+def test_add_column():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 0)]
+
+    new_col = ('c', None, 0)
+    dm = DataMuggler(col_list)
+    dm.add_column(new_col)
+
+    assert_equal(set(['a', 'b', 'c']), set(dm.keys()))
+
+    assert_raises(ValueError, dm.add_column, new_col)
+
+
+def test_add_column_data():
+    col_list = [('a', 'ffill', 0),
+                ('b', 'ffill', 1)]
+
+    dm = DataMuggler(col_list)
+
+    for j in range(5):
+        ts = datetime.now()
+        data_dict = {'a': j, 'b': np.ones(2) * j}
+
+        dm.append_data(ts, data_dict)
+
+    new_col = ('c', None, 2)
+    dm.add_column(new_col)
+
+    for j in range(5, 10):
+        ts = datetime.now()
+        data_dict = {'a': j, 'b': np.ones(2) * j,
+                     'c': np.ones((2, 2)) * j}
+
+        dm.append_data(ts, data_dict)
+
+        a = dm.get_values('a', [])[1]['a']
+        b = dm.get_values('b', [])[1]['b']
+        c = dm.get_values('c', [])[1]['c']
+
+        assert_equal(len(a), j+1)
+        assert_equal(len(b), j+1)
+        assert_equal(len(c), j+1 - 5)
+        assert_equal(a[-1], j)
+        assert_equal(int(np.mean(b[-1])), j)
+        assert_equal(int(np.mean(c[-1])), j)
