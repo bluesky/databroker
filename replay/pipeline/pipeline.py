@@ -853,8 +853,8 @@ class DmImgSequence(FramesSequence):
         return self._pixel_type
 
     def get_frame(self, n):
-        time = self._data_muggler.get_times(self.data_name)
-        data = self._data_muggler.get_row(time[n], [self.data_name, ])
+        ts = self._data_muggler.get_times(self.data_name)
+        data = self._data_muggler.get_row(ts[n], [self.data_name, ])
         raw_data = data[self.data_name]
         self._image_shape = raw_data.shape
         return Frame(self.process_func(raw_data).astype(self._pixel_type),
