@@ -16,7 +16,7 @@ def test_maxframes():
                 ('c', 'ffill', 2)]
 
     dm = DataMuggler(col_list, max_frames=5)
-
+    assert_equal(3, dm.ncols)
     for j in range(12):
         ts = datetime.now()
         data_dict = {'a': j, 'b': np.ones(2) * j,
@@ -43,6 +43,7 @@ def test_get_row():
                 ('c', 'ffill', 2)]
 
     dm = DataMuggler(col_list)
+    assert_equal(3, dm.ncols)
     ts_list = []
     for j in range(12):
         ts = datetime.now()
@@ -67,6 +68,7 @@ def test_get_col():
                 ('c', 'ffill', 2)]
 
     dm = DataMuggler(col_list)
+    assert_equal(3, dm.ncols)
     for j in range(12):
         ts = datetime.now()
         data_dict = {'b': np.ones(2) * j,
@@ -223,7 +225,9 @@ def test_add_column():
 
     new_col = ('c', None, 0)
     dm = DataMuggler(col_list)
+    assert_equal(2, dm.ncols)
     dm.add_column(new_col)
+    assert_equal(3, dm.ncols)
 
     assert_equal(set(['a', 'b', 'c']), set(dm.keys()))
 
@@ -235,6 +239,7 @@ def test_add_column_data():
                 ('b', 'ffill', 1)]
 
     dm = DataMuggler(col_list)
+    assert_equal(2, dm.ncols)
 
     for j in range(5):
         ts = datetime.now()
@@ -244,7 +249,7 @@ def test_add_column_data():
 
     new_col = ('c', None, 2)
     dm.add_column(new_col)
-
+    assert_equal(3, dm.ncols)
     for j in range(5, 10):
         ts = datetime.now()
         data_dict = {'a': j, 'b': np.ones(2) * j,
