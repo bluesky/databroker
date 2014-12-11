@@ -216,7 +216,7 @@ def test__non_scalar_lookup_fail():
     data_dict = {'b': 2}
     dm.append_data(ts, data_dict)
 
-    assert_raises(Unalignable, dm._lookup_non_scalar, dm._dataframe)
+    assert_raises(Unalignable, dm._listify_output, dm._dataframe)
 
 
 def test_add_column():

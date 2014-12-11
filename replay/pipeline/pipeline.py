@@ -467,7 +467,7 @@ class DataMuggler(QtCore.QObject):
         index = self._dataframe[ref_col].dropna().index
         dense_table = self._densify_sub_df(cols)
         reduced_table = dense_table.loc[index]
-        out_index, out_data = self._lookup_non_scalar(reduced_table)
+        out_index, out_data = self._listify_output(reduced_table)
         # return the times/indices and the dictionary
         return out_index, out_data
 
@@ -544,7 +544,7 @@ class DataMuggler(QtCore.QObject):
         index = self._dataframe[ref_col].dropna().index
         dense_table = self._densify_sub_df(cols)
         reduced_table = dense_table.loc[index[-1:]]
-        out_index, data = self._lookup_non_scalar(reduced_table)
+        out_index, data = self._listify_output(reduced_table)
         return out_index[-1], {k: v[0] for k, v in six.iteritems(data)}
 
     def get_row(self, index, cols):
@@ -554,7 +554,7 @@ class DataMuggler(QtCore.QObject):
         # this should be made a bit more clever to only look at region
         # around the row we care about, not _everything_
 
-        # this should be re-factored to use _lookup_non_scalar
+        # this should be re-factored to use _listify_output
         dense_array = self._densify_sub_df(cols)
         row = dense_array.loc[index]
         out_dict = dict()
@@ -632,7 +632,7 @@ class DataMuggler(QtCore.QObject):
             tmp_data[col] = work_series
         return pd.DataFrame(tmp_data)
 
-    def _lookup_non_scalar(self, df):
+    def _listify_output(self, df):
         """
         Given a data frame (which is assumed to be a hacked-down
         version of self._dataframe which has been densified)
