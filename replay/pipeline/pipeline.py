@@ -189,18 +189,25 @@ class DataMuggler(QtCore.QObject):
         The maximum number of frames for the non-scalar columns
 
     """
-
     # this is a signal emitted when the muggler has new data that clients
     # can grab.  The names of the columns that have new data are emitted
     # as a list
     new_data = QtCore.Signal(list)
 
     # this is a signal emitted when the muggler has new data sets that clients
-    # can grab . The names of the new columns are emitted as a list
+    # can grab. The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
 
     def __init__(self, col_info, max_frames=1000, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
+        # make all of the data structures
+        self._col_info = list()
+        self._col_fill = dict()
+        self._nonscalar_col_lookup = dict()
+        self._framestore = dict()
+        self._is_col_nonscalar = set()
+        self._dataframe = pd.DataFrame()
+
         self.max_frames = max_frames
         self.recreate_columns(col_info)
 
@@ -218,18 +225,18 @@ class DataMuggler(QtCore.QObject):
            `ColSpec` class docstring
 
         """
-        # validate column spec
-        col_info = [ColSpec(*c) for c in col_info]
-        # make sure the columns are unique
-        if len(col_info) != len(set(c.name for c in col_info)):
-            name_counts = Counter(c.name for c in col_info)
-            dups = [k for k, v in six.iteritems(name_counts)
-                    if v > 1]
-            raise ValueError("There are non-unique keys : "
-                             "{}".format(dups))
-        self._col_info = col_info
+        # make all of the data structures
+        self._col_info = list()
+        self._col_fill = dict()
+        self._nonscalar_col_lookup = dict()
+        self._framestore = dict()
+        self._is_col_nonscalar = set()
+        self._dataframe = pd.DataFrame()
 
-        self.clear()
+        # add each of the columns
+        for ci in col_info:
+            self.add_column(ci)
+
         self.new_columns.emit(self.keys())
 
     def add_column(self, col_info):
@@ -250,7 +257,7 @@ class DataMuggler(QtCore.QObject):
             raise ValueError(
                 "The key {} already exists in the DM".format(col_info.name))
 
-        # stash the info so clear will work properly
+        # stash the info for future lookup
         self._col_info.append(col_info)
         # stash the fill method
         self._col_fill[col_info.name] = col_info.fill_method
@@ -269,23 +276,7 @@ class DataMuggler(QtCore.QObject):
         Clear all of the data by re-initializing all of the internal
         data structures.
         """
-        self._col_fill = dict()
-        self._nonscalar_col_lookup = dict()
-        self._is_col_nonscalar = set()
-        names = []
-        for ci in self._col_info:
-            # used to sort out which way filling should be done.
-            # forward for motor-like, backwards from image-like
-            self._col_fill[ci.name] = ci.fill_method
-            # determine if the value should be stored directly in the data
-            # frame or in a separate data structure
-            if ci.dims > 0:
-                self._is_col_nonscalar.add(ci.name)
-                self._nonscalar_col_lookup[ci.name] = OrderedDict()
-            names.append(ci.name)
-
-        # make an empty data frame
-        self._dataframe = pd.DataFrame({n: [] for n in names}, index=[])
+        self.recreate(cols=self._col_info)
 
     @property
     def col_dims(self):
