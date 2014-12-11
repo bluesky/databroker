@@ -38,11 +38,9 @@ import six
 from enaml.qt import QtCore
 from collections import namedtuple, OrderedDict, Counter
 import pandas as pd
-from datetime import datetime
 import numpy as np
 from pims.base_frames import FramesSequence
 from pims.frame import Frame
-import time
 
 from skimage.io import imread
 
