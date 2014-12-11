@@ -482,14 +482,10 @@ class DataMuggler(QtCore.QObject):
                               "Possible values are {}").format(
                                   col_name, self.keys()))
 
-        out_series = self._dataframe[col_name].dropna()
-        if col_name in self._is_col_nonscalar:
-            out_vals = [self._nonscalar_col_lookup[col_name][t]
-                               for t in six.iteritems(out_series)]
-        else:
-            out_vals = list(out_series)
+        out_frame = self._dataframe[[col_name]].dropna()
+        indx, ret_dict = self._listify_output(out_frame)
 
-        return out_series.index, out_vals
+        return indx, ret_dict[col_name]
 
     def get_times(self, col):
         """
