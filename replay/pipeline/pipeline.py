@@ -375,6 +375,9 @@ class DataMuggler(QtCore.QObject):
             # and we only have one data point to deal with so up-convert
             time_stamp = [time_stamp, ]
             data_dict = {k: [v, ] for k, v in six.iteritems(data_dict)}
+        else:
+            # make a (shallow) copy because we will mutate the dictionary
+            data_dict = dict(data_dict)
 
         # TODO time step validation:
         # A better way to do this to make the data frame and then check that

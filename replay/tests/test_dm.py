@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division,
 import six
 import numpy as np
 
+import time
 from replay.pipeline.pipeline import DataMuggler, ColSpec, Unalignable
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
@@ -267,3 +268,31 @@ def test_add_column_data():
         assert_equal(a[-1], j)
         assert_equal(int(np.mean(b[-1])), j)
         assert_equal(int(np.mean(c[-1])), j)
+
+
+def test_bulk_add():
+    N = 5
+    a_data = list(np.rollaxis((np.ones((2, 2)).reshape(2, 2, 1) *
+                               np.arange(N).reshape(1, 1, -1)), 2, 0))
+
+    b_data = list(np.rollaxis((np.ones((2, 2)).reshape(2, 2, 1) *
+                               np.arange(N)[::-1].reshape(1, 1, -1)), 2, 0))
+
+    data_dict = {'a': a_data, 'b': b_data}
+    ts = []
+    for j in range(N):
+        ts.append(datetime.now())
+        time.sleep(.1)
+
+    col_list = [('a', 'ffill', 2),
+                ('b', 'ffill', 2)]
+    dm = DataMuggler(col_list)
+    cached_dd = dict(data_dict)
+    dm.append_data(ts, data_dict)
+    assert_equal(cached_dd, data_dict)
+
+    ts, a_res = dm.get_column('a')
+    assert_equal(a_data, a_res)
+
+    ts, b_res = dm.get_column('b')
+    assert_equal(b_data, b_res)
