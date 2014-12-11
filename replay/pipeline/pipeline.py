@@ -44,6 +44,8 @@ from pims.base_frames import FramesSequence
 from pims.frame import Frame
 import time
 
+from skimage.io import imread
+
 
 class PipelineComponent(QtCore.QObject):
     """
@@ -877,3 +879,133 @@ class DmImgSequence(FramesSequence):
         state += "\nPixel Type: {}".format(self._pixel_type)
         state += "\nImage Shape: {}".format(self._image_shape)
         return state
+
+
+class ImageSeq(FramesSequence):
+    """
+    An appendable, memoized PIMS objects.
+
+    This is to support lazy loading of files mixed with
+
+
+    Parameters
+    ----------
+    im_shape : tuple
+        The shape of the images
+
+
+    """
+    def __init__(self, im_shape, process_func=None, dtype=None,
+                 as_grey=False, plugin=None):
+        if dtype is None:
+            dtype = np.uint16
+        self._dtype = dtype
+        self._shape = im_shape
+
+        # cached values for fast look up, can be invalidated/cleared
+        self._cache = dict()
+        # dictionary, keyed on frame number of files to read data from
+        self._files = dict()
+        # dictionary, keyed on frame number of raw data arrays
+        self._arrays = dict()
+
+        self._count = 0
+
+        self._validate_process_func(process_func)
+        self._as_grey(as_grey, process_func)
+
+        self.kwargs = dict(plugin=plugin)
+
+    def __len__(self):
+        return self._count
+
+    @property
+    def frame_shape(self):
+        return self._shape
+
+    @property
+    def pixel_type(self):
+        return self._dtype
+
+    def get_frame(self, n):
+        # first look in the cache to see if we have it
+        try:
+            return self._cache[n]
+        except KeyError:
+            pass
+
+        # then look at the arrays, they are also fast
+        try:
+            return self._arrays[n]
+        except:
+            pass
+
+        # finally try to open a file...if we have to
+        try:
+            fpath = self._files[n]
+        except KeyError:
+            # not sure this should ever happen
+            return IndexError()
+
+        # read the file and convert to Frame
+        tmp = self._to_Frame(
+            flatten_frames(fpath, self.pixel_type, self.kwargs))
+        tmp.frame_no = n
+
+        #  cache results
+        self._cache[n] = tmp
+        # TODO add logic to invalidate cache
+
+        return tmp
+
+    def append_fname(self, fname):
+        """
+        Add an image to the end of this sequence by adding a filename/path
+
+        Parameters
+        ----------
+        fname : str
+            Path to a single-frame image file.  Format must be one that
+            skimage.io.imread knows how to read.
+
+            Can handle local files + urls
+
+
+        """
+        self._files[self._count] = fname
+        self._count += 1
+
+    def append_array(self, img_arr):
+        """
+        Add an image to the end of this sequence by adding an array
+
+        Parameters
+        ----------
+        img_arr : array
+            Image data as an array.
+        """
+        tmp = self._to_Frame(img_arr)
+        tmp.frame_no = self._count
+        self._arrays[self._count] = tmp
+        self._count += 1
+
+    def _to_Frame(self, img):
+        if img.dtype != self._dtype:
+            img = img.astype(self._dtype)
+        # up-convert to Frame
+        return Frame(self.process_func(img))
+
+
+def flatten_frames(fpath, out_dtype, read_kwargs):
+    """
+    Take in a multi-frame image and squash down to a single
+    frame.  This is to deal with cases where at a single data
+    point N frames have been collected to push the dynamic range
+    of the detector.
+
+    This is currently a place holder and only deals with single-frame files
+    as @stuwilkins has not told me what types of files to expect.
+    """
+    # TODO dispatch logic, sum logic, basically everything
+    tmp = imread(fpath, **read_kwargs).astype(out_dtype)
+    return tmp
