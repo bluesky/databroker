@@ -11,6 +11,11 @@ from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
 
+def test_empty_DM():
+    dm = DataMuggler([])
+    assert_equal(len(dm.keys()), 0)
+
+
 def test_maxframes():
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 1),
@@ -74,9 +79,9 @@ def test_get_col():
         ts = datetime.now()
         data_dict = {'b': np.ones(2) * j,
                      'c': np.ones((2, 2)) * j}
+
         if j % 2:
             data_dict['a'] = j
-
         dm.append_data(ts, data_dict)
 
     ts_lst, col_vals = dm.get_column('a')
