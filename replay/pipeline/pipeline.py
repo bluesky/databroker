@@ -301,6 +301,13 @@ class DataMuggler(QtCore.QObject):
         return {c.name: c.dims for c in self._col_info}
 
     @property
+    def ncols(self):
+        """
+        The number of columns that the DataMuggler contains
+        """
+        return len(self._col_info)
+
+    @property
     def col_fill_rules(self):
         """
         Fill rules for all of the columns.
