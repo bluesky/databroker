@@ -552,16 +552,13 @@ class DataMuggler(QtCore.QObject):
         # this should be made a bit more clever to only look at region
         # around the row we care about, not _everything_
 
-        # this should be re-factored to use _listify_output
         dense_array = self._densify_sub_df(cols)
-        row = dense_array.loc[index]
-        out_dict = dict()
-        for k, v in zip(row.index, row):
-            if k in self._is_col_nonscalar:
-                out_dict[k] = self._nonscalar_col_lookup[k][(index, v)]
-            else:
-                out_dict[k] = v
-
+        row = dense_array.loc[[index]]
+        # use _listify_output to do the non-scalar resolution
+        _, out_dict = self._listify_output(row)
+        # this step is needed to turn lists -> single element
+        out_dict = {k:v[0]
+                    for k, v in six.iteritems(out_dict)}
         return out_dict
 
     def keys(self, dim=None):
