@@ -404,11 +404,11 @@ class DataMuggler(QtCore.QObject):
         self._dataframe = df
         self._dataframe.sort(inplace=True)
         # get rid of excess frames
-        self._drop_frames()
+        self._drop_data()
         # emit that we have new data!
         self.new_data.emit(list(data_dict))
 
-    def _drop_frames(self):
+    def _drop_data(self):
         """
         Internal function for dealing with the need to drop old frames
         to avoid run-away memory usage
