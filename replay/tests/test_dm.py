@@ -2,13 +2,26 @@ from __future__ import (absolute_import, division,
                         unicode_literals, print_function)
 import six
 import numpy as np
-
 import time
 from replay.pipeline.pipeline import DataMuggler, ColSpec, Unalignable
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
 from numpy.testing import assert_array_equal
-from nose.tools import assert_raises
+from nose.tools import assert_raises, make_decorator
+
+
+def use_fs_dec(func):
+    """
+    A decorator to run a test with and with out fs
+
+    func : function
+        The signature must be f(use_fs)
+    """
+    def wrapper():
+        for use_fs in [True, False]:
+            yield func, use_fs
+
+    return make_decorator(func)(wrapper)
 
 
 def test_empty_DM():
@@ -21,8 +34,9 @@ def test_maxframes():
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list, max_frames=5)
+    dm = DataMuggler(col_list, max_frames=5, use_pims_fs=False)
     assert_equal(3, dm.ncols)
+
     for j in range(12):
         ts = datetime.now()
         data_dict = {'a': j, 'b': np.ones(2) * j,
@@ -43,12 +57,13 @@ def test_maxframes():
         assert_equal(int(np.mean(c[-1])), j)
 
 
-def test_get_row():
+@use_fs_dec
+def test_get_row(use_fs):
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list)
+    dm = DataMuggler(col_list, use_pims_fs=use_fs)
     assert_equal(3, dm.ncols)
     ts_list = []
     for j in range(12):
@@ -68,13 +83,15 @@ def test_get_row():
         assert_array_equal(res['c'], np.ones((2, 2)) * j)
 
 
-def test_get_col():
+@use_fs_dec
+def test_get_col(use_fs):
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list)
+    dm = DataMuggler(col_list, use_pims_fs=use_fs)
     assert_equal(3, dm.ncols)
+
     for j in range(12):
         ts = datetime.now()
         data_dict = {'b': np.ones(2) * j,
@@ -95,12 +112,13 @@ def test_get_col():
     assert_raises(ValueError, dm.get_column, 'aardvark')
 
 
-def test_last_val():
+@use_fs_dec
+def test_last_val(use_fs):
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list)
+    dm = DataMuggler(col_list, use_pims_fs=use_fs)
     ts_list = []
     for j in range(12):
         ts = datetime.now()
@@ -116,12 +134,13 @@ def test_last_val():
             assert_array_equal(res[k], data_dict[k])
 
 
-def test_get_times():
+@use_fs_dec
+def test_get_times(use_fs):
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list)
+    dm = DataMuggler(col_list, use_pims_fs=use_fs)
     ts_list = []
     for j in range(12):
         ts = datetime.now()
@@ -275,7 +294,8 @@ def test_add_column_data():
         assert_equal(int(np.mean(c[-1])), j)
 
 
-def test_bulk_add():
+@use_fs_dec
+def test_bulk_add(use_pims_fs):
     N = 5
     a_data = list(np.rollaxis((np.ones((2, 2)).reshape(2, 2, 1) *
                                np.arange(N).reshape(1, 1, -1)), 2, 0))
@@ -291,13 +311,15 @@ def test_bulk_add():
 
     col_list = [('a', 'ffill', 2),
                 ('b', 'ffill', 2)]
-    dm = DataMuggler(col_list)
+    dm = DataMuggler(col_list, use_pims_fs=use_pims_fs)
     cached_dd = dict(data_dict)
     dm.append_data(ts, data_dict)
     assert_equal(cached_dd, data_dict)
 
     ts, a_res = dm.get_column('a')
-    assert_equal(a_data, a_res)
+    for l, r in zip(a_data, a_res):
+        assert_array_equal(l, r)
 
     ts, b_res = dm.get_column('b')
-    assert_equal(b_data, b_res)
+    for l, r in zip(b_data, b_res):
+        assert_array_equal(l, r)

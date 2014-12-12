@@ -188,6 +188,11 @@ class DataMuggler(QtCore.QObject):
     max_frames : int, optional
         The maximum number of frames for the non-scalar columns
 
+    use_pims_fs : bool, optional
+        If the DM should use a pims frame-store to deal with 2D data.
+        It allows file names to be added transparently, but max_frames
+        won't apply to frames added as arrays.
+
     """
     # this is a signal emitted when the muggler has new data that clients
     # can grab.  The names of the columns that have new data are emitted
@@ -198,12 +203,13 @@ class DataMuggler(QtCore.QObject):
     # can grab. The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
 
-    def __init__(self, col_info, max_frames=1000, **kwargs):
+    def __init__(self, col_info, max_frames=1000, use_pims_fs=True, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
         # make all of the data structures
         self._col_info = list()
         self._col_fill = dict()
         self._nonscalar_col_lookup = dict()
+        self._use_fs = use_pims_fs
         self._framestore = dict()
         self._is_col_nonscalar = set()
         self._dataframe = pd.DataFrame()
@@ -264,7 +270,10 @@ class DataMuggler(QtCore.QObject):
         # check if we need to deal with none-scalar data
         if col_info.dims > 0:
             self._is_col_nonscalar.add(col_info.name)
-            self._nonscalar_col_lookup[col_info.name] = OrderedDict()
+            if self._use_fs and col_info.dims == 2:
+                self._framestore[col_info.name] = ImageSeq(None)
+            else:
+                self._nonscalar_col_lookup[col_info.name] = OrderedDict()
 
         self._dataframe[col_info.name] = pd.Series(np.nan,
                                                    index=self._dataframe.index)
@@ -379,22 +388,29 @@ class DataMuggler(QtCore.QObject):
             # make a (shallow) copy because we will mutate the dictionary
             data_dict = dict(data_dict)
 
-        # TODO time step validation:
-        # A better way to do this to make the data frame and then check that
-        # the index it time like, then do something like this to sort out
-        # which ones are bad.
-
+        non_scalar_keys = [k for k in data_dict
+                           if k in self._is_col_nonscalar]
         # deal with non-scalar look up magic
-        for k in data_dict:
-            # if non-scalar shove tha data into the storage
-            # and replace the data with the id of the value object
-            # this should probably be a hash, but this is quick and dirty
-            if k in self._is_col_nonscalar:
-                ids = []
+        for k in non_scalar_keys:
+            ids = []
+            # if frame data, use a pims object
+            if k in self._framestore:
+                fs = self._framestore[k]
+                for t, v in zip(time_stamp, data_dict[k]):
+                    ids.append(len(fs))
+                    # if it looks like a file name...
+                    if isinstance(v, six.string_types):
+                        fs.append_fname(v)
+                    # else, assume it is an array
+                    else:
+                        fs.append_array(v)
+            # else, dump into an ordered dict
+            else:
+                cl = self._nonscalar_col_lookup[k]
                 for t, v in zip(time_stamp, data_dict[k]):
                     ids.append(id(v))
-                    self._nonscalar_col_lookup[k][(t, id(v))] = v
-                data_dict[k] = ids
+                    cl[(t, id(v))] = v
+            data_dict[k] = ids
 
         # make a new data frame with the input data and append it to the
         # existing data
@@ -413,8 +429,7 @@ class DataMuggler(QtCore.QObject):
         Internal function for dealing with the need to drop old frames
         to avoid run-away memory usage
         """
-        for k in self._is_col_nonscalar:
-            work_dict = self._nonscalar_col_lookup[k]
+        for k, work_dict in six.iteritems(self._nonscalar_col_lookup):
             while len(work_dict) > self.max_frames:
                 drop_key = next(six.iterkeys(work_dict))
                 del work_dict[drop_key]
@@ -547,7 +562,7 @@ class DataMuggler(QtCore.QObject):
         # use _listify_output to do the non-scalar resolution
         _, out_dict = self._listify_output(row)
         # this step is needed to turn lists -> single element
-        out_dict = {k:v[0]
+        out_dict = {k: v[0]
                     for k, v in six.iteritems(out_dict)}
         return out_dict
 
@@ -642,7 +657,6 @@ class DataMuggler(QtCore.QObject):
             one of (ndarray, list, pd.Series)
         """
         ret_dict = dict()
-
         for col in df:
             ws = df[col]
             if ws.isnull().any():
@@ -651,9 +665,15 @@ class DataMuggler(QtCore.QObject):
                 raise Unalignable("columns aren't aligned correctly")
 
             if col in self._is_col_nonscalar:
-                lookup_dict = self._nonscalar_col_lookup[col]
-                ret_dict[col] = [lookup_dict[t] for t
-                                 in six.iteritems(ws)]
+                if col in self._framestore:
+                    fs = self._framestore[col]
+                    ret_dict[col] = [fs[n] for n in ws]
+                else:
+                    lookup_dict = self._nonscalar_col_lookup[col]
+                    # the iteritems generates (time, id(v))
+                    # pairs
+                    ret_dict[col] = [lookup_dict[t] for t
+                                     in six.iteritems(ws)]
             else:
                 ret_dict[col] = ws
         return df.index, ret_dict
