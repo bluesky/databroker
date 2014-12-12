@@ -1,27 +1,16 @@
 from __future__ import print_function, division
+import enaml
+from enaml.qt.qt_application import QtApplication
 import os
 import logging
 
-import six
-import yaml
 logger = logging.getLogger(__name__)
-import sys
 
 from skxray.fitting.api import model_list as valid_models
 from replay.pipeline.pipeline import (DataMuggler)
 from replay.model.scalar_model import ScalarCollection
-from replay.model.cross_section_model import CrossSectionModel
 from replay.model.fitting_model import MultiFitController
-from replay.model.histogram_model import HistogramModel
-from enaml.qt.qt_application import QtApplication
-import enaml
-from datetime import datetime
-import time
-import json
 from metadataStore.api import analysis
-
-from metadataStore.api.collection import create_event
-from pprint import pprint
 
 dm = None
 view = None
@@ -40,7 +29,7 @@ def init_ui(data_muggler):
     """
     global view
     with enaml.imports():
-        from .gui.pipeline_hitting_mds import PipelineView
+        from replay.gui.pipeline_hitting_mds import PipelineView
 
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
     scalar_collection = ScalarCollection()
