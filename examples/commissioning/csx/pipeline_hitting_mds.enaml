@@ -1,0 +1,95 @@
+from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
+                              InsertDockBarItem)
+from enaml.stdlib.fields import FloatField
+from enaml.widgets.api import (Window, Container, DockItem, DockArea,
+                               MainWindow, ObjectCombo, PushButton, Timer)
+from replay.gui.line_view import LineView
+from replay.gui.scalar_view import ScalarView, ScalarController
+from replay.gui.cross_section_view import (CrossSectionView,
+                                           CrossSectionController)
+from atom.api import Bool, Typed, observe
+from enaml.stdlib.dock_area_styles import available_styles
+from enaml.core.declarative import d_
+
+def cap_case(name):
+    return ' '.join(s.capitalize() for s in name.split('-'))
+
+def add_dock_bars(area, cross_section_view, cross_section_controller,
+           scalar_view, scalar_controller):
+    area.update_layout(InsertDockBarItem(item=cross_section_view,
+                                         target=cross_section_controller))
+    area.update_layout(InsertDockBarItem(item=scalar_view,
+                                         target=scalar_controller))
+
+class MagicButton(PushButton):
+    timer = d_(Typed(Timer))
+
+    @observe('checked')
+    def checked_changed(self, changed):
+        if self.checked:
+            self.timer.start()
+        else:
+            self.timer.stop()
+
+enamldef PipelineView(MainWindow): main:
+    title = "Live Data Demo"
+    attr scalar_collection
+    attr multi_fit_controller
+    attr clear_data
+    attr start_observation
+    attr stop_observation
+    attr grab_latest
+    attr currently_watching = False
+    attr make_new_dm = True
+    Container: container:
+        ObjectCombo: style_c:
+            items = available_styles()
+            to_string = cap_case
+            selected = 'vs-2010'
+        DockArea: area:
+            style << style_c.selected
+            layout = HSplitLayout(VSplitLayout('trigger pvs', 'scalar controller'),
+                                  VSplitLayout('scalar view')
+            )
+            DockItem:
+                name = 'scalar view'
+                title = 'Scalar View'
+                closable = False
+                Container:
+                    ScalarView: scalar_view:
+#                        fitter.multi_fit_controller = main.multi_fit_controller
+                        pass
+            DockItem:
+                name = 'scalar controller'
+                title = 'Scalar Controller'
+                closable = False
+                Container:
+                    hug_width = 'strong'
+                    ScalarController: scalar_controller:
+                        pass
+            DockItem: triggers:
+                name = 'trigger pvs'
+                title = 'Trigger PVs'
+                Container:
+                    hug_width = 'strong'
+                    MagicButton: btn_watch_mds:
+                        text = "Grab Latest"
+                        checkable = True
+                        checked := currently_watching
+                        timer = the_timer
+                        clicked ::
+                            main.make_new_dm = True
+                    Timer: the_timer:
+                        interval = 500
+                        single_shot = False
+                        timeout ::
+                            grab_latest()
+                    PushButton: btn_start:
+                        text = "Start"
+                        clicked :: start_observation()
+                    PushButton: btn_stop:
+                        text = "Stop"
+                        clicked :: stop_observation()
+                    PushButton: btn_clear:
+                        text = "Clear"
+                        clicked :: clear_data()

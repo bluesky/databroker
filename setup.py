@@ -12,7 +12,6 @@ except ImportError:
         from distutils.core import setup
 
 from distutils.core import setup, Extension
-import numpy
 
 MAJOR = 0
 MINOR = 0
@@ -66,5 +65,10 @@ setup(
               'replay.gui',
               'replay.model'
               ],
-    package_data={'replay.gui': ['*.enaml']}
+  entry_points={
+    'console_scripts': [
+      'replay = replay.run:main']},
+    package_data={'replay.gui': ['*.enaml']},
+    requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
+              'pims', 'six'],
 )

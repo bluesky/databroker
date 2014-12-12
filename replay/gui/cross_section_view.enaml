@@ -49,7 +49,7 @@ enamldef SliderWithSpinner(Container): sws:
         FloatField:
             value := cs_model.redraw_every
             minimum = 0.0
-            fix_invalid_input = True
+            #fix_invalid_input = True
         Label:
             text = 'update unit'
         ComboBox:
@@ -111,7 +111,7 @@ enamldef CrossSectionController(DockItem): csdock:
                     maximum << cs_model.img_max
                     value := cs_model.disp_min
                     enabled << cs_model.min_enabled
-                    fix_invalid_input = True
+                    #fix_invalid_input = True
                 Label:
                     text = "I max"
                 FloatField: imax:
@@ -119,7 +119,7 @@ enamldef CrossSectionController(DockItem): csdock:
                     maximum << cs_model.img_max
                     value := cs_model.disp_max
                     enabled << cs_model.max_enabled
-                    fix_invalid_input = True
+                    #fix_invalid_input = True
 
         SliderWithSpinner: sws:
             pass
