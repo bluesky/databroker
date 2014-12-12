@@ -38,11 +38,11 @@ import six
 from enaml.qt import QtCore
 from collections import namedtuple, OrderedDict, Counter
 import pandas as pd
-from datetime import datetime
 import numpy as np
 from pims.base_frames import FramesSequence
 from pims.frame import Frame
-import time
+
+from skimage.io import imread
 
 
 class PipelineComponent(QtCore.QObject):
@@ -188,19 +188,32 @@ class DataMuggler(QtCore.QObject):
     max_frames : int, optional
         The maximum number of frames for the non-scalar columns
 
-    """
+    use_pims_fs : bool, optional
+        If the DM should use a pims frame-store to deal with 2D data.
+        It allows file names to be added transparently, but max_frames
+        won't apply to frames added as arrays.
 
+    """
     # this is a signal emitted when the muggler has new data that clients
     # can grab.  The names of the columns that have new data are emitted
     # as a list
     new_data = QtCore.Signal(list)
 
     # this is a signal emitted when the muggler has new data sets that clients
-    # can grab . The names of the new columns are emitted as a list
+    # can grab. The names of the new columns are emitted as a list
     new_columns = QtCore.Signal(list)
 
-    def __init__(self, col_info, max_frames=1000, **kwargs):
+    def __init__(self, col_info, max_frames=1000, use_pims_fs=True, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
+        # make all of the data structures
+        self._col_info = list()
+        self._col_fill = dict()
+        self._nonscalar_col_lookup = dict()
+        self._use_fs = use_pims_fs
+        self._framestore = dict()
+        self._is_col_nonscalar = set()
+        self._dataframe = pd.DataFrame()
+
         self.max_frames = max_frames
         self.recreate_columns(col_info)
 
@@ -218,18 +231,18 @@ class DataMuggler(QtCore.QObject):
            `ColSpec` class docstring
 
         """
-        # validate column spec
-        col_info = [ColSpec(*c) for c in col_info]
-        # make sure the columns are unique
-        if len(col_info) != len(set(c.name for c in col_info)):
-            name_counts = Counter(c.name for c in col_info)
-            dups = [k for k, v in six.iteritems(name_counts)
-                    if v > 1]
-            raise ValueError("There are non-unique keys : "
-                             "{}".format(dups))
-        self._col_info = col_info
+        # make all of the data structures
+        self._col_info = list()
+        self._col_fill = dict()
+        self._nonscalar_col_lookup = dict()
+        self._framestore = dict()
+        self._is_col_nonscalar = set()
+        self._dataframe = pd.DataFrame()
 
-        self.clear()
+        # add each of the columns
+        for ci in col_info:
+            self.add_column(ci)
+
         self.new_columns.emit(self.keys())
 
     def add_column(self, col_info):
@@ -250,14 +263,17 @@ class DataMuggler(QtCore.QObject):
             raise ValueError(
                 "The key {} already exists in the DM".format(col_info.name))
 
-        # stash the info so clear will work properly
+        # stash the info for future lookup
         self._col_info.append(col_info)
         # stash the fill method
         self._col_fill[col_info.name] = col_info.fill_method
         # check if we need to deal with none-scalar data
         if col_info.dims > 0:
             self._is_col_nonscalar.add(col_info.name)
-            self._nonscalar_col_lookup[col_info.name] = OrderedDict()
+            if self._use_fs and col_info.dims == 2:
+                self._framestore[col_info.name] = ImageSeq(None)
+            else:
+                self._nonscalar_col_lookup[col_info.name] = OrderedDict()
 
         self._dataframe[col_info.name] = pd.Series(np.nan,
                                                    index=self._dataframe.index)
@@ -269,23 +285,7 @@ class DataMuggler(QtCore.QObject):
         Clear all of the data by re-initializing all of the internal
         data structures.
         """
-        self._col_fill = dict()
-        self._nonscalar_col_lookup = dict()
-        self._is_col_nonscalar = set()
-        names = []
-        for ci in self._col_info:
-            # used to sort out which way filling should be done.
-            # forward for motor-like, backwards from image-like
-            self._col_fill[ci.name] = ci.fill_method
-            # determine if the value should be stored directly in the data
-            # frame or in a separate data structure
-            if ci.dims > 0:
-                self._is_col_nonscalar.add(ci.name)
-                self._nonscalar_col_lookup[ci.name] = OrderedDict()
-            names.append(ci.name)
-
-        # make an empty data frame
-        self._dataframe = pd.DataFrame({n: [] for n in names}, index=[])
+        self.recreate(cols=self._col_info)
 
     @property
     def col_dims(self):
@@ -384,23 +384,33 @@ class DataMuggler(QtCore.QObject):
             # and we only have one data point to deal with so up-convert
             time_stamp = [time_stamp, ]
             data_dict = {k: [v, ] for k, v in six.iteritems(data_dict)}
+        else:
+            # make a (shallow) copy because we will mutate the dictionary
+            data_dict = dict(data_dict)
 
-        # TODO time step validation:
-        # A better way to do this to make the data frame and then check that
-        # the index it time like, then do something like this to sort out
-        # which ones are bad.
-
+        non_scalar_keys = [k for k in data_dict
+                           if k in self._is_col_nonscalar]
         # deal with non-scalar look up magic
-        for k in data_dict:
-            # if non-scalar shove tha data into the storage
-            # and replace the data with the id of the value object
-            # this should probably be a hash, but this is quick and dirty
-            if k in self._is_col_nonscalar:
-                ids = []
+        for k in non_scalar_keys:
+            ids = []
+            # if frame data, use a pims object
+            if k in self._framestore:
+                fs = self._framestore[k]
+                for t, v in zip(time_stamp, data_dict[k]):
+                    ids.append(len(fs))
+                    # if it looks like a file name...
+                    if isinstance(v, six.string_types):
+                        fs.append_fname(v)
+                    # else, assume it is an array
+                    else:
+                        fs.append_array(v)
+            # else, dump into an ordered dict
+            else:
+                cl = self._nonscalar_col_lookup[k]
                 for t, v in zip(time_stamp, data_dict[k]):
                     ids.append(id(v))
-                    self._nonscalar_col_lookup[k][(t, id(v))] = v
-                data_dict[k] = ids
+                    cl[(t, id(v))] = v
+            data_dict[k] = ids
 
         # make a new data frame with the input data and append it to the
         # existing data
@@ -410,17 +420,16 @@ class DataMuggler(QtCore.QObject):
         self._dataframe = df
         self._dataframe.sort(inplace=True)
         # get rid of excess frames
-        self._drop_frames()
+        self._drop_data()
         # emit that we have new data!
         self.new_data.emit(list(data_dict))
 
-    def _drop_frames(self):
+    def _drop_data(self):
         """
         Internal function for dealing with the need to drop old frames
         to avoid run-away memory usage
         """
-        for k in self._is_col_nonscalar:
-            work_dict = self._nonscalar_col_lookup[k]
+        for k, work_dict in six.iteritems(self._nonscalar_col_lookup):
             while len(work_dict) > self.max_frames:
                 drop_key = next(six.iterkeys(work_dict))
                 del work_dict[drop_key]
@@ -465,7 +474,7 @@ class DataMuggler(QtCore.QObject):
         index = self._dataframe[ref_col].dropna().index
         dense_table = self._densify_sub_df(cols)
         reduced_table = dense_table.loc[index]
-        out_index, out_data = self._lookup_non_scalar(reduced_table)
+        out_index, out_data = self._listify_output(reduced_table)
         # return the times/indices and the dictionary
         return out_index, out_data
 
@@ -491,14 +500,10 @@ class DataMuggler(QtCore.QObject):
                               "Possible values are {}").format(
                                   col_name, self.keys()))
 
-        out_series = self._dataframe[col_name].dropna()
-        if col_name in self._is_col_nonscalar:
-            out_vals = [self._nonscalar_col_lookup[col_name][t]
-                               for t in six.iteritems(out_series)]
-        else:
-            out_vals = list(out_series)
+        out_frame = self._dataframe[[col_name]].dropna()
+        indx, ret_dict = self._listify_output(out_frame)
 
-        return out_series.index, out_vals
+        return indx, ret_dict[col_name]
 
     def get_times(self, col):
         """
@@ -542,7 +547,7 @@ class DataMuggler(QtCore.QObject):
         index = self._dataframe[ref_col].dropna().index
         dense_table = self._densify_sub_df(cols)
         reduced_table = dense_table.loc[index[-1:]]
-        out_index, data = self._lookup_non_scalar(reduced_table)
+        out_index, data = self._listify_output(reduced_table)
         return out_index[-1], {k: v[0] for k, v in six.iteritems(data)}
 
     def get_row(self, index, cols):
@@ -552,16 +557,13 @@ class DataMuggler(QtCore.QObject):
         # this should be made a bit more clever to only look at region
         # around the row we care about, not _everything_
 
-        # this should be re-factored to use _lookup_non_scalar
         dense_array = self._densify_sub_df(cols)
-        row = dense_array.loc[index]
-        out_dict = dict()
-        for k, v in zip(row.index, row):
-            if k in self._is_col_nonscalar:
-                out_dict[k] = self._nonscalar_col_lookup[k][(index, v)]
-            else:
-                out_dict[k] = v
-
+        row = dense_array.loc[[index]]
+        # use _listify_output to do the non-scalar resolution
+        _, out_dict = self._listify_output(row)
+        # this step is needed to turn lists -> single element
+        out_dict = {k: v[0]
+                    for k, v in six.iteritems(out_dict)}
         return out_dict
 
     def keys(self, dim=None):
@@ -630,7 +632,7 @@ class DataMuggler(QtCore.QObject):
             tmp_data[col] = work_series
         return pd.DataFrame(tmp_data)
 
-    def _lookup_non_scalar(self, df):
+    def _listify_output(self, df):
         """
         Given a data frame (which is assumed to be a hacked-down
         version of self._dataframe which has been densified)
@@ -655,7 +657,6 @@ class DataMuggler(QtCore.QObject):
             one of (ndarray, list, pd.Series)
         """
         ret_dict = dict()
-
         for col in df:
             ws = df[col]
             if ws.isnull().any():
@@ -664,9 +665,15 @@ class DataMuggler(QtCore.QObject):
                 raise Unalignable("columns aren't aligned correctly")
 
             if col in self._is_col_nonscalar:
-                lookup_dict = self._nonscalar_col_lookup[col]
-                ret_dict[col] = [lookup_dict[t] for t
-                                 in six.iteritems(ws)]
+                if col in self._framestore:
+                    fs = self._framestore[col]
+                    ret_dict[col] = [fs[n] for n in ws]
+                else:
+                    lookup_dict = self._nonscalar_col_lookup[col]
+                    # the iteritems generates (time, id(v))
+                    # pairs
+                    ret_dict[col] = [lookup_dict[t] for t
+                                     in six.iteritems(ws)]
             else:
                 ret_dict[col] = ws
         return df.index, ret_dict
@@ -877,3 +884,133 @@ class DmImgSequence(FramesSequence):
         state += "\nPixel Type: {}".format(self._pixel_type)
         state += "\nImage Shape: {}".format(self._image_shape)
         return state
+
+
+class ImageSeq(FramesSequence):
+    """
+    An appendable, memoized PIMS objects.
+
+    This is to support lazy loading of files mixed with
+
+
+    Parameters
+    ----------
+    im_shape : tuple
+        The shape of the images
+
+
+    """
+    def __init__(self, im_shape, process_func=None, dtype=None,
+                 as_grey=False, plugin=None):
+        if dtype is None:
+            dtype = np.uint16
+        self._dtype = dtype
+        self._shape = im_shape
+
+        # cached values for fast look up, can be invalidated/cleared
+        self._cache = dict()
+        # dictionary, keyed on frame number of files to read data from
+        self._files = dict()
+        # dictionary, keyed on frame number of raw data arrays
+        self._arrays = dict()
+
+        self._count = 0
+
+        self._validate_process_func(process_func)
+        self._as_grey(as_grey, process_func)
+
+        self.kwargs = dict(plugin=plugin)
+
+    def __len__(self):
+        return self._count
+
+    @property
+    def frame_shape(self):
+        return self._shape
+
+    @property
+    def pixel_type(self):
+        return self._dtype
+
+    def get_frame(self, n):
+        # first look in the cache to see if we have it
+        try:
+            return self._cache[n]
+        except KeyError:
+            pass
+
+        # then look at the arrays, they are also fast
+        try:
+            return self._arrays[n]
+        except:
+            pass
+
+        # finally try to open a file...if we have to
+        try:
+            fpath = self._files[n]
+        except KeyError:
+            # not sure this should ever happen
+            return IndexError()
+
+        # read the file and convert to Frame
+        tmp = self._to_Frame(
+            flatten_frames(fpath, self.pixel_type, self.kwargs))
+        tmp.frame_no = n
+
+        #  cache results
+        self._cache[n] = tmp
+        # TODO add logic to invalidate cache
+
+        return tmp
+
+    def append_fname(self, fname):
+        """
+        Add an image to the end of this sequence by adding a filename/path
+
+        Parameters
+        ----------
+        fname : str
+            Path to a single-frame image file.  Format must be one that
+            skimage.io.imread knows how to read.
+
+            Can handle local files + urls
+
+
+        """
+        self._files[self._count] = fname
+        self._count += 1
+
+    def append_array(self, img_arr):
+        """
+        Add an image to the end of this sequence by adding an array
+
+        Parameters
+        ----------
+        img_arr : array
+            Image data as an array.
+        """
+        tmp = self._to_Frame(img_arr)
+        tmp.frame_no = self._count
+        self._arrays[self._count] = tmp
+        self._count += 1
+
+    def _to_Frame(self, img):
+        if img.dtype != self._dtype:
+            img = img.astype(self._dtype)
+        # up-convert to Frame
+        return Frame(self.process_func(img))
+
+
+def flatten_frames(fpath, out_dtype, read_kwargs):
+    """
+    Take in a multi-frame image and squash down to a single
+    frame.  This is to deal with cases where at a single data
+    point N frames have been collected to push the dynamic range
+    of the detector.
+
+    This is currently a place holder and only deals with single-frame files
+    as @stuwilkins has not told me what types of files to expect.
+    """
+    # TODO dispatch logic, sum logic, basically everything
+    tmp = imread(fpath, **read_kwargs).astype(out_dtype)
+    return tmp
