@@ -96,7 +96,15 @@ def grab_latest():
             continue
         elif seq_no > cur_max_seq_no:
             cur_max_seq_no = seq_no
-        dm.append_data(e['data']['time'], e['data'])
+        try:
+            key = e['time']
+        except KeyError:
+            try:
+                key = e['data']['time']
+            except KeyError:
+                key = e['seq_no']
+                
+        dm.append_data(key, e['data'])
     prev_max_seqno = cur_max_seq_no
 
     view.make_new_dm = False
