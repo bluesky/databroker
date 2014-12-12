@@ -10,12 +10,13 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                CheckBox, DockItem, DockPane, Form, Label,
                                Slider, MainWindow, ComboBox, SpinBox,
                                GroupBox, ScrollArea, PushButton, RadioButton,
+                               Field,
                                )
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
+import random
 
-
-
+random_text = ['cat', 'insert coin', 'it\'s a bird!', 'aardvark']
 enamldef ScalarController(Container):
     ScrollArea: scroller:
         Container:
@@ -33,7 +34,8 @@ enamldef ScalarController(Container):
                     items << list(ScalarCollection.redraw_type.items)
                     selected_item >> scalar_collection.redraw_type
                     index << ScalarCollection.redraw_type.items.index(
-                        scalar_collection.redraw_type)
+                        scalar_collection.redraw_type
+                    )
                 Label:
                     text = 'update rate'
                 Label:
@@ -47,16 +49,16 @@ enamldef ScalarController(Container):
                     Label:
                         text = "Column to align against"
                     Label:
-                        text = "Alignment options"
+                        text = "Column alignment options"
                     ComboBox: xcmb:
                         items << list(scalar_collection.col_names)
                         editable = True
-                        selected_item >> scalar_collection.alignment_col
-                        # this scalar allows the plotter to come up with guns blazing
-                        # (plotting)
                         index = 0
-                    Label:
-                        text = "-----"
+                        selected_item >> scalar_collection.alignment_col
+                    PushButton: random_btn:
+                        text = 'I dare you...'
+                        clicked ::
+                            random_btn.text = random.choice(random_text)
                     Label:
                         text = "X axis"
                     Label:
@@ -64,10 +66,8 @@ enamldef ScalarController(Container):
                     ComboBox: x_axis:
                         items << list(scalar_collection.col_names)
                         editable = True
-                        selected_item >> scalar_collection.x
-                        # this scalar allows the plotter to come up with guns blazing
-                        # (plotting)
                         index = 0
+                        selected_item >> scalar_collection.x
                     Container:
                         constraints = [hbox(btn_val, btn_time, spacer)]
                         RadioButton: btn_val:
@@ -83,7 +83,7 @@ enamldef ScalarController(Container):
                         text = "Fit"
                     row_spacing = 0
                     Looper: looper:
-                        iterable << list(scalar_collection.col_names)
+                        iterable << scalar_collection.col_names
                         PushButton: cb_plot:
                             text = loop_item
                             enabled := (
@@ -103,10 +103,15 @@ enamldef ScalarController(Container):
                             checked ::
                                 scalar_collection.fit_target = text
                                 print('cb_fit clicked for {}'.format(text))
+                        Label:
+                            text = 'memory address'
+                        Label:
+                            text << str(id(scalar_collection.scalar_models[loop_item]))
             GroupBox: fit:
                 title_align = 'center'
                 title = 'Fit'
                 padding = Box(0, 0, 0, 0)
+
 
 enamldef ScalarView(Container):
     #alias fitter

@@ -12,6 +12,9 @@ build:
   # and NumPy versions
   string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
+  entry_points:
+    - replay = replay.run:main
+
 requirements:
   build:
     - python
@@ -27,7 +30,7 @@ requirements:
     - bubblegum
     - scikit-xray
     - pims
-    - broker
+    - metadatastore
 
 test:
   imports:

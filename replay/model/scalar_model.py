@@ -9,6 +9,8 @@ import six
 from ..pipeline.pipeline import DataMuggler
 from datetime import datetime
 import logging
+from copy import copy
+from pprint import pprint
 from .fitting_model import MultiFitController
 logger = logging.getLogger(__name__)
 
@@ -130,7 +132,7 @@ class ScalarCollection(Atom):
     alignment_col = Str()
     x_is_data = Bool(True)
     x_is_time = Bool(False)
-    col_names = List(item=str)
+    col_names = List()
 
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
@@ -161,7 +163,7 @@ class ScalarCollection(Atom):
             self.redraw_type = 's'
 
     def init_scalar_models(self):
-        self.scalar_models = {}
+        self.scalar_models.clear()
         line_artist, = self._ax.plot([], [], label=nodata_str)
         self.scalar_models[nodata_str] = ScalarModel(line_artist=line_artist,
                                                name=nodata_str,
@@ -187,15 +189,26 @@ class ScalarCollection(Atom):
             # default to the first column name
             self.x = self.col_names[0]
             self.alignment_col = self.col_names[0]
+            # blow away scalar models
+            self.scalar_models.clear()
+            self._ax.cla()
+            # print('self.col_names: {}'.format(self.col_names))
+            # print('self.x: {}'.format(self.x))
+            # print('self.alignment_col: {}'.format(self.alignment_col))
             # get the alignability of the columns that this model cares about
-            alignable = self.data_muggler.align_against(self.x, self.col_names)
+            alignable = self.data_muggler.align_against(self.alignment_col,
+                                                        self.col_names)
+            # print('\nalignable\n---------')
+            # pprint(alignable)
+            # print('\\alignable')
+
             for name, is_plottable in six.iteritems(alignable):
                 # create a new line artist and scalar model
                 line_artist, = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name,
                                                        can_plot=is_plottable,
-                                                       is_plotting=True)
+                                                       is_plotting=False)
             # add the fit
             name = 'fit'
             line_artist, = self._ax.plot([], [], label=name)
@@ -203,8 +216,11 @@ class ScalarCollection(Atom):
                                                    name=name,
                                                    can_plot=True,
                                                    is_plotting=False)
+        self.col_names = []
         self._last_update_time = datetime.utcnow()
-        # print('self.scalar_models: {}'.format(self.scalar_models))
+        self.col_names = self.data_muggler.keys(dim=0) + ['fit']
+        self.alignment_col = self.col_names[0]
+        self.x = self.col_names[0]
 
     @observe('x_is_data', 'x_is_time')
     def update_x_axis(self, changed):
@@ -213,13 +229,14 @@ class ScalarCollection(Atom):
                 self.x_is_data = False
             elif self.x_is_data:
                 self.x_is_time = False
-        print('x is data: {}\tx is time: {}'.format(self.x_is_data, self.x_is_time))
+        # print('x is data: {}\tx is time: {}'.format(self.x_is_data, self.x_is_time))
         if self.x_is_data or self.x_is_time:
             self.get_new_data_and_plot()
 
     @observe('x')
     def update_x(self, changed):
         self._ax.set_xlabel(self.x)
+        self.get_new_data_and_plot()
 
     @observe('alignment_col')
     def update_alignment_col(self, changed):
@@ -282,16 +299,16 @@ class ScalarCollection(Atom):
             redraw = True
         if self.alignment_col in new_data:
             # update all the data in the line plot
-            intersection = list(self.scalar_models)
+            y_names = list(self.scalar_models)
         else:
             # find out which new_data keys overlap with the data that is
             # supposed to be shown on the plot
-            intersection = []
+            y_names = []
             for model_name, model in six.iteritems(self.scalar_models):
                 if model.is_plotting and model.name in new_data:
-                    intersection.append(model.name)
+                    y_names.append(model.name)
         if redraw:
-            self.get_new_data_and_plot(intersection)
+            self.get_new_data_and_plot(y_names)
 
     def get_new_data_and_plot(self, y_names=None):
         """
@@ -317,9 +334,9 @@ class ScalarCollection(Atom):
                           if v)
 
         other_cols = list(y_names & valid_names)
-        print('y_names: {}'.format(y_names))
-        print('valid_names: {}'.format(valid_names))
-        print('other_cols: {}'.format(other_cols))
+        # print('y_names: {}'.format(y_names))
+        # print('valid_names: {}'.format(valid_names))
+        # print('other_cols: {}'.format(other_cols))
         time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
                                                   other_cols=other_cols)
         ref_data = data.pop(self.x)
@@ -328,11 +345,12 @@ class ScalarCollection(Atom):
             ref_data_vals = ref_data.values
         else:
             ref_data_vals = time
-        print('ref_data_vals: {}'.format(ref_data_vals))
+        # print('ref_data_vals: {}'.format(ref_data_vals))
 
         if self.scalar_models[self.x].is_plotting:
             self.scalar_models[self.x].set_data(x=ref_data_vals, y=ref_data)
         for dname, dvals in six.iteritems(data):
+            # print('{}: {}'.format(dname, id(self.scalar_models[dname])))
             self.scalar_models[dname].set_data(x=ref_data_vals, y=dvals)
 
         # manage the fitting
