@@ -27,7 +27,7 @@ enamldef ScalarController(Container):
                 FloatField: rate:
                     value := scalar_collection.redraw_every
                     minimum = 0.0
-                    fix_invalid_input = True
+                    #fix_invalid_input = True
                 Label:
                     text = 'update unit'
                 ComboBox:
