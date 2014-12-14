@@ -1,8 +1,9 @@
 from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
                               InsertDockBarItem)
-from enaml.stdlib.fields import FloatField
+from enaml.stdlib.fields import FloatField, IntField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
-                               MainWindow, ObjectCombo, PushButton, Timer)
+                               MainWindow, ObjectCombo, PushButton, Timer,
+                               Form, Label)
 from replay.gui.line_view import LineView
 from replay.gui.scalar_view import ScalarView, ScalarController
 from replay.gui.cross_section_view import (CrossSectionView,
@@ -71,25 +72,19 @@ enamldef PipelineView(MainWindow): main:
                 name = 'trigger pvs'
                 title = 'Trigger PVs'
                 Container:
-                    hug_width = 'strong'
-                    MagicButton: btn_watch_mds:
-                        text = "Grab Latest"
-                        checkable = True
-                        checked := currently_watching
-                        timer = the_timer
-                        clicked ::
-                            main.make_new_dm = True
+                    Form:
+                        hug_width = 'strong'
+                        MagicButton: btn_watch_mds:
+                            text = "Grab Latest"
+                            checkable = True
+                            checked := currently_watching
+                            timer = the_timer
+                            clicked ::
+                                main.make_new_dm = True
+                        IntField: scan_id:
+                            pass
                     Timer: the_timer:
                         interval = 500
                         single_shot = False
                         timeout ::
-                            grab_latest()
-                    PushButton: btn_start:
-                        text = "Start"
-                        clicked :: start_observation()
-                    PushButton: btn_stop:
-                        text = "Stop"
-                        clicked :: stop_observation()
-                    PushButton: btn_clear:
-                        text = "Clear"
-                        clicked :: clear_data()
+                            grab_latest(scan_id.value)

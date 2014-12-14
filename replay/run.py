@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import six
 import enaml
 from enaml.qt.qt_application import QtApplication
 import os
@@ -43,7 +44,7 @@ def init_ui(data_muggler):
     return view
 
 
-def grab_latest():
+def grab_latest(scan_id):
     # global dm
     # # grab the most recent run header
     # original_hdr_id = ''
@@ -60,14 +61,19 @@ def grab_latest():
     global dm
     global prev_max_seqno
     # grab the latest data
-    header, ev_desc, events, beamline_configs = analysis.find_last()
+    ret = analysis.find2(scan_id=scan_id, data=True)
+    header = list(six.itervalues(ret['headers']))[0]
+    events = list(six.itervalues(ret['events']))
+    ev_desc = list(six.itervalues(ret['event_descriptors']))
+    beamline_configs = list(six.itervalues(ret['beamline_configs']))
+    # header, ev_desc, events, beamline_configs = analysis.find_last()
     current_hdr_id = header['_id']
     # print('line 76: view.make_new_dm: {}'.format(view.make_new_dm))
     # print('line 76: prev_hdr_id, current_hdr_id: {}, {}'.format(
     #     prev_hdr_id, current_hdr_id))
     if prev_hdr_id != current_hdr_id:
         if view.make_new_dm:
-            prev_hdr_id = current_hdr_id
+            # prev_hdr_id = current_hdr_id
             # create a new data muggler
             keys = []
             for e in ev_desc:
