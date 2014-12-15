@@ -48,26 +48,20 @@ enamldef ScalarController(Container):
                 Form:
                     Label:
                         text = "Column to align against"
-                    Label:
-                        text = "Column alignment options"
                     ComboBox: xcmb:
                         items << list(scalar_collection.col_names)
                         editable = True
                         index = 0
                         selected_item >> scalar_collection.alignment_col
-                    PushButton: random_btn:
-                        text = 'I dare you...'
-                        clicked ::
-                            random_btn.text = random.choice(random_text)
                     Label:
                         text = "X axis"
-                    Label:
-                        text = "X axis options"
                     ComboBox: x_axis:
                         items << list(scalar_collection.col_names)
                         editable = True
                         index = 0
                         selected_item >> scalar_collection.x
+                    Label:
+                        text = "X axis options"
                     Container:
                         constraints = [hbox(btn_val, btn_time, spacer)]
                         RadioButton: btn_val:
