@@ -53,6 +53,7 @@ enamldef ScalarController(Container):
                         editable = True
                         index = 0
                         selected_item >> scalar_collection.alignment_col
+                        enabled = False
                     Label:
                         text = "X axis"
                     ComboBox: x_axis:
@@ -70,11 +71,18 @@ enamldef ScalarController(Container):
                         RadioButton: btn_time:
                             text = "time"
                             checked := scalar_collection.x_is_time
-
+                    Label:
+                        text = "Dataset to fit"
+                    ComboBox: cmb_fit:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        index = 0
+                        enabled = False
+                        #selected_item >> scalar_collection.fit_target
                     Label:
                         text = "Y axis"
                     Label:
-                        text = "Fit"
+                        pass
                     row_spacing = 0
                     Looper: looper:
                         iterable << scalar_collection.col_names
@@ -92,13 +100,6 @@ enamldef ScalarController(Container):
                                 scalar_collection.
                                     scalar_models[loop_item].can_plot
                             )
-                        RadioButton: cb_fit:
-                            text = loop_item
-                            checked ::
-                                scalar_collection.fit_target = text
-                                print('cb_fit clicked for {}'.format(text))
-                        Label:
-                            text = 'memory address'
                         Label:
                             text << str(id(scalar_collection.scalar_models[loop_item]))
             GroupBox: fit:

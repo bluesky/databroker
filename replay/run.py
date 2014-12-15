@@ -12,6 +12,7 @@ from replay.pipeline.pipeline import (DataMuggler)
 from replay.model.scalar_model import ScalarCollection
 from replay.model.fitting_model import MultiFitController
 from metadataStore.api import analysis
+from pprint import pprint
 
 dm = None
 view = None
@@ -39,9 +40,26 @@ def init_ui(data_muggler):
     view = PipelineView()
     # provide the pipeline view with its attributes
     view.grab_latest = grab_latest
+    view.get_current_scanid = get_current_scanid
     view.scalar_collection=scalar_collection
     view.multi_fit_controller = c_c_combo_fitter
     return view
+
+def get_data(scan_id):
+    # grab the latest data
+    ret = analysis.find2(scan_id=scan_id, data=True)
+    header = list(six.itervalues(ret['headers']))[0]
+    events = list(six.itervalues(ret['events']))
+    ev_desc = list(six.itervalues(ret['event_descriptors']))
+    beamline_configs = list(six.itervalues(ret['beamline_configs']))
+
+    return header, events, ev_desc, beamline_configs
+
+
+def get_current_scanid():
+    header = analysis.find_last()[0]
+    pprint(header)
+    return header['scan_id']
 
 
 def grab_latest(scan_id):
@@ -60,13 +78,7 @@ def grab_latest(scan_id):
     global prev_hdr_id
     global dm
     global prev_max_seqno
-    # grab the latest data
-    ret = analysis.find2(scan_id=scan_id, data=True)
-    header = list(six.itervalues(ret['headers']))[0]
-    events = list(six.itervalues(ret['events']))
-    ev_desc = list(six.itervalues(ret['event_descriptors']))
-    beamline_configs = list(six.itervalues(ret['beamline_configs']))
-    # header, ev_desc, events, beamline_configs = analysis.find_last()
+    header, events, ev_desc, beamline_configs = get_data(scan_id)
     current_hdr_id = header['_id']
     # print('line 76: view.make_new_dm: {}'.format(view.make_new_dm))
     # print('line 76: prev_hdr_id, current_hdr_id: {}, {}'.format(
@@ -122,6 +134,7 @@ def main():
     # init the UI
     view = init_ui(dm)
     view.scalar_collection.data_muggler = None
+
     # init the header and event pvs
 
     # add the proper callbacks to the pvs

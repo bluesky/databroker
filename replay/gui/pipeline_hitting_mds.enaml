@@ -42,6 +42,7 @@ enamldef PipelineView(MainWindow): main:
     attr grab_latest
     attr currently_watching = False
     attr make_new_dm = True
+    attr get_current_scanid
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -74,15 +75,25 @@ enamldef PipelineView(MainWindow): main:
                 Container:
                     Form:
                         hug_width = 'strong'
+                        PushButton: btn_scanid:
+                            text = "Set scanid to current"
+                            checked := currently_watching
+                            clicked ::
+                                scan_id.value = get_current_scanid()
+                        Form:
+                            IntField: scan_id:
+                                pass
+                            PushButton: grab_hdr:
+                                text = 'Get scan_id data'
+                                clicked ::
+                                    grab_latest(scan_id.value)
                         MagicButton: btn_watch_mds:
-                            text = "Grab Latest"
+                            text = "Watch for new scan_id data"
                             checkable = True
                             checked := currently_watching
                             timer = the_timer
                             clicked ::
                                 main.make_new_dm = True
-                        IntField: scan_id:
-                            pass
                     Timer: the_timer:
                         interval = 500
                         single_shot = False
