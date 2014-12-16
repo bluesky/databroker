@@ -13,6 +13,7 @@ from replay.model.scalar_model import ScalarCollection
 from replay.model.fitting_model import MultiFitController
 from metadataStore.api import analysis
 from pprint import pprint
+from atom.api import Event
 
 dm = None
 view = None
@@ -138,10 +139,13 @@ def main():
     view = init_ui(dm)
     view.scalar_collection.data_muggler = None
 
-    # init the header and event pvs
-
     # add the proper callbacks to the pvs
     view.show()
+    # init the header and event pvs
+    view.btn_scanid.clicked()
+    view.btn_watch_mds.checked = True
+    # view.btn_watch_mds.clicked()
+    # view.btn_watch_mds.toggled()
     app.start()
 
 if __name__ == '__main__':

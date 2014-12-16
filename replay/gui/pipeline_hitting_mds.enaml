@@ -8,7 +8,7 @@ from replay.gui.line_view import LineView
 from replay.gui.scalar_view import ScalarView, ScalarController
 from replay.gui.cross_section_view import (CrossSectionView,
                                            CrossSectionController)
-from atom.api import Bool, Typed, observe
+from atom.api import Bool, Typed, observe, Event
 from enaml.stdlib.dock_area_styles import available_styles
 from enaml.core.declarative import d_
 
@@ -23,7 +23,13 @@ def add_dock_bars(area, cross_section_view, cross_section_controller,
                                          target=scalar_controller))
 from auto_enaml.api import AutoView
 
-class MagicButton(PushButton):
+
+class ProgrammaticButton(PushButton):
+    clicked = d_(Event(bool), writable=True)
+    toggled = d_(Event(bool), writable=True)
+
+
+class MagicButton(ProgrammaticButton):
     timer = d_(Typed(Timer))
 
     @observe('checked')
@@ -57,6 +63,10 @@ enamldef PipelineView(MainWindow): main:
     attr make_new_dm = True
     attr get_current_scanid
     attr plot_options
+    # button that starts watching metadatastore
+    alias btn_watch_mds
+    # button that grabs the last scan id
+    alias btn_scanid
     MenuBar:
         Menu:
             title = '&Plot'
@@ -95,7 +105,7 @@ enamldef PipelineView(MainWindow): main:
                 Container:
                     Form:
                         hug_width = 'strong'
-                        PushButton: btn_scanid:
+                        ProgrammaticButton: btn_scanid:
                             text = "Set scanid to current"
                             checked := currently_watching
                             clicked ::
@@ -103,7 +113,7 @@ enamldef PipelineView(MainWindow): main:
                         Form:
                             IntField: scan_id:
                                 value := scalar_collection.scan_id
-                            PushButton: grab_hdr:
+                            ProgrammaticButton: btn_grab_latest:
                                 text = 'Get scan_id data'
                                 clicked ::
                                     grab_latest(scan_id.value)
