@@ -297,8 +297,8 @@ class ScalarCollection(Atom):
                                                    is_plotting=False)
             # add the estimate
             name = 'peak stats'
-            line_artist, = self._ax.plot([], [], label=name, marker='o',
-                                            markersize=15)
+            line_artist, = self._ax.plot([], [], 'ro', label=name,
+                                           markersize=15)
             self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                    name=name,
                                                    can_plot=True,
@@ -325,7 +325,7 @@ class ScalarCollection(Atom):
 
     @observe('x')
     def update_x(self, changed):
-        self._ax.set_xlabel(self.x)
+        self._conf.xlabel = self.x
         self.get_new_data_and_plot()
 
     @observe('alignment_col')
@@ -402,9 +402,15 @@ class ScalarCollection(Atom):
 
         zero_cross = np.where(np.diff(np.sign(y - y.max()/2)))[0]
         if zero_cross.size == 2:
-            stats['cen'] = x[zero_cross].sum() / 2
+            stats['cen'] = (x[zero_cross].sum() / 2,
+                            (stats['ymax'] - stats['ymin'])/2)
         elif zero_cross.size == 1:
             stats['cen'] = x[zero_cross[0]]
+        if zero_cross.size == 2:
+            fwhm = x[zero_cross]
+            stats['width'] = fwhm[1] - fwhm[0]
+            stats['fwhm_left'] = (fwhm[0], y[zero_cross[0]])
+            stats['fwhm_right'] = (fwhm[1], y[zero_cross[1]])
         #
         #
         # extra_models = []
@@ -547,16 +553,26 @@ class ScalarCollection(Atom):
         """
 
         x_data = []
-        for plot in self.estimate_plot:
-            try:
-                x_data.append(self.estimate_stats[plot])
-            except KeyError:
-                pass
+        y_data = []
         try:
             y_val = self.estimate_stats['avg_y']
         except KeyError:
             y_val = 1
-        y_data = [y_val] * len(x_data)
+        for plot in self.estimate_plot:
+            try:
+                stats = self.estimate_stats[plot]
+            except KeyError:
+                continue
+            try:
+                stats_len = len(stats)
+            except TypeError:
+                stats_len = 1
+            if stats_len == 2:
+                x_data.append(stats[0])
+                y_data.append(stats[1])
+            else:
+                x_data.append(stats)
+                y_data.append(y_val)
         try:
             self.scalar_models['peak stats'].set_data(x=x_data, y=y_data)
         except KeyError:
