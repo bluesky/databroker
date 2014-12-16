@@ -314,8 +314,8 @@ class ScalarCollection(Atom):
                                                    name=name,
                                                    can_plot=True,
                                                    is_plotting=True)
-        self._conf.title = 'Scan id: {}. {}'.format(self.scan_id,
-                                                    datetime.utcnow())
+        # self._conf.title = 'Scan id: {}. {}'.format(self.scan_id,
+        #                                             datetime.utcnow())
 
         self._last_update_time = datetime.utcnow()
         self.col_names = []

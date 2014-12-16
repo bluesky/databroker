@@ -1,9 +1,11 @@
 from __future__ import print_function, division
+import logging
+
 import six
+
 import enaml
 from enaml.qt.qt_application import QtApplication
-import os
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ from replay.model.scalar_model import ScalarCollection
 from replay.model.fitting_model import MultiFitController
 from metadataStore.api import analysis
 from pprint import pprint
-from atom.api import Event
+import datetime
 
 dm = None
 view = None
@@ -131,6 +133,10 @@ def grab_latest(scan_id):
 
     view.make_new_dm = False
     # stash the header id
+    start_time = datetime.datetime.fromtimestamp(header['start_time'])
+    scan_id = header['scan_id']
+    view.scalar_collection._conf.title = 'Scan id {}. {}'.format(scan_id,
+                                                                 start_time)
 
 
 def main():
