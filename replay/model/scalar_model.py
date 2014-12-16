@@ -13,6 +13,8 @@ from copy import copy
 from pprint import pprint
 from .fitting_model import MultiFitController
 logger = logging.getLogger(__name__)
+import numpy as np
+import random
 
 
 nodata_str = "data_muggler is None"
@@ -126,6 +128,7 @@ class ScalarCollection(Atom):
     """
     scalar_models = Dict(key=Str(), value=ScalarModel)
     data_muggler = Typed(DataMuggler)
+    scan_id = Int()
     # name of the x axis
     x = Str()
     # name of the column to align against
@@ -133,6 +136,11 @@ class ScalarCollection(Atom):
     x_is_data = Bool(True)
     x_is_time = Bool(False)
     col_names = List()
+    # ESTIMATING
+    estimate_target = Str()
+    estimate_stats = Dict()
+    estimate_plot = List()
+    estimate_lines = Dict()
 
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
@@ -161,6 +169,8 @@ class ScalarCollection(Atom):
             self._fig = Figure(figsize=(1,1))
             self._ax = self._fig.add_subplot(111)
             self.redraw_type = 's'
+            self.estimate_plot = ['cen', 'x_at_max']
+            self.estimate_lines = {}
 
     def init_scalar_models(self):
         self.scalar_models.clear()
@@ -216,9 +226,18 @@ class ScalarCollection(Atom):
                                                    name=name,
                                                    can_plot=True,
                                                    is_plotting=False)
+            # add the estimate
+            name = 'peak stats'
+            line_artist, = self._ax.plot([], [], label=name, marker='o',
+                                            markersize=15)
+            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+                                                   name=name,
+                                                   can_plot=True,
+                                                   is_plotting=False)
+
         self.col_names = []
         self._last_update_time = datetime.utcnow()
-        self.col_names = self.data_muggler.keys(dim=0) + ['fit']
+        self.col_names = self.data_muggler.keys(dim=0) + ['fit', 'peak stats']
         self.alignment_col = self.col_names[0]
         self.x = self.col_names[0]
 
@@ -243,7 +262,7 @@ class ScalarCollection(Atom):
         # check with the muggler for the columns that can be plotted against
         sliceable = self.data_muggler.align_against(self.alignment_col)
         for name, scalar_model in six.iteritems(self.scalar_models):
-            if name == 'fit':
+            if name == 'fit' or name == 'peak stats':
                 continue
             if not sliceable[name]:
                 # turn off the plotting and disable the check box
@@ -253,6 +272,10 @@ class ScalarCollection(Atom):
                 # enable the check box but don't turn on the plotting
                 scalar_model.can_plot = True
         self.get_new_data_and_plot()
+
+    @observe('estimate_plot')
+    def update_estimate(self):
+        self.reformat_view()
 
     def print_state(self):
         """Print the, uh, state
@@ -278,6 +301,68 @@ class ScalarCollection(Atom):
                                                        name=name)
                 self.scalar_models[name].can_plot = is_plottable
 
+    def estimate(self):
+
+        """Return a dictionary of the vital stats of a 'peak'"""
+        stats = dict()
+        print('self.fit_target: {}'.format(self.fit_target))
+        print('self.alignment_col: {}'.format(self.alignment_col))
+        print('self.x: {}'.format(self.x))
+        time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
+                                                  other_cols=[self.x,
+                                                              self.estimate_target])
+        x = np.asarray(data[self.x])
+        y = np.asarray(data[self.estimate_target])
+
+        # print('x, len(x): {}, {}'.format(x, len(x)))
+        # print('y, len(y): {}, {}'.format(y, len(y)))
+
+        # Center of mass
+        stats['center_of_mass'] = (x * y).sum() / x.sum()
+
+        # Center of peak
+        stats['ymax'] = y.max()
+        stats['ymin'] = y.min()
+        stats['x_at_max'] = x[y.argmax()]
+        stats['x_at_min'] = x[y.argmin()]
+        stats['avg_y'] = np.average(y)
+
+        # Calculate CEN from derivative
+
+        zero_cross = np.where(np.diff(np.sign(y - y.max()/2)))[0]
+        if zero_cross.size == 2:
+            stats['cen'] = x[zero_cross].sum() / 2
+        elif zero_cross.size == 1:
+            stats['cen'] = x[zero_cross[0]]
+        #
+        #
+        # extra_models = []
+        # for model_name, model in six.iteritems(self.scalar_models):
+        #     if model_name in self.estimate_stats:
+        #         line_artist = self.scalar_models[model_name].line_artist
+        #         self._ax.lines.remove(line_artist)
+        #         line_artist.remove()
+        #         del line_artist
+        #         print(line_artist)
+        #         model = self.scalar_models.pop(model_name)
+        #         model = None
+        #
+        # # create new line artists
+        # for name, val in six.iteritems(stats):
+        #     line_artist, = self._ax.axvline(label=name, color = 'r',
+        #                                     linewidth=2,
+        #                                     x=val)
+        #     self.scalar_models[name] = ScalarModel(line_artist=line_artist,
+        #                                            name=name,
+        #                                            can_plot=True,
+        #                                            is_plotting=False)
+        # self.col_names = []
+        # self.col_names = list(six.iterkeys(self.scalar_models))
+
+        # trigger the automatic update of the GUI
+        self.estimate_stats = {}
+        self.estimate_stats = stats
+
     def notify_new_data(self, new_data):
         """ Function to call when there is new data in the data muggler
 
@@ -286,6 +371,8 @@ class ScalarCollection(Atom):
         new_data : list
             List of names of updated columns from the data muggler
         """
+        self.estimate()
+
         self._num_updates += 1
         redraw = False
         if self.redraw_type == 's':
@@ -376,12 +463,28 @@ class ScalarCollection(Atom):
                                  self._last_update_time).total_seconds())
         self._num_updates = 0
         self._last_update_time = datetime.utcnow()
+        # except KeyError:
+        #     pass
+        # self._ax.axvline(x=self.estimate_stats['cen'], linewidth=2, color='r')
+        # self._ax.axvline(x=self.estimate_stats['x_at_max'], linewidth=4,
+        #                  color='k')
 
     def reformat_view(self):
         """
         Recompute the limits, rescale the view, reformat the legend and redraw
         the canvas
         """
+
+        x_data = []
+        for plot in self.estimate_plot:
+            try:
+                x_data.append(self.estimate_stats[plot])
+            except KeyError:
+                pass
+
+        y_data = [self.estimate_stats['avg_y']] * len(x_data)
+
+        self.scalar_models['peak stats'].set_data(x=x_data, y=y_data)
         try:
             legend_pairs = [(v.line_artist, k)
                             for k, v in six.iteritems(self.scalar_models)
@@ -392,6 +495,7 @@ class ScalarCollection(Atom):
             else:
                 self._ax.legend(legend_pairs)
             self._ax.relim(visible_only=True)
+            self._ax.set_title(label='Scan id: {}'.format(self.scan_id))
             self._ax.autoscale_view(tight=True)
             self._fig.canvas.draw()
         except AttributeError as ae:

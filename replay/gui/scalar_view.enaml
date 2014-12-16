@@ -15,6 +15,7 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
 from enaml.stdlib.fields import FloatField
 from replay.model.scalar_model import ScalarCollection
 import random
+import six
 
 random_text = ['cat', 'insert coin', 'it\'s a bird!', 'aardvark']
 enamldef ScalarController(Container):
@@ -80,6 +81,14 @@ enamldef ScalarController(Container):
                         enabled = False
                         #selected_item >> scalar_collection.fit_target
                     Label:
+                        text = "Dataset to estimate"
+                    ComboBox: cmb_fit:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        index = 0
+                        enabled = True
+                        selected_item >> scalar_collection.estimate_target
+                    Label:
                         text = "Y axis"
                     Label:
                         pass
@@ -102,10 +111,31 @@ enamldef ScalarController(Container):
                             )
                         Label:
                             text << str(id(scalar_collection.scalar_models[loop_item]))
-            GroupBox: fit:
+            GroupBox: estimate:
                 title_align = 'center'
-                title = 'Fit'
+                title = 'Estimate'
                 padding = Box(0, 0, 0, 0)
+                Form:
+                    row_spacing = 0
+                    Looper: looper:
+                        iterable << list(six.iterkeys(scalar_collection.estimate_stats))
+                        Label:
+                            text = '{}: {}'.format(loop_item,
+                                scalar_collection.estimate_stats[loop_item])
+                        PushButton:
+                            text = 'Plot'
+                            checkable = True
+                            checked = loop_item in scalar_collection.estimate_plot
+                            clicked ::
+                                if checked:
+                                    scalar_collection.estimate_plot.append(loop_item)
+                                else:
+                                    try:
+                                        scalar_collection.estimate_plot.remove(loop_item)
+                                    except ValueError:
+                                        # loop_item is not in the list
+                                        pass
+                                scalar_collection.reformat_view()
 
 
 enamldef ScalarView(Container):
