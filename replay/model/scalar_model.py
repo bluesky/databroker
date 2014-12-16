@@ -142,6 +142,9 @@ class ScalarCollection(Atom):
     estimate_plot = List()
     estimate_lines = Dict()
 
+    # show grid in matplotlib
+    grid = Bool(True)
+
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
     _ax = Typed(Axes)
@@ -273,8 +276,8 @@ class ScalarCollection(Atom):
                 scalar_model.can_plot = True
         self.get_new_data_and_plot()
 
-    @observe('estimate_plot')
-    def update_estimate(self):
+    @observe('estimate_plot', 'grid')
+    def update_estimate(self, changed):
         self.reformat_view()
 
     def print_state(self):
@@ -481,10 +484,16 @@ class ScalarCollection(Atom):
                 x_data.append(self.estimate_stats[plot])
             except KeyError:
                 pass
-
-        y_data = [self.estimate_stats['avg_y']] * len(x_data)
-
-        self.scalar_models['peak stats'].set_data(x=x_data, y=y_data)
+        try:
+            y_val = self.estimate_stats['avg_y']
+        except KeyError:
+            y_val = 1
+        y_data = [y_val] * len(x_data)
+        try:
+            self.scalar_models['peak stats'].set_data(x=x_data, y=y_data)
+        except KeyError:
+            # data muggler hasn't been created yet
+            pass
         try:
             legend_pairs = [(v.line_artist, k)
                             for k, v in six.iteritems(self.scalar_models)
@@ -497,6 +506,7 @@ class ScalarCollection(Atom):
             self._ax.relim(visible_only=True)
             self._ax.set_title(label='Scan id: {}'.format(self.scan_id))
             self._ax.autoscale_view(tight=True)
+            self._ax.grid(self.grid)
             self._fig.canvas.draw()
         except AttributeError as ae:
             # should only happen once

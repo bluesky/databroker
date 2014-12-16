@@ -98,6 +98,11 @@ enamldef PipelineView(MainWindow): main:
                             text = 'Estimate peak params'
                             clicked ::
                                 scalar_collection.estimate()
+                        PushButton: grid:
+                            text = "Show grid"
+                            checkable = True
+                            clicked ::
+                                scalar_collection.grid = checked
                     Timer: the_timer:
                         interval = 500
                         single_shot = False
