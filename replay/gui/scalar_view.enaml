@@ -118,7 +118,9 @@ enamldef ScalarController(Container):
                                     scalar_models[loop_item].can_plot
                             )
                             clicked ::
-                                scalar_collection.estimate_target = loop_item
+                                if (loop_item != 'peak stats' and
+                                    loop_item != 'fit'):
+                                    scalar_collection.estimate_target = loop_item
                         Label:
                             text << str(id(scalar_collection.scalar_models[loop_item]))
             GroupBox: estimate:

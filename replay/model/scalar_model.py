@@ -404,6 +404,7 @@ class ScalarCollection(Atom):
         other_cols = [self.x, self.estimate_target]
         if self.normalize:
             other_cols.append(self.normalize_target)
+        print('other_cols: {}'.format(other_cols))
         time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
                                                   other_cols=other_cols)
         x = np.asarray(data[self.x])
