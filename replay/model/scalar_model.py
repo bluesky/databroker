@@ -209,6 +209,10 @@ class ScalarCollection(Atom):
     estimate_lines = Dict()
     estimate_index = Int()
 
+    # NORMALIZING
+    normalize_target = Str()
+    normalize = Bool(False)
+
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
     _ax = Typed(Axes)
@@ -258,6 +262,7 @@ class ScalarCollection(Atom):
                 self.x = nodata_str
                 self.estimate_target = self.x
                 self.estimate_index = self.col_names.index(self.x)
+                self.normalize_target = self.x
                 self.alignment_col = self.x
                 self.init_scalar_models()
                 return
@@ -272,6 +277,7 @@ class ScalarCollection(Atom):
             self.x = self.col_names[0]
             self.estimate_target = self.x
             self.estimate_index = self.col_names.index(self.estimate_target)
+            self.normalize_target = self.x
             self.alignment_col = self.col_names[0]
             # blow away scalar models
             self.scalar_models.clear()
@@ -318,6 +324,7 @@ class ScalarCollection(Atom):
         self.x = self.col_names[0]
         self.estimate_target = self.x
         self.estimate_index = self.col_names.index(self.estimate_target)
+        self.normalize_target = self.x
 
     @observe('x_is_data', 'x_is_time')
     def update_x_axis(self, changed):
@@ -358,6 +365,10 @@ class ScalarCollection(Atom):
     @observe('estimate_target')
     def update_estimate_target(self, changed):
         self.estimate_index = self.col_names.index(self.estimate_target)
+
+    @observe('normalize')
+    def update_normalize(self, changed):
+        self.get_new_data_and_plot()
 
     def print_state(self):
         """Print the, uh, state
@@ -509,12 +520,16 @@ class ScalarCollection(Atom):
                           if v)
 
         other_cols = list(y_names & valid_names)
+        other_cols.append(self.normalize_target)
+        other_cols = list(set(other_cols))
         # print('y_names: {}'.format(y_names))
         # print('valid_names: {}'.format(valid_names))
         # print('other_cols: {}'.format(other_cols))
         time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
                                                   other_cols=other_cols)
         ref_data = data.pop(self.x)
+        if self.normalize:
+            norm_data = data.pop(self.normalize_target)
         # switch between x axis as data and x axis as time
         if self.x_is_data:
             ref_data_vals = ref_data.values
@@ -526,6 +541,8 @@ class ScalarCollection(Atom):
             self.scalar_models[self.x].set_data(x=ref_data_vals, y=ref_data)
         for dname, dvals in six.iteritems(data):
             # print('{}: {}'.format(dname, id(self.scalar_models[dname])))
+            if self.normalize:
+                dvals = dvals/norm_data
             self.scalar_models[dname].set_data(x=ref_data_vals, y=dvals)
 
         # manage the fitting

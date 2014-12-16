@@ -87,6 +87,16 @@ enamldef ScalarController(Container):
                         enabled = True
                         selected_item >> scalar_collection.estimate_target
                     Label:
+                        text = "Dataset to normalize by"
+                    Form:
+                        CheckBox:
+                            checked := scalar_collection.normalize
+                        ComboBox: cmb_est:
+                            items << list(scalar_collection.col_names)
+                            index << 0
+                            enabled = True
+                            selected_item >> scalar_collection.normalize_target
+                    Label:
                         text = "Y axis"
                     Label:
                         pass
