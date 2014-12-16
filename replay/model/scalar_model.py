@@ -207,6 +207,7 @@ class ScalarCollection(Atom):
     estimate_stats = Dict()
     estimate_plot = List()
     estimate_lines = Dict()
+    estimate_index = Int()
 
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
@@ -255,6 +256,8 @@ class ScalarCollection(Atom):
             if self.data_muggler is None:
                 self.col_names = [nodata_str]
                 self.x = nodata_str
+                self.estimate_target = self.x
+                self.estimate_index = self.col_names.index(self.x)
                 self.alignment_col = self.x
                 self.init_scalar_models()
                 return
@@ -267,6 +270,8 @@ class ScalarCollection(Atom):
             self.col_names.append('fit')
             # default to the first column name
             self.x = self.col_names[0]
+            self.estimate_target = self.x
+            self.estimate_index = self.col_names.index(self.estimate_target)
             self.alignment_col = self.col_names[0]
             # blow away scalar models
             self.scalar_models.clear()
@@ -302,15 +307,17 @@ class ScalarCollection(Atom):
             self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                    name=name,
                                                    can_plot=True,
-                                                   is_plotting=False)
+                                                   is_plotting=True)
         self._conf.title = 'Scan id: {}. {}'.format(self.scan_id,
                                                     datetime.utcnow())
 
-        self.col_names = []
         self._last_update_time = datetime.utcnow()
+        self.col_names = []
         self.col_names = self.data_muggler.keys(dim=0) + ['fit', 'peak stats']
         self.alignment_col = self.col_names[0]
         self.x = self.col_names[0]
+        self.estimate_target = self.x
+        self.estimate_index = self.col_names.index(self.estimate_target)
 
     @observe('x_is_data', 'x_is_time')
     def update_x_axis(self, changed):
@@ -347,6 +354,10 @@ class ScalarCollection(Atom):
     @observe('estimate_plot')
     def update_estimate(self, changed):
         self.reformat_view()
+
+    @observe('estimate_target')
+    def update_estimate_target(self, changed):
+        self.estimate_index = self.col_names.index(self.estimate_target)
 
     def print_state(self):
         """Print the, uh, state

@@ -81,10 +81,9 @@ enamldef ScalarController(Container):
                         #selected_item >> scalar_collection.fit_target
                     Label:
                         text = "Dataset to estimate"
-                    ComboBox: cmb_fit:
+                    ComboBox: cmb_est:
                         items << list(scalar_collection.col_names)
-                        editable = True
-                        index = 0
+                        index << scalar_collection.estimate_index
                         enabled = True
                         selected_item >> scalar_collection.estimate_target
                     Label:
@@ -108,6 +107,8 @@ enamldef ScalarController(Container):
                                 scalar_collection.
                                     scalar_models[loop_item].can_plot
                             )
+                            clicked ::
+                                scalar_collection.estimate_target = loop_item
                         Label:
                             text << str(id(scalar_collection.scalar_models[loop_item]))
             GroupBox: estimate:
