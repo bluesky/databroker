@@ -116,7 +116,10 @@ enamldef PipelineView(MainWindow): main:
                             ProgrammaticButton: btn_grab_latest:
                                 text = 'Get scan_id data'
                                 clicked ::
+                                    if not currently_watching:
+                                        make_new_dm = True
                                     grab_latest(scan_id.value)
+
                         MagicButton: btn_watch_mds:
                             text = "Watch for new scan_id data"
                             checkable = True
