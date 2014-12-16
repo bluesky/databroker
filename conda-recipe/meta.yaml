@@ -31,7 +31,6 @@ requirements:
     - scikit-xray
     - pims
     - metadatastore
-    - auto-enaml
 
 test:
   imports:
