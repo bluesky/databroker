@@ -294,7 +294,7 @@ class ScalarCollection(Atom):
 
             for name, is_plottable in six.iteritems(alignable):
                 # create a new line artist and scalar model
-                line_artist, = self._ax.plot([], [], label=name)
+                line_artist, = self._ax.plot([], [], label=name, marker='D')
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name,
                                                        can_plot=is_plottable,
