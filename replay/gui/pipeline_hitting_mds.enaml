@@ -3,7 +3,7 @@ from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
 from enaml.stdlib.fields import FloatField, IntField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
                                MainWindow, ObjectCombo, PushButton, Timer,
-                               Form, Label)
+                               Form, Label, MenuBar, Menu, Action)
 from replay.gui.line_view import LineView
 from replay.gui.scalar_view import ScalarView, ScalarController
 from replay.gui.cross_section_view import (CrossSectionView,
@@ -21,6 +21,7 @@ def add_dock_bars(area, cross_section_view, cross_section_controller,
                                          target=cross_section_controller))
     area.update_layout(InsertDockBarItem(item=scalar_view,
                                          target=scalar_controller))
+from auto_enaml.api import AutoView
 
 class MagicButton(PushButton):
     timer = d_(Typed(Timer))
@@ -31,6 +32,17 @@ class MagicButton(PushButton):
             self.timer.start()
         else:
             self.timer.stop()
+
+
+enamldef MplConfigs(Window): main:
+    attr config_model
+    Container:
+        AutoView:
+            model = main.config_model
+            initialized ::
+                for o in objects:
+                    o.label.tool_tip = str(o)
+
 
 enamldef PipelineView(MainWindow): main:
     title = "Live Data Demo"
@@ -43,6 +55,13 @@ enamldef PipelineView(MainWindow): main:
     attr currently_watching = False
     attr make_new_dm = True
     attr get_current_scanid
+    attr plot_options
+    MenuBar:
+        Menu:
+            title = '&Plot'
+            Action:
+                text = '&Options'
+                triggered :: plot_options.show()
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()

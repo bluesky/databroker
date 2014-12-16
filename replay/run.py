@@ -31,14 +31,17 @@ def init_ui(data_muggler):
     """
     global view
     with enaml.imports():
-        from replay.gui.pipeline_hitting_mds import PipelineView
+        from replay.gui.pipeline_hitting_mds import PipelineView, MplConfigs
 
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
     scalar_collection = ScalarCollection()
     scalar_collection.data_muggler = data_muggler
     scalar_collection.multi_fit_controller = c_c_combo_fitter
     view = PipelineView()
+    configs = MplConfigs()
+    configs.config_model = scalar_collection._conf
     # provide the pipeline view with its attributes
+    view.plot_options = configs
     view.grab_latest = grab_latest
     view.get_current_scanid = get_current_scanid
     view.scalar_collection=scalar_collection

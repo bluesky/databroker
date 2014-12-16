@@ -19,6 +19,72 @@ import random
 
 nodata_str = "data_muggler is None"
 
+
+class ScalarConfig(Atom):
+    """
+    ScalarConfig holds various configuration parameters for the 1-D plot
+
+    Attributes
+    ----------
+    title : str
+        The title of the plot
+    xlabel  : str
+        The label on the x axis
+    ylabel : str
+        The label on the y axis
+    nticks_x : int
+        The number of ticks on the x axis
+    nticks_y : int
+        The number of ticks on the y axis
+    grid : bool
+        Show the grid on the 1-D plot
+    """
+    title = Str()
+    xlabel = Str()
+    ylabel = Str()
+    grid = Bool(True)
+    _ax = Typed(Axes)
+
+    def __init__(self, ax, *args, **kwargs):
+        super(ScalarConfig, self).__init__(*args, **kwargs)
+        self._ax = ax
+        self._ax.set_title(self.title)
+        self._ax.set_xlabel(self.xlabel)
+        self._ax.set_ylabel(self.ylabel)
+        self._ax.grid(self.grid)
+
+
+    @observe('title')
+    def title_changed(self, changed):
+        self._ax.set_title(self.title)
+        print('{}: {}'.format(changed['name'], changed['value']))
+        self.replot()
+
+    @observe('xlabel')
+    def xlabel_changed(self, changed):
+        self._ax.set_xlabel(self.xlabel)
+        print('{}: {}'.format(changed['name'], changed['value']))
+        self.replot()
+
+    @observe('ylabel')
+    def ylabel_changed(self, changed):
+        self._ax.set_ylabel(self.ylabel)
+        print('{}: {}'.format(changed['name'], changed['value']))
+        self.replot()
+
+    @observe('grid')
+    def grid_changed(self, changed):
+        self._ax.grid(self.grid)
+        print('{}: {}'.format(changed['name'], changed['value']))
+        self.replot()
+
+    def replot(self):
+        self._ax.relim(visible_only=True)
+        self._ax.autoscale_view(tight=True)
+        if self._ax.figure.canvas is not None:
+            self._ax.figure.canvas.draw()
+
+
 class ScalarModel(Atom):
     """
     ScalarModel is the model in the Model-View-Controller pattern that backs
@@ -142,12 +208,10 @@ class ScalarCollection(Atom):
     estimate_plot = List()
     estimate_lines = Dict()
 
-    # show grid in matplotlib
-    grid = Bool(True)
-
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
     _ax = Typed(Axes)
+    _conf = Typed(ScalarConfig)
 
     # FITTING
     fit_target = Str()
@@ -170,7 +234,9 @@ class ScalarCollection(Atom):
             super(ScalarCollection, self).__init__()
             # plotting initialization
             self._fig = Figure(figsize=(1,1))
+            self._fig.set_tight_layout(True)
             self._ax = self._fig.add_subplot(111)
+            self._conf = ScalarConfig(self._ax)
             self.redraw_type = 's'
             self.estimate_plot = ['cen', 'x_at_max']
             self.estimate_lines = {}
@@ -237,6 +303,8 @@ class ScalarCollection(Atom):
                                                    name=name,
                                                    can_plot=True,
                                                    is_plotting=False)
+        self._conf.title = 'Scan id: {}. {}'.format(self.scan_id,
+                                                    datetime.utcnow())
 
         self.col_names = []
         self._last_update_time = datetime.utcnow()
@@ -276,7 +344,7 @@ class ScalarCollection(Atom):
                 scalar_model.can_plot = True
         self.get_new_data_and_plot()
 
-    @observe('estimate_plot', 'grid')
+    @observe('estimate_plot')
     def update_estimate(self, changed):
         self.reformat_view()
 
@@ -504,9 +572,11 @@ class ScalarCollection(Atom):
             else:
                 self._ax.legend(legend_pairs)
             self._ax.relim(visible_only=True)
-            self._ax.set_title(label='Scan id: {}'.format(self.scan_id))
             self._ax.autoscale_view(tight=True)
-            self._ax.grid(self.grid)
+            self._ax.grid(self._conf.grid)
+            self._ax.set_ylabel(self._conf.ylabel)
+            self._ax.set_xlabel(self._conf.xlabel)
+            self._ax.set_title(self._conf.title)
             self._fig.canvas.draw()
         except AttributeError as ae:
             # should only happen once

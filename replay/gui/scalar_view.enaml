@@ -13,11 +13,10 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                Field,
                                )
 from enaml.stdlib.fields import FloatField
-from replay.model.scalar_model import ScalarCollection
+from replay.model.scalar_model import ScalarCollection, ScalarConfig
 import random
 import six
 
-random_text = ['cat', 'insert coin', 'it\'s a bird!', 'aardvark']
 enamldef ScalarController(Container):
     ScrollArea: scroller:
         Container:
