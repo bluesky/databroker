@@ -318,7 +318,7 @@ class ScalarCollection(Atom):
         # print('y, len(y): {}, {}'.format(y, len(y)))
 
         # Center of mass
-        stats['center_of_mass'] = (x * y).sum() / x.sum()
+        stats['center_of_mass'] = (x * y).sum() / y.sum()
 
         # Center of peak
         stats['ymax'] = y.max()
@@ -371,7 +371,6 @@ class ScalarCollection(Atom):
         new_data : list
             List of names of updated columns from the data muggler
         """
-        self.estimate()
 
         self._num_updates += 1
         redraw = False
@@ -396,6 +395,7 @@ class ScalarCollection(Atom):
                     y_names.append(model.name)
         if redraw:
             self.get_new_data_and_plot(y_names)
+            self.estimate()
 
     def get_new_data_and_plot(self, y_names=None):
         """
