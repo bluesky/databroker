@@ -401,11 +401,17 @@ class ScalarCollection(Atom):
         print('self.fit_target: {}'.format(self.fit_target))
         print('self.alignment_col: {}'.format(self.alignment_col))
         print('self.x: {}'.format(self.x))
+        other_cols = [self.x, self.estimate_target]
+        if self.normalize:
+            other_cols.append(self.normalize_target)
         time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
-                                                  other_cols=[self.x,
-                                                              self.estimate_target])
+                                                  other_cols=other_cols)
         x = np.asarray(data[self.x])
+
         y = np.asarray(data[self.estimate_target])
+
+        if self.normalize:
+            y = y / np.asarray(data[self.normalize_target])
 
         # print('x, len(x): {}, {}'.format(x, len(x)))
         # print('y, len(y): {}, {}'.format(y, len(y)))
