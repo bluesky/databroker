@@ -355,6 +355,7 @@ class ScalarCollection(Atom):
     def update_x(self, changed):
         self._conf.xlabel = self.x
         self.get_new_data_and_plot()
+        self.x_index = self.col_names.index(self.x)
 
     @observe('alignment_col')
     def update_alignment_col(self, changed):

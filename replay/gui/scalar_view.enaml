@@ -51,7 +51,7 @@ enamldef ScalarController(Container):
                     ComboBox: xcmb:
                         items << list(scalar_collection.col_names)
                         editable = True
-                        index = 0
+                        index << scalar_collection.x_index
                         selected_item >> scalar_collection.alignment_col
                         enabled = False
                     Label:
