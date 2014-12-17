@@ -1,5 +1,6 @@
 __author__ = 'edill'
 
+from collections import OrderedDict
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
                       Typed, Dict, Constant, Coerced)
 from matplotlib.figure import Figure
@@ -215,8 +216,8 @@ class ScalarCollection(Atom):
     # the current set of data to perform peak estimates for
     estimate_target = Str()
     # the result of the estimates, stored as a dictionary
-    estimate_stats = Dict()
     # The list of peak parameters to plot
+    estimate_stats = Typed(OrderedDict)
     estimate_plot = List()
     # the index of the data set to perform estimates for
     # estimate_index = col_names.index(estimate_target)
@@ -259,6 +260,8 @@ class ScalarCollection(Atom):
             self._conf = ScalarConfig(self._ax)
             self.redraw_type = 's'
             self.estimate_plot = ['cen', 'x_at_max']
+            self.estimate_lines = {}
+            self.estimate_stats = OrderedDict()
 
     def init_scalar_models(self):
         self.scalar_models.clear()
@@ -409,10 +412,13 @@ class ScalarCollection(Atom):
                                                        name=name)
                 self.scalar_models[name].can_plot = is_plottable
 
+    def format_number(self, number):
+        return '{:.5f}'.format(number)
+
     def estimate(self):
 
         """Return a dictionary of the vital stats of a 'peak'"""
-        stats = dict()
+        stats = OrderedDict()
         print('self.fit_target: {}'.format(self.fit_target))
         print('self.alignment_col: {}'.format(self.alignment_col))
         print('self.x: {}'.format(self.x))
@@ -432,29 +438,29 @@ class ScalarCollection(Atom):
         # print('x, len(x): {}, {}'.format(x, len(x)))
         # print('y, len(y): {}, {}'.format(y, len(y)))
 
-        # Center of mass
-        stats['center_of_mass'] = (x * y).sum() / y.sum()
-
+        fn = lambda num: '{:.5}'.format(num)
         # Center of peak
-        stats['ymax'] = y.max()
         stats['ymin'] = y.min()
-        stats['x_at_max'] = x[y.argmax()]
-        stats['x_at_min'] = x[y.argmin()]
-        stats['avg_y'] = np.average(y)
+        stats['ymax'] = y.max()
+        stats['avg_y'] = fn(np.average(y))
+        stats['x_at_ymin'] = x[y.argmin()]
+        stats['x_at_ymax'] = x[y.argmax()]
 
         # Calculate CEN from derivative
-
-        zero_cross = np.where(np.diff(np.sign(y - y.max()/2)))[0]
+        zero_cross = np.where(np.diff(np.sign(y - (stats['ymax'] + stats['ymin'])/2)))[0]
         if zero_cross.size == 2:
-            stats['cen'] = (x[zero_cross].sum() / 2,
-                            (stats['ymax'] - stats['ymin'])/2)
+            stats['cen'] = (fn(x[zero_cross].sum() / 2),
+                            fn((stats['ymax'] + stats['ymin'])/2))
         elif zero_cross.size == 1:
             stats['cen'] = x[zero_cross[0]]
         if zero_cross.size == 2:
             fwhm = x[zero_cross]
             stats['width'] = fwhm[1] - fwhm[0]
-            stats['fwhm_left'] = (fwhm[0], y[zero_cross[0]])
-            stats['fwhm_right'] = (fwhm[1], y[zero_cross[1]])
+            stats['fwhm_left'] = (fn(fwhm[0]), fn(y[zero_cross[0]]))
+            stats['fwhm_right'] = (fn(fwhm[1]), fn(y[zero_cross[1]]))
+
+        # Center of mass
+        stats['center_of_mass'] = fn((x * y).sum() / y.sum())
         #
         #
         # extra_models = []
@@ -481,7 +487,7 @@ class ScalarCollection(Atom):
         # self.col_names = list(six.iterkeys(self.scalar_models))
 
         # trigger the automatic update of the GUI
-        self.estimate_stats = {}
+        self.estimate_stats = OrderedDict()
         self.estimate_stats = stats
 
     def notify_new_data(self, new_data):

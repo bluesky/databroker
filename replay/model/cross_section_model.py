@@ -38,6 +38,7 @@ class CrossSectionModel(Atom):
 
     """
     redraw_type = Enum('s', 'frames')
+
     # PARAMETERS -- VIEWER
     # List of 2-D images
     sliceable_data = Typed(DmImgSequence)
