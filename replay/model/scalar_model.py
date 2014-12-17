@@ -260,7 +260,6 @@ class ScalarCollection(Atom):
             self._conf = ScalarConfig(self._ax)
             self.redraw_type = 's'
             self.estimate_plot = ['cen', 'x_at_max']
-            self.estimate_lines = {}
             self.estimate_stats = OrderedDict()
 
     def init_scalar_models(self):
