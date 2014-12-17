@@ -192,30 +192,45 @@ class ScalarCollection(Atom):
         The name of the x-axis that the `scalar_models` should be plotted
         against
     """
+    # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
+    # the thing that holds all the data
     data_muggler = Typed(DataMuggler)
+    # The scan id of this data set
     scan_id = Int()
     # name of the x axis
     x = Str()
+    # index of x in col_names
+    # x_index = col_names.index(x)
+    x_index = Int()
+
     # name of the column to align against
     alignment_col = Str()
     x_is_data = Bool(True)
     x_is_time = Bool(False)
+    # name of all columns that the data muggler knows about
     col_names = List()
+
     # ESTIMATING
+    # the current set of data to perform peak estimates for
     estimate_target = Str()
+    # the result of the estimates, stored as a dictionary
     estimate_stats = Dict()
+    # The list of peak parameters to plot
     estimate_plot = List()
-    estimate_lines = Dict()
+    # the index of the data set to perform estimates for
+    # estimate_index = col_names.index(estimate_target)
     estimate_index = Int()
 
     # NORMALIZING
     normalize_target = Str()
+    # should the data be normalized?
     normalize = Bool(False)
 
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
     _ax = Typed(Axes)
+    # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
 
     # FITTING
@@ -244,7 +259,6 @@ class ScalarCollection(Atom):
             self._conf = ScalarConfig(self._ax)
             self.redraw_type = 's'
             self.estimate_plot = ['cen', 'x_at_max']
-            self.estimate_lines = {}
 
     def init_scalar_models(self):
         self.scalar_models.clear()

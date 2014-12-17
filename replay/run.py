@@ -86,6 +86,7 @@ def grab_latest(scan_id):
     global prev_max_seqno
     header, events, ev_desc, beamline_configs = get_data(scan_id)
     current_hdr_id = header['_id']
+
     # print('line 76: view.make_new_dm: {}'.format(view.make_new_dm))
     # print('line 76: prev_hdr_id, current_hdr_id: {}, {}'.format(
     #     prev_hdr_id, current_hdr_id))
@@ -102,6 +103,22 @@ def grab_latest(scan_id):
             view.scalar_collection.data_muggler = dm
             prev_hdr_id = current_hdr_id
             prev_max_seqno = -1
+            try:
+                view.scalar_collection.x = header['custom']['plotx']
+            except KeyError:
+                # plotx is not in the header
+                pass
+            try:
+                ploty = header['custom']['ploty']
+            except KeyError:
+                # ploty is not in the header
+                ploty = []
+            # set the x and y data sets to plot
+            for y in view.scalar_collection.col_names:
+                is_plotting = False
+                if y in ploty:
+                    is_plotting = True
+                view.scalar_collection.scalar_models[y].is_plotting = is_plotting
         else:
             view.currently_watching = False
             return
