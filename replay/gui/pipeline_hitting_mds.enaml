@@ -29,7 +29,7 @@ class ProgrammaticButton(PushButton):
     toggled = d_(Event(bool), writable=True)
 
 
-class MagicButton(ProgrammaticButton):
+class TimerButton(ProgrammaticButton):
     timer = d_(Typed(Timer))
 
     @observe('checked')
@@ -120,7 +120,7 @@ enamldef PipelineView(MainWindow): main:
                                         make_new_dm = True
                                     grab_latest(scan_id.value)
 
-                        MagicButton: btn_watch_mds:
+                        TimerButton: btn_watch_mds:
                             text = "Watch for new scan_id data"
                             checkable = True
                             checked := currently_watching

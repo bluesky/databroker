@@ -33,10 +33,6 @@ class ScalarConfig(Atom):
         The label on the x axis
     ylabel : str
         The label on the y axis
-    nticks_x : int
-        The number of ticks on the x axis
-    nticks_y : int
-        The number of ticks on the y axis
     grid : bool
         Show the grid on the 1-D plot
     """
