@@ -1,13 +1,14 @@
 from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
                               InsertDockBarItem)
-from enaml.stdlib.fields import FloatField
+from enaml.stdlib.fields import FloatField, IntField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
-                               MainWindow, ObjectCombo, PushButton, Timer)
+                               MainWindow, ObjectCombo, PushButton, Timer,
+                               Form, Label, MenuBar, Menu, Action)
 from replay.gui.line_view import LineView
 from replay.gui.scalar_view import ScalarView, ScalarController
 from replay.gui.cross_section_view import (CrossSectionView,
                                            CrossSectionController)
-from atom.api import Bool, Typed, observe
+from atom.api import Bool, Typed, observe, Event
 from enaml.stdlib.dock_area_styles import available_styles
 from enaml.core.declarative import d_
 
@@ -20,8 +21,15 @@ def add_dock_bars(area, cross_section_view, cross_section_controller,
                                          target=cross_section_controller))
     area.update_layout(InsertDockBarItem(item=scalar_view,
                                          target=scalar_controller))
+from auto_enaml.api import AutoView
 
-class MagicButton(PushButton):
+
+class ProgrammaticButton(PushButton):
+    clicked = d_(Event(bool), writable=True)
+    toggled = d_(Event(bool), writable=True)
+
+
+class TimerButton(ProgrammaticButton):
     timer = d_(Typed(Timer))
 
     @observe('checked')
@@ -30,6 +38,18 @@ class MagicButton(PushButton):
             self.timer.start()
         else:
             self.timer.stop()
+
+
+enamldef MplConfigs(Window): main:
+    attr config_model
+    destroy_on_close = False
+    Container:
+        AutoView:
+            model = main.config_model
+            initialized ::
+                for o in objects:
+                    o.label.tool_tip = str(o)
+
 
 enamldef PipelineView(MainWindow): main:
     title = "Live Data Demo"
@@ -41,6 +61,18 @@ enamldef PipelineView(MainWindow): main:
     attr grab_latest
     attr currently_watching = False
     attr make_new_dm = True
+    attr get_current_scanid
+    attr plot_options
+    # button that starts watching metadatastore
+    alias btn_watch_mds
+    # button that grabs the last scan id
+    alias btn_scanid
+    MenuBar:
+        Menu:
+            title = '&Plot'
+            Action:
+                text = '&Options'
+                triggered :: plot_options.show()
     Container: container:
         ObjectCombo: style_c:
             items = available_styles()
@@ -71,25 +103,36 @@ enamldef PipelineView(MainWindow): main:
                 name = 'trigger pvs'
                 title = 'Trigger PVs'
                 Container:
-                    hug_width = 'strong'
-                    MagicButton: btn_watch_mds:
-                        text = "Grab Latest"
-                        checkable = True
-                        checked := currently_watching
-                        timer = the_timer
-                        clicked ::
-                            main.make_new_dm = True
+                    Form:
+                        hug_width = 'strong'
+                        ProgrammaticButton: btn_scanid:
+                            text = "Set scanid to current"
+                            checked := currently_watching
+                            clicked ::
+                                scan_id.value = get_current_scanid()
+                        Form:
+                            IntField: scan_id:
+                                value := scalar_collection.scan_id
+                            ProgrammaticButton: btn_grab_latest:
+                                text = 'Get scan_id data'
+                                clicked ::
+                                    if not currently_watching:
+                                        make_new_dm = True
+                                    grab_latest(scan_id.value)
+
+                        TimerButton: btn_watch_mds:
+                            text = "Watch for new scan_id data"
+                            checkable = True
+                            checked := currently_watching
+                            timer = the_timer
+                            clicked ::
+                                main.make_new_dm = True
+                        PushButton: estimate:
+                            text = 'Estimate peak params'
+                            clicked ::
+                                scalar_collection.estimate()
                     Timer: the_timer:
                         interval = 500
                         single_shot = False
                         timeout ::
-                            grab_latest()
-                    PushButton: btn_start:
-                        text = "Start"
-                        clicked :: start_observation()
-                    PushButton: btn_stop:
-                        text = "Stop"
-                        clicked :: stop_observation()
-                    PushButton: btn_clear:
-                        text = "Clear"
-                        clicked :: clear_data()
+                            grab_latest(scan_id.value)

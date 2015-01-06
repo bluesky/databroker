@@ -1,8 +1,11 @@
 from __future__ import print_function, division
+import logging
+
+import six
+
 import enaml
 from enaml.qt.qt_application import QtApplication
-import os
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +14,8 @@ from replay.pipeline.pipeline import (DataMuggler)
 from replay.model.scalar_model import ScalarCollection
 from replay.model.fitting_model import MultiFitController
 from metadataStore.api import analysis
+from pprint import pprint
+import datetime
 
 dm = None
 view = None
@@ -29,21 +34,41 @@ def init_ui(data_muggler):
     """
     global view
     with enaml.imports():
-        from replay.gui.pipeline_hitting_mds import PipelineView
+        from replay.gui.pipeline_hitting_mds import PipelineView, MplConfigs
 
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
     scalar_collection = ScalarCollection()
     scalar_collection.data_muggler = data_muggler
     scalar_collection.multi_fit_controller = c_c_combo_fitter
     view = PipelineView()
+    configs = MplConfigs()
+    configs.config_model = scalar_collection._conf
     # provide the pipeline view with its attributes
+    view.plot_options = configs
     view.grab_latest = grab_latest
+    view.get_current_scanid = get_current_scanid
     view.scalar_collection=scalar_collection
     view.multi_fit_controller = c_c_combo_fitter
     return view
 
+def get_data(scan_id):
+    # grab the latest data
+    ret = analysis.find2(scan_id=scan_id, data=True)
+    header = list(six.itervalues(ret['headers']))[0]
+    events = list(six.itervalues(ret['events']))
+    ev_desc = list(six.itervalues(ret['event_descriptors']))
+    beamline_configs = list(six.itervalues(ret['beamline_configs']))
 
-def grab_latest():
+    return header, events, ev_desc, beamline_configs
+
+
+def get_current_scanid():
+    header = analysis.find_last()[0]
+    pprint(header)
+    return header['scan_id']
+
+
+def grab_latest(scan_id):
     # global dm
     # # grab the most recent run header
     # original_hdr_id = ''
@@ -59,15 +84,15 @@ def grab_latest():
     global prev_hdr_id
     global dm
     global prev_max_seqno
-    # grab the latest data
-    header, ev_desc, events, beamline_configs = analysis.find_last()
+    header, events, ev_desc, beamline_configs = get_data(scan_id)
     current_hdr_id = header['_id']
+
     # print('line 76: view.make_new_dm: {}'.format(view.make_new_dm))
     # print('line 76: prev_hdr_id, current_hdr_id: {}, {}'.format(
     #     prev_hdr_id, current_hdr_id))
     if prev_hdr_id != current_hdr_id:
         if view.make_new_dm:
-            prev_hdr_id = current_hdr_id
+            # prev_hdr_id = current_hdr_id
             # create a new data muggler
             keys = []
             for e in ev_desc:
@@ -78,6 +103,22 @@ def grab_latest():
             view.scalar_collection.data_muggler = dm
             prev_hdr_id = current_hdr_id
             prev_max_seqno = -1
+            try:
+                view.scalar_collection.x = header['custom']['plotx']
+            except KeyError:
+                # plotx is not in the header
+                pass
+            try:
+                ploty = header['custom']['ploty']
+            except KeyError:
+                # ploty is not in the header
+                ploty = []
+            # set the x and y data sets to plot
+            for y in view.scalar_collection.col_names:
+                is_plotting = False
+                if y in ploty:
+                    is_plotting = True
+                view.scalar_collection.scalar_models[y].is_plotting = is_plotting
         else:
             view.currently_watching = False
             return
@@ -109,6 +150,10 @@ def grab_latest():
 
     view.make_new_dm = False
     # stash the header id
+    start_time = datetime.datetime.fromtimestamp(header['start_time'])
+    scan_id = header['scan_id']
+    view.scalar_collection._conf.title = 'Scan id {}. {}'.format(scan_id,
+                                                                 start_time)
 
 
 def main():
@@ -116,10 +161,14 @@ def main():
     # init the UI
     view = init_ui(dm)
     view.scalar_collection.data_muggler = None
-    # init the header and event pvs
 
     # add the proper callbacks to the pvs
     view.show()
+    # init the header and event pvs
+    view.btn_scanid.clicked()
+    view.btn_watch_mds.checked = True
+    # view.btn_watch_mds.clicked()
+    # view.btn_watch_mds.toggled()
     app.start()
 
 if __name__ == '__main__':

@@ -15,7 +15,11 @@ from lmfit import Model, Parameter, Parameters
 import logging
 logger = logging.getLogger(__name__)
 
-default_models = model_list
+if model_list is None:
+    from skxray.fitting.models import GaussianModel
+    default_models = [GaussianModel]
+else:
+    default_models = model_list
 
 class ParameterModel(Atom):
     """Atom version of the lm-fit Parameter class
