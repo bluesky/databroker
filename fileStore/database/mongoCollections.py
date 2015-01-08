@@ -33,7 +33,7 @@ class FileBase(object):
         return bson
 
 
-class FilePublic(object):
+class FileAttributes(object):
     def __init__(self, shape, dtype, **kwargs):
         self.shape = shape
         self.dtype = dtype

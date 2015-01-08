@@ -1,7 +1,7 @@
 __author__ = 'arkilic'
 
 from fileStore.database.databaseInit import db, conn
-from fileStore.database.mongoCollections import FilePublic, FileBase, EventList
+from fileStore.database.mongoCollections import FileAttributes, FileBase, EventList
 from pymongo.errors import OperationFailure, PyMongoError
 
 
@@ -18,7 +18,7 @@ def create_file_link(file_id, spec, file_path, custom=None):
         custom = dict()
     f_base = FileBase(file_id=file_id, spec=spec, file_path=file_path, custom=custom)
     try:
-        flink_id = db['base'].insert(f_base.bsonify(), wtimeout=100, write_concern={'w': 1})
+        flink_id = db['file_base'].insert(f_base.bsonify(), wtimeout=100, write_concern={'w': 1})
     except OperationFailure:
         raise PyMongoError("File link entry insert failed due to database server connection")
     return flink_id
@@ -32,9 +32,9 @@ def create_file_attributes(shape, dtype, **kwargs):
     :param kwargs:
     :return:
     """
-    f_attr = FilePublic(shape=shape, dtype=dtype, **kwargs)
+    f_attr = FileAttributes(shape=shape, dtype=dtype, **kwargs)
     try:
-        f_attr_id = db['public'].insert(f_attr.bsonify(), wtimeout=100, write_concern={'w': 1})
+        f_attr_id = db['file_attributes'].insert(f_attr.bsonify(), wtimeout=100, write_concern={'w': 1})
     except OperationFailure:
         raise PyMongoError("File attributes entry insert failed due to database server connection")
     return f_attr_id
