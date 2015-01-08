@@ -18,7 +18,7 @@ class FileBase(object):
         self.__file_path = file_path
         self.__custom = custom
         #TODO: Add data type verification
-        self.bson = dict()
+        self.bson = self.bsonify()
 
     def bsonify(self):
         """
@@ -27,17 +27,18 @@ class FileBase(object):
         :return: bsonified FileStore base class attributes
         :rtype: dict
         """
-        self.bson['file_id'] = self.__file_id
-        self.bson['spec'] = self.__spec
-        self.bson['file_path'] = self.__file_path
-        return self.bson
+        bson = dict()
+        bson['file_id'] = self.__file_id
+        bson['spec'] = self.__spec
+        bson['file_path'] = self.__file_path
+        return bson
 
 
 class FilePublic(object):
     def __init__(self, shape, dtype, **kwargs):
         self.shape = shape
         self.dtype = dtype
-        self.bson = dict()
+        self.bson = self.bsonify()
         try:
             self.total_bytes = kwargs['total_bytes']
         except KeyError:
@@ -65,7 +66,6 @@ class FilePublic(object):
 
     def bsonify(self):
         """
-
         :return:
         """
         bson_dict = dict()

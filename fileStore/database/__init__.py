@@ -1,3 +1,4 @@
 __author__ = 'arkilic'
 
-from ..database.mongoCollections import FileBase, EventList, FilePublic
+from fileStore.database.mongoCollections import FileBase, EventList, FilePublic
+

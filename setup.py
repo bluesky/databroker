@@ -74,7 +74,7 @@ setup(
     author_email=None,
     license="BSD (3-clause)",
     url = "https://github.com/NSLS-II/fileStore",
-    packages=['fileStore', 'fileStore.database', 'fileStore.api'
+    packages=['fileStore', 'fileStore.database', 'fileStore.api', 'fileStore.test'
     ],
     long_description=read('README.md'),
     classifiers=[
