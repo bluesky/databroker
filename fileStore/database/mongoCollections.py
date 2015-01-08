@@ -18,7 +18,6 @@ class FileBase(object):
         self.__file_path = file_path
         self.__custom = custom
         #TODO: Add data type verification
-        self.bson = self.bsonify()
 
     def bsonify(self):
         """
@@ -38,7 +37,6 @@ class FilePublic(object):
     def __init__(self, shape, dtype, **kwargs):
         self.shape = shape
         self.dtype = dtype
-        self.bson = self.bsonify()
         try:
             self.total_bytes = kwargs['total_bytes']
         except KeyError:
@@ -62,6 +60,7 @@ class FilePublic(object):
             self.custom = kwargs['custom']
         except KeyError:
             self.custom = dict()
+
         self.bson = self.bsonify()
 
     def bsonify(self):
@@ -90,7 +89,6 @@ class EventList(object):
         self.event_id = event_id
         self.file_id = file_id
         self.event_list_custom = event_list_custom
-        self.bson = self.bsonify()
 
     def bsonify(self):
         """
