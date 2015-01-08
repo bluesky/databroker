@@ -80,10 +80,25 @@ class FilePublic(object):
 
 class EventList(object):
     def __init__(self, event_id, file_id, event_list_custom):
+        """
+
+        :param event_id:
+        :param file_id:
+        :param event_list_custom:
+        :return:
+        """
         self.event_id = event_id
         self.file_id = file_id
         self.event_list_custom = event_list_custom
         self.bson = self.bsonify()
 
     def bsonify(self):
+        """
+
+        :return:
+        """
         bson_dict = dict()
+        bson_dict['event_id'] = self.event_id
+        bson_dict['file_id'] = self.file_id
+        bson_dict['event_list_custom'] = self.event_list_custom
+        return bson_dict
