@@ -40,7 +40,9 @@ import six
 import logging
 logger = logging.getLogger(__name__)
 
-from fileStore.retrieve import HandlerBase, SPEC_KEY, FID_KEY, EID_KEY
+from fileStore.retrieve import HandlerBase
+from fileStore import  (EID_KEY, SPEC_KEY, FID_KEY, FPATH_KEY,
+                        BASE_CUSTOM_KEY, EVENT_CUSTOM_KEY)
 import fileStore.retrieve as fsr
 import numpy as np
 from nose.tools import assert_equal, assert_true, assert_raises
@@ -57,7 +59,7 @@ class SynHandlerMod(HandlerBase):
     shape : tuple
         The shape of the frame
     """
-    def __init__(self, shape):
+    def __init__(self, fpath, shape):
         self._shape = tuple(int(v) for v in shape)
         self._N = np.prod(self._shape)
 
@@ -66,9 +68,13 @@ class SynHandlerMod(HandlerBase):
 
 mock_base = {0: {FID_KEY: 0,
                  SPEC_KEY: 'syn-mod',
-                 'shape': (5, 7)}}
+                 FPATH_KEY: '',
+                 BASE_CUSTOM_KEY: {
+                 'shape': (5, 7)}}}
 
-mock_event = {n: {FID_KEY: 0, EID_KEY: n, 'n': n} for n in range(1, 15)}
+mock_event = {n: {FID_KEY: 0, EID_KEY: n,
+                  EVENT_CUSTOM_KEY: {'n': n}}
+                for n in range(1, 15)}
 
 
 def get_handler_mock(fid):
@@ -107,7 +113,7 @@ def test_get_data():
 
 
 def test_context():
-    with SynHandlerMod((4, 2)) as hand:
+    with SynHandlerMod('', (4, 2)) as hand:
         for j in range(1, 5):
             assert_true(np.all(hand(j) < j))
 

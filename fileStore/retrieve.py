@@ -135,7 +135,9 @@ def get_spec_handler(base_fs_document, handle_registry=None):
     fs_doc = dict(base_fs_document)
     spec = fs_doc.pop(SPEC_KEY)
     fid = fs_doc.pop(FID_KEY)
-    return fid, handle_registry[spec](**fs_doc)
+    kwargs = fs_doc.pop(BASE_CUSTOM_KEY)
+    fpath = fs_doc.pop(FPATH_KEY)
+    return fid, handle_registry[spec](fpath, **kwargs)
 
 
 def get_data(events_fs_doc, get_handler_method):
@@ -159,5 +161,6 @@ def get_data(events_fs_doc, get_handler_method):
     fs_doc = dict(events_fs_doc)
     eid = fs_doc.pop(EID_KEY)
     fid = fs_doc.pop(FID_KEY)
+    kwargs = fs_doc.pop(EVENT_CUSTOM_KEY)
     handler = get_handler_method(fid)
-    return eid, handler(**fs_doc)
+    return eid, handler(**kwargs)
