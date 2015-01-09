@@ -66,6 +66,7 @@ class FileBase(object):
         bson['file_id'] = self.__file_id
         bson['spec'] = self.__spec
         bson['file_path'] = self.__file_path
+        bson['custom'] = dict(self.__custom)
         return bson
 
 
