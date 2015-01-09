@@ -34,6 +34,9 @@
 ########################################################################
 from __future__ import (absolute_import, division, print_function)
 
+from .. import (EID_KEY, SPEC_KEY, FID_KEY, FPATH_KEY,
+               BASE_CUSTOM_KEY, EVENT_CUSTOM_KEY)
+
 __author__ = 'arkilic'
 
 
@@ -63,10 +66,10 @@ class FileBase(object):
         :rtype: dict
         """
         bson = dict()
-        bson['file_id'] = self.__file_id
-        bson['spec'] = self.__spec
-        bson['file_path'] = self.__file_path
-        bson['custom'] = dict(self.__custom)
+        bson[FID_KEY] = self.__file_id
+        bson[SPEC_KEY] = self.__spec
+        bson[FPATH_KEY] = self.__file_path
+        bson[BASE_CUSTOM_KEY] = dict(self.__custom)
         return bson
 
 
@@ -133,7 +136,7 @@ class EventList(object):
         :return:
         """
         bson_dict = dict()
-        bson_dict['event_id'] = self.event_id
-        bson_dict['file_id'] = self.file_id
-        bson_dict['event_list_custom'] = self.event_list_custom
+        bson_dict[EID_KEY] = self.event_id
+        bson_dict[FID_KEY] = self.file_id
+        bson_dict[EVENT_CUSTOM_KEY] = self.event_list_custom
         return bson_dict

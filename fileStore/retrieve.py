@@ -1,5 +1,5 @@
 # ######################################################################
-# Copyright (c) 2014, Brookhaven Science Associates, Brookhaven        #
+# Copyright (c) 2015, Brookhaven Science Associates, Brookhaven        #
 # National Laboratory. All rights reserved.                            #
 #                                                                      #
 # Redistribution and use in source and binary forms, with or without   #
@@ -39,6 +39,9 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 logger = logging.getLogger(__name__)
+
+from . import (EID_KEY, SPEC_KEY, FID_KEY, FPATH_KEY,
+               BASE_CUSTOM_KEY, EVENT_CUSTOM_KEY)
 
 
 class HandlerBase(object):
@@ -97,10 +100,6 @@ def register_handler(key, handler):
     _h_registry.register_handler(key, handler)
 
 
-SPEC_KEY = 'spec'
-FID_KEY = 'file_id'
-
-
 def get_spec_handler(base_fs_document, handle_registry=None):
     """
     Given a document from the base FS collection return
@@ -137,9 +136,6 @@ def get_spec_handler(base_fs_document, handle_registry=None):
     spec = fs_doc.pop(SPEC_KEY)
     fid = fs_doc.pop(FID_KEY)
     return fid, handle_registry[spec](**fs_doc)
-
-
-EID_KEY = 'event_id'
 
 
 def get_data(events_fs_doc, get_handler_method):
