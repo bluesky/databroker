@@ -1,6 +1,7 @@
+from __future__ import (absolute_import, division, print_function)
 __author__ = 'arkilic'
 
-from __future__ import (absolute_import, division, print_function)
+
 
 
 import sys
