@@ -196,11 +196,24 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
     return event
 
 
-def find(**kwargs):
+def find(data=False, **kwargs):
     """
     Parameters
     ---------
 
+    scan_id: int
+
+    owner: str
+
+    beamline_id: str
+
+    status: str
+
+    start_time: dict
+    start_time={'start': float, 'end': float}
+
+    end_time: dict
+    end_time={'start': float, 'end': float}
 
     """
 
@@ -262,7 +275,7 @@ def find(**kwargs):
         res = Header.objects(__raw__=search_dict)
     else:
         res = None
-
+    #TODO: Return return limit to 100
     #TODO: Format the returned results and find related event_descriptor, event, etc.
 
     return res
