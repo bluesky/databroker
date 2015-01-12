@@ -9,16 +9,13 @@ from metadataStore.conf import host, port, database
 from mongoengine import connect
 
 
-def save_header(scan_id, owner, start_time, end_time, **kwargs):
+def save_header(scan_id, start_time, end_time, **kwargs):
     """Create a header in metadataStore database backend
 
     Parameters
     ----------
     scan_id : int
     Unique scan identifier visible to the user and data analysis
-
-    owner: str
-    Specifies the unix user credentials of the user creating the entry
 
     start_time: time
     Start time of series of events that are recorded by the header
@@ -30,6 +27,10 @@ def save_header(scan_id, owner, start_time, end_time, **kwargs):
     kwargs
     -----------
 
+    owner: str
+    Specifies the unix user credentials of the user creating the entry
+
+
     beamline_id: str
     Beamline String identifier. Not unique, just an indicator of beamline code for multiple beamline systems
 
@@ -40,32 +41,40 @@ def save_header(scan_id, owner, start_time, end_time, **kwargs):
     Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
 
     """
-    try:
-        connect(db=database, host=host, port=port)
-    except:
-        raise
+
+    connect(db=database, host=host, port=port)
 
     datetime_start_time = __convert2datetime(start_time)
     datetime_end_time = __convert2datetime(end_time)
 
-    header = Header(scan_id=scan_id, owner=owner, start_time=start_time, end_time=end_time,
+    header = Header(scan_id=scan_id, start_time=start_time, end_time=end_time,
                     datetime_start_time=datetime_start_time,
                     datetime_end_time=datetime_end_time)
 
-    for key, value in kwargs.iteritems():
-        if key is 'beamline_id':
-            header.beamline_id = value
-        elif key is 'status':
-            header.status = value
-        elif key is 'custom':
-            header.custom = value
-        else:
-            raise KeyError('Invalid argument..: ', key)
+    try:
+        header.owner = kwargs.pop('owner')
+    except KeyError:
+        pass
 
     try:
-        header.save(validate=True, write_concern={"w": 1})
-    except:
-        raise
+        header.beamline_id = kwargs.pop('beamline_id')
+    except KeyError:
+        pass
+
+    try:
+        header.status = kwargs.pop('status')
+    except KeyError:
+        pass
+
+    try:
+        header.custom = kwargs.pop('custom')
+    except KeyError:
+        pass
+
+    if kwargs:
+        raise KeyError('Invalid argument(s)..: ', kwargs.keys())
+
+    header.save(validate=True, write_concern={"w": 1})
 
     return header
 
@@ -82,15 +91,11 @@ def save_beamline_config(header, config_params=None):
     Name/value pairs that indicate beamline configuration parameters during capturing of
 
     """
-    try:
-        connect(db=database, host=host, port=port)
-    except:
-        raise
+
+    connect(db=database, host=host, port=port)
+
     beamline_config = BeamlineConfig(header_id=header.id, config_params=config_params)
-    try:
-        beamline_config.save(validate=True, write_concern={"w": 1})
-    except:
-        raise
+    beamline_config.save(validate=True, write_concern={"w": 1})
 
     return beamline_config
 
@@ -120,25 +125,21 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
 
     """
     #TODO: replace . with [dot] in and out of the database
-
-    try:
-        connect(db=database, host=host, port=port)
-    except:
-        raise
+    connect(db=database, host=host, port=port)
 
     event_descriptor = EventDescriptor(header_id=header.id, event_type_id=event_type_id, data_keys=data_keys,
                                        descriptor_name=descriptor_name)
 
-    for key, value in kwargs.iteritems():
-        if key is 'type_descriptor':
-            event_descriptor.type_descriptor = value
-        else:
-            raise KeyError('Invalid argument..: ', key)
-
     try:
-        event_descriptor.save(validate=True, write_concern={"w": 1})
-    except:
-        raise
+        event_descriptor.type_descriptor = kwargs.pop('type_descriptor')
+    except KeyError:
+        pass
+
+    if kwargs:
+        raise KeyError('Invalid argument(s)..: ', kwargs.keys())
+
+
+    event_descriptor.save(validate=True, write_concern={"w": 1})
 
     return event_descriptor
 
@@ -146,26 +147,24 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
 def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
     #TODO: replace . with [dot] in and out of the database
 
-    try:
-        connect(db=database, host=host, port=port)
-    except:
-        raise
+    connect(db=database, host=host, port=port)
 
     event = Event(header_id=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no,
                   data=data)
-
-    for key, value in kwargs.iteritems():
-        if key is 'owner':
-            event.owner = value
-        elif key is 'description':
-            event.description = value
-        else:
-            raise KeyError('Invalid key...:', key)
+    try:
+        event.owner = kwargs.pop('owner')
+    except KeyError:
+        pass
 
     try:
-        event.save(validate=True, write_concern={"w": 1})
-    except:
-        raise
+        event.description = kwargs.pop('description')
+    except KeyError:
+        pass
+
+    if kwargs:
+        raise KeyError('Invalid argument(s)..: ', kwargs.keys())
+
+    event.save(validate=True, write_concern={"w": 1})
 
     return event
 
