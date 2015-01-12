@@ -7,7 +7,7 @@ from metadataStore.database.event import Event
 import datetime
 from metadataStore.conf import host, port, database
 from mongoengine import connect
-
+#TODO: Add logger
 
 def save_header(scan_id, start_time, end_time, **kwargs):
     """Create a header in metadataStore database backend
@@ -196,8 +196,76 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
     return event
 
 
-def find():
-    pass
+def find(**kwargs):
+    """
+    Parameters
+    ---------
+
+
+    """
+
+    connect(db=database, host=host, port=port)
+
+    search_dict = dict()
+
+    try:
+        search_dict['scan_id'] = kwargs.pop('scan_id')
+    except KeyError:
+        pass
+
+    try:
+        search_dict['owner'] = kwargs.pop('owner')
+    except KeyError:
+        pass
+
+    try:
+        search_dict['beamline_id'] = kwargs.pop('beamline_id')
+    except KeyError:
+        pass
+
+    try:
+        search_dict['status'] = kwargs.pop('status')
+    except KeyError:
+        pass
+
+    try:
+        st_time_dict = kwargs.pop('start_time')
+        if not isinstance(st_time_dict, dict):
+            raise TypeError('Wrong format. Start time must include start and end keys for range. Must be a dict')
+        else:
+            if 'start' in st_time_dict.keys():
+                if 'end' in st_time_dict.keys():
+                    search_dict['start_time'] = {'$gte': st_time_dict['start'], '$lte': st_time_dict['end']}
+                else:
+                    raise AttributeError('Start time must include start and end keys for range search')
+            else:
+                raise AttributeError('Start time must include start and end keys for range search')
+    except KeyError:
+        pass
+
+    try:
+        end_time_dict = kwargs.pop('end_time')
+        if not isinstance(end_time_dict, dict):
+            raise TypeError('Wrong format. Start time must include start and end keys for range. Must be a dict')
+        else:
+            if 'start' in end_time_dict.keys():
+                if 'end' in end_time_dict.keys():
+                    search_dict['end_time'] = {'$gte': end_time_dict['start'], '$lte': end_time_dict['end']}
+                else:
+                    raise AttributeError('End time must include start and end keys for range search')
+            else:
+                raise AttributeError('End time must include start and end keys for range search')
+    except KeyError:
+        pass
+
+    if search_dict:
+        res = Header.objects(__raw__=search_dict)
+    else:
+        res = None
+
+    #TODO: Format the returned results and find related event_descriptor, event, etc.
+
+    return res
 
 
 def find2():
