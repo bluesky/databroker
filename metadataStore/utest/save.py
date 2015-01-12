@@ -1,3 +1,3 @@
 __author__ = 'arkilic'
 
-raise NotImplementedError('Unit test coming soon')
+raise NotImplementedError('Unit example coming soon')
