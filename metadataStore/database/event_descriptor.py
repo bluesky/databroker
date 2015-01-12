@@ -15,9 +15,9 @@ class EventDescriptor(Document):
                             db_field='header_id')
     event_type_id = IntField(required=True)
     data_keys = ListField(required=True)
-    descriptor_name = StringField(max_length=10, required=False)
+    descriptor_name = StringField(max_length=10, required=False, unique=True)
     type_descriptor = DictField(required=False)
-    meta = {'indexes': [('-header_id')]}
+    meta = {'indexes': [('-header_id', '-descriptor_name')]}
 
 
 

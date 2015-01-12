@@ -1,6 +1,5 @@
 __author__ = 'arkilic'
-    #TODO: Check mongoengine save goodies
-    #TODO: Check validatio=True flag functionality
+
 from metadataStore.database.header import Header
 from metadataStore.database.beamline_config import BeamlineConfig
 from metadataStore.database.event_descriptor import EventDescriptor
@@ -8,18 +7,38 @@ from metadataStore.database.event import Event
 import datetime
 from metadataStore.conf import host, port, database
 from mongoengine import connect
-import time
 
 
 def save_header(scan_id, owner, start_time, end_time, **kwargs):
-    """
+    """Create a header in metadataStore database backend
 
-    :param scan_id:
-    :param owner:
-    :param start_time:
-    :param end_time:
-    :param kwargs:
-    :return:
+    Parameters
+    ----------
+    scan_id : int
+    Unique scan identifier visible to the user and data analysis
+
+    owner: str
+    Specifies the unix user credentials of the user creating the entry
+
+    start_time: time
+    Start time of series of events that are recorded by the header
+
+    end_time: time
+    End time of series of events that are recorded by the header
+
+
+    kwargs
+    -----------
+
+    beamline_id: str
+    Beamline String identifier. Not unique, just an indicator of beamline code for multiple beamline systems
+
+    status: str
+    Provides an information regarding header. Choice: In Progress/Complete
+
+    custom: dict
+    Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
+
     """
     try:
         connect(db=database, host=host, port=port)
@@ -52,11 +71,16 @@ def save_header(scan_id, owner, start_time, end_time, **kwargs):
 
 
 def save_beamline_config(header, config_params=None):
-    """
+    """ Create a beamline_config  in metadataStore database backend
 
-    :param header_id:
-    :param config_params:
-    :return:
+    Parameters
+    ----------
+    header: mongoengine.Document
+    Header object that specific beamline_config entry is going to point(foreign key)
+
+    config_params: dict
+    Name/value pairs that indicate beamline configuration parameters during capturing of
+
     """
     try:
         connect(db=database, host=host, port=port)
@@ -71,26 +95,42 @@ def save_beamline_config(header, config_params=None):
     return beamline_config
 
 
-def save_event_descriptor(header, event_type_id, data_keys, **kwargs):
-    """
+def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **kwargs):
+    """ Create an event_descriptor in metadataStore database backend
 
-    :param header:
-    :param event_type_id:
-    :param data_keys:
-    :param kwargs:
-    :return:
+    Parameters
+    ----------
+
+    header: mongoengine.Document
+    Header object that specific beamline_config entry is going to point(foreign key)
+
+    event_type_id:int
+    Integer identifier for a scan, sweep, etc.
+
+    data_keys: list
+    Provides information about keys of the data dictionary in an event will contain
+
+    descriptor_name: str
+    Unique identifier string for an event. e.g. ascan, dscan, hscan, home, sweep,etc.
+
+    kwargs
+    ----------
+    type_descriptor:dict
+    Additional name/value pairs can be added to an event_descriptor using this flexible field
+
     """
+    #TODO: replace . with [dot] in and out of the database
+
     try:
         connect(db=database, host=host, port=port)
     except:
         raise
 
-    event_descriptor = EventDescriptor(header_id=header.id, event_type_id=event_type_id, data_keys=data_keys)
+    event_descriptor = EventDescriptor(header_id=header.id, event_type_id=event_type_id, data_keys=data_keys,
+                                       descriptor_name=descriptor_name)
 
     for key, value in kwargs.iteritems():
-        if key is 'descriptor_name':
-            event_descriptor.descriptor_name = value
-        elif key is 'type_descriptor':
+        if key is 'type_descriptor':
             event_descriptor.type_descriptor = value
         else:
             raise KeyError('Invalid argument..: ', key)
@@ -104,14 +144,8 @@ def save_event_descriptor(header, event_type_id, data_keys, **kwargs):
 
 
 def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
-    """
+    #TODO: replace . with [dot] in and out of the database
 
-    :param header:
-    :param event_descriptor:
-    :param seq_no:
-    :param kwargs:
-    :return:
-    """
     try:
         connect(db=database, host=host, port=port)
     except:
@@ -127,6 +161,13 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
             event.description = value
         else:
             raise KeyError('Invalid key...:', key)
+
+    try:
+        event.save(validate=True, write_concern={"w": 1})
+    except:
+        raise
+
+    return event
 
 
 def find():
@@ -145,15 +186,3 @@ def __convert2datetime(time_stamp):
         return datetime.datetime.fromtimestamp(time_stamp)
     else:
         raise TypeError('Timestamp format is not correct!')
-
-import random
-
-h = save_header(scan_id=random.randint(0,1000), owner='arkilic', start_time=time.time(),
-                end_time=time.time(), custom={'data':123})
-print h.id
-
-b = save_beamline_config(header=h)
-
-ed = save_event_descriptor(header=h, event_type_id=1, data_keys=['arman'])
-
-print Event(header_id=h.id, descriptor_id=ed.id, seq_no=1).save().id

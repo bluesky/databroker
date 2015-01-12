@@ -6,6 +6,7 @@ from mongoengine import DENY, Document
 from mongoengine import ReferenceField, IntField, StringField, DictField
 import getpass
 
+
 class Event(Document):
     """
 

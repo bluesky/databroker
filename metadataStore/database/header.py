@@ -10,6 +10,32 @@ from datetime import datetime
 class Header(Document):
     """
 
+    Parameters
+    ----------
+
+    scan_id : int
+    Unique scan identifier visible to the user and data analysis
+
+    owner: str
+    Specifies the unix user credentials of the user creating the entry
+
+    start_time: time
+    Start time of series of events that are recorded by the header
+
+    end_time: time
+    End time of series of events that are recorded by the header
+
+
+    beamline_id: str
+    Beamline String identifier. Not unique, just an indicator of beamline code for multiple beamline systems
+
+    status: str
+    Provides an information regarding header. Choice: In Progress/Complete
+
+    custom: dict
+    Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
+
+
     """
     default_time_stamp = time.time()
 
