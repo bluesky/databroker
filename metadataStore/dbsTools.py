@@ -138,13 +138,40 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
 
-
     event_descriptor.save(validate=True, write_concern={"w": 1})
 
     return event_descriptor
 
 
 def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
+    """Create an event in metadataStore database backend
+
+    Parameters
+    ----------
+
+    header: mongoengine.Document
+    Header object that specific event entry is going to point(foreign key)
+
+    event_descriptor: mongoengine.Document
+    EventDescriptor object that specific event entry is going to point(foreign key)
+
+    seq_no:int
+    Unique sequence number for the event. Provides order of an event in the group of events
+
+    data:dict
+    Dictionary that contains the name value fields for the data associated with an event
+
+    kwargs
+    ----------
+
+    owner: str
+    Specifies the unix user credentials of the user creating the entry
+
+    description: str
+    Text description of specific event
+
+    """
+
     #TODO: replace . with [dot] in and out of the database
 
     connect(db=database, host=host, port=port)
@@ -179,6 +206,7 @@ def find2():
 
 def find_last():
     pass
+
 
 def __convert2datetime(time_stamp):
     if isinstance(time_stamp, float):
