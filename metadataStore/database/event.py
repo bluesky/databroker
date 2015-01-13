@@ -36,3 +36,6 @@ class Event(Document):
     datetime_timestamp = DateTimeField(required=True,
                                        default= datetime.fromtimestamp(default_timestamp))
     meta = {'indexes': ['-header_id', '-descriptor_id', '-_id', '-timestamp']}
+
+    #TODO: change this header_id to header
+    #TODO: change this descriptor_id to event_descriptor
