@@ -37,6 +37,7 @@ print bcfgs
 # print q_res_3.keys(
 # )
 
-hdrs2, bcfgs2 = find(owner='arkilic', limit=1)
+hdrs2, bcfgs2 = find(owner='arkilic', limit=10)
 
-print hdrs2[0].id
+for hdr in hdrs2:
+    print hdr.id

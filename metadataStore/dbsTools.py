@@ -241,12 +241,12 @@ def find_header(limit, **kwargs):
 
 
 def find_beamline_config(header):
-    return BeamlineConfig.objects(header_id=header.id)
+    return BeamlineConfig.objects(header_id=header.id).order_by('-_id')
 
 
-def find_event_descriptor():
+def find_event_descriptor(header):
     #TODO: replace . with [dot] in and out of the database
-    return BeamlineConfig.objects(header_id=header.id)
+    return EventDescriptor.objects(header_id=header.id).order_by('-_id')
 
 
 def find_event():
