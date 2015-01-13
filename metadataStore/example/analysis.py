@@ -25,21 +25,15 @@ print 'Query time..: ', time_elapsed, ' milliseconds'
 
 
 # start = time.time()
-hdrs, bcfgs = find(owner='arkilic')
+hdrs, bcfgs,event_descs, evs = find(owner='arkilic')
 
-print len(hdrs)
-print bcfgs
 
-# end = time.time()
-# time_elapsed = (end-start)*1000
-#
-#
-# print q_res_3.keys(
-# )
+hdrs2, bcfgs2, event_descs2, evs2 = find(owner='arkilic', limit=10)
 
-hdrs2, bcfgs2 = find(owner='arkilic', limit=10)
 
 for hdr in hdrs2:
-    print hdr.id
+    print 'Header: ', '_id: ', hdr.id, ' owner: ', hdr.owner, ' start_time: ', hdr.start_time
 
-print find_last().id
+print 'Here is the last scan recorded', find_last().id
+
+

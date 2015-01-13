@@ -260,9 +260,9 @@ def find_event_descriptor(header):
     return EventDescriptor.objects(header_id=header.id).order_by('-_id')
 
 
-def find_event():
+def find_event(header):
     #TODO: replace . with [dot] in and out of the database
-    pass
+    return Event.objects(header_id=header.id).order_by('-_id')
 
 
 def find(data=True, limit=50, **kwargs):
@@ -293,14 +293,15 @@ def find(data=True, limit=50, **kwargs):
 
     if data:
         beamline_config_objects = dict()
+        event_descriptor_objects = dict()
+        event_objects = dict()
         #Queryset instance returned by mongoengine not iterable, hence manual recursion
         if header_objects:
             for header in header_objects:
-                bcfg_obj = BeamlineConfig.objects(header_id=header.id)
                 beamline_config_objects[header.id] = find_beamline_config(header)
-                event_desc_obj = EventDescriptor.objects()
-
-    return header_objects, beamline_config_objects
+                event_descriptor_objects[header.id] = find_event_descriptor(header)
+                event_objects[header.id] = find_event(header)
+    return header_objects, beamline_config_objects, event_descriptor_objects, event_objects
 
 
 def find_last():
