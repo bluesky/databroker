@@ -185,6 +185,17 @@ def find_header(limit, **kwargs):
     limit:
     kwargs:
 
+    Usage
+
+    >>> find_header(scan_id=123)
+    >>> find_header(owner='arkilic')
+    >>> find_header(start_time={'start': 1421176750.514707,
+    ...                          'end': time.time()})
+    >>> find_header(end_time={'start': 1421176750.514707,
+    ...                          'end': time.time()})
+
+    >>> find_header(owner='arkilic', start_time={'start': 1421176750.514707,
+    ...                                          'end': time.time()})
 
     """
     #TODO: Add sample usage to documentation
