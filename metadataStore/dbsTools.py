@@ -9,6 +9,7 @@ from metadataStore.conf import host, port, database
 from mongoengine import connect
 #TODO: Add logger
 
+
 def save_header(scan_id, start_time, end_time, **kwargs):
     """Create a header in metadataStore database backend
 
@@ -51,25 +52,14 @@ def save_header(scan_id, start_time, end_time, **kwargs):
                     datetime_start_time=datetime_start_time,
                     datetime_end_time=datetime_end_time)
 
-    try:
-        header.owner = kwargs.pop('owner')
-    except KeyError:
-        pass
 
-    try:
-        header.beamline_id = kwargs.pop('beamline_id')
-    except KeyError:
-        pass
+    header.owner = kwargs.pop('owner', None)
 
-    try:
-        header.status = kwargs.pop('status')
-    except KeyError:
-        pass
+    header.beamline_id = kwargs.pop('beamline_id', None)
 
-    try:
-        header.custom = kwargs.pop('custom')
-    except KeyError:
-        pass
+    header.status = kwargs.pop('status', None)
+
+    header.custom = kwargs.pop('custom', None)
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
@@ -130,10 +120,7 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
     event_descriptor = EventDescriptor(header_id=header.id, event_type_id=event_type_id, data_keys=data_keys,
                                        descriptor_name=descriptor_name)
 
-    try:
-        event_descriptor.type_descriptor = kwargs.pop('type_descriptor')
-    except KeyError:
-        pass
+    event_descriptor.type_descriptor = kwargs.pop('type_descriptor', None)
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
@@ -178,15 +165,10 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
 
     event = Event(header_id=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no,
                   data=data)
-    try:
-        event.owner = kwargs.pop('owner')
-    except KeyError:
-        pass
 
-    try:
-        event.description = kwargs.pop('description')
-    except KeyError:
-        pass
+    event.owner = kwargs.pop('owner', None)
+
+    event.description = kwargs.pop('description', None)
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
@@ -272,10 +254,10 @@ def find(data=False, **kwargs):
         pass
 
     if search_dict:
-        res = Header.objects(__raw__=search_dict)
+        res = Header.objects(__raw__=search_dict)[0:100]
     else:
         res = None
-    #TODO: Return return limit to 100
+
     #TODO: Format the returned results and find related event_descriptor, event, etc.
 
     return res
