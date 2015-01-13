@@ -293,7 +293,7 @@ def find(data=True, limit=50, **kwargs):
 
 
 def find_last():
-    pass
+    return Header.objects.order_by('-_id')[0:1][0]
 
 
 def __convert2datetime(time_stamp):

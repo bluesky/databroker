@@ -1,6 +1,6 @@
 __author__ = 'arkilic'
 
-from metadataStore.api.analysis import find
+from metadataStore.api.analysis import find, find_last
 
 
 print find(scan_id=8878179)
@@ -41,3 +41,5 @@ hdrs2, bcfgs2 = find(owner='arkilic', limit=10)
 
 for hdr in hdrs2:
     print hdr.id
+
+print find_last().id
