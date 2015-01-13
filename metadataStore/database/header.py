@@ -37,6 +37,8 @@ class Header(Document):
 
 
     """
+
+
     default_time_stamp = time.time()
 
     scan_id = IntField(required=True, unique=True)

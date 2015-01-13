@@ -159,8 +159,6 @@ def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kw
     Text description of specific event
 
     """
-    #TODO: replace . with [dot] in and out of the database
-
     connect(db=database, host=host, port=port)
 
     event = Event(header_id=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no, timestamp=timestamp,
@@ -170,6 +168,8 @@ def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kw
 
     event.description = kwargs.pop('description', None)
     event.datetime_timestamp = kwargs.pop('datetime_timestamp', None)
+
+    event = __replace_event_data_key_dots(event, direction='in')
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
@@ -268,17 +268,22 @@ def find_beamline_config(header):
 
 
 def find_event_descriptor(header):
+    event_descriptor_list = list()
     connect(db=database, host=host, port=port)
-    #TODO: replace . with [dot] in and out of the database
-    return EventDescriptor.objects(header_id=header.id).order_by('-_id')
+    for event_descriptor in EventDescriptor.objects(header_id=header.id).order_by('-_id'):
+        event_descriptor = __replace_descriptor_data_key_dots(event_descriptor, direction='out')
+        event_descriptor_list.append(event_descriptor)
+    return event_descriptor_list
 
 
 def find_event(header):
     #TODO: replace . with [dot] in and out of the database
     connect(db=database, host=host, port=port)
-
-    return Event.objects(header_id=header.id).order_by('-_id')
-
+    event_list = list()
+    for event in Event.objects(header_id=header.id).order_by('-_id'):
+        event = __replace_event_data_key_dots(event,direction='out')
+        event_list.append(event)
+    return event_list
 
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
@@ -291,6 +296,8 @@ def find_event_given_descriptor(event_descriptor):
 
     """
     connect(db=database, host=host, port=port)
+
+    #TODO: replace . with [dot] in and out of the database
 
     return Event.objects(descriptor_id=event_descriptor.id).order_by('-_id')
 
@@ -379,7 +386,12 @@ def __replace_descriptor_data_key_dots(event_descriptor, direction='in'):
                 modified_data_keys.append(data_key)
         event_descriptor.data_keys = modified_data_keys
     elif direction is 'out':
-        pass
+        for data_key in event_descriptor.data_keys:
+            if '[dot]' in data_key:
+                modified_data_keys.append(data_key.replace('[dot]', '.'))
+            else:
+                modified_data_keys.append(data_key)
+        event_descriptor.data_keys = modified_data_keys
     else:
         raise ValueError('Only in/out allowed as direction params')
     return event_descriptor
@@ -399,9 +411,23 @@ def __replace_event_data_key_dots(event, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
+    modified_data_dict = dict()
+
     if direction is 'in':
-        pass
+        for key, value in event.data.iteritems():
+            if '.' in key:
+                modified_data_dict[key.replace('.', '[dot]')] = value
+            else:
+                modified_data_dict[key] = value
+        event.data = modified_data_dict
+
     elif direction is 'out':
-        pass
+        for key, value in event.data.iteritems():
+            if '[dot]' in key:
+                modified_data_dict[key.replace('[dot]', '.')] = value
+            else:
+                modified_data_dict[key] = value
+        event.data = modified_data_dict
     else:
         raise ValueError('Only in/out allowed as direction params')
+    return event

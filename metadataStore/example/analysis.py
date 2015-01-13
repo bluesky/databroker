@@ -1,6 +1,6 @@
 __author__ = 'arkilic'
 
-from metadataStore.api.analysis import find, find_last
+from metadataStore.api.analysis import find, find_last, find_event_descriptor, find_header, find_event
 import time
 
 start = time.time()
@@ -30,5 +30,13 @@ for hdr in hdrs2:
 
 print 'Here is the last scan recorded', find_last().id
 
+
+hdr = find_last()
+
+print find_event_descriptor(hdr)[0].data_keys
+print find_event_descriptor(hdr)[0].header_id.id
+print hdr.id
+
+print find_event(hdr)[0].data
 
 #TODO: Sample collection code of the old master should be working with this new version
