@@ -264,6 +264,18 @@ def find_event(header):
     #TODO: replace . with [dot] in and out of the database
     return Event.objects(header_id=header.id).order_by('-_id')
 
+def find_event_given_descriptor(event_descriptor):
+    """Return all Event(s) associated with an EventDescriptor
+
+    Parameters
+    ----------
+
+    event_descriptor: metadataStore.database.EventDescriptor
+    EventDescriptor instance
+
+    """
+    return Event.objects(descriptor_id=event_descriptor.id).order_by('-_id')
+
 
 def find(data=True, limit=50, **kwargs):
     """
