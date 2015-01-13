@@ -268,6 +268,7 @@ def find_event(header):
 
     return Event.objects(header_id=header.id).order_by('-_id')
 
+
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
 
