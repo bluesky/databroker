@@ -130,7 +130,7 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
     return event_descriptor
 
 
-def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
+def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kwargs):
     """Create an event in metadataStore database backend
 
     Parameters
@@ -162,12 +162,13 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
 
     connect(db=database, host=host, port=port)
 
-    event = Event(header_id=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no,
+    event = Event(header_id=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no, timestamp=timestamp,
                   data=data)
 
     event.owner = kwargs.pop('owner', None)
 
     event.description = kwargs.pop('description', None)
+    event.datetime_timestamp = kwargs.pop('datetime_timestamp', None)
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())

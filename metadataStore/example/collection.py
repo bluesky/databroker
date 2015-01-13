@@ -18,4 +18,4 @@ b = save_beamline_config(header=h)
 ed = save_event_descriptor(header=h, event_type_id=1, data_keys=['arman', 'arkilic'], descriptor_name=id_generator())
 
 
-save_event(header=h, event_descriptor=ed, seq_no=1, data={'a': 1, 'bc': 5})
+save_event(header=h, event_descriptor=ed, seq_no=1, timestamp=time.time(), data={'a': 1, 'bc': 5})
