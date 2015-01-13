@@ -178,6 +178,17 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
 
 
 def find_header(limit, **kwargs):
+    """
+    Parameters
+    ----------
+
+    limit:
+    kwargs:
+
+
+    """
+    #TODO: Add sample usage to documentation
+
     connect(db=database, host=host, port=port)
 
     search_dict = dict()
@@ -293,6 +304,16 @@ def find(data=True, limit=50, **kwargs):
 
 
 def find_last():
+    """Indexed on ObjectId NOT end_time. Returns the last created header not modified!!
+
+    Returns
+    -------
+
+
+
+    """
+    connect(db=database, host=host, port=port)
+
     return Header.objects.order_by('-_id')[0:1][0]
 
 
