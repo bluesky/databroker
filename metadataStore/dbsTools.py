@@ -52,7 +52,6 @@ def save_header(scan_id, start_time, end_time, **kwargs):
                     datetime_start_time=datetime_start_time,
                     datetime_end_time=datetime_end_time)
 
-
     header.owner = kwargs.pop('owner', None)
 
     header.beamline_id = kwargs.pop('beamline_id', None)
@@ -121,6 +120,8 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
                                        descriptor_name=descriptor_name)
 
     event_descriptor.type_descriptor = kwargs.pop('type_descriptor', None)
+
+    event_descriptor = __replace_descriptor_data_key_dots(event_descriptor, direction='in')
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
@@ -199,8 +200,6 @@ def find_header(limit, **kwargs):
     ...                                          'end': time.time()})
 
     """
-    #TODO: Add sample usage to documentation
-
     connect(db=database, host=host, port=port)
 
     search_dict = dict()
@@ -371,13 +370,19 @@ def __replace_descriptor_data_key_dots(event_descriptor, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-
+    modified_data_keys = list()
     if direction is 'in':
-        pass
+        for data_key in event_descriptor.data_keys:
+            if '.' in data_key:
+                modified_data_keys.append(data_key.replace('.', '[dot]'))
+            else:
+                modified_data_keys.append(data_key)
+        event_descriptor.data_keys = modified_data_keys
     elif direction is 'out':
         pass
     else:
         raise ValueError('Only in/out allowed as direction params')
+    return event_descriptor
 
 def __replace_event_data_key_dots(event, direction='in'):
     """Replace the '.' with [dot]
