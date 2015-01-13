@@ -252,16 +252,20 @@ def find_header(limit, **kwargs):
 
 
 def find_beamline_config(header):
+    connect(db=database, host=host, port=port)
     return BeamlineConfig.objects(header_id=header.id).order_by('-_id')
 
 
 def find_event_descriptor(header):
+    connect(db=database, host=host, port=port)
     #TODO: replace . with [dot] in and out of the database
     return EventDescriptor.objects(header_id=header.id).order_by('-_id')
 
 
 def find_event(header):
     #TODO: replace . with [dot] in and out of the database
+    connect(db=database, host=host, port=port)
+
     return Event.objects(header_id=header.id).order_by('-_id')
 
 def find_event_given_descriptor(event_descriptor):
@@ -274,6 +278,8 @@ def find_event_given_descriptor(event_descriptor):
     EventDescriptor instance
 
     """
+    connect(db=database, host=host, port=port)
+
     return Event.objects(descriptor_id=event_descriptor.id).order_by('-_id')
 
 
