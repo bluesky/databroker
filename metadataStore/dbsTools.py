@@ -158,7 +158,6 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
     Text description of specific event
 
     """
-
     #TODO: replace . with [dot] in and out of the database
 
     connect(db=database, host=host, port=port)
@@ -178,31 +177,12 @@ def save_event(header, event_descriptor, seq_no, data=None, **kwargs):
     return event
 
 
-def find(data=False, **kwargs):
-    """
-    Parameters
-    ---------
-
-    scan_id: int
-
-    owner: str
-
-    beamline_id: str
-
-    status: str
-
-    start_time: dict
-    start_time={'start': float, 'end': float}
-
-    end_time: dict
-    end_time={'start': float, 'end': float}
-
-    """
-
+def find_header(limit, **kwargs):
     connect(db=database, host=host, port=port)
 
     search_dict = dict()
 
+    #Do not want to pop if not in kwargs. Otherwise, breaks the mongo query
     try:
         search_dict['scan_id'] = kwargs.pop('scan_id')
     except KeyError:
@@ -254,17 +234,62 @@ def find(data=False, **kwargs):
         pass
 
     if search_dict:
-        res = Header.objects(__raw__=search_dict)[0:100]
+        header_objects = Header.objects(__raw__=search_dict).order_by('-_id')[:limit]
     else:
-        res = None
-
-    #TODO: Format the returned results and find related event_descriptor, event, etc.
-
-    return res
+        header_objects = list()
+    return header_objects
 
 
-def find2():
+def find_beamline_config(header):
+    return BeamlineConfig.objects(header_id=header.id)
+
+
+def find_event_descriptor():
+    #TODO: replace . with [dot] in and out of the database
+    return BeamlineConfig.objects(header_id=header.id)
+
+
+def find_event():
+    #TODO: replace . with [dot] in and out of the database
     pass
+
+
+def find(data=True, limit=50, **kwargs):
+    """
+    Returns dictionary of objects
+    Headers keyed on unique scan_id in header_scan_id format
+    data flag is set to True by default since users intuitively expect data back
+
+    Parameters
+    ---------
+
+    scan_id: int
+
+    owner: str
+
+    beamline_id: str
+
+    status: str
+
+    start_time: dict
+    start_time={'start': float, 'end': float}
+
+    end_time: dict
+    end_time={'start': float, 'end': float}
+
+    """
+    header_objects = find_header(limit, **kwargs)
+
+    if data:
+        beamline_config_objects = dict()
+        #Queryset instance returned by mongoengine not iterable, hence manual recursion
+        if header_objects:
+            for header in header_objects:
+                bcfg_obj = BeamlineConfig.objects(header_id=header.id)
+                beamline_config_objects[header.id] = find_beamline_config(header)
+                event_desc_obj = EventDescriptor.objects()
+
+    return header_objects, beamline_config_objects
 
 
 def find_last():
@@ -276,3 +301,49 @@ def __convert2datetime(time_stamp):
         return datetime.datetime.fromtimestamp(time_stamp)
     else:
         raise TypeError('Timestamp format is not correct!')
+
+
+def __replace_descriptor_data_key_dots(event_descriptor, direction='in'):
+    """Replace the '.' with [dot]
+    I know the name is long. Bite me, it is private routine and I have an IDE
+
+    Parameters
+    ---------
+
+    event_descriptor: metadataStore.database.event_descriptor.EventDescriptor
+    EvenDescriptor instance
+
+    direction: str
+    If 'in' ->  replace . with [dot]
+    If 'out' -> replace [dot] with .
+
+    """
+
+    if direction is 'in':
+        pass
+    elif direction is 'out':
+        pass
+    else:
+        raise ValueError('Only in/out allowed as direction params')
+
+def __replace_event_data_key_dots(event, direction='in'):
+    """Replace the '.' with [dot]
+    I know the name is long. Bite me, it is private routine and I have an IDE
+
+    Parameters
+    ---------
+
+    event_descriptor: metadataStore.database.event_descriptor.EventDescriptor
+    EvenDescriptor instance
+
+    direction: str
+    If 'in' ->  replace . with [dot]
+    If 'out' -> replace [dot] with .
+
+    """
+    if direction is 'in':
+        pass
+    elif direction is 'out':
+        pass
+    else:
+        raise ValueError('Only in/out allowed as direction params')

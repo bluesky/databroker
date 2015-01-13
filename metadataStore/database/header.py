@@ -59,4 +59,4 @@ class Header(Document):
 
     custom = DictField(unique=False, required=False)
 
-    meta = {'indexes': [('-scan_id', '_id', '-owner', '-start_time', '-end_time')]}
+    meta = {'indexes': ['-scan_id', '-_id', '-owner', '-start_time', '-end_time']}
