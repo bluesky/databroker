@@ -23,3 +23,4 @@ class FileAttributes(Document):
     last_access = FloatField(required=False, default=time.time())
     datetime_last_access = DateTimeField(required=False, default=datetime.fromtimestamp(last_access))
     in_use = BooleanField(required=False, default=0)
+    custom_attributes = DictField(required=False)
