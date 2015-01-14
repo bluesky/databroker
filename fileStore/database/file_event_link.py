@@ -1,7 +1,7 @@
 __author__ = 'arkilic'
 
 
-from mongoengine import Document, ReferenceField, DictField, DENY
+from mongoengine import Document, ReferenceField, DictField, DENY, StringField
 from fileStore.database import file_base
 
 
