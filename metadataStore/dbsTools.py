@@ -83,7 +83,7 @@ def save_beamline_config(header, config_params=None):
 
     connect(db=database, host=host, port=port)
 
-    beamline_config = BeamlineConfig(header_id=header.id, config_params=config_params)
+    beamline_config = BeamlineConfig(header=header.id, config_params=config_params)
     beamline_config.save(validate=True, write_concern={"w": 1})
 
     return beamline_config
@@ -116,7 +116,7 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
     #TODO: replace . with [dot] in and out of the database
     connect(db=database, host=host, port=port)
 
-    event_descriptor = EventDescriptor(header_id=header.id, event_type_id=event_type_id, data_keys=data_keys,
+    event_descriptor = EventDescriptor(header=header.id, event_type_id=event_type_id, data_keys=data_keys,
                                        descriptor_name=descriptor_name)
 
     event_descriptor.type_descriptor = kwargs.pop('type_descriptor', None)
@@ -161,7 +161,7 @@ def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kw
     """
     connect(db=database, host=host, port=port)
 
-    event = Event(header_id=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no, timestamp=timestamp,
+    event = Event(header=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no, timestamp=timestamp,
                   data=data)
 
     event.owner = kwargs.pop('owner', None)
@@ -264,13 +264,13 @@ def find_header(limit, **kwargs):
 
 def find_beamline_config(header):
     connect(db=database, host=host, port=port)
-    return BeamlineConfig.objects(header_id=header.id).order_by('-_id')
+    return BeamlineConfig.objects(header=header.id).order_by('-_id')
 
 
 def find_event_descriptor(header):
     event_descriptor_list = list()
     connect(db=database, host=host, port=port)
-    for event_descriptor in EventDescriptor.objects(header_id=header.id).order_by('-_id'):
+    for event_descriptor in EventDescriptor.objects(header=header.id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor, direction='out')
         event_descriptor_list.append(event_descriptor)
     return event_descriptor_list
@@ -280,7 +280,7 @@ def find_event(header):
     #TODO: replace . with [dot] in and out of the database
     connect(db=database, host=host, port=port)
     event_list = list()
-    for event in Event.objects(header_id=header.id).order_by('-_id'):
+    for event in Event.objects(header=header.id).order_by('-_id'):
         event = __replace_event_data_key_dots(event,direction='out')
         event_list.append(event)
     return event_list
@@ -297,10 +297,12 @@ def find_event_given_descriptor(event_descriptor):
     """
     connect(db=database, host=host, port=port)
 
-    #TODO: replace . with [dot] in and out of the database
+    event_list = list()
+    for event in Event.objects(descriptor=event_descriptor.id).order_by('-_id'):
+        event = __replace_event_data_key_dots(event,direction='out')
+        event_list.append(event)
 
-    return Event.objects(descriptor_id=event_descriptor.id).order_by('-_id')
-
+    return event_list
 
 def find(data=True, limit=50, **kwargs):
     """

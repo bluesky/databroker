@@ -8,6 +8,6 @@ class BeamlineConfig(Document):
     """
 
     """
-    header_id = ReferenceField(Header, required=True, reverse_delete_rule=DENY)
+    header = ReferenceField(Header, required=True, reverse_delete_rule=DENY)
     config_params = DictField(required=False, unique=False)
-    meta = {'indexes': [('-header_id', '-_id')]}
+    meta = {'indexes': [('-header', '-_id')]}

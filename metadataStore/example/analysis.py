@@ -34,9 +34,14 @@ print 'Here is the last scan recorded', find_last().id
 hdr = find_last()
 
 print find_event_descriptor(hdr)[0].data_keys
-print find_event_descriptor(hdr)[0].header_id.id
+
 print hdr.id
 
 print find_event(hdr)[0].data
+
+#Given an object, get other objects it hold a foreignkey
+#i.e. Event_object.event_descriptor, returns evet descriptor an event refers to
+
+print 'Here is a neat feature, behold...:', find_event_descriptor(hdr)[0].header, 'I know, cool right...'
 
 #TODO: Sample collection code of the old master should be working with this new version

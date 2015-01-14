@@ -17,10 +17,10 @@ class Event(Document):
     """
 
     default_timestamp = time.time()
-    header_id = ReferenceField(Header,reverse_delete_rule=DENY, required=True,
+    header = ReferenceField(Header,reverse_delete_rule=DENY, required=True,
                                db_field='header_id')
 
-    descriptor_id = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
+    descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                       required=True, db_field='descriptor_id')
 
     seq_no = IntField(min_value=0, required=True)
@@ -35,7 +35,7 @@ class Event(Document):
 
     datetime_timestamp = DateTimeField(required=True,
                                        default= datetime.fromtimestamp(default_timestamp))
-    meta = {'indexes': ['-header_id', '-descriptor_id', '-_id', '-timestamp']}
+    meta = {'indexes': ['-header', '-descriptor', '-_id', '-timestamp']}
 
     #TODO: change this header_id to header
     #TODO: change this descriptor_id to event_descriptor
