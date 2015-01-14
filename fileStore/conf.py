@@ -2,6 +2,6 @@ __author__ = 'arkilic'
 
 
 database = "fileStore"
-host = "kronos.nsls2.bnl.gov"
+host = "localhost"
 port = 27017
 

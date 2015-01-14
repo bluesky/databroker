@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 
-class FileAttributes(Document):
+class FileAttribute(Document):
     """
 
     Parameters
@@ -21,6 +21,6 @@ class FileAttributes(Document):
     total_bytes = IntField(min_value=0, required=False, default=0)
     hashed_data = StringField(required=False)
     last_access = FloatField(required=False, default=time.time())
-    datetime_last_access = DateTimeField(required=False, default=datetime.fromtimestamp(last_access))
+    datetime_last_access = DateTimeField(required=False)
     in_use = BooleanField(required=False, default=0)
     custom_attributes = DictField(required=False)
