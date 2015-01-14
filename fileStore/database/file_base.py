@@ -8,7 +8,7 @@ class FileBase(Document):
     """
 
     Parameters
-    ---------
+    ----------
 
     spec: str
     File spec used to primarily parse the contents into analysis environment
@@ -21,6 +21,6 @@ class FileBase(Document):
 
     """
 
-    spec = StringField(max_lenght=10, required=True, unique=False)
+    spec = StringField(max_length=10, required=True, unique=False)
     file_path = StringField(max_length=100, required=True, unique=False)
     custom = DictField(required=False)
