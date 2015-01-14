@@ -7,6 +7,7 @@ from metadataStore.database.event import Event
 import datetime
 from metadataStore.conf import host, port, database
 from mongoengine import connect
+import time
 #TODO: Add logger
 
 
@@ -353,6 +354,12 @@ def find_last():
     connect(db=database, host=host, port=port)
 
     return Header.objects.order_by('-_id')[0:1][0]
+
+
+def update_end_time(header, end_time=time.time()):
+    raise NotImplementedError('Coming soon. Let me finish fileStore refactoring bro...')
+    #TODO: Implement update end_time given header and end_time
+    #TODO: DOn't forget to do both unix time and datetime fields
 
 
 def __convert2datetime(time_stamp):
