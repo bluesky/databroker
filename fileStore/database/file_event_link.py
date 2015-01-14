@@ -1,4 +1,11 @@
 __author__ = 'arkilic'
 
 
-from
+from mongoengine import Document, ReferenceField, DictField, DENY
+from fileStore.database import file_base
+
+
+class FileEventLink(Document):
+    file_id = ReferenceField(file_base.FileBase, reverse_delete_rule=DENY, required=True)
+    event_id = StringField(required=True)
+    link_parameters = DictField(required=False)
