@@ -1,7 +1,7 @@
 __author__ = 'arkilic'
 
 from mongoengine import (Document, FloatField, DateTimeField, StringField, DictField, ReferenceField, \
-                        IntField, BooleanField, DENY)
+                         IntField, BooleanField, DENY)
 from fileStore.database.file_base import FileBase
 import time
 from datetime import datetime
