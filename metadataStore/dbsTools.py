@@ -31,7 +31,6 @@ def save_header(scan_id, start_time, end_time, **kwargs):
     owner: str
     Specifies the unix user credentials of the user creating the entry
 
-
     beamline_id: str
     Beamline String identifier. Not unique, just an indicator of beamline code for multiple beamline systems
 
