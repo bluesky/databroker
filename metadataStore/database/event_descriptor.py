@@ -18,6 +18,3 @@ class EventDescriptor(Document):
     descriptor_name = StringField(max_length=10, required=False, unique=True)
     type_descriptor = DictField(required=False)
     meta = {'indexes': [('-header', '-descriptor_name')]}
-#TODO: change this header_id to header
-
-

@@ -113,7 +113,6 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
     Additional name/value pairs can be added to an event_descriptor using this flexible field
 
     """
-    #TODO: replace . with [dot] in and out of the database
     connect(db=database, host=host, port=port)
 
     event_descriptor = EventDescriptor(header=header.id, event_type_id=event_type_id, data_keys=data_keys,
@@ -277,13 +276,13 @@ def find_event_descriptor(header):
 
 
 def find_event(header):
-    #TODO: replace . with [dot] in and out of the database
     connect(db=database, host=host, port=port)
     event_list = list()
     for event in Event.objects(header=header.id).order_by('-_id'):
         event = __replace_event_data_key_dots(event,direction='out')
         event_list.append(event)
     return event_list
+
 
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
@@ -296,13 +295,13 @@ def find_event_given_descriptor(event_descriptor):
 
     """
     connect(db=database, host=host, port=port)
-
     event_list = list()
     for event in Event.objects(descriptor=event_descriptor.id).order_by('-_id'):
         event = __replace_event_data_key_dots(event,direction='out')
         event_list.append(event)
 
     return event_list
+
 
 def find(data=True, limit=50, **kwargs):
     """
