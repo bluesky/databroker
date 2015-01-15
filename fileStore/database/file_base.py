@@ -24,4 +24,6 @@ class FileBase(Document):
     spec = StringField(max_length=10, required=True, unique=False)
     file_path = StringField(max_length=100, required=True, unique=False)
     custom = DictField(required=False)
+    meta = {'indexes': ['-file_path', '-_id']}
+
 #TODO: add indexing
