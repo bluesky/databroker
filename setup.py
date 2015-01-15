@@ -79,7 +79,7 @@ setup(
     ],
     long_description=read('README.md'),
     classifiers=[
-        "License :: OSI Approved :: BSD License",
+        "License :: OSI Approved :: EPICS License",
         "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 2.7",
     ],

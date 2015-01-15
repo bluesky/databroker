@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 
-class FileAttribute(Document):
+class FileAttributes(Document):
     """
 
     Parameters
