@@ -24,3 +24,5 @@ class FileAttributes(Document):
     datetime_last_access = DateTimeField(required=False)
     in_use = BooleanField(required=False, default=0)
     custom_attributes = DictField(required=False)
+#TODO: add indexing
+#TODO: add documentation
