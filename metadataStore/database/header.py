@@ -35,8 +35,9 @@ class Header(Document):
     custom: dict
     Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
 
-
     """
+    #TODO: Per discussion with Stuart delete end_time and modify start_time to creation_time
+
     default_time_stamp = time.time()
 
     scan_id = IntField(required=True, unique=True)
