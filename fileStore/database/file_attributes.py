@@ -22,7 +22,7 @@ class FileAttributes(Document):
     hashed_data = StringField(required=False)
     last_access = FloatField(required=False, default=time.time())
     datetime_last_access = DateTimeField(required=False)
-    in_use = BooleanField(required=False, default=0)
+    in_use = BooleanField(required=False, default=False)
     custom_attributes = DictField(required=False)
 #TODO: add indexing
 #TODO: add documentation

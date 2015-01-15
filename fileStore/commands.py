@@ -32,7 +32,7 @@ def save_file_base(spec, file_path, custom=None):
     return file_base_object
 
 
-def save_file_attributes(file_base, **kwargs):
+def save_file_attributes(file_base, shape, dtype, **kwargs):
     """
 
     file_base:
@@ -46,10 +46,8 @@ def save_file_attributes(file_base, **kwargs):
 
     connect(db=database, host=host, port=port)
 
-    file_attributes = FileAttributes(file_base=file_base.id)
+    file_attributes = FileAttributes(file_base=file_base.id, shape=shape, dtype=dtype)
 
-    file_attributes.shape = kwargs.pop('shape', None)
-    file_attributes.dtype = kwargs.pop('dtype', None)
     file_attributes.total_bytes = kwargs.pop('total_bytes', None)
     file_attributes.hashed_data = kwargs.pop('hashed_data', None)
     file_attributes.last_access = kwargs.pop('last_access', None)
@@ -57,6 +55,9 @@ def save_file_attributes(file_base, **kwargs):
     file_attributes.in_use = kwargs.pop('in_use', None)
     file_attributes.custom_attributes = kwargs.pop('custom_attributes', None)
 
+    if kwargs:
+        raise AttributeError(kwargs.keys() + '  field(s) are not among attribute keys. Use custom attributes'
+                                             ' dict for saving it')
     file_attributes.save(validate=True, write_concern={"w": 1})
 
     return file_attributes
@@ -106,6 +107,7 @@ def find_last():
     connect(db=database, host=host, port=port)
 
     return FileBase.objects.order_by('-_id')[0:1][0]
+
 
 def find():
 
