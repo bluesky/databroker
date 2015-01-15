@@ -72,9 +72,11 @@ def save_file_event_link(file_base, event_id, link_parameters=None):
     file_base: fileStore.database.file_base.FileBase
         FileBase object
 
-    event_id:
+    event_id: str
+        metadataStore unique event identifier in string format
 
-    link_parameters:
+    link_parameters: dict
+        custom dict required for appending name/value pairs as desired
 
     """
 
@@ -89,21 +91,18 @@ def save_file_event_link(file_base, event_id, link_parameters=None):
 def find_file_base(**kwargs):
 
     query_dict = dict()
-
+    print kwargs
     connect(db=database, host=host, port=port)
 
     try:
-        query_dict['spec'] = kwargs.pop['spec']
+        query_dict['spec'] = kwargs.pop('spec')
     except:
         pass
 
     try:
-        query_dict['file_path'] = kwargs.pop['file_path']
+        query_dict['file_path'] = kwargs.pop('file_path')
     except:
         pass
-
-    if kwargs:
-        raise AttributeError('Search on ', kwargs.keys(), ' is not provided')
 
     file_base_objects = FileBase.objects(__raw__=query_dict).order_by('-_id')
 
@@ -123,7 +122,7 @@ def find_file_event_link(file_base=None, event_id=None):
     else:
         raise AttributeError('Search parameters are invalid. file_base or event_id search is possible')
 
-    return FileEventLink.objects(__raw__=query_dict).order_by('-_id')
+    return FileEventLink.objects(__raw__=query_dict)
 
 
 
@@ -143,6 +142,28 @@ def find_last():
     return FileBase.objects.order_by('-_id')[0:1][0]
 
 
-def find():
+def find_file_attributes(file_base):
+    """Return  file_attributes entry given a file_header object
 
-    raise NotImplementedError('Commands coming soon')
+    Parameters
+    ----------
+    file_base: fileStore.database.file_base.FileBase
+        FileBase object
+
+    """
+
+    connect(db=database, host=host, port=port)
+
+    return FileAttributes.objects(file_base=file_base.id)
+
+
+def find(properties=True, **kwargs):
+    file_attribute_objects = list()
+    file_event_link_objects = list()
+    file_base_objects = find_file_base(**kwargs)
+
+    for file_base_object in file_base_objects:
+        file_attribute_objects.append(find_file_attributes(file_base=file_base_object))
+        file_event_link_objects.append(find_file_event_link(file_base=file_base_object))
+
+    return file_base_objects, file_attribute_objects, file_event_link_objects

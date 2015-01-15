@@ -26,4 +26,3 @@ class FileBase(Document):
     custom = DictField(required=False)
     meta = {'indexes': ['-file_path', '-_id']}
 
-#TODO: add indexing

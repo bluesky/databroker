@@ -13,6 +13,7 @@ class FileAttributes(Document):
     Parameters
     ----------
 
+
     """
     file_base = ReferenceField(FileBase, reverse_delete_rule=DENY, required=True,
                                db_field='file_base_id')
@@ -24,5 +25,5 @@ class FileAttributes(Document):
     datetime_last_access = DateTimeField(required=False)
     in_use = BooleanField(required=False, default=False)
     custom_attributes = DictField(required=False)
-#TODO: add indexing
+    meta = {'indexes': ['-_id', '-shape', '-dtype']}
 #TODO: add documentation
