@@ -12,9 +12,10 @@
 
 
 import nose
-from skxray.testing.noseclasses import KnownFailure
+# from skxray.testing.noseclasses import KnownFailure
 
-plugins = [KnownFailure]
+# plugins = [KnownFailure]
+plugins = []
 env = {"NOSE_WITH_COVERAGE": 1,
        'NOSE_COVER_PACKAGE': 'fileStore',
        'NOSE_COVER_HTML': 1}
