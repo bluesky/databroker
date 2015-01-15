@@ -45,7 +45,7 @@ from fileStore.database.file_base import FileBase
 from fileStore.database.file_event_link import FileEventLink
 import fileStore.retrieve as fsr
 import numpy as np
-from nose.tools import assert_equal, assert_true, assert_raises
+from nose.tools import assert_true, assert_raises
 from contextlib import contextmanager
 
 
@@ -73,7 +73,7 @@ mock_base = FileBase(spec='syn-mod',
 mock_event = {n: FileEventLink(file_base=mock_base,
                                event_id=n,
                                link_parameters={'n': n})
-                               for n in range(1, 50)}
+                               for n in range(1, 3)}
 
 
 @contextmanager
