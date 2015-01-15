@@ -10,13 +10,14 @@ class FileBase(Document):
     Parameters
     ----------
 
-    spec: str
-        File spec used to primarily parse the contents into analysis environment
+    spec : str
+        File spec used to primarily parse the contents into
+        analysis environment
 
-    file_path: str
+    file_path : str
         Url to the physical location of the file
 
-    custom: dict
+    custom : dict
         custom name/value container in case additional info save is required
 
     """
@@ -26,4 +27,3 @@ class FileBase(Document):
     custom = DictField(required=False)
     collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-file_path', '-_id']}
-
