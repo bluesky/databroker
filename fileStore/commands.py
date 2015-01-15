@@ -86,11 +86,28 @@ def save_file_event_link(file_base, event_id, link_parameters=None):
     return file_event_link
 
 
-def find_file_base():
+def find_file_base(**kwargs):
+
+    query_dict = dict()
 
     connect(db=database, host=host, port=port)
 
-    raise NotImplementedError('Commands coming soon')
+    try:
+        query_dict['spec'] = kwargs.pop['spec']
+    except:
+        pass
+
+    try:
+        query_dict['file_path'] = kwargs.pop['file_path']
+    except:
+        pass
+
+    if kwargs:
+        raise AttributeError('Search on ', kwargs.keys(), ' is not provided')
+
+    file_base_objects = FileBase.objects(__raw__=query_dict).order_by('-_id')
+
+    return file_base_objects
 
 
 def find_last():
