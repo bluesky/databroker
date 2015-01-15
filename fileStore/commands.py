@@ -105,8 +105,7 @@ def find_last():
 
     connect(db=database, host=host, port=port)
 
-    raise NotImplementedError('Commands coming soon')
-
+    return FileBase.objects.order_by('-_id')[0:1][0]
 
 def find():
 
