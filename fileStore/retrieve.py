@@ -75,9 +75,8 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     Parameters
     ----------
-    base_fs_document : dict
-        Required to have the key 'spec' and 'fileid', all others
-        are blindly passed to the Handler
+    base_fs_document : FileBase
+        FileBase document.
 
     handle_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
@@ -85,8 +84,6 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     Returns
     -------
-    fid : str
-        A unique id for this resource
 
     handler : callable
         An object that when called with the values in the event
@@ -96,16 +93,14 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     if handle_registry is None:
         handle_registry = _h_registry
-
-    fs_doc = dict(base_fs_document)
-    spec = fs_doc.pop(SPEC_KEY)
-    fid = fs_doc.pop(FID_KEY)
-    kwargs = fs_doc.pop(BASE_CUSTOM_KEY)
-    fpath = fs_doc.pop(FPATH_KEY)
-    return fid, handle_registry[spec](fpath, **kwargs)
+    fs_doc = base_fs_document
+    spec = fs_doc.spec
+    kwargs = fs_doc.custom
+    fpath = fs_doc.file_path
+    return handle_registry[spec](fpath, **kwargs)
 
 
-def get_data(events_fs_doc, get_handler_method):
+def get_data(events_fs_doc, handle_registry=None):
     """
     Given a document from the events collection, get the externally
     stored data.
@@ -115,17 +110,21 @@ def get_data(events_fs_doc, get_handler_method):
 
     Parameters
     ----------
-    events_fs_doc : dict
-        Document from the events collection
+    events_fs_doc : FileEventLink
+        Document identifying the data resource
 
     get_handler_method : callable
         A function which takes a fid and returns a handler.  This should
         eventually be optional(?) and default to hitting the mongodb.
+
+    Returns
+    -------
+    data : ndarray
+        The data in ndarray form.
     """
 
-    fs_doc = dict(events_fs_doc)
-    eid = fs_doc.pop(EID_KEY)
-    fid = fs_doc.pop(FID_KEY)
-    kwargs = fs_doc.pop(EVENT_CUSTOM_KEY)
-    handler = get_handler_method(fid)
-    return eid, handler(**kwargs)
+    fs_doc = events_fs_doc
+
+    kwargs = fs_doc.link_parameters
+    handler = get_spec_handler(fs_doc.file_base, handle_registry)
+    return handler(**kwargs)

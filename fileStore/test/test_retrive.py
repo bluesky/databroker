@@ -41,8 +41,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from fileStore.retrieve import HandlerBase
-from fileStore import  (EID_KEY, SPEC_KEY, FID_KEY, FPATH_KEY,
-                        BASE_CUSTOM_KEY, EVENT_CUSTOM_KEY)
+from fileStore.database.file_base import FileBase
+from fileStore.database.file_event_link import FileEventLink
 import fileStore.retrieve as fsr
 import numpy as np
 from nose.tools import assert_equal, assert_true, assert_raises
@@ -66,21 +66,14 @@ class SynHandlerMod(HandlerBase):
     def __call__(self, n):
         return np.mod(np.arange(self._N), n).reshape(self._shape)
 
-mock_base = {0: {FID_KEY: 0,
-                 SPEC_KEY: 'syn-mod',
-                 FPATH_KEY: '',
-                 BASE_CUSTOM_KEY: {
-                 'shape': (5, 7)}}}
+mock_base = FileBase(spec='syn-mod',
+                     file_path='',
+                     custom={'shape': (5, 7)})
 
-mock_event = {n: {FID_KEY: 0, EID_KEY: n,
-                  EVENT_CUSTOM_KEY: {'n': n}}
-                for n in range(1, 15)}
-
-
-def get_handler_mock(fid):
-    fid, handler = fsr.get_spec_handler(mock_base[fid],
-                                {'syn-mod': SynHandlerMod})
-    return handler
+mock_event = {n: FileEventLink(file_base=mock_base,
+                               event_id=n,
+                               link_parameters={'n': n})
+                               for n in range(1, 50)}
 
 
 @contextmanager
@@ -94,17 +87,16 @@ def test_get_handler_global():
 
     with fsr_reg_context():
 
-        fs_doc = mock_base[0]
-        fid, handle = fsr.get_spec_handler(fs_doc)
+        fs_doc = mock_base
+        handle = fsr.get_spec_handler(fs_doc)
 
-        assert_equal(fid, 0)
         assert_true(isinstance(handle, SynHandlerMod))
 
 
 def _help_test_data(event_doc):
-    eid, data = fsr.get_data(event_doc, get_handler_mock)
-    assert_equal(eid, event_doc[EID_KEY])
-    assert_true(np.all(data < eid))
+    data = fsr.get_data(event_doc, {'syn-mod': SynHandlerMod})
+
+    assert_true(np.all(data < event_doc.event_id))
 
 
 def test_get_data():
