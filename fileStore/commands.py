@@ -110,6 +110,23 @@ def find_file_base(**kwargs):
     return file_base_objects
 
 
+def find_file_event_link(file_base=None, event_id=None):
+
+    query_dict = dict()
+
+    connect(db=database, host=host, port=port)
+
+    if file_base is not None:
+        query_dict['file_base'] = file_base.id
+    elif event_id is not None:
+        query_dict['event_id'] = event_id
+    else:
+        raise AttributeError('Search parameters are invalid. file_base or event_id search is possible')
+
+    return FileEventLink.objects(__raw__=query_dict).order_by('-_id')
+
+
+
 def find_last():
     """Searches for the last file_base created
 
