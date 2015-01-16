@@ -24,7 +24,7 @@ class FileEventLink(Document):
     file_base = ReferenceField(file_base.FileBase,
                                reverse_delete_rule=DENY,
                                required=True)
-    event_id = StringField(required=True)
+    event_id = StringField(required=True, unique=True)
     link_parameters = DictField(required=False)
     collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-_id', '-event_id', '-file_base']}
