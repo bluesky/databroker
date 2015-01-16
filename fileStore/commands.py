@@ -1,11 +1,12 @@
 __author__ = 'arkilic'
-
 from mongoengine import connect
-from conf import database, host, port
-from fileStore.database.file_base import FileBase
-from fileStore.database.file_attributes import FileAttributes
-from fileStore.database.file_event_link import FileEventLink
-#TODO: Add documentation
+
+from .conf import database, host, port
+from .database.file_base import FileBase
+from .database.file_attributes import FileAttributes
+from .database.file_event_link import FileEventLink
+from .retrieve import get_data as _get_data
+# TODO: Add documentation
 
 
 def save_file_base(spec, file_path, custom=None, collection_version=0):
