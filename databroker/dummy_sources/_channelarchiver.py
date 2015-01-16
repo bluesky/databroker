@@ -14,6 +14,7 @@ from datetime import datetime as dt  # noqa, used by eval()
 class Archiver(object):
 
     def __init__(self, host):
+        # TODO Define the toy data here.
         pass
 
     def get(self, channels, start, end, limit=100, interpolation='linear',
