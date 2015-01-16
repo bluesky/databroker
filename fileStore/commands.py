@@ -8,7 +8,7 @@ from fileStore.database.file_event_link import FileEventLink
 #TODO: Add documentation
 
 
-def save_file_base(spec, file_path, custom=None):
+def save_file_base(spec, file_path, custom=None, collection_version=0):
     """
     Parameters
     ----------
@@ -25,14 +25,14 @@ def save_file_base(spec, file_path, custom=None):
     """
     connect(db=database, host=host, port=port)
 
-    file_base_object = FileBase(spec=spec, file_path=file_path, custom=custom)
+    file_base_object = FileBase(spec=spec, file_path=file_path, custom=custom, collection_version=collection_version)
 
     file_base_object.save(validate=True, write_concern={"w": 1})
 
     return file_base_object
 
 
-def save_file_attributes(file_base, shape, dtype, **kwargs):
+def save_file_attributes(file_base, shape, dtype, collection_version=0, **kwargs):
     """
 
     file_base:
@@ -46,7 +46,8 @@ def save_file_attributes(file_base, shape, dtype, **kwargs):
 
     connect(db=database, host=host, port=port)
 
-    file_attributes = FileAttributes(file_base=file_base.id, shape=shape, dtype=dtype)
+    file_attributes = FileAttributes(file_base=file_base.id, shape=shape, dtype=dtype,
+                                     collection_version=collection_version)
 
     file_attributes.total_bytes = kwargs.pop('total_bytes', None)
     file_attributes.hashed_data = kwargs.pop('hashed_data', None)
@@ -63,7 +64,7 @@ def save_file_attributes(file_base, shape, dtype, **kwargs):
     return file_attributes
 
 
-def save_file_event_link(file_base, event_id, link_parameters=None):
+def save_file_event_link(file_base, event_id, link_parameters=None, collection_version=0):
     """
 
     Parameters
@@ -133,13 +134,18 @@ def find_last():
     --------
 
     FileBase object
-    #I know i am violating numpy docs like a turkish in open buffet but have not looked into how to use it yet!
+    #I know i am violating numpy docs like a turkish in open buffet but have not looked into how to use it yet, until
+    #we decide what doc format to use, I will not bother, just write stuff we need for any format!
 
     """
 
     connect(db=database, host=host, port=port)
 
-    return FileBase.objects.order_by('-_id')[0:1][0]
+    result = FileBase.objects.order_by('-_id')[0:1][0]
+    if result:
+        return result
+    else:
+        return []
 
 
 def find_file_attributes(file_base):

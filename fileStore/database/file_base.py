@@ -1,7 +1,7 @@
 __author__ = 'arkilic'
 
 
-from mongoengine import Document, StringField, DictField
+from mongoengine import Document, StringField, DictField, FloatField
 
 
 class FileBase(Document):
@@ -24,5 +24,6 @@ class FileBase(Document):
     spec = StringField(max_length=10, required=True, unique=False)
     file_path = StringField(max_length=100, required=True, unique=False)
     custom = DictField(required=False)
+    collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-file_path', '-_id']}
 

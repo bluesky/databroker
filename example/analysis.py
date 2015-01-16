@@ -24,4 +24,3 @@ start3 = time.time()
 base3, attributes3, event_links3  = find(spec='some spec')
 end3 = time.time()
 print "Query time to get the a file and all its properties...: ", str((end3-start3)*1000) , ' milliseconds'
-

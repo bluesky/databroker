@@ -25,5 +25,6 @@ class FileAttributes(Document):
     datetime_last_access = DateTimeField(required=False)
     in_use = BooleanField(required=False, default=False)
     custom_attributes = DictField(required=False)
+    collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-_id', '-shape', '-dtype']}
 #TODO: add documentation
