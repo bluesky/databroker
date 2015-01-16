@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 __author__ = 'arkilic'
 from mongoengine import connect
 
@@ -93,7 +95,6 @@ def save_file_event_link(file_base, event_id, link_parameters=None, collection_v
 def find_file_base(**kwargs):
 
     query_dict = dict()
-    print kwargs
     connect(db=database, host=host, port=port)
 
     try:
