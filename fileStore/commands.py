@@ -174,3 +174,25 @@ def find(properties=True, **kwargs):
         file_event_link_objects.append(find_file_event_link(file_base=file_base_object))
 
     return file_base_objects, file_attribute_objects, file_event_link_objects
+
+
+def retrieve_data(eid):
+    """
+    Given a resource identifier return the data.
+
+    Parameters
+    ----------
+    eid : str
+        The resource ID (as stored in MDS)
+
+    Returns
+    -------
+    data : ndarray
+        The requested data as a numpy array
+    """
+    edocs = find_file_event_link(event_id=eid)
+    # TODO add sanity checks
+    if edocs:
+        return _get_data(edocs[0])
+    else:
+        raise ValueError("none found")
