@@ -14,8 +14,9 @@ import fileStore.retrieve as fsr
 from fileStore.database.file_base import FileBase
 from fileStore.database.file_event_link import FileEventLink
 from numpy.testing import assert_array_equal
+from nose.tools import assert_raises
 
-from .t_utils import SynHandlerMod, SynHandlerEcho
+from .t_utils import SynHandlerMod
 
 db_name = str(uuid.uuid4())
 dummy_db_name = str(uuid.uuid4())
@@ -66,3 +67,8 @@ def test_round_trip():
         data = fc.retrieve_data(r_id)
         known_data = np.mod(np.arange(np.prod(shape)), j + 1).reshape(shape)
         assert_array_equal(data, known_data)
+
+
+@context_decorator
+def test_non_exist():
+    assert_raises(ValueError, fc.retrieve_data, 'aardvark')
