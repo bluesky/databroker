@@ -40,31 +40,14 @@ import six
 import logging
 logger = logging.getLogger(__name__)
 
-from fileStore.retrieve import HandlerBase
+
 from fileStore.database.file_base import FileBase
 from fileStore.database.file_event_link import FileEventLink
 import fileStore.retrieve as fsr
 import numpy as np
-from nose.tools import assert_true, assert_raises
-from contextlib import contextmanager
+from nose.tools import assert_true, assert_raises, assert_false
 
-
-class SynHandlerMod(HandlerBase):
-    """
-    A handler for synthetic data which will return a ramp % n reshaped
-    to the frame size for frame n
-
-    Parameters
-    ----------
-    shape : tuple
-        The shape of the frame
-    """
-    def __init__(self, fpath, shape):
-        self._shape = tuple(int(v) for v in shape)
-        self._N = np.prod(self._shape)
-
-    def __call__(self, n):
-        return np.mod(np.arange(self._N), n).reshape(self._shape)
+from .t_utils import SynHandlerMod, SynHandlerEcho
 
 mock_base = FileBase(spec='syn-mod',
                      file_path='',
@@ -76,16 +59,9 @@ mock_event = {n: FileEventLink(file_base=mock_base,
                                for n in range(1, 3)}
 
 
-@contextmanager
-def fsr_reg_context():
-    fsr.register_handler('syn-mod', SynHandlerMod)
-    yield
-    del fsr._h_registry['syn-mod']
-
-
 def test_get_handler_global():
 
-    with fsr_reg_context():
+    with fsr.handler_context({'syn-mod': SynHandlerMod}):
 
         fs_doc = mock_base
         handle = fsr.get_spec_handler(fs_doc)
@@ -111,6 +87,19 @@ def test_context():
 
 
 def test_register_fail():
-    with fsr_reg_context():
+    with fsr.handler_context({'syn-mod': SynHandlerMod}):
+        # shouldn't raise, it is a no-op as it is regiristering
+        # the same class with the same name
+        fsr.register_handler('syn-mod', SynHandlerMod)
+        # should raise as it is trying to change the registered class
         assert_raises(RuntimeError, fsr.register_handler,
-                      'syn-mod', SynHandlerMod)
+                      'syn-mod', SynHandlerEcho)
+
+
+def test_context_manager_replace():
+    with fsr.handler_context({'syn-mod': SynHandlerMod}):
+        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
+        with fsr.handler_context({'syn-mod': SynHandlerEcho}):
+            assert_true(fsr._h_registry['syn-mod'] is SynHandlerEcho)
+        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
+    assert_false('syn-mod' in fsr._h_registry)

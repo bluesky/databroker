@@ -5,8 +5,7 @@ import six
 import logging
 logger = logging.getLogger(__name__)
 
-from . import (EID_KEY, SPEC_KEY, FID_KEY, FPATH_KEY,
-               BASE_CUSTOM_KEY, EVENT_CUSTOM_KEY)
+from contextlib import contextmanager
 
 
 class HandlerBase(object):
@@ -46,6 +45,8 @@ class HandlerRegistry(dict):
             free parameters from the FS documents
         """
         if key in self:
+            if self[key] is handler:
+                return
             raise RuntimeError("You are trying to register a second handler "
                                "for spec {}, {}".format(key, self))
 
@@ -55,6 +56,26 @@ class HandlerRegistry(dict):
 # singleton module-level registry, not 100% with
 # this design choice
 _h_registry = HandlerRegistry()
+
+
+@contextmanager
+def handler_context(temp_handlers):
+    remove_list = []
+    replace_list = []
+    for k, v in six.iteritems(temp_handlers):
+        if k not in _h_registry:
+            remove_list.append(k)
+        else:
+            old_h = _h_registry.pop(k)
+            replace_list.append((k, old_h))
+        _h_registry.register_handler(k, v)
+
+    yield
+    for k in remove_list:
+        del _h_registry[k]
+    for k, v in replace_list:
+        del _h_registry[k]
+        _h_registry.register_handler(k, v)
 
 
 def register_handler(key, handler):
