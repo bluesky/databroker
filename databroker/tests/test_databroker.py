@@ -7,20 +7,27 @@ class TestDataBroker(unittest.TestCase):
     def setUp(self):
         switch(metadatastore=False)
 
-    def test_codename_works(self):
+    def test_instantiation(self):
+        # codename works
         DataBroker('23id')
         DataBroker('23ID')
 
-    def test_alias_works(self):
+        # alias works
         DataBroker('csx')
         DataBroker('CSX')
         DataBroker('CsX')
 
-    def test_gibberish_fails(self):
+        # gibberish fails
         self.assertRaises(ValueError, lambda: DataBroker('zzzzzz'))
 
-    def test_nonstring_fails(self):
+        # nonstring fails
         self.assertRaises(NotImplementedError, lambda: DataBroker(1))
+
+    def test_basic_search(self):
+        broker = DataBroker('srx')
+        broker.search('2015-01-01', '2015-02-01')
 
     def tearDown(self):
         switch(metadatastore=True)
+
+    

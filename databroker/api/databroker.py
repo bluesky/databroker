@@ -27,4 +27,4 @@ class DataBroker(object):
         find2 = sources.metadataStore.api.analysis.find2
         metadata = find2(start_time, end_time, beamline_id=self.beamline_id)
         print(metadata)
-        return Data()
+        return Data([])
