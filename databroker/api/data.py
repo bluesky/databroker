@@ -35,7 +35,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from enaml.qt import QtCore
 from collections import namedtuple, OrderedDict, Counter
 import pandas as pd
 import numpy as np
@@ -43,80 +42,6 @@ from pims.base_frames import FramesSequence
 from pims.frame import Frame
 
 from skimage.io import imread
-
-
-class PipelineComponent(QtCore.QObject):
-    """
-    The top-level object to represent a component in the quick-and-dirty
-    live-data pipe line.
-
-    WARNING these docs do not match what is written, but are what _should_
-    be written.  Currently the message is serving as the index which should
-    probably be packed in with the data or as it own argument.  In either
-    case we need to talk to the controls group before spending the effort to
-    re-factor.
-
-    This class provides the basic machinery for the signal and
-    slot required for the hooking up the pipeline.
-
-    The processing function needs to be provided at instantiation:
-
-        def process_msg(message, data_object):
-            # do stuff with message/data
-            return result_message, result_data
-
-    This function can also return `None` to indicate that there is no
-    output for further processing.
-
-    The schema for managing the content of the messages will be pinned down
-    at a later date.
-
-    Currently this scheme does not type-check to ensure that the pipeline
-    connections are correct or valid before the pipeline is executed
-
-    Parameters
-    ----------
-    process_function : callable
-        Must have the following signature:
-
-        def process_msg(message, data_object):
-            # do stuff with message/data
-            return result_message, result_data
-            # return None
-
-    """
-    source_signal = QtCore.Signal(object, object)
-
-    def __init__(self, process_function, **kwargs):
-        super(PipelineComponent, self).__init__(**kwargs)
-        self._process_msg = process_function
-
-    @QtCore.Slot(object, object)
-    def sink_slot(self, message, data_payload):
-        """
-        This function is the entry point for pushing data through
-        this node in the pipeline.
-
-        Parameters
-        ----------
-        timestamp : datetime or sequence of datetime
-            The timestamp that aligns with the data in the data payload
-
-        data_payload : object
-            dict of lists or something that looks like it.
-
-
-        """
-        try:
-            ret = self._process_msg(message, data_payload)
-        except Exception as E:
-            # yes, gotta catch 'em all!!
-            print("something failed")
-            print(E)
-            print(message, data_payload)
-        else:
-            if ret is not None:
-                self.source_signal.emit(*ret)
 
 
 class Unalignable(Exception):
@@ -160,7 +85,7 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
         return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
 
 
-class DataMuggler(QtCore.QObject):
+class DataMuggler(object):
     """
     This class provides a wrapper layer of signals and slots
     around a pandas DataFrame to make plugging stuff in for live
@@ -194,15 +119,6 @@ class DataMuggler(QtCore.QObject):
         won't apply to frames added as arrays.
 
     """
-    # this is a signal emitted when the muggler has new data that clients
-    # can grab.  The names of the columns that have new data are emitted
-    # as a list
-    new_data = QtCore.Signal(list)
-
-    # this is a signal emitted when the muggler has new data sets that clients
-    # can grab. The names of the new columns are emitted as a list
-    new_columns = QtCore.Signal(list)
-
     def __init__(self, col_info, max_frames=1000, use_pims_fs=True, **kwargs):
         super(DataMuggler, self).__init__(**kwargs)
         # make all of the data structures
@@ -243,8 +159,6 @@ class DataMuggler(QtCore.QObject):
         for ci in col_info:
             self.add_column(ci)
 
-        self.new_columns.emit(self.keys())
-
     def add_column(self, col_info):
         """
         Adds a column to the DataMuggler
@@ -277,8 +191,6 @@ class DataMuggler(QtCore.QObject):
 
         self._dataframe[col_info.name] = pd.Series(np.nan,
                                                    index=self._dataframe.index)
-        # emit a signal that we have a new column
-        self.new_columns.emit([col_info.name])
 
     def clear(self):
         """
@@ -421,8 +333,6 @@ class DataMuggler(QtCore.QObject):
         self._dataframe.sort(inplace=True)
         # get rid of excess frames
         self._drop_data()
-        # emit that we have new data!
-        self.new_data.emit(list(data_dict))
 
     def _drop_data(self):
         """
@@ -677,147 +587,6 @@ class DataMuggler(QtCore.QObject):
             else:
                 ret_dict[col] = ws
         return df.index, ret_dict
-
-
-class MuggleWatcherLatest(QtCore.QObject):
-    """
-    This is a class that watches a DataMuggler for the `new_data` signal, grabs
-    the lastest row (filling in data from other rows as needed) for the
-    selected columns.  You probably should not extract columns which fill back
-    as they will come out as NaN (I think).
-
-    Parameters
-    ----------
-    muggler : DataMuggler
-        The muggler to keep tabs on
-
-    ref_col : str
-        The name of the 'master' column to watch for new data
-
-    other_cols : list of str
-        A list of column names to return data from in addition to 'ref_col'
-    """
-
-    # signal to emit index (time) + data
-    sig = QtCore.Signal(object, dict)
-
-    def __init__(self, muggler, ref_col, other_cols, **kwargs):
-        super(MuggleWatcherLatest, self).__init__(**kwargs)
-        self._muggler = muggler
-        self._ref_col = ref_col
-        self._other_cols = other_cols
-        self._muggler.new_data.connect(self.process_message)
-
-    @QtCore.Slot(list)
-    def process_message(self, updated_cols):
-        """
-        Process the updates from the muggler to see if there
-        is anything we need to deal with.
-
-        Parameters
-        ----------
-        updated_cols : list
-            Updated columns
-
-        """
-        if self._ref_col in updated_cols:
-            indices, results_dict = self._muggler.get_last_value(
-                self._ref_col, self._other_cols)
-            self.sig.emit(indices, results_dict)
-
-
-class MuggleWatcherTwoLists(QtCore.QObject):
-    """
-    This class watches a DataMuggler and when it gets new data extracts
-    all of the time series data, for two columns and emits both as lists
-
-    Parameters
-    ----------
-    muggler : DataMuggler
-        The muggler to keep tabs on
-
-    ref_col : str
-        The name of the 'master' column to watch for new data
-
-    col1 : str
-        The name of the first extra column to extract data from when ref_col
-        gets pinged
-
-    col2 : str
-        The name of the second extra column to extract data from when ref_col
-        gets pinged
-    """
-    # Signal that emits lists of two datasets
-    sig = QtCore.Signal(list, list)
-
-    def __init__(self, muggler, ref_col, col1, col2, **kwargs):
-        super(MuggleWatcherTwoLists, self).__init__(**kwargs)
-        self._muggler = muggler
-        self._ref_col = ref_col
-        self._other_cols = [col1, col2]
-        self._muggler.new_data.connect(self.process_message)
-
-    @QtCore.Slot(list)
-    def process_message(self, updated_cols):
-        """
-        Process the updates from the muggler to see if there
-        is anything we need to deal with.
-
-        Parameters
-        ----------
-        updated_cols : list
-            Updated columns
-
-        """
-        if self._ref_col in updated_cols:
-            ind, res_dict = self._muggler.get_values(self._ref_col,
-                                                         self._other_cols)
-            self.sig.emit(res_dict[self._other_cols[0]],
-                          res_dict[self._other_cols[1]])
-
-
-class MuggleWatcherAll(QtCore.QObject):
-    """
-    This class watches a DataMuggler and when it gets new data extracts
-    all of the time series data, not just the latest.
-
-    Parameters
-    ----------
-    muggler : DataMuggler
-        The muggler to keep tabs on
-
-    ref_col : str
-        The name of the 'master' column to watch for new data
-
-    other_cols : list of str
-        The other columns to extract data from when ref_col gets pinged with
-        new data
-    """
-    sig = QtCore.Signal(list, dict)
-
-    def __init__(self, muggler, ref_col, other_cols, **kwargs):
-        super(MuggleWatcherAll, self).__init__(**kwargs)
-        self._muggler = muggler
-        self._ref_col = ref_col
-        self._other_cols = other_cols
-        self._muggler.new_data.connect(self.process_message)
-
-    @QtCore.Slot(list)
-    def process_message(self, updated_cols):
-        """
-        Process the updates from the muggler to see if there
-        is anything we need to deal with.
-
-        Parameters
-        ----------
-        updated_cols : list
-            Columns that were updated in the data muggler
-
-        """
-        if self._ref_col in updated_cols:
-            ind, res_dict = self._muggler.get_values(self._ref_col,
-                                                     self._other_cols)
-            self.sig.emit(ind, res_dict)
 
 
 class DmImgSequence(FramesSequence):
