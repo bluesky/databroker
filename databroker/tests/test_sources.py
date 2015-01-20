@@ -22,8 +22,17 @@ class TestSources(unittest.TestCase):
         is_dummy = sources.channelarchiver.__file__.count('dummy') == 1
         self.assertFalse(is_dummy)
 
+    def test_switch_metadatastore(self):
+        sources.switch(metadatastore=False)
+        is_dummy = sources.metadataStore.__file__.count('dummy') == 1
+        self.assertTrue(is_dummy)
+        sources.switch(metadatastore=True)
+        is_dummy = sources.metadataStore.__file__.count('dummy') == 1
+        self.assertFalse(is_dummy)
+
     def tearDown(self):
         sources.switch(channelarchiver=True)
+        sources.switch(metadatastore=True)
 
 
 class TestArchiver(unittest.TestCase):

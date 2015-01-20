@@ -1,10 +1,11 @@
 import unittest
+from ..sources import switch
 from ..api.databroker import DataBroker
 
 class TestDataBroker(unittest.TestCase):
 
     def setUp(self):
-        pass
+        switch(metadatastore=False)
 
     def test_codename_works(self):
         DataBroker('23id')
@@ -20,3 +21,6 @@ class TestDataBroker(unittest.TestCase):
 
     def test_nonstring_fails(self):
         self.assertRaises(NotImplementedError, lambda: DataBroker(1))
+
+    def tearDown(self):
+        switch(metadatastore=True)
