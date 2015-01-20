@@ -31,7 +31,7 @@ class HandlerRegistry(dict):
     Doing this as a sub-class to give more readable API and to allow
     for more sophisticated validation on the way in later
     """
-    def register_handler(self, key, handler):
+    def register_handler(self, key, handler, overwrite=False):
         """
         Register a new handler
 
@@ -43,8 +43,12 @@ class HandlerRegistry(dict):
         handler : callable
             This needs to be a callable which when called with the
             free parameters from the FS documents
+
+        overwrite : bool, optional
+            If False, raise an exception when re-registering an
+            existing key.  Default is False
         """
-        if key in self:
+        if (not overwrite) and (key in self):
             if self[key] is handler:
                 return
             raise RuntimeError("You are trying to register a second handler "
@@ -78,12 +82,12 @@ def handler_context(temp_handlers):
         _h_registry.register_handler(k, v)
 
 
-def register_handler(key, handler):
+def register_handler(key, handler, overwrite=False):
     """
     connivance function to add handler to module-level handler
     registry so users don't have to know about the singleton
     """
-    _h_registry.register_handler(key, handler)
+    _h_registry.register_handler(key, handler, overwrite)
 
 
 def get_spec_handler(base_fs_document, handle_registry=None):
