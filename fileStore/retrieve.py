@@ -76,6 +76,27 @@ def handler_context(temp_handlers):
 
     yield
     for k in remove_list:
+    """
+    Context manager for temporarily updating the global HandlerRegistry.
+    This is an alternative to passing HandlerRegistry objects in
+    as a kwarg.  The global registry is returned to it's prior state
+    after the context manager exits.
+
+    Parameters
+    ----------
+    temp_handlers : dict
+        spec_name : HandlerClass pairs.
+
+    Examples
+    --------
+    To use a different handler for a call to `retrieve_data` use
+    the context manager to add (and possibly over-ride existing
+    handlers) temporarily:
+
+       with handler_context({'syn-spec', SynHandler}):
+           FS.retrieve_data(EID)
+
+    """
         del _h_registry[k]
     for k, v in replace_list:
         del _h_registry[k]
