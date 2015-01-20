@@ -35,7 +35,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from collections import namedtuple, OrderedDict, Counter
+from collections import namedtuple, OrderedDict
 import pandas as pd
 import numpy as np
 from pims.base_frames import FramesSequence
@@ -78,8 +78,8 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
         # sanity check fill_method
         if fill_method not in cls.valid_fill_methods:
             raise ValueError("{} is not a valid fill method must be one of "
-                                 "{}".format(fill_method,
-                                             cls.valid_fill_methods))
+                             "{}".format(fill_method,
+                                         cls.valid_fill_methods))
 
         # pass everything up to base class
         return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
