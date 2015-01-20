@@ -56,6 +56,18 @@ class HandlerRegistry(dict):
 
         self[key] = handler
 
+    def deregister_handler(self, key):
+        """
+        Remove a handler from the registry.  No-op to remove
+        a non-existing key.
+
+        Parameters
+        ----------
+        key : str
+            The spec label to remove
+        """
+        if key in self:
+            del self[key]
 
 # singleton module-level registry, not 100% with
 # this design choice
@@ -64,18 +76,6 @@ _h_registry = HandlerRegistry()
 
 @contextmanager
 def handler_context(temp_handlers):
-    remove_list = []
-    replace_list = []
-    for k, v in six.iteritems(temp_handlers):
-        if k not in _h_registry:
-            remove_list.append(k)
-        else:
-            old_h = _h_registry.pop(k)
-            replace_list.append((k, old_h))
-        _h_registry.register_handler(k, v)
-
-    yield
-    for k in remove_list:
     """
     Context manager for temporarily updating the global HandlerRegistry.
     This is an alternative to passing HandlerRegistry objects in
@@ -97,10 +97,21 @@ def handler_context(temp_handlers):
            FS.retrieve_data(EID)
 
     """
-        del _h_registry[k]
-    for k, v in replace_list:
-        del _h_registry[k]
+    remove_list = []
+    replace_list = []
+    for k, v in six.iteritems(temp_handlers):
+        if k not in _h_registry:
+            remove_list.append(k)
+        else:
+            old_h = _h_registry.pop(k)
+            replace_list.append((k, old_h))
         _h_registry.register_handler(k, v)
+
+    yield
+    for k in remove_list:
+        _h_registry.deregister_handler(k)
+    for k, v in replace_list:
+        _h_registry.register_handler(k, v, overwrite=True)
 
 
 def register_handler(key, handler, overwrite=False):
@@ -129,6 +140,23 @@ def register_handler(key, handler, overwrite=False):
 
     """
     _h_registry.register_handler(key, handler, overwrite)
+
+
+def deregister_handler(key):
+    """
+    Remove handler to module-level handler
+
+    Parameters
+    ----------
+    key : str
+        The spec label to remove
+
+    See Also
+    --------
+    `register_handler`
+
+    """
+    _h_registry.deregister_handler(key)
 
 
 def get_spec_handler(base_fs_document, handle_registry=None):
