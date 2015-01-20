@@ -1,7 +1,9 @@
 from collections import OrderedDict
 from importlib import import_module
+import logging
 
 
+logger = logging.getLogger(__name__)
 source_names = ['channelarchiver', 'metadataStore', 'metadataStore.api',
                 'metadataStore.api.analysis']
 __all__ = ['switch'] + source_names
@@ -21,7 +23,6 @@ def switch(channelarchiver=None, metadatastore=None):
     sources = OrderedDict()
     for name in source_names:
         kwarg = name.lower().split('.')[0]
-        print name, kwarg
         sources[name] = vars()[kwarg]
     for name, value in dict(**sources).items():
         if value is not None:
@@ -29,7 +30,7 @@ def switch(channelarchiver=None, metadatastore=None):
                 globals()[name] = import_module(name)
             else:
                 globals()[name] = import_module(format_string.format(name))
-                print name, globals()[name]
+                logger.debug('Pointing %s to %s', globals()[name])
 
 
 # On importing databroker, set these defaults.
