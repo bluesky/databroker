@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,
 import six
 import numpy as np
 import time
-from ..api.data import DataMuggler, ColSpec, Unalignable
+from ..api.data import Data, ColSpec, Unalignable
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
 from numpy.testing import assert_array_equal
@@ -25,7 +25,7 @@ def use_fs_dec(func):
 
 
 def test_empty_DM():
-    dm = DataMuggler([])
+    dm = Data([])
     assert_equal(len(dm.keys()), 0)
 
 
@@ -34,7 +34,7 @@ def test_maxframes():
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list, max_frames=5, use_pims_fs=False)
+    dm = Data(col_list, max_frames=5, use_pims_fs=False)
     assert_equal(3, dm.ncols)
 
     for j in range(12):
@@ -63,7 +63,7 @@ def test_get_row(use_fs):
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list, use_pims_fs=use_fs)
+    dm = Data(col_list, use_pims_fs=use_fs)
     assert_equal(3, dm.ncols)
     ts_list = []
     for j in range(12):
@@ -89,7 +89,7 @@ def test_get_col(use_fs):
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list, use_pims_fs=use_fs)
+    dm = Data(col_list, use_pims_fs=use_fs)
     assert_equal(3, dm.ncols)
 
     for j in range(12):
@@ -118,7 +118,7 @@ def test_last_val(use_fs):
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list, use_pims_fs=use_fs)
+    dm = Data(col_list, use_pims_fs=use_fs)
     ts_list = []
     for j in range(12):
         ts = datetime.now()
@@ -140,7 +140,7 @@ def test_get_times(use_fs):
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list, use_pims_fs=use_fs)
+    dm = Data(col_list, use_pims_fs=use_fs)
     ts_list = []
     for j in range(12):
         ts = datetime.now()
@@ -158,7 +158,7 @@ def test_bad_col_append():
                 ('b', 'ffill', 1),
                 ('c', 'ffill', 2)]
 
-    dm = DataMuggler(col_list)
+    dm = Data(col_list)
 
     bad_dict = {'aardvark': 42}
     assert_raises(ValueError, dm.append_data, datetime.now(), bad_dict)
@@ -173,7 +173,7 @@ def test_props():
     col_list = [(chr(j), vf, j - 97) for
                 j, vf in enumerate(ColSpec.valid_fill_methods, start=97)]
 
-    dm = DataMuggler(col_list)
+    dm = Data(col_list)
 
     fill_dict = {chr(j): vf for
                 j, vf in enumerate(ColSpec.valid_fill_methods, start=97)}
@@ -192,7 +192,7 @@ def test_align_against():
                 ('c', 'ffill', 0),
                 ('d', None, 0)]
 
-    dm = DataMuggler(col_list)
+    dm = Data(col_list)
     dm.append_data(datetime.now(), {'a': -1, 'd': -1})
     for j in range(12):
         ts = datetime.now()
@@ -224,14 +224,14 @@ def test_unique_keys():
                 ('c', 'ffill', 0),
                 ('d', None, 0)]
 
-    assert_raises(ValueError, DataMuggler, col_list)
+    assert_raises(ValueError, Data, col_list)
 
 
 def test__non_scalar_lookup_fail():
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 0)]
 
-    dm = DataMuggler(col_list)
+    dm = Data(col_list)
 
     ts = datetime.now()
     data_dict = {'a': 1, 'b': 1}
@@ -249,7 +249,7 @@ def test_add_column():
                 ('b', 'ffill', 0)]
 
     new_col = ('c', None, 0)
-    dm = DataMuggler(col_list)
+    dm = Data(col_list)
     assert_equal(2, dm.ncols)
     dm.add_column(new_col)
     assert_equal(3, dm.ncols)
@@ -263,7 +263,7 @@ def test_add_column_data():
     col_list = [('a', 'ffill', 0),
                 ('b', 'ffill', 1)]
 
-    dm = DataMuggler(col_list)
+    dm = Data(col_list)
     assert_equal(2, dm.ncols)
 
     for j in range(5):
@@ -311,7 +311,7 @@ def test_bulk_add(use_pims_fs):
 
     col_list = [('a', 'ffill', 2),
                 ('b', 'ffill', 2)]
-    dm = DataMuggler(col_list, use_pims_fs=use_pims_fs)
+    dm = Data(col_list, use_pims_fs=use_pims_fs)
     cached_dd = dict(data_dict)
     dm.append_data(ts, data_dict)
     assert_equal(cached_dd, data_dict)
