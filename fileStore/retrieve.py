@@ -84,8 +84,28 @@ def handler_context(temp_handlers):
 
 def register_handler(key, handler, overwrite=False):
     """
-    connivance function to add handler to module-level handler
-    registry so users don't have to know about the singleton
+    Register a handler to be associated with a specific file
+    specification key.  This controls the dispatch to the
+    Handler classes based on the `spec` key of the `FileBase`
+    documents.
+
+    Parameters
+    ----------
+    key : str
+        Name of the spec as it will appear in the FS documents
+
+    handler : callable
+        This needs to be a callable which when called with the
+        free parameters from the FS documents
+
+    overwrite : bool, optional
+        If False, raise an exception when re-registering an
+        existing key.  Default is False
+
+    See Also
+    --------
+    `deregister_handler`
+
     """
     _h_registry.register_handler(key, handler, overwrite)
 
