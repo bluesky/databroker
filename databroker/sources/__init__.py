@@ -30,7 +30,7 @@ def switch(channelarchiver=None, metadatastore=None):
                 globals()[name] = import_module(name)
             else:
                 globals()[name] = import_module(format_string.format(name))
-                logger.debug('Pointing %s to %s', globals()[name])
+                logger.debug('Pointing %s to %s', name, globals()[name])
 
 
 # On importing databroker, set these defaults.
