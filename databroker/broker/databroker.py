@@ -1,6 +1,6 @@
 from __future__ import print_function
 import six
-from ..api.data import Data
+from ..muggler.data import Data
 from .. import validations
 from .. import sources
 # Note: Invoke contents of sources at the func/method level so that it

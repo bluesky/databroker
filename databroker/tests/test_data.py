@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,
 import six
 import numpy as np
 import time
-from ..api.data import Data, ColSpec, Unalignable
+from ..muggler.data import Data, ColSpec, Unalignable
 from datetime import datetime
 from nose.tools import assert_true, assert_equal
 from numpy.testing import assert_array_equal

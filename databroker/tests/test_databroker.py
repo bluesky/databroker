@@ -1,6 +1,6 @@
 import unittest
 from ..sources import switch
-from ..api.databroker import DataBroker
+from ..broker.databroker import DataBroker
 
 class TestDataBroker(unittest.TestCase):
 
