@@ -5,11 +5,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 source_names = ['channelarchiver', 'metadataStore', 'metadataStore.api',
-                'metadataStore.api.analysis']
+                'metadataStore.api.analysis', 'fileStore', 'fileStore.commands']
 __all__ = ['switch'] + source_names
 
 
-def switch(channelarchiver=None, metadatastore=None):
+def switch(channelarchiver=None, metadatastore=None, filestore=None):
     """
     Switch between using a real data source and a dummy version duplicating
     the API for the purposes of demostration, testing, or development.
@@ -34,4 +34,4 @@ def switch(channelarchiver=None, metadatastore=None):
 
 
 # On importing databroker, set these defaults.
-switch(channelarchiver=True, metadatastore=True)
+switch(channelarchiver=True, metadatastore=True, filestore=True)

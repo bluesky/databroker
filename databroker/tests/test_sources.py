@@ -1,7 +1,11 @@
 from ..sources.dummy_sources import _channelarchiver as ca
+from ..sources.dummy_sources import _metadataStore as ds
+from ..sources.dummy_sources import _fileStore as fs
 from .. import sources
 import unittest
 from datetime import datetime as dt  # noqa
+import numpy as np
+from numpy.testing import assert_array_equal
 
 
 class TestSources(unittest.TestCase):
@@ -30,9 +34,18 @@ class TestSources(unittest.TestCase):
         is_dummy = sources.metadataStore.__file__.count('dummy') == 1
         self.assertFalse(is_dummy)
 
+    def test_switch_filestore(self):
+        sources.switch(filestore=False)
+        is_dummy = sources.fileStore.__file__.count('dummy') == 1
+        self.assertTrue(is_dummy)
+        sources.switch(filestore=True)
+        is_dummy = sources.fileStore.__file__.count('dummy') == 1
+        self.assertFalse(is_dummy)
+
     def tearDown(self):
         sources.switch(channelarchiver=True)
         sources.switch(metadatastore=True)
+        sources.switch(filestore=True)
 
 
 class TestArchiver(unittest.TestCase):
@@ -52,3 +65,16 @@ class TestArchiver(unittest.TestCase):
         result_times = result.times
         self.assertEqual(values, result_values)
         self.assertEqual(times, result_times)
+
+
+class TestFileStore(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def retrieve_simulated_data(self):
+        expected = np.arange(10)
+        value = fs.commands.retrieve_data('np.arange(10)')
+        assert_array_equal(value, expected)
+        value = fs.commands.retrieve_data('numpy.arange(10)')
+        assert_array_equal(value, expected)
