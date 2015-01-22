@@ -1,11 +1,14 @@
-__author__ = 'arkilic'
+from __future__ import absolute_import, division, print_function
 
+__author__ = 'arkilic'
 from mongoengine import connect
-from conf import database, host, port
-from fileStore.database.file_base import FileBase
-from fileStore.database.file_attributes import FileAttributes
-from fileStore.database.file_event_link import FileEventLink
-#TODO: Add documentation
+
+from .conf import database, host, port
+from .database.file_base import FileBase
+from .database.file_attributes import FileAttributes
+from .database.file_event_link import FileEventLink
+from .retrieve import get_data as _get_data
+# TODO: Add documentation
 
 
 def save_file_base(spec, file_path, custom=None, collection_version=0):
@@ -92,7 +95,6 @@ def save_file_event_link(file_base, event_id, link_parameters=None, collection_v
 def find_file_base(**kwargs):
 
     query_dict = dict()
-    print kwargs
     connect(db=database, host=host, port=port)
 
     try:
@@ -173,3 +175,25 @@ def find(properties=True, **kwargs):
         file_event_link_objects.append(find_file_event_link(file_base=file_base_object))
 
     return file_base_objects, file_attribute_objects, file_event_link_objects
+
+
+def retrieve_data(eid):
+    """
+    Given a resource identifier return the data.
+
+    Parameters
+    ----------
+    eid : str
+        The resource ID (as stored in MDS)
+
+    Returns
+    -------
+    data : ndarray
+        The requested data as a numpy array
+    """
+    edocs = find_file_event_link(event_id=eid)
+    # TODO add sanity checks
+    if edocs:
+        return _get_data(edocs[0])
+    else:
+        raise ValueError("none found")

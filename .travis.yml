@@ -1,5 +1,8 @@
 language: python
 
+services:
+  - mongodb
+
 python:
   - 2.7
   - 3.4
@@ -13,10 +16,11 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy
   - source activate testenv
+  - pip install coveralls mongoengine
   - python setup.py install
-  - pip install coveralls
+
 
 script:
   - python run_tests.py
