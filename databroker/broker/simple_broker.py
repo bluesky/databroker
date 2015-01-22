@@ -6,7 +6,13 @@ from .. import sources
 # respects runtime switching between real and dummy sources.
 
 
-def search(beamline_id, start_time, end_time):
+# These should be specified elsewhere in a way that can be easily updated.
+# This is merely a placeholder, but it can be used with the real
+# channelarchiver as well as the dummy one.
+POPULAR_CHANNELS = ['SR11BCM01:LIFETIME_MONITOR', 'SR11BCM01:CURRENT_MONITOR']
+
+
+def search(beamline_id, start_time, end_time, ca_host, channels=None):
     """
     Get data from all events from a given beamline between two times.
 
@@ -18,6 +24,14 @@ def search(beamline_id, start_time, end_time):
         e.g., datetime.datetime(2015, 1, 1) or '2015-01-01' (ISO format)
     end_time : string or datetime object
         e.g., datetime.datetime(2015, 1, 1) or '2015-01-01' (ISO format)
+    ca_host : URL string
+        the URL of your archiver's ArchiveDataServer.cgi. For example,
+        'http://cr01arc01/cgi-bin/ArchiveDataServer.cgi'
+    channels : list, optional
+        All queries will return applicable data from the N most popular
+        channels. If data from additional channels is needed, their full
+        identifiers (not human-readable names) must be given here as a list
+        of strings.
 
     Returns
     -------
@@ -34,10 +48,25 @@ def search(beamline_id, start_time, end_time):
     a dictionary of name/value pairs. Every value is guaranteed to be either a
     scalar Python primitive (int, float, string) or a numpy ndarray.
     """
+    # Get data and populate external references from the File Store.
     find = sources.metadataStore.api.analysis.find
     events = find(start_time=start_time, end_time=end_time,
                   beamline_id=beamline_id)
     data = [_parse_event(event) for event in events]
+
+    # Get data from commonly-used Channel Archiver channels plus any
+    # specified in the call.
+    if channels is None:
+        channels = []
+    channels = list(set(channels) | set(POPULAR_CHANNELS))
+    archiver = sources.channelarchiver.Archiver(ca_host)
+    archiver_result = archiver.get(channels, start_time, end_time,
+                                   interpolation='raw')  # never interpolate
+
+    # Format data from the Archiver like data from the events, and combine.
+    for ch_name, ch_data in zip(channels, archiver_result):
+        data += [(time, {ch_name: value}) for time, value in
+                 zip(ch_data.times, ch_data.values)]
     return data
 
 
