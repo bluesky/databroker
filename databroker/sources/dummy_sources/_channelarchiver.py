@@ -8,7 +8,8 @@ to avoid surprises when switching from this dummy to the real thing.
 from channelarchiver import utils
 from channelarchiver.models import ChannelData
 import six
-from datetime import datetime as dt  # noqa, used by eval()
+import datetime  # noqa, used by eval()
+from datetime import datetime as dt  # noqa, also used by eval()
 
 
 class Archiver(object):
