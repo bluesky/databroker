@@ -7,11 +7,38 @@ from .. import sources
 
 
 def search(beamline_id, start_time, end_time):
-    "Get events from the MDS between these two times."
+    """
+    Get data from all events from a given beamline between two times.
+
+    Parameters
+    ----------
+    beamline_id : string
+        e.g., 'srx'
+    start_time : string or datetime object
+        e.g., datetime.datetime(2015, 1, 1) or '2015-01-01' (ISO format)
+    end_time : string or datetime object
+        e.g., datetime.datetime(2015, 1, 1) or '2015-01-01' (ISO format)
+
+    Returns
+    -------
+    data : list
+        See example below illustrating the format of the returned dataset.
+
+    Example
+    -------
+    >>> search('srx', '2015-01-01', '2015-01-02')
+    [(<unix epoch time>, {'chan1': <value>, 'chan2': <value>},
+     (<unix epoch time>, {'temp': <value>)}
+
+    That is, it results a list of tuples, where each tuple contains a time and
+    a dictionary of name/value pairs. Every value is guaranteed to be either a
+    scalar Python primitive (int, float, string) or a numpy ndarray.
+    """
     find = sources.metadataStore.api.analysis.find
     events = find(start_time=start_time, end_time=end_time,
                   beamline_id=beamline_id)
-    return [_parse_event(event) for event in events]
+    data = [_parse_event(event) for event in events]
+    return data
 
 
 def _inspect_descriptor(descriptor):
