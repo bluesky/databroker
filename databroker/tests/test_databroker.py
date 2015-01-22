@@ -1,33 +1,15 @@
 import unittest
 from ..sources import switch
-from ..broker.databroker import DataBroker
+from ..broker.simple_broker import search
+
 
 class TestDataBroker(unittest.TestCase):
 
     def setUp(self):
-        switch(metadatastore=False)
-
-    def test_instantiation(self):
-        # codename works
-        DataBroker('23id')
-        DataBroker('23ID')
-
-        # alias works
-        DataBroker('csx')
-        DataBroker('CSX')
-        DataBroker('CsX')
-
-        # gibberish fails
-        self.assertRaises(ValueError, lambda: DataBroker('zzzzzz'))
-
-        # nonstring fails
-        self.assertRaises(NotImplementedError, lambda: DataBroker(1))
+        switch(channelarchiver=False, metadatastore=False, filestore=False)
 
     def test_basic_search(self):
-        broker = DataBroker('srx')
-        broker.search('2015-01-01', '2015-02-01')
+        search('srx', '2015-01-01', '2015-02-01')
 
     def tearDown(self):
-        switch(metadatastore=True)
-
-    
+        switch(channelarchiver=True, metadatastore=True, filestore=True)
