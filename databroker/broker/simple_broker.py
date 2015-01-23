@@ -6,7 +6,7 @@ from .. import sources
 # respects runtime switching between real and dummy sources.
 
 
-def search(beamline_id, start_time, end_time):
+def search(beamline_id=None, start_time=None, end_time=None):
     "Get events from the MDS between these two times."
     find = sources.metadataStore.api.analysis.find
     events = find(start_time=start_time, end_time=end_time,
