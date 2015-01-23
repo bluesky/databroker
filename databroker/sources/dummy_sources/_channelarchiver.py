@@ -8,23 +8,27 @@ to avoid surprises when switching from this dummy to the real thing.
 from channelarchiver import utils
 from channelarchiver.models import ChannelData
 import six
-from datetime import datetime as dt  # noqa, used by eval()
+import datetime  # noqa, used by eval()
+from datetime import datetime as dt  # noqa, also used by eval()
+
+
+_data = {}  # singleton holding dummy data
 
 
 class Archiver(object):
 
     def __init__(self, host):
-        # TODO Define the toy data here.
-        pass
+        """
+        Parameters
+        ----------
+        host : URL string
+        """
 
     def get(self, channels, start, end, limit=100, interpolation='linear',
             scan_archives=True, archive_keys=None, tz=None):
         """
-        channels : string
-            a string representing a valid Python expression to be
-            evaluted as '(values, times)'
-
-            Example: '([1,2], [dt(2014, 1, 1), dt(2014, 1, 2)])'
+        channels : string or list of strings
+            channel identifiers (not human-friendly names)
         start : string or datetime
             Strings are interpreted as ISO timestamps.
         end : string or datetime
@@ -61,9 +65,13 @@ class Archiver(object):
 
         result = []
         for channel in channels:
-            values, times = eval(channel)
+            times, values = _data[channel]
             result.append(ChannelData(values=values, times=times))
 
         if received_str:
             result = result[0]
         return result
+
+
+def insert_data(data):
+    _data.update(data)
