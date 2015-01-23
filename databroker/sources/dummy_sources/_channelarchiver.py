@@ -12,24 +12,17 @@ import datetime  # noqa, used by eval()
 from datetime import datetime as dt  # noqa, also used by eval()
 
 
+_data = {}  # singleton holding dummy data
+
+
 class Archiver(object):
 
     def __init__(self, host):
         """
         Parameters
         ----------
-        host : string
-           string represeting a valid Python expression, giving
-           instructions for generating data data or each channel. Format like:
-           "{<channel name> : ([<ts>, <ts>, ...], [<value>, <value>, ...])}"
-
-        Example
-        -------
-        >>> from datetime import datetime as dt
-        >>> Archiver("{'channel1': ([dt(2014, 1, 1), dt(2014, 1, 2)], [1, 2]) "
-                     " 'channel2': ([dt(2014, 1, 1)  [5])}")
+        host : URL string
         """
-        self.data = eval(host)
 
     def get(self, channels, start, end, limit=100, interpolation='linear',
             scan_archives=True, archive_keys=None, tz=None):
@@ -72,9 +65,13 @@ class Archiver(object):
 
         result = []
         for channel in channels:
-            times, values = self.data[channel]
+            times, values = _data[channel]
             result.append(ChannelData(values=values, times=times))
 
         if received_str:
             result = result[0]
         return result
+
+
+def insert_data(data):
+    _data.update(data)

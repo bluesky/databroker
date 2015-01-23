@@ -54,10 +54,10 @@ class TestArchiver(unittest.TestCase):
         pass
 
     def pass_through_test(self):
-        instructions = ("{'channel1': ([dt(2014, 01, 01), dt(2014, 01, 02)], "
-                        "              [1, 2])}")
-        times, values = eval(instructions)['channel1']
-        archiver = ca.Archiver(instructions)
+        data = {'channel1': ([dt(2014, 01, 01), dt(2014, 01, 02)], [1, 2])}
+        ca.insert_data(data)
+        times, values = data['channel1']
+        archiver = ca.Archiver('host')
         result = archiver.get('channel1', '2014-01-01', '2014-01-02',
                               interpolation='raw')
         # Get attributes outside of assert so if they are missing
