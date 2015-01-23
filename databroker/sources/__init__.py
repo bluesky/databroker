@@ -35,4 +35,4 @@ def switch(channelarchiver=None, metadatastore=None, filestore=None):
 
 
 # On importing databroker, set these defaults.
-switch(channelarchiver=False, metadatastore=False, filestore=True)
+switch(channelarchiver=False, metadatastore=False, filestore=False)
