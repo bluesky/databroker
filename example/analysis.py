@@ -16,13 +16,13 @@ header_1 = res_1[0][0]
 print header_1.create_time
 
 
-# start = time.time()
-# find(start_time={'start': 142109013, 'end': 142117687})
-# end = time.time()
-# time_elapsed = (end-start)*1000
-# print 'Query time..: ', time_elapsed, ' milliseconds'
-#
-#
+start = time.time()
+find(create_time={'start': 142109000, 'end': start})
+end = time.time()
+time_elapsed = (end-start)*1000
+print 'Query time..: ', time_elapsed, ' milliseconds'
+
+
 # hdrs, bcfgs,event_descs, evs = find(owner='arkilic')
 #
 #
