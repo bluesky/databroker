@@ -64,7 +64,7 @@ def save_header(descriptor, beamline_config, scan_id, create_time, **kwargs):
     return header
 
 
-def save_beamline_config(header, config_params=None):
+def save_beamline_config(config_params=None):
     """ Create a beamline_config  in metadataStore database backend
 
     Parameters
@@ -79,13 +79,13 @@ def save_beamline_config(header, config_params=None):
 
     connect(db=database, host=host, port=port)
 
-    beamline_config = BeamlineConfig(header=header.id, config_params=config_params)
+    beamline_config = BeamlineConfig(config_params=config_params)
     beamline_config.save(validate=True, write_concern={"w": 1})
 
     return beamline_config
 
 
-def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **kwargs):
+def save_event_descriptor(event_type_id, descriptor_name, data_keys, **kwargs):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
@@ -111,7 +111,7 @@ def save_event_descriptor(header, event_type_id, descriptor_name, data_keys, **k
     """
     connect(db=database, host=host, port=port)
 
-    event_descriptor = EventDescriptor(header=header.id, event_type_id=event_type_id, data_keys=data_keys,
+    event_descriptor = EventDescriptor(event_type_id=event_type_id, data_keys=data_keys,
                                        descriptor_name=descriptor_name)
 
     event_descriptor.type_descriptor = kwargs.pop('type_descriptor', None)
