@@ -40,6 +40,8 @@ class Header(Document):
     """
     default_time_stamp = time.time()
 
+    unique_id = StringField(required=True, unique=True)
+
     event_descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY, required=True,
                                       db_field='descriptor_id')
 
