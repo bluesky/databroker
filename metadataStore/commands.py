@@ -11,7 +11,7 @@ import time
 #TODO: Add logger
 
 
-def save_header(scan_id, start_time, end_time, **kwargs):
+def save_header(descriptor, scan_id, start_time, end_time, **kwargs):
     """Create a header in metadataStore database backend
 
     Parameters
@@ -48,7 +48,7 @@ def save_header(scan_id, start_time, end_time, **kwargs):
     datetime_start_time = __convert2datetime(start_time)
     datetime_end_time = __convert2datetime(end_time)
 
-    header = Header(scan_id=scan_id, start_time=start_time, end_time=end_time,
+    header = Header(descriptor=descriptor.id, scan_id=scan_id, start_time=start_time, end_time=end_time,
                     datetime_start_time=datetime_start_time,
                     datetime_end_time=datetime_end_time)
 
@@ -356,7 +356,6 @@ def find_last():
     connect(db=database, host=host, port=port)
 
     return Header.objects.order_by('-_id')[0:1][0]
-
 
 def __convert2datetime(time_stamp):
     if isinstance(time_stamp, float):

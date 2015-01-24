@@ -1,7 +1,9 @@
 __author__ = 'arkilic'
 
 from mongoengine import Document
-from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField
+from metadataStore.database.event_descriptor import EventDescriptor
+from metadataStore.database.beamline_config import BeamlineConfig
+from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
 import time
 from getpass import getuser
 from datetime import datetime
@@ -39,6 +41,12 @@ class Header(Document):
     #TODO: Per discussion with Stuart delete end_time and modify start_time to creation_time
 
     default_time_stamp = time.time()
+
+    event_descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY, required=True,
+                                      db_field='descriptor_id')
+
+    beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY, required=True,
+                                     db_field='beamline_config_id')
 
     scan_id = IntField(required=True, unique=True)
 
