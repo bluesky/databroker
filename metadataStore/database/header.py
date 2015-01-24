@@ -46,7 +46,7 @@ class Header(Document):
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY, required=True,
                                      db_field='beamline_config_id')
 
-    scan_id = IntField(required=True, unique=True)
+    scan_id = IntField(required=True, unique=False)
 
     owner = StringField(default=getuser(), required=True, unique=False)
 
