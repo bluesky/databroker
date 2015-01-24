@@ -11,7 +11,7 @@ import time
 #TODO: Add logger
 
 
-def save_header(descriptor, beamline_config, scan_id, create_time, **kwargs):
+def save_header(descriptor, beamline_config, unique_id, scan_id, create_time, **kwargs):
     """Create a header in metadataStore database backend
 
     Parameters
@@ -48,7 +48,7 @@ def save_header(descriptor, beamline_config, scan_id, create_time, **kwargs):
     datetime_create_time = __convert2datetime(create_time)
 
     header = Header(event_descriptor=descriptor.id, beamline_config=beamline_config.id, scan_id=scan_id,
-                    create_time=create_time, datetime_create_time=datetime_create_time)
+                    create_time=create_time, datetime_create_time=datetime_create_time, unique_id=unique_id)
 
     header.owner = kwargs.pop('owner', None)
 
@@ -196,7 +196,7 @@ def find_header(limit, **kwargs):
 
     """
     connect(db=database, host=host, port=port)
-
+    #TODO: Modify start_time and end_time search
     search_dict = dict()
 
     #Do not want to pop if not in kwargs. Otherwise, breaks the mongo query

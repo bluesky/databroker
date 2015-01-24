@@ -9,11 +9,13 @@ import string
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
-h = save_header(scan_id=random.randint(0,10000000),  start_time=time.time(),
-                end_time=time.time(), custom={'data':123})
-print h.id
+
 
 b = save_beamline_config(header=h)
+
+h = save_header(scan_id=3,  start_time=time.time(),
+                end_time=time.time(), custom={'data':123})
+print h.id
 
 ed = save_event_descriptor(header=h, event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
 
