@@ -174,7 +174,7 @@ def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kw
     return event
 
 
-def find_header(limit, **kwargs):
+def find_header(limit=50, **kwargs):
     """
     Parameters
     ----------
@@ -221,32 +221,17 @@ def find_header(limit, **kwargs):
         pass
 
     try:
-        st_time_dict = kwargs.pop('start_time')
+        st_time_dict = kwargs.pop('create_time')
         if not isinstance(st_time_dict, dict):
-            raise TypeError('Wrong format. Start time must include start and end keys for range. Must be a dict')
+            raise TypeError('Wrong format. create_time must include start and end keys for range. Must be a dict')
         else:
             if 'start' in st_time_dict.keys():
                 if 'end' in st_time_dict.keys():
-                    search_dict['start_time'] = {'$gte': st_time_dict['start'], '$lte': st_time_dict['end']}
+                    search_dict['create_time'] = {'$gte': st_time_dict['start'], '$lte': st_time_dict['end']}
                 else:
-                    raise AttributeError('Start time must include start and end keys for range search')
+                    raise AttributeError('create_time must include start and end keys for range search')
             else:
-                raise AttributeError('Start time must include start and end keys for range search')
-    except KeyError:
-        pass
-
-    try:
-        end_time_dict = kwargs.pop('end_time')
-        if not isinstance(end_time_dict, dict):
-            raise TypeError('Wrong format. Start time must include start and end keys for range. Must be a dict')
-        else:
-            if 'start' in end_time_dict.keys():
-                if 'end' in end_time_dict.keys():
-                    search_dict['end_time'] = {'$gte': end_time_dict['start'], '$lte': end_time_dict['end']}
-                else:
-                    raise AttributeError('End time must include start and end keys for range search')
-            else:
-                raise AttributeError('End time must include start and end keys for range search')
+                raise AttributeError('create_time  must include start and end keys for range search')
     except KeyError:
         pass
 
@@ -257,21 +242,22 @@ def find_header(limit, **kwargs):
     return header_objects
 
 
-def find_beamline_config(header):
+def find_beamline_config(_id):
     connect(db=database, host=host, port=port)
-    return BeamlineConfig.objects(header=header.id).order_by('-_id')
+    return BeamlineConfig.objects(id=_id).order_by('-_id')
 
 
-def find_event_descriptor(header):
+def find_event_descriptor(_id):
     event_descriptor_list = list()
     connect(db=database, host=host, port=port)
-    for event_descriptor in EventDescriptor.objects(header=header.id).order_by('-_id'):
+    for event_descriptor in EventDescriptor.objects(id=_id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor, direction='out')
         event_descriptor_list.append(event_descriptor)
     return event_descriptor_list
 
 
 def find_event(header):
+    #TODO: Othe search parameters for events?
     connect(db=database, host=host, port=port)
     event_list = list()
     for event in Event.objects(header=header.id).order_by('-_id'):
@@ -332,10 +318,8 @@ def find(data=True, limit=50, **kwargs):
         #Queryset instance returned by mongoengine not iterable, hence manual recursion
         if header_objects:
             for header in header_objects:
-                beamline_config_objects[header.id] = find_beamline_config(header)
-                event_descriptor_objects[header.id] = find_event_descriptor(header)
                 event_objects[header.id] = find_event(header)
-    return header_objects, beamline_config_objects, event_descriptor_objects, event_objects
+    return header_objects, event_objects
 
 
 def find_last():
