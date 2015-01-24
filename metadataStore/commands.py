@@ -196,7 +196,7 @@ def find_header(limit=50, **kwargs):
 
     """
     connect(db=database, host=host, port=port)
-    #TODO: Modify start_time and end_time search
+    #TODO: Add unique id to the search
     search_dict = dict()
 
     #Do not want to pop if not in kwargs. Otherwise, breaks the mongo query
@@ -212,11 +212,6 @@ def find_header(limit=50, **kwargs):
 
     try:
         search_dict['beamline_id'] = kwargs.pop('beamline_id')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['status'] = kwargs.pop('status')
     except KeyError:
         pass
 
@@ -257,7 +252,7 @@ def find_event_descriptor(_id):
 
 
 def find_event(header):
-    #TODO: Othe search parameters for events?
+    #TODO: Other search parameters for events?
     connect(db=database, host=host, port=port)
     event_list = list()
     for event in Event.objects(header=header.id).order_by('-_id'):
