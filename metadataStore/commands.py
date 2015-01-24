@@ -186,22 +186,26 @@ def find_header(limit=50, **kwargs):
 
     >>> find_header(scan_id=123)
     >>> find_header(owner='arkilic')
-    >>> find_header(start_time={'start': 1421176750.514707,
+    >>> find_header(create_time={'start': 1421176750.514707,
     ...                          'end': time.time()})
-    >>> find_header(end_time={'start': 1421176750.514707,
+    >>> find_header(create_time={'start': 1421176750.514707,
     ...                          'end': time.time()})
 
-    >>> find_header(owner='arkilic', start_time={'start': 1421176750.514707,
+    >>> find_header(owner='arkilic', create_time={'start': 1421176750.514707,
     ...                                          'end': time.time()})
 
     """
     connect(db=database, host=host, port=port)
-    #TODO: Add unique id to the search
     search_dict = dict()
 
     #Do not want to pop if not in kwargs. Otherwise, breaks the mongo query
     try:
         search_dict['scan_id'] = kwargs.pop('scan_id')
+    except KeyError:
+        pass
+
+    try:
+        search_dict['unique_id'] = kwargs.pop('unique_id')
     except KeyError:
         pass
 
