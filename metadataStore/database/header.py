@@ -52,15 +52,10 @@ class Header(Document):
 
     owner = StringField(default=getuser(), required=True, unique=False)
 
-    start_time = FloatField(default=default_time_stamp, required=True)
+    create_time = FloatField(default=default_time_stamp, required=True)
 
-    end_time = FloatField(default=default_time_stamp, required=True)
-
-    datetime_start_time = DateTimeField(default=datetime.fromtimestamp(default_time_stamp),
-                                        required=True)
-
-    datetime_end_time = DateTimeField(default=datetime.fromtimestamp(default_time_stamp),
-                                      required=True)
+    datetime_create_time = DateTimeField(default=datetime.fromtimestamp(default_time_stamp),
+                                         required=True)
 
     beamline_id = StringField(max_length=20, unique=False)
 
@@ -68,4 +63,4 @@ class Header(Document):
 
     custom = DictField(unique=False, required=False)
 
-    meta = {'indexes': ['-scan_id', '-_id', '-owner', '-start_time', '-end_time']}
+    meta = {'indexes': ['-scan_id', '-_id', '-owner', '-create_time']}
