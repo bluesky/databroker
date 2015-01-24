@@ -11,13 +11,11 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 
 
 
-b = save_beamline_config(header=h)
-
-h = save_header(scan_id=3,  start_time=time.time(),
-                end_time=time.time(), custom={'data':123})
-print h.id
-
-ed = save_event_descriptor(header=h, event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
+b = save_beamline_config(config_params={'my_beamline': 'my_value'})
 
 
-save_event(header=h, event_descriptor=ed, seq_no=1, timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})
+ed = save_event_descriptor(event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
+
+h = save_header(unique_id=str(id_generator(5)), scan_id=3,  create_time=time.time(), beamline_config=b,
+                event_descriptor=ed,
+                custom={'data':123})
