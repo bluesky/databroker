@@ -18,7 +18,7 @@ class Event(Document):
 
     default_timestamp = time.time()
     header = ReferenceField(Header,reverse_delete_rule=DENY, required=True,
-                               db_field='header_id')
+                            db_field='header_id')
 
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                       required=True, db_field='descriptor_id')
@@ -31,8 +31,9 @@ class Event(Document):
 
     data = DictField(required=False)
 
-    timestamp = FloatField(required=True, default=default_timestamp)
+    event_timestamp = FloatField(required=True, default=default_timestamp)
 
     datetime_timestamp = DateTimeField(required=True,
                                        default= datetime.fromtimestamp(default_timestamp))
-    meta = {'indexes': ['-header', '-descriptor', '-_id', '-timestamp']}
+
+    meta = {'indexes': ['-header', '-descriptor', '-_id', '-event_timestamp']}
