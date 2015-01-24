@@ -11,7 +11,7 @@ import time
 #TODO: Add logger
 
 
-def save_header(descriptor, beamline_config, scan_id, start_time, end_time, **kwargs):
+def save_header(descriptor, beamline_config, scan_id, create_time, **kwargs):
     """Create a header in metadataStore database backend
 
     Parameters
@@ -45,18 +45,14 @@ def save_header(descriptor, beamline_config, scan_id, start_time, end_time, **kw
 
     connect(db=database, host=host, port=port)
 
-    datetime_start_time = __convert2datetime(start_time)
-    datetime_end_time = __convert2datetime(end_time)
+    datetime_create_time = __convert2datetime(create_time)
 
-    header = Header(event_descriptor=descriptor.id, beamline_config=beamline_config.id, scan_id=scan_id, start_time=start_time, end_time=end_time,
-                    datetime_start_time=datetime_start_time,
-                    datetime_end_time=datetime_end_time)
+    header = Header(event_descriptor=descriptor.id, beamline_config=beamline_config.id, scan_id=scan_id,
+                    create_time=create_time, datetime_create_time=datetime_create_time)
 
     header.owner = kwargs.pop('owner', None)
 
     header.beamline_id = kwargs.pop('beamline_id', None)
-
-    header.status = kwargs.pop('status', None)
 
     header.custom = kwargs.pop('custom', None)
 
