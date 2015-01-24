@@ -38,8 +38,6 @@ class Header(Document):
     Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
 
     """
-    #TODO: Per discussion with Stuart delete end_time and modify start_time to creation_time
-
     default_time_stamp = time.time()
 
     event_descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY, required=True,
@@ -58,8 +56,6 @@ class Header(Document):
                                          required=True)
 
     beamline_id = StringField(max_length=20, unique=False)
-
-    status = StringField(choices=('In progress', 'Complete'), unique=False)
 
     custom = DictField(unique=False, required=False)
 
