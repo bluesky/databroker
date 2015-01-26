@@ -9,15 +9,30 @@ import string
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
+"""
+DO NOT COMPLAIN ABOUT C++-like commented documentation here. I will get rid off it once everybody knows what this
+refactor was all about.
+"""
+
+#######################################################################################################################
+# After the current changes to the database schema, EventDescriptor and BeamlineConfig has to be
+# created before headers. This is due to the fact that there is a one to many relationship between EventDescriptors
+# and Headers.In other words, since we have a limited set of EventDescriptors that serve for specific purposes(see doc)
+# they have to be available to be "referred" by the headers. See the below code for a sequence example
+#
+# Also, notice that we no longer have unique scan_id. This is due to the fact that, now we have a unique_id field
+# that will be hashed by opyhd(convention in progress, talk to Daron and Stuart).
+#
+######################################################################################################################
+
+b_config = save_beamline_config(config_params={'my_beamline': 'my_value'})
 
 
-b = save_beamline_config(config_params={'my_beamline': 'my_value'})
+e_desc = save_event_descriptor(event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
 
-
-ed = save_event_descriptor(event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
-
-h = save_header(unique_id=str(id_generator(5)), scan_id=3,  create_time=time.time(), beamline_config=b,
-                event_descriptor=ed,
+h = save_header(unique_id=str(id_generator(5)), scan_id=3,  create_time=time.time(),
+                beamline_config=b_config,
+                event_descriptor=[e_desc],
                 custom={'data':123})
 
-save_event(header=h, event_descriptor=ed, seq_no=1, timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})
+e = save_event(header=h, event_descriptor=e_desc, seq_no=1, timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})

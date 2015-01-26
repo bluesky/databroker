@@ -10,6 +10,8 @@ from mongoengine import connect
 import time
 #TODO: Add logger
 
+#TODO: Update docs after refactoring
+
 
 def save_header(event_descriptor, beamline_config, unique_id, scan_id, create_time, **kwargs):
     """Create a header in metadataStore database backend
@@ -18,13 +20,6 @@ def save_header(event_descriptor, beamline_config, unique_id, scan_id, create_ti
     ----------
     scan_id : int
     Unique scan identifier visible to the user and data analysis
-
-    start_time: time
-    Start time of series of events that are recorded by the header
-
-    end_time: time
-    End time of series of events that are recorded by the header
-
 
     kwargs
     -----------
@@ -47,7 +42,11 @@ def save_header(event_descriptor, beamline_config, unique_id, scan_id, create_ti
 
     datetime_create_time = __convert2datetime(create_time)
 
-    header = Header(event_descriptor=event_descriptor.id, beamline_config=beamline_config.id, scan_id=scan_id,
+    event_descriptor_ids = list()
+    for entry in event_descriptor:
+        event_descriptor_ids.append(entry.id)
+
+    header = Header(event_descriptor=event_descriptor_ids, beamline_config=beamline_config.id, scan_id=scan_id,
                     create_time=create_time, datetime_create_time=datetime_create_time, unique_id=unique_id)
 
     header.owner = kwargs.pop('owner', None)
@@ -328,7 +327,7 @@ def find_last():
     -------
 
     header: metadataStore.database.header.Header
-        Returns the last header created
+        Returns the last header created. DOES NOT RETURN THE EVENTS.
 
 
     """

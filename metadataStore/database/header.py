@@ -3,7 +3,7 @@ __author__ = 'arkilic'
 from mongoengine import Document
 from metadataStore.database.event_descriptor import EventDescriptor
 from metadataStore.database.beamline_config import BeamlineConfig
-from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
+from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY, ListField
 import time
 from getpass import getuser
 from datetime import datetime
@@ -42,8 +42,8 @@ class Header(Document):
 
     unique_id = StringField(required=True, unique=True)
 
-    event_descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY, required=True,
-                                      db_field='descriptor_id')
+    event_descriptor = ListField(ReferenceField(EventDescriptor,reverse_delete_rule=DENY, required=True,
+                                                db_field='descriptor_id'))
 
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY, required=True,
                                      db_field='beamline_config_id')
