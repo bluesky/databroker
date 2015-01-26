@@ -30,9 +30,12 @@ b_config = save_beamline_config(config_params={'my_beamline': 'my_value'})
 
 e_desc = save_event_descriptor(event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
 
+e_desc2 = save_event_descriptor(event_type_id=2, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
+
+
 h = save_header(unique_id=str(id_generator(5)), scan_id=3,  create_time=time.time(),
                 beamline_config=b_config,
-                event_descriptor=[e_desc],
+                event_descriptor=[e_desc, e_desc2],
                 custom={'data':123})
 
 e = save_event(header=h, event_descriptor=e_desc, seq_no=1, timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})
