@@ -130,7 +130,7 @@ def save_event_descriptor(event_type_id, descriptor_name, data_keys, **kwargs):
     return event_descriptor
 
 
-def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kwargs):
+def save_event(header, event_descriptor, beamline_id, seq_no, timestamp=None, data=None, **kwargs):
     """Create an event in metadataStore database backend
 
     Parameters
@@ -161,7 +161,7 @@ def save_event(header, event_descriptor, seq_no, timestamp=None, data=None, **kw
     connect(db=database, host=host, port=port)
 
     event = Event(header=header.id, descriptor_id=event_descriptor.id, seq_no=seq_no, timestamp=timestamp,
-                  data=data)
+                  beamline_id=beamline_id, data=data)
 
     event.owner = kwargs.pop('owner', None)
 
@@ -368,6 +368,26 @@ def find_last():
     connect(db=database, host=host, port=port)
 
     return Header.objects.order_by('-_id')[0:1][0]
+
+
+def find_event_given_time(range_start, range_end):
+    """
+
+    Parameters
+    ----------
+
+    range_start: float
+        Event time stamp range start time
+    range_end: float
+        Event time stamp range end time
+
+    """
+
+    event_query_dict = dict()
+
+
+
+
 
 
 def __convert2datetime(time_stamp):
