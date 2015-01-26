@@ -184,25 +184,25 @@ def find_header(limit=50, **kwargs):
     ----------
 
     limit: int
-    Number of header objects to be returned
+        Number of header objects to be returned
 
     kwargs
     ---------
 
     scan_id: int
-    Scan identifier. Not unique
+        Scan identifier. Not unique
 
     owner: str
-    User name identifier asscoaited with a scan
+        User name identifier associated with a scan
 
     create_time: dict
-    header insert time. Keys must be start and end to give a range to the search
+        header insert time. Keys must be start and end to give a range to the search
 
     beamline_id: str
-    String identifier for a specific beamline
+        String identifier for a specific beamline
 
     unique_id: str
-    Hashed unique identifier
+        Hashed unique identifier
 
     Usage
 
@@ -370,24 +370,29 @@ def find_last():
     return Header.objects.order_by('-_id')[0:1][0]
 
 
-def find_event_given_time(range_start, range_end):
-    """
+def search_events_broker(beamline_id, start_time, end_time):
+    """Return a set of events given
 
     Parameters
     ----------
 
-    range_start: float
+    beamline_id: str
+        string identifier for a beamline and its sections
+
+    start_time: float
         Event time stamp range start time
-    range_end: float
+
+    end_time: float
         Event time stamp range end time
 
     """
-
     event_query_dict = dict()
+    event_query_dict['beamline_id'] = beamline_id
+    event_query_dict['event_timestamp'] = {'$gte': start_time, '$lte': end_time}
 
-
-
-
+    result = Event.objects(__raw__=event_query_dict).order_by('-_id')
+    #I did not set any limits to the query because we might return quite a lot of events.
+    return result
 
 
 def __convert2datetime(time_stamp):
