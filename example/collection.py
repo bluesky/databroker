@@ -35,7 +35,8 @@ e_desc2 = save_event_descriptor(event_type_id=2, data_keys=['arm.an', 'arkilic']
 
 h = save_header(unique_id=str(id_generator(5)), scan_id=3,  create_time=time.time(),
                 beamline_config=b_config,
-                event_descriptor=[e_desc, e_desc2],
-                custom={'data':123})
+                event_descriptors=[e_desc, e_desc2],
+                custom={'data': 123})
 
-e = save_event(header=h, event_descriptor=e_desc, seq_no=1, timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})
+
+e = save_event(header=h, event_descriptor=e_desc, seq_no=1, beamline_id='csx', timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})
