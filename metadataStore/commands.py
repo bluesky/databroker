@@ -13,7 +13,7 @@ import time
 #TODO: Update docs after refactoring
 
 
-def save_header(event_descriptor, beamline_config, unique_id, scan_id, create_time, **kwargs):
+def save_header(event_descriptors, beamline_config, unique_id, scan_id, create_time, **kwargs):
     """Create a header in metadataStore database backend
 
     Parameters
@@ -43,7 +43,7 @@ def save_header(event_descriptor, beamline_config, unique_id, scan_id, create_ti
     datetime_create_time = __convert2datetime(create_time)
 
     event_descriptor_ids = list()
-    for entry in event_descriptor:
+    for entry in event_descriptors:
         event_descriptor_ids.append(entry.id)
 
     header = Header(event_descriptor=event_descriptor_ids, beamline_config=beamline_config.id, scan_id=scan_id,

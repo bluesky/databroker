@@ -34,9 +34,11 @@ time_elapsed = (end-start)*1000
 print 'Query time given owner..: ', time_elapsed, ' milliseconds'
 
 
-print 'This is how you access header EventDescriptor(s) '
+print 'This is how you access header EventDescriptor(s) ', hdr[0].event_descriptor
+print hdr[0].event_descriptor[0].id
+print events
 
-###########
+
 
 
 #
@@ -63,4 +65,3 @@ print 'This is how you access header EventDescriptor(s) '
 #
 # print 'Here is a neat feature, behold...:', find_event_descriptor(hdr)[0].header, 'I know, cool right...'
 #
-# #TODO: Sample collection code of the old master should be working with this new version
