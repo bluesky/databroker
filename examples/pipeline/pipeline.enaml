@@ -1,0 +1,87 @@
+from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
+                              InsertDockBarItem)
+from enaml.stdlib.fields import FloatField
+from enaml.widgets.api import (Window, Container, DockItem, DockArea,
+                               MainWindow, ObjectCombo, PushButton)
+from replay.gui.line_view import LineView
+from replay.gui.scalar_view import ScalarView, ScalarController
+from replay.gui.cross_section_view import (CrossSectionView,
+                                           CrossSectionController)
+
+from enaml.stdlib.dock_area_styles import available_styles
+
+def cap_case(name):
+    return ' '.join(s.capitalize() for s in name.split('-'))
+
+def add_dock_bars(area, cross_section_view, cross_section_controller,
+           scalar_view, scalar_controller):
+    area.update_layout(InsertDockBarItem(item=cross_section_view,
+                                         target=cross_section_controller))
+    area.update_layout(InsertDockBarItem(item=scalar_view,
+                                         target=scalar_controller))
+
+enamldef RegionOfInterest(Container):
+    FloatField: input:
+        value := roi_model.value
+    PushButton: btn:
+        text = "Update Scaling Factor"
+        clicked ::
+            roi_model.value = input.value
+
+
+enamldef PipelineView(MainWindow): main:
+    title = "Live Data Demo"
+    attr scalar_collection
+    attr cs_model
+    attr roi_model
+    attr multi_fit_controller
+    Container: container:
+        ObjectCombo: style_c:
+            items = available_styles()
+            to_string = cap_case
+            selected = 'vs-2010'
+        DockArea: area:
+            style << style_c.selected
+            layout = HSplitLayout(VSplitLayout('cs controller',
+                                               'scalar controller',
+                                               'roi view'),
+                                  VSplitLayout('cs view', 'scalar view')
+            )
+            DockItem: scalar_view:
+                name = 'scalar view'
+                title = 'Scalar View'
+                closable = False
+                Container:
+                    ScalarView:
+                        fitter.multi_fit_controller = main.multi_fit_controller
+                        pass
+            DockItem: scalar_controller:
+                name = 'scalar controller'
+                title = 'Scalar Controller'
+                closable = False
+                Container:
+                    hug_width = 'strong'
+                    ScalarController:
+                        pass
+            CrossSectionController:
+                name = 'cs controller'
+                title = 'Cross Section Controller'
+                closable = False
+                name = 'cs controller'
+                visible << cs_model.visible
+            CrossSectionView:
+                name = 'cs view'
+                title = 'Cross Section View'
+                visible << cs_model.visible
+            DockItem: roi_view:
+                name = 'roi view'
+                title = "Region Of Interest"
+                Container:
+                    RegionOfInterest:
+                        pass
+                    PushButton:
+                        text = "Show cross section"
+                        checkable = True
+                        checked := cs_model.visible
+                        clicked ::
+                            print('cs_model.visible: {}'.format(cs_model.visible))
