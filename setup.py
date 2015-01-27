@@ -67,7 +67,7 @@ setup(
               'databroker.replay',
               'databroker.replay.pipeline',
               'databroker.replay.gui',
-              'databroker.replay.model'
+              'databroker.replay.model',
               'databroker.server', 'databroker.commands',
               'databroker.broker', 'databroker.muggler',
               ],
