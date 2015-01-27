@@ -9,7 +9,6 @@ setup(
     version='0.0.x',
     author='Brookhaven National Lab',
     packages=["databroker", 'databroker.api',
-              'databroker.server', 'databroker.commands',
               'databroker.broker', 'databroker.muggler'
               ],
     include_dirs=[np.get_include()],
