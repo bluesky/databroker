@@ -63,7 +63,7 @@ setup(
     name='DataBroker',
     version=FULLVERSION,
     author='Brookhaven National Laboratory',
-    packages=['databroker', 'databroker.api',
+    packages=['databroker', 'databroker.api', 'databroker.testing',
               'databroker.replay',
               'databroker.replay.pipeline',
               'databroker.replay.gui',
