@@ -1,0 +1,11 @@
+[run]
+source=fileStore
+[report]
+omit =
+    */python?.?/*
+    */site-packages/nose/*
+    *test*
+    fileStore/__init__.py
+
+exclude_lines =
+    def set_default
