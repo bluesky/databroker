@@ -84,10 +84,14 @@ def save_beamline_config(config_params=None):
 
     Parameters
     ----------
+    config_params : dict
+        Name/value pairs that indicate beamline configuration
+        parameters during capturing of data
 
-    config_params: dict
-    Name/value pairs that indicate beamline configuration parameters during capturing of
-
+    Returns
+    -------
+    blc : BeamlineConfig
+        The document added to the collection
     """
 
     connect(db=database, host=host, port=port)
@@ -104,19 +108,27 @@ def save_event_descriptor(event_type_id, descriptor_name, data_keys, **kwargs):
     Parameters
     ----------
 
-    event_type_id:int
-    Integer identifier for a scan, sweep, etc.
+    event_type_id : int
+        Integer identifier for a scan, sweep, etc.
 
-    data_keys: list
-    Provides information about keys of the data dictionary in an event will contain
+    data_keys : dict
+        Provides information about keys of the data dictionary in
+        an event will contain
 
-    descriptor_name: str
-    Unique identifier string for an event. e.g. ascan, dscan, hscan, home, sweep,etc.
+    descriptor_name : str
+        An identifier string for an event. e.g. ascan, dscan,
+        hscan, home, sweep,etc.
 
-    kwargs
-    ----------
-    type_descriptor:dict
-    Additional name/value pairs can be added to an event_descriptor using this flexible field
+    Other Parameters
+    ----------------
+    type_descriptor : dict, optional
+        Additional name/value pairs can be added to an
+        event_descriptor using this flexible field
+
+    Returns
+    -------
+    ev_desc : EventDescriptor
+        The document added to the collection.
 
     """
     connect(db=database, host=host, port=port)
