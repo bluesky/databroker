@@ -51,6 +51,7 @@ def _blc_tester(config_dict):
     if config_dict is None:
         config_dict = dict()
     assert_equal(config_dict, blc.config_params)
+    return blc
 
 
 def test_blc_insert():
@@ -73,6 +74,8 @@ def _ev_desc_tester(event_type_id, descriptor_name,
                      ):
 
         assert_equal(getattr(ret, k), v)
+
+    return ev_desc
 
 
 def test_ev_desc():
