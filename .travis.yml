@@ -20,6 +20,7 @@ install:
   - source activate testenv
   - pip install coveralls mongoengine
   - python setup.py install
+  - pip install coveralls
 
 
 script:

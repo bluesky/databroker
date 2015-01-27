@@ -1,0 +1,11 @@
+[run]
+source=metadataStore
+[report]
+omit =
+    */python?.?/*
+    */site-packages/nose/*
+    *test*
+    metadataStore/__init__.py
+
+exclude_lines =
+    def set_default
