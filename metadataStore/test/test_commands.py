@@ -9,7 +9,7 @@ import mongoengine.connection
 from mongoengine.context_managers import switch_db
 
 from nose.tools import make_decorator
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 
 
 from metadataStore.database import (BeamlineConfig, EventDescriptor,
@@ -56,3 +56,43 @@ def _blc_tester(config_dict):
 def test_blc_insert():
     for cfd in [None, {}, {'foo': 'bar', 'baz': 5, 'biz': .05}]:
         yield _blc_tester, cfd
+
+
+@context_decorator
+def _ev_desc_tester(event_type_id, descriptor_name,
+                    data_keys, type_descriptor):
+    print(data_keys)
+    ev_desc = mdsc.save_event_descriptor(event_type_id, descriptor_name,
+                             data_keys, type_descriptor=type_descriptor)
+
+    ret = EventDescriptor.objects.get(id=ev_desc.id)
+    for k, v in zip(['event_type_id', 'descriptor_name',
+                     'data_keys', 'type_descriptor'],
+                     [event_type_id, descriptor_name,
+                      data_keys, type_descriptor]
+                     ):
+
+        assert_equal(getattr(ret, k), v)
+
+
+def test_ev_desc():
+    test_vals = [(0, 'ascan', {'a': {'source': 'PV:A'},
+                               'b': {'source': 'PV:b'},
+                               'c': {'source': 'CCD',
+                                     'external': 'FS'}}, {}),
+                 ]
+    for eti, dn, dk, td in test_vals:
+        yield _ev_desc_tester, eti, dn, dk, td
+
+
+def test_dict_key_replace_rt():
+    test_d = {'a.b': 1, 'b': .5, 'c.d.e': None}
+    src_in, dst_in = mdsc.__src_dst('in')
+    test_d_in = mdsc.__replace_dict_keys(test_d, src_in, dst_in)
+    src_out, dst_out = mdsc.__src_dst('out')
+    test_d_out = mdsc.__replace_dict_keys(test_d_in, src_out, dst_out)
+    assert_equal(test_d_out, test_d)
+
+
+def test_src_dst_fail():
+    assert_raises(ValueError, mdsc.__src_dst, 'aardvark')

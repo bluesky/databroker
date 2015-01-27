@@ -1,3 +1,9 @@
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+import six
+
+
 __author__ = 'arkilic'
 
 from metadataStore.database.header import Header
@@ -402,7 +408,57 @@ def __convert2datetime(time_stamp):
         raise TypeError('Timestamp format is not correct!')
 
 
-def __replace_descriptor_data_key_dots(event_descriptor, direction='in'):
+def __replace_dict_keys(input_dict, src, dst):
+    """
+    Helper function to replace forbidden chars in dictionary keys
+
+    Parameters
+    ----------
+    input_dict : dict
+        The dict to have it's keys replaced
+
+    src : str
+        the string to be replaced
+
+    dst : str
+        The string to replace the src string with
+
+    Returns
+    -------
+    ret : dict
+        The dictionary with all instances of 'src' in the key
+        replaced with 'dst'
+
+    """
+    return {k.replace(src, dst): v for
+            k, v in six.iteritems(input_dict)}
+
+
+def __src_dst(direction):
+    """
+    Helper function to turn in/out into src/dst pair
+
+    Parameters
+    ----------
+    direction : {'in', 'out'}
+        The direction to do conversion (direction relative to mongodb)
+
+    Returns
+    -------
+    src, dst : str
+        The source and destination strings in that order.
+    """
+    if direction == 'in':
+        src, dst = '.', '[dot]'
+    elif direction == 'out':
+        src, dst = '[dot]', '.'
+    else:
+        raise ValueError('Only in/out allowed as direction params')
+
+    return src, dst
+
+
+def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
     """Replace the '.' with [dot]
     I know the name is long. Bite me, it is private routine and I have an IDE
 
@@ -417,24 +473,10 @@ def __replace_descriptor_data_key_dots(event_descriptor, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-    modified_data_keys = list()
-    if direction is 'in':
-        for data_key in event_descriptor.data_keys:
-            if '.' in data_key:
-                modified_data_keys.append(data_key.replace('.', '[dot]'))
-            else:
-                modified_data_keys.append(data_key)
-        event_descriptor.data_keys = modified_data_keys
-    elif direction is 'out':
-        for data_key in event_descriptor.data_keys:
-            if '[dot]' in data_key:
-                modified_data_keys.append(data_key.replace('[dot]', '.'))
-            else:
-                modified_data_keys.append(data_key)
-        event_descriptor.data_keys = modified_data_keys
-    else:
-        raise ValueError('Only in/out allowed as direction params')
-    return event_descriptor
+    src, dst = __src_dst(direction)
+    ev_desc.data_keys = __replace_dict_keys(ev_desc.data_keys,
+                                            src, dst)
+    return ev_desc
 
 
 def __replace_event_data_key_dots(event, direction='in'):
@@ -452,23 +494,7 @@ def __replace_event_data_key_dots(event, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-    modified_data_dict = dict()
-
-    if direction is 'in':
-        for key, value in event.data.iteritems():
-            if '.' in key:
-                modified_data_dict[key.replace('.', '[dot]')] = value
-            else:
-                modified_data_dict[key] = value
-        event.data = modified_data_dict
-
-    elif direction is 'out':
-        for key, value in event.data.iteritems():
-            if '[dot]' in key:
-                modified_data_dict[key.replace('[dot]', '.')] = value
-            else:
-                modified_data_dict[key] = value
-        event.data = modified_data_dict
-    else:
-        raise ValueError('Only in/out allowed as direction params')
+    src, dst = __src_dst(direction)
+    event.data = __replace_dict_keys(event.data,
+                                     src, dst)
     return event
