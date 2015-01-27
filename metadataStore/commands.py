@@ -278,15 +278,15 @@ def find_header(limit=50, **kwargs):
     try:
         st_time_dict = kwargs.pop('create_time')
         if not isinstance(st_time_dict, dict):
-            raise TypeError('Wrong format. create_time must include start and end keys for range. Must be a dict')
+            raise ValueError('Wrong format. create_time must include '
+                             'start and end keys for range. Must be a dict')
         else:
-            if 'start' in st_time_dict.keys():
-                if 'end' in st_time_dict.keys():
-                    search_dict['create_time'] = {'$gte': st_time_dict['start'], '$lte': st_time_dict['end']}
-                else:
-                    raise AttributeError('create_time must include start and end keys for range search')
+            if 'start' in st_time_dict and 'end' in st_time_dict:
+                search_dict['create_time'] = {'$gte': st_time_dict['start'],
+                                                  '$lte': st_time_dict['end']}
             else:
-                raise AttributeError('create_time  must include start and end keys for range search')
+                raise ValueError('create_time must include start '
+                                     'and end keys for range search')
     except KeyError:
         pass
 
