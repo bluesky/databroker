@@ -65,7 +65,6 @@ setup(
     author='Brookhaven National Laboratory',
     packages=['databroker', 'databroker.api', 'databroker.testing',
               'databroker.replay',
-              'databroker.replay.pipeline',
               'databroker.replay.gui',
               'databroker.replay.model',
               'databroker.server', 'databroker.commands',
@@ -74,8 +73,8 @@ setup(
     include_dirs=[np.get_include()],
     entry_points={
         'console_scripts': [
-        'replay = replay.run:main']},
-    package_data={'replay.gui': ['*.enaml']},
+        'replay = databroker.replay.run:main']},
+    package_data={'databroker.replay.gui': ['*.enaml']},
     requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
               'pims', 'six'],
 )
