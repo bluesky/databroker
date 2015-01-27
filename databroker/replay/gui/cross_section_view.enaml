@@ -12,7 +12,7 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                GroupBox, PushButton
                                )
 from enaml.stdlib.fields import FloatField
-from replay.model.cross_section_model import CrossSectionModel
+from ..model.cross_section_model import CrossSectionModel
 # valid options for matplotlib imshow interpolation
 # this will be useable instead if PR #3682 gets merged into master
 # from matplotlib.axes.imshow import interpolation

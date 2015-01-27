@@ -12,7 +12,7 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                GroupBox, ScrollArea, PushButton, RadioButton,
                                )
 from enaml.stdlib.fields import FloatField
-from replay.model.scalar_model import ScalarCollection
+from .model.scalar_model import ScalarCollection
 
 
 enamldef HistogramView(Container):

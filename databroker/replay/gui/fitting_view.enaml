@@ -1,7 +1,7 @@
 
 from atom.api import Atom, List, observe, Bool, Enum, Str, Int
 import six
-from replay.model.fitting_model import ParameterModel
+from .model.fitting_model import ParameterModel
 from enaml.core.api import Looper
 from enaml.layout.api import vbox, hbox, spacer, align
 from enaml.stdlib.fields import FloatField

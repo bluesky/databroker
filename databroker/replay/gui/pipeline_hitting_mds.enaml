@@ -4,9 +4,9 @@ from enaml.stdlib.fields import FloatField, IntField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
                                MainWindow, ObjectCombo, PushButton, Timer,
                                Form, Label, MenuBar, Menu, Action)
-from replay.gui.line_view import LineView
-from replay.gui.scalar_view import ScalarView, ScalarController
-from replay.gui.cross_section_view import (CrossSectionView,
+from .line_view import LineView
+from .scalar_view import ScalarView, ScalarController
+from .cross_section_view import (CrossSectionView,
                                            CrossSectionController)
 from atom.api import Bool, Typed, observe, Event
 from enaml.stdlib.dock_area_styles import available_styles

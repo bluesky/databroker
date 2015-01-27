@@ -10,9 +10,9 @@ from enaml.qt.qt_application import QtApplication
 logger = logging.getLogger(__name__)
 
 from skxray.fitting.api import model_list as valid_models
-from replay.pipeline.pipeline import (DataMuggler)
-from replay.model.scalar_model import ScalarCollection
-from replay.model.fitting_model import MultiFitController
+from ..muggler.data import DataMuggler
+from .model.scalar_model import ScalarCollection
+from .model.fitting_model import MultiFitController
 from metadataStore.api import analysis
 from pprint import pprint
 import datetime
@@ -30,11 +30,11 @@ def init_ui(data_muggler):
 
     Parameters
     ----------
-    data_muggler : replay.pipeline.DataMuggler
+    data_muggler : databroker.muggler.data.DataMuggler
     """
     global view
     with enaml.imports():
-        from replay.gui.pipeline_hitting_mds import PipelineView, MplConfigs
+        from .gui.pipeline_hitting_mds import PipelineView, MplConfigs
 
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
     scalar_collection = ScalarCollection()

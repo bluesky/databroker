@@ -38,10 +38,10 @@ def make_line_view(init_view=True):
     window : replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.scalar_model import ScalarCollection
+    from ..model.scalar_model import ScalarCollection
 
     with enaml.imports():
-        from replay.gui.line_view import LineView
+        from .line_view import LineView
 
     x = np.arange(0, 10, .01)
     y = np.sin(x)
@@ -61,14 +61,14 @@ def make_line_window(init_view=True):
 
     Returns
     -------
-    model : replay.core.image_model
-    window : replay.gui.core.ImageView
+    model : databroker.replay.core.image_model
+    window : databroker.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.scalar_model import ScalarCollection
+    from ..model.scalar_model import ScalarCollection
 
     with enaml.imports():
-        from replay.gui.line_view import LineWindow
+        from ..gui.line_view import LineWindow
 
     line_model = ScalarCollection()
     line_view = LineWindow(line_model=line_model)
@@ -84,14 +84,14 @@ def make_image_view(init_view=True):
 
     Returns
     -------
-    model : replay.core.image_model
-    window : replay.gui.core.ImageView
+    model : databroker.replay.core.image_model
+    window : databroker.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.image_model import ImageModel
+    from ..model.image_model import ImageModel
 
     with enaml.imports():
-        from replay.gui.image_view import ImView
+        from ..gui.image_view import ImView
 
     image_model = ImageModel()
     image_view = ImView(image_model=image_model)
@@ -107,14 +107,14 @@ def make_image_window(init_view=True):
 
     Returns
     -------
-    model : replay.core.image_model
-    window : replay.gui.core.ImageView
+    model : databroker.replay.core.image_model
+    window : databroker.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.image_model import ImageModel
+    from ..model.image_model import ImageModel
 
     with enaml.imports():
-        from replay.gui.image_view import ImWindow
+        from ..gui.image_view import ImWindow
 
     image_model = ImageModel()
     image_view = ImWindow(image_model=image_model)
@@ -131,15 +131,15 @@ def make_cross_section_view(init_view=True):
 
     Returns
     -------
-    model : replay.core.image_model
-    window : replay.gui.core.ImageView
+    model : databroker.replay.core.image_model
+    window : databroker.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.cross_section_model import CrossSectionModel
-    from replay.pipeline.pipeline import DataMuggler
+    from ..model.cross_section_model import CrossSectionModel
+    from ...muggler.data import DataMuggler
 
     with enaml.imports():
-        from replay.gui.cross_section_view import CrossSectionMain
+        from ..gui.cross_section_view import CrossSectionMain
 
     dm = DataMuggler((('T', 'pad', True),
                       ('img', None, False),
@@ -166,14 +166,14 @@ def make_param_view(data_muggler, init_view=True):
 
     Returns
     -------
-    model : replay.core.image_model
-    window : replay.gui.core.ImageView
+    model : databroker.replay.core.image_model
+    window : databroker.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
-    from replay.model.scalar_model import ScalarCollection
+    from ..model.scalar_model import ScalarCollection
 
     with enaml.imports():
-        from replay.gui.variable_view import VariableMain
+        from ..gui.variable_view import VariableMain
     pixels = 1000
     data = [np.random.rand(pixels,pixels) for _ in range(10)]
     var_model = ScalarCollection(data_muggler=data_muggler)
@@ -182,4 +182,3 @@ def make_param_view(data_muggler, init_view=True):
         initialize_view(var_view)
         var_model.image_index = len(var_model.data)-1
     return var_model, var_view
-
