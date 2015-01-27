@@ -36,4 +36,6 @@ class Event(Document):
     datetime_timestamp = DateTimeField(required=True,
                                        default= datetime.fromtimestamp(default_timestamp))
 
+    beamline_id = StringField(required=True)
+
     meta = {'indexes': ['-header', '-descriptor', '-_id', '-event_timestamp']}

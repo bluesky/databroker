@@ -37,31 +37,3 @@ print 'Query time given owner..: ', time_elapsed, ' milliseconds'
 print 'This is how you access header EventDescriptor(s) ', hdr[0].event_descriptor
 print hdr[0].event_descriptor[0].id
 print events
-
-
-
-
-#
-#
-# hdrs2, bcfgs2, event_descs2, evs2 = find(owner='arkilic', limit=10)
-#
-#
-# for hdr in hdrs2:
-#     print 'Header: ', '_id: ', hdr.id, ' owner: ', hdr.owner, ' start_time: ', hdr.start_time
-#
-# print 'Here is the last scan recorded', find_last().id
-#
-#
-# hdr = find_last()
-#
-# print find_event_descriptor(hdr)[0].data_keys
-#
-# print hdr.id
-#
-# print find_event(hdr)[0].data
-#
-# #Given an object, get other objects it hold a foreignkey
-# #i.e. Event_object.event_descriptor, returns evet descriptor an event refers to
-#
-# print 'Here is a neat feature, behold...:', find_event_descriptor(hdr)[0].header, 'I know, cool right...'
-#
