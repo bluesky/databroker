@@ -46,14 +46,14 @@ def save_header(event_descriptors, beamline_config, unique_id,
     Other Parameters
     ----------------
 
-    owner : str
+    owner : str, optional
         Specifies the unix user credentials of the user creating the entry
 
-    beamline_id : str
+    beamline_id : str, optional
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
 
-    custom : dict
+    custom : dict, optional
         Additional parameters that data acquisition code/user wants to
         append to a given header. Name/value pairs
 
