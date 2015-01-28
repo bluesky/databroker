@@ -17,7 +17,7 @@ class BeamlineConfig(Document):
 
 
 class BeginRunEvent(Document):
-    """
+    """ Provide a head for a sequence of events. Entry point for an experiment's run.
 
     Attributes
     ----------
@@ -66,7 +66,11 @@ class BeginRunEvent(Document):
 
 
 class EndRunEvent(Document):
-    """
+    """Indicates the end of a series of events
+
+    Attributes
+    ----------
+
     begin_run_event: bson.ObjectId
         Foreign key to corresponding BeginRunEvent
 
@@ -81,7 +85,7 @@ class EndRunEvent(Document):
 
     """
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY, required=True,
-                                     db_field='begin_run_id')
+                                     db_field='begin_run_id') #foreign key to beginning of event sequence
 
     default_time_stamp = time.time()
 
@@ -95,8 +99,16 @@ class EndRunEvent(Document):
 
 
 class EventDescriptor(Document):
-    """
+    """ Provides information regarding the upcoming series of events
 
+    Attributes
+    ----------
+
+    event_type_id: int
+        Required integer identifier for an event type
+
+    begin_run_event: metadataStore.odm_templates.BeginRunEvent
+        BeginRunEvent object created prior to a BeginRunEvent
     """
     event_type_id = IntField(required=True)
 
@@ -110,12 +122,37 @@ class EventDescriptor(Document):
 
 
 class Event(Document):
-    """
+    """ Stores the experimental data. All events point to BeginRunEvent, in other words, to BeginRunEvent serves as an
+    entry point for all events. Within each event, one can access both BeginRunEvent and EventDescriptor. Make sure an
+    event does not exceed 16 MB in size. This is difficult since this tool is geared for metadata only. If more storage
+    is required, please use fileStore.
+
+    Attributes
+    ----------
+
+    begin_run: metadataStore.odm_templates.BeginRunEvent
+        BeginRunEvent object used to refer back from an event to the head of various events
+
+    descriptor: metadataStore.odm_templates.EventDescriptor
+        Foreign key to EventDescriptor that provides info regarding a set of events of the same type
+
+    seq_no: int
+        Sequence number pointing out the
+
+    owner: str
+        Unix user info regarding event creation
+
+    description: str
+        Text description for human friendly notes regarding an event
+
+    data: dict
+        Data dictionary where experimental data is stored.
+
 
     """
 
     default_timestamp = time.time()
-    header = ReferenceField(BeginRunEvent,reverse_delete_rule=DENY, required=True,
+    begin_run = ReferenceField(BeginRunEvent,reverse_delete_rule=DENY, required=True,
                             db_field='begin_run_id')
 
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
@@ -136,4 +173,4 @@ class Event(Document):
 
     beamline_id = StringField(required=True)
 
-    meta = {'indexes': ['-header', '-descriptor', '-_id', '-event_timestamp']}
+    meta = {'indexes': ['-begin_run', '-descriptor', '-_id', '-event_timestamp']}
