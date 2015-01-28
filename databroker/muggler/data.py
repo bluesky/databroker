@@ -228,45 +228,11 @@ class DataMuggler(object):
 
     def align_against(self, ref_col, other_cols=None):
         """
-        Determine what columns can be sliced against another column.
-
-        This matters because not all columns can be filled and would
-        result in getting back non-dense events.
-
-        Currently this just decides based on if the column can be filled,
-        but this might need to be made smarter to deal with synchronous
-        collection of multiple un-fillable measurements.
-
-        Parameters
-        ----------
-        ref_col : str
-            The name of the proposed reference column
-        other_cols : list
-            The names of the columns to test for alignment
-
-        Returns
-        -------
-        dict
-            Keyed on column name, True if that column can be sliced at
-            the times of the input column.
+        DEPRECATED: For backward-compatibility, the returns a dict with all
+        values True.
         """
-        if ref_col not in self._dataframe:
-            raise ValueError("non-existent columnn: [[{}]]".format(ref_col))
-        ref_index = self._dataframe[ref_col].dropna().index
-        tmp_dict = {}
-        for col_name, col_fill_type in six.iteritems(self._col_fill):
-            if col_name == ref_col:
-                tmp_dict[col_name] = True
-            elif other_cols and col_name not in other_cols:
-                # skip column names that are not in other_cols, if it passed in
-                continue
-            elif col_fill_type is None:
-                tmp_dict[col_name] = False
-            else:
-                filled = self._dataframe[col_name].fillna(method=col_fill_type)
-                algnable = filled[ref_index].notnull().all()
-                tmp_dict[col_name] = bool(algnable)
-        return tmp_dict
+        dict_of_truth = {col_name: True for col_name in self.keys()}
+        return dict_of_truth
 
     def append_data(self, time_stamp, data_dict):
         """
