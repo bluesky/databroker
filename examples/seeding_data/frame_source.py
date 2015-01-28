@@ -1,9 +1,6 @@
 from __future__ import print_function, division
-from enaml.qt import QtCore
 import numpy as np
 from skxray import core
-from datetime import datetime
-
 
 # stolen from other live demo
 class FrameSourcerBrownian(object):
@@ -45,7 +42,6 @@ class FrameSourcerBrownian(object):
                  else:
                      return None
     """
-    event = QtCore.Signal(object, dict)
 
     def __init__(self, im_shape, step_scale=1, decay=30,
                  I_fluc_function=None, step_fluc_function=None):
