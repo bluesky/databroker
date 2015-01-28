@@ -48,6 +48,7 @@ import numpy as np
 from nose.tools import assert_true, assert_raises, assert_false
 
 from .t_utils import SynHandlerMod, SynHandlerEcho
+import uuid
 
 mock_base = FileBase(spec='syn-mod',
                      file_path='',
@@ -103,3 +104,11 @@ def test_context_manager_replace():
             assert_true(fsr._h_registry['syn-mod'] is SynHandlerEcho)
         assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
     assert_false('syn-mod' in fsr._h_registry)
+
+
+def test_deregister():
+    test_spec_name = str(uuid.uuid4())
+    fsr.register_handler(test_spec_name, SynHandlerMod)
+    assert_true(fsr._h_registry[test_spec_name] is SynHandlerMod)
+    fsr.deregister_handler(test_spec_name)
+    assert_false(test_spec_name in fsr._h_registry)
