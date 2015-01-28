@@ -169,7 +169,7 @@ def save_event(begin_run_event, event_descriptor, beamline_id, seq_no,
     """
     connect(db=database, host=host, port=port)
 
-    event = Event(header=header.id, descriptor_id=event_descriptor.id,
+    event = Event(header=begin_run_event.id, descriptor_id=event_descriptor.id,
                   seq_no=seq_no, timestamp=timestamp,
                   beamline_id=beamline_id, data=data)
 
@@ -268,7 +268,7 @@ def find_begin_run(limit=50, **kwargs):
         pass
 
     if search_dict:
-        header_objects = Header.objects(
+        header_objects = BeginRunEvent.objects(
                __raw__=search_dict).order_by('-_id')[:limit]
     else:
         header_objects = list()
@@ -356,7 +356,7 @@ def find(data=True, limit=50, **kwargs):
     create_time={'start': float, 'end': float}
 
     """
-    header_objects = find_header(limit, **kwargs)
+    header_objects = find_begin_run(limit, **kwargs)
 
     if data:
         beamline_config_objects = dict()
@@ -385,7 +385,7 @@ def find_last():
     """
     connect(db=database, host=host, port=port)
 
-    return Header.objects.order_by('-_id')[0:1][0]
+    return BeginRunEvent.objects.order_by('-_id')[0:1][0]
 
 
 def search_events_broker(beamline_id, start_time, end_time):
