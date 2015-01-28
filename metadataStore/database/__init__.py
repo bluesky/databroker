@@ -4,4 +4,4 @@ __author__ = 'arkilic'
 from .beamline_config import BeamlineConfig
 from .event_descriptor import EventDescriptor
 from .event import Event
-from .header import Header
+from .begin_run_event import Header

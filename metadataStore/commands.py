@@ -6,7 +6,7 @@ import six
 
 __author__ = 'arkilic'
 
-from metadataStore.database.header import Header
+from metadataStore.database.begin_run_event import Header
 from metadataStore.database.beamline_config import BeamlineConfig
 from metadataStore.database.event_descriptor import EventDescriptor
 from metadataStore.database.event import Event

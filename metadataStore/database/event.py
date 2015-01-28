@@ -2,7 +2,7 @@ from bson.json_util import default
 
 __author__ = 'arkilic'
 
-from metadataStore.database.header import Header
+from metadataStore.database.begin_run_event import Header
 from metadataStore.database.event_descriptor import EventDescriptor
 from mongoengine import DENY, Document
 from mongoengine import ReferenceField, IntField, StringField, DictField, FloatField, DateTimeField
