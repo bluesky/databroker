@@ -36,6 +36,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from collections import namedtuple, OrderedDict
+import warnings
 import pandas as pd
 import numpy as np
 from pims.base_frames import FramesSequence
@@ -231,6 +232,7 @@ class DataMuggler(object):
         DEPRECATED: For backward-compatibility, the returns a dict with all
         values True.
         """
+        warnings.warn("align_against is deprecated; everything can be aligned")
         dict_of_truth = {col_name: True for col_name in self.keys()}
         return dict_of_truth
 
@@ -297,20 +299,7 @@ class DataMuggler(object):
         df.update(new)
         self._dataframe = df
         self._dataframe.sort(inplace=True)
-        # get rid of excess frames
-        self._drop_data()
 
-    def _drop_data(self):
-        """
-        Internal function for dealing with the need to drop old frames
-        to avoid run-away memory usage
-        """
-        for k, work_dict in six.iteritems(self._nonscalar_col_lookup):
-            while len(work_dict) > self.max_frames:
-                drop_key = next(six.iterkeys(work_dict))
-                del work_dict[drop_key]
-                ts, im_id = drop_key
-                self._dataframe[k][ts] = np.nan
 
     def get_values(self, ref_col, other_cols, t_start=None, t_finish=None):
         """
@@ -354,93 +343,6 @@ class DataMuggler(object):
         # return the times/indices and the dictionary
         return out_index, out_data
 
-    def get_column(self, col_name):
-        """
-        Return the time and values where the given column is non-nan
-
-        Parameters
-        ----------
-        col_name : str
-            The name of the column to return
-
-        Returns
-        -------
-        time : array-like
-            The time stamps of the non-nan values
-
-        out_vals : array-like
-            The values at those times
-        """
-        if col_name not in self._dataframe:
-            raise ValueError(("The column {} does not exist. "
-                              "Possible values are {}").format(
-                                  col_name, self.keys()))
-
-        out_frame = self._dataframe[[col_name]].dropna()
-        indx, ret_dict = self._listify_output(out_frame)
-
-        return indx, ret_dict[col_name]
-
-    def get_times(self, col):
-        """
-        Return the time stamps that a column has non-null data
-        at.
-
-
-        Parameters
-        ----------
-        col : str
-            The name of the column to extract the times for.
-        """
-        return self._dataframe[col].dropna().index
-
-    def get_last_value(self, ref_col, other_cols):
-        """
-        Return a dictionary of the dessified row and the most recent
-        time where reference column has a valid value
-
-        Parameters
-        ----------
-        ref_col : str
-            The name of the 'master' column to get time stamps from
-
-        other_cols : list of str
-            A list of column names to return data from
-
-        Returns
-        -------
-        index : Timestamp
-            The time associated with the data
-
-        out_data : dict
-            A dictionary of the data keyed on the column name with values
-            as lists whose length is the same as 'indices'
-        """
-        # drop duplicate keys
-        cols = list(set(other_cols + [ref_col, ]))
-
-        # grab the times/index where the primary key has a value
-        index = self._dataframe[ref_col].dropna().index
-        dense_table = self._densify_sub_df(cols)
-        reduced_table = dense_table.loc[index[-1:]]
-        out_index, data = self._listify_output(reduced_table)
-        return out_index[-1], {k: v[0] for k, v in six.iteritems(data)}
-
-    def get_row(self, index, cols):
-        """
-        Return a row with the selected columns
-        """
-        # this should be made a bit more clever to only look at region
-        # around the row we care about, not _everything_
-
-        dense_array = self._densify_sub_df(cols)
-        row = dense_array.loc[[index]]
-        # use _listify_output to do the non-scalar resolution
-        _, out_dict = self._listify_output(row)
-        # this step is needed to turn lists -> single element
-        out_dict = {k: v[0]
-                    for k, v in six.iteritems(out_dict)}
-        return out_dict
 
     def keys(self, dim=None):
         """
@@ -602,6 +504,8 @@ class DmImgSequence(FramesSequence):
         return self._pixel_type
 
     def get_frame(self, n):
+        # NOTE: This is broken by the removal of get_row
+        # and get_times. Revisit later.
         ts = self._data_muggler.get_times(self.data_name)
         data = self._data_muggler.get_row(ts[n], [self.data_name, ])
         raw_data = data[self.data_name]
