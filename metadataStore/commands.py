@@ -6,21 +6,15 @@ import six
 
 __author__ = 'arkilic'
 
-from metadataStore.database.begin_run_event import Header
-from metadataStore.database.beamline_config import BeamlineConfig
-from metadataStore.database.event_descriptor import EventDescriptor
-from metadataStore.database.event import Event
+from metadataStore.odm_templates import BeginRunEvent, BeamlineConfig, EndRunEvent, EventDescriptor, Event
 import datetime
 from metadataStore.conf import host, port, database
 from mongoengine import connect
 import time
-# TODO: Add logger
-
-# TODO: Update docs after refactoring
 
 
-def save_header(event_descriptors, beamline_config, unique_id,
-                scan_id, create_time, **kwargs):
+
+def insert_begin_run():
     """Create a header in metadataStore database backend
 
     Parameters
@@ -110,7 +104,7 @@ def save_beamline_config(config_params=None):
     return beamline_config
 
 
-def save_event_descriptor(event_type_id, descriptor_name, data_keys, **kwargs):
+def save_event_descriptor(begin_run_event, event_type_id, descriptor_name, data_keys, **kwargs):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
@@ -158,7 +152,7 @@ def save_event_descriptor(event_type_id, descriptor_name, data_keys, **kwargs):
     return event_descriptor
 
 
-def save_event(header, event_descriptor, beamline_id, seq_no,
+def save_event(begin_run_event, event_descriptor, beamline_id, seq_no,
                timestamp=None, data=None, **kwargs):
     """Create an event in metadataStore database backend
 
@@ -211,7 +205,7 @@ def save_event(header, event_descriptor, beamline_id, seq_no,
     return event
 
 
-def find_header(limit=50, **kwargs):
+def find_begin_run(limit=50, **kwargs):
     """
     Parameters
     ----------
