@@ -10,6 +10,7 @@
 # See https://nose.readthedocs.org/ for a detailed description of
 # these options.
 
+#TODO: UPDATE TESTS AFTER REFACTOR
 
 import nose
 # from skxray.testing.noseclasses import KnownFailure
