@@ -13,69 +13,55 @@ from mongoengine import connect
 import time
 
 
-def insert_begin_run(event_descriptor, beamline_config=None, **kwargs):
-    """Create a header in metadataStore database backend
+def insert_begin_run(start_time, beamline_id, beamline_config=None,**kwargs):
+    """ Provide a head for a sequence of events. Entry point for an experiment's run.
 
     Parameters
     ----------
 
-    event_descriptor : metadataStore.odm_templates.EventDescriptor
-        List of EventDescriptor objects the header is going to contain
-
-    beamline_config : metadataStore.database.beamline_config.BeamlineConfig
-        BeamlineConfig object used to capture events given headers
-        and event_descriptors
-
-    start_time : float
-        Creation time of a Header
-
-
-    Other Parameters
-    ----------------
-
     scan_id : int
-        scan identifier visible to the user and data analysis.
-        Auto incremented by opyhd
+        Unique scan identifier visible to the user and data analysis
 
-    owner : str, optional
+    owner: str
         Specifies the unix user credentials of the user creating the entry
 
-    beamline_id : str, optional
-        Beamline String identifier. Not unique, just an indicator of
-        beamline code for multiple beamline systems
+    start_time: time
+        Start time of series of events in unix timestamp format
 
-    custom : dict, optional
-        Additional parameters that data acquisition code/user wants to
-        append to a given header. Name/value pairs
+    datetime_start_time: datetime
+        Start time of series of events in datetime format. Auto convert from unix
+
+    beamline_id: str
+        Beamline String identifier. Not unique, just an indicator of beamline code for multiple beamline systems
+
+    beamline_config: bson.ObjectId
+        Foreign key to beamline config corresponding to a given run
+
+    custom: dict
+        Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
 
     """
-
     connect(db=database, host=host, port=port)
 
-    datetime_create_time = __convert2datetime(create_time)
+    datetime_start_time = __convert2datetime(start_time)
+    begin_run = BeginRunEvent(start_time=start_time, datetime_start_time=datetime_start_time,
+                              beamline_id=beamline_id)
 
-    event_descriptor_ids = list()
-    for entry in event_descriptors:
-        event_descriptor_ids.append(entry.id)
+    if beamline_config is not None:
+        begin_run.beamline_config = beamline_config.id
 
-    header = Header(event_descriptor=event_descriptor_ids,
-                    beamline_config=beamline_config.id, scan_id=scan_id,
-                    create_time=create_time,
-                    datetime_create_time=datetime_create_time,
-                    unique_id=unique_id)
+    kwargs.pop('scan_id', None)
+    kwargs.pop('owner', None)
+    kwargs.pop('custom', None)
 
-    header.owner = kwargs.pop('owner', None)
-
-    header.beamline_id = kwargs.pop('beamline_id', None)
-
-    header.custom = kwargs.pop('custom', None)
+    #If anyone has a better way to do this, let me know. 3 pops seems to yield to cleanest code.
 
     if kwargs:
         raise KeyError('Invalid argument(s)..: ', kwargs.keys())
 
-    header.save(validate=True, write_concern={"w": 1})
+    begin_run.save(validate=True, write_concern={"w": 1})
 
-    return header
+    return begin_run
 
 
 def save_beamline_config(config_params=None):
