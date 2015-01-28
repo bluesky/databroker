@@ -1,0 +1,28 @@
+
+""" The Enaml UI code for the variable viewer
+
+"""
+
+from enaml.core.api import Looper
+from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+from enaml.layout.api import vbox, hbox, spacer, grid
+from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
+                               CheckBox, DockItem, DockPane, Form, Label,
+                               Slider, MainWindow, ComboBox, SpinBox,
+                               GroupBox, ScrollArea
+                               )
+
+enamldef Main2(MainWindow): window:
+    Container: c:
+        Label:
+            text = 'a container label'
+    DockPane:
+        Container:
+            Label:
+                text = 'a dock label'
+
+enamldef Main(MainWindow): window:
+    Container: c:
+        Main2:
+            pass
+

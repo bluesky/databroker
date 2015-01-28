@@ -12,10 +12,9 @@
 
 
 import nose
-# from skxray.testing.noseclasses import KnownFailure
+from databroker.testing.noseclasses import KnownFailure
 
-# plugins = [KnownFailure]
-plugins = []
+plugins = [KnownFailure]
 env = {"NOSE_WITH_COVERAGE": 1,
        'NOSE_COVER_PACKAGE': 'databroker',
        'NOSE_COVER_HTML': 1}

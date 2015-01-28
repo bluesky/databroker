@@ -55,7 +55,7 @@ class Unalignable(Exception):
 class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
     """
     Named-tuple sub-class to validate the column specifications for the
-    Data
+    DataMuggler
 
     Parameters
     ----------
@@ -85,7 +85,7 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
         return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
 
 
-class Data(object):
+class DataMuggler(object):
     """
     This class provides a wrapper layer of signals and slots
     around a pandas DataFrame to make plugging stuff in for live
@@ -120,7 +120,7 @@ class Data(object):
 
     """
     def __init__(self, col_info, max_frames=1000, use_pims_fs=True, **kwargs):
-        super(Data, self).__init__(**kwargs)
+        super(DataMuggler, self).__init__(**kwargs)
         # make all of the data structures
         self._col_info = list()
         self._col_fill = dict()
@@ -161,7 +161,7 @@ class Data(object):
 
     def add_column(self, col_info):
         """
-        Adds a column to the Data
+        Adds a column to the DataMuggler
 
         Parameters
         ----------
@@ -215,7 +215,7 @@ class Data(object):
     @property
     def ncols(self):
         """
-        The number of columns that the Data contains
+        The number of columns that the DataMuggler contains
         """
         return len(self._col_info)
 
@@ -270,7 +270,7 @@ class Data(object):
 
     def append_data(self, time_stamp, data_dict):
         """
-        Add data to the Data.
+        Add data to the DataMuggler.
 
         Parameters
         ----------
@@ -278,7 +278,7 @@ class Data(object):
             The times of the data
 
         data_dict : dict
-            The keys must be a sub-set of the columns that the Data
+            The keys must be a sub-set of the columns that the DataMuggler
             knows about.  If `time_stamp` is a list, then the values must be
             lists of the same length, if `time_stamp` is a single datatime
             object then the values must be single values
@@ -591,11 +591,11 @@ class Data(object):
 
 class DmImgSequence(FramesSequence):
     """
-    This is a PIMS class for dealing with images stored in a Data.
+    This is a PIMS class for dealing with images stored in a DataMuggler.
 
     Parameters
     ----------
-    dm : Data
+    dm : DataMuggler
         Where to get the data from
     """
     @classmethod
@@ -603,10 +603,10 @@ class DmImgSequence(FramesSequence):
         # does not do files
         return set()
 
-    def __init__(self, data, data_name, image_shape=None,
+    def __init__(self, data_muggler, data_name, image_shape=None,
                  process_func=None, dtype=None, as_grey=False):
-        # stash the Data
-        self._data = data
+        # stash the DataMuggler
+        self._data_muggler = data_muggler
         # stash the column we care about
         self._data_name = data_name
         # assume is floats (for now)
@@ -624,8 +624,8 @@ class DmImgSequence(FramesSequence):
         return self._data_name
 
     @property
-    def data(self):
-        return self._data
+    def data_muggler(self):
+        return self._data_muggler
 
     @property
     def frame_shape(self):
@@ -636,19 +636,19 @@ class DmImgSequence(FramesSequence):
         return self._pixel_type
 
     def get_frame(self, n):
-        ts = self._data.get_times(self.data_name)
-        data = self._data.get_row(ts[n], [self.data_name, ])
+        ts = self._data_muggler.get_times(self.data_name)
+        data = self._data_muggler.get_row(ts[n], [self.data_name, ])
         raw_data = data[self.data_name]
         self._image_shape = raw_data.shape
         return Frame(self.process_func(raw_data).astype(self._pixel_type),
                      frame_no=n)
 
     def __len__(self):
-        return len(self._data.get_times(self.data_name))
+        return len(self._data_muggler.get_times(self.data_name))
 
     def __repr__(self):
         state = "Current state of DmImgSequence object"
-        state += "\nData: {}".format(self._data)
+        state += "\nData Muggler: {}".format(self._data_muggler)
         state += "\nData Name: {}".format(self._data_name)
         state += "\nPixel Type: {}".format(self._pixel_type)
         state += "\nImage Shape: {}".format(self._image_shape)
