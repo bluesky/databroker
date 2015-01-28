@@ -44,8 +44,10 @@ class ParameterModel(Atom):
         if param.value is None:
             param.value = 0
         self.value = param.value
-        self.min = param.min
-        self.max = param.max
+        if param.min is not None:
+            self.min = param.min
+        if param.max is not None:
+            self.max = param.max
         self.vary = param.vary
         # check for none
         # stderr = param.stderr
