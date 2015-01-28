@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 import six
-from ..pipeline.pipeline import DataMuggler
+from ...muggler.data import DataMuggler
 from datetime import datetime
 import logging
 from copy import copy

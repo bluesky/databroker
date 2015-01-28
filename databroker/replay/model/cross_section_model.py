@@ -9,7 +9,7 @@ from bubblegum.backend.mpl.cross_section_2d import (CrossSection,
                                                     fullrange_limit_factory,
                                                     absolute_limit_factory,
                                                     percentile_limit_factory)
-from ..pipeline.pipeline import DataMuggler, DmImgSequence
+from databroker.muggler.data import DataMuggler, DmImgSequence
 from datetime import datetime
 from matplotlib.figure import Figure
 from matplotlib import colors

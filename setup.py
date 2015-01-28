@@ -67,7 +67,6 @@ setup(
               'databroker.replay',
               'databroker.replay.gui',
               'databroker.replay.model',
-              'databroker.server', 'databroker.commands',
               'databroker.broker', 'databroker.muggler',
               ],
     include_dirs=[np.get_include()],
