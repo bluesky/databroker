@@ -6,6 +6,7 @@ from metadataStore.database.begin_run_event import BeginRunEvent
 import time
 import datetime
 
+
 class EndRunEvent(Document):
     """
     begin_run_event: bson.ObjectId
@@ -32,3 +33,5 @@ class EndRunEvent(Document):
                                        required=True)
 
     end_run_reason = StringField(max_length=10, required=False)
+
+    custom = DictField(required=False)
