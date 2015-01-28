@@ -53,7 +53,8 @@ class Unalignable(Exception):
     pass
 
 
-class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
+class ColSpec(namedtuple(
+              'ColSpec', ['name', 'dims', 'upsample', 'downsmaple'])):
     """
     Named-tuple sub-class to validate the column specifications for the
     DataMuggler
@@ -61,29 +62,33 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
     Parameters
     ----------
     name : hashable
-    fill_method : {'pad', 'ffill', None}
-        None means that no filling is done
     dims : uint
         Dimensionality of the data stored in the column
+    upsample : {None, 'ffill', 'bfill', callable}
+        None means that no filling is done
+    downsample : {None, 'ffill', 'bfill', callable}
+        None means that no filling is done
     """
     # removed the back-fill ones (even though pandas allows them)
-    valid_fill_methods = {'pad', 'ffill', None, 'bfill', 'backpad'}
+    sample_methods = {None, 'ffill', 'bfill'}
 
     __slots__ = ()
 
-    def __new__(cls, name, fill_method, dims):
+    def __new__(cls, name, dims, upsample, downsample):
         # sanity check dims
         if int(dims) < 0:
             raise ValueError("Dims must be positive not {}".format(dims))
 
-        # sanity check fill_method
-        if fill_method not in cls.valid_fill_methods:
-            raise ValueError("{} is not a valid fill method must be one of "
-                             "{}".format(fill_method,
-                                         cls.valid_fill_methods))
+        # sanity check sample method
+        for sample in (upsample, downsample):
+            if not (sample in cls.sample_methods or callable(sample)):
+                raise ValueError("{} is not a valid sampling method. It "
+                                 "must be one of {} or callable".format(
+                                     sample, cls.sample_methods))
 
         # pass everything up to base class
-        return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
+        return super(ColSpec, cls).__new__(
+            cls, name, dims, upsample, downsample)
 
 
 class DataMuggler(object):
@@ -120,19 +125,75 @@ class DataMuggler(object):
         won't apply to frames added as arrays.
 
     """
-    def __init__(self, col_info, max_frames=1000, use_pims_fs=True, **kwargs):
-        super(DataMuggler, self).__init__(**kwargs)
-        # make all of the data structures
-        self._col_info = list()
-        self._col_fill = dict()
-        self._nonscalar_col_lookup = dict()
-        self._use_fs = use_pims_fs
-        self._framestore = dict()
-        self._is_col_nonscalar = set()
-        self._dataframe = pd.DataFrame()
+    def __init__(self, events=None):
+        self.sources = {}
+        self.specs = {}
+        self._data = []
+        self._stale = True
+        if events:
+            self.add_events(events)
 
-        self.max_frames = max_frames
-        self.recreate_columns(col_info)
+    @classmethod
+    def from_tuples(cls, event_tuples, sources=None):
+        """
+        Parameters
+        ----------
+        event_tuples : list of (time, data_dict) tuples
+            formatted like
+            [(<time>: {<data_key>: <value>, <data_key>: <value>, ...}), ...]
+        metatdata : dict
+            mapping data keys to source names
+
+            This information is used to look up resampling behavior.
+        """
+        raise NotImplementedError()
+        for event in event_tuples:
+            # TODO Make this look like an event object.
+            pass
+
+    @classmethod
+    def from_events(cls, events):
+        return cls(events)
+
+    def add_events(self, events):
+        self._stale = True
+        for event in events:
+            for name, description in event.descriptor.data_keys.items():
+
+                # If we have this source name, check for name collisions.
+                if name in self.sources:
+                    if self.sources[name] != description['source']:
+                        raise ValueError("In a previously loaded event, "
+                                         "'{0}' refers to {1} but in Event "
+                                         "{2} it refers to {3}.".format(
+                                             name, self.sources[name],
+                                             event.id,
+                                             description['source']))
+
+                # If it is a new name, determine a ColSpec.
+                else:
+                    if 'external' in event.descriptor.data_keys.keys():
+                        # TODO Figure out the specific dimension.
+                        pass
+                    else:
+                        dim = 0
+
+                    col_spec = ColSpec(name, dim, None, None)  # defaults
+                    # TODO Look up source-specific default in a config file
+                    # or some other source of reference data.
+                    col_spec = ColSpec(name, dim, 'ffill', np.mean)  # TEMP!
+                    self.specs[name] = col_spec
+
+                # TODO Handle nonscalar data
+                self._data.append(event.data)
+
+    @property
+    def _dataframe(self):
+        # Rebuild the DataFrame if more data has been added.
+        if self._stale:
+            self._df = pd.DataFrame(self._data)
+            self._stale = False
+        return self._df
 
     def recreate_columns(self, col_info):
         """
@@ -300,7 +361,6 @@ class DataMuggler(object):
         self._dataframe = df
         self._dataframe.sort(inplace=True)
 
-
     def get_values(self, ref_col, other_cols, t_start=None, t_finish=None):
         """
         Return a dictionary of data resampled (filled) to the times which have
@@ -342,7 +402,6 @@ class DataMuggler(object):
         out_index, out_data = self._listify_output(reduced_table)
         # return the times/indices and the dictionary
         return out_index, out_data
-
 
     def keys(self, dim=None):
         """
