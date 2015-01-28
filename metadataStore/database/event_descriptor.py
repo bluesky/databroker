@@ -12,4 +12,4 @@ class EventDescriptor(Document):
     data_keys = DictField(required=True)
     descriptor_name = StringField(max_length=10, required=False, unique=False)
     type_descriptor = DictField(required=False)
-    meta = {'indexes': [('-event_type_id','-descriptor_name')]}
+    meta = {'indexes': [('-event_type_id', '-descriptor_name')]}

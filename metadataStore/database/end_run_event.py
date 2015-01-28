@@ -4,7 +4,7 @@ from mongoengine import Document
 from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
 from metadataStore.database.begin_run_event import BeginRunEvent
 import time
-
+import datetime
 
 class EndRunEvent(Document):
     """
@@ -29,6 +29,6 @@ class EndRunEvent(Document):
     stop_time = FloatField(default=default_time_stamp, required=True)
 
     datetime_stop_time = DateTimeField(default=datetime.fromtimestamp(default_time_stamp),
-                                        required=True)
+                                       required=True)
 
     end_run_reason = StringField(max_length=10, required=False)
