@@ -1,27 +1,23 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-import six
-
-
 __author__ = 'arkilic'
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+import six
 from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
                                          EndRunEvent, EventDescriptor, Event)
 import datetime
 from metadataStore.conf import host, port, database
 from mongoengine import connect
-import time
-import getpass
 
-def save_begin_run(time, beamline_id, beamline_config=None, owner=None,
+
+def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
                    scan_id=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
     Parameters
     ----------
-    time : timestamp
+    time : float
         The date/time as found at the client side when an event is
         created.
     beamline_id: str
@@ -38,14 +34,13 @@ def save_begin_run(time, beamline_id, beamline_config=None, owner=None,
         append to a given header. Name/value pairs
     """
     connect(db=database, host=host, port=port)
-    if owner is None:
-        owner = getpass.getuser()
-    if beamline_config is not None:
-        beamline_config = beamline_config.id
+
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
                               time_as_datetime=__convert2datetime(time),
-                              beamline_id=beamline_id, custom=custom,
-                              beamline_config=beamline_config)
+                              beamline_id=beamline_id, custom=custom)
+
+    if beamline_config is not None:
+        begin_run.beamline_config = beamline_config.id
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
