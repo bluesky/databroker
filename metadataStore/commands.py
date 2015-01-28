@@ -32,6 +32,10 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     custom: dict, optional
         Additional parameters that data acquisition code/user wants to
         append to a given header. Name/value pairs
+    Returns
+    -------
+    begin_run: mongoengine.Document
+        Inserted mongoengine object
     """
     connect(db=database, host=host, port=port)
 
@@ -47,7 +51,7 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     return begin_run
 
 
-def save_end_run(begin_run_event, time, reason):
+def insert_end_run(begin_run_event, time, reason=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -60,11 +64,15 @@ def save_end_run(begin_run_event, time, reason):
     time : timestamp
         The date/time as found at the client side when an event is
         created.
+
+    Returns
+    -------
+    begin_run: mongoengine.Document
+        Inserted mongoengine object
     """
     connect(db=database, host=host, port=port)
-    if begin_run_event is not None:
-        begin_run_event = begin_run_event.id
-    begin_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
+
+    begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
                             time=time,
                             time_as_datetime=__convert2datetime(time))
 
@@ -73,7 +81,7 @@ def save_end_run(begin_run_event, time, reason):
     return begin_run
 
 
-def save_beamline_config(config_params=None):
+def insert_beamline_config(config_params=None):
     """ Create a beamline_config  in metadataStore database backend
 
     Parameters
@@ -96,7 +104,7 @@ def save_beamline_config(config_params=None):
     return beamline_config
 
 
-def save_event_descriptor(begin_run_event, data_keys):
+def insert_event_descriptor(begin_run_event, data_keys, time):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
@@ -115,9 +123,9 @@ def save_event_descriptor(begin_run_event, data_keys):
     """
     connect(db=database, host=host, port=port)
 
-    event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
-                                       data_keys=data_keys)
-
+    event_descriptor = EventDescriptor(begin_run_event=begin_run_event.id,
+                                       data_keys=data_keys, time=time,
+                                       time_as_datetime=__convert2datetime(time))
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
 
@@ -126,7 +134,7 @@ def save_event_descriptor(begin_run_event, data_keys):
     return event_descriptor
 
 
-def save_event(event_descriptor, time, data, seq_no=None):
+def insert_event(event_descriptor, time, data, seq_no):
     """Create an event in metadataStore database backend
 
     Parameters
@@ -140,10 +148,12 @@ def save_event(event_descriptor, time, data, seq_no=None):
     time : timestamp
         The date/time as found at the client side when an event is
         created.
-    seq_no : int, optional
+    seq_no : int
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
+    #Note: seq_no is not optional according to opyhd folks. To be discussed!!
+
     connect(db=database, host=host, port=port)
     event = Event(descriptor_id=event_descriptor.id,
                   data=data, time=time, seq_no=seq_no,

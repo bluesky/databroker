@@ -71,7 +71,7 @@ class EndRunEvent(Document):
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
 
-    reason = StringField(max_length=10, required=False)
+    reason = StringField(max_length=10, required=False, default='Complete')
     custom = DictField(required=False)
     meta = {'indexes': ['-_id', '-time', '-reason', '-begin_run_event']}
 
@@ -91,7 +91,9 @@ class EventDescriptor(Document):
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
     data_keys = DictField(required=True)
-    meta = {'indexes': ['-begin_run_event']}
+    time = FloatField(required=True)
+    time_as_datetime = DateTimeField()
+    meta = {'indexes': ['-begin_run_event', '-time']}
 
 
 class Event(Document):
@@ -121,7 +123,7 @@ class Event(Document):
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                       required=True, db_field='descriptor_id')
-    seq_no = IntField(min_value=0, required=False)
+    seq_no = IntField(min_value=0, required=True) #talk to Daron if you think optional
     data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=True)
