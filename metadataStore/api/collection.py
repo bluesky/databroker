@@ -1,7 +1,7 @@
 __author__ = 'arkilic'
 
 
-from ..commands import save_event
-from ..commands import save_event_descriptor
-from ..commands import save_begin_run
-from ..commands import save_beamline_config
+from ..commands import insert_event
+from ..commands import insert_event_descriptor
+from ..commands import insert_begin_run
+from ..commands import insert_beamline_config
