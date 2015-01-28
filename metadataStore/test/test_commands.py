@@ -12,8 +12,8 @@ from nose.tools import make_decorator
 from nose.tools import assert_equal, assert_raises
 
 
-from metadataStore.database import (BeamlineConfig, EventDescriptor,
-                                    Event, Header)
+from metadataStore.odm_templates import (BeamlineConfig, EventDescriptor,
+                                         Event, BeginRunEvent, EndRunEvent)
 import metadataStore.commands as mdsc
 
 db_name = str(uuid.uuid4())
