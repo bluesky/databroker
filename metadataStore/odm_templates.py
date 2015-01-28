@@ -1,6 +1,5 @@
 __author__ = 'arkilic'
 
-__author__ = 'arkilic'
 
 from mongoengine import Document
 from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
@@ -57,7 +56,7 @@ class BeginRunEvent(Document):
     scan_id = IntField(required=False, unique=False)
 
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY, required=False,
-                                     db_field='beamline_config_id')
+                                     db_field='beamline_config_id') #one to many relationship constructed
 
     owner = StringField(default=getuser(), required=True, unique=False)
 
@@ -81,7 +80,7 @@ class EndRunEvent(Document):
         provides information regarding the run success.
 
     """
-    begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY, required=False,
+    begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY, required=True,
                                      db_field='begin_run_id')
 
     default_time_stamp = time.time()
@@ -90,10 +89,9 @@ class EndRunEvent(Document):
 
     datetime_stop_time = DateTimeField(default=datetime.fromtimestamp(default_time_stamp),
                                        required=True)
-
     end_run_reason = StringField(max_length=10, required=False)
-
     custom = DictField(required=False)
+    meta = {'indexes': ['-_id', '-stop_time', '-end_run_reason', 'begin_run_event']}
 
 
 class EventDescriptor(Document):
@@ -101,10 +99,14 @@ class EventDescriptor(Document):
 
     """
     event_type_id = IntField(required=True)
+
+    begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY, required=True,
+                                     db_field='begin_run_id')
+
     data_keys = DictField(required=True)
     descriptor_name = StringField(max_length=10, required=False, unique=False)
     type_descriptor = DictField(required=False)
-    meta = {'indexes': [('-event_type_id', '-descriptor_name')]}
+    meta = {'indexes': [('-event_type_id', '-begin_run_event')]}
 
 
 class Event(Document):
@@ -121,7 +123,7 @@ class Event(Document):
 
     seq_no = IntField(min_value=0, required=True)
 
-    owner = StringField(max_length=10, required=True, default=getpass.getuser())
+    owner = StringField(max_length=10, required=True, default=getuser())
 
     description = StringField(max_length=20, required=False)
 
