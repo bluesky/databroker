@@ -60,7 +60,7 @@ class BeginRunEvent(Document):
 
     owner = StringField(default=getuser(), required=True, unique=False)
 
-    custom = DictField(unique=False, required=False) #Keeping this a dict for the time being instead of new collection
+    custom = DictField(unique=False, required=False, default=dict()) #Keeping this a dict for the time being instead of new collection
 
     meta = {'indexes': ['-_id', '-owner', '-start_time']}
 
