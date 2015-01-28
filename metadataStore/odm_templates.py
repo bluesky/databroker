@@ -19,7 +19,7 @@ class BeamlineConfig(Document):
 class BeginRunEvent(Document):
     """
 
-    Parameters
+    Attributes
     ----------
 
     scan_id : int
