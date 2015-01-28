@@ -6,58 +6,72 @@ import six
 
 __author__ = 'arkilic'
 
-from metadataStore.odm_templates import BeginRunEvent, BeamlineConfig, EndRunEvent, EventDescriptor, Event
+from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
+                                         EndRunEvent, EventDescriptor, Event)
 import datetime
 from metadataStore.conf import host, port, database
 from mongoengine import connect
 import time
+import getpass
 
-
-def insert_begin_run(start_time, beamline_id, beamline_config=None,**kwargs):
-    """ Provide a head for a sequence of events. Entry point for an experiment's run.
+def save_begin_run(time, beamline_id, beamline_config=None, owner=None,
+                   scan_id=None, custom=None):
+    """ Provide a head for a sequence of events. Entry point for an
+    experiment's run.
 
     Parameters
     ----------
-
-    scan_id : int
-        Unique scan identifier visible to the user and data analysis
-
-    owner: str
-        Specifies the unix user credentials of the user creating the entry
-
-    start_time: time
-        Start time of series of events in unix timestamp format
-
-    datetime_start_time: datetime
-        Start time of series of events in datetime format. Auto convert from unix
-
+    time : timestamp
+        The date/time as found at the client side when an event is
+        created.
     beamline_id: str
-        Beamline String identifier. Not unique, just an indicator of beamline code for multiple beamline systems
-
-    beamline_config: bson.ObjectId
+        Beamline String identifier. Not unique, just an indicator of
+        beamline code for multiple beamline systems
+    owner: str, optional
+        Specifies the unix user credentials of the user creating the entry
+    scan_id : int, optional
+        Unique scan identifier visible to the user and data analysis
+    beamline_config: metadataStore.odm_temples.BeamlineConfig, optional
         Foreign key to beamline config corresponding to a given run
-
-    custom: dict
-        Additional parameters that data acquisition code/user wants to append to a given header. Name/value pairs
-
+    custom: dict, optional
+        Additional parameters that data acquisition code/user wants to
+        append to a given header. Name/value pairs
     """
     connect(db=database, host=host, port=port)
-
-    datetime_start_time = __convert2datetime(start_time)
-    begin_run = BeginRunEvent(start_time=start_time, datetime_start_time=datetime_start_time,
-                              beamline_id=beamline_id)
-
+    if owner is None:
+        owner = getpass.getuser()
     if beamline_config is not None:
-        begin_run.beamline_config = beamline_config.id
+        beamline_config = beamline_config.id
+    begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
+                              time_as_datetime=__convert2datetime(time),
+                              beamline_id=beamline_id, custom=custom,
+                              beamline_config=beamline_config)
 
-    kwargs.pop('scan_id', None)
-    kwargs.pop('owner', None)
-    kwargs.pop('custom', None)
+    begin_run.save(validate=True, write_concern={"w": 1})
 
-    #If anyone has a better way to do this, let me know. 3 pops seems to yield to cleanest code.
+    return begin_run
 
-    if kwargs:
-        raise KeyError('Invalid argument(s)..: ', kwargs.keys())
+
+def save_end_run(begin_run_event, time, reason):
+    """ Provide an end to a sequence of events. Exit point for an
+    experiment's run.
+
+    Parameters
+    ----------
+    begin_run_event : metadataStore.odm_temples.BeginRunEvent
+        Foreign key to corresponding BeginRunEvent
+    reason : str
+        provides information regarding the run success.
+    time : timestamp
+        The date/time as found at the client side when an event is
+        created.
+    """
+    connect(db=database, host=host, port=port)
+    if begin_run_event is not None:
+        begin_run_event = begin_run_event.id
+    begin_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
+                            time=time,
+                            time_as_datetime=__convert2datetime(time))
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
@@ -87,28 +101,16 @@ def save_beamline_config(config_params=None):
     return beamline_config
 
 
-def save_event_descriptor(begin_run_event, event_type_id, descriptor_name, data_keys, **kwargs):
+def save_event_descriptor(begin_run_event, data_keys):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
     ----------
-
-    event_type_id : int
-        Integer identifier for a scan, sweep, etc.
-
+    begin_run_event: metadataStore.odm_templates.BeginRunEvent
+        BeginRunEvent object created prior to a BeginRunEvent
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain
-
-    descriptor_name : str
-        An identifier string for an event. e.g. ascan, dscan,
-        hscan, home, sweep,etc.
-
-    Other Parameters
-    ----------------
-    type_descriptor : dict, optional
-        Additional name/value pairs can be added to an
-        event_descriptor using this flexible field
 
     Returns
     -------
@@ -118,70 +120,41 @@ def save_event_descriptor(begin_run_event, event_type_id, descriptor_name, data_
     """
     connect(db=database, host=host, port=port)
 
-    event_descriptor = EventDescriptor(event_type_id=event_type_id,
-                                       data_keys=data_keys,
-                                       descriptor_name=descriptor_name)
-
-    event_descriptor.type_descriptor = kwargs.pop('type_descriptor', None)
+    event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
+                                       data_keys=data_keys)
 
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
-
-    if kwargs:
-        raise KeyError('Invalid argument(s)..: ', kwargs.keys())
 
     event_descriptor.save(validate=True, write_concern={"w": 1})
 
     return event_descriptor
 
 
-def save_event(begin_run_event, event_descriptor, beamline_id, seq_no,
-               timestamp=None, data=None, **kwargs):
+def save_event(event_descriptor, time, data, seq_no=None):
     """Create an event in metadataStore database backend
 
     Parameters
     ----------
-
-    header : mongoengine.Document
-        Header object that specific event entry is going to point(foreign key)
-
-    event_descriptor : mongoengine.Document
+    event_descriptor : metadataStore.odm_templates.EventDescriptor
         EventDescriptor object that specific event entry is going
         to point(foreign key)
-
-    seq_no : int
-        Unique sequence number for the event. Provides order of an event in
-        the group of events
-
     data : dict
         Dictionary that contains the name value fields for the data associated
         with an event
-
-    Other Parameters
-    ----------------
-
-    owner: str
-    Specifies the unix user credentials of the user creating the entry
-
-    description: str
-    Text description of specific event
-
+    time : timestamp
+        The date/time as found at the client side when an event is
+        created.
+    seq_no : int, optional
+        Unique sequence number for the event. Provides order of an event in
+        the group of events
     """
     connect(db=database, host=host, port=port)
-
-    event = Event(header=header.id, descriptor_id=event_descriptor.id,
-                  seq_no=seq_no, timestamp=timestamp,
-                  beamline_id=beamline_id, data=data)
-
-    event.owner = kwargs.pop('owner', None)
-
-    event.description = kwargs.pop('description', None)
-    event.datetime_timestamp = kwargs.pop('datetime_timestamp', None)
+    event = Event(descriptor_id=event_descriptor.id,
+                  data=data, time=time, seq_no=seq_no,
+                  time_as_datetime=__convert2datetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
-
-    if kwargs:
-        raise KeyError('Invalid argument(s)..: ', kwargs.keys())
 
     event.save(validate=True, write_concern={"w": 1})
 
@@ -268,7 +241,7 @@ def find_begin_run(limit=50, **kwargs):
         pass
 
     if search_dict:
-        header_objects = Header.objects(
+        header_objects = BeginRunEvent.objects(
                __raw__=search_dict).order_by('-_id')[:limit]
     else:
         header_objects = list()
@@ -287,7 +260,7 @@ def find_beamline_config(_id):
     return BeamlineConfig.objects(id=_id).order_by('-_id')
 
 
-def find_event_descriptor(_id):
+def find_event_descriptor(begin_run_event):
     """Return beamline config objects given a unique mongo id
 
     Parameters
@@ -297,20 +270,21 @@ def find_event_descriptor(_id):
     """
     event_descriptor_list = list()
     connect(db=database, host=host, port=port)
-    for event_descriptor in EventDescriptor.objects(id=_id).order_by('-_id'):
+    for event_descriptor in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
     return event_descriptor_list
 
 
-def find_event(header):
+def find_event(begin_run_event):
     # TODO: Other search parameters for events?
     connect(db=database, host=host, port=port)
     event_list = list()
-    for event in Event.objects(header=header.id).order_by('-_id'):
-        event = __replace_event_data_key_dots(event, direction='out')
-        event_list.append(event)
+    for ev_desc in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-id'):
+        for event in Event.objects(descriptor=ev_desc.id).order_by('-_id'):
+            event = __replace_event_data_key_dots(event, direction='out')
+            event_list.append(event)
     return event_list
 
 
@@ -356,7 +330,7 @@ def find(data=True, limit=50, **kwargs):
     create_time={'start': float, 'end': float}
 
     """
-    header_objects = find_header(limit, **kwargs)
+    header_objects = find_begin_run(limit, **kwargs)
 
     if data:
         beamline_config_objects = dict()
@@ -385,7 +359,7 @@ def find_last():
     """
     connect(db=database, host=host, port=port)
 
-    return Header.objects.order_by('-_id')[0:1][0]
+    return BeginRunEvent.objects.order_by('-_id')[0:1][0]
 
 
 def search_events_broker(beamline_id, start_time, end_time):

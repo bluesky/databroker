@@ -1,13 +1,11 @@
 __author__ = 'arkilic'
 
-from metadataStore.api.collection import save_header, save_beamline_config, save_event, save_event_descriptor
+from metadataStore.api.collection import save_begin_run, save_beamline_config, save_event, save_event_descriptor
 import random
 import time
 import string
+import uuid
 
-
-def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
 
 """
 DO NOT COMPLAIN ABOUT C++-like commented documentation here. I will get rid off it once everybody knows what this
@@ -28,15 +26,16 @@ refactor was all about.
 b_config = save_beamline_config(config_params={'my_beamline': 'my_value'})
 
 
-e_desc = save_event_descriptor(event_type_id=1, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
+begin_event = save_begin_run(scan_id=3,
+                             time=time.time(), beamline_config=b_config,
+                             beamline_id='csx', custom={'data': 123})
 
-e_desc2 = save_event_descriptor(event_type_id=2, data_keys=['arm.an', 'arkilic'], descriptor_name=id_generator())
+e_desc = save_event_descriptor(begin_run_event=begin_event,
+                               data_keys=['arm.an', 'arkilic'])
 
+e_desc2 = save_event_descriptor(begin_run_event=begin_event,
+                                data_keys=['arm.an', 'arkilic'])
 
-h = save_header(unique_id=str(id_generator(5)), scan_id=3,  create_time=time.time(),
-                beamline_config=b_config,
-                event_descriptors=[e_desc, e_desc2],
-                custom={'data': 123})
-
-
-e = save_event(header=h, event_descriptor=e_desc, seq_no=1, beamline_id='csx', timestamp=time.time(), data={'arm.an': 1, 'arkilic': 5})
+e = save_event(begin_run_event=begin_event, event_descriptor=e_desc,
+               seq_no=1, beamline_id='csx',
+               time=time.time(), data={'arm.an': 1, 'arkilic': 5})
