@@ -126,10 +126,17 @@ def test_multi_write_fail():
 
 
 @context_decorator
-def test_custom_fail():
+def test_event_custom_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
     assert_raises(ValueError, test_w.add_data, 6, None, {'aardvark': 3.14})
+
+
+@context_decorator
+def test_file_custom_fail():
+    test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
+    assert_raises(ValueError, fs_write.NpyWriter,
+                  test_path, {'aardvark': 3.14})
 
 
 @context_decorator
