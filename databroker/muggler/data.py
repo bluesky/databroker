@@ -129,6 +129,7 @@ class DataMuggler(object):
         self.sources = {}
         self.specs = {}
         self._data = []
+        self._time = []
         self._stale = True
         if events:
             self.add_events(events)
@@ -172,6 +173,7 @@ class DataMuggler(object):
 
                 # If it is a new name, determine a ColSpec.
                 else:
+                    self.sources[name] = description['source']
                     if 'external' in event.descriptor.data_keys.keys():
                         # TODO Figure out the specific dimension.
                         pass
@@ -186,14 +188,33 @@ class DataMuggler(object):
 
                 # TODO Handle nonscalar data
                 self._data.append(event.data)
+                self._time.append(event.time)
 
     @property
     def _dataframe(self):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
-            self._df = pd.DataFrame(self._data)
+            self._df = pd.DataFrame(self._data, index=self._time)
             self._stale = False
         return self._df
+
+    def bin_by_edges(self, bin_edges):
+        """
+        Return data, resampled as necessary.
+
+        Parameters
+        ----------
+        bin_edges : list
+           list of two-element items like [(t1, t2), (t3, t4), ...]
+
+        Returns
+        -------
+        data : dict of lists
+        """
+        bin_no = np.zeros(len(self._time), dtype=np.bool)
+        for i, interval in enumerate(bin_edges):
+            bin_no[(self._time < interval[0]) & (self._time > interval[1])] = i
+        return self._dataframe.groupby(bin_no)
 
     def recreate_columns(self, col_info):
         """

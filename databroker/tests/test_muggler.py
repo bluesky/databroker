@@ -24,7 +24,7 @@ class TestMuggler(unittest.TestCase):
         ev_desc = save_event_descriptor(bre, data_keys=data_keys)
 
         func = np.cos
-        num = 1000
+        num = 100
         start = 0
         stop = 10
         sleep_time = .05
@@ -34,13 +34,14 @@ class TestMuggler(unittest.TestCase):
             data = {'linear_motor': i,
                     'Tsam': i + 5,
                     'scalar_detector': func(i)}
-            event = save_event(ev_desc, time.time(), data)
+            event = save_event(ev_desc, time.time() + i, data)
             events.append(event)
         time.sleep(sleep_time)
 
         self.events = events
         self.ev_desc = ev_desc
         self.bre = bre
+        self.data_keys = data_keys
 
     def test_empty_muggler(self):
         DataMuggler()
@@ -51,3 +52,13 @@ class TestMuggler(unittest.TestCase):
     def test_dataframe(self):
         dm = DataMuggler.from_events(self.events)
         dm._dataframe
+
+    def test_binning(self):
+        dm = DataMuggler.from_events(self.events)
+        dm.bin_by_edges([(1, 2), (3, 4)])  # TODO more relavant bins
+
+    def test_attributes(self):
+        dm = DataMuggler.from_events(self.events)
+        sources = dm.sources
+        expected_sources = {k: v['source'] for k, v in self.data_keys.items()}
+        self.assertEqual(sources, expected_sources)
