@@ -91,6 +91,7 @@ class EventDescriptor(Document):
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
     data_keys = DictField(required=True)
+    event_type = StringField(required=False)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField()
     meta = {'indexes': ['-begin_run_event', '-time']}
