@@ -35,7 +35,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, deque
 import warnings
 import pandas as pd
 import numpy as np
@@ -69,8 +69,8 @@ class ColSpec(namedtuple(
     downsample : {None, 'ffill', 'bfill', callable}
         None means that no filling is done
     """
-    # removed the back-fill ones (even though pandas allows them)
-    sample_methods = {None, 'ffill', 'bfill'}
+    # These reflect the 'method' argument of pandas.DataFrame.fillna
+    upsampling_methods = {None, 'ffill', 'pad', 'backfill', 'bfill'}
 
     __slots__ = ()
 
@@ -128,11 +128,12 @@ class DataMuggler(object):
     def __init__(self, events=None):
         self.sources = {}
         self.specs = {}
-        self._data = []
-        self._time = []
+        self._data = deque()
+        self._time = deque()
         self._stale = True
-        if events:
-            self.add_events(events)
+        if events is not None:
+            for event in events:
+                self.add_events(events)
 
     @classmethod
     def from_tuples(cls, event_tuples, sources=None):
@@ -156,39 +157,38 @@ class DataMuggler(object):
     def from_events(cls, events):
         return cls(events)
 
-    def add_events(self, events):
+    def append_event(self, event):
         self._stale = True
-        for event in events:
-            for name, description in event.descriptor.data_keys.items():
+        for name, description in event.descriptor.data_keys.items():
 
-                # If we have this source name, check for name collisions.
-                if name in self.sources:
-                    if self.sources[name] != description['source']:
-                        raise ValueError("In a previously loaded event, "
-                                         "'{0}' refers to {1} but in Event "
-                                         "{2} it refers to {3}.".format(
-                                             name, self.sources[name],
-                                             event.id,
-                                             description['source']))
+            # If we have this source name, check for name collisions.
+            if name in self.sources:
+                if self.sources[name] != description['source']:
+                    raise ValueError("In a previously loaded event, "
+                                     "'{0}' refers to {1} but in Event "
+                                     "{2} it refers to {3}.".format(
+                                         name, self.sources[name],
+                                         event.id,
+                                         description['source']))
 
-                # If it is a new name, determine a ColSpec.
+            # If it is a new name, determine a ColSpec.
+            else:
+                self.sources[name] = description['source']
+                if 'external' in event.descriptor.data_keys.keys():
+                    # TODO Figure out the specific dimension.
+                    pass
                 else:
-                    self.sources[name] = description['source']
-                    if 'external' in event.descriptor.data_keys.keys():
-                        # TODO Figure out the specific dimension.
-                        pass
-                    else:
-                        dim = 0
+                    dim = 0
 
-                    col_spec = ColSpec(name, dim, None, None)  # defaults
-                    # TODO Look up source-specific default in a config file
-                    # or some other source of reference data.
-                    col_spec = ColSpec(name, dim, 'ffill', np.mean)  # TEMP!
-                    self.specs[name] = col_spec
+                col_spec = ColSpec(name, dim, None, None)  # defaults
+                # TODO Look up source-specific default in a config file
+                # or some other source of reference data.
+                col_spec = ColSpec(name, dim, 'ffill', np.mean)  # TEMP!
+                self.specs[name] = col_spec
 
-                # TODO Handle nonscalar data
-                self._data.append(event.data)
-                self._time.append(event.time)
+            # TODO Handle nonscalar data
+            self._data.append(event.data)
+            self._time.append(event.time)
 
     @property
     def _dataframe(self):
@@ -211,36 +211,36 @@ class DataMuggler(object):
         -------
         data : dict of lists
         """
-        bin_no = np.zeros(len(self._time), dtype=np.bool)
-        for i, interval in enumerate(bin_edges):
-            bin_no[(self._time < interval[0]) & (self._time > interval[1])] = i
-        return self._dataframe.groupby(bin_no)
+        binning = np.zeros(len(self._time), dtype=np.bool)
+        for i, pair in enumerate(bin_edges):
+            binning[(self._time < pair[0]) & (self._time > pair[1])] = i
+        return resample(binning)
 
-    def recreate_columns(self, col_info):
-        """
-        Recreate the columns with new column information.  This
-        implies a clear and the muggler in empty with the new columns
-        after this call.
+    def resample(binning, agg=None, interpolate=None):
+        grouped = self._dataframe.groupby(binning)
 
-        Parameters
-        ----------
-        col_info : list
-           List of information about the columns. Each entry should
-           be a tuple of the form (col_name, fill_method, dimensionality). See
-           `ColSpec` class docstring
+        # 1. How many (non-null) data points in each bin?
+        counts = grouped.count()
 
-        """
-        # make all of the data structures
-        self._col_info = list()
-        self._col_fill = dict()
-        self._nonscalar_col_lookup = dict()
-        self._framestore = dict()
-        self._is_col_nonscalar = set()
-        self._dataframe = pd.DataFrame()
+        # 2. If upsampling is possible, put one point in the center of
+        #    each bin.
+        upsampled_df = pd.DataFrame()
+        for col_name in upsampled_df:
+            upsampling_rule = self.upsampling_rules[col_name]
+            col_data = self._dataframe[col_name]
+            if upsampling_rule is None:
+                # Copy the column with no changes.
+                upsampled_df[col_name] = col_data
+            elif upsampling_rule in ColSpec.upsampling_methods:
+                # Then method must be a string.
+                upsampled_df[col_name] = col_data.fillna(upsampling_rule)
+            else:
+                # The method is a callable. For sample, a curried
+                # pandas.rolling_apply would make sense here.
+                upsampled_df[col_name] = upsampling_rule(col_data)
 
-        # add each of the columns
-        for ci in col_info:
-            self.add_column(ci)
+        # 3. Downsample.
+        upsampled_df.groupby(binning)
 
     def add_column(self, col_info):
         """
@@ -274,13 +274,6 @@ class DataMuggler(object):
 
         self._dataframe[col_info.name] = pd.Series(np.nan,
                                                    index=self._dataframe.index)
-
-    def clear(self):
-        """
-        Clear all of the data by re-initializing all of the internal
-        data structures.
-        """
-        self.recreate(cols=self._col_info)
 
     @property
     def col_dims(self):
