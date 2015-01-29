@@ -154,7 +154,8 @@ def insert_event(event_descriptor, time, data, seq_no):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-    #Note: seq_no is not optional according to opyhd folks. To be discussed!!
+
+    #TODO: seq_no is not optional according to opyhd folks. To be discussed!!
 
     connect(db=database, host=host, port=port)
     event = Event(descriptor_id=event_descriptor.id,
@@ -242,7 +243,7 @@ def find_begin_run(limit=50, **kwargs):
                 search_dict['time'] = {'$gte': time_dict['start'],
                                        '$lte': time_dict['end']}
             else:
-                raise ValueError('create_time must include start '
+                raise ValueError('time must include start '
                                  'and end keys for range search')
     except KeyError:
         pass
@@ -283,15 +284,47 @@ def find_event_descriptor(begin_run_event):
     return event_descriptor_list
 
 
-def find_event(begin_run_event):
+def find_event(limit=1000, **kwargs):
     # TODO: Other search parameters for events?
+    """
+
+    Parameters
+    -----------
+    limit: int
+        number of events returned
+
+    Other Parameters
+    ----------------
+    time: dict
+        time of the event. dict keys must be start and end
+    descriptor: mongoengine.Document
+        event descriptor object
+    """
     connect(db=database, host=host, port=port)
-    event_list = list()
-    for ev_desc in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-id'):
-        for event in Event.objects(descriptor=ev_desc.id).order_by('-_id'):
-            event = __replace_event_data_key_dots(event, direction='out')
-            event_list.append(event)
-    return event_list
+
+    search_dict = dict()
+    try:
+        time_dict = kwargs.pop('time')
+        if not isinstance(time_dict, dict):
+            raise ValueError('Wrong format. time must include '
+                             'start and end keys for range. Must be a dict')
+        else:
+            if 'start' in time_dict and 'end' in time_dict:
+                search_dict['time'] = {'$gte': time_dict['start'],
+                                       '$lte': time_dict['end']}
+            else:
+                raise ValueError('time must include start '
+                                 'and end keys for range search')
+    except KeyError:
+        pass
+
+    try:
+        desc = kwargs.pop('descriptor')
+        search_dict['descriptor_id'] = desc.id
+    except KeyError:
+        pass
+    result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
+    return result
 
 
 def find_event_given_descriptor(event_descriptor):
@@ -342,8 +375,6 @@ def find(data=True, limit=50, **kwargs):
         beamline_config_objects = dict()
         event_descriptor_objects = dict()
         event_objects = dict()
-        # Queryset instance returned by mongoengine not iterable,
-        # hence manual recursion
         if header_objects:
             for header in header_objects:
                 event_objects[header.id] = find_event(header)
@@ -366,33 +397,6 @@ def find_last():
     connect(db=database, host=host, port=port)
 
     return BeginRunEvent.objects.order_by('-_id')[0:1][0]
-
-
-def search_events_broker(beamline_id, start_time, end_time):
-    """Return a set of events given
-
-    Parameters
-    ----------
-
-    beamline_id: str
-        string identifier for a beamline and its sections
-
-    start_time: float
-        Event time stamp range start time
-
-    end_time: float
-        Event time stamp range end time
-
-    """
-    event_query_dict = dict()
-    event_query_dict['beamline_id'] = beamline_id
-    event_query_dict['event_timestamp'] = {'$gte': start_time,
-                                           '$lte': end_time}
-
-    result = Event.objects(__raw__=event_query_dict).order_by('-_id')
-    # I did not set any limits to the query because we might
-    # return quite a lot of events.
-    return result
 
 
 def __convert2datetime(time_stamp):
