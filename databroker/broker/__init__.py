@@ -1,1 +1,1 @@
-from .simple_broker import search
+from .simple_broker import get_last

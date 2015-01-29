@@ -34,7 +34,7 @@ frame_source = FrameSourcerBrownian(img_size, step_scale=.5,
                                     step_fluc_function=scale_fluc,
                                     )
 
-b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
+b_config = insert_beamline_config(time=time.time(), config_params={'my_beamline': 'my_value'})
 b_config=None
 try:
     last_start_event = find_last()
@@ -47,15 +47,15 @@ bre = insert_begin_run(scan_id=scan_id, time=time.time(), beamline_id='csx',
                        beamline_config=b_config)
 
 # set up the data keys entry
-data_keys1 = {'linear_motor': {'source': 'ES:sam_x'},
-              'img': {'source': 'CCD', 'external': 'FILESTORE'},
+data_keys1 = {'linear_motor': {'source': 'PV:ES:sam_x'},
+              'img': {'source': 'CCD', 'external': 'FILESTORE:'},
               'total_img_sum': {'source': 'CCD:sum'},
-              'img_x_max': {'source': 'CCD:xmax', 'external': 'FILESTORE'},
-              'img_y_max': {'source': 'CCD:ymax', 'external': 'FILESTORE'},
-              'img_sum_x': {'source': 'CCD:xsum'},
-              'img_sum_y': {'source': 'CCD:ysum'},
+              'img_x_max': {'source': 'CCD:xmax'},
+              'img_y_max': {'source': 'CCD:ymax'},
+              'img_sum_x': {'source': 'CCD:xsum', 'external': 'FILESTORE:'},
+              'img_sum_y': {'source': 'CCD:ysum', 'external': 'FILESTORE:'},
 }
-data_keys2 = {'Tsam': {'source': 'ES:Tsam'}}
+data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam'}}
 
 # save the first event descriptor
 e_desc1 = insert_event_descriptor(begin_run_event=bre, data_keys=data_keys1,
@@ -93,7 +93,8 @@ for idx1, i in enumerate(range(num1)):
     insert_event(event_descriptor=e_desc1, seq_no=idx1, time=time.time(),
                  data=data1)
     for idx2, i2 in enumerate(range(num2)):
-        data2 = {'Tsam': idx1 + np.random.randn()/100}
+        data2 = {'Tsam': {'value': idx1 + np.random.randn()/100,
+                          'timestamp': time.time()}}
         insert_event(event_descriptor=e_desc2, seq_no=idx2+idx1,
                      time=time.time(), data=data2)
     # time.sleep(sleep_time)
