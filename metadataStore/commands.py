@@ -167,7 +167,7 @@ def insert_event(event_descriptor, time, data, seq_no):
 
 
 def find_begin_run(limit=50, **kwargs):
-    """
+    """ Given search criteria, locate the BeginRunEvent object
     Parameters
     ----------
 
@@ -194,22 +194,22 @@ def find_begin_run(limit=50, **kwargs):
         Hashed unique identifier
 
     Usage
+    ------
 
-    >>> find_header(scan_id=123)
-    >>> find_header(owner='arkilic')
-    >>> find_header(create_time={'start': 1421176750.514707,
-    ...                          'end': time.time()})
-    >>> find_header(create_time={'start': 1421176750.514707,
-    ...                          'end': time.time()})
+    >>> find_begin_run(scan_id=123)
+    >>> find_begin_run(owner='arkilic')
+    >>> find_begin_run(time={'start': 1421176750.514707,
+    ...                      'end': time.time()})
+    >>> find_begin_run(time={'start': 1421176750.514707,
+    ...                      'end': time.time()})
 
-    >>> find_header(owner='arkilic', create_time={'start': 1421176750.514707,
-    ...                                          'end': time.time()})
+    >>> find_begin_run(owner='arkilic', time={'start': 1421176750.514707,
+    ...                                       'end': time.time()})
 
     """
     connect(db=database, host=host, port=port)
     search_dict = dict()
 
-    # Do not want to pop if not in kwargs. Otherwise, breaks the mongo query
     try:
         search_dict['scan_id'] = kwargs.pop('scan_id')
     except KeyError:
@@ -231,30 +231,29 @@ def find_begin_run(limit=50, **kwargs):
         pass
 
     try:
-        st_time_dict = kwargs.pop('create_time')
-        if not isinstance(st_time_dict, dict):
-            raise ValueError('Wrong format. create_time must include '
+        time_dict = kwargs.pop('time')
+        if not isinstance(time_dict, dict):
+            raise ValueError('Wrong format. time must include '
                              'start and end keys for range. Must be a dict')
         else:
-            if 'start' in st_time_dict and 'end' in st_time_dict:
-                search_dict['create_time'] = {'$gte': st_time_dict['start'],
-                                                  '$lte': st_time_dict['end']}
+            if 'start' in time_dict and 'end' in time_dict:
+                search_dict['time'] = {'$gte': time_dict['start'],
+                                       '$lte': time_dict['end']}
             else:
                 raise ValueError('create_time must include start '
-                                     'and end keys for range search')
+                                 'and end keys for range search')
     except KeyError:
         pass
 
     if search_dict:
-        header_objects = BeginRunEvent.objects(
-               __raw__=search_dict).order_by('-_id')[:limit]
+        header_objects = BeginRunEvent.objects(__raw__=search_dict).order_by('-_id')[:limit]
     else:
         header_objects = list()
     return header_objects
 
 
 def find_beamline_config(_id):
-    """Return beamline config objects given a unique mongo id
+    """Return beamline config objects given a unique mongo _id
 
     Parameters
     ----------
