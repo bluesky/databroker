@@ -285,7 +285,6 @@ def find_event_descriptor(begin_run_event):
 
 
 def find_event(limit=1000, **kwargs):
-    # TODO: Other search parameters for events?
     """
 
     Parameters
