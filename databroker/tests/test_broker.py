@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from ..sources import channelarchiver as ca
 from ..sources import switch
-from ..broker.simple_broker import search, POPULAR_CHANNELS
+from ..broker.simple_broker import POPULAR_CHANNELS
 
 
 class TestBroker(unittest.TestCase):
@@ -14,10 +14,6 @@ class TestBroker(unittest.TestCase):
         start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
         simulated_ca_data = generate_ca_data(POPULAR_CHANNELS, start, end)
         ca.insert_data(simulated_ca_data)
-
-    def test_basic_search(self):
-        start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
-        search('srx', start, end, 'host')
 
     def tearDown(self):
         switch(channelarchiver=True, metadatastore=True, filestore=True)
