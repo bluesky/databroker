@@ -5,6 +5,9 @@ from .retrieve import HandlerBase
 import six
 import logging
 import h5py
+import numpy as np
+import os.path
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,3 +95,25 @@ class HDFMapsEnergyHandler(_HdfMapsHandlerBase):
         """
         super(HDFMapsEnergyHandler, self).__call__()
         return self._dset[e_index, :, :]
+
+
+class NpyHandler(HandlerBase):
+    """
+    Class to deal with reading npy files
+
+    Parameters
+    ----------
+    fpath : str
+        Path to file
+
+    mmap_mode : {'r', 'r+', c}, optional
+        memmap mode to use to open file
+    """
+    def __init__(self, filename, mmap_mode=None):
+        self._mmap_mode = mmap_mode
+        if not os.path.exists(filename):
+            raise IOError("the requested file {fpath} does not exst")
+        self._fpath = filename
+
+    def __call__(self):
+        return np.load(self._fpath, self._mmap_mode)
