@@ -29,10 +29,21 @@ def switch(channelarchiver=None, metadatastore=None, filestore=None):
         if value is not None:
             if value:
                 globals()[name] = import_module(name)
+                if name == 'fileStore':
+                    # import to do registering so things 'just work'
+                    from fileStore.retrieve import register_handler
+                    from fileStore.file_readers import NpyHandler
+                    # register npy handler
+                    register_handler('npy', NpyHandler)
             else:
                 globals()[name] = import_module(format_string.format(name))
                 logger.debug('Pointing %s to %s', name, globals()[name])
+                if name == 'fileStore':
+                    # import to do registering so things 'just work'
+                    from fileStore.retrieve import deregister_handler
+                    # register npy handler
+                    deregister_handler('npy')
 
 
 # On importing databroker, set these defaults.
-switch(channelarchiver=False, metadatastore=False, filestore=False)
+switch(channelarchiver=False, metadatastore=True, filestore=True)
