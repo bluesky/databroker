@@ -1,5 +1,3 @@
-__author__ = 'arkilic'
-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
@@ -249,10 +247,18 @@ def find_begin_run(limit=50, **kwargs):
         pass
 
     if search_dict:
-        header_objects = BeginRunEvent.objects(__raw__=search_dict).order_by('-_id')[:limit]
+        br_objects = BeginRunEvent.objects(__raw__=search_dict).order_by('-_id')[:limit]
     else:
-        header_objects = list()
-    return header_objects
+        br_objects = list()
+
+    for br in br_objects:
+        descriptors = find_event_descriptor(br)
+        desc_objects = list()
+        for obj in descriptors:
+            desc_objects.append(obj)
+        br.event_descriptors = desc_objects
+
+    return br_objects
 
 
 def find_beamline_config(_id):
