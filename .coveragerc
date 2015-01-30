@@ -1,0 +1,11 @@
+[run]
+source=databroker
+[report]
+omit =
+    */python?.?/*
+    */site-packages/nose/*
+    *test*
+    databroker/__init__.py
+    databroker/tests/*
+
+exclude_lines =
