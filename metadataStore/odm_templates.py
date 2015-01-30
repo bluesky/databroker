@@ -1,15 +1,18 @@
 __author__ = 'arkilic'
 
-
 from mongoengine import Document
 from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
-import time
 from getpass import getuser
-from datetime import datetime
 
 
 class BeamlineConfig(Document):
     """
+    Attributes
+    ----------
+    config_params: dict
+        Custom configuration parameters for a given run. Avoid using '.' in field names.
+        If you're interested in doing so, let me know @arkilic
+        This has a one-to-many relationship with BeginRunEvent documents
 
     """
     config_params = DictField(required=False, unique=False)
@@ -44,9 +47,11 @@ class BeginRunEvent(Document):
     scan_id = IntField(required=False, unique=False)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
                                      required=False,
-                                     db_field='beamline_config_id') #one to many relationship constructed
+                                     db_field='beamline_config_id')
+    # one to many relationship constructed between BeginRunEvent and
     owner = StringField(default=getuser(), required=True, unique=False)
-    custom = DictField(unique=False, required=False, default=dict()) #Keeping this a dict for the time being instead of new collection
+    custom = DictField(unique=False, required=False, default=dict())
+    # Keeping custom a dict for the time being instead of new collection#
 
     meta = {'indexes': ['-_id', '-owner', '-time']}
 
@@ -124,8 +129,9 @@ class Event(Document):
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                       required=True, db_field='descriptor_id')
-    seq_no = IntField(min_value=0, required=True) #talk to Daron if you think optional
+    seq_no = IntField(min_value=0, required=True)
+    # talk to Daron if you think seq_no is optional
     data = DictField(required=True)
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField(required=True)
+    time_as_datetime = DateTimeField(required=False)
     meta = {'indexes': ['-descriptor', '-_id', '-time']}

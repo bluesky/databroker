@@ -153,7 +153,7 @@ def insert_event(event_descriptor, time, data, seq_no):
         the group of events
     """
 
-    #TODO: seq_no is not optional according to opyhd folks. To be discussed!!
+    # TODO: seq_no is not optional according to opyhd folks. To be discussed!! talk to @dchabot & @swilkins
 
     connect(db=database, host=host, port=port)
     event = Event(descriptor_id=event_descriptor.id,
@@ -193,6 +193,11 @@ def find_begin_run(limit=50, **kwargs):
 
     unique_id : str
         Hashed unique identifier
+
+    Returns
+    -------
+    br_objects: mongoengine.Document
+        Corresponding BeginRunObjects given search criteria
 
     Usage
     ------
@@ -278,6 +283,7 @@ def find_event_descriptor(begin_run_event):
     _id: bson.ObjectId
 
     """
+    connect(db=database, host=host, port=port)
     event_descriptor_list = list()
     connect(db=database, host=host, port=port)
     for event_descriptor in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id'):
@@ -303,7 +309,6 @@ def fetch_events(limit=1000, **kwargs):
         event descriptor object
     """
     connect(db=database, host=host, port=port)
-
     search_dict = dict()
     try:
         time_dict = kwargs.pop('time')
@@ -348,7 +353,7 @@ def find_event(begin_run_event, limit=1000):
     """
     connect(db=database, host=host, port=port)
     events = list()
-    descriptors = EventDescriptor.objects(begin_run_id=begin_run_event.id)
+    descriptors = EventDescriptor.objects(begin_run_id=begin_run_event.id).order_by('-_id')[:limit]
     for descriptor in descriptors:
         events.append(find_event_given_descriptor(descriptor))
 
@@ -360,9 +365,8 @@ def find_event_given_descriptor(event_descriptor):
 
     Parameters
     ----------
-
     event_descriptor: metadataStore.database.EventDescriptor
-    EventDescriptor instance
+        EventDescriptor instance that a set of events point back to
 
     """
     connect(db=database, host=host, port=port)
@@ -386,27 +390,32 @@ def find(data=True, limit=50, **kwargs):
     ---------
 
     scan_id: int
-
+        Non-unique human friendly scan identifier
     owner: str
-
+        Unix user credentials that created begin_run_event
     beamline_id: str
+        alias for beamline
+    time: dict
+        begin_run_event create time.
+        Refer to design docs for timestamp vs. time convetions
+        Usage: time={'start': float, 'end': float}
 
-    status: str
-
-    create_time: dict
-    create_time={'start': float, 'end': float}
-
+    Returns
+    -------
+    result: mongoengine.Document
+        Returns BeginRunEvent objects
+        One can access events for this given BeginRunEvent as:
+        begin_run_object.events
     """
-    header_objects = find_begin_run(limit, **kwargs)
+    br_objects = find_begin_run(limit, **kwargs)
 
     if data:
-        beamline_config_objects = dict()
-        event_descriptor_objects = dict()
-        event_objects = dict()
-        if header_objects:
-            for header in header_objects:
-                event_objects[header.id] = find_event(header)
-    return header_objects, event_objects
+        result = list
+        if br_objects:
+            for br in br_objects:
+                br.events = find_event(br)
+                result.append(br)
+    return br
 
 
 def find_last():
