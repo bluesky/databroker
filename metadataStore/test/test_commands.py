@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import uuid
-
+import time as ttime
 import mongoengine
 import mongoengine.connection
 from mongoengine.context_managers import switch_db
@@ -38,7 +38,8 @@ def context_decorator(func):
         with switch_db(BeamlineConfig, 'test_db'), \
           switch_db(EventDescriptor, 'test_db'), \
           switch_db(Event, 'test_db'), \
-          switch_db(Header, 'test_db'):
+          switch_db(EndRunEvent, 'test_db'), \
+          switch_db(BeginRunEvent, 'test_db'):
             func(*args, **kwargs)
 
     return make_decorator(func)(inner)
@@ -46,7 +47,9 @@ def context_decorator(func):
 
 @context_decorator
 def _blc_tester(config_dict):
-    blc = mdsc.save_beamline_config(config_dict)
+    """Test BeamlineConfig Insert
+    """
+    blc = mdsc.insert_beamline_config(config_dict)
     BeamlineConfig.objects.get(id=blc.id)
     if config_dict is None:
         config_dict = dict()
@@ -60,32 +63,31 @@ def test_blc_insert():
 
 
 @context_decorator
-def _ev_desc_tester(event_type_id, descriptor_name,
-                    data_keys, type_descriptor):
+def _ev_desc_tester(begin_run_event, data_keys, time, event_type):
     print(data_keys)
-    ev_desc = mdsc.save_event_descriptor(event_type_id, descriptor_name,
-                             data_keys, type_descriptor=type_descriptor)
+
+    ev_desc = mdsc.insert_event_descriptor(begin_run_event, data_keys, time, 'sample')
 
     ret = EventDescriptor.objects.get(id=ev_desc.id)
-    for k, v in zip(['event_type_id', 'descriptor_name',
-                     'data_keys', 'type_descriptor'],
-                     [event_type_id, descriptor_name,
-                      data_keys, type_descriptor]
-                     ):
 
+    for k, v in zip(['begin_run_event', 'data_keys',
+                     'time', 'event_type'],
+                    [begin_run_event.to_dbref(),
+                     data_keys,
+                     time, event_type]):
         assert_equal(getattr(ret, k), v)
 
     return ev_desc
 
 
 def test_ev_desc():
-    test_vals = [(0, 'ascan', {'a': {'source': 'PV:A'},
-                               'b': {'source': 'PV:b'},
-                               'c': {'source': 'CCD',
-                                     'external': 'FS'}}, {}),
-                 ]
-    for eti, dn, dk, td in test_vals:
-        yield _ev_desc_tester, eti, dn, dk, td
+    bre = mdsc.insert_begin_run(time=ttime.time(), beamline_id='sample_beamline')
+    data_keys = {'some_value': ' PV1', 'some_other_val': 'PV2', 'data_key3': ' PV3'}
+    time = ttime.time()
+    event_type = 'sample'
+    test_vals = [(bre, data_keys, time, event_type), ]
+
+    yield _ev_desc_tester, bre, data_keys, time, event_type
 
 
 def test_dict_key_replace_rt():

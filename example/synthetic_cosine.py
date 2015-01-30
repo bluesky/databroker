@@ -16,7 +16,6 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
 
-
 b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
 
 
@@ -55,10 +54,16 @@ last_run = find_last()
 if last_run.id != bre.id:
     print("Either Arman or Eric broke find_last().")
 
-
-if not find_event(begin_run_event=bre):
+res_2 = find_event(begin_run_event=bre)
+if not res_2:
     print("Either Arman or Eric broke find_event().")
+else:
+    for event in res_2:
+        for idx, i in enumerate(np.linspace(start, stop, num)):
+            print event[idx].data, event[idx].seq_no
 
 if not fetch_events(descriptor=e_desc):
-    print("Either Arman or Eric broke find_event(). ")
+    print("Either Arman or Eric broke find_event().")
+
+
 
