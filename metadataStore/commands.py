@@ -9,7 +9,7 @@ from mongoengine import connect
 
 
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
-                   scan_id=None, custom=None):
+                     scan_id=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -37,12 +37,16 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     """
     connect(db=database, host=host, port=port)
 
-    begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                              time_as_datetime=__convert2datetime(time),
-                              beamline_id=beamline_id, custom=custom)
-
-    if beamline_config is not None:
-        begin_run.beamline_config = beamline_config.id
+    if beamline_config is None:
+        begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
+                                  time_as_datetime=__convert2datetime(time),
+                                  beamline_id=beamline_id, custom=custom)
+    else:
+        begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
+                                  time_as_datetime=__convert2datetime(time),
+                                  beamline_id=beamline_id, custom=custom,
+                                  beamline_config=beamline_config.id)
+    # Had to update to an if/else statement because appending a ReferenceField apparently breaks mongoengine(eye roll)
 
     begin_run.save(validate=True, write_concern={"w": 1})
 

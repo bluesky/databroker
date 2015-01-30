@@ -1,5 +1,6 @@
-from metadataStore.api.collection import (save_begin_run, save_beamline_config,
-                                          save_event, save_event_descriptor)
+from __builtin__ import type
+from metadataStore.api.collection import (insert_begin_run, insert_beamline_config,
+                                          insert_event, insert_event_descriptor)
 from metadataStore.api.analysis import find_last
 import random
 import time
@@ -10,10 +11,11 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
 
-b_config = save_beamline_config(config_params={'my_beamline': 'my_value'})
+b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
 
 
-data_keys = {'linear_motor': 'PV1', 'scalar_detector': 'PV2', 'Tsam': 'PV3'}
+data_keys = {'linear_motor': 'PV1', 'scalar_detector': 'PV2',
+             'Tsam': 'PV3', 'some.dotted_field': 'PV4'}
 
 try:
     last_hdr = find_last()
@@ -21,10 +23,13 @@ try:
 except IndexError:
     scan_id = 1
 
-bre = save_begin_run(scan_id=scan_id, beamline_id='csx', time=time.time(), beamline_config=b_config)
 
-e_desc = save_event_descriptor(data_keys=data_keys,
-                               begin_run_event=bre)
+# Create a BeginRunEvent that serves as entry point for a run
+bre = insert_begin_run(scan_id=scan_id, beamline_id='csx', time=time.time(), beamline_config=b_config)
+
+# Create an EventDescriptor that indicates the data keys and serves as header for set of Event(s)
+e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
+                                 begin_run_event=bre)
 
 func = np.cos
 num = 1000
@@ -36,9 +41,10 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
     data = {'linear_motor': i,
             'Tsam': i + 5,
             'scalar_detector': func(i)}
-    e = save_event(event_descriptor=e_desc, seq_no=idx,
-                   time=time.time(),
-                   data=data)
-    # time.sleep(sleep_time)
+    e = insert_event(event_descriptor=e_desc, seq_no=idx,
+                     time=time.time(),
+                     data=data)
+last_run = find_last()
 
-print find_last()
+if last_run.id != bre.id:
+    print("Either Arman or Eric broke find_last(). File a complaint, we will get back at you")
