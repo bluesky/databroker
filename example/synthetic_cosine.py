@@ -11,6 +11,7 @@ import time
 import string
 import numpy as np
 
+
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
@@ -52,12 +53,12 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
 last_run = find_last()
 
 if last_run.id != bre.id:
-    print("Either Arman or Eric broke find_last(). File a complaint, we will get back at you unless you are Tom")
+    print("Either Arman or Eric broke find_last().")
 
 
 if not find_event(begin_run_event=bre):
-    print("Either Arman or Eric broke find_event(). File a complaint, we will get back at you unless you are Tom")
+    print("Either Arman or Eric broke find_event().")
 
 if not fetch_events(descriptor=e_desc):
-    print("Either Arman or Eric broke find_event(). File a complaint, we will get back at you unless you are Tom")
+    print("Either Arman or Eric broke find_event(). ")
 
