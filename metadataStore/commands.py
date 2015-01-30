@@ -251,12 +251,9 @@ def find_begin_run(limit=50, **kwargs):
     else:
         br_objects = list()
 
-    for br in br_objects:
-        descriptors = find_event_descriptor(br)
-        desc_objects = list()
-        for obj in descriptors:
-            desc_objects.append(obj)
-        br.event_descriptors = desc_objects
+    for begin_run in br_objects:
+        #Need to make sure MongoEngine document class allows the below operation
+        begin_run.event_descriptors = find_event_descriptor(begin_run)
 
     return br_objects
 
@@ -290,7 +287,7 @@ def find_event_descriptor(begin_run_event):
     return event_descriptor_list
 
 
-def find_event(limit=1000, **kwargs):
+def fetch_events(limit=1000, **kwargs):
     """
 
     Parameters
@@ -330,6 +327,32 @@ def find_event(limit=1000, **kwargs):
         pass
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
     return result
+
+
+def find_event(begin_run_event, limit=1000):
+    """Returns a set of events given a BeginRunEvent object
+
+    Parameters
+    ---------
+    begin_run_event: mongoengine.Document
+        BeginRunEvent object that events possibly fall under
+    limit: int
+        Number of headers to be returned
+
+    Returns
+    -------
+    events: list
+        Set of events encapsulated within a BeginRunEvent's scope
+
+
+    """
+    connect(db=database, host=host, port=port)
+    events = list()
+    descriptors = EventDescriptor.objects(begin_run_id=begin_run_event.id)
+    for descriptor in descriptors:
+        events.append(find_event_given_descriptor(descriptor))
+
+    return events
 
 
 def find_event_given_descriptor(event_descriptor):
