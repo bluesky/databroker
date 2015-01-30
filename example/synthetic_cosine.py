@@ -1,7 +1,11 @@
 from __builtin__ import type
+
+from metadataStore import conf
+conf.database = 'test'
+
 from metadataStore.api.collection import (insert_begin_run, insert_beamline_config,
                                           insert_event, insert_event_descriptor)
-from metadataStore.api.analysis import find_last
+from metadataStore.api.analysis import find_last, find_event, fetch_events
 import random
 import time
 import string
@@ -9,6 +13,7 @@ import numpy as np
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
+
 
 
 b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
@@ -47,4 +52,12 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
 last_run = find_last()
 
 if last_run.id != bre.id:
-    print("Either Arman or Eric broke find_last(). File a complaint, we will get back at you")
+    print("Either Arman or Eric broke find_last(). File a complaint, we will get back at you unless you are Tom")
+
+
+if not find_event(begin_run_event=bre):
+    print("Either Arman or Eric broke find_event(). File a complaint, we will get back at you unless you are Tom")
+
+if not fetch_events(descriptor=e_desc):
+    print("Either Arman or Eric broke find_event(). File a complaint, we will get back at you unless you are Tom")
+

@@ -355,7 +355,7 @@ def find_event(begin_run_event):
     """
     connect(db=database, host=host, port=port)
     events = list()
-    descriptors = EventDescriptor.objects(begin_run_id=begin_run_event.id).order_by('-_id')
+    descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id')
     for descriptor in descriptors:
         events.append(find_event_given_descriptor(descriptor))
 
