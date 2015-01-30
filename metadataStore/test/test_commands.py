@@ -64,8 +64,6 @@ def test_blc_insert():
 
 @context_decorator
 def _ev_desc_tester(begin_run_event, data_keys, time, event_type):
-    print(data_keys)
-
     ev_desc = mdsc.insert_event_descriptor(begin_run_event, data_keys, time, 'sample')
 
     ret = EventDescriptor.objects.get(id=ev_desc.id)
@@ -99,3 +97,38 @@ def test_dict_key_replace_rt():
 
 def test_src_dst_fail():
     assert_raises(ValueError, mdsc.__src_dst, 'aardvark')
+
+
+@context_decorator
+def _begin_run_tester(time, beamline_id):
+    begin_run = mdsc.insert_begin_run(time, beamline_id)
+
+    ret = BeginRunEvent.objects.get(id=begin_run.id)
+
+    for k, v in zip(['time', 'beamline_id', 'scan_id'], [time, beamline_id, None]):
+        assert_equal(getattr(ret, k), v)
+
+
+def test_begin_run():
+    time = ttime.time()
+    beamline_id = 'sample_beamline'
+    yield _begin_run_tester, time, beamline_id
+
+@context_decorator
+def _begin_run_with_cfg_tester(beamline_cfg, time, beamline_id):
+    begin_run = mdsc.insert_begin_run(time, beamline_id, beamline_config=beamline_cfg)
+
+    ret = BeginRunEvent.objects.get(id=begin_run.id)
+
+    for k, v in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
+                    [time, beamline_id, None, beamline_cfg.to_dbref()]):
+        assert_equal(getattr(ret, k), v)
+
+
+def test_begin_run():
+    bcfg = mdsc.insert_beamline_config({'cfg1': 1})
+    time = ttime.time()
+    beamline_id = 'sample_beamline'
+    yield _begin_run_with_cfg_tester, bcfg, time, beamline_id
+
+
