@@ -132,3 +132,14 @@ def test_begin_run():
     yield _begin_run_with_cfg_tester, bcfg, time, beamline_id
 
 
+def _end_run_tester(begin_run, time):
+    end_run = mdsc.insert_end_run(begin_run, time)
+    ret = EndRunEvent.objects.get(id=end_run.id)
+    for k, v in zip(['id', 'time', 'begin_run_event'], [end_run.id, time, begin_run]):
+        assert_equal(getattr(ret, k), v)
+
+
+def test_end_run():
+    bre = mdsc.insert_begin_run(time=ttime.time(), beamline_id='sample_beamline')
+    time = ttime.time()
+    yield _end_run_tester, bre, time
