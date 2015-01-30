@@ -85,8 +85,6 @@ def test_ev_desc():
     data_keys = {'some_value': ' PV1', 'some_other_val': 'PV2', 'data_key3': ' PV3'}
     time = ttime.time()
     event_type = 'sample'
-    test_vals = [(bre, data_keys, time, event_type), ]
-
     yield _ev_desc_tester, bre, data_keys, time, event_type
 
 
