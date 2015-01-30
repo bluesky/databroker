@@ -13,7 +13,6 @@ class BeamlineConfig(Document):
         Custom configuration parameters for a given run. Avoid using '.' in field names.
         If you're interested in doing so, let me know @arkilic
         This has a one-to-many relationship with BeginRunEvent documents
-
     """
     config_params = DictField(required=False, unique=False)
     meta = {'indexes': ['-_id']}
@@ -21,7 +20,9 @@ class BeamlineConfig(Document):
 
 class BeginRunEvent(Document):
     """ Provide a head for a sequence of events. Entry point for
-    an experiment's run.
+    an experiment's run. BeamlineConfig is NOT required to create a BeginRunEvent
+    The only prereq is an EventDescriptor that identifies the nature of event that is
+    starting and
 
     Attributes
     ----------
@@ -48,10 +49,10 @@ class BeginRunEvent(Document):
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
                                      required=False,
                                      db_field='beamline_config_id')
-    # one to many relationship constructed between BeginRunEvent and
+    # one-to-many relationship constructed between BeginRunEvent and BeamlineConfig
     owner = StringField(default=getuser(), required=True, unique=False)
     custom = DictField(unique=False, required=False, default=dict())
-    # Keeping custom a dict for the time being instead of new collection#
+    # Keeping custom a dict for the time being instead of new collection
 
     meta = {'indexes': ['-_id', '-owner', '-time']}
 
@@ -70,9 +71,7 @@ class EndRunEvent(Document):
         created.
     """
     time = FloatField(required=True)
-
     time_as_datetime = DateTimeField()
-
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
 
@@ -83,6 +82,7 @@ class EndRunEvent(Document):
 
 class EventDescriptor(Document):
     """ Provides information regarding the upcoming series of events
+    whose contents are indicated via such EventDescriptor.
 
     Attributes
     ----------
@@ -107,7 +107,7 @@ class Event(Document):
     BeginRunEvent, in other words, to BeginRunEvent serves as an
     entry point for all events. Within each event, one can access
     both BeginRunEvent and EventDescriptor. Make sure an event does
-    not exceed 16 MB in size. This is difficult since this tool is
+    not exceed 16 MB in size. This is essential since this tool is
     geared for metadata only. If more storage is required, please
     use fileStore.
 
@@ -128,9 +128,9 @@ class Event(Document):
         Sequence number pointing out the
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
-                                      required=True, db_field='descriptor_id')
+                                required=True, db_field='descriptor_id')
     seq_no = IntField(min_value=0, required=True)
-    # talk to Daron if you think seq_no is optional
+    # talk to @dchabot if you think seq_no is optional
     data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)

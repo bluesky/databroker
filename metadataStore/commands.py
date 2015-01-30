@@ -334,7 +334,7 @@ def fetch_events(limit=1000, **kwargs):
     return result
 
 
-def find_event(begin_run_event, limit=1000):
+def find_event(begin_run_event):
     """Returns a set of events given a BeginRunEvent object
 
     Parameters
@@ -348,12 +348,10 @@ def find_event(begin_run_event, limit=1000):
     -------
     events: list
         Set of events encapsulated within a BeginRunEvent's scope
-
-
     """
     connect(db=database, host=host, port=port)
     events = list()
-    descriptors = EventDescriptor.objects(begin_run_id=begin_run_event.id).order_by('-_id')[:limit]
+    descriptors = EventDescriptor.objects(begin_run_id=begin_run_event.id).order_by('-_id')
     for descriptor in descriptors:
         events.append(find_event_given_descriptor(descriptor))
 
@@ -425,8 +423,7 @@ def find_last():
 
     Returns
     -------
-
-    header: metadataStore.database.header.Header
+    header: mongoengine.Document
         Returns the last header created. DOES NOT RETURN THE EVENTS.
 
 
