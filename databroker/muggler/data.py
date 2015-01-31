@@ -70,7 +70,7 @@ class ColSpec(namedtuple(
         None means that no filling is done
     """
     # These reflect the 'method' argument of pandas.DataFrame.fillna
-    upsampling_methods = {None, 'ffill', 'pad', 'backfill', 'bfill'}
+    sampling_methods = {None, 'ffill', 'pad', 'backfill', 'bfill'}
 
     __slots__ = ()
 
@@ -81,10 +81,10 @@ class ColSpec(namedtuple(
 
         # sanity check sample method
         for sample in (upsample, downsample):
-            if not (sample in cls.sample_methods or callable(sample)):
+            if not (sample in cls.sampling_methods or callable(sample)):
                 raise ValueError("{} is not a valid sampling method. It "
                                  "must be one of {} or callable".format(
-                                     sample, cls.sample_methods))
+                                     sample, cls.sampling_methods))
 
         # pass everything up to base class
         return super(ColSpec, cls).__new__(
@@ -133,7 +133,7 @@ class DataMuggler(object):
         self._stale = True
         if events is not None:
             for event in events:
-                self.add_events(events)
+                self.append_event(event)
 
     @classmethod
     def from_tuples(cls, event_tuples, sources=None):
@@ -194,7 +194,7 @@ class DataMuggler(object):
     def _dataframe(self):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
-            self._df = pd.DataFrame(self._data, index=self._time)
+            self._df = pd.DataFrame(list(self._data), index=list(self._time))
             self._stale = False
         return self._df
 
@@ -214,9 +214,9 @@ class DataMuggler(object):
         binning = np.zeros(len(self._time), dtype=np.bool)
         for i, pair in enumerate(bin_edges):
             binning[(self._time < pair[0]) & (self._time > pair[1])] = i
-        return resample(binning)
+        return self.resample(binning)
 
-    def resample(binning, agg=None, interpolate=None):
+    def resample(self, binning, agg=None, interpolate=None):
         grouped = self._dataframe.groupby(binning)
 
         # 1. How many (non-null) data points in each bin?
@@ -238,9 +238,6 @@ class DataMuggler(object):
                 # The method is a callable. For sample, a curried
                 # pandas.rolling_apply would make sense here.
                 upsampled_df[col_name] = upsampling_rule(col_data)
-
-        # 3. Downsample.
-        upsampled_df.groupby(binning)
 
     def add_column(self, col_info):
         """

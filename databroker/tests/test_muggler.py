@@ -10,18 +10,19 @@ class TestMuggler(unittest.TestCase):
 
     def setUp(self):
         switch(metadatastore=True)
-        save_begin_run = sources.metadataStore.api.collection.save_begin_run
-        save_event_descriptor = \
-            sources.metadataStore.api.collection.save_event_descriptor
-        save_event = sources.metadataStore.api.collection.save_event
+        insert_begin_run = sources.metadataStore.api.collection.insert_begin_run
+        insert_event_descriptor = \
+            sources.metadataStore.api.collection.insert_event_descriptor
+        insert_event = sources.metadataStore.api.collection.insert_event
 
         data_keys = {'linear_motor': {'source': 'PV1'},
                      'scalar_detector': {'source': 'PV2'},
                      'Tsam': {'source': 'PV3'}}
 
-        bre = save_begin_run(time.time(), 'csx')
+        bre = insert_begin_run(time.time(), 'csx')
 
-        ev_desc = save_event_descriptor(bre, data_keys=data_keys)
+        ev_desc = insert_event_descriptor(time.time(), data_keys=data_keys,
+                                          begin_run_event=bre)
 
         func = np.cos
         num = 100
@@ -34,7 +35,7 @@ class TestMuggler(unittest.TestCase):
             data = {'linear_motor': i,
                     'Tsam': i + 5,
                     'scalar_detector': func(i)}
-            event = save_event(ev_desc, time.time() + i, data)
+            event = insert_event(ev_desc, time.time() + i, data, i)
             events.append(event)
         time.sleep(sleep_time)
 
