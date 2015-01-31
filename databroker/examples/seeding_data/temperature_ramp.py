@@ -31,7 +31,7 @@ def run(begin_run=None):
 
     # Point Detector Events
     for i in range(num_exposures):
-        time = float(i)  # seconds since 1970; must be a float
+        time = float(i + rs.randn())  # seconds since 1970; must be a float
         data = {'point_det': {'value': point_det_data[i], 'timestamp': time}}
         event = insert_event(event_descriptor=ev_desc1, seq_no=i, time=time,
                              data=data)
@@ -41,12 +41,12 @@ def run(begin_run=None):
     # We will stretch the time index so that the durations roughly match.
     point_det_run_time = num_exposures
     temp_run_time = 1./deadbanded_ramp[-1][0]
-    for time, temp in zip(*deadbanded_ramp):
+    for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         stretched_time = float(point_det_run_time/temp_run_time * time)
         data = {'Tsam': {'value': temp, 'timestamp': stretched_time}}
         event = insert_event(event_descriptor=ev_desc2, time=stretched_time,
                              data=data, seq_no=i)
         events.append(event)
 
-        events = [BrokerStruct(event) for event in events]
-        return events
+    events = [BrokerStruct(event) for event in events]
+    return events
