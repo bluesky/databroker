@@ -35,7 +35,7 @@ class BeginRunEvent(Document):
     owner: str, optional
         Specifies the unix user credentials of the user creating the entry
     scan_id : int, optional
-        Unique scan identifier visible to the user and data analysis
+         scan identifier visible to the user and data analysis
     beamline_config: bson.ObjectId, optional
         Foreign key to beamline config corresponding to a given run
     custom: dict, optional
@@ -45,7 +45,7 @@ class BeginRunEvent(Document):
     time = FloatField(required=True)
     time_as_datetime = DateTimeField()
     beamline_id = StringField(max_length=20, unique=False, required=True)
-    scan_id = IntField(required=False, unique=False)
+    scan_id = StringField(required=False, unique=False)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
                                      required=False,
                                      db_field='beamline_config_id')

@@ -34,20 +34,13 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     -------
     begin_run: mongoengine.Document
         Inserted mongoengine object
+
     """
     connect(db=database, host=host, port=port)
-
-    if beamline_config is None:
-        begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                                  time_as_datetime=__convert2datetime(time),
-                                  beamline_id=beamline_id, custom=custom)
-    else:
-        begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                                  time_as_datetime=__convert2datetime(time),
-                                  beamline_id=beamline_id, custom=custom,
-                                  beamline_config=beamline_config.id)
-    # Had to update to an if/else statement because appending a ReferenceField apparently breaks mongoengine(eye roll)
-
+    begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
+                              time_as_datetime=__convert2datetime(time),
+                              beamline_id=beamline_id, custom=custom,
+                              beamline_config=beamline_config.id if beamline_config else None)
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
@@ -146,12 +139,12 @@ def insert_event(event_descriptor, time, data, seq_no):
     event_descriptor : metadataStore.odm_templates.EventDescriptor
         EventDescriptor object that specific event entry is going
         to point(foreign key)
-    data : dict
-        Dictionary that contains the name value fields for the data associated
-        with an event
     time : timestamp
         The date/time as found at the client side when an event is
         created.
+    data : dict
+        Dictionary that contains the name value fields for the data associated
+        with an event
     seq_no : int
         Unique sequence number for the event. Provides order of an event in
         the group of events
@@ -195,12 +188,12 @@ def find_begin_run(limit=50, **kwargs):
     beamline_id : str
         String identifier for a specific beamline
 
-    unique_id : str
+    unique_id: str
         Hashed unique identifier
 
     Returns
     -------
-    br_objects: mongoengine.Document
+    br_objects: mongoengine.QuerySet
         Corresponding BeginRunObjects given search criteria
 
     Usage
@@ -261,7 +254,6 @@ def find_begin_run(limit=50, **kwargs):
         br_objects = list()
 
     for begin_run in br_objects:
-        #Need to make sure MongoEngine document class allows the below operation
         begin_run.event_descriptors = find_event_descriptor(begin_run)
 
     return br_objects

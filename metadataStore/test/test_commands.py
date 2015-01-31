@@ -131,11 +131,11 @@ def test_begin_run():
     beamline_id = 'sample_beamline'
     yield _begin_run_with_cfg_tester, bcfg, time, beamline_id
 
-
+@context_decorator
 def _end_run_tester(begin_run, time):
     end_run = mdsc.insert_end_run(begin_run, time)
     ret = EndRunEvent.objects.get(id=end_run.id)
-    for k, v in zip(['id', 'time', 'begin_run_event'], [end_run.id, time, begin_run]):
+    for k, v in zip(['id', 'time', 'begin_run_event'], [end_run.id, time, begin_run.to_dbref()]):
         assert_equal(getattr(ret, k), v)
 
 
