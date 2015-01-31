@@ -15,7 +15,8 @@ def run(begin_run=None):
     # Make the data
     ramp = common.stepped_ramp(start, stop, step)
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
-    point_det_data = point_det = np.random.randn(num_exposures)
+    rs = np.random.RandomState(5)
+    point_det_data = rs.randn(num_exposures)
 
     # Create Event Descriptors
     data_keys1 = {'point_det': {'source': 'PV:ES:PointDet'}}
@@ -28,15 +29,15 @@ def run(begin_run=None):
     # Create Events.
     events = []
 
-    # Temperature Events
+    # Point Detector Events
     for i in range(num_exposures):
         time = float(i)  # seconds since 1970; must be a float
-        data = {'point_det': {'value': point_det, 'timestamp': time}}
+        data = {'point_det': {'value': point_det_data[i], 'timestamp': time}}
         event = insert_event(event_descriptor=ev_desc1, seq_no=i, time=time,
                              data=data)
         events.append(event)
 
-    # Point Detector Events
+    # Temperature Events
     # We will stretch the time index so that the durations roughly match.
     point_det_run_time = num_exposures
     temp_run_time = 1./deadbanded_ramp[-1][0]

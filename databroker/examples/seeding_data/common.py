@@ -4,12 +4,14 @@ from functools import wraps
 from metadataStore.api.collection import insert_begin_run
 from metadataStore.commands import insert_end_run  # missing from the api
 
+
 def stepped_ramp(start, stop, step, points_per_step=10, noise_level=0.1):
     """
     Simulate a stepped ramp.
     """
+    rs = np.random.RandomState(0)
     data = np.repeat(np.arange(start, stop, step), points_per_step)
-    noise = step * noise_level * np.random.randn(len(data))
+    noise = step * noise_level * rs.randn(len(data))
     noisy_data = data + noise
     return noisy_data
 
