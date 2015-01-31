@@ -3,7 +3,7 @@ from metadataStore.api.collection import (insert_event,
                                           insert_event_descriptor)
 from ...broker.struct import BrokerStruct
 import numpy as np
-import common
+from . import common
 
 # "Magic numbers" for this simulation
 start, stop, step = 0, 10, 1
