@@ -39,22 +39,23 @@ from collections import namedtuple, OrderedDict, deque
 import warnings
 import pandas as pd
 import numpy as np
+from scipy.interpolate import interp1d, interp2d
 from pims.base_frames import FramesSequence
 from pims.frame import Frame
 
 from skimage.io import imread
 
 
-class Unalignable(Exception):
+class BinningError(Exception):
     """
-    An exception to raise if you try to align a non-fillable column
-    to a non-pre-aligned column
+    An exception to raise if there are insufficient sampling rules to
+    upsampling or downsample a data column into specified bins.
     """
     pass
 
 
 class ColSpec(namedtuple(
-              'ColSpec', ['name', 'dims', 'upsample', 'downsmaple'])):
+              'ColSpec', ['name', 'ndim', 'upsample', 'downsample'])):
     """
     Named-tuple sub-class to validate the column specifications for the
     DataMuggler
@@ -62,33 +63,52 @@ class ColSpec(namedtuple(
     Parameters
     ----------
     name : hashable
-    dims : uint
+    ndim : uint
         Dimensionality of the data stored in the column
-    upsample : {None, 'ffill', 'bfill', callable}
-        None means that no filling is done
-    downsample : {None, 'ffill', 'bfill', callable}
-        None means that no filling is done
+    upsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+                'cubic'}
+        None means that each time bin must have at least one value.
+        The names refer to kinds of scipy.interpolator. See documentation
+        link below.
+    downsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+                  'cubic'}
+        None means that each time bin must have no more than one value.
+        The names refer to kinds of scipy.interpolator. See documentation
+        link below.
+
+    References
+    ----------
+    http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
     """
     # These reflect the 'method' argument of pandas.DataFrame.fillna
-    sampling_methods = {None, 'ffill', 'pad', 'backfill', 'bfill'}
+    upsampling_methods = {None, 'linear', 'nearest', 'zero', 'slinear', 
+                        'quadratic', 'cubic'}
 
     __slots__ = ()
 
-    def __new__(cls, name, dims, upsample, downsample):
-        # sanity check dims
-        if int(dims) < 0:
-            raise ValueError("Dims must be positive not {}".format(dims))
+    def __new__(cls, name, ndim, upsample, downsample):
+        # sanity check ndim
+        if int(ndim) < 0:
+            raise ValueError("ndim must be positive not {}".format(ndim))
 
-        # sanity check sample method
-        for sample in (upsample, downsample):
-            if not (sample in cls.sampling_methods or callable(sample)):
-                raise ValueError("{} is not a valid sampling method. It "
-                                 "must be one of {} or callable".format(
-                                     sample, cls.sampling_methods))
+
+        # TODO The upsampling method could be any callable.
+
+        # Validate upsampling method
+        if not (upsample in cls.upsampling_methods):
+            raise ValueError("{} is not a valid upsampling method. It "
+                             "must be one of {}".format(
+                             sample, cls.upsampling_methods))
+
+        # TODO The downsampling methods could have string aliases like 'mean'.
+
+        # Validate downsampling method
+        if (downsample is not None) and (not callable(downsample)):
+            raise ValueError("The downsampling method must be a callable.")
 
         # pass everything up to base class
         return super(ColSpec, cls).__new__(
-            cls, name, dims, upsample, downsample)
+            cls, name, ndim, upsample, downsample)
 
 
 class DataMuggler(object):
@@ -111,23 +131,12 @@ class DataMuggler(object):
 
     Parameters
     ----------
-    col_info : list
-        List of information about the columns. Each entry should
-        be a tuple of the form (col_name, fill_method, dimensionality). See
-        `ColSpec` class docstring
-
-    max_frames : int, optional
-        The maximum number of frames for the non-scalar columns
-
-    use_pims_fs : bool, optional
-        If the DM should use a pims frame-store to deal with 2D data.
-        It allows file names to be added transparently, but max_frames
-        won't apply to frames added as arrays.
-
+    events : list
+        list of Events (any object with the expected attributes will do)
     """
     def __init__(self, events=None):
         self.sources = {}
-        self.specs = {}
+        self.col_specs = {}
         self._data = deque()
         self._time = deque()
         self._stale = True
@@ -155,6 +164,12 @@ class DataMuggler(object):
 
     @classmethod
     def from_events(cls, events):
+        """
+        Parameters
+        ----------
+        events : list
+            list of Events (any object with the expected attributes will do)
+        """
         return cls(events)
 
     def append_event(self, event):
@@ -183,22 +198,28 @@ class DataMuggler(object):
                 col_spec = ColSpec(name, dim, None, None)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
-                col_spec = ColSpec(name, dim, 'ffill', np.mean)  # TEMP!
-                self.specs[name] = col_spec
+                # For now...
+                if dim == 0:
+                    col_spec = ColSpec(name, dim, 'linear', np.mean)
+                else:
+                    col_spec = ColSpec(name, dim, None, np.sum)
+                self.col_specs[name] = col_spec
 
-            # TODO Handle nonscalar data
-            self._data.append(event.data)
+            # Both scalar and nonscalar data will get stored in the DataFrame.
+            # This may be optimized later, but it might not actually help much.
+            self._data.append({name: event.data[name]['value']})
             self._time.append(event.time)
 
     @property
     def _dataframe(self):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
-            self._df = pd.DataFrame(list(self._data), index=list(self._time))
+            index = pd.Float64Index(list(self._time))
+            self._df = pd.DataFrame(list(self._data), index)
             self._stale = False
         return self._df
 
-    def bin_by_edges(self, bin_edges):
+    def bin_by_edges(self, bin_edges, interpolation=None, agg=None):
         """
         Return data, resampled as necessary.
 
@@ -214,63 +235,61 @@ class DataMuggler(object):
         binning = np.zeros(len(self._time), dtype=np.bool)
         for i, pair in enumerate(bin_edges):
             binning[(self._time < pair[0]) & (self._time > pair[1])] = i
-        return self.resample(binning)
+        time_points = [np.mean(pair) for pair in bin_edges]  # bin centers
+        return self.resample(time_points, binning, interpolation, agg)
 
-    def resample(self, binning, agg=None, interpolate=None):
+    def resample(self, time_points, binning, interpolation=None, agg=None):
+
+        # How many (non-null) data points in each bin?
         grouped = self._dataframe.groupby(binning)
-
-        # 1. How many (non-null) data points in each bin?
         counts = grouped.count()
 
-        # 2. If upsampling is possible, put one point in the center of
-        #    each bin.
-        upsampled_df = pd.DataFrame()
-        for col_name in upsampled_df:
-            upsampling_rule = self.upsampling_rules[col_name]
-            col_data = self._dataframe[col_name]
-            if upsampling_rule is None:
-                # Copy the column with no changes.
-                upsampled_df[col_name] = col_data
-            elif upsampling_rule in ColSpec.upsampling_methods:
-                # Then method must be a string.
-                upsampled_df[col_name] = col_data.fillna(upsampling_rule)
+        # Where upsampling is possible, interpolate to the center of each bin.
+        # Where not possible, check that there is at least one point per bin.
+        # If there is not, raise.
+        resampled_df = pd.DataFrame(index=time_points)
+        for col_name in self._dataframe:
+            col_spec = self.col_specs[col_name]
+            if interpolation is not None:
+                upsample = interpolation  # TODO validation
             else:
-                # The method is a callable. For sample, a curried
-                # pandas.rolling_apply would make sense here.
-                upsampled_df[col_name] = upsampling_rule(col_data)
-
-    def add_column(self, col_info):
-        """
-        Adds a column to the DataMuggler
-
-        Parameters
-        ----------
-        col_info : tuple
-            Of the form (col_name, fill_method, dimensionality). See
-           `ColSpec` class docstring
-        """
-        # make sure we got valid input
-        col_info = ColSpec(*col_info)
-
-        # check that the column with the same name does not exist
-        if col_info.name in [c.name for c in self._col_info]:
-            raise ValueError(
-                "The key {} already exists in the DM".format(col_info.name))
-
-        # stash the info for future lookup
-        self._col_info.append(col_info)
-        # stash the fill method
-        self._col_fill[col_info.name] = col_info.fill_method
-        # check if we need to deal with none-scalar data
-        if col_info.dims > 0:
-            self._is_col_nonscalar.add(col_info.name)
-            if self._use_fs and col_info.dims == 2:
-                self._framestore[col_info.name] = ImageSeq(None)
+                upsample = col_spec.upsample
+            if upsample is not None:
+                # TODO This logic should be higher up, but that might require
+                # breaking the namedtuple idea.
+                if col_spec.ndim != 0:
+                    raise NotImplementedError("Can't upsample nonscalar data")
+                dense_col = self._dataframe[col_name].dropna()
+                x, y = dense_col.index.values, dense_col.values
+                def curried_interpolator(new_x):
+                    return interp1d(x, y, kind=col_spec.upsample)
+                resampled_df[col_name] = curried_interpolator(time_points)
+                # There is now exactly one point per bin.
+                continue
             else:
-                self._nonscalar_col_lookup[col_info.name] = OrderedDict()
+                if np.any(counts[col] < 1):
+                    raise BinningError("The specified binning leaves some "
+                                       "bins without '{0}' data, and there is "
+                                       "no rule for interpolating it between "
+                                       "bins.".format(col_name))
 
-        self._dataframe[col_info.name] = pd.Series(np.nan,
-                                                   index=self._dataframe.index)
+            # Columns that could be interpolate (above) are done. For the rest,
+            # if they have one data point per bin, we are done. If not, the
+            # multi-valued bins must be downsampled (reduced). If there is no
+            # rule for downsampling, raise.
+            if np.all(counts[col_name]) == 1:
+                continue
+            if agg is not None:
+                downsample = agg  # TODO validation
+            else:
+                downsample = colspec.downsample
+            if downsample is None:
+                raise BinningError("The specified binning puts multiple '{0}'"
+                                   "measurements in at least one bin, and "
+                                   "there is no rule for downsampling "
+                                   "(i.e., reducing) it.".format(col_name))
+            resampled_df[col_name] = grouped.agg(
+                {col_name: col_spec.downsample})
 
     @property
     def col_dims(self):
