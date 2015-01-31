@@ -15,8 +15,8 @@ from distutils.core import setup, Extension
 import os
 
 MAJOR = 0
-MINOR = 0
-MICRO = 1
+MINOR = 1
+MICRO = 0
 ISRELEASED = False
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
@@ -73,10 +73,7 @@ setup(
     author_email=None,
     license="BSD (3-clause)",
     url = "https://github.com/NSLS-II/metadataStore",
-    packages=['metadataStore', 'metadataStore.database',
-              'metadataStore.test',
-              'metadataStore.api',
-    ],
+    packages=['metadataStore', 'metadataStore.test','metadataStore.api'],
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: EPICS License",
