@@ -232,9 +232,10 @@ class DataMuggler(object):
         -------
         data : dict of lists
         """
-        binning = np.zeros(len(self._time), dtype=np.bool)
+        time = np.array(self._time)
+        binning = np.zeros(len(time), dtype=np.bool)
         for i, pair in enumerate(bin_edges):
-            binning[(self._time < pair[0]) & (self._time > pair[1])] = i
+            binning[(time < pair[0]) & (time > pair[1])] = i
         time_points = [np.mean(pair) for pair in bin_edges]  # bin centers
         return self.resample(time_points, binning, interpolation, agg)
 
