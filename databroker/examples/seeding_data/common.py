@@ -1,6 +1,8 @@
+import time
 import numpy as np
 from functools import wraps
 from metadataStore.api.collection import insert_begin_run
+from metadataStore.commands import insert_end_run  # missing from the api
 
 def stepped_ramp(start, stop, step, points_per_step=10, noise_level=0.1):
     """
@@ -50,5 +52,10 @@ def example(func):
     def mock_begin_run(begin_run=None):
         if begin_run is None:
             begin_run = insert_begin_run(time=0., beamline_id='csx')
-        return func(begin_run)
+        events = func(begin_run)
+        # Infer the end run time from events, since all the times are
+        # simulated and not necessarily based on the current time.
+        end_time = max([event.time for event in events])
+        insert_end_run(begin_run, end_time, 'life')
+        return events
     return mock_begin_run
