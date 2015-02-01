@@ -319,15 +319,6 @@ class DataMuggler(object):
         """
         return {c.name: c.fill_method for c in self._col_info}
 
-    def align_against(self, ref_col, other_cols=None):
-        """
-        DEPRECATED: For backward-compatibility, the returns a dict with all
-        values True.
-        """
-        warnings.warn("align_against is deprecated; everything can be aligned")
-        dict_of_truth = {col_name: True for col_name in self.keys()}
-        return dict_of_truth
-
     def keys(self, dim=None):
         """
         Get the column names in the data muggler
