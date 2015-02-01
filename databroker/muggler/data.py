@@ -40,10 +40,9 @@ import warnings
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
-from pims.base_frames import FramesSequence
-from pims.frame import Frame
 
-from skimage.io import imread
+
+__all__ = ['DataMuggler', 'dataframe_to_dict']
 
 
 class BinningError(Exception):
@@ -291,6 +290,7 @@ class DataMuggler(object):
                                    "(i.e., reducing) it.".format(col_name))
             resampled_df[col_name] = grouped.agg(
                 {col_name: col_spec.downsample})
+            return resampled_df
 
     @property
     def col_dims(self):
@@ -346,29 +346,22 @@ class DataMuggler(object):
         cols.sort(key=lambda s: s.lower())
         return cols
 
-    def _listify_output(self, df):
-        """
-        Turn a DataFrame into a dict of lists.
+def dataframe_to_dict(df):
+    """
+    Turn a DataFrame into a dict of lists.
 
-        This does very little validation as it is an internal function.
+    Parameters
+    ----------
+    df : DataFrame
 
-        This is intended to be used _after_ the data frame has been reduced
-        to only the rows where the reference column has values.
-
-        Parameters
-        ----------
-        df : DataFrame
-            This needs to be a densified version the `_dataframe` possibly
-            with a reduced number of columns.
-
-        Returns
-        -------
-        index : ndarray
-            The index of the data frame
-        data : dict
-            Dictionary keyed on column name of the column.  The value is
-            one of (ndarray, list, pd.Series)
-        """
-        df = self._dataframe  # for brevity
-        dict_of_lists = {col: df[col].to_list() for col in df.columns}
-        return df.index.values, dict_of_lists
+    Returns
+    -------
+    index : ndarray
+        The index of the data frame
+    data : dict
+        Dictionary keyed on column name of the column.  The value is
+        one of (ndarray, list, pd.Series)
+    """
+    df = self._dataframe  # for brevity
+    dict_of_lists = {col: df[col].to_list() for col in df.columns}
+    return df.index.values, dict_of_lists
