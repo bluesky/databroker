@@ -1,7 +1,7 @@
 from __builtin__ import type
 
-from metadataStore import conf
-conf.database = 'test'
+import metadataStore
+metadataStore.conf.mds_config['database'] = 'test'
 
 from metadataStore.api.collection import (insert_begin_run, insert_beamline_config,
                                           insert_event, insert_event_descriptor)
@@ -29,8 +29,13 @@ except IndexError:
     scan_id = 1
 
 
+# cast to string
+scan_id = str(scan_id)
+
+
 # Create a BeginRunEvent that serves as entry point for a run
-bre = insert_begin_run(scan_id=scan_id, beamline_id='csx', time=time.time(), beamline_config=b_config)
+bre = insert_begin_run(scan_id=scan_id, beamline_id='csx', time=time.time(),
+                       beamline_config=b_config)
 
 # Create an EventDescriptor that indicates the data keys and serves as header for set of Event(s)
 e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),

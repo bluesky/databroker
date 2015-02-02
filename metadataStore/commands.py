@@ -4,10 +4,21 @@ import six
 from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
                                          EndRunEvent, EventDescriptor, Event)
 import datetime
-from metadataStore.conf import host, port, database
+import metadataStore
 from mongoengine import connect
 
+import metadataStore
 
+
+def db_connect(func):
+    def inner(*args, **kwargs):
+        connect(db=metadataStore.conf.mds_config['database'],
+                host=metadataStore.conf.mds_config['host'],
+                port=metadataStore.conf.mds_config['port'])
+        return func(*args, **kwargs)
+    return inner
+
+@db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
                      scan_id=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
@@ -21,31 +32,33 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     beamline_id: str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
+    beamline_config: metadataStore.odm_temples.BeamlineConfig, optional
+        Foreign key to beamline config corresponding to a given run
     owner: str, optional
         Specifies the unix user credentials of the user creating the entry
     scan_id : int, optional
         Unique scan identifier visible to the user and data analysis
-    beamline_config: metadataStore.odm_temples.BeamlineConfig, optional
-        Foreign key to beamline config corresponding to a given run
     custom: dict, optional
         Additional parameters that data acquisition code/user wants to
         append to a given header. Name/value pairs
+
     Returns
     -------
     begin_run: mongoengine.Document
         Inserted mongoengine object
 
     """
-    connect(db=database, host=host, port=port)
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                              time_as_datetime=__convert2datetime(time),
+                              time_as_datetime=__todatetime(time),
                               beamline_id=beamline_id, custom=custom,
-                              beamline_config=beamline_config.id if beamline_config else None)
+                              beamline_config=beamline_config.id
+                              if beamline_config else None)
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
 
 
+@db_connect
 def insert_end_run(begin_run_event, time, reason=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
@@ -54,34 +67,32 @@ def insert_end_run(begin_run_event, time, reason=None):
     ----------
     begin_run_event : metadataStore.odm_temples.BeginRunEvent
         Foreign key to corresponding BeginRunEvent
-    reason : str
-        provides information regarding the run success.
     time : timestamp
         The date/time as found at the client side when an event is
         created.
+    reason : str, optional
+        provides information regarding the run success.
 
     Returns
     -------
-    begin_run: mongoengine.Document
+    begin_run : mongoengine.Document
         Inserted mongoengine object
     """
-    connect(db=database, host=host, port=port)
-
     begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
                             time=time,
-                            time_as_datetime=__convert2datetime(time))
+                            time_as_datetime=__todatetime(time))
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
 
-
+@db_connect
 def insert_beamline_config(config_params=None):
     """ Create a beamline_config  in metadataStore database backend
 
     Parameters
     ----------
-    config_params : dict
+    config_params : dict, optional
         Name/value pairs that indicate beamline configuration
         parameters during capturing of data
 
@@ -90,15 +101,12 @@ def insert_beamline_config(config_params=None):
     blc : BeamlineConfig
         The document added to the collection
     """
-
-    connect(db=database, host=host, port=port)
-
     beamline_config = BeamlineConfig(config_params=config_params)
     beamline_config.save(validate=True, write_concern={"w": 1})
 
     return beamline_config
 
-
+@db_connect
 def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
     """ Create an event_descriptor in metadataStore database backend
 
@@ -109,6 +117,9 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain
+    time : timestamp
+        The date/time as found at the client side when an event
+        descriptor is created.
 
     Returns
     -------
@@ -116,12 +127,10 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
         The document added to the collection.
 
     """
-    connect(db=database, host=host, port=port)
-
     event_descriptor = EventDescriptor(begin_run_event=begin_run_event.id,
                                        data_keys=data_keys, time=time,
                                        event_type=event_type,
-                                       time_as_datetime=__convert2datetime(time))
+                                       time_as_datetime=__todatetime(time))
 
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
@@ -130,7 +139,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
 
     return event_descriptor
 
-
+@db_connect
 def insert_event(event_descriptor, time, data, seq_no):
     """Create an event in metadataStore database backend
 
@@ -149,13 +158,11 @@ def insert_event(event_descriptor, time, data, seq_no):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-
-    # TODO: seq_no is not optional according to opyhd folks. To be discussed!! talk to @dchabot & @swilkins
-
-    connect(db=database, host=host, port=port)
+    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
+    # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor.id,
                   data=data, time=time, seq_no=seq_no,
-                  time_as_datetime=__convert2datetime(time))
+                  time_as_datetime=__todatetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
 
@@ -164,41 +171,36 @@ def insert_event(event_descriptor, time, data, seq_no):
     return event
 
 
+@db_connect
 def find_begin_run(limit=50, **kwargs):
     """ Given search criteria, locate the BeginRunEvent object
+
     Parameters
     ----------
-
-    limit: int
+    limit : int
         Number of header objects to be returned
 
     Other Parameters
     ----------------
-
     scan_id : int
         Scan identifier. Not unique
-
     owner : str
         User name identifier associated with a scan
-
     create_time : dict
         header insert time. Keys must be start and end to
         give a range to the search
-
     beamline_id : str
         String identifier for a specific beamline
-
-    unique_id: str
+    unique_id : str
         Hashed unique identifier
 
     Returns
     -------
-    br_objects: mongoengine.QuerySet
+    br_objects : mongoengine.QuerySet
         Corresponding BeginRunObjects given search criteria
 
     Usage
     ------
-
     >>> find_begin_run(scan_id=123)
     >>> find_begin_run(owner='arkilic')
     >>> find_begin_run(time={'start': 1421176750.514707,
@@ -210,7 +212,6 @@ def find_begin_run(limit=50, **kwargs):
     ...                                       'end': time.time()})
 
     """
-    connect(db=database, host=host, port=port)
     search_dict = dict()
 
     try:
@@ -249,7 +250,8 @@ def find_begin_run(limit=50, **kwargs):
         pass
 
     if search_dict:
-        br_objects = BeginRunEvent.objects(__raw__=search_dict).order_by('-_id')[:limit]
+        br_objects = BeginRunEvent.objects(
+            __raw__=search_dict).order_by('-_id')[:limit]
     else:
         br_objects = list()
 
@@ -258,7 +260,7 @@ def find_begin_run(limit=50, **kwargs):
 
     return br_objects
 
-
+@db_connect
 def find_beamline_config(_id):
     """Return beamline config objects given a unique mongo _id
 
@@ -267,44 +269,38 @@ def find_beamline_config(_id):
     _id: bson.ObjectId
 
     """
-    connect(db=database, host=host, port=port)
     return BeamlineConfig.objects(id=_id).order_by('-_id')
 
-
+@db_connect
 def find_event_descriptor(begin_run_event):
     """Return beamline config objects given a unique mongo id
 
     Parameters
     ----------
-    _id: bson.ObjectId
+    begin_run_event : bson.ObjectId
 
     """
-    connect(db=database, host=host, port=port)
     event_descriptor_list = list()
-    connect(db=database, host=host, port=port)
-    for event_descriptor in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id'):
+    for event_descriptor in EventDescriptor.objects\
+                    (begin_run_event=begin_run_event.id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
     return event_descriptor_list
 
-
+@db_connect
 def fetch_events(limit=1000, **kwargs):
     """
 
     Parameters
     -----------
-    limit: int
+    limit : int
         number of events returned
-
-    Other Parameters
-    ----------------
-    time: dict
+    time : dict, optional
         time of the event. dict keys must be start and end
-    descriptor: mongoengine.Document
+    descriptor : mongoengine.Document, optional
         event descriptor object
     """
-    connect(db=database, host=host, port=port)
     search_dict = dict()
     try:
         time_dict = kwargs.pop('time')
@@ -329,7 +325,7 @@ def fetch_events(limit=1000, **kwargs):
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
     return result
 
-
+@db_connect
 def find_event(begin_run_event):
     """Returns a set of events given a BeginRunEvent object
 
@@ -345,15 +341,13 @@ def find_event(begin_run_event):
     events: list
         Set of events encapsulated within a BeginRunEvent's scope
     """
-    connect(db=database, host=host, port=port)
-    events = list()
-    descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id')
-    for descriptor in descriptors:
-        events.append(find_event_given_descriptor(descriptor))
-
+    descriptors = EventDescriptor.objects(
+        begin_run_event=begin_run_event.id).order_by('-_id')
+    events = [find_event_given_descriptor(descriptor)
+              for descriptor in descriptors]
     return events
 
-
+@db_connect
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
 
@@ -363,7 +357,6 @@ def find_event_given_descriptor(event_descriptor):
         EventDescriptor instance that a set of events point back to
 
     """
-    connect(db=database, host=host, port=port)
     event_list = list()
     for event in Event.objects(
             descriptor=event_descriptor.id).order_by('-_id'):
@@ -372,7 +365,7 @@ def find_event_given_descriptor(event_descriptor):
 
     return event_list
 
-
+@db_connect
 def find(data=True, limit=50, **kwargs):
     """
     Returns dictionary of objects
@@ -411,7 +404,7 @@ def find(data=True, limit=50, **kwargs):
                 result.append(br)
     return br
 
-
+@db_connect
 def find_last():
     """Indexed on ObjectId NOT end_time.
 
@@ -424,12 +417,10 @@ def find_last():
 
 
     """
-    connect(db=database, host=host, port=port)
-
     return BeginRunEvent.objects.order_by('-_id')[0:1][0]
 
 
-def __convert2datetime(time_stamp):
+def __todatetime(time_stamp):
     if isinstance(time_stamp, float):
         return datetime.datetime.fromtimestamp(time_stamp)
     else:
@@ -488,12 +479,11 @@ def __src_dst(direction):
 
 def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
     """Replace the '.' with [dot]
-    I know the name is long. Bite me, it is private routine and I have an IDE
 
     Parameters
     ---------
 
-    event_descriptor: metadataStore.database.event_descriptor.EventDescriptor
+    event_descriptor: metadataStore.odm_templates.EventDescriptor
     EvenDescriptor instance
 
     direction: str
@@ -509,7 +499,6 @@ def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
 
 def __replace_event_data_key_dots(event, direction='in'):
     """Replace the '.' with [dot]
-    I know the name is long. Bite me, it is private routine and I have an IDE
 
     Parameters
     ---------
