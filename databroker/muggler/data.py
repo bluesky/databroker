@@ -219,24 +219,103 @@ class DataMuggler(object):
             self._stale = False
         return self._df
 
-    def bin_by_edges(self, bin_edges, interpolation=None, agg=None):
+    def bin_on(self, source_name, anchor, interpolation=None,
+               agg=None):
         """
-        Return data, resampled as necessary.
+        Return data resampled to align with the data from a particular source.
+
+        Parameters
+        ----------
+        source_name : string
+        anchor : {'left', 'center', 'right'}
+            Bins can be labeled by their left edge, right edge, or center
+            point. Sources that can be interpolated will be evaulated at
+            the labeled point, so these labels are scientificialy significant.
+        interpolation : dict
+            Override the default interpolation (upsampling) behavior of any
+            data source by passing a dictionary of source names mapped onto
+            one of the following interpolation methods.
+
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+
+            None means that each time bin must have at least one value.
+            See scipy.interpolator for more on the other methods.
+        agg : dict
+            Override the default reduction (downsampling) behavior of any data
+            source by passing a dictionary of source names mapped onto any
+            callable that reduces multiple data points (of whatever dimension)
+            to a single data point.
+
+        Returns
+        -------
+        resampled_df : pandas.DataFrame
+
+        References
+        ----------
+        http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+        """
+        time = np.array(self._time)
+        col = self._dataframe[source_name]
+        binning = col.notnull().astype(np.int).cumsum()
+        edges = col.dropna().index.values
+        edges_as_pairs = np.vstack([edges[:-1], edges[1:]]).T
+        if anchor == 'left':
+            time_points = edges[:-1]
+        elif anchor == 'center':
+            time_points = np.mean(edges_as_pairs, axis=1)
+        elif anchor == 'right':
+            time_points = edges[1:]
+        else:
+            raise ValueError("anchor must be 'left', 'center', or 'right'")
+        return self.resample(time_points, binning, interpolation, agg)
+
+    def bin_by_edges(self, bin_edges, anchor='center',
+                     interpolation=None, agg=None):
+        """
+        Return data resampled into bins with the specified edges.
 
         Parameters
         ----------
         bin_edges : list
-           list of two-element items like [(t1, t2), (t3, t4), ...]
+            list of two-element items like [(t1, t2), (t3, t4), ...]
+        anchor : {'left', 'center', 'right'}, optional
+            By default, bins are labeled by their centers, but they can
+            alternatively be labled by their left or right edge.
+        interpolation : dict
+            Override the default interpolation (upsampling) behavior of any
+            data source by passing a dictionary of source names mapped onto
+            one of the following interpolation methods.
+
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+
+            None means that each time bin must have at least one value.
+            See scipy.interpolator for more on the other methods.
+        agg : dict
+            Override the default reduction (downsampling) behavior of any data
+            source by passing a dictionary of source names mapped onto any
+            callable that reduces multiple data points (of whatever dimension)
+            to a single data point.
 
         Returns
         -------
-        data : dict of lists
+        resampled_df : pandas.DataFrame
+
+        References
+        ----------
+        http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
         time = np.array(self._time)
         binning = np.zeros(len(time), dtype=np.bool)
         for i, pair in enumerate(bin_edges):
             binning[(time < pair[0]) & (time > pair[1])] = i
-        time_points = [np.mean(pair) for pair in bin_edges]  # bin centers
+        if anchor == 'left':
+            time_points = [pair[0] for pair in bin_edges]
+        elif anchor == 'center':
+            time_points = [np.mean(pair) for pair in bin_edges]
+        elif anchor == 'right':
+            time_points = [pair[1] for pair in bin_edges]
+        else:
+            raise ValueError("anchor must be 'left', 'center', or 'right'")
         return self.resample(time_points, binning, interpolation, agg)
 
     def resample(self, time_points, binning, interpolation=None, agg=None):
