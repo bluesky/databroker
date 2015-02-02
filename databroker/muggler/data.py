@@ -135,7 +135,7 @@ class DataMuggler(object):
     """
     def __init__(self, events=None):
         self.sources = {}
-        self.col_specs = {}
+        self._col_info = {}
         self._data = deque()
         self._time = deque()
         self._stale = True
@@ -194,15 +194,15 @@ class DataMuggler(object):
                 else:
                     dim = 0
 
-                col_spec = ColSpec(name, dim, None, None)  # defaults
+                col_info = ColSpec(name, dim, None, None)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
                 # For now...
                 if dim == 0:
-                    col_spec = ColSpec(name, dim, 'linear', np.mean)
+                    col_info = ColSpec(name, dim, 'linear', np.mean)
                 else:
-                    col_spec = ColSpec(name, dim, None, np.sum)
-                self.col_specs[name] = col_spec
+                    col_info = ColSpec(name, dim, None, np.sum)
+                self._col_info[name] = col_info
 
             # Both scalar and nonscalar data will get stored in the DataFrame.
             # This may be optimized later, but it might not actually help much.
@@ -250,20 +250,21 @@ class DataMuggler(object):
         # If there is not, raise.
         resampled_df = pd.DataFrame(index=time_points)
         for col_name in self._dataframe:
-            col_spec = self.col_specs[col_name]
+            col_info = self._col_info[col_name]
             if interpolation is not None:
                 upsample = interpolation  # TODO validation
             else:
-                upsample = col_spec.upsample
+                upsample = col_info.upsample
             if upsample is not None:
                 # TODO This logic should be higher up, but that might require
                 # breaking the namedtuple idea.
-                if col_spec.ndim != 0:
+                if col_info.ndim != 0:
                     raise NotImplementedError("Can't upsample nonscalar data")
                 dense_col = self._dataframe[col_name].dropna()
                 x, y = dense_col.index.values, dense_col.values
                 def curried_interpolator(new_x):
-                    return interp1d(x, y, kind=col_spec.upsample)
+                    interpolator = interp1d(x, y, kind=col_info.upsample)
+                    return interpolator(new_x)
                 resampled_df[col_name] = curried_interpolator(time_points)
                 # There is now exactly one point per bin.
                 continue
@@ -290,11 +291,18 @@ class DataMuggler(object):
                                    "there is no rule for downsampling "
                                    "(i.e., reducing) it.".format(col_name))
             resampled_df[col_name] = grouped.agg(
-                {col_name: col_spec.downsample})
-            return resampled_df
+                {col_name: col_info.downsample})
+        return resampled_df
+
+    def __getitem__(self, source_name):
+        if source_name not in self._col_info.keys():
+            raise KeyError("No data from a source called '{0}' has been "
+                           "added.".format(source_name))
+        # TODO Dispatch a query to the broker?
+        return self._dataframe[source_name].dropna()
 
     @property
-    def col_dims(self):
+    def col_ndim(self):
         """
         The dimensionality of the data stored in all columns. Returned as a
         dictionary keyed on column name.
@@ -304,7 +312,7 @@ class DataMuggler(object):
          2 -> image
          3 -> volume
         """
-        return {c.name: c.dims for c in self._col_info}
+        return {c.name: c.ndim for c in self._col_info}
 
     @property
     def ncols(self):
@@ -314,38 +322,19 @@ class DataMuggler(object):
         return len(self._col_info)
 
     @property
-    def col_fill_rules(self):
+    def col_downsample_rules(self):
         """
-        Fill rules for all of the columns.
+        Downsampling (reduction) rules for all of the columns.
         """
-        return {c.name: c.fill_method for c in self._col_info}
+        return {c.name: c.downsample for c in self._col_info}
 
-    def keys(self, dim=None):
+    @property
+    def col_upsample_rules(self):
         """
-        Get the column names in the data muggler
-
-        Parameters
-        ----------
-        dim : int
-            Select out only columns with the given dimensions
-
-            --  ------------------
-            0   scalar
-            1   line (MCA spectra)
-            2   image
-            3   volume
-            --  -------------------
-
-        Returns
-        -------
-        keys : list
-            Column names in the data muggler that match the desired
-            dimensionality, or all column names if dim is None
+        Upsampling (interpolation) rules for all of the columns.
         """
-        cols = [c.name for c in self._col_info
-                if (True if dim is None else dim == c.dims)]
-        cols.sort(key=lambda s: s.lower())
-        return cols
+        return {c.name: c.upsample for c in self._col_info}
+
 
 def dataframe_to_dict(df):
     """
