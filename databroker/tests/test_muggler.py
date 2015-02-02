@@ -4,7 +4,7 @@ import numpy as np
 from .. import sources
 from ..muggler.data import DataMuggler
 from ..sources import switch
-from ..examples.seeding_data import temperature_ramp
+from ..examples.sample_data import temperature_ramp
 
 
 class TestMuggler(unittest.TestCase):

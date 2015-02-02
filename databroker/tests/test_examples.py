@@ -1,5 +1,5 @@
 import unittest
-from ..examples.seeding_data import temperature_ramp
+from ..examples.sample_data import temperature_ramp
 from ..broker.struct import BrokerStruct
 
 class TestSeedingData(unittest.TestCase):
