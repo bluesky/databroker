@@ -214,6 +214,7 @@ class DataMuggler(object):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
             index = pd.Float64Index(list(self._time))
+            index.name = 'epoch time [s]'
             self._df = pd.DataFrame(list(self._data), index)
             self._stale = False
         return self._df
