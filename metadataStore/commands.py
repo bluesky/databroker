@@ -118,8 +118,8 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
         Provides information about keys of the data dictionary in
         an event will contain
     time : timestamp
-        The date/time as found at the client side when an event is
-        created.
+        The date/time as found at the client side when an event
+        descriptor is created.
 
     Returns
     -------
