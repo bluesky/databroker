@@ -384,7 +384,7 @@ class DataMuggler(object):
     def __getattr__(self, attr):
         try:
             return self.__getattribute__(attr)
-        except AttributeError, e:
+        except AttributeError:
             if attr in self._col_info.keys():
                 return self[attr]
             else:
