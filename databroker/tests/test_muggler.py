@@ -18,10 +18,13 @@ class TestMuggler(unittest.TestCase):
     def test_from_events(self):
         DataMuggler.from_events(self.mixed_events)
 
-    def test_dataframe(self):
+    def test_attributes(self):
         dm = DataMuggler.from_events(self.mixed_events)
+        # merely testing that basic usage does not error
         dm._dataframe
+        dm.Tsam
+        dm['Tsam']
 
     def test_binning(self):
         dm = DataMuggler.from_events(self.mixed_events)
-        dm.bin_by_edges([(1, 2), (3, 4)])  # TODO more relavant bins
+        dm.bin_by_edges([(0, 12), (12, 20)])

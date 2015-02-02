@@ -214,8 +214,8 @@ class DataMuggler(object):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
             index = pd.Float64Index(list(self._time))
-            index.name = 'epoch time [s]'
             self._df = pd.DataFrame(list(self._data), index)
+            _dress_df(self._df)
             self._stale = False
         return self._df
 
@@ -248,7 +248,8 @@ class DataMuggler(object):
         # Where upsampling is possible, interpolate to the center of each bin.
         # Where not possible, check that there is at least one point per bin.
         # If there is not, raise.
-        resampled_df = pd.DataFrame(index=time_points)
+        resampled_df = pd.DataFrame(index=pd.Float64Index(time_points))
+        _dress_df(resampled_df)
         for col_name in self._dataframe:
             col_info = self._col_info[col_name]
             if interpolation is not None:
@@ -300,6 +301,16 @@ class DataMuggler(object):
                            "added.".format(source_name))
         # TODO Dispatch a query to the broker?
         return self._dataframe[source_name].dropna()
+
+    def __getattr__(self, attr):
+        try:
+            return self.__getattribute__(attr)
+        except AttributeError, e:
+            if attr in self._col_info.keys():
+                return self[attr]
+            else:
+                raise AttributeError("DataMuggler has no attribute {0} and "
+                                     "no data source named '{0}'".format(attr))
 
     @property
     def col_ndim(self):
@@ -355,3 +366,12 @@ def dataframe_to_dict(df):
     df = self._dataframe  # for brevity
     dict_of_lists = {col: df[col].to_list() for col in df.columns}
     return df.index.values, dict_of_lists
+
+
+def _dress_df(df):
+    """
+    Set attributes to make df self-describiing.
+
+    For now this does one thing but might become more complex later.
+    """
+    df.index.name = 'epoch_time'
