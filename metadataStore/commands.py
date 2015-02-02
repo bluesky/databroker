@@ -11,7 +11,9 @@ import metadataStore
 
 
 def db_connect(func):
-    connect(db=metadataStore.conf.mds_config['database'], host=['host'], port=['port'])
+    connect(db=metadataStore.conf.mds_config['database'],
+            host=metadataStore.conf.mds_config['host'],
+            port=metadataStore.conf.mds_config['port'])
 
     def inner(*args, **kwargs):
         return func(*args, **kwargs)
@@ -31,15 +33,16 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     beamline_id: str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
+    beamline_config: metadataStore.odm_temples.BeamlineConfig, optional
+        Foreign key to beamline config corresponding to a given run
     owner: str, optional
         Specifies the unix user credentials of the user creating the entry
     scan_id : int, optional
         Unique scan identifier visible to the user and data analysis
-    beamline_config: metadataStore.odm_temples.BeamlineConfig, optional
-        Foreign key to beamline config corresponding to a given run
     custom: dict, optional
         Additional parameters that data acquisition code/user wants to
         append to a given header. Name/value pairs
+
     Returns
     -------
     begin_run: mongoengine.Document
@@ -64,15 +67,15 @@ def insert_end_run(begin_run_event, time, reason=None):
     ----------
     begin_run_event : metadataStore.odm_temples.BeginRunEvent
         Foreign key to corresponding BeginRunEvent
-    reason : str
-        provides information regarding the run success.
     time : timestamp
         The date/time as found at the client side when an event is
         created.
+    reason : str, optional
+        provides information regarding the run success.
 
     Returns
     -------
-    begin_run: mongoengine.Document
+    begin_run : mongoengine.Document
         Inserted mongoengine object
     """
     begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
@@ -89,7 +92,7 @@ def insert_beamline_config(config_params=None):
 
     Parameters
     ----------
-    config_params : dict
+    config_params : dict, optional
         Name/value pairs that indicate beamline configuration
         parameters during capturing of data
 
@@ -114,6 +117,9 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain
+    time : timestamp
+        The date/time as found at the client side when an event is
+        created.
 
     Returns
     -------
@@ -167,39 +173,33 @@ def insert_event(event_descriptor, time, data, seq_no):
 @db_connect
 def find_begin_run(limit=50, **kwargs):
     """ Given search criteria, locate the BeginRunEvent object
+
     Parameters
     ----------
-
-    limit: int
+    limit : int
         Number of header objects to be returned
 
     Other Parameters
     ----------------
-
     scan_id : int
         Scan identifier. Not unique
-
     owner : str
         User name identifier associated with a scan
-
     create_time : dict
         header insert time. Keys must be start and end to
         give a range to the search
-
     beamline_id : str
         String identifier for a specific beamline
-
-    unique_id: str
+    unique_id : str
         Hashed unique identifier
 
     Returns
     -------
-    br_objects: mongoengine.QuerySet
+    br_objects : mongoengine.QuerySet
         Corresponding BeginRunObjects given search criteria
 
     Usage
     ------
-
     >>> find_begin_run(scan_id=123)
     >>> find_begin_run(owner='arkilic')
     >>> find_begin_run(time={'start': 1421176750.514707,
@@ -275,7 +275,7 @@ def find_event_descriptor(begin_run_event):
 
     Parameters
     ----------
-    _id: bson.ObjectId
+    begin_run_event : bson.ObjectId
 
     """
     event_descriptor_list = list()
@@ -291,14 +291,11 @@ def fetch_events(limit=1000, **kwargs):
 
     Parameters
     -----------
-    limit: int
+    limit : int
         number of events returned
-
-    Other Parameters
-    ----------------
-    time: dict
+    time : dict, optional
         time of the event. dict keys must be start and end
-    descriptor: mongoengine.Document
+    descriptor : mongoengine.Document, optional
         event descriptor object
     """
     search_dict = dict()
