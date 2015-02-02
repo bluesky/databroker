@@ -69,11 +69,10 @@ class ColSpec(namedtuple(
         None means that each time bin must have at least one value.
         The names refer to kinds of scipy.interpolator. See documentation
         link below.
-    downsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
-                  'cubic'}
-        None means that each time bin must have no more than one value.
-        The names refer to kinds of scipy.interpolator. See documentation
-        link below.
+    downsample : None or a function
+        None if the data cannot be downsampled (reduced). Otherwise,
+        any callable that reduces multiple data points (of whatever dimension)
+        to a single data point.
 
     References
     ----------
@@ -103,8 +102,8 @@ class ColSpec(namedtuple(
 
         # Validate downsampling method
         if (downsample is not None) and (not callable(downsample)):
-            raise ValueError("The downsampling method must be a callable.")
-
+            raise ValueError("The downsampling method must be a callable "
+                             "or None.")
         # pass everything up to base class
         return super(ColSpec, cls).__new__(
             cls, name, ndim, upsample, downsample)
