@@ -4,10 +4,20 @@ import six
 from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
                                          EndRunEvent, EventDescriptor, Event)
 import datetime
-from metadataStore.conf import host, port, database
+import metadataStore
 from mongoengine import connect
 
+import metadataStore
 
+
+def db_connect(func):
+    connect(db=metadataStore.conf.mds_config['database'], host=['host'], port=['port'])
+
+    def inner(*args, **kwargs):
+        return func(*args, **kwargs)
+    return inner
+
+@db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
                      scan_id=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
@@ -36,7 +46,6 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
         Inserted mongoengine object
 
     """
-    connect(db=database, host=host, port=port)
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
                               time_as_datetime=__convert2datetime(time),
                               beamline_id=beamline_id, custom=custom,
@@ -46,6 +55,7 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     return begin_run
 
 
+@db_connect
 def insert_end_run(begin_run_event, time, reason=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
@@ -65,8 +75,6 @@ def insert_end_run(begin_run_event, time, reason=None):
     begin_run: mongoengine.Document
         Inserted mongoengine object
     """
-    connect(db=database, host=host, port=port)
-
     begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
                             time=time,
                             time_as_datetime=__convert2datetime(time))
@@ -75,7 +83,7 @@ def insert_end_run(begin_run_event, time, reason=None):
 
     return begin_run
 
-
+@db_connect
 def insert_beamline_config(config_params=None):
     """ Create a beamline_config  in metadataStore database backend
 
@@ -90,15 +98,12 @@ def insert_beamline_config(config_params=None):
     blc : BeamlineConfig
         The document added to the collection
     """
-
-    connect(db=database, host=host, port=port)
-
     beamline_config = BeamlineConfig(config_params=config_params)
     beamline_config.save(validate=True, write_concern={"w": 1})
 
     return beamline_config
 
-
+@db_connect
 def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
     """ Create an event_descriptor in metadataStore database backend
 
@@ -116,8 +121,6 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
         The document added to the collection.
 
     """
-    connect(db=database, host=host, port=port)
-
     event_descriptor = EventDescriptor(begin_run_event=begin_run_event.id,
                                        data_keys=data_keys, time=time,
                                        event_type=event_type,
@@ -130,7 +133,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
 
     return event_descriptor
 
-
+@db_connect
 def insert_event(event_descriptor, time, data, seq_no):
     """Create an event in metadataStore database backend
 
@@ -149,10 +152,7 @@ def insert_event(event_descriptor, time, data, seq_no):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-
     # TODO: seq_no is not optional according to opyhd folks. To be discussed!! talk to @dchabot & @swilkins
-
-    connect(db=database, host=host, port=port)
     event = Event(descriptor_id=event_descriptor.id,
                   data=data, time=time, seq_no=seq_no,
                   time_as_datetime=__convert2datetime(time))
@@ -164,6 +164,7 @@ def insert_event(event_descriptor, time, data, seq_no):
     return event
 
 
+@db_connect
 def find_begin_run(limit=50, **kwargs):
     """ Given search criteria, locate the BeginRunEvent object
     Parameters
@@ -210,7 +211,6 @@ def find_begin_run(limit=50, **kwargs):
     ...                                       'end': time.time()})
 
     """
-    connect(db=database, host=host, port=port)
     search_dict = dict()
 
     try:
@@ -258,7 +258,7 @@ def find_begin_run(limit=50, **kwargs):
 
     return br_objects
 
-
+@db_connect
 def find_beamline_config(_id):
     """Return beamline config objects given a unique mongo _id
 
@@ -267,10 +267,9 @@ def find_beamline_config(_id):
     _id: bson.ObjectId
 
     """
-    connect(db=database, host=host, port=port)
     return BeamlineConfig.objects(id=_id).order_by('-_id')
 
-
+@db_connect
 def find_event_descriptor(begin_run_event):
     """Return beamline config objects given a unique mongo id
 
@@ -279,16 +278,14 @@ def find_event_descriptor(begin_run_event):
     _id: bson.ObjectId
 
     """
-    connect(db=database, host=host, port=port)
     event_descriptor_list = list()
-    connect(db=database, host=host, port=port)
     for event_descriptor in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
     return event_descriptor_list
 
-
+@db_connect
 def fetch_events(limit=1000, **kwargs):
     """
 
@@ -304,7 +301,6 @@ def fetch_events(limit=1000, **kwargs):
     descriptor: mongoengine.Document
         event descriptor object
     """
-    connect(db=database, host=host, port=port)
     search_dict = dict()
     try:
         time_dict = kwargs.pop('time')
@@ -329,7 +325,7 @@ def fetch_events(limit=1000, **kwargs):
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
     return result
 
-
+@db_connect
 def find_event(begin_run_event):
     """Returns a set of events given a BeginRunEvent object
 
@@ -345,15 +341,11 @@ def find_event(begin_run_event):
     events: list
         Set of events encapsulated within a BeginRunEvent's scope
     """
-    connect(db=database, host=host, port=port)
-    events = list()
     descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id')
-    for descriptor in descriptors:
-        events.append(find_event_given_descriptor(descriptor))
-
+    events = [find_event_given_descriptor(descriptor) for descriptor in descriptors]
     return events
 
-
+@db_connect
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
 
@@ -363,7 +355,6 @@ def find_event_given_descriptor(event_descriptor):
         EventDescriptor instance that a set of events point back to
 
     """
-    connect(db=database, host=host, port=port)
     event_list = list()
     for event in Event.objects(
             descriptor=event_descriptor.id).order_by('-_id'):
@@ -372,7 +363,7 @@ def find_event_given_descriptor(event_descriptor):
 
     return event_list
 
-
+@db_connect
 def find(data=True, limit=50, **kwargs):
     """
     Returns dictionary of objects
@@ -411,7 +402,7 @@ def find(data=True, limit=50, **kwargs):
                 result.append(br)
     return br
 
-
+@db_connect
 def find_last():
     """Indexed on ObjectId NOT end_time.
 
@@ -424,8 +415,6 @@ def find_last():
 
 
     """
-    connect(db=database, host=host, port=port)
-
     return BeginRunEvent.objects.order_by('-_id')[0:1][0]
 
 
