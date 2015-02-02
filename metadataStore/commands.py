@@ -11,11 +11,10 @@ import metadataStore
 
 
 def db_connect(func):
-    connect(db=metadataStore.conf.mds_config['database'],
-            host=metadataStore.conf.mds_config['host'],
-            port=metadataStore.conf.mds_config['port'])
-
     def inner(*args, **kwargs):
+        connect(db=metadataStore.conf.mds_config['database'],
+                host=metadataStore.conf.mds_config['host'],
+                port=metadataStore.conf.mds_config['port'])
         return func(*args, **kwargs)
     return inner
 
