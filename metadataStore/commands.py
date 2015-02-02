@@ -49,9 +49,10 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
 
     """
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                              time_as_datetime=__convert2datetime(time),
+                              time_as_datetime=__todatetime(time),
                               beamline_id=beamline_id, custom=custom,
-                              beamline_config=beamline_config.id if beamline_config else None)
+                              beamline_config=beamline_config.id
+                              if beamline_config else None)
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
@@ -79,7 +80,7 @@ def insert_end_run(begin_run_event, time, reason=None):
     """
     begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
                             time=time,
-                            time_as_datetime=__convert2datetime(time))
+                            time_as_datetime=__todatetime(time))
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
@@ -129,7 +130,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
     event_descriptor = EventDescriptor(begin_run_event=begin_run_event.id,
                                        data_keys=data_keys, time=time,
                                        event_type=event_type,
-                                       time_as_datetime=__convert2datetime(time))
+                                       time_as_datetime=__todatetime(time))
 
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
@@ -157,10 +158,11 @@ def insert_event(event_descriptor, time, data, seq_no):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-    # TODO: seq_no is not optional according to opyhd folks. To be discussed!! talk to @dchabot & @swilkins
+    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
+    # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor.id,
                   data=data, time=time, seq_no=seq_no,
-                  time_as_datetime=__convert2datetime(time))
+                  time_as_datetime=__todatetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
 
@@ -248,7 +250,8 @@ def find_begin_run(limit=50, **kwargs):
         pass
 
     if search_dict:
-        br_objects = BeginRunEvent.objects(__raw__=search_dict).order_by('-_id')[:limit]
+        br_objects = BeginRunEvent.objects(
+            __raw__=search_dict).order_by('-_id')[:limit]
     else:
         br_objects = list()
 
@@ -278,7 +281,8 @@ def find_event_descriptor(begin_run_event):
 
     """
     event_descriptor_list = list()
-    for event_descriptor in EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id'):
+    for event_descriptor in EventDescriptor.objects\
+                    (begin_run_event=begin_run_event.id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
@@ -337,8 +341,10 @@ def find_event(begin_run_event):
     events: list
         Set of events encapsulated within a BeginRunEvent's scope
     """
-    descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id).order_by('-_id')
-    events = [find_event_given_descriptor(descriptor) for descriptor in descriptors]
+    descriptors = EventDescriptor.objects(
+        begin_run_event=begin_run_event.id).order_by('-_id')
+    events = [find_event_given_descriptor(descriptor)
+              for descriptor in descriptors]
     return events
 
 @db_connect
@@ -414,7 +420,7 @@ def find_last():
     return BeginRunEvent.objects.order_by('-_id')[0:1][0]
 
 
-def __convert2datetime(time_stamp):
+def __todatetime(time_stamp):
     if isinstance(time_stamp, float):
         return datetime.datetime.fromtimestamp(time_stamp)
     else:
@@ -473,12 +479,11 @@ def __src_dst(direction):
 
 def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
     """Replace the '.' with [dot]
-    I know the name is long. Bite me, it is private routine and I have an IDE
 
     Parameters
     ---------
 
-    event_descriptor: metadataStore.database.event_descriptor.EventDescriptor
+    event_descriptor: metadataStore.odm_templates.EventDescriptor
     EvenDescriptor instance
 
     direction: str
@@ -494,7 +499,6 @@ def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
 
 def __replace_event_data_key_dots(event, direction='in'):
     """Replace the '.' with [dot]
-    I know the name is long. Bite me, it is private routine and I have an IDE
 
     Parameters
     ---------
