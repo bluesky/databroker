@@ -65,7 +65,7 @@ setup(
     author='Brookhaven National Laboratory',
     packages=['databroker', 'databroker.api', 'databroker.testing',
               'databroker.examples',
-              'databroker.examples.seeding_data',
+              'databroker.examples.sample_data',
               'databroker.replay',
               'databroker.replay.gui',
               'databroker.replay.model',
