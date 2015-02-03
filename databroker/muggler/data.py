@@ -304,15 +304,23 @@ class DataMuggler(object):
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
         time = np.array(self._time)
-        binning = np.zeros(len(time), dtype=np.bool)
-        for i, pair in enumerate(bin_edges):
-            binning[(time < pair[0]) & (time > pair[1])] = i
+        # Get edges into 1D array[L, R, L, R, ...]
+        edges_as_pairs = np.reshape(bin_edges, (2, -1))
+        all_edges = np.ravel(edges_as_pairs)
+        if not np.all(np.diff(all_edges) >= 0):
+            raise ValueError("Illegal binning: the left edge must be less "
+                             "than the right edge.")
+        # Sort out where the array each time would be inserted.
+        binning = np.searchsorted(all_edges, time).astype(float)
+        # Times that would get inserted at even positions are between bins.
+        # Mark them 
+        binning[binning % 2 == 0] = np.nan
         if anchor == 'left':
-            time_points = [pair[0] for pair in bin_edges]
+            time_points = edges_as_pairs[:, 0]
         elif anchor == 'center':
-            time_points = [np.mean(pair) for pair in bin_edges]
+            time_points = np.mean(edges_as_pairs, axis=1)
         elif anchor == 'right':
-            time_points = [pair[1] for pair in bin_edges]
+            time_points = edges_as_pairs[:, 1]
         else:
             raise ValueError("anchor must be 'left', 'center', or 'right'")
         return self.resample(time_points, binning, interpolation, agg)
@@ -359,18 +367,18 @@ class DataMuggler(object):
             # multi-valued bins must be downsampled (reduced). If there is no
             # rule for downsampling, raise.
             if np.all(counts[col_name]) == 1:
-                continue
+                resampled_df[col_name] = self._dataframe[col_name]
             if agg is not None:
                 downsample = agg  # TODO validation
             else:
-                downsample = colspec.downsample
+                downsample = col_info.downsample
             if downsample is None:
                 raise BinningError("The specified binning puts multiple '{0}'"
                                    "measurements in at least one bin, and "
                                    "there is no rule for downsampling "
                                    "(i.e., reducing) it.".format(col_name))
             resampled_df[col_name] = grouped.agg(
-                {col_name: col_info.downsample})
+                {col_name: downsample})
         return resampled_df
 
     def __getitem__(self, source_name):
