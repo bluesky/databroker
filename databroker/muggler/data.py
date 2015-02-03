@@ -35,13 +35,15 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from collections import namedtuple, OrderedDict, deque
+from collections import namedtuple, OrderedDict, deque, Iterable
 import warnings
+import logging
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d, interp2d
 
 
+logger = logging.getLogger(__name__)
 __all__ = ['DataMuggler', 'dataframe_to_dict']
 
 
@@ -49,6 +51,12 @@ class BinningError(Exception):
     """
     An exception to raise if there are insufficient sampling rules to
     upsampling or downsample a data column into specified bins.
+    """
+    pass
+
+class BadDownsamplerError(Exception):
+    """
+    An exception to raise if a downsampler produces unexpected output.
     """
     pass
 
@@ -85,28 +93,33 @@ class ColSpec(namedtuple(
     __slots__ = ()
 
     def __new__(cls, name, ndim, upsample, downsample):
-        # sanity check ndim
+        # Validations
+        upsample = _validate_upsample(upsample)
+        downsample = _validate_downsample(downsample)
         if int(ndim) < 0:
             raise ValueError("ndim must be positive not {}".format(ndim))
 
-
-        # TODO The upsampling method could be any callable.
-
-        # Validate upsampling method
-        if not (upsample in cls.upsampling_methods):
-            raise ValueError("{} is not a valid upsampling method. It "
-                             "must be one of {}".format(
-                             sample, cls.upsampling_methods))
-
-        # TODO The downsampling methods could have string aliases like 'mean'.
-
-        # Validate downsampling method
-        if (downsample is not None) and (not callable(downsample)):
-            raise ValueError("The downsampling method must be a callable "
-                             "or None.")
-        # pass everything up to base class
         return super(ColSpec, cls).__new__(
             cls, name, ndim, upsample, downsample)
+
+
+def _validate_upsample(input):
+    # TODO The upsampling method could be any callable.
+    if input is None:
+        return input
+    if not (input in ColSpec.upsampling_methods):
+        raise ValueError("{} is not a valid upsampling method. It "
+                         "must be one of {}".format(
+                         input, cls.upsampling_methods))
+    return input.lower()
+
+
+def _validate_downsample(input):
+    # TODO The downsampling methods could have string aliases like 'mean'.
+    if (input is not None) and (not callable(input)):
+        raise ValueError("The downsampling method must be a callable "
+                         "or None.")
+    return input
 
 
 class DataMuggler(object):
@@ -191,16 +204,11 @@ class DataMuggler(object):
                     # TODO Figure out the specific dimension.
                     pass
                 else:
-                    dim = 0
+                    ndim = 0
 
-                col_info = ColSpec(name, dim, None, None)  # defaults
+                col_info = ColSpec(name, ndim, None, None)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
-                # For now...
-                if dim == 0:
-                    col_info = ColSpec(name, dim, 'linear', np.mean)
-                else:
-                    col_info = ColSpec(name, dim, None, np.sum)
                 self._col_info[name] = col_info
 
             # Both scalar and nonscalar data will get stored in the DataFrame.
@@ -214,28 +222,24 @@ class DataMuggler(object):
         if self._stale:
             index = pd.Float64Index(list(self._time))
             self._df = pd.DataFrame(list(self._data), index)
-            _dress_df(self._df)
+            self._df.index.name = 'epoch_time'
             self._stale = False
         return self._df
 
-    def bin_on(self, source_name, anchor, interpolation=None,
-               agg=None):
+    def bin_on(self, source_name, interpolation=None, agg=None):
         """
         Return data resampled to align with the data from a particular source.
 
         Parameters
         ----------
         source_name : string
-        anchor : {'left', 'center', 'right'}
-            Bins can be labeled by their left edge, right edge, or center
-            point. Sources that can be interpolated will be evaulated at
-            the labeled point, so these labels are scientificialy significant.
         interpolation : dict
             Override the default interpolation (upsampling) behavior of any
             data source by passing a dictionary of source names mapped onto
             one of the following interpolation methods.
 
-            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+             'cubic'}
 
             None means that each time bin must have at least one value.
             See scipy.interpolator for more on the other methods.
@@ -254,21 +258,18 @@ class DataMuggler(object):
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
         time = np.array(self._time)
-        col = self._dataframe[source_name]
-        binning = col.notnull().astype(np.int).cumsum()
-        edges = col.dropna().index.values
-        edges_as_pairs = np.vstack([edges[:-1], edges[1:]]).T
-        if anchor == 'left':
-            time_points = edges[:-1]
-        elif anchor == 'center':
-            time_points = np.mean(edges_as_pairs, axis=1)
-        elif anchor == 'right':
-            time_points = edges[1:]
-        else:
-            raise ValueError("anchor must be 'left', 'center', or 'right'")
-        return self.resample(time_points, binning, interpolation, agg)
+        col = self._dataframe.sort()[source_name]
+        centers = col.dropna().index.values
 
-    def bin_by_edges(self, bin_edges, anchor='center',
+        # [2, 4, 6] -> [-inf, 3, 5, inf]
+        bin_edges = np.mean([centers[1:], centers[:-1]], 0)
+        # [-inf, 3, 5, inf] -> [(-inf, 3), (3, 5), (5, inf)]
+        bin_edges = [-np.inf] + list(np.repeat(bin_edges, 2)) + [np.inf]
+        bin_edges = np.reshape(bin_edges, (-1, 2))
+        return self.bin_by_edges(bin_edges, time_labels=centers,
+                                 interpolation=interpolation, agg=agg)
+
+    def bin_by_edges(self, bin_edges, anchor=None, time_labels=None,
                      interpolation=None, agg=None):
         """
         Return data resampled into bins with the specified edges.
@@ -280,6 +281,8 @@ class DataMuggler(object):
         anchor : {'left', 'center', 'right'}, optional
             By default, bins are labeled by their centers, but they can
             alternatively be labled by their left or right edge.
+        time_labels : ndarray, optional
+            Time points used to label each bin. Overrides anchor above.
         interpolation : dict
             Override the default interpolation (upsampling) behavior of any
             data source by passing a dictionary of source names mapped onto
@@ -305,7 +308,7 @@ class DataMuggler(object):
         """
         time = np.array(self._time)
         # Get edges into 1D array[L, R, L, R, ...]
-        edges_as_pairs = np.reshape(bin_edges, (2, -1))
+        edges_as_pairs = np.reshape(bin_edges, (-1, 2))
         all_edges = np.ravel(edges_as_pairs)
         if not np.all(np.diff(all_edges) >= 0):
             raise ValueError("Illegal binning: the left edge must be less "
@@ -315,71 +318,102 @@ class DataMuggler(object):
         # Times that would get inserted at even positions are between bins.
         # Mark them 
         binning[binning % 2 == 0] = np.nan
-        if anchor == 'left':
-            time_points = edges_as_pairs[:, 0]
-        elif anchor == 'center':
-            time_points = np.mean(edges_as_pairs, axis=1)
-        elif anchor == 'right':
-            time_points = edges_as_pairs[:, 1]
-        else:
-            raise ValueError("anchor must be 'left', 'center', or 'right'")
-        return self.resample(time_points, binning, interpolation, agg)
+        binning //= 2  # Make bin number sequential, not odds only.
+        bin_count = pd.Series(binning).nunique()  # not including NaN
+        if anchor is None and time_labels is None:
+            anchor = 'center'
+        if time_labels is not None:
+            if len(time_labels) != bin_count:
+                raise ValueError("The number of time_labels ({0}) must equal "
+                                 "the number of bins ({1}).".format(
+                                 len(time_labels), bin_count))
+        elif isinstance(anchor, six.string_types):
+            if anchor == 'left':
+                time_labels = edges_as_pairs[:, 0]
+            elif anchor == 'center':
+                time_labels = np.mean(edges_as_pairs, axis=1)
+            elif anchor == 'right':
+                time_labels = edges_as_pairs[:, 1]
+            else:
+                raise ValueError("anchor must be 'left', 'center', 'right', "
+                                 "or None") 
+        return self.resample(time_labels, binning, interpolation, agg)
 
-    def resample(self, time_points, binning, interpolation=None, agg=None):
+    def resample(self, time_labels, binning, interpolation=None, agg=None,
+                 verify_integrity=True):
+        resampled_df = pd.DataFrame(index=np.arange(len(time_labels)))
 
         # How many (non-null) data points in each bin?
         grouped = self._dataframe.groupby(binning)
         counts = grouped.count()
+        has_one_point = counts == 1
+        has_no_points = counts == 0
+        has_multiple_points = ~(has_one_point | has_no_points)
+        # Get the first (maybe only) point in each bin.
+        first_point = grouped.first()
 
-        # Where upsampling is possible, interpolate to the center of each bin.
-        # Where not possible, check that there is at least one point per bin.
-        # If there is not, raise.
-        resampled_df = pd.DataFrame(index=pd.Float64Index(time_points))
-        _dress_df(resampled_df)
-        for col_name in self._dataframe:
-            col_info = self._col_info[col_name]
-            if interpolation is not None:
-                upsample = interpolation  # TODO validation
-            else:
+        for name in self._dataframe:
+            # Resolve (and if necessary validate) sampling rules.
+            col_info = self._col_info[name]
+            try:
+                upsample = interpolation[name]
+            except (TypeError, KeyError):
                 upsample = col_info.upsample
-            if upsample is not None:
-                # TODO This logic should be higher up, but that might require
-                # breaking the namedtuple idea.
-                if col_info.ndim != 0:
-                    raise NotImplementedError("Can't upsample nonscalar data")
-                dense_col = self._dataframe[col_name].dropna()
-                x, y = dense_col.index.values, dense_col.values
-                def curried_interpolator(new_x):
-                    interpolator = interp1d(x, y, kind=col_info.upsample)
-                    return interpolator(new_x)
-                resampled_df[col_name] = curried_interpolator(time_points)
-                # There is now exactly one point per bin.
-                continue
             else:
-                if np.any(counts[col] < 1):
-                    raise BinningError("The specified binning leaves some "
-                                       "bins without '{0}' data, and there is "
-                                       "no rule for interpolating it between "
-                                       "bins.".format(col_name))
-
-            # Columns that could be interpolate (above) are done. For the rest,
-            # if they have one data point per bin, we are done. If not, the
-            # multi-valued bins must be downsampled (reduced). If there is no
-            # rule for downsampling, raise.
-            if np.all(counts[col_name]) == 1:
-                resampled_df[col_name] = self._dataframe[col_name]
-                continue
-            if agg is not None:
-                downsample = agg  # TODO validation
-            else:
+                upsample = _validate_upsample(upsample)
+            try:
+                downsample = agg[name]
+            except (TypeError, KeyError):
                 downsample = col_info.downsample
+            else:
+                downsample = _validate_downsample(downsample)
+
+            # Start by using the first point in a bin. (If there are actually
+            # multiple points, we will either overwrite or raise below.)
+            resampled_df[name] = first_point[name]
+
+            # Short-circuit if we are done.
+            if np.all(has_one_point[name]):
+                continue
+
+            # If any bin has no data, use the upsampling rule to interpolate
+            # at the center of the empty bins. If there is no rule, simply
+            # leave some bins empty. Do not raise an error.
+            if upsample is not None:
+                dense_col = self._dataframe[name].dropna()
+                x, y = dense_col.index.values, dense_col.values
+                interpolator = interp1d(x, y, kind=upsample)
+                # Outside the limits of the data, the interpolator will fail.
+                # Leave any such entires empty.
+                is_safe = (time_labels > np.min(x)) & (time_labels < np.max(x))
+                safe_times = time_labels[is_safe]
+                safe_bins = np.arange(len(time_labels))[is_safe]
+                interpolated_points = pd.Series(interpolator(safe_times),
+                                                index=safe_bins)
+                logger.debug("Interpolating to fill %d of %d empty bins in %s",
+                             len(safe_bins), has_no_points[name].sum(), name)
+                resampled_df[name].fillna(interpolated_points, inplace=True)
+
+            # Short-circuit if we are done.
+            if np.all(~has_multiple_points[name]):
+                continue
+
+            # Multi-valued bins must be downsampled (reduced). If there is no
+            # rule for downsampling, we have no recourse: we must raise.
             if downsample is None:
-                raise BinningError("The specified binning puts multiple '{0}'"
-                                   "measurements in at least one bin, and "
-                                   "there is no rule for downsampling "
-                                   "(i.e., reducing) it.".format(col_name))
-            resampled_df[col_name] = grouped.agg(
-                {col_name: downsample})
+                raise BinningError("The specified binning puts multiple "
+                                   "'{0}' measurements in at least one bin, "
+                                   "and there is no rule for downsampling "
+                                   "(i.e., reducing) it.".format(name))
+            if verify_integrity:
+                expected_shape = 0  # TODO get real shape from descriptor
+                downsample = _build_safe_downsample(downsample, expected_shape)
+            downsampled = grouped[name].agg({name: downsample}).squeeze()
+            resampled_df[name].where(~has_multiple_points[name], downsampled,
+                                     inplace=True)
+
+        # Label the bins with time points.
+        resampled_df.index = time_labels
         return resampled_df
 
     def __getitem__(self, source_name):
@@ -452,10 +486,24 @@ def dataframe_to_dict(df):
     return df.index.values, dict_of_lists
 
 
-def _dress_df(df):
-    """
-    Set attributes to make df self-describiing.
-
-    For now this does one thing but might become more complex later.
-    """
-    df.index.name = 'epoch_time'
+def _build_safe_downsample(downsample, expected_shape):
+    # Ensure two things:
+    # 1. The downsampling function shouldn't touch bins with only one point.
+    # 2. The result of downsample should have the right shape.
+    def _downsample(data):
+        if len(data) == 1:
+            return data
+        downsampled = downsample(data)
+        if (expected_shape is None or expected_shape == 0):
+            if not np.isscalar(downsampled):
+                raise BadDownsamplerError("The 'agg' (downsampling) function "
+                                          "for {0} is expected to produce "
+                                          "a scalar from the data in each "
+                                          "bin.".format(downsampled))
+        elif downsampled.shape != expected_shape:
+            raise BadDownsamplerError("The 'agg' (downsampling) function for "
+                                      "{0} returns data shaped {1} but the "
+                                      "shape {2} is expected.".format(
+                                      name, downsampled.shape, expected_shape))
+        return downsampled
+    return _downsample

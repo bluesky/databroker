@@ -6,9 +6,9 @@ import numpy as np
 from . import common
 
 # "Magic numbers" for this simulation
-start, stop, step, points_per_step = 0, 3, 1, 10
+start, stop, step, points_per_step = 0, 3, 1, 7
 deadband_size = 0.9
-num_exposures = 43
+num_exposures = 23
 
 @common.example
 def run(begin_run=None):
