@@ -35,24 +35,26 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, deque
+import warnings
 import pandas as pd
 import numpy as np
-from pims.base_frames import FramesSequence
-from pims.frame import Frame
-
-from skimage.io import imread
+from scipy.interpolate import interp1d, interp2d
 
 
-class Unalignable(Exception):
+__all__ = ['DataMuggler', 'dataframe_to_dict']
+
+
+class BinningError(Exception):
     """
-    An exception to raise if you try to align a non-fillable column
-    to a non-pre-aligned column
+    An exception to raise if there are insufficient sampling rules to
+    upsampling or downsample a data column into specified bins.
     """
     pass
 
 
-class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
+class ColSpec(namedtuple(
+              'ColSpec', ['name', 'ndim', 'upsample', 'downsample'])):
     """
     Named-tuple sub-class to validate the column specifications for the
     DataMuggler
@@ -60,29 +62,51 @@ class ColSpec(namedtuple('ColSpec', ['name', 'fill_method', 'dims'])):
     Parameters
     ----------
     name : hashable
-    fill_method : {'pad', 'ffill', None}
-        None means that no filling is done
-    dims : uint
+    ndim : uint
         Dimensionality of the data stored in the column
+    upsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+                'cubic'}
+        None means that each time bin must have at least one value.
+        The names refer to kinds of scipy.interpolator. See documentation
+        link below.
+    downsample : None or a function
+        None if the data cannot be downsampled (reduced). Otherwise,
+        any callable that reduces multiple data points (of whatever dimension)
+        to a single data point.
+
+    References
+    ----------
+    http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
     """
-    # removed the back-fill ones (even though pandas allows them)
-    valid_fill_methods = {'pad', 'ffill', None, 'bfill', 'backpad'}
+    # These reflect the 'method' argument of pandas.DataFrame.fillna
+    upsampling_methods = {None, 'linear', 'nearest', 'zero', 'slinear', 
+                        'quadratic', 'cubic'}
 
     __slots__ = ()
 
-    def __new__(cls, name, fill_method, dims):
-        # sanity check dims
-        if int(dims) < 0:
-            raise ValueError("Dims must be positive not {}".format(dims))
+    def __new__(cls, name, ndim, upsample, downsample):
+        # sanity check ndim
+        if int(ndim) < 0:
+            raise ValueError("ndim must be positive not {}".format(ndim))
 
-        # sanity check fill_method
-        if fill_method not in cls.valid_fill_methods:
-            raise ValueError("{} is not a valid fill method must be one of "
-                             "{}".format(fill_method,
-                                         cls.valid_fill_methods))
 
+        # TODO The upsampling method could be any callable.
+
+        # Validate upsampling method
+        if not (upsample in cls.upsampling_methods):
+            raise ValueError("{} is not a valid upsampling method. It "
+                             "must be one of {}".format(
+                             sample, cls.upsampling_methods))
+
+        # TODO The downsampling methods could have string aliases like 'mean'.
+
+        # Validate downsampling method
+        if (downsample is not None) and (not callable(downsample)):
+            raise ValueError("The downsampling method must be a callable "
+                             "or None.")
         # pass everything up to base class
-        return super(ColSpec, cls).__new__(cls, name, fill_method, dims)
+        return super(ColSpec, cls).__new__(
+            cls, name, ndim, upsample, downsample)
 
 
 class DataMuggler(object):
@@ -105,102 +129,275 @@ class DataMuggler(object):
 
     Parameters
     ----------
-    col_info : list
-        List of information about the columns. Each entry should
-        be a tuple of the form (col_name, fill_method, dimensionality). See
-        `ColSpec` class docstring
-
-    max_frames : int, optional
-        The maximum number of frames for the non-scalar columns
-
-    use_pims_fs : bool, optional
-        If the DM should use a pims frame-store to deal with 2D data.
-        It allows file names to be added transparently, but max_frames
-        won't apply to frames added as arrays.
-
+    events : list
+        list of Events (any object with the expected attributes will do)
     """
-    def __init__(self, col_info, max_frames=1000, use_pims_fs=True, **kwargs):
-        super(DataMuggler, self).__init__(**kwargs)
-        # make all of the data structures
-        self._col_info = list()
-        self._col_fill = dict()
-        self._nonscalar_col_lookup = dict()
-        self._use_fs = use_pims_fs
-        self._framestore = dict()
-        self._is_col_nonscalar = set()
-        self._dataframe = pd.DataFrame()
+    def __init__(self, events=None):
+        self.sources = {}
+        self._col_info = {}
+        self._data = deque()
+        self._time = deque()
+        self._stale = True
+        if events is not None:
+            for event in events:
+                self.append_event(event)
 
-        self.max_frames = max_frames
-        self.recreate_columns(col_info)
-
-    def recreate_columns(self, col_info):
+    @classmethod
+    def from_tuples(cls, event_tuples, sources=None):
         """
-        Recreate the columns with new column information.  This
-        implies a clear and the muggler in empty with the new columns
-        after this call.
-
         Parameters
         ----------
-        col_info : list
-           List of information about the columns. Each entry should
-           be a tuple of the form (col_name, fill_method, dimensionality). See
-           `ColSpec` class docstring
+        event_tuples : list of (time, data_dict) tuples
+            formatted like
+            [(<time>: {<data_key>: <value>, <data_key>: <value>, ...}), ...]
+        metatdata : dict
+            mapping data keys to source names
 
+            This information is used to look up resampling behavior.
         """
-        # make all of the data structures
-        self._col_info = list()
-        self._col_fill = dict()
-        self._nonscalar_col_lookup = dict()
-        self._framestore = dict()
-        self._is_col_nonscalar = set()
-        self._dataframe = pd.DataFrame()
+        raise NotImplementedError()
+        for event in event_tuples:
+            # TODO Make this look like an event object.
+            pass
 
-        # add each of the columns
-        for ci in col_info:
-            self.add_column(ci)
-
-    def add_column(self, col_info):
+    @classmethod
+    def from_events(cls, events):
         """
-        Adds a column to the DataMuggler
-
         Parameters
         ----------
-        col_info : tuple
-            Of the form (col_name, fill_method, dimensionality). See
-           `ColSpec` class docstring
+        events : list
+            list of Events (any object with the expected attributes will do)
         """
-        # make sure we got valid input
-        col_info = ColSpec(*col_info)
+        return cls(events)
 
-        # check that the column with the same name does not exist
-        if col_info.name in [c.name for c in self._col_info]:
-            raise ValueError(
-                "The key {} already exists in the DM".format(col_info.name))
+    def append_event(self, event):
+        self._stale = True
+        for name, description in event.descriptor.data_keys.items():
 
-        # stash the info for future lookup
-        self._col_info.append(col_info)
-        # stash the fill method
-        self._col_fill[col_info.name] = col_info.fill_method
-        # check if we need to deal with none-scalar data
-        if col_info.dims > 0:
-            self._is_col_nonscalar.add(col_info.name)
-            if self._use_fs and col_info.dims == 2:
-                self._framestore[col_info.name] = ImageSeq(None)
+            # If we have this source name, check for name collisions.
+            if name in self.sources:
+                if self.sources[name] != description['source']:
+                    raise ValueError("In a previously loaded event, "
+                                     "'{0}' refers to {1} but in Event "
+                                     "{2} it refers to {3}.".format(
+                                         name, self.sources[name],
+                                         event.id,
+                                         description['source']))
+
+            # If it is a new name, determine a ColSpec.
             else:
-                self._nonscalar_col_lookup[col_info.name] = OrderedDict()
+                self.sources[name] = description['source']
+                if 'external' in event.descriptor.data_keys.keys():
+                    # TODO Figure out the specific dimension.
+                    pass
+                else:
+                    dim = 0
 
-        self._dataframe[col_info.name] = pd.Series(np.nan,
-                                                   index=self._dataframe.index)
+                col_info = ColSpec(name, dim, None, None)  # defaults
+                # TODO Look up source-specific default in a config file
+                # or some other source of reference data.
+                # For now...
+                if dim == 0:
+                    col_info = ColSpec(name, dim, 'linear', np.mean)
+                else:
+                    col_info = ColSpec(name, dim, None, np.sum)
+                self._col_info[name] = col_info
 
-    def clear(self):
-        """
-        Clear all of the data by re-initializing all of the internal
-        data structures.
-        """
-        self.recreate(cols=self._col_info)
+            # Both scalar and nonscalar data will get stored in the DataFrame.
+            # This may be optimized later, but it might not actually help much.
+            self._data.append({name: event.data[name]['value']})
+            self._time.append(event.time)
 
     @property
-    def col_dims(self):
+    def _dataframe(self):
+        # Rebuild the DataFrame if more data has been added.
+        if self._stale:
+            index = pd.Float64Index(list(self._time))
+            self._df = pd.DataFrame(list(self._data), index)
+            _dress_df(self._df)
+            self._stale = False
+        return self._df
+
+    def bin_on(self, source_name, anchor, interpolation=None,
+               agg=None):
+        """
+        Return data resampled to align with the data from a particular source.
+
+        Parameters
+        ----------
+        source_name : string
+        anchor : {'left', 'center', 'right'}
+            Bins can be labeled by their left edge, right edge, or center
+            point. Sources that can be interpolated will be evaulated at
+            the labeled point, so these labels are scientificialy significant.
+        interpolation : dict
+            Override the default interpolation (upsampling) behavior of any
+            data source by passing a dictionary of source names mapped onto
+            one of the following interpolation methods.
+
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+
+            None means that each time bin must have at least one value.
+            See scipy.interpolator for more on the other methods.
+        agg : dict
+            Override the default reduction (downsampling) behavior of any data
+            source by passing a dictionary of source names mapped onto any
+            callable that reduces multiple data points (of whatever dimension)
+            to a single data point.
+
+        Returns
+        -------
+        resampled_df : pandas.DataFrame
+
+        References
+        ----------
+        http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+        """
+        time = np.array(self._time)
+        col = self._dataframe[source_name]
+        binning = col.notnull().astype(np.int).cumsum()
+        edges = col.dropna().index.values
+        edges_as_pairs = np.vstack([edges[:-1], edges[1:]]).T
+        if anchor == 'left':
+            time_points = edges[:-1]
+        elif anchor == 'center':
+            time_points = np.mean(edges_as_pairs, axis=1)
+        elif anchor == 'right':
+            time_points = edges[1:]
+        else:
+            raise ValueError("anchor must be 'left', 'center', or 'right'")
+        return self.resample(time_points, binning, interpolation, agg)
+
+    def bin_by_edges(self, bin_edges, anchor='center',
+                     interpolation=None, agg=None):
+        """
+        Return data resampled into bins with the specified edges.
+
+        Parameters
+        ----------
+        bin_edges : list
+            list of two-element items like [(t1, t2), (t3, t4), ...]
+        anchor : {'left', 'center', 'right'}, optional
+            By default, bins are labeled by their centers, but they can
+            alternatively be labled by their left or right edge.
+        interpolation : dict
+            Override the default interpolation (upsampling) behavior of any
+            data source by passing a dictionary of source names mapped onto
+            one of the following interpolation methods.
+
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+
+            None means that each time bin must have at least one value.
+            See scipy.interpolator for more on the other methods.
+        agg : dict
+            Override the default reduction (downsampling) behavior of any data
+            source by passing a dictionary of source names mapped onto any
+            callable that reduces multiple data points (of whatever dimension)
+            to a single data point.
+
+        Returns
+        -------
+        resampled_df : pandas.DataFrame
+
+        References
+        ----------
+        http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+        """
+        time = np.array(self._time)
+        # Get edges into 1D array[L, R, L, R, ...]
+        edges_as_pairs = np.reshape(bin_edges, (2, -1))
+        all_edges = np.ravel(edges_as_pairs)
+        if not np.all(np.diff(all_edges) >= 0):
+            raise ValueError("Illegal binning: the left edge must be less "
+                             "than the right edge.")
+        # Sort out where the array each time would be inserted.
+        binning = np.searchsorted(all_edges, time).astype(float)
+        # Times that would get inserted at even positions are between bins.
+        # Mark them 
+        binning[binning % 2 == 0] = np.nan
+        if anchor == 'left':
+            time_points = edges_as_pairs[:, 0]
+        elif anchor == 'center':
+            time_points = np.mean(edges_as_pairs, axis=1)
+        elif anchor == 'right':
+            time_points = edges_as_pairs[:, 1]
+        else:
+            raise ValueError("anchor must be 'left', 'center', or 'right'")
+        return self.resample(time_points, binning, interpolation, agg)
+
+    def resample(self, time_points, binning, interpolation=None, agg=None):
+
+        # How many (non-null) data points in each bin?
+        grouped = self._dataframe.groupby(binning)
+        counts = grouped.count()
+
+        # Where upsampling is possible, interpolate to the center of each bin.
+        # Where not possible, check that there is at least one point per bin.
+        # If there is not, raise.
+        resampled_df = pd.DataFrame(index=pd.Float64Index(time_points))
+        _dress_df(resampled_df)
+        for col_name in self._dataframe:
+            col_info = self._col_info[col_name]
+            if interpolation is not None:
+                upsample = interpolation  # TODO validation
+            else:
+                upsample = col_info.upsample
+            if upsample is not None:
+                # TODO This logic should be higher up, but that might require
+                # breaking the namedtuple idea.
+                if col_info.ndim != 0:
+                    raise NotImplementedError("Can't upsample nonscalar data")
+                dense_col = self._dataframe[col_name].dropna()
+                x, y = dense_col.index.values, dense_col.values
+                def curried_interpolator(new_x):
+                    interpolator = interp1d(x, y, kind=col_info.upsample)
+                    return interpolator(new_x)
+                resampled_df[col_name] = curried_interpolator(time_points)
+                # There is now exactly one point per bin.
+                continue
+            else:
+                if np.any(counts[col] < 1):
+                    raise BinningError("The specified binning leaves some "
+                                       "bins without '{0}' data, and there is "
+                                       "no rule for interpolating it between "
+                                       "bins.".format(col_name))
+
+            # Columns that could be interpolate (above) are done. For the rest,
+            # if they have one data point per bin, we are done. If not, the
+            # multi-valued bins must be downsampled (reduced). If there is no
+            # rule for downsampling, raise.
+            if np.all(counts[col_name]) == 1:
+                resampled_df[col_name] = self._dataframe[col_name]
+                continue
+            if agg is not None:
+                downsample = agg  # TODO validation
+            else:
+                downsample = col_info.downsample
+            if downsample is None:
+                raise BinningError("The specified binning puts multiple '{0}'"
+                                   "measurements in at least one bin, and "
+                                   "there is no rule for downsampling "
+                                   "(i.e., reducing) it.".format(col_name))
+            resampled_df[col_name] = grouped.agg(
+                {col_name: downsample})
+        return resampled_df
+
+    def __getitem__(self, source_name):
+        if source_name not in self._col_info.keys():
+            raise KeyError("No data from a source called '{0}' has been "
+                           "added.".format(source_name))
+        # TODO Dispatch a query to the broker?
+        return self._dataframe[source_name].dropna()
+
+    def __getattr__(self, attr):
+        if attr in self._col_info.keys():
+            return self[attr]
+        else:
+            raise AttributeError("DataMuggler has no attribute {0} and no "
+                "data source named '{0}'".format(attr))
+
+    @property
+    def col_ndim(self):
         """
         The dimensionality of the data stored in all columns. Returned as a
         dictionary keyed on column name.
@@ -210,7 +407,7 @@ class DataMuggler(object):
          2 -> image
          3 -> volume
         """
-        return {c.name: c.dims for c in self._col_info}
+        return {c.name: c.ndim for c in self._col_info}
 
     @property
     def ncols(self):
@@ -220,566 +417,45 @@ class DataMuggler(object):
         return len(self._col_info)
 
     @property
-    def col_fill_rules(self):
+    def col_downsample_rules(self):
         """
-        Fill rules for all of the columns.
+        Downsampling (reduction) rules for all of the columns.
         """
-        return {c.name: c.fill_method for c in self._col_info}
+        return {c.name: c.downsample for c in self._col_info}
 
-    def align_against(self, ref_col, other_cols=None):
+    @property
+    def col_upsample_rules(self):
         """
-        Determine what columns can be sliced against another column.
-
-        This matters because not all columns can be filled and would
-        result in getting back non-dense events.
-
-        Currently this just decides based on if the column can be filled,
-        but this might need to be made smarter to deal with synchronous
-        collection of multiple un-fillable measurements.
-
-        Parameters
-        ----------
-        ref_col : str
-            The name of the proposed reference column
-        other_cols : list
-            The names of the columns to test for alignment
-
-        Returns
-        -------
-        dict
-            Keyed on column name, True if that column can be sliced at
-            the times of the input column.
+        Upsampling (interpolation) rules for all of the columns.
         """
-        if ref_col not in self._dataframe:
-            raise ValueError("non-existent columnn: [[{}]]".format(ref_col))
-        ref_index = self._dataframe[ref_col].dropna().index
-        tmp_dict = {}
-        for col_name, col_fill_type in six.iteritems(self._col_fill):
-            if col_name == ref_col:
-                tmp_dict[col_name] = True
-            elif other_cols and col_name not in other_cols:
-                # skip column names that are not in other_cols, if it passed in
-                continue
-            elif col_fill_type is None:
-                tmp_dict[col_name] = False
-            else:
-                filled = self._dataframe[col_name].fillna(method=col_fill_type)
-                algnable = filled[ref_index].notnull().all()
-                tmp_dict[col_name] = bool(algnable)
-        return tmp_dict
-
-    def append_data(self, time_stamp, data_dict):
-        """
-        Add data to the DataMuggler.
-
-        Parameters
-        ----------
-        time_stamp : datetime or list of datetime
-            The times of the data
-
-        data_dict : dict
-            The keys must be a sub-set of the columns that the DataMuggler
-            knows about.  If `time_stamp` is a list, then the values must be
-            lists of the same length, if `time_stamp` is a single datatime
-            object then the values must be single values
-        """
-        if not all(k in self._dataframe for k in data_dict):
-            k_dataframe = set(list(self._dataframe.columns.values))
-            k_input = set(list(six.iterkeys(data_dict)))
-            bogus_keys = k_input - k_dataframe
-            raise ValueError('Passing in a key that the dataframe doesn\'t '
-                             'know about. Key(s): {}'.format(bogus_keys))
-        try:
-            iter(time_stamp)
-        except TypeError:
-            # if time_stamp is not iterable, assume it is a datetime object
-            # and we only have one data point to deal with so up-convert
-            time_stamp = [time_stamp, ]
-            data_dict = {k: [v, ] for k, v in six.iteritems(data_dict)}
-        else:
-            # make a (shallow) copy because we will mutate the dictionary
-            data_dict = dict(data_dict)
-
-        non_scalar_keys = [k for k in data_dict
-                           if k in self._is_col_nonscalar]
-        # deal with non-scalar look up magic
-        for k in non_scalar_keys:
-            ids = []
-            # if frame data, use a pims object
-            if k in self._framestore:
-                fs = self._framestore[k]
-                for t, v in zip(time_stamp, data_dict[k]):
-                    ids.append(len(fs))
-                    # if it looks like a file name...
-                    if isinstance(v, six.string_types):
-                        fs.append_fname(v)
-                    # else, assume it is an array
-                    else:
-                        fs.append_array(v)
-            # else, dump into an ordered dict
-            else:
-                cl = self._nonscalar_col_lookup[k]
-                for t, v in zip(time_stamp, data_dict[k]):
-                    ids.append(id(v))
-                    cl[(t, id(v))] = v
-            data_dict[k] = ids
-
-        # make a new data frame with the input data and append it to the
-        # existing data
-        df, new = self._dataframe.align(
-            pd.DataFrame(data_dict, index=time_stamp))
-        df.update(new)
-        self._dataframe = df
-        self._dataframe.sort(inplace=True)
-        # get rid of excess frames
-        self._drop_data()
-
-    def _drop_data(self):
-        """
-        Internal function for dealing with the need to drop old frames
-        to avoid run-away memory usage
-        """
-        for k, work_dict in six.iteritems(self._nonscalar_col_lookup):
-            while len(work_dict) > self.max_frames:
-                drop_key = next(six.iterkeys(work_dict))
-                del work_dict[drop_key]
-                ts, im_id = drop_key
-                self._dataframe[k][ts] = np.nan
-
-    def get_values(self, ref_col, other_cols, t_start=None, t_finish=None):
-        """
-        Return a dictionary of data resampled (filled) to the times which have
-        non-NaN values in the reference column
-
-        Parameters
-        ----------
-        ref_col : str
-            The name of the 'master' column to get time stamps from
-
-        other_cols : list of str
-            A list of column names to return data from
-
-        t_start : datetime or None
-            Start time to obtain data for. This is not implemented
-
-        t_finish : datetime or None
-            End time to obtain data for. This is not implemented
-
-        Returns
-        -------
-        indices : list
-            Nominally the times of each of data points
-
-        out_data : dict
-            A dictionary of the data keyed on the column name with values
-            as lists whose length is the same as 'indices'
-        """
-        if t_start is not None:
-            raise NotImplementedError("t_start is not implemented. You can "
-                                      "only get all data right now")
-        if t_finish is not None:
-            raise NotImplementedError("t_finish is not implemented. You can "
-                                      "only get all data right now")
-        cols = list(set(other_cols + [ref_col, ]))
-        index = self._dataframe[ref_col].dropna().index
-        dense_table = self._densify_sub_df(cols)
-        reduced_table = dense_table.loc[index]
-        out_index, out_data = self._listify_output(reduced_table)
-        # return the times/indices and the dictionary
-        return out_index, out_data
-
-    def get_column(self, col_name):
-        """
-        Return the time and values where the given column is non-nan
-
-        Parameters
-        ----------
-        col_name : str
-            The name of the column to return
-
-        Returns
-        -------
-        time : array-like
-            The time stamps of the non-nan values
-
-        out_vals : array-like
-            The values at those times
-        """
-        if col_name not in self._dataframe:
-            raise ValueError(("The column {} does not exist. "
-                              "Possible values are {}").format(
-                                  col_name, self.keys()))
-
-        out_frame = self._dataframe[[col_name]].dropna()
-        indx, ret_dict = self._listify_output(out_frame)
-
-        return indx, ret_dict[col_name]
-
-    def get_times(self, col):
-        """
-        Return the time stamps that a column has non-null data
-        at.
+        return {c.name: c.upsample for c in self._col_info}
 
 
-        Parameters
-        ----------
-        col : str
-            The name of the column to extract the times for.
-        """
-        return self._dataframe[col].dropna().index
-
-    def get_last_value(self, ref_col, other_cols):
-        """
-        Return a dictionary of the dessified row and the most recent
-        time where reference column has a valid value
-
-        Parameters
-        ----------
-        ref_col : str
-            The name of the 'master' column to get time stamps from
-
-        other_cols : list of str
-            A list of column names to return data from
-
-        Returns
-        -------
-        index : Timestamp
-            The time associated with the data
-
-        out_data : dict
-            A dictionary of the data keyed on the column name with values
-            as lists whose length is the same as 'indices'
-        """
-        # drop duplicate keys
-        cols = list(set(other_cols + [ref_col, ]))
-
-        # grab the times/index where the primary key has a value
-        index = self._dataframe[ref_col].dropna().index
-        dense_table = self._densify_sub_df(cols)
-        reduced_table = dense_table.loc[index[-1:]]
-        out_index, data = self._listify_output(reduced_table)
-        return out_index[-1], {k: v[0] for k, v in six.iteritems(data)}
-
-    def get_row(self, index, cols):
-        """
-        Return a row with the selected columns
-        """
-        # this should be made a bit more clever to only look at region
-        # around the row we care about, not _everything_
-
-        dense_array = self._densify_sub_df(cols)
-        row = dense_array.loc[[index]]
-        # use _listify_output to do the non-scalar resolution
-        _, out_dict = self._listify_output(row)
-        # this step is needed to turn lists -> single element
-        out_dict = {k: v[0]
-                    for k, v in six.iteritems(out_dict)}
-        return out_dict
-
-    def keys(self, dim=None):
-        """
-        Get the column names in the data muggler
-
-        Parameters
-        ----------
-        dim : int
-            Select out only columns with the given dimensions
-
-            --  ------------------
-            0   scalar
-            1   line (MCA spectra)
-            2   image
-            3   volume
-            --  -------------------
-
-        Returns
-        -------
-        keys : list
-            Column names in the data muggler that match the desired
-            dimensionality, or all column names if dim is None
-        """
-        cols = [c.name for c in self._col_info
-                if (True if dim is None else dim == c.dims)]
-        cols.sort(key=lambda s: s.lower())
-        return cols
-
-    def __iter__(self):
-        return iter(self._dataframe)
-
-    def _densify_sub_df(self, col_names, index=None):
-        """
-        Internal function to fill and hack-down the data frame-as-needed
-
-        Parameters
-        ----------
-        col_names : list
-             List of strings naming the columns to extract
-
-        index : pandas index or None
-            If None, do whole frame, else, only work on the
-            subset specified by index.  This is applied _before_ filling
-            so this should be a continious range (or mask out rows you don't
-            want included) _not_ for reducing the result to the times based
-            on a reference column.
-
-        Returns
-        -------
-        DataFrame
-            A filled data frame
-        """
-        tmp_data = dict()
-        if index is not None:
-            work_df = self._dataframe[index]
-        else:
-            work_df = self._dataframe
-        for col in col_names:
-            # grab the column
-            work_series = work_df[col]
-            # fill in the NaNs using what ever method needed
-            if self._col_fill[col] is not None:
-                work_series = work_series.fillna(
-                    method=self._col_fill[col])
-            tmp_data[col] = work_series
-        return pd.DataFrame(tmp_data)
-
-    def _listify_output(self, df):
-        """
-        Given a data frame (which is assumed to be a hacked-down
-        version of self._dataframe which has been densified)
-
-        This does very little validation as it is an internal function.
-
-        This is intended to be used _after_ the data frame has been reduced
-        to only the rows where the reference column has values.
-
-        Parameters
-        ----------
-        df : DataFrame
-            This needs to be a densified version the `_dataframe` possibly
-            with a reduced number of columns.
-
-        Returns
-        -------
-        index : pandas.core.index.Index
-            The index of the data frame
-        data : dict
-            Dictionary keyed on column name of the column.  The value is
-            one of (ndarray, list, pd.Series)
-        """
-        ret_dict = dict()
-        for col in df:
-            ws = df[col]
-            if ws.isnull().any():
-                print(col)
-                print(ws)
-                raise Unalignable("columns aren't aligned correctly")
-
-            if col in self._is_col_nonscalar:
-                if col in self._framestore:
-                    fs = self._framestore[col]
-                    ret_dict[col] = [fs[n] for n in ws]
-                else:
-                    lookup_dict = self._nonscalar_col_lookup[col]
-                    # the iteritems generates (time, id(v))
-                    # pairs
-                    ret_dict[col] = [lookup_dict[t] for t
-                                     in six.iteritems(ws)]
-            else:
-                ret_dict[col] = ws
-        return df.index, ret_dict
-
-
-class DmImgSequence(FramesSequence):
+def dataframe_to_dict(df):
     """
-    This is a PIMS class for dealing with images stored in a DataMuggler.
+    Turn a DataFrame into a dict of lists.
 
     Parameters
     ----------
-    dm : DataMuggler
-        Where to get the data from
+    df : DataFrame
+
+    Returns
+    -------
+    index : ndarray
+        The index of the data frame
+    data : dict
+        Dictionary keyed on column name of the column.  The value is
+        one of (ndarray, list, pd.Series)
     """
-    @classmethod
-    def class_exts(cls):
-        # does not do files
-        return set()
-
-    def __init__(self, data_muggler, data_name, image_shape=None,
-                 process_func=None, dtype=None, as_grey=False):
-        # stash the DataMuggler
-        self._data_muggler = data_muggler
-        # stash the column we care about
-        self._data_name = data_name
-        # assume is floats (for now)
-        self._pixel_type = np.float
-        # frame shape is passed in
-        if image_shape is None:
-            image_shape = (1, 1)
-        self._image_shape = image_shape
-
-        self._validate_process_func(process_func)
-        self._as_grey(as_grey, process_func)
-
-    @property
-    def data_name(self):
-        return self._data_name
-
-    @property
-    def data_muggler(self):
-        return self._data_muggler
-
-    @property
-    def frame_shape(self):
-        return self._image_shape
-
-    @property
-    def pixel_type(self):
-        return self._pixel_type
-
-    def get_frame(self, n):
-        ts = self._data_muggler.get_times(self.data_name)
-        data = self._data_muggler.get_row(ts[n], [self.data_name, ])
-        raw_data = data[self.data_name]
-        self._image_shape = raw_data.shape
-        return Frame(self.process_func(raw_data).astype(self._pixel_type),
-                     frame_no=n)
-
-    def __len__(self):
-        return len(self._data_muggler.get_times(self.data_name))
-
-    def __repr__(self):
-        state = "Current state of DmImgSequence object"
-        state += "\nData Muggler: {}".format(self._data_muggler)
-        state += "\nData Name: {}".format(self._data_name)
-        state += "\nPixel Type: {}".format(self._pixel_type)
-        state += "\nImage Shape: {}".format(self._image_shape)
-        return state
+    df = self._dataframe  # for brevity
+    dict_of_lists = {col: df[col].to_list() for col in df.columns}
+    return df.index.values, dict_of_lists
 
 
-class ImageSeq(FramesSequence):
+def _dress_df(df):
     """
-    An appendable, memoized PIMS objects.
+    Set attributes to make df self-describiing.
 
-    This is to support lazy loading of files mixed with
-
-
-    Parameters
-    ----------
-    im_shape : tuple
-        The shape of the images
-
-
+    For now this does one thing but might become more complex later.
     """
-    def __init__(self, im_shape, process_func=None, dtype=None,
-                 as_grey=False, plugin=None):
-        if dtype is None:
-            dtype = np.uint16
-        self._dtype = dtype
-        self._shape = im_shape
-
-        # cached values for fast look up, can be invalidated/cleared
-        self._cache = dict()
-        # dictionary, keyed on frame number of files to read data from
-        self._files = dict()
-        # dictionary, keyed on frame number of raw data arrays
-        self._arrays = dict()
-
-        self._count = 0
-
-        self._validate_process_func(process_func)
-        self._as_grey(as_grey, process_func)
-
-        self.kwargs = dict(plugin=plugin)
-
-    def __len__(self):
-        return self._count
-
-    @property
-    def frame_shape(self):
-        return self._shape
-
-    @property
-    def pixel_type(self):
-        return self._dtype
-
-    def get_frame(self, n):
-        # first look in the cache to see if we have it
-        try:
-            return self._cache[n]
-        except KeyError:
-            pass
-
-        # then look at the arrays, they are also fast
-        try:
-            return self._arrays[n]
-        except:
-            pass
-
-        # finally try to open a file...if we have to
-        try:
-            fpath = self._files[n]
-        except KeyError:
-            # not sure this should ever happen
-            return IndexError()
-
-        # read the file and convert to Frame
-        tmp = self._to_Frame(
-            flatten_frames(fpath, self.pixel_type, self.kwargs))
-        tmp.frame_no = n
-
-        #  cache results
-        self._cache[n] = tmp
-        # TODO add logic to invalidate cache
-
-        return tmp
-
-    def append_fname(self, fname):
-        """
-        Add an image to the end of this sequence by adding a filename/path
-
-        Parameters
-        ----------
-        fname : str
-            Path to a single-frame image file.  Format must be one that
-            skimage.io.imread knows how to read.
-
-            Can handle local files + urls
-
-
-        """
-        self._files[self._count] = fname
-        self._count += 1
-
-    def append_array(self, img_arr):
-        """
-        Add an image to the end of this sequence by adding an array
-
-        Parameters
-        ----------
-        img_arr : array
-            Image data as an array.
-        """
-        tmp = self._to_Frame(img_arr)
-        tmp.frame_no = self._count
-        self._arrays[self._count] = tmp
-        self._count += 1
-
-    def _to_Frame(self, img):
-        if img.dtype != self._dtype:
-            img = img.astype(self._dtype)
-        # up-convert to Frame
-        return Frame(self.process_func(img))
-
-
-def flatten_frames(fpath, out_dtype, read_kwargs):
-    """
-    Take in a multi-frame image and squash down to a single
-    frame.  This is to deal with cases where at a single data
-    point N frames have been collected to push the dynamic range
-    of the detector.
-
-    This is currently a place holder and only deals with single-frame files
-    as @stuwilkins has not told me what types of files to expect.
-    """
-    # TODO dispatch logic, sum logic, basically everything
-    tmp = imread(fpath, **read_kwargs).astype(out_dtype)
-    return tmp
+    df.index.name = 'epoch_time'

@@ -105,7 +105,7 @@ def grab_latest(scan_id):
         if e.time not in known_events[e.ev_desc]:
             # data muggler doesn't know about this event yet
             known_events[e.ev_desc].append(e.time)
-            dm.append_data(e.time, e.data)
+            dm.append_event(e)
 
     # turn off the UI toggle to make a new data muggler
     view.make_new_dm = False

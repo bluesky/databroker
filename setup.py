@@ -64,6 +64,8 @@ setup(
     version=FULLVERSION,
     author='Brookhaven National Laboratory',
     packages=['databroker', 'databroker.api', 'databroker.testing',
+              'databroker.examples',
+              'databroker.examples.sample_data',
               'databroker.replay',
               'databroker.replay.gui',
               'databroker.replay.model',

@@ -12,9 +12,13 @@ class BrokerStruct(object):
         ----------
         mongo_document : mongoengine.Document
         """
+        self._name = mongo_document.__class__.__name__
         fields = mongo_document._fields
         for field in fields:
             attr = getattr(mongo_document, field)
             if isinstance(attr, mongoengine.Document):
                 attr = BrokerStruct(attr)
             setattr(self, field, attr)
+
+    def __repr__(self):
+        return "<BrokerStruct {0}>".format(self._name)
