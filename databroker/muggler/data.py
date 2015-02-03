@@ -368,6 +368,7 @@ class DataMuggler(object):
             # rule for downsampling, raise.
             if np.all(counts[col_name]) == 1:
                 resampled_df[col_name] = self._dataframe[col_name]
+                continue
             if agg is not None:
                 downsample = agg  # TODO validation
             else:
@@ -389,14 +390,11 @@ class DataMuggler(object):
         return self._dataframe[source_name].dropna()
 
     def __getattr__(self, attr):
-        try:
-            return self.__getattribute__(attr)
-        except AttributeError:
-            if attr in self._col_info.keys():
-                return self[attr]
-            else:
-                raise AttributeError("DataMuggler has no attribute {0} and "
-                                     "no data source named '{0}'".format(attr))
+        if attr in self._col_info.keys():
+            return self[attr]
+        else:
+            raise AttributeError("DataMuggler has no attribute {0} and no "
+                "data source named '{0}'".format(attr))
 
     @property
     def col_ndim(self):
