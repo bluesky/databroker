@@ -35,12 +35,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from collections import namedtuple, OrderedDict, deque, Iterable
-import warnings
+from collections import namedtuple, deque
 import logging
 import pandas as pd
 import numpy as np
-from scipy.interpolate import interp1d, interp2d
+from scipy.interpolate import interp1d
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +52,7 @@ class BinningError(Exception):
     upsampling or downsample a data column into specified bins.
     """
     pass
+
 
 class BadDownsamplerError(Exception):
     """
@@ -87,8 +87,8 @@ class ColSpec(namedtuple(
     http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
     """
     # These reflect the 'method' argument of pandas.DataFrame.fillna
-    upsampling_methods = {None, 'linear', 'nearest', 'zero', 'slinear', 
-                        'quadratic', 'cubic'}
+    upsampling_methods = {None, 'linear', 'nearest', 'zero', 'slinear',
+                          'quadratic', 'cubic'}
 
     __slots__ = ()
 
@@ -110,7 +110,7 @@ def _validate_upsample(input):
     if not (input in ColSpec.upsampling_methods):
         raise ValueError("{} is not a valid upsampling method. It "
                          "must be one of {}".format(
-                         input, cls.upsampling_methods))
+                             input, ColSpec.upsampling_methods))
     return input.lower()
 
 
@@ -257,7 +257,6 @@ class DataMuggler(object):
         ----------
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
-        time = np.array(self._time)
         col = self._dataframe.sort()[source_name]
         centers = col.dropna().index.values
 
@@ -288,7 +287,8 @@ class DataMuggler(object):
             data source by passing a dictionary of source names mapped onto
             one of the following interpolation methods.
 
-            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+             'cubic'}
 
             None means that each time bin must have at least one value.
             See scipy.interpolator for more on the other methods.
@@ -316,7 +316,7 @@ class DataMuggler(object):
         # Sort out where the array each time would be inserted.
         binning = np.searchsorted(all_edges, time).astype(float)
         # Times that would get inserted at even positions are between bins.
-        # Mark them 
+        # Mark them
         binning[binning % 2 == 0] = np.nan
         binning //= 2  # Make bin number sequential, not odds only.
         bin_count = pd.Series(binning).nunique()  # not including NaN
@@ -326,7 +326,7 @@ class DataMuggler(object):
             if len(time_labels) != bin_count:
                 raise ValueError("The number of time_labels ({0}) must equal "
                                  "the number of bins ({1}).".format(
-                                 len(time_labels), bin_count))
+                                     len(time_labels), bin_count))
         elif isinstance(anchor, six.string_types):
             if anchor == 'left':
                 time_labels = edges_as_pairs[:, 0]
@@ -336,7 +336,7 @@ class DataMuggler(object):
                 time_labels = edges_as_pairs[:, 1]
             else:
                 raise ValueError("anchor must be 'left', 'center', 'right', "
-                                 "or None") 
+                                 "or None")
         return self.resample(time_labels, binning, interpolation, agg)
 
     def resample(self, time_labels, binning, interpolation=None, agg=None,
@@ -428,7 +428,7 @@ class DataMuggler(object):
             return self[attr]
         else:
             raise AttributeError("DataMuggler has no attribute {0} and no "
-                "data source named '{0}'".format(attr))
+                                 "data source named '{0}'".format(attr))
 
     @property
     def col_ndim(self):
@@ -481,7 +481,6 @@ def dataframe_to_dict(df):
         Dictionary keyed on column name of the column.  The value is
         one of (ndarray, list, pd.Series)
     """
-    df = self._dataframe  # for brevity
     dict_of_lists = {col: df[col].to_list() for col in df.columns}
     return df.index.values, dict_of_lists
 
@@ -501,9 +500,9 @@ def _build_safe_downsample(downsample, expected_shape):
                                           "a scalar from the data in each "
                                           "bin.".format(downsampled))
         elif downsampled.shape != expected_shape:
-            raise BadDownsamplerError("The 'agg' (downsampling) function for "
-                                      "{0} returns data shaped {1} but the "
-                                      "shape {2} is expected.".format(
-                                      name, downsampled.shape, expected_shape))
+            raise BadDownsamplerError("An 'agg' (downsampling) function "
+                                      "returns data shaped {0} but the "
+                                      "shape {1} is expected.".format(
+                                          downsampled.shape, expected_shape))
         return downsampled
     return _downsample
