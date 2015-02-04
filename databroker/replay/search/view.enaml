@@ -3,32 +3,26 @@
 import six
 
 from enaml.widgets.api import (Container, RadioButton, PushButton, Window,
-                               ScrollArea, Form, Label, GroupBox, SpinBox)
-from enaml.core.api import (Looper)
+                               ScrollArea, Form, Label, GroupBox, SpinBox,
+                               Html)
+from enaml.core.api import (Looper, Conditional)
 from enaml.stdlib.fields import IntField
-from enaml.layout.api import vbox, hbox, spacer
+from enaml.layout.api import vbox, hbox, spacer, Box
 
-def get_vars(broker_struct):
-    if broker_struct is None:
-        ret = {}
-    else:
-        ret = vars(broker_struct)
-    print('vars in get_vars: {}'.format(ret))
-    return ret
 
 enamldef DisplayDict(Container):
-    """Enaml definition for the widget that displays a selected BeginRunEvent
+    """Enaml definition for the widget that displays a dictionary as a form
     """
     attr display_dict
-    Looper:
-        iterable << display_dict
-        Form:
-            row_spacing = 0
+    Form:
+        padding = Box(0, 0, 0, 0)
+        row_spacing = 5
+        Looper:
+            iterable << sorted(display_dict)
             Label:
                 text = loop_item
             Label:
                 text = str(display_dict[loop_item])
-
 
 enamldef LastView(Window):
     """Enaml definition for the widget that displays the controls for searching
@@ -36,9 +30,9 @@ enamldef LastView(Window):
     """
     attr model
     Container:
-        constraints = [vbox(selector,
-                            begin_run_events,
-                            summary)]
+        padding = Box(0, 0, 0, 0)
+        #constraints = [vbox(selector,
+        #                    begin_run_events)]
 
         # GUI element that selects the number of run headers to display
         SpinBox: selector:
@@ -54,9 +48,19 @@ enamldef LastView(Window):
                     text = '{}: {}'.format(loop_item.scan_id, loop_item.time_as_datetime)
                     clicked ::
                         model.selected = loop_item
-        # GUI Element to show a dictionary
-        GroupBox: summary:
+        # GUI Element to show a nested dictionary
+        GroupBox:
+            padding = Box(0, 0, 0, 0)
+            title = "Run Summary"
+            title_align = 'center'
             flat = True
-            title = "Run summary"
             DisplayDict:
+                padding = Box(0, 0, 0, 10)
                 display_dict << model.selected_as_dict
+            GroupBox:
+                title = "Data Keys"
+                title_align = 'center'
+                flat = True
+                DisplayDict:
+                    padding = Box(0, 0, 0, 0)
+                    display_dict << model.selected_keys
