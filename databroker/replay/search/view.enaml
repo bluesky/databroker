@@ -1,17 +1,34 @@
 """Enaml definitions for the search views"""
 
+import six
+
 from enaml.widgets.api import (Container, RadioButton, PushButton, Window,
-                               ScrollArea)
+                               ScrollArea, Form, Label, GroupBox, SpinBox)
 from enaml.core.api import (Looper)
 from enaml.stdlib.fields import IntField
 from enaml.layout.api import vbox, hbox, spacer
-from databroker.broker import simple_broker
 
+def get_vars(broker_struct):
+    if broker_struct is None:
+        ret = {}
+    else:
+        ret = vars(broker_struct)
+    print('vars in get_vars: {}'.format(ret))
+    return ret
 
-enamldef DisplayBeginRunEvent(Container):
+enamldef DisplayDict(Container):
     """Enaml definition for the widget that displays a selected BeginRunEvent
     """
-    attr begin_run_event
+    attr display_dict
+    Looper:
+        iterable << display_dict
+        Form:
+            row_spacing = 0
+            Label:
+                text = loop_item
+            Label:
+                text = str(display_dict[loop_item])
+
 
 enamldef LastView(Window):
     """Enaml definition for the widget that displays the controls for searching
@@ -19,21 +36,27 @@ enamldef LastView(Window):
     """
     attr model
     Container:
-        constraints = [vbox(hbox(retrieve, num, spacer),
-                            begin_run_events)]
+        constraints = [vbox(selector,
+                            begin_run_events,
+                            summary)]
 
-        PushButton: retrieve:
-            text = "Retrieve last"
-            clicked ::
-                model.begin_run_events = simple_broker.get_last_headers(model.num_to_retrieve)
-        IntField: num:
-            submit_triggers = ['auto_sync']
+        # GUI element that selects the number of run headers to display
+        SpinBox: selector:
+            prefix = "Display "
+            suffix = " run(s)"
+            minimum = 1
             value := model.num_to_retrieve
-        ScrollArea: begin_run_events:
-            Container:
-                Looper:
-                    iterable << model.begin_run_events
-                    RadioButton:
-                        text = '{}: {}'.format(loop_item.scan_id, loop_item.time_as_datetime)
-                        clicked ::
-                            model.selected = loop_item
+        # GUI element that allows for different runs to be selected
+        Container: begin_run_events:
+            Looper:
+                iterable << model.begin_run_events
+                RadioButton:
+                    text = '{}: {}'.format(loop_item.scan_id, loop_item.time_as_datetime)
+                    clicked ::
+                        model.selected = loop_item
+        # GUI Element to show a dictionary
+        GroupBox: summary:
+            flat = True
+            title = "Run summary"
+            DisplayDict:
+                display_dict << model.selected_as_dict
