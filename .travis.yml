@@ -22,6 +22,8 @@ install:
   - pip install https://github.com/NSLS-II/metadataStore/zipball/master#egg=metadataStore
   - pip install https://github.com/NSLS-II/fileStore/zipball/master#egg=fileStore
   - pip install https://github.com/NSLS-II/channelarchiver/zipball/master#channelarchiver
+  - pip install https://github.com/Nucleic/enaml/zipball/master#enaml
+  - pip install https://github.com/Nucleic/atom/zipball/master#atom
   - pip install coveralls mongoengine
   - python setup.py install
 
