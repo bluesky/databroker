@@ -34,12 +34,16 @@ class CommonBinningTests(object):
         bad_binning = lambda: self.dm.bin_on(self.sparse)
         self.assertRaises(BinningError, bad_binning)
 
+        result = self.dm.bin_on(self.sparse,
+                                agg={self.dense: np.mean})
         # With downsampling, the result should have as many entires as the
         # data source being "binned on" (aligned to).
-        actual_len = len(self.dm.bin_on(self.sparse,
-                                        agg={self.dense: np.mean}))
+        actual_len = len(result)
         expected_len = len(self.dm[self.sparse])
         self.assertEqual(actual_len, expected_len)
+
+        # There should be stats columns.
+        self.assertTrue('max' in result[self.dense].columns)
 
     def test_bin_on_dense(self):
         "Align a sparse column to a dense column"
@@ -60,8 +64,16 @@ class CommonBinningTests(object):
         first = self.dm[self.sparse].first_valid_index()
         last = self.dm[self.sparse].last_valid_index()
         expected_len = 2 + len(self.dm[self.dense].loc[first:last])
-        self.assertLess(result1[self.sparse].count(), expected_len)
-        self.assertEqual(result2[self.sparse].count(), expected_len)
+        self.assertLess(result1[self.sparse]['val'].count(), expected_len)
+        self.assertEqual(result2[self.sparse]['val'].count(), expected_len)
+
+        # There should not be stats columns.
+        self.assertFalse('max' in result1[self.dense].columns)
+
+        # The dense column, being binned on, should have no 'count' column.
+        self.assertFalse('count' in result1[self.dense].columns)
+        # But the sparse column should.
+        self.assertTrue('count' in result1[self.sparse].columns)
 
 
 class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):

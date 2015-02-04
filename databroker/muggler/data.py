@@ -341,7 +341,7 @@ class DataMuggler(object):
 
     def resample(self, time_labels, binning, interpolation=None, agg=None,
                  verify_integrity=True):
-        resampled_df = pd.DataFrame(index=np.arange(len(time_labels)))
+        result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
 
         # How many (non-null) data points in each bin?
         grouped = self._dataframe.groupby(binning)
@@ -349,10 +349,11 @@ class DataMuggler(object):
         has_one_point = counts == 1
         has_no_points = counts == 0
         has_multiple_points = ~(has_one_point | has_no_points)
-        # Get the first (maybe only) point in each bin.
+        # Get the first (maybe the only) point in each bin.
         first_point = grouped.first()
 
         for name in self._dataframe:
+            result[name] = pd.DataFrame(index=np.arange(len(time_labels)))
             # Resolve (and if necessary validate) sampling rules.
             col_info = self._col_info[name]
             try:
@@ -370,16 +371,18 @@ class DataMuggler(object):
 
             # Start by using the first point in a bin. (If there are actually
             # multiple points, we will either overwrite or raise below.)
-            resampled_df[name] = first_point[name]
+            result[name]['val'] = first_point[name]
 
             # Short-circuit if we are done.
             if np.all(has_one_point[name]):
                 continue
 
+            result[name]['count'] = counts[name]
+
             # If any bin has no data, use the upsampling rule to interpolate
             # at the center of the empty bins. If there is no rule, simply
             # leave some bins empty. Do not raise an error.
-            if upsample is not None:
+            if np.any(has_no_points[name]) and upsample is not None:
                 dense_col = self._dataframe[name].dropna()
                 x, y = dense_col.index.values, dense_col.values
                 interpolator = interp1d(x, y, kind=upsample)
@@ -392,7 +395,7 @@ class DataMuggler(object):
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
                              len(safe_bins), has_no_points[name].sum(), name)
-                resampled_df[name].fillna(interpolated_points, inplace=True)
+                result[name]['val'].fillna(interpolated_points, inplace=True)
 
             # Short-circuit if we are done.
             if np.all(~has_multiple_points[name]):
@@ -409,12 +412,16 @@ class DataMuggler(object):
                 expected_shape = 0  # TODO get real shape from descriptor
                 downsample = _build_safe_downsample(downsample, expected_shape)
             downsampled = grouped[name].agg({name: downsample}).squeeze()
-            resampled_df[name].where(~has_multiple_points[name], downsampled,
-                                     inplace=True)
+            result[name]['val'].where(~has_multiple_points[name], downsampled,
+                                      inplace=True)
+            result[name]['std'] = grouped[name].agg({name: np.std}).squeeze()
+            result[name]['max'] = grouped[name].agg({name: np.std}).squeeze()
+            result[name]['min'] = grouped[name].agg({name: np.std}).squeeze()
 
+        result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
         # Label the bins with time points.
-        resampled_df.index = time_labels
-        return resampled_df
+        result.index = time_labels
+        return result
 
     def __getitem__(self, source_name):
         if source_name not in self._col_info.keys():
