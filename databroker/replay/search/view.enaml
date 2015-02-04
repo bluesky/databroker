@@ -31,9 +31,6 @@ enamldef LastView(Window):
     attr model
     Container:
         padding = Box(0, 0, 0, 0)
-        #constraints = [vbox(selector,
-        #                    begin_run_events)]
-
         # GUI element that selects the number of run headers to display
         SpinBox: selector:
             prefix = "Display "
@@ -45,10 +42,11 @@ enamldef LastView(Window):
             Looper:
                 iterable << model.begin_run_events
                 RadioButton:
-                    text = '{}: {}'.format(loop_item.scan_id, loop_item.time_as_datetime)
+                    text = '{}: {}'.format(loop_item.scan_id,
+                                           loop_item.time_as_datetime)
                     clicked ::
                         model.selected = loop_item
-        # GUI Element to show a nested dictionary
+        # GUI Element to show a Run Summary and the corresponding Data Keys
         GroupBox:
             padding = Box(0, 0, 0, 0)
             title = "Run Summary"
