@@ -24,6 +24,13 @@ class TestMuggler(unittest.TestCase):
         dm.Tsam
         dm['Tsam']
 
+    def test_timestamps_as_data(self):
+        dm = DataMuggler.from_events(self.mixed_scalars)
+        dm.include_timestamp_data('Tsam')
+        self.assertTrue('Tsam_timestamp' in dm._dataframe)
+        dm.remove_timestamp_data('Tsam')
+        self.assertFalse('Tsam_timestamp' in dm._dataframe)
+
 
 class CommonBinningTests(object):
 

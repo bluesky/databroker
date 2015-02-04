@@ -150,6 +150,8 @@ class DataMuggler(object):
         self._col_info = {}
         self._data = deque()
         self._time = deque()
+        self._timestamps = deque()
+        self._timestamps_as_data = set()
         self._stale = True
         if events is not None:
             for event in events:
@@ -214,6 +216,7 @@ class DataMuggler(object):
             # Both scalar and nonscalar data will get stored in the DataFrame.
             # This may be optimized later, but it might not actually help much.
             self._data.append({name: event.data[name]['value']})
+            self._timestamps.append({name: event.data[name]['timestamp']})
             self._time.append(event.time)
 
     @property
@@ -222,9 +225,34 @@ class DataMuggler(object):
         if self._stale:
             index = pd.Float64Index(list(self._time))
             self._df = pd.DataFrame(list(self._data), index)
+            if self._timestamps_as_data:
+                # Only build this if we need it.
+                # TODO: We shouldn't have to build
+                # the whole thing, but there is already a lot of trickiness
+                # here so we'll worry about optimization later.
+                timestamps = pd.DataFrame(list(self._timestamps), index)
+            for source_name in self._timestamps_as_data:
+                col_name = _timestamp_col_name(source_name)
+                self._df[col_name] = timestamps[source_name]
+                logger.debug("Including %s timestamps as data", source_name)
             self._df.index.name = 'epoch_time'
             self._stale = False
         return self._df
+
+    def include_timestamp_data(self, source_name):
+        """Add the exact timing of a data source as a data column."""
+        # self._timestamps_as_data is a set of sources who timestamps
+        # should be treated as data in the _dataframe method above.
+        self._timestamps_as_data.add(source_name)
+        name = _timestamp_col_name(source_name)
+        self._col_info[name] = ColSpec(name, 0, None, np.mean)
+        self._stale = True
+
+    def remove_timestamp_data(self, source_name):
+        """Remove the exact timing of a data source from the data columns."""
+        self._timestamps_as_data.remove(source_name)
+        # Do not force a rebuilt (i.e., self._stale). Just remove it here.
+        del self._df[_timestamp_col_name(source_name)]
 
     def bin_on(self, source_name, interpolation=None, agg=None):
         """
@@ -431,6 +459,8 @@ class DataMuggler(object):
         return self._dataframe[source_name].dropna()
 
     def __getattr__(self, attr):
+        # Developer beware: if any properties raise an AttributeError,
+        # this will mask it. Comment this magic method to debug properties.
         if attr in self._col_info.keys():
             return self[attr]
         else:
@@ -513,3 +543,7 @@ def _build_safe_downsample(downsample, expected_shape):
                                           downsampled.shape, expected_shape))
         return downsampled
     return _downsample
+
+
+def _timestamp_col_name(source_name):
+    return '{0}_timestamp'.format(source_name)
