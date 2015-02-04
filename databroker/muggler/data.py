@@ -442,9 +442,9 @@ class DataMuggler(object):
             downsampled = grouped[name].agg({name: downsample}).squeeze()
             result[name]['val'].where(~has_multiple_points[name], downsampled,
                                       inplace=True)
-            result[name]['std'] = grouped[name].agg({name: np.std}).squeeze()
-            result[name]['max'] = grouped[name].agg({name: np.std}).squeeze()
-            result[name]['min'] = grouped[name].agg({name: np.std}).squeeze()
+            result[name]['std'] = grouped[name].std()
+            result[name]['max'] = grouped[name].max()
+            result[name]['min'] = grouped[name].min()
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
         # Label the bins with time points.
