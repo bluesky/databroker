@@ -1,6 +1,6 @@
 from __future__ import print_function
 import six  # noqa
-from collections import defaultdict, Iterable
+from collections import defaultdict, Iterable, deque
 from .. import sources
 from .struct import BrokerStruct
 import os
@@ -149,8 +149,15 @@ def _get_local_cahost():
 
 def get_last_headers(num_to_get=1):
     mdsapi = sources.metadataStore.api.analysis
-    bre = [BrokerStruct(bre) for bre in mdsapi.find_last(num_to_get)]
-    return bre
+    bre_list = mdsapi.find_last(num_to_get)
+    bs_list = deque()
+    for bre in bre_list:
+        bs = BrokerStruct(bre)
+        bs.event_descriptors = [BrokerStruct(evd) for evd in mdsapi.find_event_descriptor(bre)]
+        bs_list.append(bs)
+    for _ in bs_list:
+        print(vars(_))
+    return list(bs_list)
 
 
 def get_last(channels=None, ca_host=None):
