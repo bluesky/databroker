@@ -1,0 +1,39 @@
+"""Enaml definitions for the search views"""
+
+from enaml.widgets.api import (Container, RadioButton, PushButton, Window,
+                               ScrollArea)
+from enaml.core.api import (Looper)
+from enaml.stdlib.fields import IntField
+from enaml.layout.api import vbox, hbox, spacer
+from databroker.broker import simple_broker
+
+
+enamldef DisplayBeginRunEvent(Container):
+    """Enaml definition for the widget that displays a selected BeginRunEvent
+    """
+    attr begin_run_event
+
+enamldef LastView(Window):
+    """Enaml definition for the widget that displays the controls for searching
+    the databroker for the last N runs
+    """
+    attr model
+    Container:
+        constraints = [vbox(hbox(retrieve, num, spacer),
+                            begin_run_events)]
+
+        PushButton: retrieve:
+            text = "Retrieve last"
+            clicked ::
+                model.begin_run_events = simple_broker.get_last_headers(model.num_to_retrieve)
+        IntField: num:
+            submit_triggers = ['auto_sync']
+            value := model.num_to_retrieve
+        ScrollArea: begin_run_events:
+            Container:
+                Looper:
+                    iterable << model.begin_run_events
+                    RadioButton:
+                        text = '{}: {}'.format(loop_item.scan_id, loop_item.time_as_datetime)
+                        clicked ::
+                            model.selected = loop_item

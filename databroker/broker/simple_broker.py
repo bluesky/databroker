@@ -146,6 +146,13 @@ def _get_local_cahost():
                             'obtain data from.')
     return 'http://' + beamline_id + '-ca/cgi-bin/ArchiveDataServer.cgi'
 
+
+def get_last_headers(num_to_get=1):
+    mdsapi = sources.metadataStore.api.analysis
+    bre = [BrokerStruct(bre) for bre in mdsapi.find_last(num_to_get)]
+    return bre
+
+
 def get_last(channels=None, ca_host=None):
     mdsapi = sources.metadataStore.api.analysis
     bre, = mdsapi.find_last()
