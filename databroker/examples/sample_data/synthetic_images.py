@@ -34,13 +34,15 @@ frame_source = FrameSourcerBrownian(img_size, step_scale=.5,
                                     step_fluc_function=scale_fluc,
                                     )
 
-b_config = insert_beamline_config(time=time.time(), config_params={'my_beamline': 'my_value'})
+b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
 b_config=None
 try:
-    last_start_event = find_last()
-    scan_id = last_start_event.scan_id+1
+    last_start_event = find_last()[0]
+    scan_id = int(last_start_event.scan_id)+1
 except IndexError:
     scan_id = 1
+
+scan_id = str(scan_id)
 
 # insert the begin run event
 bre = insert_begin_run(scan_id=scan_id, time=time.time(), beamline_id='csx',
