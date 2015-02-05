@@ -145,18 +145,18 @@ class DataMuggler(object):
     events : list
         list of Events (any object with the expected attributes will do)
     """
-    def __init__(self, events=None):
+    def __init__(self):
         self.sources = {}
         self._col_info = {}
+
         self._data = deque()
         self._time = deque()
         self._timestamps = deque()
+
         self._timestamps_as_data = set()
+        self._known_events = set()
         self._known_descriptors = set()
         self._stale = True
-        if events is not None:
-            for event in events:
-                self.append_event(event)
 
     @classmethod
     def from_tuples(cls, event_tuples, sources=None):
@@ -184,9 +184,35 @@ class DataMuggler(object):
         events : list
             list of Events (any object with the expected attributes will do)
         """
-        return cls(events)
+        instance = cls()
+        instance.append_events(events)
+        return instance
+
+    def append_events(self, events):
+        """Add an event to the DataMuggler.
+
+        Parameters
+        ----------
+        event : BrokerStruct or any object with correct attributes
+        """
+        for event in events:
+            self.append_event(event)
 
     def append_event(self, event):
+        """Add an event to the DataMuggler.
+
+        Parameters
+        ----------
+        event : BrokerStruct or any object with correct attributes
+
+        Returns
+        -------
+        is_new : bool
+            True if event was added, False is it has already been added
+        """
+        if event.id in self._known_events:
+            return False
+        self._known_events.add(event.id)
         self._stale = True
         if event.descriptor.id not in self._known_descriptors:
             self._process_new_descriptor(event.descriptor)
@@ -196,6 +222,7 @@ class DataMuggler(object):
             self._data.append({name: event.data[name]['value']})
             self._timestamps.append({name: event.data[name]['timestamp']})
             self._time.append(event.time)
+        return True
 
     def _process_new_descriptor(self, descriptor):
         for name, description in descriptor.data_keys.items():
