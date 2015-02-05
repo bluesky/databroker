@@ -170,6 +170,10 @@ def insert_event(event_descriptor, time, data, seq_no):
 
     return event
 
+def __add_event_descriptors(begin_run_list):
+    for begin_run in begin_run_list:
+        setattr(begin_run, 'event_descriptors', find_event_descriptor(begin_run))
+
 
 @db_connect
 def find_begin_run(limit=50, **kwargs):
@@ -255,8 +259,7 @@ def find_begin_run(limit=50, **kwargs):
     else:
         br_objects = list()
 
-    for begin_run in br_objects:
-        begin_run.event_descriptors = find_event_descriptor(begin_run)
+    __add_event_descriptors(br_objects)
 
     return br_objects
 
@@ -405,19 +408,20 @@ def find(data=True, limit=50, **kwargs):
     return br
 
 @db_connect
-def find_last():
+def find_last(num=1):
     """Indexed on ObjectId NOT end_time.
 
     Returns the last created header not modified!!
 
     Returns
     -------
-    header: mongoengine.Document
-        Returns the last header created. DOES NOT RETURN THE EVENTS.
-
-
+    begin_run_event: list
+        Returns a list of the last ``num`` headers created.
+        **NOTE**: DOES NOT RETURN THE EVENTS.
     """
-    return BeginRunEvent.objects.order_by('-_id')[0:1][0]
+    br_objects = [br_obj for br_obj in BeginRunEvent.objects.order_by('-_id')[0:num]]
+    __add_event_descriptors(br_objects)
+    return br_objects
 
 
 def __todatetime(time_stamp):

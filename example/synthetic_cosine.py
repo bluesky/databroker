@@ -1,7 +1,7 @@
 from __builtin__ import type
 
 import metadataStore
-metadataStore.conf.mds_config['database'] = 'test'
+# metadataStore.conf.mds_config['database'] = 'test'
 
 from metadataStore.api.collection import (insert_begin_run, insert_beamline_config,
                                           insert_event, insert_event_descriptor)
