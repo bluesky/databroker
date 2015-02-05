@@ -1,8 +1,5 @@
 from __builtin__ import type
 
-import metadataStore
-metadataStore.conf.mds_config['database'] = 'test'
-
 from metadataStore.api.collection import (insert_begin_run, insert_beamline_config,
                                           insert_event, insert_event_descriptor)
 from metadataStore.api.analysis import find_last, find_event, fetch_events
@@ -23,9 +20,9 @@ data_keys = {'linear_motor': 'PV1', 'scalar_detector': 'PV2',
              'Tsam': 'PV3', 'some.dotted_field': 'PV4'}
 
 try:
-    last_hdr = find_last()
-    scan_id = last_hdr.scan_id+1
-except IndexError:
+    last_hdr = find_last()[0]
+    scan_id = int(last_hdr.scan_id)+1
+except (IndexError, TypeError):
     scan_id = 1
 
 
@@ -56,9 +53,11 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
                      data=data)
 last_run = find_last()
 
-if last_run.id != bre.id:
-    print("Either Arman or Eric broke find_last().")
-
+try:
+    if last_run.id != bre.id:
+        print("Either Arman or Eric broke find_last().")
+except AttributeError as ae:
+    print ae
 res_2 = find_event(begin_run_event=bre)
 if not res_2:
     print("Either Arman or Eric broke find_event().")
