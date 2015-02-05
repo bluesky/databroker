@@ -197,7 +197,6 @@ class DataMuggler(object):
             self._timestamps.append({name: event.data[name]['timestamp']})
             self._time.append(event.time)
 
-
     def _process_new_descriptor(self, descriptor):
         for name, description in descriptor.data_keys.items():
 
