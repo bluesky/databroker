@@ -152,6 +152,7 @@ class DataMuggler(object):
         self._time = deque()
         self._timestamps = deque()
         self._timestamps_as_data = set()
+        self._known_descriptors = set()
         self._stale = True
         if events is not None:
             for event in events:
@@ -187,16 +188,28 @@ class DataMuggler(object):
 
     def append_event(self, event):
         self._stale = True
-        for name, description in event.descriptor.data_keys.items():
+        if event.descriptor.id not in self._known_descriptors:
+            self._process_new_descriptor(event.descriptor)
+        for name, data_dict in event.data.items():
+            # Both scalar and nonscalar data will get stored in the DataFrame.
+            # This may be optimized later, but it might not actually help much.
+            self._data.append({name: event.data[name]['value']})
+            self._timestamps.append({name: event.data[name]['timestamp']})
+            self._time.append(event.time)
 
-            # If we have this source name, check for name collisions.
+
+    def _process_new_descriptor(self, descriptor):
+        for name, description in descriptor.data_keys.items():
+
+            # If we already have this source name, the unique source
+            # identifiers must match. Ambiguous names are not allowed.
             if name in self.sources:
                 if self.sources[name] != description['source']:
-                    raise ValueError("In a previously loaded event, "
+                    raise ValueError("In a previously loaded descriptor, "
                                      "'{0}' refers to {1} but in Event "
-                                     "{2} it refers to {3}.".format(
+                                     "Descriptor {2} it refers to {3}.".format(
                                          name, self.sources[name],
-                                         event.id,
+                                         descriptor.id,
                                          description['source']))
 
             # If it is a new name, determine a ColSpec.
@@ -212,12 +225,7 @@ class DataMuggler(object):
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
                 self._col_info[name] = col_info
-
-            # Both scalar and nonscalar data will get stored in the DataFrame.
-            # This may be optimized later, but it might not actually help much.
-            self._data.append({name: event.data[name]['value']})
-            self._timestamps.append({name: event.data[name]['timestamp']})
-            self._time.append(event.time)
+        self._known_descriptors.add(descriptor.id)
 
     @property
     def _dataframe(self):
