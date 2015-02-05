@@ -427,6 +427,11 @@ class DataMuggler(object):
             # at the center of the empty bins. If there is no rule, simply
             # leave some bins empty. Do not raise an error.
             if np.any(has_no_points[name]) and upsample is not None:
+                # Extra validation: In general time_labels can be objects, but
+                # if we need to upsample they must at least be numeric.
+                if not np.issubdtype(np.asarray(time_labels).dtype, np.number):
+                    raise ValueError("time_labels will be used for upsampling "
+                                     "and must therefore be numeric.")
                 dense_col = self._dataframe[name].dropna()
                 x, y = dense_col.index.values, dense_col.values
                 interpolator = interp1d(x, y, kind=upsample)
