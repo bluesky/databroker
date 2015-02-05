@@ -215,10 +215,18 @@ class DataMuggler(object):
             # If it is a new name, determine a ColSpec.
             else:
                 self.sources[name] = description['source']
-                if 'external' in event.descriptor.data_keys.keys():
-                    # TODO Figure out the specific dimension.
-                    pass
+                if 'external' in descriptor.data_keys.keys():
+                    try:
+                        shape = descriptor.data_keys['shape']
+                    except KeyError:
+                        # External data can be scalar. Nonscalar data must
+                        # have a specified shape. Thus, if no shape is given,
+                        # assume scalar.
+                        ndim = 0
+                    else:
+                        ndim = len(shape)
                 else:
+                    # All non-external data is scalar.
                     ndim = 0
 
                 col_info = ColSpec(name, ndim, None, None)  # defaults
