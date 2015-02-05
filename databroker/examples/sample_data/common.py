@@ -1,8 +1,8 @@
-import time
 import numpy as np
 from functools import wraps
 from metadataStore.api.collection import insert_begin_run
 from metadataStore.commands import insert_end_run  # missing from the api
+from ...broker.struct import BrokerStruct
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -49,6 +49,25 @@ def apply_deadband(data, band):
     return indicies, significant_data
 
 
+def noisy(val, sigma=0.01):
+    """Return a copy of the input plus noise
+
+    Parameters
+    ----------
+    val : number or ndarrray
+    sigma : width of Gaussian from which noise values are drawn
+
+    Returns
+    -------
+    noisy_val : number or ndarray
+        same shape as input val
+    """
+    if np.isscalar(val):
+        return val + sigma * np.random.randn()
+    else:
+        return val + sigma * np.random.randn(val.shape)
+
+
 def example(func):
     @wraps(func)
     def mock_begin_run(begin_run=None):
@@ -59,5 +78,6 @@ def example(func):
         # simulated and not necessarily based on the current time.
         end_time = max([event.time for event in events])
         insert_end_run(begin_run, end_time, 'life')
+        events = [BrokerStruct(e) for e in events]
         return events
     return mock_begin_run

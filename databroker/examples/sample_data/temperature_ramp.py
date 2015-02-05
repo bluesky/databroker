@@ -1,7 +1,6 @@
 from __future__ import division
 from metadataStore.api.collection import (insert_event,
                                           insert_event_descriptor)
-from ...broker.struct import BrokerStruct
 import numpy as np
 from . import common
 
@@ -45,5 +44,4 @@ def run(begin_run=None):
                              data=data, seq_no=i)
         events.append(event)
 
-    events = [BrokerStruct(event) for event in events]
     return events
