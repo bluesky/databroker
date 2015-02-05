@@ -46,6 +46,8 @@ class GetLastModel(Atom):
             beamline_config = bre_vars.pop('beamline_config', {})
             dct = bre_vars
             begin_run_events_as_dict[bre] = dct
+            # format the data keys into a single list that enaml will unpack
+            # into a N rows by 3 columns grid
             data_keys = deque(['KEY NAME', 'PV NAME', 'DATA LOCATION'])
             for evd in event_descriptors:
                 dk = evd.data_keys
@@ -63,7 +65,6 @@ class GetLastModel(Atom):
                     except (KeyError, TypeError):
                         data_keys.append(data_key_dict)
                         data_keys.append('metadatastore')
-
             begin_run_events_keys[bre] = list(data_keys)
 
         self.__begin_run_events_as_dict = begin_run_events_as_dict
