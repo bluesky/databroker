@@ -1,12 +1,12 @@
 from enaml.qt.qt_application import QtApplication
 import numpy as np
 
-from databroker.replay.search import LastModel, LastView
+from databroker.replay.search import GetLastModel, GetLastView
 
 app = QtApplication()
 
-model = LastModel()
-view = LastView(model=model)
+get_last_model = GetLastModel()
+view = GetLastView(get_last_model=get_last_model)
 
 view.show()
 
