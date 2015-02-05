@@ -148,12 +148,33 @@ def _get_local_cahost():
 
 
 def get_last_headers(num_to_get=1):
+    """Helper function that grabs the last `num_to_get` headers from
+    metadataStore. Also adds an `event_descriptors` field to the
+    begin run events. Because the begin_run_event has a reference to
+    metadatastore `sample` `beamline_config` documents, they are dereferenced
+    by metadatastore and are thus part of the begin_run_event already.  Once we
+    have a better grasp of `end_run_events` they will also be inserted into
+    the begin_run_event document, thus turning it into the `run_header`
+
+    Note: Currently used by replay. Changing this API might break replay.
+
+    Parameters
+    ----------
+    num_to_get : int
+        The number of headers to construct and return
+
+    Returns
+    -------
+    run_headers : list
+        List of constructed run headers
+    """
     mdsapi = sources.metadataStore.api.analysis
     bre_list = mdsapi.find_last(num_to_get)
     bs_list = deque()
     for bre in bre_list:
         bs = BrokerStruct(bre)
-        bs.event_descriptors = [BrokerStruct(evd) for evd in mdsapi.find_event_descriptor(bre)]
+        bs.event_descriptors = [BrokerStruct(evd)
+                                for evd in mdsapi.find_event_descriptor(bre)]
         bs_list.append(bs)
     for _ in bs_list:
         print(vars(_))
