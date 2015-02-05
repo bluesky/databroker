@@ -5,12 +5,27 @@ import six
 from enaml.widgets.api import (Container, RadioButton, PushButton, Window,
                                ScrollArea, Form, Label, GroupBox, SpinBox,
                                Html)
-from enaml.core.api import (Looper, Conditional)
+from enaml.core.api import (Looper, Conditional, Include)
 from enaml.stdlib.fields import IntField
-from enaml.layout.api import vbox, hbox, spacer, Box
+from enaml.layout.api import (vbox, hbox, spacer, Box, grid, factory, align)
 
 
-enamldef DisplayDict(Container):
+def generate_grid(container, num_cols):
+    """ Generate grid constraints with given number of columns.
+
+    Notes
+    -----
+    Shamelessly copied from enaml/examples/layout/advanced/factory_func.enaml
+
+    """
+    rows = []
+    widgets = container.visible_widgets()
+    row_iters = (iter(widgets),) * num_cols
+    rows = list(zip(*row_iters))
+    return [grid(*rows), align('width', *widgets)]
+
+
+enamldef DisplaySummary(Container):
     """Enaml definition for the widget that displays a dictionary as a form
     """
     attr display_dict
@@ -24,41 +39,62 @@ enamldef DisplayDict(Container):
             Label:
                 text = str(display_dict[loop_item])
 
-enamldef LastView(Window):
+enamldef GetLastView(Window):
     """Enaml definition for the widget that displays the controls for searching
     the databroker for the last N runs
     """
-    attr model
+    attr get_last_model
+    attr create_muggler
+    title = "Get Last"
     Container:
         padding = Box(0, 0, 0, 0)
+        constraints = [vbox(hbox(num_runs, select_run),
+                            search_info,
+                            begin_run_events,
+                            run_summary)]
         # GUI element that selects the number of run headers to display
-        SpinBox: selector:
+        SpinBox: num_runs:
             prefix = "Display "
             suffix = " run(s)"
             minimum = 1
-            value := model.num_to_retrieve
+            value := get_last_model.num_to_retrieve
+        # GUI element that triggers replay to display the selected run
+        PushButton: select_run:
+            text = "Show data for selected run"
+            enabled = False
+            clicked ::
+                create_muggler(get_last_model.selected)
+        # GUI element that provides search stats
+        Label: search_info:
+            text << "Requested: {}. Found: {}".format(
+                get_last_model.num_to_retrieve,
+                len(get_last_model.begin_run_events))
         # GUI element that allows for different runs to be selected
         Container: begin_run_events:
             Looper:
-                iterable << model.begin_run_events
+                iterable << get_last_model.begin_run_events
                 RadioButton:
                     text = '{}: {}'.format(loop_item.scan_id,
                                            loop_item.time_as_datetime)
                     clicked ::
-                        model.selected = loop_item
+                        run_summary.visible = True
+                        get_last_model.selected = loop_item
         # GUI Element to show a Run Summary and the corresponding Data Keys
-        GroupBox:
+        GroupBox: run_summary:
+            visible = False
             padding = Box(0, 0, 0, 0)
             title = "Run Summary"
-            title_align = 'center'
             flat = True
-            DisplayDict:
+            DisplaySummary:
                 padding = Box(0, 0, 0, 10)
-                display_dict << model.selected_as_dict
+                display_dict << get_last_model.selected_as_dict
             GroupBox:
+                padding = Box(0, 0, 0, 10)
                 title = "Data Keys"
-                title_align = 'center'
                 flat = True
-                DisplayDict:
-                    padding = Box(0, 0, 0, 0)
-                    display_dict << model.selected_keys
+                Container:
+                    padding = Box(0, 0, 0, 10)
+                    constraints << [factory(generate_grid, 3)]
+                    Include:
+                        objects << [Label(text=text) for text
+                                    in get_last_model.selected_keys]

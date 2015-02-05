@@ -1,7 +1,6 @@
-__author__ = 'edill'
 import enaml
 
-from .model import LastModel
+from .model import GetLastModel
 
 with enaml.imports():
-    from .view import LastView
+    from .view import GetLastView
