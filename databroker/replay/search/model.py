@@ -5,7 +5,7 @@ from collections import deque
 from atom.api import Atom, Typed, List, Range, Dict, observe, Str
 from databroker.api import BrokerStruct
 from databroker.broker import simple_broker
-from pprint import pprint
+
 
 class GetLastModel(Atom):
     """Class that defines the model for the 'get last N datasets view'

@@ -1,0 +1,90 @@
+"""Enaml definitions for GUI views related to the DataMuggler"""
+
+from enaml.layout.api import (vbox, hbox, Box, spacer)
+from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
+                               Action, Menu, ComboBox)
+from enaml.core.api import Looper
+from .model import ColumnModel
+
+
+enamldef SampleAction(Action):
+    text = '%s action %d' % (parent.title, parent.children.index(self))
+    triggered :: print text
+
+
+enamldef ContextMenu(Menu):
+
+    SampleAction: pass
+
+
+enamldef ColumnView(Container):
+    padding = Box(0, 0, 0, 0)
+    attr column_model
+    constraints = [hbox(up, down, spacer)]
+    ComboBox: up:
+        items << list(ColumnModel.upsample.items)
+        index = ColumnModel.upsample.items.index(column_model.upsample)
+        selected_item >> column_model.upsample
+    ComboBox: down:
+        items << list(ColumnModel.downsample.items)
+        index = ColumnModel.downsample.items.index(column_model.downsample)
+        selected_item >> column_model.downsample
+
+
+enamldef MugglerController(Container):
+    padding = Box(0, 0, 0, 0)
+    attr muggler_model
+    constraints = [vbox(refresh_button,
+                        muggler_info,
+                        scalar,
+#                        line,
+#                        image,
+#                        volume
+                       )]
+    PushButton: refresh_button:
+        text = "Check for new data"
+        clicked ::
+            muggler_model.get_new_data()
+    Label: muggler_info:
+        text << muggler_model.info
+    GroupBox: scalar:
+        title = 'Scalar keys'
+        padding = Box(0, 0, 0, 0)
+        Container:
+            padding = Box(0, 0, 0, 0)
+            Form:
+                row_spacing = 0
+                Looper:
+                    iterable << muggler_model.scalar_columns
+                    Label:
+                        text = loop_item.name
+                    ColumnView:
+                        column_model = loop_item
+
+#    GroupBox: line:
+#        padding = Box(0, 0, 0, 0)
+#        title = 'Line keys'
+#        Container:
+#            padding = Box(0, 0, 0, 0)
+#            Looper:
+#                iterable << muggler_model.line_keys
+#                Label:
+#                    text = loop_item
+#    GroupBox: image:
+#        padding = Box(0, 0, 0, 0)
+#        title = 'Image keys'
+#        Container:
+#            padding = Box(0, 0, 0, 0)
+#            Looper:
+#                iterable << muggler_model.image_keys
+#                Label:
+#                    text = loop_item
+#    GroupBox: volume:
+#        padding = Box(0, 0, 0, 0)
+#        title = 'Volume keys'
+#        Container:
+#            padding = Box(0, 0, 0, 0)
+#            Looper:
+#                iterable << muggler_model.volume_keys
+#                Label:
+#                    text = loop_item

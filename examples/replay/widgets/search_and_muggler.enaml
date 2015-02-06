@@ -1,0 +1,23 @@
+from databroker.replay.search import GetLastView
+from databroker.replay.muggler import MugglerController
+
+from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem)
+from enaml.layout.api import VSplitLayout
+
+enamldef MainView(MainWindow): main_view:
+    attr get_last_model
+    attr muggler_model
+    Container: container:
+        DockArea: area:
+            layout = VSplitLayout('search', 'muggler')
+            DockItem:
+                name = 'search'
+                title = "Search"
+                GetLastView:
+                    get_last_model = main_view.get_last_model
+                    muggler_model = main_view.muggler_model
+            DockItem:
+                name = 'muggler'
+                title = 'Muggler'
+                MugglerController:
+                    muggler_model = main_view.muggler_model

@@ -1,14 +1,13 @@
-__author__ = 'arkilic'
-
 from metadataStore.api.collection import (insert_begin_run, insert_event,
                                           insert_beamline_config,
                                           insert_event_descriptor)
+from pprint import pprint
 from metadataStore.api.analysis import find_last
 import random
 import time
 import string
 import numpy as np
-from skxray import core
+from databroker.broker.struct import BrokerStruct
 from frame_source import FrameSourcerBrownian
 import uuid
 from fileStore.api import analysis as fsa
@@ -35,7 +34,8 @@ frame_source = FrameSourcerBrownian(img_size, step_scale=.5,
                                     )
 
 b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
-b_config=None
+b_config = None
+
 try:
     last_start_event = find_last()[0]
     scan_id = int(last_start_event.scan_id)+1
@@ -48,14 +48,23 @@ scan_id = str(scan_id)
 bre = insert_begin_run(scan_id=scan_id, time=time.time(), beamline_id='csx',
                        beamline_config=b_config)
 
+img = frame_source.gen_next_frame()
+img_sum_x = img.sum(axis=0)
+img_sum_y = img.sum(axis=1)
+
+print(img.shape, img_sum_x.shape, img_sum_y.shape)
+
 # set up the data keys entry
 data_keys1 = {'linear_motor': {'source': 'PV:ES:sam_x'},
-              'img': {'source': 'CCD', 'external': 'FILESTORE:'},
+              'img': {'source': 'CCD', 'external': 'FILESTORE:',
+                      'shape': img.shape},
               'total_img_sum': {'source': 'CCD:sum'},
               'img_x_max': {'source': 'CCD:xmax'},
               'img_y_max': {'source': 'CCD:ymax'},
-              'img_sum_x': {'source': 'CCD:xsum', 'external': 'FILESTORE:'},
-              'img_sum_y': {'source': 'CCD:ysum', 'external': 'FILESTORE:'},
+              'img_sum_x': {'source': 'CCD:xsum', 'external': 'FILESTORE:',
+                            'shape': img_sum_x.shape},
+              'img_sum_y': {'source': 'CCD:ysum', 'external': 'FILESTORE:',
+                            'shape': img_sum_y.shape},
 }
 data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam'}}
 
@@ -73,30 +82,37 @@ num2 = 10
 
 sleep_time = 0 # in seconds
 
+events = []
+
 for idx1, i in enumerate(range(num1)):
     img = frame_source.gen_next_frame()
     img_sum_x = img.sum(axis=0)
     img_sum_y = img.sum(axis=1)
     img_x_max = img_sum_x.argmax()
     img_y_max = img_sum_y.argmax()
-    eid_img = fsa.save_ndarray(img)
-    eid_x = fsa.save_ndarray(img_sum_x)
-    eid_y = fsa.save_ndarray(img_sum_y)
+    fsid_img = fsa.save_ndarray(img)
+    fsid_x = fsa.save_ndarray(img_sum_x)
+    fsid_y = fsa.save_ndarray(img_sum_y)
     # still need some magic way to save data into the file store, and I really
     # have no idea how the file store works
     data1 = {'linear_motor': {'value': i, 'timestamp': time.time()},
             'total_img_sum': {'value': img.sum(), 'timestamp': time.time()},
-            'img': {'value': eid_img, 'timestamp': time.time()},
-            'img_sum_x': {'value': eid_x, 'timestamp': time.time()},
-            'img_sum_y': {'value': eid_y, 'timestamp': time.time()},
+            'img': {'value': fsid_img, 'timestamp': time.time()},
+            'img_sum_x': {'value': fsid_x, 'timestamp': time.time()},
+            'img_sum_y': {'value': fsid_y, 'timestamp': time.time()},
             'img_x_max': {'value': img_x_max, 'timestamp': time.time()},
             'img_y_max': {'value': img_y_max, 'timestamp': time.time()},
             }
-    insert_event(event_descriptor=e_desc1, seq_no=idx1, time=time.time(),
-                 data=data1)
+    events.append(insert_event(event_descriptor=e_desc1, seq_no=idx1,
+                               time=time.time(), data=data1))
     for idx2, i2 in enumerate(range(num2)):
         data2 = {'Tsam': {'value': idx1 + np.random.randn()/100,
                           'timestamp': time.time()}}
         insert_event(event_descriptor=e_desc2, seq_no=idx2+idx1,
                      time=time.time(), data=data2)
     # time.sleep(sleep_time)
+
+for event in events:
+    pprint(event.data)
+
+print(vars(bre))

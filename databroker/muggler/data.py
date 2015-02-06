@@ -549,7 +549,7 @@ class DataMuggler(object):
             return self[attr]
         else:
             raise AttributeError("DataMuggler has no attribute {0} and no "
-                                 "data source named '{0}'".format(attr))
+                                  "data source named '{0}'".format(attr))
 
     @property
     def ncols(self):

@@ -9,14 +9,12 @@ from enaml.core.api import (Looper, Conditional, Include)
 from enaml.stdlib.fields import IntField
 from enaml.layout.api import (vbox, hbox, spacer, Box, grid, factory, align)
 
-
 def generate_grid(container, num_cols):
     """ Generate grid constraints with given number of columns.
 
     Notes
     -----
     Shamelessly copied from enaml/examples/layout/advanced/factory_func.enaml
-
     """
     rows = []
     widgets = container.visible_widgets()
@@ -39,13 +37,13 @@ enamldef DisplaySummary(Container):
             Label:
                 text = str(display_dict[loop_item])
 
-enamldef GetLastView(Window):
-    """Enaml definition for the widget that displays the controls for searching
-    the databroker for the last N runs
+
+enamldef GetLastView(Container):
+    """Enaml definition for the widget that displays the controls for
+    searching the databroker for the last N runs
     """
+    attr muggler_model
     attr get_last_model
-    attr create_muggler
-    title = "Get Last"
     Container:
         padding = Box(0, 0, 0, 0)
         constraints = [vbox(hbox(num_runs, select_run),
@@ -61,9 +59,8 @@ enamldef GetLastView(Window):
         # GUI element that triggers replay to display the selected run
         PushButton: select_run:
             text = "Show data for selected run"
-            enabled = False
             clicked ::
-                create_muggler(get_last_model.selected)
+                muggler_model.run_header = get_last_model.selected
         # GUI element that provides search stats
         Label: search_info:
             text << "Requested: {}. Found: {}".format(
@@ -98,3 +95,9 @@ enamldef GetLastView(Window):
                     Include:
                         objects << [Label(text=text) for text
                                     in get_last_model.selected_keys]
+
+enamldef GetLastWindow(Window): window:
+    title = "Get Last"
+    attr get_last_model
+    GetLastView:
+        get_last_model = window.get_last_model

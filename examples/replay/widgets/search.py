@@ -1,15 +1,13 @@
 from enaml.qt.qt_application import QtApplication
 import numpy as np
 
-from databroker.replay.search import GetLastModel, GetLastView
+from databroker.replay.search import GetLastModel, GetLastWindow
 
 app = QtApplication()
 
 get_last_model = GetLastModel()
-view = GetLastView(get_last_model=get_last_model)
+view = GetLastWindow(get_last_model=get_last_model)
 
 view.show()
 
-# for _ in np.arange(500, 10000, 500):
-#     app.timed_call(_, change_data, model)
 app.start()
