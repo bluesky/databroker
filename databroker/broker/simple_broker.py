@@ -41,8 +41,9 @@ def get_events_by_run(runs, ca_host, channels=None):
     if not isinstance(runs, Iterable):
         runs = [runs]
 
-    events = [find_event(run) for run in runs]
-    events = [e for run in events for e in run]  # flattened
+    runs = [find_event(run) for run in runs]
+    descriptors = [descriptor for run in runs for descriptor in run]
+    events = [event for descriptor in descriptors for event in descriptor]
     [fill_event(event) for event in events]
     return events
 
