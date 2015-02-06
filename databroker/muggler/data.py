@@ -149,7 +149,7 @@ class DataMuggler(object):
     """
     def __init__(self):
         self.sources = {}
-        self._col_info = {}
+        self.col_info = {}
 
         self._data = deque()
         self._time = deque()
@@ -243,16 +243,14 @@ class DataMuggler(object):
             # If it is a new name, determine a ColSpec.
             else:
                 self.sources[name] = description['source']
-                if 'external' in descriptor.data_keys.keys():
-                    try:
-                        shape = descriptor.data_keys['shape']
-                    except KeyError:
+                if 'external' in description:
+                    if 'shape' in description:
+                        ndim = len(description['shape'])
+                    else:
                         # External data can be scalar. Nonscalar data must
                         # have a specified shape. Thus, if no shape is given,
                         # assume scalar.
                         ndim = 0
-                    else:
-                        ndim = len(shape)
                 else:
                     # All non-external data is scalar.
                     ndim = 0
@@ -260,7 +258,7 @@ class DataMuggler(object):
                 col_info = ColSpec(name, ndim, None, None)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
-                self._col_info[name] = col_info
+                self.col_info[name] = col_info
         self._known_descriptors.add(descriptor.id)
 
     @property
@@ -289,7 +287,7 @@ class DataMuggler(object):
         # should be treated as data in the _dataframe method above.
         self._timestamps_as_data.add(source_name)
         name = _timestamp_col_name(source_name)
-        self._col_info[name] = ColSpec(name, 0, None, np.mean)
+        self.col_info[name] = ColSpec(name, 0, None, np.mean)
         self._stale = True
 
     def remove_timestamp_data(self, source_name):
@@ -427,7 +425,7 @@ class DataMuggler(object):
         for name in self._dataframe:
             result[name] = pd.DataFrame(index=np.arange(len(time_labels)))
             # Resolve (and if necessary validate) sampling rules.
-            col_info = self._col_info[name]
+            col_info = self.col_info[name]
             try:
                 upsample = interpolation[name]
             except (TypeError, KeyError):
@@ -501,7 +499,7 @@ class DataMuggler(object):
         return result
 
     def __getitem__(self, source_name):
-        if source_name not in self._col_info.keys():
+        if source_name not in self.col_info.keys():
             raise KeyError("No data from a source called '{0}' has been "
                            "added.".format(source_name))
         # TODO Dispatch a query to the broker?
@@ -510,46 +508,29 @@ class DataMuggler(object):
     def __getattr__(self, attr):
         # Developer beware: if any properties raise an AttributeError,
         # this will mask it. Comment this magic method to debug properties.
-        if attr in self._col_info.keys():
+        if attr in self.col_info.keys():
             return self[attr]
         else:
             raise AttributeError("DataMuggler has no attribute {0} and no "
                                  "data source named '{0}'".format(attr))
 
     @property
-    def col_ndim(self):
-        """
-        The dimensionality of the data stored in all columns. Returned as a
-        dictionary keyed on column name.
-
-         0 -> scalar
-         1 -> line (MCA spectra)
-         2 -> image
-         3 -> volume
-        """
-        return {c.name: c.ndim for c in self._col_info}
-
-    @property
     def ncols(self):
         """
         The number of columns that the DataMuggler contains
         """
-        return len(self._col_info)
+        return len(self.col_info)
 
     @property
-    def col_downsample_rules(self):
-        """
-        Downsampling (reduction) rules for all of the columns.
-        """
-        return {c.name: c.downsample for c in self._col_info}
-
-    @property
-    def col_upsample_rules(self):
-        """
-        Upsampling (interpolation) rules for all of the columns.
-        """
-        return {c.name: c.upsample for c in self._col_info}
-
+    def col_info_by_ndim(self):
+        result = {}
+        for name, col_spec in self.col_info.items():
+            try:
+                result[col_spec.ndim]
+            except KeyError:
+                result[col_spec.ndim] = []
+            result[col_spec.ndim].append(col_spec)
+        return result
 
 def dataframe_to_dict(df):
     """
