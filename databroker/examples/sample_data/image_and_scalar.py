@@ -1,18 +1,8 @@
 from __future__ import division
 from metadataStore.api.collection import (insert_event,
                                           insert_event_descriptor)
-from fileStore.api.analysis import (save_ndarray)
 import numpy as np
 from .common import example, noisy
-
-
-# "Magic numbers" for this simulation
-img_size = (150, 150)
-period = 150
-I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
-center = 50
-sigma = center / 4
-I_func_gaus = lambda count: (1 + np.exp(-((count - center)/sigma) ** 2))
 
 
 @example
@@ -22,14 +12,14 @@ def run(begin_run=None):
 
     # set up the data keys entry
     data_keys1 = {'linear_motor': {'source': 'PV:ES:sam_x'},
-                  'img': {'source': 'CCD', 'shape': (128, 128),
+                  'img': {'source': 'CCD', 'shape': (5, 5),
                           'external': 'FILESTORE:'},
                   'total_img_sum': {'source': 'CCD:sum'},
                   'img_x_max': {'source': 'CCD:xmax'},
                   'img_y_max': {'source': 'CCD:ymax'},
-                  'img_sum_x': {'source': 'CCD:xsum', 'shape': (128,),
+                  'img_sum_x': {'source': 'CCD:xsum', 'shape': (5,),
                                 'external': 'FILESTORE:'},
-                  'img_sum_y': {'source': 'CCD:ysum', 'shape': (128,),
+                  'img_sum_y': {'source': 'CCD:ysum', 'shape': (5,),
                                 'external': 'FILESTORE:'}
                   }
     data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam'}}
@@ -42,27 +32,24 @@ def run(begin_run=None):
         begin_run_event=begin_run, data_keys=data_keys2, time=0.)
 
     # number of motor positions to fake
-    num1 = center * 2
+    num1 = 20
     # number of temperatures to record per motor position
     num2 = 10
 
     events = []
     for idx1, i in enumerate(range(num1)):
-        img = rs.randint(0, 255, (128, 128))
+        img = np.zeros((5, 5))
         img_sum_x = img.sum(axis=0)
         img_sum_y = img.sum(axis=1)
         img_x_max = img_sum_x.argmax()
         img_y_max = img_sum_y.argmax()
 
-        eid_img = save_ndarray(img)
-        eid_x = save_ndarray(img_sum_x)
-        eid_y = save_ndarray(img_sum_y)
-
+        # Put in actual ndarray data, as broker would do.
         data1 = {'linear_motor': {'value': i, 'timestamp': noisy(i)},
                  'total_img_sum': {'value': img.sum(), 'timestamp': noisy(i)},
-                 'img': {'value': eid_img, 'timestamp': noisy(i)},
-                 'img_sum_x': {'value': eid_x, 'timestamp': noisy(i)},
-                 'img_sum_y': {'value': eid_y, 'timestamp': noisy(i)},
+                 'img': {'value': img, 'timestamp': noisy(i)},
+                 'img_sum_x': {'value': img_sum_x, 'timestamp': noisy(i)},
+                 'img_sum_y': {'value': img_sum_y, 'timestamp': noisy(i)},
                  'img_x_max': {'value': img_x_max, 'timestamp': noisy(i)},
                  'img_y_max': {'value': img_y_max, 'timestamp': noisy(i)},
                  }
@@ -71,7 +58,7 @@ def run(begin_run=None):
                              time=noisy(i), data=data1)
         events.append(event)
         for idx2, i2 in enumerate(range(num2)):
-            time = noisy(i)
+            time = noisy(i/num2)
             data2 = {'Tsam': {'value': idx1 + np.random.randn()/100,
                               'timestamp': time}}
             event = insert_event(event_descriptor=e_desc2, seq_no=idx2+idx1,

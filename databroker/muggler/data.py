@@ -87,7 +87,7 @@ class ColSpec(namedtuple(
     http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
     """
     # These reflect the 'method' argument of pandas.DataFrame.fillna
-    upsampling_methods = {None, 'linear', 'nearest', 'zero', 'slinear',
+    upsampling_methods = {'linear', 'nearest', 'zero', 'slinear',
                           'quadratic', 'cubic'}
     downsampling_methods = {'last', 'first', 'median', 'mean', 'sum', 'min',
                             'max', 'count'}

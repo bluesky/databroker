@@ -6,7 +6,8 @@ import numpy as np
 from .. import sources
 from ..muggler.data import DataMuggler, BinningError
 from ..sources import switch
-from ..examples.sample_data import temperature_ramp, multisource_event
+from ..examples.sample_data import (temperature_ramp, multisource_event,
+                                    image_and_scalar)
 
 
 class TestMuggler(unittest.TestCase):
@@ -42,7 +43,7 @@ class CommonBinningTests(object):
         self.assertRaises(BinningError, bad_binning)
 
         result = self.dm.bin_on(self.sparse,
-                                agg={self.dense: np.mean})
+                                agg={self.dense: self.agg})
         # With downsampling, the result should have as many entires as the
         # data source being "binned on" (aligned to).
         actual_len = len(result)
@@ -62,7 +63,7 @@ class CommonBinningTests(object):
         actual_len1 = len(result1)
         self.assertEqual(actual_len1, expected_len)
         result2 = self.dm.bin_on(self.dense,
-                                 interpolation={self.sparse: 'linear'})
+                                 interpolation={self.sparse: self.interp})
         actual_len2 = len(result2)
         self.assertEqual(actual_len2, expected_len)
 
@@ -89,6 +90,8 @@ class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
         self.dm = DataMuggler.from_events(temperature_ramp.run())
         self.sparse = 'Tsam'
         self.dense = 'point_det'
+        self.agg = np.mean
+        self.interp = 'linear'
 
 
 class TestBinningMultiSourceEvents(CommonBinningTests, unittest.TestCase):
@@ -97,3 +100,11 @@ class TestBinningMultiSourceEvents(CommonBinningTests, unittest.TestCase):
         self.dm = DataMuggler.from_events(multisource_event.run())
         self.sparse = 'Troom'
         self.dense = 'point_det'
+        self.agg = np.mean
+        self.interp = 'linear'
+
+
+class TestImageAndScalar(unittest.TestCase):
+
+    def setUp(self):
+        self.dm = DataMuggler.from_events(image_and_scalar.run())
