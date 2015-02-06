@@ -89,6 +89,8 @@ class ColSpec(namedtuple(
     # These reflect the 'method' argument of pandas.DataFrame.fillna
     upsampling_methods = {None, 'linear', 'nearest', 'zero', 'slinear',
                           'quadratic', 'cubic'}
+    downsampling_methods = {'last', 'first', 'median', 'mean', 'sum', 'min',
+                            'max', 'count'}
 
     __slots__ = ()
 
