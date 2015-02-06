@@ -182,7 +182,7 @@ def _inspect_descriptor(descriptor):
     return is_external
 
 
-def _fill_event(event):
+def fill_event(event):
     """
     Populate events with externally stored data.
     """

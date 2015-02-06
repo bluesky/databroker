@@ -1,6 +1,8 @@
 from __future__ import division
 from metadataStore.api.collection import (insert_event,
                                           insert_event_descriptor)
+from fileStore.api.analysis import save_ndarray
+from ...broker.simple_broker import fill_event
 import numpy as np
 from .common import example, noisy
 
@@ -44,18 +46,23 @@ def run(begin_run=None):
         img_x_max = img_sum_x.argmax()
         img_y_max = img_sum_y.argmax()
 
+        fsid_img = save_ndarray(img)
+        fsid_x = save_ndarray(img_sum_x)
+        fsid_y = save_ndarray(img_sum_y)
+
         # Put in actual ndarray data, as broker would do.
         data1 = {'linear_motor': {'value': i, 'timestamp': noisy(i)},
                  'total_img_sum': {'value': img.sum(), 'timestamp': noisy(i)},
-                 'img': {'value': img, 'timestamp': noisy(i)},
-                 'img_sum_x': {'value': img_sum_x, 'timestamp': noisy(i)},
-                 'img_sum_y': {'value': img_sum_y, 'timestamp': noisy(i)},
+                 'img': {'value': fsid_img, 'timestamp': noisy(i)},
+                 'img_sum_x': {'value': fsid_x, 'timestamp': noisy(i)},
+                 'img_sum_y': {'value': fsid_y, 'timestamp': noisy(i)},
                  'img_x_max': {'value': img_x_max, 'timestamp': noisy(i)},
                  'img_y_max': {'value': img_y_max, 'timestamp': noisy(i)},
                  }
 
         event = insert_event(event_descriptor=e_desc1, seq_no=idx1,
                              time=noisy(i), data=data1)
+        fill_event(event)
         events.append(event)
         for idx2, i2 in enumerate(range(num2)):
             time = noisy(i/num2)
