@@ -43,7 +43,7 @@ def get_events_by_run(runs, ca_host, channels=None):
 
     events = [find_event(run) for run in runs]
     events = [e for run in events for e in run]  # flattened
-    [_fill_event(event) for event in events]
+    [fill_event(event) for event in events]
     return events
 
 
@@ -154,7 +154,7 @@ def get_last(channels=None, ca_host=None):
     bre = BrokerStruct(bre)
     events = [BrokerStruct(ev) for ev in events]
     # fill in the events from any external data sources
-    [_fill_event(event) for event in events]
+    [fill_event(event) for event in events]
     tstart = bre.time
     tfinish = events[0].time
     if ca_host is None:
