@@ -41,10 +41,11 @@ def run(begin_run=None):
     events = []
     for idx1, i in enumerate(range(num1)):
         img = np.zeros((5, 5))
+        img_sum = float(img.sum())
         img_sum_x = img.sum(axis=0)
         img_sum_y = img.sum(axis=1)
-        img_x_max = img_sum_x.argmax()
-        img_y_max = img_sum_y.argmax()
+        img_x_max = float(img_sum_x.argmax())
+        img_y_max = float(img_sum_y.argmax())
 
         fsid_img = save_ndarray(img)
         fsid_x = save_ndarray(img_sum_x)
@@ -52,7 +53,7 @@ def run(begin_run=None):
 
         # Put in actual ndarray data, as broker would do.
         data1 = {'linear_motor': {'value': i, 'timestamp': noisy(i)},
-                 'total_img_sum': {'value': img.sum(), 'timestamp': noisy(i)},
+                 'total_img_sum': {'value': img_sum, 'timestamp': noisy(i)},
                  'img': {'value': fsid_img, 'timestamp': noisy(i)},
                  'img_sum_x': {'value': fsid_x, 'timestamp': noisy(i)},
                  'img_sum_y': {'value': fsid_y, 'timestamp': noisy(i)},
