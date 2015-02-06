@@ -14,7 +14,6 @@ class TestMuggler(unittest.TestCase):
 
     def setUp(self):
         self.mixed_scalars = temperature_ramp.run()
-        self.image_and_scalar = image_and_scalar.run()
 
     def test_empty_muggler(self):
         DataMuggler()
@@ -25,47 +24,8 @@ class TestMuggler(unittest.TestCase):
         dm._dataframe
         dm.Tsam
         dm['Tsam']
-
-        dm = DataMuggler.from_events(self.image_and_scalar)
-        expected = {
-            0: [ColSpec(name=u'img_x_max', ndim=0,
-                        upsample=None, downsample=None),
-                ColSpec(name=u'Tsam', ndim=0,
-                        upsample=None, downsample=None),
-                ColSpec(name=u'linear_motor', ndim=0,
-                        upsample=None, downsample=None),
-                ColSpec(name=u'img_y_max', ndim=0,
-                        upsample=None, downsample=None),
-                ColSpec(name=u'total_img_sum', ndim=0,
-                        upsample=None, downsample=None)],
-            1: [ColSpec(name=u'img_sum_y', ndim=1,
-                        upsample=None, downsample=None),
-                ColSpec(name=u'img_sum_x', ndim=1,
-                        upsample=None, downsample=None)],
-            2: [ColSpec(name=u'img', ndim=2,
-                        upsample=None, downsample=None)]}
-        self.assertEqual(dm.col_info_by_ndim, expected)
-
-        expected = {'Tsam': ColSpec(name='Tsam', ndim=0,
-                         upsample=None, downsample=None),
-         'img': ColSpec(name='img', ndim=2,
-                        upsample=None, downsample=None),
-         'img_sum_x': ColSpec(name='img_sum_x', ndim=1,
-                              upsample=None, downsample=None),
-         'img_sum_y': ColSpec(name='img_sum_y', ndim=1,
-                              upsample=None, downsample=None),
-         'img_x_max': ColSpec(name='img_x_max', ndim=0,
-                              upsample=None, downsample=None),
-         'img_y_max': ColSpec(name='img_y_max', ndim=0,
-                              upsample=None, downsample=None),
-         'linear_motor': ColSpec(name='linear_motor', ndim=0,
-                                 upsample=None, downsample=None),
-         'total_img_sum': ColSpec(name='total_img_sum', ndim=0,
-                                  upsample=None, downsample=None)}
-        self.assertEqual(dm.col_info, expected)
-
-        expected = {'Tsam': ColSpec('Tsam', 0, None, None),
-                    'point_det': ColSpec('point_det', 0, None, None)}
+        dm.col_info_by_ndim
+        dm.col_info
 
     def test_timestamps_as_data(self):
         dm = DataMuggler.from_events(self.mixed_scalars)
