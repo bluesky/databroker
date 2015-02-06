@@ -191,7 +191,7 @@ def fill_event(event):
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key] = retrieve_data(value)
+            event.data[data_key]['value'] = retrieve_data(value)
 
 
 def _scrape_event(event):
