@@ -1,6 +1,6 @@
 __author__ = 'arkilic'
 
-from mongoengine import Document, DynamicDocument
+from mongoengine import Document
 from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
 from getpass import getuser
 
@@ -80,7 +80,7 @@ class EndRunEvent(Document):
     meta = {'indexes': ['-_id', '-time', '-reason', '-begin_run_event']}
 
 
-class EventDescriptor(DynamicDocument):
+class EventDescriptor(Document):
     """ Provides information regarding the upcoming series of events
     whose contents are indicated via such EventDescriptor.
 
@@ -124,12 +124,13 @@ class Event(Document):
         The date/time as found at the client side when an event is
         created.
 
-    seq_no : int
+    seq_no : int, optional
         Sequence number pointing out the
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
-    seq_num = IntField(min_value=0, required=True)
+    seq_no = IntField(min_value=0, required=True)
+    # talk to @dchabot if you think seq_no is optional
     data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)
