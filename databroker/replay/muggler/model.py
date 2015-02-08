@@ -52,9 +52,6 @@ class ColumnModel(Atom):
                 'downsample={})'.format(self.name, self.muggler, self.__dim,
                                         self.upsample, self.downsample))
 
-# Existing questions
-# Muggler knows the dimensionality of each data column
-# What are the options for upsampling/downsampling?
 class MugglerModel(Atom):
     """Class that defines the Model for the data muggler
 
