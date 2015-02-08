@@ -122,22 +122,3 @@ class MugglerModel(Atom):
         self.line_columns_visible = len(self.line_columns) != 0
         self.image_columns_visible = len(self.image_columns) != 0
         self.volume_columns_visible = len(self.volume_columns) != 0
-
-
-    def update_keys_new(self):
-        mapping = {0: {'attr': self.scalar_columns, 'updated': False},
-                   1: {'attr': self.line_columns, 'updated': False},
-                   2: {'attr': self.image_columns, 'updated': False},
-                   3: {'attr': self.volume_columns, 'updated': False}}
-        for col_name, col_ndim in six.iteritems(self.muggler.col_ndim):
-            if not col_name in mapping[col_ndim]['attr']:
-                mapping[col_ndim]['attr'].append(col_name)
-                mapping[col_ndim]['updated'] = True
-        for col_name, col_ndim in six.iteritems(self.muggler.col_ndim):
-            if mapping[col_ndim]['updated']:
-                new_list = mapping[col_ndim]['attr']
-                mapping[col_ndim]['attr'] = []
-                mapping[col_ndim]['attr'] = new_list
-        for dim, lst in six.iteritems(mapping):
-            print('{}: {}'.format(dim, lst))
-
