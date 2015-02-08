@@ -8,11 +8,15 @@ from enaml.layout.api import VSplitLayout, HSplitLayout
 enamldef MainView(MainWindow): main_view:
     attr get_last_model
     attr muggler_model
-    attr scalar_model
+    attr scalar_collection
     Container: container:
         DockArea: area:
-            layout = HSplitLayout(VSplitLayout('search', 'muggler'),
-                                  VSplitLayout('scalar plot controls'))
+            layout = HSplitLayout(
+                HSplitLayout(
+                    VSplitLayout('search', 'muggler'),
+                    'scalar plot controls'),
+                'scalar plot'
+            )
             DockItem:
                 name = 'search'
                 title = "Search"
@@ -28,4 +32,9 @@ enamldef MainView(MainWindow): main_view:
                 name = 'scalar plot controls'
                 title = 'Scalar Plot Controls'
                 PlotControls:
-                    scalar_model = main_view.scalar_model
+                    scalar_collection = main_view.scalar_collection
+            DockItem:
+                name = 'scalar plot'
+                title = "Scalar Plot"
+                PlotView:
+                    pass

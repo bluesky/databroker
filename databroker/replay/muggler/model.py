@@ -73,6 +73,8 @@ class MugglerModel(Atom):
     run_header = Typed(BrokerStruct)
     info = Str()
 
+    keep_updated = List()
+
     @observe('run_header')
     def run_header_changed(self, changed):
         self.info = 'Run {}'.format(self.run_header.id)
@@ -85,8 +87,12 @@ class MugglerModel(Atom):
         events = simple_broker.get_events_by_run(self.run_header, None)
         if self.muggler is None:
             self.muggler = DataMuggler.from_events(events)
+            for to_update in self.keep_updated:
+                to_update.new_data_muggler(self.muggler)
         else:
             self.muggler.append_events(events)
+            # for to_update in self.keep_updated:
+            #     to_update.update_datamuggler(None)
         self.compare_keys()
 
     def compare_keys(self):

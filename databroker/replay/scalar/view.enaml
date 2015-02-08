@@ -1,13 +1,202 @@
-__author__ = 'edill'
 
-from enaml.widgets.api import Container, Label
+""" The Enaml UI code for the scalar viewer
 
-enamldef PlotView(Container):
-    attr scalar_model
-    Label:
-        text << scalar_model.name
+"""
+
+from enaml.core.api import Looper
+from atom.api import Atom, List, observe, Bool, Enum, Str, Int
+from enaml.layout.api import vbox, hbox, spacer, grid, HSplitLayout, Box, spacer
+from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
+                               CheckBox, DockItem, DockPane, Form, Label,
+                               Slider, MainWindow, ComboBox, SpinBox,
+                               GroupBox, ScrollArea, PushButton, RadioButton,
+                               Field,
+                               )
+from enaml.stdlib.fields import FloatField
+from ..model.scalar_model import ScalarCollection, ScalarConfig
+import random
+import six
 
 enamldef PlotControls(Container):
-    attr scalar_model
-    Label:
-        text << scalar_model.name
+    attr scalar_collection
+    limit_width = 'string'
+    ScrollArea: scroller:
+        Container:
+            Form:
+                row_spacing = 0
+                Label:
+                    text = 'update frequency'
+                FloatField: rate:
+                    value := scalar_collection.redraw_every
+                    minimum = 0.0
+                    #fix_invalid_input = True
+                Label:
+                    text = 'update unit'
+                ComboBox:
+                    items << list(ScalarCollection.redraw_type.items)
+                    selected_item >> scalar_collection.redraw_type
+                    index << ScalarCollection.redraw_type.items.index(
+                        scalar_collection.redraw_type
+                    )
+                Label:
+                    text = 'update rate'
+                Label:
+                    text := scalar_collection.update_rate
+
+            GroupBox: plot:
+                title_align = 'center'
+                title = 'Plot'
+                padding = Box(0, 0, 0, 0)
+                Form:
+                    row_spacing = 0
+                    Label:
+                        text = "Column to bin against"
+                    ComboBox: xcmb:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        index << scalar_collection.x_index
+                        selected_item >> scalar_collection.bin_on
+                        enabled = False
+                    Label:
+                        text = "X axis"
+                    ComboBox: x_axis:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        index = 0
+                        selected_item >> scalar_collection.x
+                        enabled << not scalar_collection.x_is_time
+                    Label:
+                        text = "X axis options"
+                    Form:
+                        row_spacing = 0
+                        CheckBox: btn_time:
+                            text = 'Plot againt time'
+                            checked := scalar_collection.x_is_time
+                        CheckBox: btn_single_plot:
+                            text = "Single plot"
+                            checked := scalar_collection.single_plot
+                            clicked ::
+                                sb_rows.enabled = not checked
+                                sb_cols.enabled = not checked
+                        Label: lbl_rows:
+                            text = "nrows"
+                        SpinBox: sb_rows:
+                            value := scalar_collection.nrows
+                            minimum = 0
+                            special_value_text = "auto"
+                        Label: lbl_cols:
+                            text = "ncols"
+                        SpinBox: sb_cols:
+                            value := scalar_collection.ncols
+                            minimum = 0
+                            special_value_text = "auto"
+
+                    Label:
+                        text = "Dataset to fit"
+                    ComboBox: cmb_fit:
+                        items << list(scalar_collection.col_names)
+                        editable = True
+                        index = 0
+                        enabled = False
+                    Label:
+                        text = "Dataset to estimate"
+                    ComboBox: cmb_est:
+                        items << list(scalar_collection.col_names)
+                        index << scalar_collection.estimate_index
+                        enabled = True
+                        selected_item >> scalar_collection.estimate_target
+                    Label:
+                        text = "Dataset to normalize by"
+                    Container:
+                        constraints = [vbox(norm_check, norm_cmb)]
+                        CheckBox: norm_check:
+                            text = 'Normalize?'
+                            checked := scalar_collection.normalize
+                        ComboBox: norm_cmb:
+                            items << list(scalar_collection.col_names)
+                            index << 0
+                            enabled = True
+                            selected_item >> scalar_collection.normalize_target
+                    Label:
+                        text = "Y axis"
+                    Label:
+                        pass
+                    Looper: looper:
+                        iterable << scalar_collection.col_names
+                        PushButton: cb_plot:
+                            text = loop_item
+                            checked := (
+                                scalar_collection.
+                                    scalar_models[loop_item].is_plotting
+                            )
+                            clicked ::
+                                if (loop_item != 'peak stats' and
+                                    loop_item != 'fit'):
+                                    scalar_collection.estimate_target = loop_item
+                        Label:
+                            text << str(id(scalar_collection.scalar_models[loop_item]))
+            GroupBox: estimate:
+                title_align = 'center'
+                title = 'Estimate'
+                padding = Box(0, 0, 0, 0)
+                Form:
+                    row_spacing = 0
+                    Looper: looper:
+                        iterable << list(six.iterkeys(scalar_collection.estimate_stats))
+                        Label:
+                            text = '{}: {}'.format(loop_item,
+                                scalar_collection.estimate_stats[loop_item])
+                        PushButton:
+                            text = 'Plot'
+                            checkable = True
+                            checked = loop_item in scalar_collection.estimate_plot
+                            clicked ::
+                                if checked:
+                                    scalar_collection.estimate_plot.append(loop_item)
+                                else:
+                                    try:
+                                        scalar_collection.estimate_plot.remove(loop_item)
+                                    except ValueError:
+                                        # loop_item is not in the list
+                                        pass
+                                scalar_collection.reformat_view()
+
+
+enamldef PlotView(Container):
+    Container:
+        constraints = [
+            vbox(
+                hbox(check, spacer, fit),
+                #vbox(canvas, fitter),
+                vbox(canvas),
+            ),
+        ]
+        CheckBox: check:
+            text = 'Toolbar Visible'
+            enabled = False
+            checked := canvas.toolbar_visible
+        CheckBox: fit:
+            text = 'Fitting Visible'
+            #checked := fitter.show_fit
+        MPLCanvas: canvas:
+            figure << scalar_collection._fig
+            toolbar_visible = True
+
+
+enamldef ScalarContainer(Window): window:
+    attr scalar_collection
+    Container:
+        DockArea: da:
+            layout = HSplitLayout('controls', 'view')
+            DockItem:
+                name = 'view'
+                title = 'Scalar Plot View'
+                Container:
+                    PlotView: contains:
+                        pass
+            DockItem:
+                name = 'controls'
+                title = 'Scalar Plot Controls'
+                Container:
+                    PlotControls: controls:
+                        pass
