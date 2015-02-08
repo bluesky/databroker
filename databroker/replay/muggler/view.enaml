@@ -30,6 +30,21 @@ enamldef ColumnView(Container):
         index = ColumnModel.downsample.items.index(column_model.downsample)
         selected_item >> column_model.downsample
 
+enamldef KeyContainer(Container):
+    """Special snowflake Container object that takes a list of ColumnModel objects
+    and displays them in a Form
+    """
+
+    attr column_model_list = []
+    padding = Box(0, 0, 0, 0)
+    Form:
+        row_spacing = 0
+        Looper:
+            iterable << column_model_list
+            Label:
+                text = loop_item.name
+            ColumnView:
+                column_model = loop_item
 
 enamldef MugglerController(Container):
     padding = Box(0, 0, 0, 0)
@@ -50,41 +65,24 @@ enamldef MugglerController(Container):
     GroupBox: scalar:
         title = 'Scalar keys'
         padding = Box(0, 0, 0, 0)
-        Container:
-            padding = Box(0, 0, 0, 0)
-            Form:
-                row_spacing = 0
-                Looper:
-                    iterable << muggler_model.scalar_columns
-                    Label:
-                        text = loop_item.name
-                    ColumnView:
-                        column_model = loop_item
-
-#    GroupBox: line:
-#        padding = Box(0, 0, 0, 0)
-#        title = 'Line keys'
-#        Container:
-#            padding = Box(0, 0, 0, 0)
-#            Looper:
-#                iterable << muggler_model.line_keys
-#                Label:
-#                    text = loop_item
-#    GroupBox: image:
-#        padding = Box(0, 0, 0, 0)
-#        title = 'Image keys'
-#        Container:
-#            padding = Box(0, 0, 0, 0)
-#            Looper:
-#                iterable << muggler_model.image_keys
-#                Label:
-#                    text = loop_item
-#    GroupBox: volume:
-#        padding = Box(0, 0, 0, 0)
-#        title = 'Volume keys'
-#        Container:
-#            padding = Box(0, 0, 0, 0)
-#            Looper:
-#                iterable << muggler_model.volume_keys
-#                Label:
-#                    text = loop_item
+        visible << muggler_model.scalar_columns_visible
+        KeyContainer:
+            column_model_list = muggler_model.scalar_columns
+    GroupBox: line:
+        title = 'Line keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.line_columns_visible
+        KeyContainer:
+            column_model_list = muggler_model.line_columns
+    GroupBox: image:
+        title = 'Image keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.image_columns_visible
+        KeyContainer:
+            column_model_list = muggler_model.image_columns
+    GroupBox: volume:
+        title = 'Volume keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.volume_columns_visible
+        KeyContainer:
+            column_model_list = muggler_model.volume_columns

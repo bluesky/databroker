@@ -2,7 +2,8 @@
 
 import six
 from collections import deque
-from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int)
+from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
+                      Bool)
 from databroker.muggler.api import DataMuggler
 from databroker.broker import simple_broker
 from databroker.broker.struct import BrokerStruct
@@ -65,6 +66,12 @@ class MugglerModel(Atom):
     line_columns = List(item=ColumnModel)
     image_columns = List(item=ColumnModel)
     volume_columns = List(item=ColumnModel)
+
+    scalar_columns_visible = Bool(False)
+    line_columns_visible = Bool(False)
+    image_columns_visible = Bool(False)
+    volume_columns_visible = Bool(False)
+
     muggler = Typed(DataMuggler)
     run_header = Typed(BrokerStruct)
     info = Str()
@@ -111,6 +118,8 @@ class MugglerModel(Atom):
         self.line_columns = mapping[1]
         self.image_columns = mapping[2]
         self.volume_columns = mapping[3]
+
+        if len(self.scalar_columns)
 
     def update_keys_new(self):
         mapping = {0: {'attr': self.scalar_columns, 'updated': False},
