@@ -1,6 +1,6 @@
 """Enaml definitions for GUI views related to the DataMuggler"""
 
-from enaml.layout.api import (vbox, hbox, Box, spacer)
+from enaml.layout.api import (vbox, hbox, Box, spacer, align)
 from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
                                Action, Menu, ComboBox)
 from enaml.core.api import Looper
@@ -30,63 +30,71 @@ enamldef ColumnView(Container):
         index = ColumnModel.downsample.items.index(column_model.downsample)
         selected_item >> column_model.downsample
 
-enamldef KeyContainer(Container):
+enamldef KeyForm(Form):
     """Special snowflake Container object that takes a list of ColumnModel objects
     and displays them in a Form
     """
 
     attr column_model_list = []
-    padding = Box(0, 0, 0, 0)
-    Form:
-        row_spacing = 0
-        Looper:
-            iterable << column_model_list
-            Label:
-                text = loop_item.name
-            ColumnView:
-                column_model = loop_item
+    row_spacing = 0
+    Looper:
+        iterable << column_model_list
+        Label:
+            text = loop_item.name
+        ColumnView:
+            column_model = loop_item
 
 enamldef MugglerController(Container):
     padding = Box(0, 0, 0, 0)
     attr muggler_model
     constraints = [vbox(refresh_button,
                         muggler_info,
-                        scalar_visible,
                         scalar,
                         line,
                         image,
                         volume
-                       )]
+                       ),
+                   align('midline', scalar.form, line.form, image.form,
+                         volume.form)]
     PushButton: refresh_button:
         text = "Check for new data"
         clicked ::
             muggler_model.get_new_data()
     Label: muggler_info:
         text << muggler_model.info
-    PushButton: scalar_visible:
-        checkable = True
-        checked := muggler_model.scalar_columns_visible
     GroupBox: scalar:
+        share_layout = True
+        alias form: scalar_keys
         title = 'Scalar keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.scalar_columns_visible
-        KeyContainer:
+        KeyForm: scalar_keys:
+            share_layout = True
             column_model_list << muggler_model.scalar_columns
     GroupBox: line:
+        share_layout = True
+        alias form: line_keys
         title = 'Line keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.line_columns_visible
-        KeyContainer:
+        KeyForm: line_keys:
+            share_layout = True
             column_model_list << muggler_model.line_columns
     GroupBox: image:
+        share_layout = True
+        alias form: image_keys
         title = 'Image keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.image_columns_visible
-        KeyContainer:
+        KeyForm: image_keys:
+            share_layout = True
             column_model_list << muggler_model.image_columns
     GroupBox: volume:
+        share_layout = True
+        alias form: volume_keys
         title = 'Volume keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.volume_columns_visible
-        KeyContainer:
+        KeyForm: volume_keys:
+            share_layout = True
             column_model_list << muggler_model.volume_columns
