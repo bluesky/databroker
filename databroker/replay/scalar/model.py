@@ -515,8 +515,17 @@ class ScalarCollection(Atom):
 
     def plot_by_time(self):
         df = self.data_muggler._dataframe
+        nrows = self.nrows
+        ncols = self.ncols
+        ndata = len(self.col_names)
+        if nrows == 0 and ncols == 0:
+            nrows = int(np.ceil(np.sqrt(ndata)))
+            ncols = nrows
+        elif nrows == 0:
+            nrows = int(np.ceil(ndata/ncols))
         subplots = not self.single_plot
-        df.plot(ax=self._ax, subplots=subplots, marker='o')
+        df.plot(ax=self._ax, subplots=subplots, marker='o',
+                layout=(nrows, ncols))
 
     def plot_by_x(self, y_names):
         return
