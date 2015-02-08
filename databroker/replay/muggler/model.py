@@ -101,25 +101,28 @@ class MugglerModel(Atom):
             col_up = str(col_spec.upsample)
             col_down = str(col_spec.downsample)
             if not col_name in mapping[col_dim]:
-                # print('dim, up, down', col_dim, col_up, col_down)
                 column_model = ColumnModel(muggler=self.muggler,
                                            name=col_name, upsample=col_up,
                                            downsample=col_down,
                                            dim=col_dim)
-                print(repr(column_model))
                 mapping[col_dim].append(column_model)
-        for dim, lst in six.iteritems(mapping):
-            print('{}: {}'.format(dim, lst))
-        self.scalar_columns = []
-        self.line_columns = []
-        self.image_columns = []
-        self.volume_columns = []
-        self.scalar_columns = mapping[0]
-        self.line_columns = mapping[1]
-        self.image_columns = mapping[2]
-        self.volume_columns = mapping[3]
+        # update the instance varaibles, if necessary
+        if set(self.scalar_columns) != set(mapping[0]):
+            self.scalar_columns = mapping[0]
+        if set(self.line_columns) != set(mapping[0]):
+            self.line_columns = mapping[1]
+        if set(self.image_columns) != set(mapping[1]):
+            self.image_columns = mapping[2]
+        if set(self.volume_columns) != set(mapping[2]):
+            self.volume_columns = mapping[3]
 
-        if len(self.scalar_columns)
+        # set the GUI elements to be visible/hidden if there are/aren't any
+        # column_models
+        self.scalar_columns_visible = len(self.scalar_columns) != 0
+        self.line_columns_visible = len(self.line_columns) != 0
+        self.image_columns_visible = len(self.image_columns) != 0
+        self.volume_columns_visible = len(self.volume_columns) != 0
+
 
     def update_keys_new(self):
         mapping = {0: {'attr': self.scalar_columns, 'updated': False},

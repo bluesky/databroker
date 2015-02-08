@@ -51,10 +51,11 @@ enamldef MugglerController(Container):
     attr muggler_model
     constraints = [vbox(refresh_button,
                         muggler_info,
+                        scalar_visible,
                         scalar,
-#                        line,
-#                        image,
-#                        volume
+                        line,
+                        image,
+                        volume
                        )]
     PushButton: refresh_button:
         text = "Check for new data"
@@ -62,27 +63,30 @@ enamldef MugglerController(Container):
             muggler_model.get_new_data()
     Label: muggler_info:
         text << muggler_model.info
+    PushButton: scalar_visible:
+        checkable = True
+        checked := muggler_model.scalar_columns_visible
     GroupBox: scalar:
         title = 'Scalar keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.scalar_columns_visible
         KeyContainer:
-            column_model_list = muggler_model.scalar_columns
+            column_model_list << muggler_model.scalar_columns
     GroupBox: line:
         title = 'Line keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.line_columns_visible
         KeyContainer:
-            column_model_list = muggler_model.line_columns
+            column_model_list << muggler_model.line_columns
     GroupBox: image:
         title = 'Image keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.image_columns_visible
         KeyContainer:
-            column_model_list = muggler_model.image_columns
+            column_model_list << muggler_model.image_columns
     GroupBox: volume:
         title = 'Volume keys'
         padding = Box(0, 0, 0, 0)
         visible << muggler_model.volume_columns_visible
         KeyContainer:
-            column_model_list = muggler_model.volume_columns
+            column_model_list << muggler_model.volume_columns
