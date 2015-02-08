@@ -1,1 +1,13 @@
 __author__ = 'edill'
+
+from enaml.widgets.api import Container, Label
+
+enamldef PlotView(Container):
+    attr scalar_model
+    Label:
+        text << scalar_model.name
+
+enamldef PlotControls(Container):
+    attr scalar_model
+    Label:
+        text << scalar_model.name

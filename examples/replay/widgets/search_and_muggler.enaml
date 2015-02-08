@@ -1,15 +1,18 @@
 from databroker.replay.search import GetLastView
 from databroker.replay.muggler import MugglerController
+from databroker.replay.scalar import PlotView, PlotControls
 
 from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem)
-from enaml.layout.api import VSplitLayout
+from enaml.layout.api import VSplitLayout, HSplitLayout
 
 enamldef MainView(MainWindow): main_view:
     attr get_last_model
     attr muggler_model
+    attr scalar_model
     Container: container:
         DockArea: area:
-            layout = VSplitLayout('search', 'muggler')
+            layout = HSplitLayout(VSplitLayout('search', 'muggler'),
+                                  VSplitLayout('scalar plot controls'))
             DockItem:
                 name = 'search'
                 title = "Search"
@@ -21,3 +24,8 @@ enamldef MainView(MainWindow): main_view:
                 title = 'Muggler'
                 MugglerController:
                     muggler_model = main_view.muggler_model
+            DockItem:
+                name = 'scalar plot controls'
+                title = 'Scalar Plot Controls'
+                PlotControls:
+                    scalar_model = main_view.scalar_model
