@@ -119,8 +119,8 @@ def _validate_upsample(input):
 def _validate_downsample(input):
     # TODO The downsampling methods could have string aliases like 'mean'.
     if (input is not None) and (not callable(input)):
-        raise ValueError("The downsampling method must be a callable "
-                         "or None.")
+        raise ValueError("The downsampling method must be a callable, None, "
+                         "or one of {}.".format(ColSpec.downsampling_methods))
     return input
 
 
@@ -432,6 +432,11 @@ class DataMuggler(object):
                 upsample = col_info.upsample
             else:
                 upsample = _validate_upsample(upsample)
+            if upsample is not None and col_info.ndim > 0:
+                raise NotImplementedError(
+                    "Only scalar data can be upsampled. "
+                    "The {0}-dimensional source {1} was given the upsampling "
+                    "rule {2}.".format(col_info.ndim, name, upsample))
             try:
                 downsample = agg[name]
             except (TypeError, KeyError):
