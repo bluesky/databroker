@@ -2,7 +2,7 @@ __author__ = 'arkilic'
 
 from mongoengine import Document, DynamicDocument,EmbeddedDocument, DynamicEmbeddedDocument
 from mongoengine import (DateTimeField, StringField, DictField, IntField, FloatField, ListField,
-                         ReferenceField, EmbeddedDocumentField, DENY)
+                         ReferenceField, EmbeddedDocumentField, DynamicField, DENY)
 from getpass import getuser
 
 
@@ -84,6 +84,19 @@ class EndRunEvent(DynamicDocument):
     meta = {'indexes': ['-_id', '-time', '-reason', '-begin_run_event']}
 
 
+class DataKeys(DynamicEmbeddedDocument):
+    """Describes the objects in the data property of Event documents
+
+    """
+    # I like the idea of DataKeys being an embedded document since it is one to one relationship with event_descriptors
+    # and mongoengine documentation suggests there are quite a few benefits of this data model
+    # http://docs.mongodb.org/manual/core/data-model-design/#data-modeling-embedding
+    dtype = StringField(required=True)
+    shape = ListField(required=True)
+    source = StringField(required=True)
+    external = StringField()
+
+
 class EventDescriptor(DynamicDocument):
     """ Describes the objects in the data property of Event documents
     Attributes
@@ -101,21 +114,6 @@ class EventDescriptor(DynamicDocument):
     meta = {'indexes': ['-begin_run_event', '-time']}
 
 
-class DataKeys(DynamicEmbeddedDocument):
-    """Describes the objects in the data property of Event documents
-
-    """
-    # I like the idea of DataKeys being an embedded document since it is one to one relationship with event_descriptors
-    # and mongoengine documentation suggests there are quite a few benefits of this data model
-    # http://docs.mongodb.org/manual/core/data-model-design/#data-modeling-embedding
-    dtype = StringField(required=True)
-    shape = ListField(required=True)
-    source = StringField(required=True)
-    external = StringField()
-
-
-
-
 class Event(DynamicDocument):
     """ Stores the experimental data. All events point to
     BeginRunEvent, in other words, to BeginRunEvent serves as an
@@ -127,24 +125,13 @@ class Event(DynamicDocument):
 
     Attributes
     ----------
-    descriptor : metadataStore.odm_templates.EventDescriptor
-        Foreign key to EventDescriptor that provides info regarding a
-        set of events of the same type
+    Update after refactor! Incoming...
 
-    data : dict
-        Data dictionary where experimental data is stored.
-
-    time : timestamp
-        The date/time as found at the client side when an event is
-        created.
-
-    seq_no : int, optional
-        Sequence number pointing out the
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
     seq_num = IntField(min_value=0, required=True)
-    data = DictField(required=True)
+    data = DictField(ListField,required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)
     meta = {'indexes': ['-descriptor', '-_id', '-time']}
