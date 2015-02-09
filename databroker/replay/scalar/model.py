@@ -515,6 +515,13 @@ class ScalarCollection(Atom):
 
     def plot_by_time(self):
         df = self.data_muggler._dataframe
+        nrows, ncols = self.get_rows_cols()
+        subplots = not self.single_plot
+        self._fig.set_tight_layout(False)
+        df.plot(ax=self._ax, subplots=subplots, marker='o',
+                layout=(nrows, ncols))
+
+    def get_rows_cols(self):
         nrows = self.nrows
         ncols = self.ncols
         ndata = len(self.col_names)
@@ -523,11 +530,21 @@ class ScalarCollection(Atom):
             ncols = nrows
         elif nrows == 0:
             nrows = int(np.ceil(ndata/ncols))
-        subplots = not self.single_plot
-        df.plot(ax=self._ax, subplots=subplots, marker='o',
-                layout=(nrows, ncols))
+
+        while (nrows * (ncols-1)) > ndata:
+            nrows -= 1
+
+        return nrows, ncols
 
     def plot_by_x(self, y_names):
+        interpolation = {name: 'linear' for name in self.data_muggler.col_info.keys()}
+        agg = {name: np.mean for name in self.data_muggler.col_info.keys()}
+        df = self.data_muggler.bin_on(self.x, interpolation=interpolation, agg=agg)
+        self._fig.clf()
+        print('fig before df.plot call', self._fig)
+        self._ax = self._fig.add_subplot(111)
+        df.plot(subplots=False, ax=self._ax)
+        print('fig after df.plot call', self._fig)
         return
 
         time, data = self.data_muggler.get_values(ref_col=self.bin_on,
