@@ -1,7 +1,8 @@
 __author__ = 'arkilic'
 
-from mongoengine import Document, DENY
-from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField
+from mongoengine import Document, DynamicDocument, ListField
+from mongoengine import (DateTimeField, StringField, DictField, IntField, FloatField,
+                         ReferenceField, DENY)
 from getpass import getuser
 
 
@@ -26,6 +27,8 @@ class BeginRunEvent(Document):
 
     Attributes
     ----------
+    uid: str
+        Globally unique id for this run
     time : timestamp
         The date/time as found at the client side when an event is
         created.
@@ -42,6 +45,7 @@ class BeginRunEvent(Document):
         Additional parameters that data acquisition code/user wants to
         append to a given header. Name/value pairs
     """
+    uid = StringField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField()
     beamline_id = StringField(max_length=20, unique=False, required=True)
@@ -81,9 +85,7 @@ class EndRunEvent(Document):
 
 
 class EventDescriptor(Document):
-    """ Provides information regarding the upcoming series of events
-    whose contents are indicated via such EventDescriptor.
-
+    """ Describes the objects in the data property of Event documents
     Attributes
     ----------
     begin_run_event: metadataStore.odm_templates.BeginRunEvent
@@ -91,12 +93,24 @@ class EventDescriptor(Document):
     data_keys : dict
         e.g.
         {'key_name' : {'source' : 'PV', 'external' : 'FILESTORE'}}
+    source: str
+        The source (ex piece of hardware) of the data.
+    dtype: str
+    The type of data in the event
+    shape: list
+    Null and empty list mean scalar data.
+
 
     """
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
     data_keys = DictField(required=True)
+    source = StringField(required=True)
+    dtype = StringField(required = True)
+    # dtype has to be one of Mongo fields. We need to convert type() to str and back
+    shape = ListField(required=True)
     event_type = StringField(required=False)
+
     time = FloatField(required=True)
     time_as_datetime = DateTimeField()
     meta = {'indexes': ['-begin_run_event', '-time']}
@@ -129,7 +143,7 @@ class Event(Document):
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
-    seq_no = IntField(min_value=0, required=True)
+    seq_num = IntField(min_value=0, required=True)
     data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)

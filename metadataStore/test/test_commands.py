@@ -131,6 +131,12 @@ def test_begin_run():
     beamline_id = 'sample_beamline'
     yield _begin_run_with_cfg_tester, bcfg, time, beamline_id
 
+
+@context_decorator
+def _event_tester(descriptor, seq_num, data, time):
+    begin
+
+
 @context_decorator
 def _end_run_tester(begin_run, time):
     end_run = mdsc.insert_end_run(begin_run, time)
@@ -143,3 +149,5 @@ def test_end_run():
     bre = mdsc.insert_begin_run(time=ttime.time(), beamline_id='sample_beamline')
     time = ttime.time()
     yield _end_run_tester, bre, time
+
+
