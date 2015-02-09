@@ -118,7 +118,8 @@ def _validate_upsample(input):
 
 def _validate_downsample(input):
     # TODO The downsampling methods could have string aliases like 'mean'.
-    if (input is not None) and (not callable(input)):
+    if (input is not None) and (not (callable(input) or
+                                     input in ColSpec.downsampling_methods)):
         raise ValueError("The downsampling method must be a callable, None, "
                          "or one of {}.".format(ColSpec.downsampling_methods))
     return input
@@ -488,7 +489,7 @@ class DataMuggler(object):
                                    "'{0}' measurements in at least one bin, "
                                    "and there is no rule for downsampling "
                                    "(i.e., reducing) it.".format(name))
-            if verify_integrity:
+            if verify_integrity and callable(downsample):
                 expected_shape = 0  # TODO get real shape from descriptor
                 downsample = _build_safe_downsample(downsample, expected_shape)
             downsampled = grouped[name].agg({name: downsample}).squeeze()
