@@ -1,12 +1,12 @@
 __author__ = 'arkilic'
 
-from mongoengine import Document, DynamicDocument, ListField
-from mongoengine import (DateTimeField, StringField, DictField, IntField, FloatField,
-                         ReferenceField, DENY)
+from mongoengine import Document, DynamicDocument,EmbeddedDocument, DynamicEmbeddedDocument
+from mongoengine import (DateTimeField, StringField, DictField, IntField, FloatField, ListField,
+                         ReferenceField, EmbeddedDocumentField, DENY)
 from getpass import getuser
 
 
-class BeamlineConfig(Document):
+class BeamlineConfig(DynamicDocument):
     """
     Attributes
     ----------
@@ -19,7 +19,7 @@ class BeamlineConfig(Document):
     meta = {'indexes': ['-_id']}
 
 
-class BeginRunEvent(Document):
+class BeginRunEvent(DynamicDocument):
     """ Provide a head for a sequence of events. Entry point for
     an experiment's run. BeamlineConfig is NOT required to create a BeginRunEvent
     The only prereq is an EventDescriptor that identifies the nature of event that is
@@ -61,7 +61,7 @@ class BeginRunEvent(Document):
     meta = {'indexes': ['-_id', '-owner', '-time']}
 
 
-class EndRunEvent(Document):
+class EndRunEvent(DynamicDocument):
     """Indicates the end of a series of events
 
     Attributes
@@ -84,39 +84,39 @@ class EndRunEvent(Document):
     meta = {'indexes': ['-_id', '-time', '-reason', '-begin_run_event']}
 
 
-class EventDescriptor(Document):
+class EventDescriptor(DynamicDocument):
     """ Describes the objects in the data property of Event documents
     Attributes
     ----------
-    begin_run_event: metadataStore.odm_templates.BeginRunEvent
-        BeginRunEvent object created prior to a BeginRunEvent
-    data_keys : dict
-        e.g.
-        {'key_name' : {'source' : 'PV', 'external' : 'FILESTORE'}}
-    source: str
-        The source (ex piece of hardware) of the data.
-    dtype: str
-    The type of data in the event
-    shape: list
-    Null and empty list mean scalar data.
-
+    Gotta update this!!!! Incoming...
 
     """
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
-    data_keys = DictField(required=True)
-    source = StringField(required=True)
-    dtype = StringField(required = True)
-    # dtype has to be one of Mongo fields. We need to convert type() to str and back
-    shape = ListField(required=True)
-    event_type = StringField(required=False)
-
+    uid = StringField(required=True)
+    keys = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField()
+    data_keys = EmbeddedDocumentField(DataKeys, required=True)
     meta = {'indexes': ['-begin_run_event', '-time']}
 
 
-class Event(Document):
+class DataKeys(DynamicEmbeddedDocument):
+    """Describes the objects in the data property of Event documents
+
+    """
+    # I like the idea of DataKeys being an embedded document since it is one to one relationship with event_descriptors
+    # and mongoengine documentation suggests there are quite a few benefits of this data model
+    # http://docs.mongodb.org/manual/core/data-model-design/#data-modeling-embedding
+    dtype = StringField(required=True)
+    shape = ListField(required=True)
+    source = StringField(required=True)
+    external = StringField()
+
+
+
+
+class Event(DynamicDocument):
     """ Stores the experimental data. All events point to
     BeginRunEvent, in other words, to BeginRunEvent serves as an
     entry point for all events. Within each event, one can access
