@@ -10,11 +10,27 @@ from mongoengine import connect
 import metadataStore
 
 
+def format_data_keys(data_key_dict):
+    return data_key_dict
+
+def format_event(event_dict):
+    """Helper function for ophyd to format its data dictionary in whatever
+    flavor of the week metadataStore's spec says. This insulates ophyd from
+    changes to the mds spec
+
+    Currently formats the dictionary as {key: [value, timestamp]}
+    """
+    return {key: [data_dict['value'], data_dict['timestamp']]
+            for key, data_dict in six.iteritems(event_dict)}
+
+
 def db_connect(func):
     def inner(*args, **kwargs):
-        connect(db=metadataStore.conf.mds_config['database'],
-                host=metadataStore.conf.mds_config['host'],
-                port=metadataStore.conf.mds_config['port'])
+        db = metadataStore.conf.mds_config['database']
+        host = metadataStore.conf.mds_config['host']
+        port = metadataStore.conf.mds_config['port']
+        print('connecting to db: {}, host: {}, port: {}'.format(db, host, port))
+        connect(db=db, host=host, port=port)
         return func(*args, **kwargs)
     return inner
 
@@ -160,6 +176,12 @@ def insert_event(event_descriptor, time, data, seq_num):
     """
     m_data = __validate_data(data)
 
+    # mostly here to notify ophyd that an event descriptor needs to be created
+    if event_descriptor is None:
+        raise EventDescriptorIsNoneError()
+
+    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
+    # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor.id,
                   data=m_data, time=time, seq_no=seq_no,
                   time_as_datetime=__todatetime(time))
@@ -167,7 +189,6 @@ def insert_event(event_descriptor, time, data, seq_num):
     event = __replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
     return event
-
 
 def __validate_data(data):
     m_data = dict()
@@ -180,6 +201,13 @@ def __validate_data(data):
         else:
             raise TypeError('Data fields must be lists!')
     return m_data
+
+class EventDescriptorIsNoneError(ValueError):
+    """Special error that ophyd looks for when it passes a `None` event
+    descriptor. Ophyd will then create an event descriptor and create the event
+    again
+    """
+    pass
 
 
 def __add_event_descriptors(begin_run_list):
