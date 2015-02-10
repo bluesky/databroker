@@ -55,7 +55,7 @@ class BeginRunEvent(DynamicDocument):
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=True,
+                                     required=False,
                                      db_field='beamline_config_id')
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
