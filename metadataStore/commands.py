@@ -11,14 +11,61 @@ import metadataStore
 
 
 def format_data_keys(data_key_dict):
+    """Helper function that allows ophyd to send info about its data keys
+    to metadatastore and have metadatastore format them into whatever the
+    current spec dictates. This functions formats the data key info for
+    the event descriptor
+
+    Parameters
+    ----------
+    data_key_dict : dict
+        The format that ophyd is sending to metadatastore
+        {'data_key1': {
+            'source': source_value,
+            'dtype': dtype_value,
+            'shape': shape_value},
+         'data_key2': {...}
+        }
+
+    Returns
+    -------
+    formatted_dict : dict
+        Data key info for the event descriptor that is formatted for the
+        current metadatastore spec.The current metadatastore spec is:
+        {'data_key1': {
+            'source': source_value,
+            'dtype': dtype_value,
+            'shape': shape_value},
+         'data_key2': {...}
+        }
+    """
     return data_key_dict
 
-def format_event(event_dict):
+def format_events(event_dict):
     """Helper function for ophyd to format its data dictionary in whatever
     flavor of the week metadataStore's spec says. This insulates ophyd from
     changes to the mds spec
 
     Currently formats the dictionary as {key: [value, timestamp]}
+
+    Parameters
+    ----------
+    event_dict : dict
+        The format that ophyd is sending to metadatastore
+        {'data_key1': {
+            'timestamp': timestamp_value, # should be a float value!
+            'value': data_value
+         'data_key2': {...}
+        }
+
+    Returns
+    -------
+    formatted_dict : dict
+        The event dict formatted according to the current metadatastore spec.
+        The current metadatastore spec is:
+        {'data_key1': [data_value, timestamp_value],
+         'data_key2': [...],
+        }
     """
     return {key: [data_dict['value'], data_dict['timestamp']]
             for key, data_dict in six.iteritems(event_dict)}
@@ -384,8 +431,9 @@ def find_event(begin_run_event):
     events: list
         Set of events encapsulated within a BeginRunEvent's scope
     """
-    descriptors = EventDescriptor.objects(
-        begin_run_event=begin_run_event.id).order_by('-_id')
+    descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id)
+    print(descriptors)
+    descriptors = descriptors.order_by('-_id')
     events = [find_event_given_descriptor(descriptor)
               for descriptor in descriptors]
     return events
