@@ -158,17 +158,26 @@ def insert_event(event_descriptor, time, data, seq_no):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
-    # talk to @dchabot & @swilkins
+    m_data = __validate_data(data)
+
     event = Event(descriptor_id=event_descriptor.id,
-                  data=data, time=time, seq_no=seq_no,
+                  data=m_data, time=time, seq_no=seq_no,
                   time_as_datetime=__todatetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
-
     event.save(validate=True, write_concern={"w": 1})
-
     return event
+
+
+def __validate_data(data):
+    m_data = dict()
+    for k, v in six.iteritems(data):
+        if isinstance(v, list):
+            m_data[k] = v
+        else:
+            raise TypeError('Data fields must be lists!')
+    return m_data
+
 
 def __add_event_descriptors(begin_run_list):
     for begin_run in begin_run_list:

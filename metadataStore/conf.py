@@ -2,6 +2,6 @@ __author__ = 'arkilic'
 
 mds_config = {
     'database': 'metadataStore',
-    'host': 'localhost',
+    'host': "localhost",
     'port': 27017,
 }
