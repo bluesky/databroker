@@ -46,9 +46,9 @@ sleep_time = .05
 
 
 for idx, i in enumerate(np.linspace(start, stop, num)):
-    data = {'linear_motor': [i],
-            'Tsam': [i + 5],
-            'scalar_detector': [func(i)]}
+    data = {'linear_motor': [i, time.time()],
+            'Tsam': [i + 5, time.time()],
+            'scalar_detector': [func(i), time.time()]}
     e = insert_event(event_descriptor=e_desc, seq_no=idx,
                      time=time.time(),
                      data=data)

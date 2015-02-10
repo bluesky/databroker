@@ -173,7 +173,10 @@ def __validate_data(data):
     m_data = dict()
     for k, v in six.iteritems(data):
         if isinstance(v, list):
-            m_data[k] = v
+            if len(v) == 2:
+                m_data[k] = v
+            else:
+                raise ValueError('List must contain value and timestamp')
         else:
             raise TypeError('Data fields must be lists!')
     return m_data
