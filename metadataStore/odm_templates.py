@@ -1,7 +1,7 @@
 __author__ = 'arkilic'
 
-from mongoengine import Document
-from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField, DENY
+from mongoengine import Document, DENY
+from mongoengine import DateTimeField, StringField, DictField, IntField, FloatField, ReferenceField
 from getpass import getuser
 
 
@@ -130,7 +130,6 @@ class Event(Document):
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
     seq_no = IntField(min_value=0, required=True)
-    # talk to @dchabot if you think seq_no is optional
     data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)

@@ -44,14 +44,15 @@ start = 0
 stop = 10
 sleep_time = .05
 
+
 for idx, i in enumerate(np.linspace(start, stop, num)):
-    data = {'linear_motor': i,
-            'Tsam': i + 5,
-            'scalar_detector': func(i)}
+    data = {'linear_motor': [i, time.time()],
+            'Tsam': [i + 5, time.time()],
+            'scalar_detector': [func(i), time.time()]}
     e = insert_event(event_descriptor=e_desc, seq_no=idx,
                      time=time.time(),
                      data=data)
-last_run = find_last()
+last_run = find_last()[0]
 
 try:
     if last_run.id != bre.id:
@@ -68,6 +69,3 @@ else:
 
 if not fetch_events(descriptor=e_desc):
     print("Either Arman or Eric broke find_event().")
-
-
-
