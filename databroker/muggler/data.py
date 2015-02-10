@@ -40,6 +40,7 @@ import logging
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
+import pandas.core.groupby  # to get custom exception
 
 
 logger = logging.getLogger(__name__)
