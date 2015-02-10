@@ -48,19 +48,19 @@ class BeginRunEvent(DynamicDocument):
     sample : dict
         Information about the sample, may be a UID to another collection
     """
-    uid = StringField(required=True, unique=True)
+    uid = StringField(required=False, unique=False)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)
     project = StringField(required=False)
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=True,
+                                     required=False,
                                      db_field='beamline_config_id')
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
     sample = DictField(required=False)  # lightweight sample placeholder.
-    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid']}
+    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id']}
 
 
 class EndRunEvent(DynamicDocument):
@@ -128,10 +128,10 @@ class EventDescriptor(DynamicDocument):
     """
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
-    uid = StringField(required=True, unique=True)
+    uid = StringField(required=False, unique=False)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False) # placeholder for human debugging
-    data_keys = EmbeddedDocumentField(DataKeys, required=True)
+    data_keys = DictField(required=True)
     meta = {'indexes': ['-begin_run_event', '-time']}
 
 
@@ -160,7 +160,7 @@ class Event(Document):
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
-    uid = StringField(required=True, unique=True)
+    uid = StringField(required=False, unique=False)
     seq_num = IntField(min_value=0, required=True)
     data = DictField(required=True)
     time = FloatField(required=True)

@@ -2,7 +2,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
-                                         EndRunEvent, EventDescriptor, Event)
+                                         EndRunEvent, EventDescriptor, Event,
+                                         DataKeys)
 import datetime
 import metadataStore
 from mongoengine import connect
@@ -32,13 +33,13 @@ def format_data_keys(data_key_dict):
     formatted_dict : dict
         Data key info for the event descriptor that is formatted for the
         current metadatastore spec.The current metadatastore spec is:
-        {'data_key1': {
-            'source': source_value,
-            'dtype': dtype_value,
-            'shape': shape_value},
-         'data_key2': {...}
+        {'data_key1':
+         'data_key2': mds.odm_templates.DataKeys
         }
     """
+    data_key_dict = {key_name: DataKeys(**data_key_description)
+                     for key_name, data_key_description
+                     in six.iteritems(data_key_dict)}
     return data_key_dict
 
 def format_events(event_dict):
@@ -134,7 +135,7 @@ def insert_end_run(begin_run_event, time, reason=None):
         The date/time as found at the client side when an event is
         created.
     reason : str, optional
-        provides information regarding the run success.
+        provides information regarding the run success. 20 characters max
 
     Returns
     -------
@@ -170,7 +171,8 @@ def insert_beamline_config(config_params=None):
     return beamline_config
 
 @db_connect
-def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
+def insert_event_descriptor(begin_run_event, data_keys, time,
+                            event_type=None):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
@@ -190,7 +192,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
         The document added to the collection.
 
     """
-    event_descriptor = EventDescriptor(begin_run_event=begin_run_event.id,
+    event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
                                        data_keys=data_keys, time=time,
                                        event_type=event_type,
                                        time_as_datetime=__todatetime(time))
@@ -230,7 +232,7 @@ def insert_event(event_descriptor, time, data, seq_num):
     # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
     # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor.id,
-                  data=m_data, time=time, seq_no=seq_no,
+                  data=m_data, time=time, seq_num=seq_num,
                   time_as_datetime=__todatetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
