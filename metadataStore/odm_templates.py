@@ -30,35 +30,37 @@ class BeginRunEvent(DynamicDocument):
     uid: str
         Globally unique id for this run
     time : timestamp
-        The date/time as found at the client side when an event is
+        The date/time as found at the client side when an begin_run_event is
         created.
-    beamline_id: str
+    beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    owner: str, optional
+    project : str, optional
+        Name of project that this run is part of
+    owner : str
         Specifies the unix user credentials of the user creating the entry
-    scan_id : int, optional
+    group : str
+        Unix group to associate this data with
+    scan_id : int
          scan identifier visible to the user and data analysis
-    beamline_config: bson.ObjectId, optional
+    beamline_config: bson.ObjectId
         Foreign key to beamline config corresponding to a given run
-    custom: dict, optional
-        Additional parameters that data acquisition code/user wants to
-        append to a given header. Name/value pairs
+    sample : dict
+        Information about the sample, may be a UID to another collection
     """
-    uid = StringField(required=True)
+    uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField()
+    time_as_datetime = DateTimeField(required=False)
+    project = StringField(required=False)
     beamline_id = StringField(max_length=20, unique=False, required=True)
-    scan_id = StringField(required=False, unique=False)
+    scan_id = IntField(required=True)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=False,
+                                     required=True,
                                      db_field='beamline_config_id')
-    # one-to-many relationship constructed between BeginRunEvent and BeamlineConfig
     owner = StringField(default=getuser(), required=True, unique=False)
-    custom = DictField(unique=False, required=False, default=dict())
-    # Keeping custom a dict for the time being instead of new collection
-
-    meta = {'indexes': ['-_id', '-owner', '-time']}
+    group = StringField(required=False, unique=False, default=None)
+    sample = DictField(required=False)  # lightweight sample placeholder.
+    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid']}
 
 
 class EndRunEvent(DynamicDocument):
@@ -68,53 +70,72 @@ class EndRunEvent(DynamicDocument):
     ----------
     begin_run_event : bson.ObjectId
         Foreign key to corresponding BeginRunEvent
-    reason : str
+    exit_status : {'success', 'fail', 'abort'}
         provides information regarding the run success.
-    time : timestamp
+    time : float
         The date/time as found at the client side when an event is
         created.
+    reason : str, optional
+        Long-form description of why the run ended.
+        20 char max.
     """
     time = FloatField(required=True)
     time_as_datetime = DateTimeField()
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
 
-    reason = StringField(max_length=10, required=False, default='Complete')
-    custom = DictField(required=False)
-    meta = {'indexes': ['-_id', '-time', '-reason', '-begin_run_event']}
+    exit_status = StringField(max_length=10, required=False, default='success',
+                              choices=('success', 'abort', 'fail'))
+    reason = StringField(required=False, max_length=20)
+    meta = {'indexes': ['-_id', '-time', '-exit_status', '-begin_run_event']}
 
 
 class DataKeys(DynamicEmbeddedDocument):
-    """Describes the objects in the data property of Event documents
+    """Describes the objects in the data property of Event documents.
+    Be aware that this is DynamicEmbeddedDoc Append fields rather than
+    custom dict field
 
+    Attributes
+    ----------
+    dtype : str
+        The type of data in the event
+    shape : list
+        The shape of the data.  None and empty list mean scalar data.
+    source : str
+        The source (ex piece of hardware) of the data.
+    external : str, optional
+        Where the data is stored if it is stored external to the events.
     """
-    # I like the idea of DataKeys being an embedded document since it is one to one relationship with event_descriptors
-    # and mongoengine documentation suggests there are quite a few benefits of this data model
-    # http://docs.mongodb.org/manual/core/data-model-design/#data-modeling-embedding
     dtype = StringField(required=True)
-    shape = ListField(required=True)
+    shape = ListField(required=True, default=None) # defaults to None
     source = StringField(required=True)
-    external = StringField()
+    external = StringField(required=False)
 
 
 class EventDescriptor(DynamicDocument):
     """ Describes the objects in the data property of Event documents
+
     Attributes
     ----------
-    Gotta update this!!!! Incoming...
-
+    begin_run_event : str
+        Globally unique ID to the begin_run document this descriptor is associtaed with.
+    uid : str
+        Globally unique ID for this event descriptor.
+    time : float
+        Creation time of the document as unix epoch time.
+    data_keys : mongoengine.DynamicEmbeddedDocument
+        Describes the objects in the data property of Event documents
     """
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
-    uid = StringField(required=True)
-    keys = DictField(required=True)
+    uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField()
+    time_as_datetime = DateTimeField(required=False) # placeholder for human debugging
     data_keys = EmbeddedDocumentField(DataKeys, required=True)
     meta = {'indexes': ['-begin_run_event', '-time']}
 
 
-class Event(DynamicDocument):
+class Event(Document):
     """ Stores the experimental data. All events point to
     BeginRunEvent, in other words, to BeginRunEvent serves as an
     entry point for all events. Within each event, one can access
@@ -125,13 +146,23 @@ class Event(DynamicDocument):
 
     Attributes
     ----------
-    Update after refactor! Incoming...
+    descriptor : mongoengine.DynamicDocument
+        EventDescriptor foreignkey
+    uid : str
+        Globally unique identifier for this Event
+    seq_num: int
+        Sequence number to identify the location of this Event in the Event stream
+    data: dict
+        Dict of lists that contain e.g. data = {'motor1': [value, timestamp]}
+    time : float
+        The event time.  This maybe different than the timestamps on each of the data entries
 
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
+    uid = StringField(required=True, unique=True)
     seq_num = IntField(min_value=0, required=True)
-    data = DictField(ListField,required=True)
+    data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)
-    meta = {'indexes': ['-descriptor', '-_id', '-time']}
+    meta = {'indexes': ['-descriptor', '-_id']}

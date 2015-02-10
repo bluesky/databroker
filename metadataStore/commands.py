@@ -161,7 +161,7 @@ def insert_event(event_descriptor, time, data, seq_num):
     m_data = __validate_data(data)
 
     event = Event(descriptor_id=event_descriptor.id,
-                  data=data, time=time, seq_num=seq_num,
+                  data=m_data, time=time, seq_no=seq_no,
                   time_as_datetime=__todatetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
