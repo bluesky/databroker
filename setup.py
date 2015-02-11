@@ -70,7 +70,7 @@ setup(
               'databroker.replay.gui',
               'databroker.replay.model',
               'databroker.broker', 'databroker.muggler',
-              'databroker.sources'
+              'databroker.sources', 'databroker.sources.dummy_sources'
               ],
     include_dirs=[np.get_include()],
     entry_points={
