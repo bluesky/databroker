@@ -7,9 +7,8 @@ from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
 import datetime
 import metadataStore
 from mongoengine import connect
-
 import metadataStore
-
+import uuid
 
 def format_data_keys(data_key_dict):
     """Helper function that allows ophyd to send info about its data keys
@@ -84,7 +83,7 @@ def db_connect(func):
 
 @db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
-                     scan_id=None, custom=None):
+                     scan_id=None, custom=None, uid=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -112,8 +111,10 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
         Inserted mongoengine object
 
     """
+    if uid is None:
+        uid = str(uuid.uuid4())
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                              time_as_datetime=__todatetime(time),
+                              time_as_datetime=__todatetime(time), uid=uid,
                               beamline_id=beamline_id, custom=custom,
                               beamline_config=beamline_config.id
                               if beamline_config else None)
@@ -143,8 +144,7 @@ def insert_end_run(begin_run_event, time, reason=None):
         Inserted mongoengine object
     """
     begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
-                            time=time,
-                            time_as_datetime=__todatetime(time))
+                            time=time, time_as_datetime=__todatetime(time))
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
@@ -171,7 +171,7 @@ def insert_beamline_config(config_params=None):
     return beamline_config
 
 @db_connect
-def insert_event_descriptor(begin_run_event, data_keys, time,
+def insert_event_descriptor(begin_run_event, data_keys, time, uid=None,
                             event_type=None):
     """ Create an event_descriptor in metadataStore database backend
 
@@ -192,9 +192,11 @@ def insert_event_descriptor(begin_run_event, data_keys, time,
         The document added to the collection.
 
     """
+    if uid is None:
+        uid = str(uuid.uuid4())
     event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
                                        data_keys=data_keys, time=time,
-                                       event_type=event_type,
+                                       event_type=event_type, uid=uid,
                                        time_as_datetime=__todatetime(time))
 
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
@@ -205,7 +207,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time,
     return event_descriptor
 
 @db_connect
-def insert_event(event_descriptor, time, data, seq_num):
+def insert_event(event_descriptor, time, data, seq_num, uid=None):
     """Create an event in metadataStore database backend
 
     Parameters
@@ -231,7 +233,7 @@ def insert_event(event_descriptor, time, data, seq_num):
 
     # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
     # talk to @dchabot & @swilkins
-    event = Event(descriptor_id=event_descriptor.id,
+    event = Event(descriptor_id=event_descriptor.id, uid=None,
                   data=m_data, time=time, seq_num=seq_num,
                   time_as_datetime=__todatetime(time))
 
