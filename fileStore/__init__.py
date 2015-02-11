@@ -1,1 +1,3 @@
-__author__ = 'arkilic'
+from __future__ import absolute_import
+
+from . import conf

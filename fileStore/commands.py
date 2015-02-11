@@ -3,21 +3,35 @@ from __future__ import absolute_import, division, print_function
 __author__ = 'arkilic'
 from mongoengine import connect
 
-from .conf import database, host, port
+
 from .database.file_base import FileBase
 from .database.file_attributes import FileAttributes
 from .database.file_event_link import FileEventLink
 from .retrieve import get_data as _get_data
+from . import conf
+
 # TODO: Add documentation
 
 
+def db_connect(func):
+    def inner(*args, **kwargs):
+        db = conf.connection_config['database']
+        host = conf.connection_config['host']
+        port = conf.connection_config['port']
+        connect(db=db, host=host, port=port)
+        return func(*args, **kwargs)
+    return inner
+
+
+@db_connect
 def save_file_base(spec, file_path, custom=None, collection_version=0):
     """
     Parameters
     ----------
 
     spec: str
-        File spec used to primarily parse the contents into analysis environment
+        File spec used to primarily parse the contents into
+        analysis environment
 
     file_path: str
         Url to the physical location of the file
@@ -35,7 +49,9 @@ def save_file_base(spec, file_path, custom=None, collection_version=0):
     return file_base_object
 
 
-def save_file_attributes(file_base, shape, dtype, collection_version=0, **kwargs):
+@db_connect
+def save_file_attributes(file_base, shape, dtype,
+                         collection_version=0, **kwargs):
     """
 
     file_base:
@@ -67,7 +83,9 @@ def save_file_attributes(file_base, shape, dtype, collection_version=0, **kwargs
     return file_attributes
 
 
-def save_file_event_link(file_base, event_id, link_parameters=None, collection_version=0):
+@db_connect
+def save_file_event_link(file_base, event_id,
+                         link_parameters=None, collection_version=0):
     """
 
     Parameters
@@ -92,10 +110,10 @@ def save_file_event_link(file_base, event_id, link_parameters=None, collection_v
     return file_event_link
 
 
+@db_connect
 def find_file_base(**kwargs):
 
     query_dict = dict()
-    connect(db=database, host=host, port=port)
 
     try:
         query_dict['spec'] = kwargs.pop('spec')
@@ -112,11 +130,10 @@ def find_file_base(**kwargs):
     return file_base_objects
 
 
+@db_connect
 def find_file_event_link(file_base=None, event_id=None):
 
     query_dict = dict()
-
-    connect(db=database, host=host, port=port)
 
     if file_base is not None:
         query_dict['file_base'] = file_base.id
@@ -128,7 +145,7 @@ def find_file_event_link(file_base=None, event_id=None):
     return FileEventLink.objects(__raw__=query_dict)
 
 
-
+@db_connect
 def find_last():
     """Searches for the last file_base created
 
@@ -150,6 +167,7 @@ def find_last():
         return []
 
 
+@db_connect
 def find_file_attributes(file_base):
     """Return  file_attributes entry given a file_header object
 
