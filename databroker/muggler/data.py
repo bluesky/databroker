@@ -63,7 +63,7 @@ class BadDownsamplerError(Exception):
 
 
 class ColSpec(namedtuple(
-              'ColSpec', ['name', 'ndim', 'upsample', 'downsample'])):
+              'ColSpec', ['name', 'ndim', 'shape', 'upsample', 'downsample'])):
     """
     Named-tuple sub-class to validate the column specifications for the
     DataMuggler
@@ -73,6 +73,8 @@ class ColSpec(namedtuple(
     name : hashable
     ndim : uint
         Dimensionality of the data stored in the column
+    shape : tuple or None
+        like ndarray.shape, where 0 or None are scalar
     upsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
                 'cubic'}
         None means that each time bin must have at least one value.
@@ -91,19 +93,28 @@ class ColSpec(namedtuple(
     upsampling_methods = {'linear', 'nearest', 'zero', 'slinear',
                           'quadratic', 'cubic'}
     downsampling_methods = {'last', 'first', 'median', 'mean', 'sum', 'min',
-                            'max', 'count'}
+                            'max'}
+    _downsample_mapping = {'last': lambda x: x[-1],
+                           'first': lambda x: x[0],
+                           'median': lambda x: np.median(x, 0),  # new in np 1.9
+                           'mean': lambda x: np.mean(x, 0),
+                           'sum': lambda x: np.sum(x, 0),
+                           'min': lambda x: np.min(x, 0),
+                           'max': lambda x: np.max(x, 0)}
 
     __slots__ = ()
 
-    def __new__(cls, name, ndim, upsample, downsample):
+    def __new__(cls, name, ndim, shape, upsample, downsample):
         # Validations
         upsample = _validate_upsample(upsample)
         downsample = _validate_downsample(downsample)
         if int(ndim) < 0:
             raise ValueError("ndim must be positive not {}".format(ndim))
+        if shape is not None:
+            shape = tuple(shape)
 
         return super(ColSpec, cls).__new__(
-            cls, name, ndim, upsample, downsample)
+            cls, name, int(ndim), shape, upsample, downsample)
 
 
 def _validate_upsample(input):
@@ -245,19 +256,17 @@ class DataMuggler(object):
             # If it is a new name, determine a ColSpec.
             else:
                 self.sources[name] = description['source']
-                if 'external' in description:
-                    if 'shape' in description:
-                        ndim = len(description['shape'])
-                    else:
-                        # External data can be scalar. Nonscalar data must
-                        # have a specified shape. Thus, if no shape is given,
-                        # assume scalar.
-                        ndim = 0
+                if 'external' in description and 'shape' in description:
+                    shape = description['shape']
+                    ndim = len(shape)
                 else:
-                    # All non-external data is scalar.
+                    # External data can be scalar. Nonscalar data must
+                    # have a specified shape. Thus, if no shape is given,
+                    # assume scalar.
+                    shape = None
                     ndim = 0
 
-                col_info = ColSpec(name, ndim, None, None)  # defaults
+                col_info = ColSpec(name, ndim, shape, None, None)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
                 self.col_info[name] = col_info
@@ -491,14 +500,32 @@ class DataMuggler(object):
                                    "and there is no rule for downsampling "
                                    "(i.e., reducing) it.".format(name))
             if verify_integrity and callable(downsample):
-                expected_shape = 0  # TODO get real shape from descriptor
-                downsample = _build_safe_downsample(downsample, expected_shape)
-            downsampled = grouped[name].agg({name: downsample}).squeeze()
+                downsample = _build_verifed_downsample(downsample,
+                                                       col_info.shape)
+
+            g = grouped[name]  # for brevity
+            if col_info.ndim == 0:
+                # For scalars, pandas knows what to do.
+                downsampled = g.agg(downsample)
+                result[name]['std'] = g.std()
+                result[name]['max'] = g.max()
+                result[name]['min'] = g.min()
+            else:
+                # For nonscalars, we are abusing groupby and must go to a
+                # a little more trouble to guarantee success.
+                if not callable(downsample):
+                    # Do this lookup here so that strings can be passed
+                    # in the call to resample.
+                    downsample = ColSpec._downsample_mapping[downsample]
+                downsampled = g.apply(lambda x: downsample(np.asarray(x.dropna())))
+                result[name]['std'] = g.apply(
+                    lambda x: np.std(np.asarray(x.dropna()), 0))
+                result[name]['max'] = g.apply(
+                    lambda x: np.max(np.asarray(x.dropna()), 0))
+                result[name]['min'] = g.apply(
+                    lambda x: np.min(np.asarray(x.dropna()), 0))
             result[name]['val'].where(~has_multiple_points[name], downsampled,
                                       inplace=True)
-            result[name]['std'] = grouped[name].std()
-            result[name]['max'] = grouped[name].max()
-            result[name]['min'] = grouped[name].min()
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
         # Label the bins with time points.
@@ -539,6 +566,7 @@ class DataMuggler(object):
             result[col_spec.ndim].append(col_spec)
         return result
 
+
 def dataframe_to_dict(df):
     """
     Turn a DataFrame into a dict of lists.
@@ -559,7 +587,7 @@ def dataframe_to_dict(df):
     return df.index.values, dict_of_lists
 
 
-def _build_safe_downsample(downsample, expected_shape):
+def _build_verified_downsample(downsample, expected_shape):
     # Ensure two things:
     # 1. The downsampling function shouldn't touch bins with only one point.
     # 2. The result of downsample should have the right shape.

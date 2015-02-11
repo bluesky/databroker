@@ -1,6 +1,8 @@
 import numpy as np
+import uuid
 from functools import wraps
-from metadataStore.api.collection import insert_begin_run
+from metadataStore.api.collection import (insert_begin_run,
+                                          insert_beamline_config)
 from metadataStore.commands import insert_end_run  # missing from the api
 from ...broker.struct import BrokerStruct
 
@@ -72,7 +74,10 @@ def example(func):
     @wraps(func)
     def mock_begin_run(begin_run=None):
         if begin_run is None:
-            begin_run = insert_begin_run(time=0., beamline_id='csx')
+            blc = insert_beamline_config()
+            begin_run = insert_begin_run(time=0., scan_id=1, beamline_id='csx',
+                                         uid=str(uuid.uuid4()),
+                                         beamline_config=blc)
         events = func(begin_run)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
