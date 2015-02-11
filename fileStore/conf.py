@@ -1,7 +1,6 @@
-__author__ = 'arkilic'
 
-
-database = "fileStore"
-host = "localhost"
-port = 27017
-
+connection_config = {
+    'database': 'fileStore',
+    'host': "localhost",
+    'port': 27017,
+}
