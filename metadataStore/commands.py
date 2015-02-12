@@ -9,6 +9,7 @@ import metadataStore
 from mongoengine import connect
 import uuid
 
+
 def format_data_keys(data_key_dict):
     """Helper function that allows ophyd to send info about its data keys
     to metadatastore and have metadatastore format them into whatever the
@@ -35,10 +36,14 @@ def format_data_keys(data_key_dict):
          'data_key2': mds.odm_templates.DataKeys
         }
     """
-    data_key_dict = {key_name: DataKey(**data_key_description)
+    data_key_dict = {key_name: (
+                     DataKey(**data_key_description) if
+                           not isinstance(data_key_description, DataKey) else
+                           data_key_description)
                      for key_name, data_key_description
                      in six.iteritems(data_key_dict)}
     return data_key_dict
+
 
 def format_events(event_dict):
     """Helper function for ophyd to format its data dictionary in whatever
