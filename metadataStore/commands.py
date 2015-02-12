@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
                                          EndRunEvent, EventDescriptor, Event,
-                                         DataKeys)
+                                         DataKey)
 import datetime
 import metadataStore
 from mongoengine import connect
@@ -36,7 +36,7 @@ def format_data_keys(data_key_dict):
          'data_key2': mds.odm_templates.DataKeys
         }
     """
-    data_key_dict = {key_name: DataKeys(**data_key_description)
+    data_key_dict = {key_name: DataKey(**data_key_description)
                      for key_name, data_key_description
                      in six.iteritems(data_key_dict)}
     return data_key_dict
@@ -194,6 +194,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, uid=None,
     """
     if uid is None:
         uid = str(uuid.uuid4())
+    data_keys = format_data_keys(data_keys)
     event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
                                        data_keys=data_keys, time=time,
                                        event_type=event_type, uid=uid,
@@ -231,9 +232,12 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     if event_descriptor is None:
         raise EventDescriptorIsNoneError()
 
+    if uid is None:
+        uid = str(uuid.uuid4())
+
     # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
     # talk to @dchabot & @swilkins
-    event = Event(descriptor_id=event_descriptor.id, uid=None,
+    event = Event(descriptor_id=event_descriptor.id, uid=uid,
                   data=m_data, time=time, seq_num=seq_num,
                   time_as_datetime=__todatetime(time))
 

@@ -1,8 +1,8 @@
 __author__ = 'arkilic'
 
-from mongoengine import Document, DynamicDocument,EmbeddedDocument, DynamicEmbeddedDocument
+from mongoengine import Document, DynamicDocument, DynamicEmbeddedDocument
 from mongoengine import (DateTimeField, StringField, DictField, IntField, FloatField, ListField,
-                         ReferenceField, EmbeddedDocumentField, DynamicField, DENY)
+                         ReferenceField, EmbeddedDocumentField, DENY, MapField)
 from getpass import getuser
 
 
@@ -48,19 +48,19 @@ class BeginRunEvent(DynamicDocument):
     sample : dict
         Information about the sample, may be a UID to another collection
     """
-    uid = StringField(required=False, unique=False)
+    uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)
     project = StringField(required=False)
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=False,
+                                     required=True,
                                      db_field='beamline_config_id')
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
     sample = DictField(required=False)  # lightweight sample placeholder.
-    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id']}
+    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid']}
 
 
 class EndRunEvent(DynamicDocument):
@@ -90,7 +90,7 @@ class EndRunEvent(DynamicDocument):
     meta = {'indexes': ['-_id', '-time', '-exit_status', '-begin_run_event']}
 
 
-class DataKeys(DynamicEmbeddedDocument):
+class DataKey(DynamicEmbeddedDocument):
     """Describes the objects in the data property of Event documents.
     Be aware that this is DynamicEmbeddedDoc Append fields rather than
     custom dict field
@@ -107,7 +107,7 @@ class DataKeys(DynamicEmbeddedDocument):
         Where the data is stored if it is stored external to the events.
     """
     dtype = StringField(required=True)
-    shape = ListField(required=True, default=None) # defaults to None
+    shape = ListField(field=IntField) # defaults to None
     source = StringField(required=True)
     external = StringField(required=False)
 
@@ -128,10 +128,10 @@ class EventDescriptor(DynamicDocument):
     """
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
-    uid = StringField(required=False, unique=False)
+    uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False) # placeholder for human debugging
-    data_keys = DictField(required=True)
+    data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
     meta = {'indexes': ['-begin_run_event', '-time']}
 
 
@@ -160,8 +160,9 @@ class Event(Document):
     """
     descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
-    uid = StringField(required=False, unique=False)
+    uid = StringField(required=True, unique=True)
     seq_num = IntField(min_value=0, required=True)
+    # TODO validate on this better
     data = DictField(required=True)
     time = FloatField(required=True)
     time_as_datetime = DateTimeField(required=False)
