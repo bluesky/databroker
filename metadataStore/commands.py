@@ -123,7 +123,7 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
 
 
 @db_connect
-def insert_end_run(begin_run_event, time, reason=None):
+def insert_end_run(begin_run_event, time, reason=None, uid=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -142,12 +142,16 @@ def insert_end_run(begin_run_event, time, reason=None):
     begin_run : mongoengine.Document
         Inserted mongoengine object
     """
-    begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
-                            time=time, time_as_datetime=__todatetime(time))
+    if uid is None:
+        uid = uuid.uuid4()
+    begin_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
+                            time=time, time_as_datetime=__todatetime(time),
+                            uid=uid)
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
+
 
 @db_connect
 def insert_beamline_config(config_params=None):

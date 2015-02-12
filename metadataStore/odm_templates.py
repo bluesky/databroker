@@ -86,6 +86,7 @@ class EndRunEvent(DynamicDocument):
                               choices=('success', 'abort', 'fail'))
     reason = StringField(required=False, max_length=20)
     meta = {'indexes': ['-_id', '-time', '-exit_status', '-begin_run_event']}
+    uid = StringField(required=True, unique=True)
 
 
 class DataKey(DynamicEmbeddedDocument):
