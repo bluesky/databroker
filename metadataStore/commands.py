@@ -123,7 +123,8 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
 
 
 @db_connect
-def insert_end_run(begin_run_event, time, reason=None, uid=None):
+def insert_end_run(begin_run_event, time, exit_status='success',
+                   reason=None, uid=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -144,13 +145,13 @@ def insert_end_run(begin_run_event, time, reason=None, uid=None):
     """
     if uid is None:
         uid = str(uuid.uuid4())
-    begin_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
+    end_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
                             time=time, time_as_datetime=__todatetime(time),
-                            uid=uid)
+                            uid=uid, exit_status=exit_status)
 
-    begin_run.save(validate=True, write_concern={"w": 1})
+    end_run.save(validate=True, write_concern={"w": 1})
 
-    return begin_run
+    return end_run
 
 
 @db_connect
