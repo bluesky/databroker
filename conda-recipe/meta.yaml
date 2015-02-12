@@ -26,11 +26,14 @@ requirements:
     - python
     - pandas
     - matplotlib
+    - pyyaml
     - enaml
     - bubblegum
     - scikit-xray
     - pims
     - metadatastore
+    - filestore
+    - channelarchiver
 
 test:
   imports:
