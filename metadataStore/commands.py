@@ -5,9 +5,13 @@ from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
                                          EndRunEvent, EventDescriptor, Event,
                                          DataKey)
 import datetime
+import logging
 import metadataStore
 from mongoengine import connect
 import uuid
+
+
+logger = logging.getLogger(__name__)
 
 
 def format_data_keys(data_key_dict):
@@ -80,7 +84,8 @@ def db_connect(func):
         db = metadataStore.conf.mds_config['database']
         host = metadataStore.conf.mds_config['host']
         port = metadataStore.conf.mds_config['port']
-        print('connecting to db: {}, host: {}, port: {}'.format(db, host, port))
+        logger.debug('connecting to db: %s, host: %s, port: %s',
+                     db, host, port)
         connect(db=db, host=host, port=port)
         return func(*args, **kwargs)
     return inner
@@ -452,7 +457,6 @@ def find_event(begin_run_event):
         Set of events encapsulated within a BeginRunEvent's scope
     """
     descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id)
-    print(descriptors)
     descriptors = descriptors.order_by('-_id')
     events = [find_event_given_descriptor(descriptor)
               for descriptor in descriptors]
