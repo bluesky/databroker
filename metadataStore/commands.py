@@ -173,6 +173,7 @@ def insert_beamline_config(config_params=None):
 
     return beamline_config
 
+
 @db_connect
 def insert_event_descriptor(begin_run_event, data_keys, time, uid=None):
     """ Create an event_descriptor in metadataStore database backend
@@ -208,6 +209,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, uid=None):
     event_descriptor.save(validate=True, write_concern={"w": 1})
 
     return event_descriptor
+
 
 @db_connect
 def insert_event(event_descriptor, time, data, seq_num, uid=None):
@@ -247,6 +249,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     event.save(validate=True, write_concern={"w": 1})
     return event
 
+
 def __validate_data(data):
     m_data = dict()
     for k, v in six.iteritems(data):
@@ -258,6 +261,7 @@ def __validate_data(data):
         else:
             raise TypeError('Data fields must be lists!')
     return m_data
+
 
 class EventDescriptorIsNoneError(ValueError):
     """Special error that ophyd looks for when it passes a `None` event
