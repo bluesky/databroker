@@ -7,7 +7,6 @@ from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
 import datetime
 import metadataStore
 from mongoengine import connect
-import metadataStore
 import uuid
 
 def format_data_keys(data_key_dict):
