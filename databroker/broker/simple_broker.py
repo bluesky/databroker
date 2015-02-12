@@ -148,12 +148,11 @@ def _get_local_cahost():
 
 def get_last(channels=None, ca_host=None):
     mdsapi = sources.metadataStore.api.analysis
-    bre = mdsapi.find_last()
+    bre, = mdsapi.find_last()
     events = mdsapi.find_event(bre)
-    print(events[0])
+    events = [ev for desc in events for ev in desc]
     # remove the foot cannons from the mongoengine objects
     bre = BrokerStruct(bre)
-    events = [BrokerStruct(ev) for ev in events]
     # fill in the events from any external data sources
     [fill_event(event) for event in events]
     tstart = bre.time
