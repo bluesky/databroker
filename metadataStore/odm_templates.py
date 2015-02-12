@@ -50,7 +50,6 @@ class BeginRunEvent(DynamicDocument):
     """
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField(required=False)
     project = StringField(required=False)
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
@@ -80,7 +79,6 @@ class EndRunEvent(DynamicDocument):
         20 char max.
     """
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField()
     begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
                                      required=True, db_field='begin_run_id')
 
@@ -131,7 +129,6 @@ class EventDescriptor(DynamicDocument):
                                      required=True, db_field='begin_run_id')
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField(required=False) # placeholder for human debugging
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
     meta = {'indexes': ['-begin_run_event', '-time']}
 
