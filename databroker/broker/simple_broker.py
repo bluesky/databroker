@@ -188,8 +188,7 @@ def _fill_event(event):
     """
     retrieve_data = sources.fileStore.commands.retrieve_data
     is_external = _inspect_descriptor(event.descriptor)
-    for data_key, data_dict in event.data.items():
-        value, _ = data_dict['value'], data_dict['timestamp']
+    for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
             event.data[data_key] = retrieve_data(value)
