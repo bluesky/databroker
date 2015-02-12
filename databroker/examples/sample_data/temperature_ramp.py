@@ -18,8 +18,8 @@ def run(begin_run=None):
     point_det_data = rs.randn(num_exposures)
 
     # Create Event Descriptors
-    data_keys1 = {'point_det': {'source': 'PV:ES:PointDet'}}
-    data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam'}}
+    data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
+    data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
     ev_desc1 = insert_event_descriptor(begin_run_event=begin_run,
                                        data_keys=data_keys1, time=0.)
     ev_desc2 = insert_event_descriptor(begin_run_event=begin_run,
@@ -31,17 +31,17 @@ def run(begin_run=None):
     # Point Detector Events
     for i in range(num_exposures):
         time = float(i + 0.01 * rs.randn())
-        data = {'point_det': {'value': point_det_data[i], 'timestamp': time}}
-        event = insert_event(event_descriptor=ev_desc1, seq_no=i, time=time,
+        data = {'point_det': (point_det_data[i], time)}
+        event = insert_event(event_descriptor=ev_desc1, seq_num=i, time=time,
                              data=data)
         events.append(event)
 
     # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time)
-        data = {'Tsam': {'value': temp, 'timestamp': time}}
+        data = {'Tsam': (temp, time)}
         event = insert_event(event_descriptor=ev_desc2, time=time,
-                             data=data, seq_no=i)
+                             data=data, seq_num=i)
         events.append(event)
 
     return events

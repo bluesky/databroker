@@ -20,12 +20,10 @@ def run(begin_run=None):
     point_det_data = rs.randn(num_exposures)
 
     # Create Event Descriptors
-    data_keys1 = {'point_det': {'source': 'PV:ES:PointDet', 'shape': None,
-                                'dtype': 'number'}}
-    data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam', 'shape': None,
-                           'dtype': 'number'},
-                  'Troom': {'source': 'PV:ES:Troom', 'shape': None,
-                            'dtype': 'number'}}
+    data_keys1 = {'point_det': dict(source='PV:ES:PointDet',
+                                    dtype='number')}
+    data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
+                  'Troom': dict(source='PV:ES:Troom', dtype='number')}
     ev_desc1 = insert_event_descriptor(begin_run_event=begin_run,
                                        data_keys=data_keys1, time=0.,
                                        uid=str(uuid.uuid4()))
@@ -39,18 +37,18 @@ def run(begin_run=None):
     # Point Detector Events
     for i in range(num_exposures):
         time = float(i + 0.01 * rs.randn())
-        data = {'point_det': {'value': point_det_data[i], 'timestamp': time}}
-        event = insert_event(event_descriptor=ev_desc1, seq_no=i, time=time,
+        data = {'point_det': (point_det_data[i], time)}
+        event = insert_event(event_descriptor=ev_desc1, seq_num=i, time=time,
                              data=data, uid=str(uuid.uuid4()))
         events.append(event)
 
     # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time)
-        data = {'Tsam': {'value': temp, 'timestamp': time},
-                'Troom': {'value': temp + 10, 'timestamp': time}}
+        data = {'Tsam': (temp, time),
+                'Troom': (temp + 10, time)}
         event = insert_event(event_descriptor=ev_desc2, time=time,
-                             data=data, seq_no=i, uid=str(uuid.uuid4()))
+                             data=data, seq_num=i, uid=str(uuid.uuid4()))
         events.append(event)
 
     return events

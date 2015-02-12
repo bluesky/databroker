@@ -81,8 +81,8 @@ def example(func):
         events = func(begin_run)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
-        end_time = max([event.time for event in events])
-        insert_end_run(begin_run, end_time, 'life')
+        time = max([event.time for event in events])
+        insert_end_run(begin_run, time=time, exit_status='success')
         events = [BrokerStruct(e) for e in events]
         return events
     return mock_begin_run

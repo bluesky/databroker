@@ -234,8 +234,8 @@ class DataMuggler(object):
         for name, data_dict in event.data.items():
             # Both scalar and nonscalar data will get stored in the DataFrame.
             # This may be optimized later, but it might not actually help much.
-            self._data.append({name: event.data[name]['value']})
-            self._timestamps.append({name: event.data[name]['timestamp']})
+            self._data.append({name: event.data[name][0]})
+            self._timestamps.append({name: event.data[name][1]})
             self._time.append(event.time)
         return True
 
@@ -298,7 +298,7 @@ class DataMuggler(object):
         # should be treated as data in the _dataframe method above.
         self._timestamps_as_data.add(source_name)
         name = _timestamp_col_name(source_name)
-        self.col_info[name] = ColSpec(name, 0, None, np.mean)
+        self.col_info[name] = ColSpec(name, 0, None, None, np.mean)
         self._stale = True
 
     def remove_timestamp_data(self, source_name):
@@ -500,7 +500,7 @@ class DataMuggler(object):
                                    "and there is no rule for downsampling "
                                    "(i.e., reducing) it.".format(name))
             if verify_integrity and callable(downsample):
-                downsample = _build_verifed_downsample(downsample,
+                downsample = _build_verified_downsample(downsample,
                                                        col_info.shape)
 
             g = grouped[name]  # for brevity
