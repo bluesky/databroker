@@ -90,8 +90,8 @@ def test_ev_desc():
                                 beamline_id='sample_beamline',
                                 scan_id=42)
     data_keys = {'some_value': {'source': 'PV:pv1',
-                              'shape': [],
-                              'dtype': 'number'},
+                              'shape': [1, 2],
+                              'dtype': 'array'},
                  'some_other_val': {'source': 'PV:pv2',
                               'shape': [],
                               'dtype': 'number'},

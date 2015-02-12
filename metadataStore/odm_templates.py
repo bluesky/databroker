@@ -107,7 +107,7 @@ class DataKey(DynamicEmbeddedDocument):
     """
     dtype = StringField(required=True,
                         choices=('integer', 'number', 'array', 'boolean', 'string'))
-    shape = ListField(field=IntField) # defaults to empty list
+    shape = ListField() # defaults to empty list
     source = StringField(required=True)
     external = StringField(required=False)
 
