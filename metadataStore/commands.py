@@ -241,7 +241,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
 
     # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
     # talk to @dchabot & @swilkins
-    event = Event(descriptor_id=event_descriptor.id, uid=uid,
+    event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num,
                   time_as_datetime=__todatetime(time))
 
