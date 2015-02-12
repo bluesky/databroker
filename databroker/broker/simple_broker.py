@@ -192,7 +192,7 @@ def fill_event(event):
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key]['value'] = retrieve_data(value)
+            event.data[data_key][0]= retrieve_data(value)
 
 
 def _scrape_event(event):
@@ -207,8 +207,7 @@ def _scrape_event(event):
     retrieve_data = sources.fileStore.commands.retrieve_data
     is_external = _inspect_descriptor(event.ev_desc)
     data = dict()
-    for data_key, data_dict in event.data.items():
-        value, _ = data_dict['value'], data_dict['timestamp']
+    for data_key, (value, _) in event.data.items():
         # Notice that the timestamp is not returned to the user, only the
         # event time, below.
         if is_external[data_key]:
