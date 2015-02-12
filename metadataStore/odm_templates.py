@@ -55,7 +55,7 @@ class BeginRunEvent(DynamicDocument):
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=True,
+                                     required=False,
                                      db_field='beamline_config_id')
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
@@ -106,8 +106,9 @@ class DataKey(DynamicEmbeddedDocument):
     external : str, optional
         Where the data is stored if it is stored external to the events.
     """
-    dtype = StringField(required=True)
-    shape = ListField(field=IntField) # defaults to None
+    dtype = StringField(required=True,
+                        choices=('integer', 'number', 'array', 'boolean', 'string'))
+    shape = ListField(field=IntField) # defaults to empty list
     source = StringField(required=True)
     external = StringField(required=False)
 
