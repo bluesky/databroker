@@ -253,9 +253,9 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
 def __validate_data(data):
     m_data = dict()
     for k, v in six.iteritems(data):
-        if isinstance(v, list):
+        if isinstance(v, (list, tuple)):
             if len(v) == 2:
-                m_data[k] = v
+                m_data[k] = list(v)
             else:
                 raise ValueError('List must contain value and timestamp')
         else:
