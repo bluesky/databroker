@@ -143,7 +143,7 @@ def insert_end_run(begin_run_event, time, reason=None, uid=None):
         Inserted mongoengine object
     """
     if uid is None:
-        uid = uuid.uuid4()
+        uid = str(uuid.uuid4())
     begin_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
                             time=time, time_as_datetime=__todatetime(time),
                             uid=uid)
