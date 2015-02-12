@@ -170,8 +170,7 @@ def insert_beamline_config(config_params=None):
     return beamline_config
 
 @db_connect
-def insert_event_descriptor(begin_run_event, data_keys, time, uid=None,
-                            event_type=None):
+def insert_event_descriptor(begin_run_event, data_keys, time, uid=None):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
@@ -196,7 +195,7 @@ def insert_event_descriptor(begin_run_event, data_keys, time, uid=None,
     data_keys = format_data_keys(data_keys)
     event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
                                        data_keys=data_keys, time=time,
-                                       event_type=event_type, uid=uid,
+                                       uid=uid,
                                        time_as_datetime=__todatetime(time))
 
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
