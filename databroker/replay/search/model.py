@@ -48,23 +48,24 @@ class GetLastModel(Atom):
             begin_run_events_as_dict[bre] = dct
             # format the data keys into a single list that enaml will unpack
             # into a N rows by 3 columns grid
-            data_keys = deque(['KEY NAME', 'PV NAME', 'DATA LOCATION'])
+            data_keys = deque([['KEY NAME', 'DATA LOCATION', 'PV NAME']])
             for evd in event_descriptors:
                 dk = evd.data_keys
                 for data_key, data_key_dict in six.iteritems(dk):
                     while data_key in data_keys:
                         data_key += '_1'
                     print(data_key, data_key_dict)
-                    data_keys.append(data_key)
+                    name = data_key
                     try:
-                        data_keys.append(data_key_dict['source'])
+                        src = data_key_dict['source']
                         try:
-                            data_keys.append(data_key_dict['EXTERNAL'])
+                            loc = data_key_dict['EXTERNAL']
                         except KeyError:
-                            data_keys.append('metadatastore')
+                            loc = 'metadatastore'
                     except (KeyError, TypeError):
-                        data_keys.append(data_key_dict)
-                        data_keys.append('metadatastore')
+                        src = data_key_dict
+                        loc = 'metadatastore'
+                    data_keys.append([name, loc, src])
             begin_run_events_keys[bre] = list(data_keys)
 
         self.__begin_run_events_as_dict = begin_run_events_as_dict

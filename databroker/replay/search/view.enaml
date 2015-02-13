@@ -4,7 +4,7 @@ import six
 
 from enaml.widgets.api import (Container, RadioButton, PushButton, Window,
                                ScrollArea, Form, Label, GroupBox, SpinBox,
-                               Html)
+                               Html, Field)
 from enaml.core.api import (Looper, Conditional, Include)
 from enaml.stdlib.fields import IntField
 from enaml.layout.api import (vbox, hbox, spacer, Box, grid, factory, align)
@@ -34,8 +34,9 @@ enamldef DisplaySummary(Container):
             iterable << sorted(display_dict)
             Label:
                 text = loop_item
-            Label:
+            Field:
                 text = str(display_dict[loop_item])
+                read_only = True
 
 
 enamldef GetLastView(Container):
@@ -93,8 +94,20 @@ enamldef GetLastView(Container):
                     padding = Box(0, 0, 0, 10)
                     constraints << [factory(generate_grid, 3)]
                     Include:
-                        objects << [Label(text=text) for text
-                                    in get_last_model.selected_keys]
+                        objects << gen_objects(get_last_model.selected_keys)
+
+def gen_objects(keys):
+    try:
+        headers = keys[0]
+    except IndexError:
+        return []
+    objs = [Label(text=headers[0]), Label(text=headers[1]),
+            Label(text=headers[2])]
+    for key in keys[1:]:
+        objs.append(Label(text = key[0]))
+        objs.append(Label(text = key[1]))
+        objs.append(Field(text=key[2], read_only=True))
+    return objs
 
 enamldef GetLastWindow(Window): window:
     title = "Get Last"
