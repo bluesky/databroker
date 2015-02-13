@@ -106,8 +106,9 @@ class DataKey(DynamicEmbeddedDocument):
         Where the data is stored if it is stored external to the events.
     """
     dtype = StringField(required=True,
-                        choices=('integer', 'number', 'array', 'boolean', 'string'))
-    shape = ListField() # defaults to empty list
+                        choices=('integer', 'number', 'array',
+                                 'boolean', 'string'))
+    shape = ListField(field=IntField())  # defaults to empty list
     source = StringField(required=True)
     external = StringField(required=False)
 
