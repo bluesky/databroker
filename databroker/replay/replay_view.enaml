@@ -1,5 +1,5 @@
 from enaml.layout.api import (InsertItem, VSplitLayout, HSplitLayout,
-                              InsertDockBarItem)
+                              InsertDockBarItem, TabLayout)
 from enaml.stdlib.fields import FloatField, IntField
 from enaml.widgets.api import (Window, Container, DockItem, DockArea,
                                MainWindow, ObjectCombo, PushButton, Timer,
@@ -83,6 +83,17 @@ enamldef PipelineView(MainWindow): main:
             layout = HSplitLayout(VSplitLayout('trigger pvs', 'scalar controller'),
                                   VSplitLayout('scalar view')
             )
+            DockItem:
+                name = 'get_last'
+                title = 'Last'
+                Container:
+
+            DockItem:
+                name = 'search'
+                title = 'Search'
+            DockItem:
+                name = 'scan_id'
+                title = 'Scan ID'
             DockItem:
                 name = 'scalar view'
                 title = 'Scalar View'

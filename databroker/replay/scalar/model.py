@@ -12,7 +12,6 @@ from datetime import datetime
 import logging
 from copy import copy
 from pprint import pprint
-from .fitting_model import MultiFitController
 logger = logging.getLogger(__name__)
 import numpy as np
 import random
@@ -102,7 +101,6 @@ class ScalarModel(Atom):
     """
     name = Str()
     is_plotting = Bool()
-    can_plot = Bool()
     line_artist = Typed(Line2D)
 
     def __init__(self, line_artist, **kwargs):
@@ -124,17 +122,15 @@ class ScalarModel(Atom):
 
     @observe('is_plotting')
     def set_visible(self, changed):
+        print('{} is visible: {}'.format(self.name, self.is_plotting))
         self.line_artist.set_visible(changed['value'])
         try:
             self.line_artist.axes.figure.canvas.draw()
         except AttributeError:
             pass
 
-    @observe('can_plot')
-    def set_plottable(self, changed):
-        self.is_plotting = changed['value']
-
-    def get_state(self):
+    @property
+    def state(self):
         """Obtain the state of all instance variables in the ScalarModel
 
         Returns
@@ -145,7 +141,6 @@ class ScalarModel(Atom):
         state = ""
         state += '\nname: {}'.format(self.name)
         state += '\nis_plotting: {}'.format(self.is_plotting)
-        state += '\ncan_plot: {}'.format(self.can_plot)
         state += '\nline_artist: {}'.format(self.line_artist)
         return state
 
@@ -202,11 +197,17 @@ class ScalarCollection(Atom):
     x_index = Int()
 
     # name of the column to align against
-    alignment_col = Str()
-    x_is_data = Bool(True)
+    bin_on = Str()
     x_is_time = Bool(False)
     # name of all columns that the data muggler knows about
     col_names = List()
+
+    # should the pandas dataframe plotting use subplots for each column
+    single_plot = Bool(False)
+    # shape of the subplots
+    ncols = Range(low=0)
+    nrows = Range(low=0) # 0 here
+
 
     # ESTIMATING
     # the current set of data to perform peak estimates for
@@ -229,10 +230,6 @@ class ScalarCollection(Atom):
     _ax = Typed(Axes)
     # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
-
-    # FITTING
-    fit_target = Str()
-    multi_fit_controller = Typed(MultiFitController)
 
     # CONTROL OF THE PLOT UPDATE SPEED
     redraw_every = Float(default=1)
@@ -263,11 +260,25 @@ class ScalarCollection(Atom):
         line_artist, = self._ax.plot([], [], label=nodata_str)
         self.scalar_models[nodata_str] = ScalarModel(line_artist=line_artist,
                                                name=nodata_str,
-                                               can_plot=True,
                                                is_plotting=True)
+
+    def new_data_muggler(self, changed):
+        """Function to be registered with a MugglerModel on its `muggler`
+        attribute
+
+        Parameters
+        ----------
+        changed : dict
+            Changed is emitted by Atom and has the following keys:
+            {'value', 'object', 'type', 'name', 'oldvalue'}
+        """
+        print('new_data_muggler callback function triggered in '
+              'ScalarCollection')
+        self.data_muggler = changed['value']
 
     @observe('data_muggler')
     def update_datamuggler(self, changed):
+        print('data muggler update triggered')
         with self.suppress_notifications():
             if self.data_muggler is None:
                 self.col_names = [nodata_str]
@@ -275,79 +286,66 @@ class ScalarCollection(Atom):
                 self.estimate_target = self.x
                 self.estimate_index = self.col_names.index(self.x)
                 self.normalize_target = self.x
-                self.alignment_col = self.x
+                self.bin_on = self.x
                 self.init_scalar_models()
                 return
             # connect the signals from the muggler to the appropriate slots
             # in this class
-            self.data_muggler.new_data.connect(self.notify_new_data)
-            self.data_muggler.new_columns.connect(self.notify_new_column)
             # get the column names with dimensionality equal to zero
-            self.col_names = self.data_muggler.keys(dim=0)
-            self.col_names.append('fit')
-            # default to the first column name
-            self.x = self.col_names[0]
-            self.estimate_target = self.x
-            self.estimate_index = self.col_names.index(self.estimate_target)
-            self.normalize_target = self.x
-            self.alignment_col = self.col_names[0]
+            print('data muggler col info by ndim: {}'.format(self.data_muggler.col_info_by_ndim))
+            col_names = [col_info.name for col_info
+                         in self.data_muggler.col_info_by_ndim[0]]
+            # default to time
+            x = col_names[0]
+            x_is_time = True
+            estimate_target = None
+            estimate_index = self.col_names.index(self.estimate_target)
+            # don't bin by any of the columns by default and plot by time
+            bin_on = x
             # blow away scalar models
             self.scalar_models.clear()
             self._ax.cla()
-            # print('self.col_names: {}'.format(self.col_names))
-            # print('self.x: {}'.format(self.x))
-            # print('self.alignment_col: {}'.format(self.alignment_col))
-            # get the alignability of the columns that this model cares about
-            alignable = self.data_muggler.align_against(self.alignment_col,
-                                                        self.col_names)
-            # print('\nalignable\n---------')
-            # pprint(alignable)
-            # print('\\alignable')
 
-            for name, is_plottable in six.iteritems(alignable):
+            for name in col_names:
                 # create a new line artist and scalar model
                 line_artist, = self._ax.plot([], [], label=name, marker='D')
-                self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                       name=name,
-                                                       can_plot=is_plottable,
-                                                       is_plotting=False)
-            # add the fit
-            name = 'fit'
-            line_artist, = self._ax.plot([], [], label=name)
-            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                   name=name,
-                                                   can_plot=True,
-                                                   is_plotting=False)
+                self.scalar_models[name] = ScalarModel(
+                    line_artist=line_artist, name=name, is_plotting=True)
             # add the estimate
             name = 'peak stats'
             line_artist, = self._ax.plot([], [], 'ro', label=name,
                                            markersize=15)
-            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                   name=name,
-                                                   can_plot=True,
-                                                   is_plotting=True)
-        # self._conf.title = 'Scan id: {}. {}'.format(self.scan_id,
-        #                                             datetime.utcnow())
+            self.scalar_models[name] = ScalarModel(
+                line_artist=line_artist, name=name, is_plotting=True)
 
+            for model in self.scalar_models.values():
+                model.observe('is_plotting', self.reformat_view)
+
+        # trigger the updates
+        print('col_names', col_names)
+        for model_name, model in six.iteritems(self.scalar_models):
+            print(model.state)
+        self.col_names = col_names
+        self.x_is_time = x_is_time
         self._last_update_time = datetime.utcnow()
-        self.col_names = []
-        self.col_names = self.data_muggler.keys(dim=0) + ['fit', 'peak stats']
-        self.alignment_col = self.col_names[0]
-        self.x = self.col_names[0]
-        self.estimate_target = self.x
-        self.estimate_index = self.col_names.index(self.estimate_target)
-        self.normalize_target = self.x
+        self.bin_on = bin_on
+        self.x = x
+        self.estimate_target = x
+        self.estimate_index = estimate_index
+        self.normalize_target = x
+        self.get_new_data_and_plot()
 
-    @observe('x_is_data', 'x_is_time')
+    @observe('col_names')
+    def update_col_names(self, changed):
+        print('col_names changed: {}'.format(self.col_names))
+
+    @observe('x_is_time')
     def update_x_axis(self, changed):
-        with self.suppress_notifications():
-            if self.x_is_time:
-                self.x_is_data = False
-            elif self.x_is_data:
-                self.x_is_time = False
-        # print('x is data: {}\tx is time: {}'.format(self.x_is_data, self.x_is_time))
-        if self.x_is_data or self.x_is_time:
-            self.get_new_data_and_plot()
+        lbl = 'Time (s)'
+        if not changed['value']:
+            lbl = self.x
+        self._conf.xlabel = lbl
+        self.get_new_data_and_plot()
 
     @observe('x')
     def update_x(self, changed):
@@ -358,7 +356,7 @@ class ScalarCollection(Atom):
     @observe('alignment_col')
     def update_alignment_col(self, changed):
         # check with the muggler for the columns that can be plotted against
-        sliceable = self.data_muggler.align_against(self.alignment_col)
+        sliceable = self.data_muggler.align_against(self.bin_on)
         for name, scalar_model in six.iteritems(self.scalar_models):
             if name == 'fit' or name == 'peak stats':
                 continue
@@ -398,7 +396,7 @@ class ScalarCollection(Atom):
             The new column name that the data muggler knows about
         """
         scalar_cols = self.data_muggler.keys(dim=0)
-        alignable = self.data_muggler.align_against(self.alignment_col,
+        alignable = self.data_muggler.align_against(self.bin_on,
                                                     self.col_names)
         for name, is_plottable in six.iteritems(alignable):
             if name in new_columns and not self.data_muggler.col_dims[name]:
@@ -415,13 +413,13 @@ class ScalarCollection(Atom):
         """Return a dictionary of the vital stats of a 'peak'"""
         stats = OrderedDict()
         print('self.fit_target: {}'.format(self.fit_target))
-        print('self.alignment_col: {}'.format(self.alignment_col))
+        print('self.alignment_col: {}'.format(self.bin_on))
         print('self.x: {}'.format(self.x))
         other_cols = [self.x, self.estimate_target]
         if self.normalize:
             other_cols.append(self.normalize_target)
         print('other_cols: {}'.format(other_cols))
-        time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
+        time, data = self.data_muggler.get_values(ref_col=self.bin_on,
                                                   other_cols=other_cols)
         x = np.asarray(data[self.x])
 
@@ -485,7 +483,7 @@ class ScalarCollection(Atom):
         self.estimate_stats = OrderedDict()
         self.estimate_stats = stats
 
-    def notify_new_data(self, new_data):
+    def notify_new_data(self):
         """ Function to call when there is new data in the data muggler
 
         Parameters
@@ -494,30 +492,30 @@ class ScalarCollection(Atom):
             List of names of updated columns from the data muggler
         """
 
-        self._num_updates += 1
-        redraw = False
-        if self.redraw_type == 's':
-            if ((datetime.utcnow() - self._last_update_time).total_seconds()
-                    >= self.redraw_every):
-                redraw = True
-            else:
-                # do nothing
-                pass
-        elif self.redraw_type == 'max rate':
-            redraw = True
-        if self.alignment_col in new_data:
-            # update all the data in the line plot
-            y_names = list(self.scalar_models)
-        else:
-            # find out which new_data keys overlap with the data that is
-            # supposed to be shown on the plot
-            y_names = []
-            for model_name, model in six.iteritems(self.scalar_models):
-                if model.is_plotting and model.name in new_data:
-                    y_names.append(model.name)
-        if redraw:
-            self.get_new_data_and_plot(y_names)
-            self.estimate()
+        # self._num_updates += 1
+        # redraw = False
+        # if self.redraw_type == 's':
+        #     if ((datetime.utcnow() - self._last_update_time).total_seconds()
+        #             >= self.redraw_every):
+        #         redraw = True
+        #     else:
+        #         # do nothing
+        #         pass
+        # elif self.redraw_type == 'max rate':
+        #     redraw = True
+        # if self.bin_on in new_data:
+        #     # update all the data in the line plot
+        #     y_names = list(self.scalar_models)
+        # else:
+        #     # find out which new_data keys overlap with the data that is
+        #     # supposed to be shown on the plot
+        #     y_names = []
+        #     for model_name, model in six.iteritems(self.scalar_models):
+        #         if model.is_plotting and model.name in new_data:
+        #             y_names.append(model.name)
+        # if redraw:
+        self.get_new_data_and_plot()
+        # self.estimate()
 
     def get_new_data_and_plot(self, y_names=None):
         """
@@ -532,23 +530,49 @@ class ScalarCollection(Atom):
         """
         if self.data_muggler is None:
             return
-        # self.print_state()
-        if y_names is None:
-            y_names = list(six.iterkeys(self.scalar_models))
+        if self.x_is_time:
+            self.plot_by_time()
+        else:
+            self.plot_by_x()
 
-        y_names = set(y_names)
-        valid_names = set(k for k, v in six.iteritems(
-                                 self.data_muggler.align_against(
-                                     self.alignment_col))
-                          if v)
+    def plot_by_time(self):
+        df = self.data_muggler._dataframe
+        data_dict = {data_name: {'x': df[data_name].index.tolist(),
+                                 'y': df[data_name].tolist()}
+                     for data_name in df.columns
+                     if data_name in self.col_names}
+        self._plot(data_dict)
 
-        other_cols = list(y_names & valid_names)
-        other_cols.append(self.normalize_target)
-        other_cols = list(set(other_cols))
-        # print('y_names: {}'.format(y_names))
-        # print('valid_names: {}'.format(valid_names))
-        # print('other_cols: {}'.format(other_cols))
-        time, data = self.data_muggler.get_values(ref_col=self.alignment_col,
+    def plot_by_x(self):
+        interpolation = {name: 'linear' for name in self.col_names}
+        agg = {name: np.mean for name in self.col_names}
+        df = self.data_muggler.bin_on(self.x, interpolation=interpolation,
+                                      agg=agg, col_names=self.col_names)
+        x_axis = df[self.x].val.values
+        data_dict = {data_name[0]: {'x': x_axis, 'y': df[data_name].tolist()}
+                     for data_name in df}
+        self._plot(data_dict)
+
+    def _plot(self, data_dict):
+        for dname, dvals in data_dict.items():
+            if dname in self.col_names:
+                self.scalar_models[dname].set_data(dvals['x'], dvals['y'])
+                # self.scalar_models[dname].is_plotting = True
+        self.reformat_view()
+
+
+    def plot_by_x_old(self, y_names):
+        # interpolation = {name: 'linear' for name in self.data_muggler.col_info.keys()}
+        # agg = {name: np.mean for name in self.data_muggler.col_info.keys()}
+        df = self.data_muggler.bin_on(self.x)#, interpolation=interpolation, agg=agg)
+        self._fig.clf()
+        print('fig before df.plot call', self._fig)
+        self._ax = self._fig.add_subplot(111)
+        df.plot(subplots=False, ax=self._ax)
+        print('fig after df.plot call', self._fig)
+        return
+
+        time, data = self.data_muggler.get_values(ref_col=self.bin_on,
                                                   other_cols=other_cols)
         ref_data = data.pop(self.x)
         if self.normalize:
@@ -597,11 +621,15 @@ class ScalarCollection(Atom):
         # self._ax.axvline(x=self.estimate_stats['x_at_max'], linewidth=4,
         #                  color='k')
 
-    def reformat_view(self):
+
+    def reformat_view(self, *args, **kwargs):
         """
         Recompute the limits, rescale the view, reformat the legend and redraw
         the canvas
         """
+        # ignore the args and kwargs. They are here so that any function can be
+        # connected to this one
+
 
         x_data = []
         y_data = []
@@ -635,7 +663,7 @@ class ScalarCollection(Atom):
                             if v.line_artist.get_visible()]
             if legend_pairs:
                 arts, labs = zip(*legend_pairs)
-                self._ax.legend(arts, labs)
+                self._ax.legend(arts, labs).draggable()
             else:
                 self._ax.legend(legend_pairs)
             self._ax.relim(visible_only=True)
@@ -645,6 +673,8 @@ class ScalarCollection(Atom):
             self._ax.set_xlabel(self._conf.xlabel)
             self._ax.set_title(self._conf.title)
             self._fig.canvas.draw()
+        # self._ax.figure.canvas.draw()
+        # print('current figure id: {}'.format(id(self._fig)))
         except AttributeError as ae:
             # should only happen once
             pass

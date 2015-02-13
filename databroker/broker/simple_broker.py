@@ -1,6 +1,6 @@
 from __future__ import print_function
 import six  # noqa
-from collections import defaultdict, Iterable
+from collections import defaultdict, Iterable, deque
 from .. import sources
 from .struct import BrokerStruct
 import os
@@ -41,9 +41,10 @@ def get_events_by_run(runs, ca_host, channels=None):
     if not isinstance(runs, Iterable):
         runs = [runs]
 
-    events = [find_event(run) for run in runs]
-    events = [e for run in events for e in run]  # flattened
-    [_fill_event(event) for event in events]
+    runs = [find_event(run) for run in runs]
+    descriptors = [descriptor for run in runs for descriptor in run]
+    events = [event for descriptor in descriptors for event in descriptor]
+    [fill_event(event) for event in events]
     return events
 
 
@@ -145,16 +146,50 @@ def _get_local_cahost():
                             'obtain data from.')
     return 'http://' + beamline_id + '-ca/cgi-bin/ArchiveDataServer.cgi'
 
+
+def get_last_headers(num_to_get=1):
+    """Helper function that grabs the last `num_to_get` headers from
+    metadataStore. Also adds an `event_descriptors` field to the
+    begin run events. Because the begin_run_event has a reference to
+    metadatastore `sample` `beamline_config` documents, they are dereferenced
+    by metadatastore and are thus part of the begin_run_event already.  Once we
+    have a better grasp of `end_run_events` they will also be inserted into
+    the begin_run_event document, thus turning it into the `run_header`
+
+    Note: Currently used by replay. Changing this API might break replay.
+
+    Parameters
+    ----------
+    num_to_get : int
+        The number of headers to construct and return
+
+    Returns
+    -------
+    run_headers : list
+        List of constructed run headers
+    """
+    mdsapi = sources.metadataStore.api.analysis
+    bre_list = mdsapi.find_last(num_to_get)
+    bs_list = deque()
+    for bre in bre_list:
+        bs = BrokerStruct(bre)
+        bs.event_descriptors = [BrokerStruct(evd)
+                                for evd in mdsapi.find_event_descriptor(bre)]
+        bs_list.append(bs)
+    for _ in bs_list:
+        print(vars(_))
+    return list(bs_list)
+
+
 def get_last(channels=None, ca_host=None):
     mdsapi = sources.metadataStore.api.analysis
-    bre = mdsapi.find_last()
+    bre, = mdsapi.find_last()
     events = mdsapi.find_event(bre)
-    print(events[0])
+    events = [ev for desc in events for ev in desc]
     # remove the foot cannons from the mongoengine objects
     bre = BrokerStruct(bre)
-    events = [BrokerStruct(ev) for ev in events]
     # fill in the events from any external data sources
-    [_fill_event(event) for event in events]
+    [fill_event(event) for event in events]
     tstart = bre.time
     tfinish = events[0].time
     if ca_host is None:
@@ -182,7 +217,7 @@ def _inspect_descriptor(descriptor):
     return is_external
 
 
-def _fill_event(event):
+def fill_event(event):
     """
     Populate events with externally stored data.
     """
@@ -191,7 +226,7 @@ def _fill_event(event):
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key] = retrieve_data(value)
+            event.data[data_key][0]= retrieve_data(value)
 
 
 def _scrape_event(event):
@@ -206,8 +241,7 @@ def _scrape_event(event):
     retrieve_data = sources.fileStore.commands.retrieve_data
     is_external = _inspect_descriptor(event.ev_desc)
     data = dict()
-    for data_key, data_dict in event.data.items():
-        value, _ = data_dict['value'], data_dict['timestamp']
+    for data_key, (value, _) in event.data.items():
         # Notice that the timestamp is not returned to the user, only the
         # event time, below.
         if is_external[data_key]:

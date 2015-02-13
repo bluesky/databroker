@@ -1,0 +1,102 @@
+"""Enaml definitions for GUI views related to the DataMuggler"""
+
+from enaml.layout.api import (vbox, hbox, Box, spacer, align)
+from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
+                               Action, Menu, ComboBox, Timer, SpinBox)
+from enaml.core.api import Looper
+from .model import ColumnModel
+from ..core import TimerButton
+
+enamldef ColumnView(Container):
+    padding = Box(0, 0, 0, 0)
+    attr column_model
+    constraints = [hbox(up, down, spacer)]
+    ComboBox: up:
+        items << list(ColumnModel.upsample.items)
+        index << ColumnModel.upsample.items.index(column_model.upsample)
+        selected_item >> column_model.upsample
+    ComboBox: down:
+        items << list(ColumnModel.downsample.items)
+        index << ColumnModel.downsample.items.index(column_model.downsample)
+        selected_item >> column_model.downsample
+
+enamldef KeyForm(Form):
+    """Special snowflake Container object that takes a list of ColumnModel objects
+    and displays them in a Form
+    """
+
+    attr column_model_list = []
+    row_spacing = 0
+    Looper:
+        iterable << column_model_list
+        Label:
+            text = loop_item.name
+        ColumnView:
+            column_model = loop_item
+
+enamldef MugglerController(Container):
+    padding = Box(0, 0, 0, 0)
+    attr muggler_model
+    constraints = [vbox(refresh_button, update_rate, muggler_info, scalar, line,
+                        image, volume),
+                   align('midline', scalar.form, line.form, image.form,
+                         volume.form)]
+    Timer: the_timer:
+        interval << muggler_model.update_rate
+        single_shot = False
+        timeout ::
+            muggler_model.get_new_data()
+    TimerButton: refresh_button:
+        timer = the_timer
+        text = "Automatically update data"
+    Container: update_rate:
+        constraints = [hbox(update_label, update_input),
+                       align('v_center', update_label, update_input)]
+        Label: update_label:
+            text = "Update Rate"
+        SpinBox: update_input:
+            minimum = 0
+            maximum = 36000000
+            special_value_text = 'Autotune'
+            value := muggler_model.update_rate
+            suffix = ' ms'
+            single_step << value / 100
+
+    Label: muggler_info:
+        text << muggler_model.info
+    GroupBox: scalar:
+        share_layout = True
+        alias form: scalar_keys
+        title = 'Scalar keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.scalar_columns_visible
+        KeyForm: scalar_keys:
+            share_layout = True
+            column_model_list << muggler_model.scalar_columns
+    GroupBox: line:
+        share_layout = True
+        alias form: line_keys
+        title = 'Line keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.line_columns_visible
+        KeyForm: line_keys:
+            share_layout = True
+            column_model_list << muggler_model.line_columns
+    GroupBox: image:
+        share_layout = True
+        alias form: image_keys
+        title = 'Image keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.image_columns_visible
+        KeyForm: image_keys:
+            share_layout = True
+            column_model_list << muggler_model.image_columns
+    GroupBox: volume:
+        share_layout = True
+        alias form: volume_keys
+        title = 'Volume keys'
+        padding = Box(0, 0, 0, 0)
+        visible << muggler_model.volume_columns_visible
+        KeyForm: volume_keys:
+            share_layout = True
+            column_model_list << muggler_model.volume_columns

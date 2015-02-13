@@ -13,11 +13,13 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                Field,
                                )
 from enaml.stdlib.fields import FloatField
-from ..model.scalar_model import ScalarCollection, ScalarConfig
+from .model import ScalarCollection, ScalarConfig
 import random
 import six
 
-enamldef ScalarController(Container):
+enamldef PlotControls(Container):
+    attr scalar_collection
+    limit_width = 'string'
     ScrollArea: scroller:
         Container:
             Form:
@@ -46,13 +48,14 @@ enamldef ScalarController(Container):
                 title = 'Plot'
                 padding = Box(0, 0, 0, 0)
                 Form:
+                    row_spacing = 0
                     Label:
-                        text = "Column to align against"
+                        text = "Column to bin against"
                     ComboBox: xcmb:
                         items << list(scalar_collection.col_names)
                         editable = True
                         index << scalar_collection.x_index
-                        selected_item >> scalar_collection.alignment_col
+                        selected_item >> scalar_collection.bin_on
                         enabled = False
                     Label:
                         text = "X axis"
@@ -61,15 +64,13 @@ enamldef ScalarController(Container):
                         editable = True
                         index = 0
                         selected_item >> scalar_collection.x
+                        enabled << not scalar_collection.x_is_time
                     Label:
                         text = "X axis options"
-                    Container:
-                        constraints = [hbox(btn_val, btn_time, spacer)]
-                        RadioButton: btn_val:
-                            text = "data"
-                            checked := scalar_collection.x_is_data
-                        RadioButton: btn_time:
-                            text = "time"
+                    Form:
+                        row_spacing = 0
+                        CheckBox: btn_time:
+                            text = 'Plot againt time'
                             checked := scalar_collection.x_is_time
                     Label:
                         text = "Dataset to fit"
@@ -78,7 +79,6 @@ enamldef ScalarController(Container):
                         editable = True
                         index = 0
                         enabled = False
-                        #selected_item >> scalar_collection.fit_target
                     Label:
                         text = "Dataset to estimate"
                     ComboBox: cmb_est:
@@ -88,10 +88,12 @@ enamldef ScalarController(Container):
                         selected_item >> scalar_collection.estimate_target
                     Label:
                         text = "Dataset to normalize by"
-                    Form:
-                        CheckBox:
+                    Container:
+                        constraints = [vbox(norm_check, norm_cmb)]
+                        CheckBox: norm_check:
+                            text = 'Normalize?'
                             checked := scalar_collection.normalize
-                        ComboBox: cmb_est:
+                        ComboBox: norm_cmb:
                             items << list(scalar_collection.col_names)
                             index << 0
                             enabled = True
@@ -100,22 +102,14 @@ enamldef ScalarController(Container):
                         text = "Y axis"
                     Label:
                         pass
-                    row_spacing = 0
                     Looper: looper:
                         iterable << scalar_collection.col_names
                         PushButton: cb_plot:
                             text = loop_item
-                            enabled := (
-                                scalar_collection.
-                                    scalar_models[loop_item].can_plot
-                            )
+                            checkable = True
                             checked := (
                                 scalar_collection.
                                     scalar_models[loop_item].is_plotting
-                            )
-                            checkable := (
-                                scalar_collection.
-                                    scalar_models[loop_item].can_plot
                             )
                             clicked ::
                                 if (loop_item != 'peak stats' and
@@ -150,8 +144,7 @@ enamldef ScalarController(Container):
                                 scalar_collection.reformat_view()
 
 
-enamldef ScalarView(Container):
-    #alias fitter
+enamldef PlotView(Container):
     Container:
         constraints = [
             vbox(
@@ -170,24 +163,22 @@ enamldef ScalarView(Container):
         MPLCanvas: canvas:
             figure << scalar_collection._fig
             toolbar_visible = True
-#        MultiFitController: fitter:
-#            pass
 
 
 enamldef ScalarContainer(Window): window:
     attr scalar_collection
     Container:
         DockArea: da:
-            layout = HSplitLayout('controls', 'views')
+            layout = HSplitLayout('controls', 'view')
             DockItem:
-                name = 'views'
-                title = 'Scalar View'
+                name = 'view'
+                title = 'Scalar Plot View'
                 Container:
-                    ScalarView: contains:
+                    PlotView: contains:
                         pass
             DockItem:
                 name = 'controls'
-                title = 'Scalar Controller'
+                title = 'Scalar Plot Controls'
                 Container:
-                    ScalarController: controls:
+                    PlotControls: controls:
                         pass
