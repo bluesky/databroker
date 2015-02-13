@@ -39,6 +39,7 @@ class GetLastModel(Atom):
         self.begin_run_events = simple_broker.get_last_headers(self.num_to_retrieve)
         begin_run_events_as_dict = {}
         begin_run_events_keys = {}
+        header = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
         for bre in self.begin_run_events:
             bre_vars = vars(bre)
             event_descriptors = bre_vars.pop('event_descriptors', [])
@@ -48,7 +49,7 @@ class GetLastModel(Atom):
             begin_run_events_as_dict[bre] = dct
             # format the data keys into a single list that enaml will unpack
             # into a N rows by 3 columns grid
-            data_keys = deque([['KEY NAME', 'DATA LOCATION', 'PV NAME']])
+            data_keys = []
             for evd in event_descriptors:
                 dk = evd.data_keys
                 for data_key, data_key_dict in six.iteritems(dk):
@@ -56,18 +57,13 @@ class GetLastModel(Atom):
                         data_key += '_1'
                     print(data_key, data_key_dict)
                     name = data_key
-                    try:
-                        src = data_key_dict['source']
-                        try:
-                            loc = data_key_dict['EXTERNAL']
-                        except KeyError:
-                            loc = 'metadatastore'
-                    except (KeyError, TypeError):
-                        src = data_key_dict
+                    src = data_key_dict['source']
+                    loc = data_key_dict['external']
+                    if loc is None:
                         loc = 'metadatastore'
                     data_keys.append([name, loc, src])
-            begin_run_events_keys[bre] = list(data_keys)
-
+            data_keys = sorted(data_keys, key=lambda x: x[0].lower())
+            begin_run_events_keys[bre] = header + data_keys
         self.__begin_run_events_as_dict = begin_run_events_as_dict
         self.__begin_run_events_keys = begin_run_events_keys
 

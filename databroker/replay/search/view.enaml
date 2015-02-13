@@ -9,6 +9,7 @@ from enaml.core.api import (Looper, Conditional, Include)
 from enaml.stdlib.fields import IntField
 from enaml.layout.api import (vbox, hbox, spacer, Box, grid, factory, align)
 
+
 def generate_grid(container, num_cols):
     """ Generate grid constraints with given number of columns.
 
