@@ -198,7 +198,7 @@ class ScalarCollection(Atom):
 
     # name of the column to align against
     bin_on = Str()
-    x_is_time = Bool(True)
+    x_is_time = Bool(False)
     # name of all columns that the data muggler knows about
     col_names = List()
 
@@ -325,22 +325,26 @@ class ScalarCollection(Atom):
         print('col_names', col_names)
         for model_name, model in six.iteritems(self.scalar_models):
             print(model.state)
-        with self.suppress_notifications():
-            self.x_is_time = x_is_time
-            self._last_update_time = datetime.utcnow()
-            self.bin_on = bin_on
-            self.x = x
-            self.estimate_target = x
-            self.estimate_index = estimate_index
-            self.normalize_target = x
         self.col_names = col_names
+        self.x_is_time = x_is_time
+        self._last_update_time = datetime.utcnow()
+        self.bin_on = bin_on
+        self.x = x
+        self.estimate_target = x
+        self.estimate_index = estimate_index
+        self.normalize_target = x
         self.get_new_data_and_plot()
 
     @observe('col_names')
     def update_col_names(self, changed):
         print('col_names changed: {}'.format(self.col_names))
+
     @observe('x_is_time')
     def update_x_axis(self, changed):
+        lbl = 'Time (s)'
+        if not changed['value']:
+            lbl = self.x
+        self._conf.xlabel = lbl
         self.get_new_data_and_plot()
 
     @observe('x')
@@ -558,9 +562,9 @@ class ScalarCollection(Atom):
 
 
     def plot_by_x_old(self, y_names):
-        interpolation = {name: 'linear' for name in self.data_muggler.col_info.keys()}
-        agg = {name: np.mean for name in self.data_muggler.col_info.keys()}
-        df = self.data_muggler.bin_on(self.x, interpolation=interpolation, agg=agg)
+        # interpolation = {name: 'linear' for name in self.data_muggler.col_info.keys()}
+        # agg = {name: np.mean for name in self.data_muggler.col_info.keys()}
+        df = self.data_muggler.bin_on(self.x)#, interpolation=interpolation, agg=agg)
         self._fig.clf()
         print('fig before df.plot call', self._fig)
         self._ax = self._fig.add_subplot(111)

@@ -20,18 +20,22 @@ class ColumnModel(Atom):
     name = Str()
     dim = Int()
     data_muggler = Typed(DataMuggler)
-    upsample = Enum('None', *ColSpec.upsampling_methods)
-    downsample = Enum('None', *ColSpec.downsampling_methods)
+    upsample = Enum('linear', *ColSpec.upsampling_methods)
+    downsample = Enum('mean', *ColSpec.downsampling_methods)
     _shape = Tuple()
 
-    def __init__(self, data_muggler, dim, upsample, downsample, name, shape):
-        with self.suppress_notifications():
-            self.name = name
-            self.dim = dim
-            self.data_muggler = data_muggler
-            self.upsample = upsample
-            self.downsample = downsample
-            self.shape = shape
+    def __init__(self, data_muggler, dim, name, shape, upsample=None,
+                 downsample=None):
+        self.name = name
+        self.dim = dim
+        self.data_muggler = data_muggler
+        self.shape = shape
+        if upsample is None or upsample is 'None':
+            upsample = 'linear'
+        if downsample is None or downsample is 'None':
+            downsample = 'mean'
+        self.upsample = upsample
+        self.downsample = downsample
 
     @observe('upsample', 'downsample')
     def sampling_changed(self, changed):
@@ -191,9 +195,9 @@ class MugglerModel(Atom):
                 # column has already been accounted for, move on to the next one
                 continue
             # insert a new column model
+            print(col_info)
             self.column_models[col_name] = ColumnModel(
                 data_muggler=self.data_muggler, dim=col_info.ndim,
-                upsample=col_info.upsample, downsample=col_info.downsample,
                 name=col_name, shape=col_info.shape)
         self._update_column_sortings()
 
@@ -204,14 +208,15 @@ class MugglerModel(Atom):
             mapping[col_model.dim].add(col_model)
 
         # update the column key lists, if necessary
-        if set(self.scalar_columns) != set(mapping[0]):
-            self.scalar_columns = list(mapping[0])
-        if set(self.line_columns) != set(mapping[1]):
-            self.line_columns = list(mapping[1])
-        if set(self.image_columns) != set(mapping[2]):
-            self.image_columns = list(mapping[2])
-        if set(self.volume_columns) != set(mapping[3]):
-            self.volume_columns = list(mapping[3])
+        self.scalar_columns = []
+        self.line_columns = []
+        self.image_columns = []
+        self.volume_columns = []
+
+        self.scalar_columns = list(mapping[0])
+        self.line_columns = list(mapping[1])
+        self.image_columns = list(mapping[2])
+        self.volume_columns = list(mapping[3])
 
         # set the GUI elements to be visible/hidden if there are/aren't any
         # column_models

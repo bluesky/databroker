@@ -90,10 +90,10 @@ class ColSpec(namedtuple(
     http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
     """
     # These reflect the 'method' argument of pandas.DataFrame.fillna
-    upsampling_methods = {'linear', 'nearest', 'zero', 'slinear',
+    upsampling_methods = {'None', 'linear', 'nearest', 'zero', 'slinear',
                           'quadratic', 'cubic'}
-    downsampling_methods = {'last', 'first', 'median', 'mean', 'sum', 'min',
-                            'max'}
+    downsampling_methods = {'None', 'last', 'first', 'median', 'mean', 'sum',
+                            'min', 'max'}
     _downsample_mapping = {'last': lambda x: x[-1],
                            'first': lambda x: x[0],
                            'median': lambda x: np.median(x, 0),  # new in np 1.9
@@ -551,7 +551,6 @@ class DataMuggler(object):
             return self[attr]
         else:
             raise AttributeError("DataMuggler has no attribute {0} and no "
-
                                   "data source named '{0}'".format(attr))
 
     @property

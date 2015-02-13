@@ -12,9 +12,7 @@ enamldef MainView(MainWindow): main_view:
     Container: container:
         DockArea: area:
             layout = HSplitLayout(
-                HSplitLayout(
-                    VSplitLayout('search', 'muggler'),
-                    'scalar plot controls'),
+                HSplitLayout('search', 'muggler', 'scalar plot controls'),
                 'scalar plot'
             )
             DockItem:

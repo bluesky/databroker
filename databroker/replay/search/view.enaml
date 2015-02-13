@@ -76,11 +76,11 @@ enamldef GetLastView(Container):
                     text = '{}: {}'.format(loop_item.scan_id,
                                            loop_item.time_as_datetime)
                     clicked ::
-                        run_summary.visible = True
+                        get_last_model.summary_visible = True
                         get_last_model.selected = loop_item
         # GUI Element to show a Run Summary and the corresponding Data Keys
         GroupBox: run_summary:
-            visible = False
+            visible := get_last_model.summary_visible
             padding = Box(0, 0, 0, 0)
             title = "Run Summary"
             flat = True

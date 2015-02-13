@@ -13,11 +13,11 @@ enamldef ColumnView(Container):
     constraints = [hbox(up, down, spacer)]
     ComboBox: up:
         items << list(ColumnModel.upsample.items)
-        index = ColumnModel.upsample.items.index(column_model.upsample)
+        index << ColumnModel.upsample.items.index(column_model.upsample)
         selected_item >> column_model.upsample
     ComboBox: down:
         items << list(ColumnModel.downsample.items)
-        index = ColumnModel.downsample.items.index(column_model.downsample)
+        index << ColumnModel.downsample.items.index(column_model.downsample)
         selected_item >> column_model.downsample
 
 enamldef KeyForm(Form):
