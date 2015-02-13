@@ -2,20 +2,10 @@
 
 from enaml.layout.api import (vbox, hbox, Box, spacer, align)
 from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
-                               Action, Menu, ComboBox)
+                               Action, Menu, ComboBox, Timer, SpinBox)
 from enaml.core.api import Looper
 from .model import ColumnModel
-
-
-enamldef SampleAction(Action):
-    text = '%s action %d' % (parent.title, parent.children.index(self))
-    triggered :: print text
-
-
-enamldef ContextMenu(Menu):
-
-    SampleAction: pass
-
+from ..core import TimerButton
 
 enamldef ColumnView(Container):
     padding = Box(0, 0, 0, 0)
@@ -47,14 +37,29 @@ enamldef KeyForm(Form):
 enamldef MugglerController(Container):
     padding = Box(0, 0, 0, 0)
     attr muggler_model
-    constraints = [vbox(refresh_button, muggler_info, scalar, line, image,
-                        volume),
+    constraints = [vbox(refresh_button, update_rate, muggler_info, scalar, line,
+                        image, volume),
                    align('midline', scalar.form, line.form, image.form,
                          volume.form)]
-    PushButton: refresh_button:
-        text = "Check for new data"
-        clicked ::
+    Timer: the_timer:
+        interval << muggler_model.update_rate
+        single_shot = False
+        timeout ::
             muggler_model.get_new_data()
+    TimerButton: refresh_button:
+        timer = the_timer
+        text = "Automatically update data"
+    Container: update_rate:
+        constraints = [hbox(update_label, update_input),
+                       align('v_center', update_label, update_input)]
+        Label: update_label:
+            text = "Update Rate"
+        SpinBox: update_input:
+            minimum = 0
+            maximum = 36000000
+            special_value_text = 'Autotune'
+            value := muggler_model.update_rate
+            suffix = ' ms'
     Label: muggler_info:
         text << muggler_model.info
     GroupBox: scalar:

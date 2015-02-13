@@ -479,7 +479,7 @@ class ScalarCollection(Atom):
         self.estimate_stats = OrderedDict()
         self.estimate_stats = stats
 
-    def notify_new_data(self, new_data):
+    def notify_new_data(self):
         """ Function to call when there is new data in the data muggler
 
         Parameters
@@ -488,30 +488,30 @@ class ScalarCollection(Atom):
             List of names of updated columns from the data muggler
         """
 
-        self._num_updates += 1
-        redraw = False
-        if self.redraw_type == 's':
-            if ((datetime.utcnow() - self._last_update_time).total_seconds()
-                    >= self.redraw_every):
-                redraw = True
-            else:
-                # do nothing
-                pass
-        elif self.redraw_type == 'max rate':
-            redraw = True
-        if self.bin_on in new_data:
-            # update all the data in the line plot
-            y_names = list(self.scalar_models)
-        else:
-            # find out which new_data keys overlap with the data that is
-            # supposed to be shown on the plot
-            y_names = []
-            for model_name, model in six.iteritems(self.scalar_models):
-                if model.is_plotting and model.name in new_data:
-                    y_names.append(model.name)
-        if redraw:
-            self.get_new_data_and_plot(y_names)
-            self.estimate()
+        # self._num_updates += 1
+        # redraw = False
+        # if self.redraw_type == 's':
+        #     if ((datetime.utcnow() - self._last_update_time).total_seconds()
+        #             >= self.redraw_every):
+        #         redraw = True
+        #     else:
+        #         # do nothing
+        #         pass
+        # elif self.redraw_type == 'max rate':
+        #     redraw = True
+        # if self.bin_on in new_data:
+        #     # update all the data in the line plot
+        #     y_names = list(self.scalar_models)
+        # else:
+        #     # find out which new_data keys overlap with the data that is
+        #     # supposed to be shown on the plot
+        #     y_names = []
+        #     for model_name, model in six.iteritems(self.scalar_models):
+        #         if model.is_plotting and model.name in new_data:
+        #             y_names.append(model.name)
+        # if redraw:
+        self.get_new_data_and_plot()
+        # self.estimate()
 
     def get_new_data_and_plot(self, y_names=None):
         """

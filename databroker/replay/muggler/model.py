@@ -3,7 +3,7 @@
 import six
 from collections import deque
 from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
-                      Bool, ReadOnly, Tuple)
+                      Bool, ReadOnly, Tuple, Float)
 from databroker.muggler.api import DataMuggler
 from databroker.broker import simple_broker
 from databroker.broker.struct import BrokerStruct
@@ -22,7 +22,7 @@ class ColumnModel(Atom):
     data_muggler = Typed(DataMuggler)
     upsample = Enum('None', *ColSpec.upsampling_methods)
     downsample = Enum('None', *ColSpec.downsampling_methods)
-    shape = Tuple()
+    _shape = Tuple()
 
     def __init__(self, data_muggler, dim, upsample, downsample, name, shape):
         with self.suppress_notifications():
@@ -31,8 +31,6 @@ class ColumnModel(Atom):
             self.data_muggler = data_muggler
             self.upsample = upsample
             self.downsample = downsample
-            if shape is None:
-                shape = tuple()
             self.shape = shape
 
     @observe('upsample', 'downsample')
@@ -54,6 +52,14 @@ class ColumnModel(Atom):
         return ('ColumnModel(name={}, data_muggler={}, dim={}, upsample={}, '
                 'downsample={})'.format(self.name, self.data_muggler, self.dim,
                                         self.upsample, self.downsample))
+    @property
+    def shape(self):
+        return self._shape
+    @shape.setter
+    def shape(self, value):
+        if value is None:
+            value = tuple()
+        self._shape = value
 
 class MugglerModel(Atom):
     """Class that defines the Model for the data muggler
@@ -92,12 +98,9 @@ class MugglerModel(Atom):
         A short string describing the `data_muggler` attribute of the Atom
         MugglerModel
 
-    new_column_callbacks: atom.list.List
-        List of callbacks that care when the data_muggler gets new columns. Callback
-        functions should expect a dictionary keyed on column dimensionality
-        with values as lists of column names
     new_data_callbacks: atom.list.List
-        List of callbacks that care when the data_muggler gets new data
+        List of callbacks that care when the data_muggler gets new data.
+        Callback functions should expect no information to be passed.
     """
     column_models = Dict()
     scalar_columns = List(item=ColumnModel)
@@ -114,8 +117,9 @@ class MugglerModel(Atom):
     run_header = Typed(BrokerStruct)
     info = Str()
 
-    new_column_callbacks = List()
     new_data_callbacks = List()
+
+    update_rate = Int(1000) # in ms
 
     def __init__(self):
         # initialize everything to be the equivalent of None. It would seem
@@ -130,13 +134,14 @@ class MugglerModel(Atom):
             self.data_muggler = None
             self.run_header = None
             self.info = 'No run header received yet'
-            self.new_column_callbacks = []
             self.new_data_callbacks = []
 
     @observe('run_header')
     def run_header_changed(self, changed):
         print('Run header has been changed, creatomg a new data_muggler')
         self.info = 'Run {}'.format(self.run_header.id)
+        with self.suppress_notifications():
+            self.data_muggler = None
         self.get_new_data()
 
     def get_new_data(self):
@@ -154,6 +159,8 @@ class MugglerModel(Atom):
                 data_cb()
             # update the column information
             self._verify_column_info()
+            for data_cb in self.new_data_callbacks:
+                data_cb()
 
     @observe('data_muggler')
     def new_muggler(self, changed):
@@ -165,11 +172,10 @@ class MugglerModel(Atom):
         print('verifying column information')
         updated_cols = []
         for col_name, col_model in self.column_models.items():
-            muggler_col_info = self.data_muggler.get(col_name, None)
+            muggler_col_info = self.data_muggler.col_info.get(col_name, None)
             if muggler_col_info:
                 # if the values are the same, no magic updates happen, otherwise
                 # the UI gets magically updated
-
                 col_model.dim = muggler_col_info.ndim
                 col_model.name = muggler_col_info.name
                 col_model.upsample = muggler_col_info.upsample
