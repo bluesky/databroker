@@ -16,6 +16,8 @@ class BeamlineConfig(DynamicDocument):
         This has a one-to-many relationship with BeginRunEvent documents
     """
     config_params = DictField(required=False, unique=False)
+    uid = StringField(required=True, unique=True)
+    time = FloatField(required=True)
     meta = {'indexes': ['-_id']}
 
 
@@ -54,7 +56,7 @@ class BeginRunEvent(DynamicDocument):
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
     beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=False,
+                                     required=True,
                                      db_field='beamline_config_id')
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
@@ -84,7 +86,7 @@ class EndRunEvent(DynamicDocument):
 
     exit_status = StringField(max_length=10, required=False, default='success',
                               choices=('success', 'abort', 'fail'))
-    reason = StringField(required=False, max_length=20)
+    reason = StringField(required=False)
     meta = {'indexes': ['-_id', '-time', '-exit_status', '-begin_run_event']}
     uid = StringField(required=True, unique=True)
 
@@ -106,8 +108,9 @@ class DataKey(DynamicEmbeddedDocument):
         Where the data is stored if it is stored external to the events.
     """
     dtype = StringField(required=True,
-                        choices=('integer', 'number', 'array', 'boolean', 'string'))
-    shape = ListField() # defaults to empty list
+                        choices=('integer', 'number', 'array',
+                                 'boolean', 'string'))
+    shape = ListField(field=IntField())  # defaults to empty list
     source = StringField(required=True)
     external = StringField(required=False)
 
