@@ -74,7 +74,7 @@ def example(func):
     @wraps(func)
     def mock_begin_run(begin_run=None):
         if begin_run is None:
-            blc = insert_beamline_config()
+            blc = insert_beamline_config({}, time=0.)
             begin_run = insert_begin_run(time=0., scan_id=1, beamline_id='csx',
                                          uid=str(uuid.uuid4()),
                                          beamline_config=blc)
