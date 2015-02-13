@@ -4,7 +4,7 @@ import time
 import unittest
 import numpy as np
 from .. import sources
-from ..muggler.data import DataMuggler, BinningError, ColSpec
+from ..muxer.data_muxer import DataMuxer, BinningError, ColSpec
 from ..sources import switch
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
@@ -15,11 +15,11 @@ class TestMuggler(unittest.TestCase):
     def setUp(self):
         self.mixed_scalars = temperature_ramp.run()
 
-    def test_empty_muggler(self):
-        DataMuggler()
+    def test_empty_muxer(self):
+        DataMuxer()
 
     def test_attributes(self):
-        dm = DataMuggler.from_events(self.mixed_scalars)
+        dm = DataMuxer.from_events(self.mixed_scalars)
         # merely testing that basic usage does not error
         dm._dataframe
         dm.Tsam
@@ -28,7 +28,7 @@ class TestMuggler(unittest.TestCase):
         dm.col_info
 
     def test_timestamps_as_data(self):
-        dm = DataMuggler.from_events(self.mixed_scalars)
+        dm = DataMuxer.from_events(self.mixed_scalars)
         dm.include_timestamp_data('Tsam')
         self.assertTrue('Tsam_timestamp' in dm._dataframe)
         dm.remove_timestamp_data('Tsam')
@@ -89,7 +89,7 @@ class CommonBinningTests(object):
 class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
 
     def setUp(self):
-        self.dm = DataMuggler.from_events(temperature_ramp.run())
+        self.dm = DataMuxer.from_events(temperature_ramp.run())
         self.sparse = 'Tsam'
         self.dense = 'point_det'
         self.agg = np.mean
@@ -99,7 +99,7 @@ class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
 class TestBinningMultiSourceEvents(CommonBinningTests, unittest.TestCase):
 
     def setUp(self):
-        self.dm = DataMuggler.from_events(multisource_event.run())
+        self.dm = DataMuxer.from_events(multisource_event.run())
         self.sparse = 'Troom'
         self.dense = 'point_det'
         self.agg = np.mean
@@ -109,4 +109,4 @@ class TestBinningMultiSourceEvents(CommonBinningTests, unittest.TestCase):
 class TestImageAndScalar(unittest.TestCase):
 
     def setUp(self):
-        self.dm = DataMuggler.from_events(image_and_scalar.run())
+        self.dm = DataMuxer.from_events(image_and_scalar.run())

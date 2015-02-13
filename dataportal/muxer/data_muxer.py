@@ -44,7 +44,7 @@ import pandas.core.groupby  # to get custom exception
 
 
 logger = logging.getLogger(__name__)
-__all__ = ['DataMuggler', 'dataframe_to_dict']
+__all__ = ['DataMuxer', 'dataframe_to_dict']
 
 
 class BinningError(Exception):
@@ -66,7 +66,7 @@ class ColSpec(namedtuple(
               'ColSpec', ['name', 'ndim', 'shape', 'upsample', 'downsample'])):
     """
     Named-tuple sub-class to validate the column specifications for the
-    DataMuggler
+    DataMuxer
 
     Parameters
     ----------
@@ -139,7 +139,7 @@ def _validate_downsample(input):
     return input
 
 
-class DataMuggler(object):
+class DataMuxer(object):
     """
     This class provides a wrapper layer of signals and slots
     around a pandas DataFrame to make plugging stuff in for live
@@ -206,7 +206,7 @@ class DataMuggler(object):
         return instance
 
     def append_events(self, events):
-        """Add an event to the DataMuggler.
+        """Add an event to the DataMuxer.
 
         Parameters
         ----------
@@ -216,7 +216,7 @@ class DataMuggler(object):
             self.append_event(event)
 
     def append_event(self, event):
-        """Add an event to the DataMuggler.
+        """Add an event to the DataMuxer.
 
         Parameters
         ----------
@@ -448,7 +448,7 @@ class DataMuggler(object):
                 upsample = col_info.upsample
             else:
                 upsample = _validate_upsample(upsample)
-            if upsample is not None and col_info.ndim > 0:
+            if ((upsample is not None) or (upsample != 'None')) and (col_info.ndim > 0):
                 raise NotImplementedError(
                     "Only scalar data can be upsampled. "
                     "The {0}-dimensional source {1} was given the upsampling "
@@ -473,7 +473,8 @@ class DataMuggler(object):
             # If any bin has no data, use the upsampling rule to interpolate
             # at the center of the empty bins. If there is no rule, simply
             # leave some bins empty. Do not raise an error.
-            if np.any(has_no_points[name]) and upsample is not None:
+            if np.any(has_no_points[name]) and ((upsample is not None)
+                                                and (upsample != 'None')):
                 # Extra validation: In general time_labels can be objects, but
                 # if we need to upsample they must at least be numeric.
                 if not np.issubdtype(np.asarray(time_labels).dtype, np.number):
@@ -499,7 +500,7 @@ class DataMuggler(object):
 
             # Multi-valued bins must be downsampled (reduced). If there is no
             # rule for downsampling, we have no recourse: we must raise.
-            if downsample is None:
+            if (downsample is None) or (downsample == 'None'):
                 raise BinningError("The specified binning puts multiple "
                                    "'{0}' measurements in at least one bin, "
                                    "and there is no rule for downsampling "
@@ -550,13 +551,13 @@ class DataMuggler(object):
         if attr in self.col_info.keys():
             return self[attr]
         else:
-            raise AttributeError("DataMuggler has no attribute {0} and no "
+            raise AttributeError("DataMuxer has no attribute {0} and no "
                                   "data source named '{0}'".format(attr))
 
     @property
     def ncols(self):
         """
-        The number of columns that the DataMuggler contains
+        The number of columns that the DataMuxer contains
         """
         return len(self.col_info)
 

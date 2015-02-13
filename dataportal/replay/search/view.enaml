@@ -42,9 +42,9 @@ enamldef DisplaySummary(Container):
 
 enamldef GetLastView(Container):
     """Enaml definition for the widget that displays the controls for
-    searching the databroker for the last N runs
+    searching the dataportal for the last N runs
     """
-    attr muggler_model
+    attr muxer_model
     attr get_last_model
     Container:
         padding = Box(0, 0, 0, 0)
@@ -62,7 +62,7 @@ enamldef GetLastView(Container):
         PushButton: select_run:
             text = "Show data for selected run"
             clicked ::
-                muggler_model.run_header = get_last_model.selected
+                muxer_model.run_header = get_last_model.selected
         # GUI element that provides search stats
         Label: search_info:
             text << "Requested: {}. Found: {}".format(

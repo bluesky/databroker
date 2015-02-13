@@ -3,30 +3,30 @@ import enaml
 from enaml.qt.qt_application import QtApplication
 import numpy as np
 
-from databroker.muggler.api import DataMuggler
-from databroker.replay.search import GetLastModel
-from databroker.replay.muggler import MugglerModel
-from databroker.replay.scalar import ScalarCollection
+from dataportal.muxer.api import DataMuxer
+from dataportal.replay.search import GetLastModel
+from dataportal.replay.muxer import MuxerModel
+from dataportal.replay.scalar import ScalarCollection
 
 with enaml.imports():
-    from search_and_muggler import MainView
+    from search_and_muxer import MainView
 
 app = QtApplication()
 
 get_last_model = GetLastModel()
 
-muggler_model = MugglerModel()
+muxer_model = MuxerModel()
 
 scalar_collection = ScalarCollection()
 
 # set up observers
-muggler_model.observe('data_muggler', scalar_collection.new_data_muggler)
-muggler_model.new_data_callbacks.append(scalar_collection.notify_new_data)
+muxer_model.observe('data_muxer', scalar_collection.new_data_muxer)
+muxer_model.new_data_callbacks.append(scalar_collection.notify_new_data)
 
-# muggler_model.muggler = DataMuggler()
+# muxer_model.muxer = DataMuxer()
 
 main_view = MainView(get_last_model=get_last_model,
-                     muggler_model=muggler_model,
+                     muxer_model=muxer_model,
                      scalar_collection=scalar_collection)
 print('scalar collection figure id: {}'.format(id(scalar_collection._fig)))
 main_view.show()

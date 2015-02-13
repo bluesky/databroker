@@ -34,7 +34,7 @@ class Archiver(object):
         end : string or datetime
             Strings are interpreted as ISO timestamps.
         interpolation : string
-            The databroker should be handling all the interpolation,
+            Higher layers should be handling all the interpolation,
             so although this default value matches the ChannelArchiver
             default ('linear') that will raise an error here. All
             calls must specify interpolation='raw'.

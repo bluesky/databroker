@@ -3,8 +3,8 @@
 import six
 from collections import deque
 from atom.api import Atom, Typed, List, Range, Dict, observe, Str, Bool
-from databroker.api import BrokerStruct
-from databroker.broker import simple_broker
+from dataportal.api import BrokerStruct
+from dataportal.broker import simple_broker
 
 
 class GetLastModel(Atom):
@@ -14,7 +14,7 @@ class GetLastModel(Atom):
     ----------
     num_to_retrieve : range, min=1
     begin_run_events : list
-    selected : databroker.api.BrokerStruct
+    selected : dataportal.api.BrokerStruct
     """
     num_to_retrieve = Range(low=1)
     begin_run_events = List()

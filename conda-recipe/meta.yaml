@@ -1,5 +1,5 @@
 package:
-  name: databroker 
+  name: dataportal 
   version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
 
 source:
@@ -13,7 +13,7 @@ build:
   string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
   entry_points:
-    - replay = databroker.replay.run:main
+    - replay = dataportal.replay.run:main
 
 requirements:
   build:
@@ -37,5 +37,6 @@ requirements:
 
 test:
   imports:
-    - databroker.broker
-    - databroker.replay
+    - dataportal.broker
+    - dataportal.muxer
+    - dataportal.replay

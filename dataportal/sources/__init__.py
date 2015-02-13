@@ -20,7 +20,7 @@ def switch(channelarchiver=None, metadatastore=None, filestore=None):
     channelarchiver : bool
         If False, use dummy channelarchiver.
     """
-    format_string = 'databroker.sources.dummy_sources._{0}'
+    format_string = 'dataportal.sources.dummy_sources._{0}'
     sources = OrderedDict()
     for name in source_names:
         kwarg = name.lower().split('.')[0]
@@ -45,5 +45,5 @@ def switch(channelarchiver=None, metadatastore=None, filestore=None):
                     deregister_handler('npy')
 
 
-# On importing databroker, set these defaults.
+# On importing dataportal, set these defaults.
 switch(channelarchiver=False, metadatastore=True, filestore=True)

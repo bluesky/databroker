@@ -1,13 +1,13 @@
-"""Module that defines the all Models related to DataMuggler manipulations"""
+"""Module that defines the all Models related to DataMuxer manipulations"""
 
 import six
 from collections import deque
 from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
                       Bool, ReadOnly, Tuple, Float)
-from databroker.muggler.api import DataMuggler
-from databroker.broker import simple_broker
-from databroker.broker.struct import BrokerStruct
-from databroker.muggler.data import ColSpec
+from dataportal.muxer.api import DataMuxer
+from dataportal.broker import simple_broker
+from dataportal.broker.struct import BrokerStruct
+from dataportal.muxer.data_muxer import ColSpec
 
 
 def get_events(run_header):
@@ -15,20 +15,20 @@ def get_events(run_header):
 
 
 class ColumnModel(Atom):
-    """Atom implementation of databroker.muggler.data.ColSpec
+    """Atom implementation of dataportal.muxer.data.ColSpec
     """
     name = Str()
     dim = Int()
-    data_muggler = Typed(DataMuggler)
+    data_muxer = Typed(DataMuxer)
     upsample = Enum('linear', *ColSpec.upsampling_methods)
     downsample = Enum('mean', *ColSpec.downsampling_methods)
     _shape = Tuple()
 
-    def __init__(self, data_muggler, dim, name, shape, upsample=None,
+    def __init__(self, data_muxer, dim, name, shape, upsample=None,
                  downsample=None):
         self.name = name
         self.dim = dim
-        self.data_muggler = data_muggler
+        self.data_muxer = data_muxer
         self.shape = shape
         if upsample is None or upsample is 'None':
             upsample = 'linear'
@@ -39,22 +39,22 @@ class ColumnModel(Atom):
 
     @observe('upsample', 'downsample')
     def sampling_changed(self, changed):
-        print('Old data_muggler col_info: {}'.format(self.data_muggler.col_info[self.name]))
+        print('Old data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
         # upsample = self.upsample
         # if upsample == 'None':
         #     upsample = None
         # downsample = self.downsample
         # if downsample == 'None':
         #     downsample = None
-        # replace the column info on the data_muggler with the new upsample
+        # replace the column info on the data_muxer with the new upsample
         # or downsample
-        self.data_muggler.col_info[self.name] = ColSpec(
+        self.data_muxer.col_info[self.name] = ColSpec(
             self.name, self.dim, self.shape, self.upsample, self.downsample)
-        print('New data_muggler col_info: {}'.format(self.data_muggler.col_info[self.name]))
+        print('New data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
 
     def __repr__(self):
-        return ('ColumnModel(name={}, data_muggler={}, dim={}, upsample={}, '
-                'downsample={})'.format(self.name, self.data_muggler, self.dim,
+        return ('ColumnModel(name={}, data_muxer={}, dim={}, upsample={}, '
+                'downsample={})'.format(self.name, self.data_muxer, self.dim,
                                         self.upsample, self.downsample))
     @property
     def shape(self):
@@ -65,21 +65,21 @@ class ColumnModel(Atom):
             value = tuple()
         self._shape = value
 
-class MugglerModel(Atom):
-    """Class that defines the Model for the data muggler
+class MuxerModel(Atom):
+    """Class that defines the Model for the data muxer
 
     Attributes
     ----------
-    data_muggler : databroker.muggler.api.DataMuggler
-        The data_muggler holds the non-time-aligned data.  Upon asking the data_muggler
+    data_muxer : dataportal.muxer.api.DataMuxer
+        The data_muxer holds the non-time-aligned data.  Upon asking the data_muxer
         to reformat its data into time-aligned bins, a dataframe is returned
-    run_header: databroker.broker.struct.BrokerStruct
+    run_header: dataportal.broker.struct.BrokerStruct
         The bucket of information from the data broker that contains all
         non-data information
 
     column_models : atom.dict.Dict
         Dictionary that is analogous to the col_info property of the
-        databroker.muggler.data.DataMuggler object
+        dataportal.muxer.data.DataMuxer object
     scalar_columns : atom.list.List
         The list of columns names whose cells contain 0-D arrays (single values)
     line_columns : atom.list.List
@@ -99,11 +99,11 @@ class MugglerModel(Atom):
         Instructs the GUI to show/hide the volume info
 
     info : atom.scalars.Str
-        A short string describing the `data_muggler` attribute of the Atom
-        MugglerModel
+        A short string describing the `data_muxer` attribute of the Atom
+        MuxerModel
 
     new_data_callbacks: atom.list.List
-        List of callbacks that care when the data_muggler gets new data.
+        List of callbacks that care when the data_muxer gets new data.
         Callback functions should expect no information to be passed.
     """
     column_models = Dict()
@@ -117,7 +117,7 @@ class MugglerModel(Atom):
     image_columns_visible = Bool(False)
     volume_columns_visible = Bool(False)
 
-    data_muggler = Typed(DataMuggler)
+    data_muxer = Typed(DataMuxer)
     run_header = Typed(BrokerStruct)
     info = Str()
 
@@ -135,30 +135,30 @@ class MugglerModel(Atom):
             self.line_columns = []
             self.image_columns = []
             self.volume_columns = []
-            self.data_muggler = None
+            self.data_muxer = None
             self.run_header = None
             self.info = 'No run header received yet'
             self.new_data_callbacks = []
 
     @observe('run_header')
     def run_header_changed(self, changed):
-        print('Run header has been changed, creatomg a new data_muggler')
+        print('Run header has been changed, creatomg a new data_muxer')
         self.info = 'Run {}'.format(self.run_header.id)
         with self.suppress_notifications():
-            self.data_muggler = None
+            self.data_muxer = None
         self.get_new_data()
 
     def get_new_data(self):
-        """Hit the databroker to first see if there is new data and, if so,
+        """Hit the dataportal to first see if there is new data and, if so,
         grab it
         """
         print('getting new data from the data broker')
         events = simple_broker.get_events_by_run(self.run_header, None)
-        if self.data_muggler is None:
+        if self.data_muxer is None:
             # this will automatically trigger the key updating
-            self.data_muggler = DataMuggler.from_events(events)
+            self.data_muxer = DataMuxer.from_events(events)
         else:
-            self.data_muggler.append_events(events)
+            self.data_muxer.append_events(events)
             for data_cb in self.new_data_callbacks:
                 data_cb()
             # update the column information
@@ -166,38 +166,38 @@ class MugglerModel(Atom):
             for data_cb in self.new_data_callbacks:
                 data_cb()
 
-    @observe('data_muggler')
-    def new_muggler(self, changed):
-        # data_muggler object has been changed. Remake the columns
-        print('new data muggler received')
+    @observe('data_muxer')
+    def new_muxer(self, changed):
+        # data_muxer object has been changed. Remake the columns
+        print('new data muxer received')
         self._verify_column_info()
 
     def _verify_column_info(self):
         print('verifying column information')
         updated_cols = []
         for col_name, col_model in self.column_models.items():
-            muggler_col_info = self.data_muggler.col_info.get(col_name, None)
-            if muggler_col_info:
+            muxer_col_info = self.data_muxer.col_info.get(col_name, None)
+            if muxer_col_info:
                 # if the values are the same, no magic updates happen, otherwise
                 # the UI gets magically updated
-                col_model.dim = muggler_col_info.ndim
-                col_model.name = muggler_col_info.name
-                col_model.upsample = muggler_col_info.upsample
-                col_model.downsample = muggler_col_info.downsample
-                col_model.shape = muggler_col_info.shape
-                col_model.data_muggler = self.data_muggler
+                col_model.dim = muxer_col_info.ndim
+                col_model.name = muxer_col_info.name
+                col_model.upsample = muxer_col_info.upsample
+                col_model.downsample = muxer_col_info.downsample
+                col_model.shape = muxer_col_info.shape
+                col_model.data_muxer = self.data_muxer
                 updated_cols.append(col_name)
             else:
                 # remove the column model
                 self.column_models.pop(col_name)
-        for col_name, col_info in self.data_muggler.col_info.items():
+        for col_name, col_info in self.data_muxer.col_info.items():
             if col_name in updated_cols:
                 # column has already been accounted for, move on to the next one
                 continue
             # insert a new column model
             print(col_info)
             self.column_models[col_name] = ColumnModel(
-                data_muggler=self.data_muggler, dim=col_info.ndim,
+                data_muxer=self.data_muxer, dim=col_info.ndim,
                 name=col_name, shape=col_info.shape)
         self._update_column_sortings()
 

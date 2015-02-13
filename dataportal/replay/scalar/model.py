@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 import six
-from ...muggler.data import DataMuggler
+from ...muxer.data_muxer import DataMuxer
 from datetime import datetime
 import logging
 from copy import copy
@@ -17,7 +17,7 @@ import numpy as np
 import random
 
 
-nodata_str = "data_muggler is None"
+nodata_str = "data_muxer is None"
 
 
 class ScalarConfig(Atom):
@@ -149,23 +149,23 @@ class ScalarCollection(Atom):
     """
 
     ScalarCollection is a bundle of ScalarModels. The ScalarCollection has an
-    instance of a DataMuggler which notifies it of new data which then updates
-    its ScalarModels. When instantiated, the data_muggler instance is asked
+    instance of a DataMuxer which notifies it of new data which then updates
+    its ScalarModels. When instantiated, the data_muxer instance is asked
     for the names of its columns.  All columns which represent scalar values
     are then shoved into ScalarModels and the ScalarCollection manages the
     ScalarModels.
 
     Attributes
     ----------
-    data_muggler : replay.pipeline.pipeline.DataMuggler
-        The data manager backing the ScalarModel. The DataMuggler's new_data
+    data_muxer : replay.pipeline.pipeline.DataMuxer
+        The data manager backing the ScalarModel. The DataMuxer's new_data
         signal is connected to the notify_new_data function of the ScalarModel
-        so that the ScalarModel can decide what to do when the DataMuggler
+        so that the ScalarModel can decide what to do when the DataMuxer
         receives new data.
     scalar_models : atom.Dict
         The collection of scalar_models that the ScalarCollection knows about
     col_names : atom.List
-        The names of the data sets that are in the DataMuggler
+        The names of the data sets that are in the DataMuxer
     redraw_every : atom.Float
         The frequency with which to redraw the plot. The meaning of this
         parameter changes based on `redraw_type`
@@ -187,7 +187,7 @@ class ScalarCollection(Atom):
     # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
     # the thing that holds all the data
-    data_muggler = Typed(DataMuggler)
+    data_muxer = Typed(DataMuxer)
     # The scan id of this data set
     scan_id = Int()
     # name of the x axis
@@ -199,7 +199,7 @@ class ScalarCollection(Atom):
     # name of the column to align against
     bin_on = Str()
     x_is_time = Bool(False)
-    # name of all columns that the data muggler knows about
+    # name of all columns that the data muxer knows about
     col_names = List()
 
     # should the pandas dataframe plotting use subplots for each column
@@ -262,8 +262,8 @@ class ScalarCollection(Atom):
                                                name=nodata_str,
                                                is_plotting=True)
 
-    def new_data_muggler(self, changed):
-        """Function to be registered with a MugglerModel on its `muggler`
+    def new_data_muxer(self, changed):
+        """Function to be registered with a MugglerModel on its `muxer`
         attribute
 
         Parameters
@@ -272,15 +272,15 @@ class ScalarCollection(Atom):
             Changed is emitted by Atom and has the following keys:
             {'value', 'object', 'type', 'name', 'oldvalue'}
         """
-        print('new_data_muggler callback function triggered in '
+        print('new_data_muxer callback function triggered in '
               'ScalarCollection')
-        self.data_muggler = changed['value']
+        self.data_muxer = changed['value']
 
-    @observe('data_muggler')
-    def update_datamuggler(self, changed):
-        print('data muggler update triggered')
+    @observe('data_muxer')
+    def update_datamuxer(self, changed):
+        print('data muxer update triggered')
         with self.suppress_notifications():
-            if self.data_muggler is None:
+            if self.data_muxer is None:
                 self.col_names = [nodata_str]
                 self.x = nodata_str
                 self.estimate_target = self.x
@@ -289,12 +289,12 @@ class ScalarCollection(Atom):
                 self.bin_on = self.x
                 self.init_scalar_models()
                 return
-            # connect the signals from the muggler to the appropriate slots
+            # connect the signals from the muxer to the appropriate slots
             # in this class
             # get the column names with dimensionality equal to zero
-            print('data muggler col info by ndim: {}'.format(self.data_muggler.col_info_by_ndim))
+            print('data muxer col info by ndim: {}'.format(self.data_muxer.col_info_by_ndim))
             col_names = [col_info.name for col_info
-                         in self.data_muggler.col_info_by_ndim[0]]
+                         in self.data_muxer.col_info_by_ndim[0]]
             # default to time
             x = col_names[0]
             x_is_time = True
@@ -355,8 +355,8 @@ class ScalarCollection(Atom):
 
     @observe('alignment_col')
     def update_alignment_col(self, changed):
-        # check with the muggler for the columns that can be plotted against
-        sliceable = self.data_muggler.align_against(self.bin_on)
+        # check with the muxer for the columns that can be plotted against
+        sliceable = self.data_muxer.align_against(self.bin_on)
         for name, scalar_model in six.iteritems(self.scalar_models):
             if name == 'fit' or name == 'peak stats':
                 continue
@@ -388,18 +388,18 @@ class ScalarCollection(Atom):
             print(model.get_state())
 
     def notify_new_column(self, new_columns):
-        """Function to call when there is a new column in the data muggler
+        """Function to call when there is a new column in the data muxer
 
         Parameters
         ----------
         new_columns: list
-            The new column name that the data muggler knows about
+            The new column name that the data muxer knows about
         """
-        scalar_cols = self.data_muggler.keys(dim=0)
-        alignable = self.data_muggler.align_against(self.bin_on,
+        scalar_cols = self.data_muxer.keys(dim=0)
+        alignable = self.data_muxer.align_against(self.bin_on,
                                                     self.col_names)
         for name, is_plottable in six.iteritems(alignable):
-            if name in new_columns and not self.data_muggler.col_dims[name]:
+            if name in new_columns and not self.data_muxer.col_dims[name]:
                 line_artist,  = self._ax.plot([], [], label=name)
                 self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                        name=name)
@@ -419,7 +419,7 @@ class ScalarCollection(Atom):
         if self.normalize:
             other_cols.append(self.normalize_target)
         print('other_cols: {}'.format(other_cols))
-        time, data = self.data_muggler.get_values(ref_col=self.bin_on,
+        time, data = self.data_muxer.get_values(ref_col=self.bin_on,
                                                   other_cols=other_cols)
         x = np.asarray(data[self.x])
 
@@ -484,12 +484,12 @@ class ScalarCollection(Atom):
         self.estimate_stats = stats
 
     def notify_new_data(self):
-        """ Function to call when there is new data in the data muggler
+        """ Function to call when there is new data in the data muxer
 
         Parameters
         ----------
         new_data : list
-            List of names of updated columns from the data muggler
+            List of names of updated columns from the data muxer
         """
 
         # self._num_updates += 1
@@ -519,16 +519,16 @@ class ScalarCollection(Atom):
 
     def get_new_data_and_plot(self, y_names=None):
         """
-        Get the data from the data muggler for column `data_name` sampled
+        Get the data from the data muxer for column `data_name` sampled
         at the time_stamps of `VariableModel.x`
 
         Parameters
         ----------
         data_name : list, optional
-            List of the names of columns in the data muggler. If None, get all
-            data from the data muggler
+            List of the names of columns in the data muxer. If None, get all
+            data from the data muxer
         """
-        if self.data_muggler is None:
+        if self.data_muxer is None:
             return
         if self.x_is_time:
             self.plot_by_time()
@@ -536,7 +536,7 @@ class ScalarCollection(Atom):
             self.plot_by_x()
 
     def plot_by_time(self):
-        df = self.data_muggler._dataframe
+        df = self.data_muxer._dataframe
         data_dict = {data_name: {'x': df[data_name].index.tolist(),
                                  'y': df[data_name].tolist()}
                      for data_name in df.columns
@@ -546,7 +546,7 @@ class ScalarCollection(Atom):
     def plot_by_x(self):
         interpolation = {name: 'linear' for name in self.col_names}
         agg = {name: np.mean for name in self.col_names}
-        df = self.data_muggler.bin_on(self.x, interpolation=interpolation,
+        df = self.data_muxer.bin_on(self.x, interpolation=interpolation,
                                       agg=agg, col_names=self.col_names)
         x_axis = df[self.x].val.values
         data_dict = {data_name[0]: {'x': x_axis, 'y': df[data_name].tolist()}
@@ -562,9 +562,9 @@ class ScalarCollection(Atom):
 
 
     def plot_by_x_old(self, y_names):
-        # interpolation = {name: 'linear' for name in self.data_muggler.col_info.keys()}
-        # agg = {name: np.mean for name in self.data_muggler.col_info.keys()}
-        df = self.data_muggler.bin_on(self.x)#, interpolation=interpolation, agg=agg)
+        # interpolation = {name: 'linear' for name in self.data_muxer.col_info.keys()}
+        # agg = {name: np.mean for name in self.data_muxer.col_info.keys()}
+        df = self.data_muxer.bin_on(self.x)#, interpolation=interpolation, agg=agg)
         self._fig.clf()
         print('fig before df.plot call', self._fig)
         self._ax = self._fig.add_subplot(111)
@@ -572,7 +572,7 @@ class ScalarCollection(Atom):
         print('fig after df.plot call', self._fig)
         return
 
-        time, data = self.data_muggler.get_values(ref_col=self.bin_on,
+        time, data = self.data_muxer.get_values(ref_col=self.bin_on,
                                                   other_cols=other_cols)
         ref_data = data.pop(self.x)
         if self.normalize:
@@ -655,7 +655,7 @@ class ScalarCollection(Atom):
         try:
             self.scalar_models['peak stats'].set_data(x=x_data, y=y_data)
         except KeyError:
-            # data muggler hasn't been created yet
+            # data muxer hasn't been created yet
             pass
         try:
             legend_pairs = [(v.line_artist, k)
