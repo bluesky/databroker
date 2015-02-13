@@ -448,7 +448,7 @@ class DataMuggler(object):
                 upsample = col_info.upsample
             else:
                 upsample = _validate_upsample(upsample)
-            if upsample is not None and col_info.ndim > 0:
+            if ((upsample is not None) or (upsample != 'None')) and (col_info.ndim > 0):
                 raise NotImplementedError(
                     "Only scalar data can be upsampled. "
                     "The {0}-dimensional source {1} was given the upsampling "
@@ -473,7 +473,8 @@ class DataMuggler(object):
             # If any bin has no data, use the upsampling rule to interpolate
             # at the center of the empty bins. If there is no rule, simply
             # leave some bins empty. Do not raise an error.
-            if np.any(has_no_points[name]) and upsample is not None:
+            if np.any(has_no_points[name]) and ((upsample is not None)
+                                                and (upsample != 'None')):
                 # Extra validation: In general time_labels can be objects, but
                 # if we need to upsample they must at least be numeric.
                 if not np.issubdtype(np.asarray(time_labels).dtype, np.number):
@@ -499,7 +500,7 @@ class DataMuggler(object):
 
             # Multi-valued bins must be downsampled (reduced). If there is no
             # rule for downsampling, we have no recourse: we must raise.
-            if downsample is None:
+            if (downsample is None) or (downsample == 'None'):
                 raise BinningError("The specified binning puts multiple "
                                    "'{0}' measurements in at least one bin, "
                                    "and there is no rule for downsampling "
