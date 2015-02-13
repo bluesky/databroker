@@ -6,6 +6,7 @@ import uuid
 import time as ttime
 import mongoengine
 import mongoengine.connection
+from mongoengine import Document
 from mongoengine.context_managers import switch_db
 
 from nose.tools import make_decorator
@@ -63,27 +64,43 @@ def test_blc_insert():
 
 
 @context_decorator
-def _ev_desc_tester(begin_run_event, data_keys, time, event_type):
-    ev_desc = mdsc.insert_event_descriptor(begin_run_event, data_keys, time, 'sample')
+def _ev_desc_tester(begin_run_event, data_keys, time):
+    ev_desc = mdsc.insert_event_descriptor(begin_run_event,
+                                           data_keys, time)
 
     ret = EventDescriptor.objects.get(id=ev_desc.id)
 
-    for k, v in zip(['begin_run_event', 'data_keys',
-                     'time', 'event_type'],
+    for k, v in zip(['begin_run_event',
+                     'time'],
                     [begin_run_event.to_dbref(),
-                     data_keys,
-                     time, event_type]):
+                     time, ]):
+
         assert_equal(getattr(ret, k), v)
+
+    for k in data_keys:
+        for ik in data_keys[k]:
+            assert_equal(getattr(ret.data_keys[k], ik),
+                         data_keys[k][ik])
 
     return ev_desc
 
 
 def test_ev_desc():
-    bre = mdsc.insert_begin_run(time=ttime.time(), beamline_id='sample_beamline')
-    data_keys = {'some_value': ' PV1', 'some_other_val': 'PV2', 'data_key3': ' PV3'}
+    bre = mdsc.insert_begin_run(time=ttime.time(),
+                                beamline_id='sample_beamline',
+                                scan_id=42)
+    data_keys = {'some_value': {'source': 'PV:pv1',
+                              'shape': [1, 2],
+                              'dtype': 'array'},
+                 'some_other_val': {'source': 'PV:pv2',
+                              'shape': [],
+                              'dtype': 'number'},
+                 'data_key3': {'source': 'PV:pv1',
+                              'shape': [],
+                              'dtype': 'number',
+                              'external': 'FS:foobar'}}
     time = ttime.time()
-    event_type = 'sample'
-    yield _ev_desc_tester, bre, data_keys, time, event_type
+    yield _ev_desc_tester, bre, data_keys, time
 
 
 def test_dict_key_replace_rt():
@@ -100,46 +117,61 @@ def test_src_dst_fail():
 
 
 @context_decorator
-def _begin_run_tester(time, beamline_id):
-    begin_run = mdsc.insert_begin_run(time, beamline_id)
+def _begin_run_tester(time, beamline_id, scan_id):
+    begin_run = mdsc.insert_begin_run(time, beamline_id, scan_id=scan_id)
 
     ret = BeginRunEvent.objects.get(id=begin_run.id)
 
-    for k, v in zip(['time', 'beamline_id', 'scan_id'], [time, beamline_id, None]):
+    for k, v in zip(['time', 'beamline_id', 'scan_id'],
+                    [time, beamline_id, scan_id]):
         assert_equal(getattr(ret, k), v)
 
 
 def test_begin_run():
     time = ttime.time()
     beamline_id = 'sample_beamline'
-    yield _begin_run_tester, time, beamline_id
+    yield _begin_run_tester, time, beamline_id, 42
+
 
 @context_decorator
-def _begin_run_with_cfg_tester(beamline_cfg, time, beamline_id):
-    begin_run = mdsc.insert_begin_run(time, beamline_id, beamline_config=beamline_cfg)
+def _begin_run_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
+    begin_run = mdsc.insert_begin_run(time, beamline_id,
+                                      beamline_config=beamline_cfg,
+                                      scan_id=scan_id)
 
     ret = BeginRunEvent.objects.get(id=begin_run.id)
 
     for k, v in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
-                    [time, beamline_id, None, beamline_cfg.to_dbref()]):
+                    [time, beamline_id, scan_id, beamline_cfg.to_dbref()]):
         assert_equal(getattr(ret, k), v)
 
 
-def test_begin_run():
+def test_begin_run2():
     bcfg = mdsc.insert_beamline_config({'cfg1': 1})
     time = ttime.time()
     beamline_id = 'sample_beamline'
-    yield _begin_run_with_cfg_tester, bcfg, time, beamline_id
+    scan_id = 42
+    yield _begin_run_with_cfg_tester, bcfg, time, beamline_id, scan_id
+
+
+@context_decorator
+def _event_tester(descriptor, seq_num, data, time):
+    pass
+
 
 @context_decorator
 def _end_run_tester(begin_run, time):
+    print('br:', begin_run)
     end_run = mdsc.insert_end_run(begin_run, time)
     ret = EndRunEvent.objects.get(id=end_run.id)
-    for k, v in zip(['id', 'time', 'begin_run_event'], [end_run.id, time, begin_run.to_dbref()]):
+    for k, v in zip(['id', 'time', 'begin_run_event'],
+                    [end_run.id, time, begin_run.to_dbref()]):
         assert_equal(getattr(ret, k), v)
 
 
 def test_end_run():
-    bre = mdsc.insert_begin_run(time=ttime.time(), beamline_id='sample_beamline')
+    bre = mdsc.insert_begin_run(time=ttime.time(),
+                                beamline_id='sample_beamline', scan_id=42)
+    print('bre:', bre)
     time = ttime.time()
     yield _end_run_tester, bre, time

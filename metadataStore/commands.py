@@ -2,25 +2,97 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
-                                         EndRunEvent, EventDescriptor, Event)
+                                         EndRunEvent, EventDescriptor, Event,
+                                         DataKey)
 import datetime
+import logging
 import metadataStore
 from mongoengine import connect
+import uuid
 
-import metadataStore
+
+logger = logging.getLogger(__name__)
+
+
+def format_data_keys(data_key_dict):
+    """Helper function that allows ophyd to send info about its data keys
+    to metadatastore and have metadatastore format them into whatever the
+    current spec dictates. This functions formats the data key info for
+    the event descriptor
+
+    Parameters
+    ----------
+    data_key_dict : dict
+        The format that ophyd is sending to metadatastore
+        {'data_key1': {
+            'source': source_value,
+            'dtype': dtype_value,
+            'shape': shape_value},
+         'data_key2': {...}
+        }
+
+    Returns
+    -------
+    formatted_dict : dict
+        Data key info for the event descriptor that is formatted for the
+        current metadatastore spec.The current metadatastore spec is:
+        {'data_key1':
+         'data_key2': mds.odm_templates.DataKeys
+        }
+    """
+    data_key_dict = {key_name: (
+                     DataKey(**data_key_description) if
+                           not isinstance(data_key_description, DataKey) else
+                           data_key_description)
+                     for key_name, data_key_description
+                     in six.iteritems(data_key_dict)}
+    return data_key_dict
+
+
+def format_events(event_dict):
+    """Helper function for ophyd to format its data dictionary in whatever
+    flavor of the week metadataStore's spec says. This insulates ophyd from
+    changes to the mds spec
+
+    Currently formats the dictionary as {key: [value, timestamp]}
+
+    Parameters
+    ----------
+    event_dict : dict
+        The format that ophyd is sending to metadatastore
+        {'data_key1': {
+            'timestamp': timestamp_value, # should be a float value!
+            'value': data_value
+         'data_key2': {...}
+        }
+
+    Returns
+    -------
+    formatted_dict : dict
+        The event dict formatted according to the current metadatastore spec.
+        The current metadatastore spec is:
+        {'data_key1': [data_value, timestamp_value],
+         'data_key2': [...],
+        }
+    """
+    return {key: [data_dict['value'], data_dict['timestamp']]
+            for key, data_dict in six.iteritems(event_dict)}
 
 
 def db_connect(func):
     def inner(*args, **kwargs):
-        connect(db=metadataStore.conf.mds_config['database'],
-                host=metadataStore.conf.mds_config['host'],
-                port=metadataStore.conf.mds_config['port'])
+        db = metadataStore.conf.mds_config['database']
+        host = metadataStore.conf.mds_config['host']
+        port = metadataStore.conf.mds_config['port']
+        logger.debug('connecting to db: %s, host: %s, port: %s',
+                     db, host, port)
+        connect(db=db, host=host, port=port)
         return func(*args, **kwargs)
     return inner
 
 @db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
-                     scan_id=None, custom=None):
+                     scan_id=None, custom=None, uid=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -48,10 +120,12 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
         Inserted mongoengine object
 
     """
+    if uid is None:
+        uid = str(uuid.uuid4())
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
-                              time_as_datetime=__todatetime(time),
+                              time_as_datetime=__todatetime(time), uid=uid,
                               beamline_id=beamline_id, custom=custom,
-                              beamline_config=beamline_config.id
+                              beamline_config=beamline_config
                               if beamline_config else None)
     begin_run.save(validate=True, write_concern={"w": 1})
 
@@ -59,7 +133,8 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
 
 
 @db_connect
-def insert_end_run(begin_run_event, time, reason=None):
+def insert_end_run(begin_run_event, time, exit_status='success',
+                   reason=None, uid=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -71,20 +146,23 @@ def insert_end_run(begin_run_event, time, reason=None):
         The date/time as found at the client side when an event is
         created.
     reason : str, optional
-        provides information regarding the run success.
+        provides information regarding the run success. 20 characters max
 
     Returns
     -------
     begin_run : mongoengine.Document
         Inserted mongoengine object
     """
-    begin_run = EndRunEvent(begin_run_event=begin_run_event.id, reason=reason,
-                            time=time,
-                            time_as_datetime=__todatetime(time))
+    if uid is None:
+        uid = str(uuid.uuid4())
+    end_run = EndRunEvent(begin_run_event=begin_run_event, reason=reason,
+                            time=time, time_as_datetime=__todatetime(time),
+                            uid=uid, exit_status=exit_status)
 
-    begin_run.save(validate=True, write_concern={"w": 1})
+    end_run.save(validate=True, write_concern={"w": 1})
 
-    return begin_run
+    return end_run
+
 
 @db_connect
 def insert_beamline_config(config_params=None):
@@ -106,8 +184,9 @@ def insert_beamline_config(config_params=None):
 
     return beamline_config
 
+
 @db_connect
-def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
+def insert_event_descriptor(begin_run_event, data_keys, time, uid=None):
     """ Create an event_descriptor in metadataStore database backend
 
     Parameters
@@ -127,9 +206,12 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
         The document added to the collection.
 
     """
-    event_descriptor = EventDescriptor(begin_run_event=begin_run_event.id,
+    if uid is None:
+        uid = str(uuid.uuid4())
+    data_keys = format_data_keys(data_keys)
+    event_descriptor = EventDescriptor(begin_run_event=begin_run_event,
                                        data_keys=data_keys, time=time,
-                                       event_type=event_type,
+                                       uid=uid,
                                        time_as_datetime=__todatetime(time))
 
     event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
@@ -139,8 +221,9 @@ def insert_event_descriptor(begin_run_event, data_keys, time, event_type=None):
 
     return event_descriptor
 
+
 @db_connect
-def insert_event(event_descriptor, time, data, seq_no):
+def insert_event(event_descriptor, time, data, seq_num, uid=None):
     """Create an event in metadataStore database backend
 
     Parameters
@@ -154,14 +237,23 @@ def insert_event(event_descriptor, time, data, seq_no):
     data : dict
         Dictionary that contains the name value fields for the data associated
         with an event
-    seq_no : int
+    seq_num : int
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
     m_data = __validate_data(data)
 
-    event = Event(descriptor_id=event_descriptor.id,
-                  data=m_data, time=time, seq_no=seq_no,
+    # mostly here to notify ophyd that an event descriptor needs to be created
+    if event_descriptor is None:
+        raise EventDescriptorIsNoneError()
+
+    if uid is None:
+        uid = str(uuid.uuid4())
+
+    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
+    # talk to @dchabot & @swilkins
+    event = Event(descriptor_id=event_descriptor, uid=uid,
+                  data=m_data, time=time, seq_num=seq_num,
                   time_as_datetime=__todatetime(time))
 
     event = __replace_event_data_key_dots(event, direction='in')
@@ -172,14 +264,22 @@ def insert_event(event_descriptor, time, data, seq_no):
 def __validate_data(data):
     m_data = dict()
     for k, v in six.iteritems(data):
-        if isinstance(v, list):
+        if isinstance(v, (list, tuple)):
             if len(v) == 2:
-                m_data[k] = v
+                m_data[k] = list(v)
             else:
                 raise ValueError('List must contain value and timestamp')
         else:
             raise TypeError('Data fields must be lists!')
     return m_data
+
+
+class EventDescriptorIsNoneError(ValueError):
+    """Special error that ophyd looks for when it passes a `None` event
+    descriptor. Ophyd will then create an event descriptor and create the event
+    again
+    """
+    pass
 
 
 def __add_event_descriptors(begin_run_list):
@@ -356,8 +456,8 @@ def find_event(begin_run_event):
     events: list
         Set of events encapsulated within a BeginRunEvent's scope
     """
-    descriptors = EventDescriptor.objects(
-        begin_run_event=begin_run_event.id).order_by('-_id')
+    descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id)
+    descriptors = descriptors.order_by('-_id')
     events = [find_event_given_descriptor(descriptor)
               for descriptor in descriptors]
     return events
