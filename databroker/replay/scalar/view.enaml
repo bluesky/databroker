@@ -13,7 +13,7 @@ from enaml.widgets.api import (Window, Container, DockArea, MPLCanvas,
                                Field,
                                )
 from enaml.stdlib.fields import FloatField
-from ..model.scalar_model import ScalarCollection, ScalarConfig
+from .model import ScalarCollection, ScalarConfig
 import random
 import six
 

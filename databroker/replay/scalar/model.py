@@ -663,7 +663,7 @@ class ScalarCollection(Atom):
                             if v.line_artist.get_visible()]
             if legend_pairs:
                 arts, labs = zip(*legend_pairs)
-                self._ax.legend(arts, labs)
+                self._ax.legend(arts, labs).draggable()
             else:
                 self._ax.legend(legend_pairs)
             self._ax.relim(visible_only=True)

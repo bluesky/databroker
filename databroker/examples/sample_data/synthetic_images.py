@@ -1,3 +1,5 @@
+from __future__ import division
+
 from metadataStore.api.collection import (insert_begin_run, insert_event,
                                           insert_beamline_config,
                                           insert_event_descriptor)
@@ -13,7 +15,7 @@ import uuid
 from fileStore.api import analysis as fsa
 
 # used below
-img_size = (150, 150)
+img_size = (500, 500)
 period = 150
 I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
 center = 25
@@ -33,8 +35,9 @@ frame_source = FrameSourcerBrownian(img_size, step_scale=.5,
                                     step_fluc_function=scale_fluc,
                                     )
 
-b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
-b_config = None
+b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
+                                  time=time.time())
+# b_config = None
 
 try:
     last_start_event = find_last()[0]
