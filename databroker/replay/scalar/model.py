@@ -122,6 +122,7 @@ class ScalarModel(Atom):
 
     @observe('is_plotting')
     def set_visible(self, changed):
+        print('{} is visible: {}'.format(self.name, self.is_plotting))
         self.line_artist.set_visible(changed['value'])
         try:
             self.line_artist.axes.figure.canvas.draw()
@@ -261,11 +262,23 @@ class ScalarCollection(Atom):
                                                name=nodata_str,
                                                is_plotting=True)
 
-    def new_data_muggler(self, data_muggler):
-        self.data_muggler = data_muggler
+    def new_data_muggler(self, changed):
+        """Function to be registered with a MugglerModel on its `muggler`
+        attribute
+
+        Parameters
+        ----------
+        changed : dict
+            Changed is emitted by Atom and has the following keys:
+            {'value', 'object', 'type', 'name', 'oldvalue'}
+        """
+        print('new_data_muggler callback function triggered in '
+              'ScalarCollection')
+        self.data_muggler = changed['value']
 
     @observe('data_muggler')
     def update_datamuggler(self, changed):
+        print('data muggler update triggered')
         with self.suppress_notifications():
             if self.data_muggler is None:
                 self.col_names = [nodata_str]
@@ -279,6 +292,7 @@ class ScalarCollection(Atom):
             # connect the signals from the muggler to the appropriate slots
             # in this class
             # get the column names with dimensionality equal to zero
+            print('data muggler col info by ndim: {}'.format(self.data_muggler.col_info_by_ndim))
             col_names = [col_info.name for col_info
                          in self.data_muggler.col_info_by_ndim[0]]
             # default to time
@@ -295,30 +309,36 @@ class ScalarCollection(Atom):
             for name in col_names:
                 # create a new line artist and scalar model
                 line_artist, = self._ax.plot([], [], label=name, marker='D')
-                self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                       name=name,
-                                                       is_plotting=False)
+                self.scalar_models[name] = ScalarModel(
+                    line_artist=line_artist, name=name, is_plotting=True)
             # add the estimate
             name = 'peak stats'
             line_artist, = self._ax.plot([], [], 'ro', label=name,
                                            markersize=15)
-            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                   name=name,
-                                                   is_plotting=True)
+            self.scalar_models[name] = ScalarModel(
+                line_artist=line_artist, name=name, is_plotting=True)
+
+            for model in self.scalar_models.values():
+                model.observe('is_plotting', self.reformat_view)
 
         # trigger the updates
         print('col_names', col_names)
         for model_name, model in six.iteritems(self.scalar_models):
             print(model.state)
-        self.x_is_time = x_is_time
-        self._last_update_time = datetime.utcnow()
+        with self.suppress_notifications():
+            self.x_is_time = x_is_time
+            self._last_update_time = datetime.utcnow()
+            self.bin_on = bin_on
+            self.x = x
+            self.estimate_target = x
+            self.estimate_index = estimate_index
+            self.normalize_target = x
         self.col_names = col_names
-        self.bin_on = bin_on
-        self.x = x
-        self.estimate_target = x
-        self.estimate_index = estimate_index
-        self.normalize_target = x
+        self.get_new_data_and_plot()
 
+    @observe('col_names')
+    def update_col_names(self, changed):
+        print('col_names changed: {}'.format(self.col_names))
     @observe('x_is_time')
     def update_x_axis(self, changed):
         self.get_new_data_and_plot()
@@ -509,34 +529,36 @@ class ScalarCollection(Atom):
         if self.x_is_time:
             self.plot_by_time()
         else:
-            if y_names is None:
-                y_names = self.col_names
-            self.plot_by_x(y_names)
+            self.plot_by_x()
 
     def plot_by_time(self):
         df = self.data_muggler._dataframe
-        nrows, ncols = self.get_rows_cols()
-        subplots = not self.single_plot
-        self._fig.set_tight_layout(False)
-        df.plot(ax=self._ax, subplots=subplots, marker='o',
-                layout=(nrows, ncols))
+        data_dict = {data_name: {'x': df[data_name].index.tolist(),
+                                 'y': df[data_name].tolist()}
+                     for data_name in df.columns
+                     if data_name in self.col_names}
+        self._plot(data_dict)
 
-    def get_rows_cols(self):
-        nrows = self.nrows
-        ncols = self.ncols
-        ndata = len(self.col_names)
-        if nrows == 0 and ncols == 0:
-            nrows = int(np.ceil(np.sqrt(ndata)))
-            ncols = nrows
-        elif nrows == 0:
-            nrows = int(np.ceil(ndata/ncols))
+    def plot_by_x(self):
+        interpolation = {name: 'linear' for name in self.col_names}
+        agg = {name: np.mean for name in self.col_names}
+        df = self.data_muggler.bin_on(self.x, interpolation=interpolation,
+                                      agg=agg, col_names=self.col_names)
+        x = df[self.x].values
+        print('x axis values: {}'.format(x))
+        data_dict = {data_name: {'x': x, 'y': df[data_name].tolist()}
+                     for data_name in df.columns}
+        self._plot(data_dict)
 
-        while (nrows * (ncols-1)) > ndata:
-            nrows -= 1
+    def _plot(self, data_dict):
+        for dname, dvals in data_dict.items():
+            if dname in self.col_names:
+                self.scalar_models[dname].set_data(x=dvals['x'], y=dvals['y'])
+                # self.scalar_models[dname].is_plotting = True
+        self.reformat_view()
 
-        return nrows, ncols
 
-    def plot_by_x(self, y_names):
+    def plot_by_x_old(self, y_names):
         interpolation = {name: 'linear' for name in self.data_muggler.col_info.keys()}
         agg = {name: np.mean for name in self.data_muggler.col_info.keys()}
         df = self.data_muggler.bin_on(self.x, interpolation=interpolation, agg=agg)
@@ -597,11 +619,14 @@ class ScalarCollection(Atom):
         #                  color='k')
 
 
-    def reformat_view(self):
+    def reformat_view(self, *args, **kwargs):
         """
         Recompute the limits, rescale the view, reformat the legend and redraw
         the canvas
         """
+        # ignore the args and kwargs. They are here so that any function can be
+        # connected to this one
+
 
         x_data = []
         y_data = []
@@ -645,6 +670,8 @@ class ScalarCollection(Atom):
             self._ax.set_xlabel(self._conf.xlabel)
             self._ax.set_title(self._conf.title)
             self._fig.canvas.draw()
+        # self._ax.figure.canvas.draw()
+        # print('current figure id: {}'.format(id(self._fig)))
         except AttributeError as ae:
             # should only happen once
             pass

@@ -72,25 +72,6 @@ enamldef PlotControls(Container):
                         CheckBox: btn_time:
                             text = 'Plot againt time'
                             checked := scalar_collection.x_is_time
-                        CheckBox: btn_single_plot:
-                            text = "Single plot"
-                            checked := scalar_collection.single_plot
-                            clicked ::
-                                sb_rows.enabled = not checked
-                                sb_cols.enabled = not checked
-                        Label: lbl_rows:
-                            text = "nrows"
-                        SpinBox: sb_rows:
-                            value := scalar_collection.nrows
-                            minimum = 0
-                            special_value_text = "auto"
-                        Label: lbl_cols:
-                            text = "ncols"
-                        SpinBox: sb_cols:
-                            value := scalar_collection.ncols
-                            minimum = 0
-                            special_value_text = "auto"
-
                     Label:
                         text = "Dataset to fit"
                     ComboBox: cmb_fit:
@@ -125,6 +106,7 @@ enamldef PlotControls(Container):
                         iterable << scalar_collection.col_names
                         PushButton: cb_plot:
                             text = loop_item
+                            checkable = True
                             checked := (
                                 scalar_collection.
                                     scalar_models[loop_item].is_plotting
