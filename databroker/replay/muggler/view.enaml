@@ -60,6 +60,8 @@ enamldef MugglerController(Container):
             special_value_text = 'Autotune'
             value := muggler_model.update_rate
             suffix = ' ms'
+            single_step << value / 100
+
     Label: muggler_info:
         text << muggler_model.info
     GroupBox: scalar:
