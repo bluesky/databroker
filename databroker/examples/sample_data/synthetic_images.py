@@ -16,7 +16,7 @@ from fileStore.api import analysis as fsa
 img_size = (150, 150)
 period = 150
 I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
-center = 50
+center = 25
 sigma = center / 4
 I_func_gaus = lambda count: (1 + np.exp(-((count - center)/sigma) ** 2))
 

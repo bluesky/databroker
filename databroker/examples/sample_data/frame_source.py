@@ -50,7 +50,7 @@ class FrameSourcerBrownian(object):
         self._decay = decay
 
         if I_fluc_function is None:
-            I_fluc_function = lambda x: 1
+            I_fluc_function = lambda x: np.random.randn()
 
         self._I_func = I_fluc_function
 
@@ -77,6 +77,7 @@ class FrameSourcerBrownian(object):
                                  self._cur_position).reshape(self._im_shape)
         I = self._I_func(self._count)
         im = np.exp((-R**2 / self._decay)) * I
+        self._count = self._count+1
         return im
 
     def reset(self):
