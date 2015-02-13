@@ -4,10 +4,10 @@ import six
 from collections import deque
 from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
                       Bool, ReadOnly, Tuple, Float)
-from databroker.muggler.api import DataMuggler
-from databroker.broker import simple_broker
-from databroker.broker.struct import BrokerStruct
-from databroker.muggler.data import ColSpec
+from dataportal.muggler.api import DataMuggler
+from dataportal.broker import simple_broker
+from dataportal.broker.struct import BrokerStruct
+from dataportal.muggler.data import ColSpec
 
 
 def get_events(run_header):
@@ -15,7 +15,7 @@ def get_events(run_header):
 
 
 class ColumnModel(Atom):
-    """Atom implementation of databroker.muggler.data.ColSpec
+    """Atom implementation of dataportal.muggler.data.ColSpec
     """
     name = Str()
     dim = Int()
@@ -70,16 +70,16 @@ class MugglerModel(Atom):
 
     Attributes
     ----------
-    data_muggler : databroker.muggler.api.DataMuggler
+    data_muggler : dataportal.muggler.api.DataMuggler
         The data_muggler holds the non-time-aligned data.  Upon asking the data_muggler
         to reformat its data into time-aligned bins, a dataframe is returned
-    run_header: databroker.broker.struct.BrokerStruct
+    run_header: dataportal.broker.struct.BrokerStruct
         The bucket of information from the data broker that contains all
         non-data information
 
     column_models : atom.dict.Dict
         Dictionary that is analogous to the col_info property of the
-        databroker.muggler.data.DataMuggler object
+        dataportal.muggler.data.DataMuggler object
     scalar_columns : atom.list.List
         The list of columns names whose cells contain 0-D arrays (single values)
     line_columns : atom.list.List
@@ -149,7 +149,7 @@ class MugglerModel(Atom):
         self.get_new_data()
 
     def get_new_data(self):
-        """Hit the databroker to first see if there is new data and, if so,
+        """Hit the dataportal to first see if there is new data and, if so,
         grab it
         """
         print('getting new data from the data broker')

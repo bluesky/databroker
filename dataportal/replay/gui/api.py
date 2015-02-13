@@ -61,8 +61,8 @@ def make_line_window(init_view=True):
 
     Returns
     -------
-    model : databroker.replay.core.image_model
-    window : databroker.replay.gui.core.ImageView
+    model : dataportal.replay.core.image_model
+    window : dataportal.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
     from ..model.scalar_model import ScalarCollection
@@ -84,8 +84,8 @@ def make_image_view(init_view=True):
 
     Returns
     -------
-    model : databroker.replay.core.image_model
-    window : databroker.replay.gui.core.ImageView
+    model : dataportal.replay.core.image_model
+    window : dataportal.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
     from ..model.image_model import ImageModel
@@ -107,8 +107,8 @@ def make_image_window(init_view=True):
 
     Returns
     -------
-    model : databroker.replay.core.image_model
-    window : databroker.replay.gui.core.ImageView
+    model : dataportal.replay.core.image_model
+    window : dataportal.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
     from ..model.image_model import ImageModel
@@ -131,8 +131,8 @@ def make_cross_section_view(init_view=True):
 
     Returns
     -------
-    model : databroker.replay.core.image_model
-    window : databroker.replay.gui.core.ImageView
+    model : dataportal.replay.core.image_model
+    window : dataportal.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
     from ..model.cross_section_model import CrossSectionModel
@@ -166,8 +166,8 @@ def make_param_view(data_muggler, init_view=True):
 
     Returns
     -------
-    model : databroker.replay.core.image_model
-    window : databroker.replay.gui.core.ImageView
+    model : dataportal.replay.core.image_model
+    window : dataportal.replay.gui.core.ImageView
         enaml.widgets.api.MainWindow
     """
     from ..model.scalar_model import ScalarCollection

@@ -63,20 +63,20 @@ setup(
     name='DataBroker',
     version=FULLVERSION,
     author='Brookhaven National Laboratory',
-    packages=['databroker', 'databroker.api', 'databroker.testing',
-              'databroker.examples',
-              'databroker.examples.sample_data',
-              'databroker.replay',
-              'databroker.replay.gui',
-              'databroker.replay.model',
-              'databroker.broker', 'databroker.muggler',
-              'databroker.sources', 'databroker.sources.dummy_sources'
+    packages=['dataportal', 'databroker.api', 'databroker.testing',
+              'dataportal.examples',
+              'dataportal.examples.sample_data',
+              'dataportal.replay',
+              'dataportal.replay.gui',
+              'dataportal.replay.model',
+              'dataportal.broker', 'databroker.muggler',
+              'dataportal.sources', 'databroker.sources.dummy_sources'
               ],
     include_dirs=[np.get_include()],
     entry_points={
         'console_scripts': [
-        'replay = databroker.replay.run:main']},
-    package_data={'databroker.replay.gui': ['*.enaml']},
+        'replay = dataportal.replay.run:main']},
+    package_data={'dataportal.replay.gui': ['*.enaml']},
     requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
               'pims', 'six'],
 )

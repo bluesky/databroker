@@ -42,7 +42,7 @@ enamldef DisplaySummary(Container):
 
 enamldef GetLastView(Container):
     """Enaml definition for the widget that displays the controls for
-    searching the databroker for the last N runs
+    searching the dataportal for the last N runs
     """
     attr muggler_model
     attr get_last_model
