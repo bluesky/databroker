@@ -47,13 +47,8 @@ enamldef KeyForm(Form):
 enamldef MugglerController(Container):
     padding = Box(0, 0, 0, 0)
     attr muggler_model
-    constraints = [vbox(refresh_button,
-                        muggler_info,
-                        scalar,
-                        line,
-                        image,
-                        volume
-                       ),
+    constraints = [vbox(refresh_button, muggler_info, scalar, line, image,
+                        volume),
                    align('midline', scalar.form, line.form, image.form,
                          volume.form)]
     PushButton: refresh_button:
