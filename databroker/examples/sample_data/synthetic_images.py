@@ -55,18 +55,47 @@ img_sum_y = img.sum(axis=1)
 print(img.shape, img_sum_x.shape, img_sum_y.shape)
 
 # set up the data keys entry
-data_keys1 = {'linear_motor': {'source': 'PV:ES:sam_x'},
-              'img': {'source': 'CCD', 'external': 'FILESTORE:',
-                      'shape': img.shape},
-              'total_img_sum': {'source': 'CCD:sum'},
-              'img_x_max': {'source': 'CCD:xmax'},
-              'img_y_max': {'source': 'CCD:ymax'},
-              'img_sum_x': {'source': 'CCD:xsum', 'external': 'FILESTORE:',
-                            'shape': img_sum_x.shape},
-              'img_sum_y': {'source': 'CCD:ysum', 'external': 'FILESTORE:',
-                            'shape': img_sum_y.shape},
+data_keys1 = {
+    'linear_motor': {
+        'source': 'PV:ES:sam_x',
+        'dtype': 'number',
+        'shape': []
+    },
+    'img': {
+        'source': 'CCD',
+        'external': 'FILESTORE:',
+        'shape': img.shape,
+        'dtype': 'number',
+    },
+    'total_img_sum': {
+        'source': 'CCD:sum',
+        'dtype': 'number',
+        'shape': []
+    },
+    'img_x_max': {
+        'source': 'CCD:xmax',
+        'dtype': 'number',
+        'shape': []
+    },
+    'img_y_max': {
+        'source': 'CCD:ymax',
+        'dtype': 'number',
+        'shape': []
+    },
+    'img_sum_x': {
+        'source': 'CCD:xsum',
+        'external': 'FILESTORE:',
+        'shape': img_sum_x.shape,
+        'dtype': 'number'
+    },
+    'img_sum_y': {
+        'source': 'CCD:ysum',
+        'external': 'FILESTORE:',
+        'shape': img_sum_y.shape,
+        'dtype': 'number'
+    },
 }
-data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam'}}
+data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam', 'shape': [], 'dtype': 'number'}}
 
 # save the first event descriptor
 e_desc1 = insert_event_descriptor(begin_run_event=bre, data_keys=data_keys1,
@@ -95,20 +124,19 @@ for idx1, i in enumerate(range(num1)):
     fsid_y = fsa.save_ndarray(img_sum_y)
     # still need some magic way to save data into the file store, and I really
     # have no idea how the file store works
-    data1 = {'linear_motor': {'value': i, 'timestamp': time.time()},
-            'total_img_sum': {'value': img.sum(), 'timestamp': time.time()},
-            'img': {'value': fsid_img, 'timestamp': time.time()},
-            'img_sum_x': {'value': fsid_x, 'timestamp': time.time()},
-            'img_sum_y': {'value': fsid_y, 'timestamp': time.time()},
-            'img_x_max': {'value': img_x_max, 'timestamp': time.time()},
-            'img_y_max': {'value': img_y_max, 'timestamp': time.time()},
+    data1 = {'linear_motor': [i,time.time()],
+            'total_img_sum': [img.sum(), time.time()],
+            'img': [fsid_img, time.time()],
+            'img_sum_x': [fsid_x, time.time()],
+            'img_sum_y': [fsid_y, time.time()],
+            'img_x_max': [img_x_max, time.time()],
+            'img_y_max': [img_y_max, time.time()],
             }
-    events.append(insert_event(event_descriptor=e_desc1, seq_no=idx1,
+    events.append(insert_event(event_descriptor=e_desc1, seq_num=idx1,
                                time=time.time(), data=data1))
     for idx2, i2 in enumerate(range(num2)):
-        data2 = {'Tsam': {'value': idx1 + np.random.randn()/100,
-                          'timestamp': time.time()}}
-        insert_event(event_descriptor=e_desc2, seq_no=idx2+idx1,
+        data2 = {'Tsam': [idx1 + np.random.randn()/100, time.time()]}
+        insert_event(event_descriptor=e_desc2, seq_num=idx2+idx1,
                      time=time.time(), data=data2)
     # time.sleep(sleep_time)
 
