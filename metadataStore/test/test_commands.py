@@ -19,13 +19,17 @@ import metadataStore.commands as mdsc
 
 db_name = str(uuid.uuid4())
 dummy_db_name = str(uuid.uuid4())
+blc = None
 
 
 def setup():
+    global blc
+
     # need to make 'default' connection to point to no-where, just to be safe
     mongoengine.connect(dummy_db_name)
     # connect to the db we are actually going to use
     mongoengine.connect(db_name, alias='test_db')
+    blc = mdsc.insert_beamline_config({}, ttime.time())
 
 
 def teardown():
@@ -50,7 +54,7 @@ def context_decorator(func):
 def _blc_tester(config_dict):
     """Test BeamlineConfig Insert
     """
-    blc = mdsc.insert_beamline_config(config_dict)
+    blc = mdsc.insert_beamline_config(config_dict, ttime.time())
     BeamlineConfig.objects.get(id=blc.id)
     if config_dict is None:
         config_dict = dict()
@@ -88,7 +92,8 @@ def _ev_desc_tester(begin_run_event, data_keys, time):
 def test_ev_desc():
     bre = mdsc.insert_begin_run(time=ttime.time(),
                                 beamline_id='sample_beamline',
-                                scan_id=42)
+                                scan_id=42,
+                                beamline_config=blc)
     data_keys = {'some_value': {'source': 'PV:pv1',
                               'shape': [1, 2],
                               'dtype': 'array'},
@@ -118,7 +123,9 @@ def test_src_dst_fail():
 
 @context_decorator
 def _begin_run_tester(time, beamline_id, scan_id):
-    begin_run = mdsc.insert_begin_run(time, beamline_id, scan_id=scan_id)
+
+    begin_run = mdsc.insert_begin_run(time, beamline_id, scan_id=scan_id,
+                                      beamline_config=blc)
 
     ret = BeginRunEvent.objects.get(id=begin_run.id)
 
@@ -147,7 +154,7 @@ def _begin_run_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
 
 
 def test_begin_run2():
-    bcfg = mdsc.insert_beamline_config({'cfg1': 1})
+    bcfg = mdsc.insert_beamline_config({'cfg1': 1}, ttime.time())
     time = ttime.time()
     beamline_id = 'sample_beamline'
     scan_id = 42
@@ -171,7 +178,8 @@ def _end_run_tester(begin_run, time):
 
 def test_end_run():
     bre = mdsc.insert_begin_run(time=ttime.time(),
-                                beamline_id='sample_beamline', scan_id=42)
+                                beamline_id='sample_beamline', scan_id=42,
+                                beamline_config=blc)
     print('bre:', bre)
     time = ttime.time()
     yield _end_run_tester, bre, time
