@@ -544,16 +544,15 @@ class ScalarCollection(Atom):
         agg = {name: np.mean for name in self.col_names}
         df = self.data_muggler.bin_on(self.x, interpolation=interpolation,
                                       agg=agg, col_names=self.col_names)
-        x = df[self.x].values
-        print('x axis values: {}'.format(x))
-        data_dict = {data_name: {'x': x, 'y': df[data_name].tolist()}
-                     for data_name in df.columns}
+        x_axis = df[self.x].val.values
+        data_dict = {data_name[0]: {'x': x_axis, 'y': df[data_name].tolist()}
+                     for data_name in df}
         self._plot(data_dict)
 
     def _plot(self, data_dict):
         for dname, dvals in data_dict.items():
             if dname in self.col_names:
-                self.scalar_models[dname].set_data(x=dvals['x'], y=dvals['y'])
+                self.scalar_models[dname].set_data(dvals['x'], dvals['y'])
                 # self.scalar_models[dname].is_plotting = True
         self.reformat_view()
 
