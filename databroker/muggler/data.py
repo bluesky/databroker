@@ -307,7 +307,7 @@ class DataMuggler(object):
         # Do not force a rebuilt (i.e., self._stale). Just remove it here.
         del self._df[_timestamp_col_name(source_name)]
 
-    def bin_on(self, source_name, interpolation=None, agg=None):
+    def bin_on(self, source_name, interpolation=None, agg=None, col_names=None):
         """
         Return data resampled to align with the data from a particular source.
 
@@ -347,10 +347,11 @@ class DataMuggler(object):
         bin_edges = [-np.inf] + list(np.repeat(bin_edges, 2)) + [np.inf]
         bin_edges = np.reshape(bin_edges, (-1, 2))
         return self.bin_by_edges(bin_edges, time_labels=centers,
-                                 interpolation=interpolation, agg=agg)
+                                 interpolation=interpolation, agg=agg,
+                                 col_names=col_names)
 
     def bin_by_edges(self, bin_edges, anchor=None, time_labels=None,
-                     interpolation=None, agg=None):
+                     interpolation=None, agg=None, col_names=None):
         """
         Return data resampled into bins with the specified edges.
 
@@ -378,6 +379,8 @@ class DataMuggler(object):
             source by passing a dictionary of source names mapped onto any
             callable that reduces multiple data points (of whatever dimension)
             to a single data point.
+        col_names : list, optional
+            List of columns to bin by
 
         Returns
         -------
@@ -418,12 +421,11 @@ class DataMuggler(object):
             else:
                 raise ValueError("anchor must be 'left', 'center', 'right', "
                                  "or None")
-        return self.resample(time_labels, binning, interpolation, agg)
+        return self.resample(time_labels, binning, interpolation, agg, col_names=col_names)
 
     def resample(self, time_labels, binning, interpolation=None, agg=None,
-                 verify_integrity=True):
+                 verify_integrity=True, col_names=None):
         result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
-
         # How many (non-null) data points in each bin?
         grouped = self._dataframe.groupby(binning)
         counts = grouped.count()
@@ -432,8 +434,9 @@ class DataMuggler(object):
         has_multiple_points = ~(has_one_point | has_no_points)
         # Get the first (maybe the only) point in each bin.
         first_point = grouped.first()
-
-        for name in self._dataframe:
+        if col_names is None:
+            col_names = self._dataframe.columns
+        for name in col_names:
             result[name] = pd.DataFrame(index=np.arange(len(time_labels)))
             # Resolve (and if necessary validate) sampling rules.
             col_info = self.col_info[name]
