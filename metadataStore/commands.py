@@ -85,6 +85,7 @@ def db_connect(func):
         return func(*args, **kwargs)
     return inner
 
+
 @db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
                      scan_id=None, custom=None, uid=None):
@@ -120,8 +121,8 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
                               time_as_datetime=__todatetime(time), uid=uid,
                               beamline_id=beamline_id, custom=custom,
-                              beamline_config=beamline_config
-                              if beamline_config else None)
+                              beamline_config=beamline_config)
+
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
@@ -160,7 +161,7 @@ def insert_end_run(begin_run_event, time, exit_status='success',
 
 
 @db_connect
-def insert_beamline_config(config_params=None):
+def insert_beamline_config(config_params, time, uid=None):
     """ Create a beamline_config  in metadataStore database backend
 
     Parameters
@@ -174,7 +175,11 @@ def insert_beamline_config(config_params=None):
     blc : BeamlineConfig
         The document added to the collection
     """
-    beamline_config = BeamlineConfig(config_params=config_params)
+    if uid is None:
+        uid = str(uuid.uuid4())
+    beamline_config = BeamlineConfig(config_params=config_params,
+                                     time=time,
+                                     uid=uid)
     beamline_config.save(validate=True, write_concern={"w": 1})
 
     return beamline_config

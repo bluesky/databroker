@@ -16,6 +16,8 @@ class BeamlineConfig(DynamicDocument):
         This has a one-to-many relationship with BeginRunEvent documents
     """
     config_params = DictField(required=False, unique=False)
+    uid = StringField(required=True, unique=True)
+    time = FloatField(required=True)
     meta = {'indexes': ['-_id']}
 
 
