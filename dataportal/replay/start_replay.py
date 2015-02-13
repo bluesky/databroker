@@ -10,7 +10,7 @@ from enaml.qt.qt_application import QtApplication
 logger = logging.getLogger(__name__)
 
 from skxray.fitting.api import model_list as valid_models
-from dataportal.muggler.data import DataMuggler
+from dataportal.muxer.data import DataMuggler
 from dataportal.replay.model.scalar_model import ScalarCollection
 from dataportal.replay.model.fitting_model import MultiFitController
 from metadataStore.api import analysis
@@ -25,7 +25,7 @@ view = None
 sleep_time = 0.25
 
 prev_hdr_id = None
-# nested dictionary to spare data muggler a bunch of event parsing
+# nested dictionary to spare data muxer a bunch of event parsing
 known_events = {}
 
 # RUNTIME
@@ -67,11 +67,11 @@ def grab_latest(scan_id):
 
     # check to see if the begin_run_event has changed underneath us
     if prev_hdr_id != current_hdr_id:
-        # check if the GUI is asking for a new data muggler
+        # check if the GUI is asking for a new data muxer
         if view.make_new_dm:
             known_events.clear()
             dm = DataMuggler(events)
-            view.scalar_collection.data_muggler = dm
+            view.scalar_collection.data_muxer = dm
             prev_hdr_id = current_hdr_id
             try:
                 # set the x axis for the scalar view
@@ -103,11 +103,11 @@ def grab_latest(scan_id):
             known_events[e.ev_desc] = deque()
         # check to see if the event 'e' already exists in known_events
         if e.time not in known_events[e.ev_desc]:
-            # data muggler doesn't know about this event yet
+            # data muxer doesn't know about this event yet
             known_events[e.ev_desc].append(e.time)
             dm.append_event(e)
 
-    # turn off the UI toggle to make a new data muggler
+    # turn off the UI toggle to make a new data muxer
     view.make_new_dm = False
 
     # grab some bits to format the title
@@ -125,7 +125,7 @@ def init_ui():
 
     Parameters
     ----------
-    data_muggler : dataportal.muggler.data.DataMuggler
+    data_muxer : dataportal.muxer.data.DataMuggler
     """
     global view
     with enaml.imports():
@@ -134,7 +134,7 @@ def init_ui():
 
     c_c_combo_fitter = MultiFitController(valid_models=valid_models)
     scalar_collection = ScalarCollection()
-    scalar_collection.data_muggler = dm
+    scalar_collection.data_muxer = dm
     scalar_collection.multi_fit_controller = c_c_combo_fitter
     view = PipelineView()
     configs = MplConfigs()
@@ -153,7 +153,7 @@ def main():
     app = QtApplication()
     # init the UI
     view = init_ui()
-    view.scalar_collection.data_muggler = None
+    view.scalar_collection.data_muxer = None
     view.show()
 
     # init the header and event pvs

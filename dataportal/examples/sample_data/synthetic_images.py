@@ -9,7 +9,7 @@ import random
 import time
 import string
 import numpy as np
-from databroker.broker.struct import BrokerStruct
+from dataportal.broker.struct import BrokerStruct
 from frame_source import FrameSourcerBrownian
 import uuid
 from fileStore.api import analysis as fsa

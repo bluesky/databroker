@@ -63,14 +63,14 @@ setup(
     name='DataBroker',
     version=FULLVERSION,
     author='Brookhaven National Laboratory',
-    packages=['dataportal', 'databroker.api', 'databroker.testing',
+    packages=['dataportal', 'dataportal.api', 'dataportal.testing',
               'dataportal.examples',
               'dataportal.examples.sample_data',
               'dataportal.replay',
               'dataportal.replay.gui',
               'dataportal.replay.model',
-              'dataportal.broker', 'databroker.muggler',
-              'dataportal.sources', 'databroker.sources.dummy_sources'
+              'dataportal.broker', 'dataportal.muxer',
+              'dataportal.sources', 'dataportal.sources.dummy_sources'
               ],
     include_dirs=[np.get_include()],
     entry_points={

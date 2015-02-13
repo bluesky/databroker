@@ -1,4 +1,4 @@
-"""Enaml definitions for GUI views related to the DataMuggler"""
+"""Enaml definitions for GUI views related to the DataMuxer"""
 
 from enaml.layout.api import (vbox, hbox, Box, spacer, align)
 from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
@@ -34,18 +34,18 @@ enamldef KeyForm(Form):
         ColumnView:
             column_model = loop_item
 
-enamldef MugglerController(Container):
+enamldef MuxerController(Container):
     padding = Box(0, 0, 0, 0)
-    attr muggler_model
-    constraints = [vbox(refresh_button, update_rate, muggler_info, scalar, line,
+    attr muxer_model
+    constraints = [vbox(refresh_button, update_rate, muxer_info, scalar, line,
                         image, volume),
                    align('midline', scalar.form, line.form, image.form,
                          volume.form)]
     Timer: the_timer:
-        interval << muggler_model.update_rate
+        interval << muxer_model.update_rate
         single_shot = False
         timeout ::
-            muggler_model.get_new_data()
+            muxer_model.get_new_data()
     TimerButton: refresh_button:
         timer = the_timer
         text = "Automatically update data"
@@ -58,45 +58,45 @@ enamldef MugglerController(Container):
             minimum = 0
             maximum = 36000000
             special_value_text = 'Autotune'
-            value := muggler_model.update_rate
+            value := muxer_model.update_rate
             suffix = ' ms'
             single_step << value / 100
 
-    Label: muggler_info:
-        text << muggler_model.info
+    Label: muxer_info:
+        text << muxer_model.info
     GroupBox: scalar:
         share_layout = True
         alias form: scalar_keys
         title = 'Scalar keys'
         padding = Box(0, 0, 0, 0)
-        visible << muggler_model.scalar_columns_visible
+        visible << muxer_model.scalar_columns_visible
         KeyForm: scalar_keys:
             share_layout = True
-            column_model_list << muggler_model.scalar_columns
+            column_model_list << muxer_model.scalar_columns
     GroupBox: line:
         share_layout = True
         alias form: line_keys
         title = 'Line keys'
         padding = Box(0, 0, 0, 0)
-        visible << muggler_model.line_columns_visible
+        visible << muxer_model.line_columns_visible
         KeyForm: line_keys:
             share_layout = True
-            column_model_list << muggler_model.line_columns
+            column_model_list << muxer_model.line_columns
     GroupBox: image:
         share_layout = True
         alias form: image_keys
         title = 'Image keys'
         padding = Box(0, 0, 0, 0)
-        visible << muggler_model.image_columns_visible
+        visible << muxer_model.image_columns_visible
         KeyForm: image_keys:
             share_layout = True
-            column_model_list << muggler_model.image_columns
+            column_model_list << muxer_model.image_columns
     GroupBox: volume:
         share_layout = True
         alias form: volume_keys
         title = 'Volume keys'
         padding = Box(0, 0, 0, 0)
-        visible << muggler_model.volume_columns_visible
+        visible << muxer_model.volume_columns_visible
         KeyForm: volume_keys:
             share_layout = True
-            column_model_list << muggler_model.volume_columns
+            column_model_list << muxer_model.volume_columns

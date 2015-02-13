@@ -44,7 +44,7 @@ import pandas.core.groupby  # to get custom exception
 
 
 logger = logging.getLogger(__name__)
-__all__ = ['DataMuggler', 'dataframe_to_dict']
+__all__ = ['DataMuxer', 'dataframe_to_dict']
 
 
 class BinningError(Exception):
@@ -66,7 +66,7 @@ class ColSpec(namedtuple(
               'ColSpec', ['name', 'ndim', 'shape', 'upsample', 'downsample'])):
     """
     Named-tuple sub-class to validate the column specifications for the
-    DataMuggler
+    DataMuxer
 
     Parameters
     ----------
@@ -139,7 +139,7 @@ def _validate_downsample(input):
     return input
 
 
-class DataMuggler(object):
+class DataMuxer(object):
     """
     This class provides a wrapper layer of signals and slots
     around a pandas DataFrame to make plugging stuff in for live
@@ -206,7 +206,7 @@ class DataMuggler(object):
         return instance
 
     def append_events(self, events):
-        """Add an event to the DataMuggler.
+        """Add an event to the DataMuxer.
 
         Parameters
         ----------
@@ -216,7 +216,7 @@ class DataMuggler(object):
             self.append_event(event)
 
     def append_event(self, event):
-        """Add an event to the DataMuggler.
+        """Add an event to the DataMuxer.
 
         Parameters
         ----------
@@ -551,13 +551,13 @@ class DataMuggler(object):
         if attr in self.col_info.keys():
             return self[attr]
         else:
-            raise AttributeError("DataMuggler has no attribute {0} and no "
+            raise AttributeError("DataMuxer has no attribute {0} and no "
                                   "data source named '{0}'".format(attr))
 
     @property
     def ncols(self):
         """
-        The number of columns that the DataMuggler contains
+        The number of columns that the DataMuxer contains
         """
         return len(self.col_info)
 

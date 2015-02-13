@@ -136,7 +136,7 @@ def make_cross_section_view(init_view=True):
         enaml.widgets.api.MainWindow
     """
     from ..model.cross_section_model import CrossSectionModel
-    from ...muggler.data import DataMuggler
+    from ...muxer import DataMuxer
 
     with enaml.imports():
         from ..gui.cross_section_view import CrossSectionMain

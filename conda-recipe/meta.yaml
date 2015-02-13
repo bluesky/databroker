@@ -38,4 +38,5 @@ requirements:
 test:
   imports:
     - dataportal.broker
+    - dataportal.muxer
     - dataportal.replay
