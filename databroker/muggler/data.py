@@ -120,7 +120,7 @@ class ColSpec(namedtuple(
 def _validate_upsample(input):
     # TODO The upsampling method could be any callable.
     if input is None:
-        return input
+        return 'None'
     if not (input in ColSpec.upsampling_methods):
         raise ValueError("{} is not a valid upsampling method. It "
                          "must be one of {}".format(
@@ -134,6 +134,8 @@ def _validate_downsample(input):
                                      input in ColSpec.downsampling_methods)):
         raise ValueError("The downsampling method must be a callable, None, "
                          "or one of {}.".format(ColSpec.downsampling_methods))
+    if input is None:
+        return 'None'
     return input
 
 
