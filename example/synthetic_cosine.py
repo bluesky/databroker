@@ -7,21 +7,15 @@ import time
 import numpy as np
 
 
-b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
+b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
+                                  time=time.time())
 
 
-data_keys = {'linear_motor': {'source': 'PV:pv1',
-                              'shape': None,
-                              'dtype': 'number'},
-             'scalar_detector': {'source': 'PV:pv2',
-                                 'shape': None,
-                                 'dtype': 'number'},
-             'Tsam': {'source': 'PV:pv3',
-                      'dtype': 'number'},
-              'some.dotted_field': {'source': 'PV:pvapc',
-                                    'shape': None,
-                                    'dtype': 'number'}
-             }
+data_keys = {
+    'linear_motor': {'source': 'PV:pv1', 'shape': None, 'dtype': 'number'},
+    'scalar_detector': {'source': 'PV:pv2', 'shape': None, 'dtype': 'number'},
+    'Tsam': {'source': 'PV:pv3', 'dtype': 'number', 'shape': None},
+    }
 
 try:
     last_hdr = find_last()[0]
@@ -46,7 +40,7 @@ func = np.cos
 num = 1000
 start = 0
 stop = 10
-sleep_time = .05
+sleep_time = .1
 
 
 for idx, i in enumerate(np.linspace(start, stop, num)):
@@ -56,6 +50,7 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
     e = insert_event(event_descriptor=e_desc, seq_num=idx,
                      time=time.time(),
                      data=data)
+    time.sleep(sleep_time)
 last_run = find_last()[0]
 
 try:
