@@ -14,7 +14,7 @@ class Document(object):
         mongo_document : mongoengine.Document
         """
         self._name = mongo_document.__class__.__name__
-        fields = mongo_document._fields
+        fields = set(mongo_document._fields.keys() + mongo_document._data.keys())
         for field in fields:
             attr = getattr(mongo_document, field)
             if isinstance(attr, mongoengine.Document):

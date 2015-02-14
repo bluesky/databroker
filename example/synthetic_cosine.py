@@ -6,7 +6,6 @@ from metadataStore.api.analysis import find_last, find_event, fetch_events
 import time
 import numpy as np
 
-
 b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'})
 
 
@@ -33,10 +32,10 @@ except (IndexError, TypeError):
 # cast to string
 scan_id = str(scan_id)
 
-
+custom = {'plotx': 'linear_motor', 'ploty': 'scalar_detector'}
 # Create a BeginRunEvent that serves as entry point for a run
 bre = insert_begin_run(scan_id=scan_id, beamline_id='csx', time=time.time(),
-                       beamline_config=b_config)
+                       beamline_config=b_config, custom=custom)
 
 # Create an EventDescriptor that indicates the data keys and serves as header for set of Event(s)
 e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
