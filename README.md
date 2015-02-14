@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/NSLS-II/databroker.svg?branch=master)](https://travis-ci.org/NSLS-II/databroker)
-[![Coverage Status](https://coveralls.io/repos/NSLS-II/databroker/badge.svg)](https://coveralls.io/r/NSLS-II/databroker)
-DataBroker
+[![Build Status](https://travis-ci.org/NSLS-II/dataportal.svg?branch=master)](https://travis-ci.org/NSLS-II/dataportal)
+[![Coverage Status](https://coveralls.io/repos/NSLS-II/dataportal/badge.svg)](https://coveralls.io/r/NSLS-II/dataportal)
+DataPortal
 ==========
 
 * broker -- a unified interface to multiple data sources
