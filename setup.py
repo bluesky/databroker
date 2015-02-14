@@ -75,7 +75,7 @@ setup(
     include_dirs=[np.get_include()],
     entry_points={
         'console_scripts': [
-        'replay = dataportal.replay.run:main']},
+        'replay = dataportal.replay.replay:main']},
     package_data={'dataportal.replay.gui': ['*.enaml']},
     requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
               'pims', 'six'],
