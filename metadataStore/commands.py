@@ -1,9 +1,9 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
-                                         EndRunEvent, EventDescriptor, Event,
-                                         DataKey)
+from .odm_templates import (BeginRunEvent, BeamlineConfig, EndRunEvent,
+                            EventDescriptor, Event, DataKey)
+from .document import Document
 import datetime
 import logging
 import metadataStore
@@ -90,6 +90,7 @@ def db_connect(func):
         return func(*args, **kwargs)
     return inner
 
+####################### DATABASE INSERTION ###############################
 
 @db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
@@ -292,9 +293,15 @@ class EventDescriptorIsNoneError(ValueError):
     pass
 
 
+########################## DATABASE RETRIEVAL ##################################
+
 def __add_event_descriptors(begin_run_list):
     for begin_run in begin_run_list:
-        setattr(begin_run, 'event_descriptors', find_event_descriptor(begin_run))
+        setattr(begin_run, 'event_descriptors',
+                find_event_descriptor(begin_run))
+
+def __as_document(mongoengine_object):
+    return Document(mongoengine_object)
 
 
 @db_connect
@@ -383,7 +390,7 @@ def find_begin_run(limit=50, **kwargs):
 
     __add_event_descriptors(br_objects)
 
-    return br_objects
+    return [__as_document(bre) for bre in br_objects]
 
 @db_connect
 def find_beamline_config(_id):
@@ -394,7 +401,8 @@ def find_beamline_config(_id):
     _id: bson.ObjectId
 
     """
-    return BeamlineConfig.objects(id=_id).order_by('-_id')
+    cfg = BeamlineConfig.objects(id=_id).order_by('-_id')
+    return __as_document(cfg)
 
 @db_connect
 def find_event_descriptor(begin_run_event):
@@ -411,7 +419,7 @@ def find_event_descriptor(begin_run_event):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
-    return event_descriptor_list
+    return [__as_document(evd) for evd in event_descriptor_list]
 
 @db_connect
 def fetch_events(limit=1000, **kwargs):
@@ -448,7 +456,7 @@ def fetch_events(limit=1000, **kwargs):
     except KeyError:
         pass
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
-    return result
+    return [__as_document(res) for res in result]
 
 @db_connect
 def find_event(begin_run_event):
@@ -470,7 +478,7 @@ def find_event(begin_run_event):
     descriptors = descriptors.order_by('-_id')
     events = [find_event_given_descriptor(descriptor)
               for descriptor in descriptors]
-    return events
+    return [__as_document(ev) for ev in events]
 
 @db_connect
 def find_event_given_descriptor(event_descriptor):
@@ -488,7 +496,7 @@ def find_event_given_descriptor(event_descriptor):
         event = __replace_event_data_key_dots(event, direction='out')
         event_list.append(event)
 
-    return event_list
+    return [__as_document(ev) for ev in event_list]
 
 @db_connect
 def find(data=True, limit=50, **kwargs):
@@ -543,7 +551,7 @@ def find_last(num=1):
     """
     br_objects = [br_obj for br_obj in BeginRunEvent.objects.order_by('-_id')[0:num]]
     __add_event_descriptors(br_objects)
-    return br_objects
+    return [__as_document(br) for br in br_objects]
 
 
 def __todatetime(time_stamp):
