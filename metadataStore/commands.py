@@ -123,10 +123,15 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
     """
     if uid is None:
         uid = str(uuid.uuid4())
+    if custom is None:
+        custom = {}
+
     begin_run = BeginRunEvent(time=time, scan_id=scan_id, owner=owner,
                               time_as_datetime=__todatetime(time), uid=uid,
-                              beamline_id=beamline_id, custom=custom,
-                              beamline_config=beamline_config)
+                              beamline_id=beamline_id,
+                              beamline_config=beamline_config
+                              if beamline_config else None,
+                              **custom)
 
     begin_run.save(validate=True, write_concern={"w": 1})
 
