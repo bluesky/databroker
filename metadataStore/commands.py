@@ -128,8 +128,9 @@ def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
                               beamline_id=beamline_id,
                               beamline_config=beamline_config
                               if beamline_config else None)
-    for k, v in custom.items():
-        setattr(begin_run, k, v)
+    if custom:
+        for k, v in custom.items():
+            setattr(begin_run, k, v)
     begin_run.save(validate=True, write_concern={"w": 1})
 
     return begin_run
