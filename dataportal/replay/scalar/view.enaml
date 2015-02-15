@@ -22,6 +22,7 @@ enamldef PlotControls(Container):
     limit_width = 'string'
     ScrollArea: scroller:
         Container:
+            padding = Box(0, 0, 0, 0)
             Form:
                 row_spacing = 0
                 Label:
@@ -52,7 +53,7 @@ enamldef PlotControls(Container):
                     Label:
                         text = "Column to bin against"
                     ComboBox: xcmb:
-                        items << list(scalar_collection.col_names)
+                        items << list(scalar_collection.data_cols)
                         editable = True
                         index << scalar_collection.x_index
                         selected_item >> scalar_collection.bin_on
@@ -60,7 +61,7 @@ enamldef PlotControls(Container):
                     Label:
                         text = "X axis"
                     ComboBox: x_axis:
-                        items << list(scalar_collection.col_names)
+                        items << list(scalar_collection.data_cols)
                         editable = True
                         index = 0
                         selected_item >> scalar_collection.x
@@ -75,14 +76,14 @@ enamldef PlotControls(Container):
                     Label:
                         text = "Dataset to fit"
                     ComboBox: cmb_fit:
-                        items << list(scalar_collection.col_names)
+                        items << list(scalar_collection.data_cols)
                         editable = True
                         index = 0
                         enabled = False
                     Label:
                         text = "Dataset to estimate"
                     ComboBox: cmb_est:
-                        items << list(scalar_collection.col_names)
+                        items << list(scalar_collection.data_cols)
                         index << scalar_collection.estimate_index
                         enabled = True
                         selected_item >> scalar_collection.estimate_target
@@ -94,7 +95,7 @@ enamldef PlotControls(Container):
                             text = 'Normalize?'
                             checked := scalar_collection.normalize
                         ComboBox: norm_cmb:
-                            items << list(scalar_collection.col_names)
+                            items << list(scalar_collection.data_cols)
                             index << 0
                             enabled = True
                             selected_item >> scalar_collection.normalize_target
@@ -102,21 +103,38 @@ enamldef PlotControls(Container):
                         text = "Y axis"
                     Label:
                         pass
-                    Looper: looper:
-                        iterable << scalar_collection.col_names
-                        PushButton: cb_plot:
-                            text = loop_item
-                            checkable = True
-                            checked := (
-                                scalar_collection.
-                                    scalar_models[loop_item].is_plotting
-                            )
-                            clicked ::
-                                if (loop_item != 'peak stats' and
-                                    loop_item != 'fit'):
-                                    scalar_collection.estimate_target = loop_item
-                        Label:
-                            text << str(id(scalar_collection.scalar_models[loop_item]))
+                GroupBox: measured:
+                    padding = Box(0, 0, 0, 0)
+                    title = "Measured Data"
+                    Form:
+                        row_spacing = 0
+                        Looper: looper:
+                            iterable << scalar_collection.data_cols
+                            PushButton: cb_plot:
+                                text = loop_item
+                                checkable = True
+                                checked := scalar_collection.scalar_models[loop_item].is_plotting
+                                clicked ::
+                                    if loop_item != 'peak stats' and loop_item != 'fit':
+                                        scalar_collection.estimate_target = loop_item
+                            Label:
+                                text << str(id(scalar_collection.scalar_models[loop_item]))
+                GroupBox: derived:
+                    padding = Box(0, 0, 0, 0)
+                    title = "Derived Data"
+                    Form:
+                        row_spacing = 0
+                        Looper: looper:
+                            iterable << scalar_collection.derived_cols
+                            PushButton: cb_plot:
+                                text = loop_item
+                                checkable = True
+                                checked := scalar_collection.scalar_models[loop_item].is_plotting
+                                clicked ::
+                                    if loop_item != 'peak stats' and loop_item != 'fit':
+                                        scalar_collection.estimate_target = loop_item
+                            Label:
+                                text << str(id(scalar_collection.scalar_models[loop_item]))
             GroupBox: estimate:
                 title_align = 'center'
                 title = 'Estimate'
