@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 source_names = ['channelarchiver', 'metadataStore', 'metadataStore.api',
-                'metadataStore.api.analysis', 'metadataStore.api.collection',
+                'metadataStore.api', 'metadataStore.api',
                 'fileStore', 'fileStore.commands']
 __all__ = ['switch'] + source_names
 

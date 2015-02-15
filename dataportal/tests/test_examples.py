@@ -1,8 +1,7 @@
 import unittest
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
-from ..broker.struct import BrokerStruct
-
+from metadataStore.api import Document
 
 class CommonSampleDataTests(object):
     def setUp(self):
@@ -13,7 +12,7 @@ class CommonSampleDataTests(object):
 
         # check expected types
         self.assertTrue(isinstance(events, list))
-        self.assertTrue(isinstance(events[0], BrokerStruct))
+        self.assertTrue(isinstance(events[0], Document))
 
 
 class TestTemperatureRamp(CommonSampleDataTests, unittest.TestCase):

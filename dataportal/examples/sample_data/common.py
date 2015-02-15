@@ -1,10 +1,8 @@
 import numpy as np
 import uuid
 from functools import wraps
-from metadataStore.api.collection import (insert_begin_run,
-                                          insert_beamline_config)
-from metadataStore.commands import insert_end_run  # missing from the api
-from ...broker.struct import BrokerStruct
+from metadataStore.api import (insert_begin_run, insert_beamline_config,
+                               insert_end_run, Document)
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -83,6 +81,6 @@ def example(func):
         # simulated and not necessarily based on the current time.
         time = max([event.time for event in events])
         insert_end_run(begin_run, time=time, exit_status='success')
-        events = [BrokerStruct(e) for e in events]
+        events = [Document(e) for e in events]
         return events
     return mock_begin_run
