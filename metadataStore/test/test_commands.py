@@ -183,3 +183,19 @@ def test_end_run():
     print('bre:', bre)
     time = ttime.time()
     yield _end_run_tester, bre, time
+
+
+@context_decorator
+def test_bre_custom():
+    cust = {'foo': 'bar', 'baz': 42,
+            'aardvark': ['ants', 3.14]}
+    bre = mdsc.insert_begin_run(time=ttime.time(),
+                                beamline_id='sample_beamline',
+                                scan_id=42,
+                                beamline_config=blc,
+                                custom=cust)
+
+    ret = BeginRunEvent.objects.get(id=bre.id)
+
+    for k in cust:
+        assert_equal(getattr(ret, k), cust[k])
