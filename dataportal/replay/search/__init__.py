@@ -15,6 +15,7 @@ try:
 
 except ImportError:
     if six.PY3:
-        logger.exception('failed to import enaml')
+        logger.exception('Failed to import enaml, but this is expected '
+                         'on python 3.  Eating exception and continuing.')
     else:
         raise
