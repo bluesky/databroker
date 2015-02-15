@@ -1,6 +1,19 @@
-import enaml
+from __future__ import absolute_import
+import six
+import logging
+logger = logging.getLogger(__name__)
 
-with enaml.imports():
-    from .view import PlotView, PlotControls
+try:
+    import enaml
 
-from .model import ScalarCollection
+
+    with enaml.imports():
+        from .view import PlotView, PlotControls
+
+    from .model import ScalarCollection
+
+except ImportError:
+    if six.PY3:
+        logger.exception('failed to import enaml')
+    else:
+        raise
