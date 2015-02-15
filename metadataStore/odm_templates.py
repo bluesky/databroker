@@ -167,5 +167,4 @@ class Event(Document):
     # TODO validate on this better
     data = DictField(required=True)
     time = FloatField(required=True)
-    time_as_datetime = DateTimeField(required=False)
     meta = {'indexes': ['-descriptor', '-_id']}
