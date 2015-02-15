@@ -17,7 +17,7 @@ install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
   - conda config --add channels soft-matter
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas scikit-image pims h5py
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas scikit-image pims h5py matplotlib
   - source activate testenv
   - 'pip install https://github.com/NSLS-II/metadataStore/zipball/master#egg=metadataStore'
   - 'pip install https://github.com/NSLS-II/fileStore/zipball/master#egg=fileStore'
