@@ -17,13 +17,13 @@ install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
   - conda config --add channels soft-matter
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas scikit-image pims h5py
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas scikit-image pims h5py matplotlib
   - source activate testenv
-  - pip install https://github.com/NSLS-II/metadataStore/zipball/master#egg=metadataStore
-  - pip install https://github.com/NSLS-II/fileStore/zipball/master#egg=fileStore
-  - pip install https://github.com/NSLS-II/channelarchiver/zipball/master#channelarchiver
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then pip install https://github.com/Nucleic/enaml/zipball/master#enaml
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then pip install https://github.com/Nucleic/atom/zipball/master#atom
+  - 'pip install https://github.com/NSLS-II/metadataStore/zipball/master#egg=metadataStore'
+  - 'pip install https://github.com/NSLS-II/fileStore/zipball/master#egg=fileStore'
+  - 'pip install https://github.com/NSLS-II/channelarchiver/zipball/master#channelarchiver'
+  - 'if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then pip install https://github.com/Nucleic/enaml/zipball/master#enaml; fi'
+  - 'if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then pip install https://github.com/Nucleic/atom/zipball/master#atom; fi'
   - pip install coveralls mongoengine
   - python setup.py install
 
