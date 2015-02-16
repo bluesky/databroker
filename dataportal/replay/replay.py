@@ -24,8 +24,7 @@ def create_ui():
     muxer_model.new_data_callbacks.append(scalar_collection.notify_new_data)
 
 
-    main_view = MainView(get_last_model=get_last_model,
-                         muxer_model=muxer_model,
+    main_view = MainView(get_last_model=get_last_model, muxer_model=muxer_model,
                          scalar_collection=scalar_collection)
     return main_view
 

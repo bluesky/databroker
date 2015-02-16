@@ -106,7 +106,7 @@ class ScalarModel(Atom):
     def __init__(self, line_artist, **kwargs):
         self.line_artist = line_artist
         self.is_plotting = line_artist.get_visible()
-        print(kwargs)
+        # print(kwargs)
         for name, val in six.iteritems(kwargs):
             setattr(self, name, val)
 
@@ -122,7 +122,7 @@ class ScalarModel(Atom):
 
     @observe('is_plotting')
     def set_visible(self, changed):
-        print('{} is visible: {}'.format(self.name, self.is_plotting))
+        # print('{} is visible: {}'.format(self.name, self.is_plotting))
         self.line_artist.set_visible(changed['value'])
         try:
             self.line_artist.axes.figure.canvas.draw()
@@ -291,7 +291,7 @@ class ScalarCollection(Atom):
                 self.init_scalar_models()
                 return
             # get the column names with dimensionality equal to zero
-            print('data muxer col info by ndim: {}'.format(self.data_muxer.col_info_by_ndim))
+            # print('data muxer col info by ndim: {}'.format(self.data_muxer.col_info_by_ndim))
             data_cols = [col_info.name for col_info
                          in self.data_muxer.col_info_by_ndim[0]]
             derived_cols = []
@@ -322,9 +322,9 @@ class ScalarCollection(Atom):
             derived_cols.append(name)
 
         # trigger the updates
-        print('data_cols', data_cols)
-        for model_name, model in six.iteritems(self.scalar_models):
-            print(model.state)
+        # print('data_cols', data_cols)
+        # for model_name, model in six.iteritems(self.scalar_models):
+        #     print(model.state)
         self.derived_cols = []
         self.derived_cols = derived_cols
         self.data_cols = []
@@ -352,6 +352,7 @@ class ScalarCollection(Atom):
 
     @observe('x')
     def update_x(self, changed):
+        print('x updated: {}'.format(self.x))
         self._conf.xlabel = self.x
         self.get_new_data_and_plot()
         self.x_index = self.data_cols.index(self.x)

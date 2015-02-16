@@ -174,8 +174,6 @@ def get_last_headers(num_to_get=1):
         bre.event_descriptors = [evd for evd
                                  in mdsapi.find_event_descriptor(bre)]
         headers.append(bre)
-    for _ in headers:
-        print(vars(_))
     return list(headers)
 
 

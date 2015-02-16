@@ -21,10 +21,9 @@ enamldef ColumnView(Container):
         selected_item >> column_model.downsample
 
 enamldef KeyForm(Form):
-    """Special snowflake Container object that takes a list of ColumnModel objects
-    and displays them in a Form
+    """Special snowflake Container object that takes a list of ColumnModel
+    objects and displays them in a Form
     """
-
     attr column_model_list = []
     row_spacing = 0
     Looper:
