@@ -1,6 +1,6 @@
 from __future__ import division
 
-from metadataStore.api import (insert_begin_run, insert_event,
+from metadataStore.api import (insert_run_start, insert_event,
                                insert_beamline_config,
                                insert_event_descriptor,
                                find_last)
@@ -47,8 +47,8 @@ except IndexError:
 scan_id = str(scan_id)
 custom = {'plotx': 'linear_motor',
           'ploty': ['total_img_sum']}
-# insert the begin run event
-bre = insert_begin_run(scan_id=scan_id, time=time.time(), beamline_id='csx',
+# insert the run start
+bre = insert_run_start(scan_id=scan_id, time=time.time(), beamline_id='csx',
                        beamline_config=b_config, custom=custom)
 
 img = frame_source.gen_next_frame()
@@ -101,10 +101,10 @@ data_keys1 = {
 data_keys2 = {'Tsam': {'source': 'PV:ES:Tsam', 'shape': [], 'dtype': 'number'}}
 
 # save the first event descriptor
-e_desc1 = insert_event_descriptor(begin_run_event=bre, data_keys=data_keys1,
+e_desc1 = insert_event_descriptor(run_start=bre, data_keys=data_keys1,
                                   time=time.time())
 
-e_desc2 = insert_event_descriptor(begin_run_event=bre, data_keys=data_keys2,
+e_desc2 = insert_event_descriptor(run_start=bre, data_keys=data_keys2,
                                   time=time.time())
 
 # number of motor positions to fake

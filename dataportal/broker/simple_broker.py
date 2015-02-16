@@ -149,11 +149,11 @@ def _get_local_cahost():
 def get_last_headers(num_to_get=1):
     """Helper function that grabs the last `num_to_get` headers from
     metadataStore. Also adds an `event_descriptors` field to the
-    begin run events. Because the begin_run_event has a reference to
+    run starts. Because the run_start has a reference to
     metadatastore `sample` `beamline_config` documents, they are dereferenced
-    by metadatastore and are thus part of the begin_run_event already.  Once we
+    by metadatastore and are thus part of the run_start already.  Once we
     have a better grasp of `end_run_events` they will also be inserted into
-    the begin_run_event document, thus turning it into the `run_header`
+    the run_start document, thus turning it into the `run_header`
 
     Note: Currently used by replay. Changing this API might break replay.
 
@@ -194,7 +194,7 @@ def get_last(channels=None, ca_host=None):
 
     # archiver_data = _get_archiver_data(ca_host, tstart, tfinish, channels)
 
-    return {'begin_run_event': bre, 'events': events}
+    return {'run_start': bre, 'events': events}
 
 def _inspect_descriptor(descriptor):
     """
