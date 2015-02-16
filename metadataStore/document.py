@@ -1,6 +1,6 @@
 import mongoengine
 from datetime import datetime
-
+from itertools import chain
 
 class Document(object):
     """
@@ -14,7 +14,8 @@ class Document(object):
         mongo_document : mongoengine.Document
         """
         self._name = mongo_document.__class__.__name__
-        fields = set(mongo_document._fields.keys() + mongo_document._data.keys())
+        fields = set(chain(mongo_document._fields.keys(),
+                           mongo_document._data.keys()))
         for field in fields:
             attr = getattr(mongo_document, field)
             if isinstance(attr, mongoengine.Document):
