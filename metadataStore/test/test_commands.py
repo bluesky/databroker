@@ -14,7 +14,7 @@ from nose.tools import assert_equal, assert_raises
 
 
 from metadataStore.odm_templates import (BeamlineConfig, EventDescriptor,
-                                         Event, BeginRunEvent, EndRunEvent)
+                                         Event, RunStart, RunEnd)
 import metadataStore.commands as mdsc
 
 db_name = str(uuid.uuid4())
@@ -43,8 +43,8 @@ def context_decorator(func):
         with switch_db(BeamlineConfig, 'test_db'), \
           switch_db(EventDescriptor, 'test_db'), \
           switch_db(Event, 'test_db'), \
-          switch_db(EndRunEvent, 'test_db'), \
-          switch_db(BeginRunEvent, 'test_db'):
+          switch_db(RunEnd, 'test_db'), \
+          switch_db(RunStart, 'test_db'):
             func(*args, **kwargs)
 
     return make_decorator(func)(inner)
@@ -70,15 +70,15 @@ def test_blc_insert():
 
 
 @context_decorator
-def _ev_desc_tester(begin_run_event, data_keys, time):
-    ev_desc = mdsc.insert_event_descriptor(begin_run_event,
+def _ev_desc_tester(run_start, data_keys, time):
+    ev_desc = mdsc.insert_event_descriptor(run_start,
                                            data_keys, time)
     Document(ev_desc) # test document creation
     ret = EventDescriptor.objects.get(id=ev_desc.id)
 
-    for k, v in zip(['begin_run_event',
+    for k, v in zip(['run_start',
                      'time'],
-                    [begin_run_event.to_dbref(),
+                    [run_start.to_dbref(),
                      time, ]):
 
         assert_equal(getattr(ret, k), v)
@@ -92,7 +92,7 @@ def _ev_desc_tester(begin_run_event, data_keys, time):
 
 
 def test_ev_desc():
-    bre = mdsc.insert_begin_run(time=ttime.time(),
+    bre = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline',
                                 scan_id=42,
                                 beamline_config=blc)
@@ -125,43 +125,43 @@ def test_src_dst_fail():
 
 
 @context_decorator
-def _begin_run_tester(time, beamline_id, scan_id):
+def _run_start_tester(time, beamline_id, scan_id):
 
-    begin_run = mdsc.insert_begin_run(time, beamline_id, scan_id=scan_id,
+    run_start = mdsc.insert_run_start(time, beamline_id, scan_id=scan_id,
                                       beamline_config=blc)
-    Document(begin_run) # test document creation
-    ret = BeginRunEvent.objects.get(id=begin_run.id)
+    Document(run_start) # test document creation
+    ret = RunStart.objects.get(id=run_start.id)
 
     for k, v in zip(['time', 'beamline_id', 'scan_id'],
                     [time, beamline_id, scan_id]):
         assert_equal(getattr(ret, k), v)
 
 
-def test_begin_run():
+def test_run_start():
     time = ttime.time()
     beamline_id = 'sample_beamline'
-    yield _begin_run_tester, time, beamline_id, 42
+    yield _run_start_tester, time, beamline_id, 42
 
 
 @context_decorator
-def _begin_run_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
-    begin_run = mdsc.insert_begin_run(time, beamline_id,
+def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
+    run_start = mdsc.insert_run_start(time, beamline_id,
                                       beamline_config=beamline_cfg,
                                       scan_id=scan_id)
-    Document(begin_run) # test document creation
-    ret = BeginRunEvent.objects.get(id=begin_run.id)
+    Document(run_start) # test document creation
+    ret = RunStart.objects.get(id=run_start.id)
 
     for k, v in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
                     [time, beamline_id, scan_id, beamline_cfg.to_dbref()]):
         assert_equal(getattr(ret, k), v)
 
 
-def test_begin_run2():
+def test_run_start2():
     bcfg = mdsc.insert_beamline_config({'cfg1': 1}, ttime.time())
     time = ttime.time()
     beamline_id = 'sample_beamline'
     scan_id = 42
-    yield _begin_run_with_cfg_tester, bcfg, time, beamline_id, scan_id
+    yield _run_start_with_cfg_tester, bcfg, time, beamline_id, scan_id
 
 
 @context_decorator
@@ -170,18 +170,18 @@ def _event_tester(descriptor, seq_num, data, time):
 
 
 @context_decorator
-def _end_run_tester(begin_run, time):
-    print('br:', begin_run)
-    end_run = mdsc.insert_end_run(begin_run, time)
+def _end_run_tester(run_start, time):
+    print('br:', run_start)
+    end_run = mdsc.insert_run_end(run_start, time)
     Document(end_run) # test document creation
-    ret = EndRunEvent.objects.get(id=end_run.id)
-    for k, v in zip(['id', 'time', 'begin_run_event'],
-                    [end_run.id, time, begin_run.to_dbref()]):
+    ret = RunEnd.objects.get(id=end_run.id)
+    for k, v in zip(['id', 'time', 'run_start'],
+                    [end_run.id, time, run_start.to_dbref()]):
         assert_equal(getattr(ret, k), v)
 
 
 def test_end_run():
-    bre = mdsc.insert_begin_run(time=ttime.time(),
+    bre = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline', scan_id=42,
                                 beamline_config=blc)
     Document(bre) # test document creation
@@ -194,13 +194,13 @@ def test_end_run():
 def test_bre_custom():
     cust = {'foo': 'bar', 'baz': 42,
             'aardvark': ['ants', 3.14]}
-    bre = mdsc.insert_begin_run(time=ttime.time(),
+    bre = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline',
                                 scan_id=42,
                                 beamline_config=blc,
                                 custom=cust)
     Document(bre) # test document creation
-    ret = BeginRunEvent.objects.get(id=bre.id)
+    ret = RunStart.objects.get(id=bre.id)
 
     for k in cust:
         assert_equal(getattr(ret, k), cust[k])

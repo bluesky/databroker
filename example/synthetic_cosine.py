@@ -1,8 +1,8 @@
 from __future__ import print_function
 
-from metadataStore.api.collection import (insert_begin_run, insert_beamline_config,
+from metadataStore.api import (insert_run_start, insert_beamline_config,
                                           insert_event, insert_event_descriptor)
-from metadataStore.api.analysis import find_last, find_event, fetch_events
+from metadataStore.api import find_last, find_event, fetch_events
 import time
 import numpy as np
 
@@ -32,13 +32,13 @@ scan_id = str(scan_id)
 
 custom = {'plotx': 'linear_motor', 'ploty': 'scalar_detector'}
 # Create a BeginRunEvent that serves as entry point for a run
-bre = insert_begin_run(scan_id=scan_id, beamline_id='csx', time=time.time(),
+bre = insert_run_start(scan_id=scan_id, beamline_id='csx', time=time.time(),
                        beamline_config=b_config, custom=custom)
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)
 e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
-                                 begin_run_event=bre)
+                                 run_start=bre)
 
 func = np.cos
 num = 1000
@@ -62,7 +62,7 @@ try:
         print("Either Arman or Eric broke find_last().")
 except AttributeError as ae:
     print(ae)
-res_2 = find_event(begin_run_event=bre)
+res_2 = find_event(run_start=bre)
 if not res_2:
     print("Either Arman or Eric broke find_event().")
 else:

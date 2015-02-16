@@ -13,7 +13,7 @@ class BeamlineConfig(DynamicDocument):
     config_params: dict
         Custom configuration parameters for a given run. Avoid using '.' in field names.
         If you're interested in doing so, let me know @arkilic
-        This has a one-to-many relationship with BeginRunEvent documents
+        This has a one-to-many relationship with RunStart documents
     """
     config_params = DictField(required=False, unique=False)
     uid = StringField(required=True, unique=True)
@@ -21,9 +21,9 @@ class BeamlineConfig(DynamicDocument):
     meta = {'indexes': ['-_id']}
 
 
-class BeginRunEvent(DynamicDocument):
+class RunStart(DynamicDocument):
     """ Provide a head for a sequence of events. Entry point for
-    an experiment's run. BeamlineConfig is NOT required to create a BeginRunEvent
+    an experiment's run. BeamlineConfig is NOT required to create a RunStart
     The only prereq is an EventDescriptor that identifies the nature of event that is
     starting and
 
@@ -32,7 +32,7 @@ class BeginRunEvent(DynamicDocument):
     uid: str
         Globally unique id for this run
     time : timestamp
-        The date/time as found at the client side when an begin_run_event is
+        The date/time as found at the client side when an run_start is
         created.
     beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
@@ -64,13 +64,13 @@ class BeginRunEvent(DynamicDocument):
     meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid']}
 
 
-class EndRunEvent(DynamicDocument):
+class RunEnd(DynamicDocument):
     """Indicates the end of a series of events
 
     Attributes
     ----------
-    begin_run_event : bson.ObjectId
-        Foreign key to corresponding BeginRunEvent
+    run_start : bson.ObjectId
+        Foreign key to corresponding RunStart
     exit_status : {'success', 'fail', 'abort'}
         provides information regarding the run success.
     time : float
@@ -81,13 +81,13 @@ class EndRunEvent(DynamicDocument):
         20 char max.
     """
     time = FloatField(required=True)
-    begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
-                                     required=True, db_field='begin_run_id')
+    run_start = ReferenceField(RunStart, reverse_delete_rule=DENY,
+                                     required=True, db_field='run_start_id')
 
     exit_status = StringField(max_length=10, required=False, default='success',
                               choices=('success', 'abort', 'fail'))
     reason = StringField(required=False)
-    meta = {'indexes': ['-_id', '-time', '-exit_status', '-begin_run_event']}
+    meta = {'indexes': ['-_id', '-time', '-exit_status', '-run_start']}
     uid = StringField(required=True, unique=True)
 
 
@@ -120,8 +120,8 @@ class EventDescriptor(DynamicDocument):
 
     Attributes
     ----------
-    begin_run_event : str
-        Globally unique ID to the begin_run document this descriptor is associtaed with.
+    run_start : str
+        Globally unique ID to the run_start document this descriptor is associtaed with.
     uid : str
         Globally unique ID for this event descriptor.
     time : float
@@ -129,19 +129,19 @@ class EventDescriptor(DynamicDocument):
     data_keys : mongoengine.DynamicEmbeddedDocument
         Describes the objects in the data property of Event documents
     """
-    begin_run_event = ReferenceField(BeginRunEvent, reverse_delete_rule=DENY,
-                                     required=True, db_field='begin_run_id')
+    run_start = ReferenceField(RunStart, reverse_delete_rule=DENY,
+                                     required=True, db_field='run_start_id')
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
-    meta = {'indexes': ['-begin_run_event', '-time']}
+    meta = {'indexes': ['-run_start', '-time']}
 
 
 class Event(Document):
     """ Stores the experimental data. All events point to
-    BeginRunEvent, in other words, to BeginRunEvent serves as an
+    RunStart, in other words, to RunStart serves as an
     entry point for all events. Within each event, one can access
-    both BeginRunEvent and EventDescriptor. Make sure an event does
+    both RunStart and EventDescriptor. Make sure an event does
     not exceed 16 MB in size. This is essential since this tool is
     geared for metadata only. If more storage is required, please
     use fileStore.
