@@ -6,8 +6,8 @@ import uuid
 import time as ttime
 import mongoengine
 import mongoengine.connection
-from mongoengine import Document
 from mongoengine.context_managers import switch_db
+from ..api import Document as Document
 
 from nose.tools import make_decorator
 from nose.tools import assert_equal, assert_raises
@@ -55,6 +55,8 @@ def _blc_tester(config_dict):
     """Test BeamlineConfig Insert
     """
     blc = mdsc.insert_beamline_config(config_dict, ttime.time())
+    doc = Document(blc) # test document creation
+    repr(doc) # exercise Document.__repr__
     BeamlineConfig.objects.get(id=blc.id)
     if config_dict is None:
         config_dict = dict()
@@ -71,7 +73,7 @@ def test_blc_insert():
 def _ev_desc_tester(begin_run_event, data_keys, time):
     ev_desc = mdsc.insert_event_descriptor(begin_run_event,
                                            data_keys, time)
-
+    Document(ev_desc) # test document creation
     ret = EventDescriptor.objects.get(id=ev_desc.id)
 
     for k, v in zip(['begin_run_event',
@@ -94,6 +96,7 @@ def test_ev_desc():
                                 beamline_id='sample_beamline',
                                 scan_id=42,
                                 beamline_config=blc)
+    Document(bre) # test document creation
     data_keys = {'some_value': {'source': 'PV:pv1',
                               'shape': [1, 2],
                               'dtype': 'array'},
@@ -126,7 +129,7 @@ def _begin_run_tester(time, beamline_id, scan_id):
 
     begin_run = mdsc.insert_begin_run(time, beamline_id, scan_id=scan_id,
                                       beamline_config=blc)
-
+    Document(begin_run) # test document creation
     ret = BeginRunEvent.objects.get(id=begin_run.id)
 
     for k, v in zip(['time', 'beamline_id', 'scan_id'],
@@ -145,7 +148,7 @@ def _begin_run_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
     begin_run = mdsc.insert_begin_run(time, beamline_id,
                                       beamline_config=beamline_cfg,
                                       scan_id=scan_id)
-
+    Document(begin_run) # test document creation
     ret = BeginRunEvent.objects.get(id=begin_run.id)
 
     for k, v in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
@@ -170,6 +173,7 @@ def _event_tester(descriptor, seq_num, data, time):
 def _end_run_tester(begin_run, time):
     print('br:', begin_run)
     end_run = mdsc.insert_end_run(begin_run, time)
+    Document(end_run) # test document creation
     ret = EndRunEvent.objects.get(id=end_run.id)
     for k, v in zip(['id', 'time', 'begin_run_event'],
                     [end_run.id, time, begin_run.to_dbref()]):
@@ -180,6 +184,7 @@ def test_end_run():
     bre = mdsc.insert_begin_run(time=ttime.time(),
                                 beamline_id='sample_beamline', scan_id=42,
                                 beamline_config=blc)
+    Document(bre) # test document creation
     print('bre:', bre)
     time = ttime.time()
     yield _end_run_tester, bre, time
@@ -194,7 +199,7 @@ def test_bre_custom():
                                 scan_id=42,
                                 beamline_config=blc,
                                 custom=cust)
-
+    Document(bre) # test document creation
     ret = BeginRunEvent.objects.get(id=bre.id)
 
     for k in cust:
