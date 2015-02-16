@@ -389,8 +389,8 @@ class ScalarCollection(Atom):
         self.get_new_data_and_plot()
 
     def set_state(self):
-        plotx = self.header.__dict__.get('plotx')
-        ploty = self.header.__dict__.get('ploty', None)
+        plotx = getattr(self.header, 'plotx', None)
+        ploty = getattr(self.header, 'ploty', None)
 
         if plotx:
             self.x = plotx
