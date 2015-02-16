@@ -45,10 +45,11 @@ except IndexError:
     scan_id = 1
 
 scan_id = str(scan_id)
-
+custom = {'plotx': 'linear_motor',
+          'ploty': ['total_img_sum']}
 # insert the begin run event
 bre = insert_begin_run(scan_id=scan_id, time=time.time(), beamline_id='csx',
-                       beamline_config=b_config)
+                       beamline_config=b_config, custom=custom)
 
 img = frame_source.gen_next_frame()
 img_sum_x = img.sum(axis=0)

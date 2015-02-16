@@ -22,10 +22,9 @@ def create_ui():
     # set up observers
     muxer_model.observe('data_muxer', scalar_collection.new_data_muxer)
     muxer_model.new_data_callbacks.append(scalar_collection.notify_new_data)
+    get_last_model.observe('selected', scalar_collection.header_changed)
 
-
-    main_view = MainView(get_last_model=get_last_model,
-                         muxer_model=muxer_model,
+    main_view = MainView(get_last_model=get_last_model, muxer_model=muxer_model,
                          scalar_collection=scalar_collection)
     return main_view
 

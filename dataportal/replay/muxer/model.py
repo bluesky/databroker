@@ -142,7 +142,7 @@ class MuxerModel(Atom):
 
     @observe('run_header')
     def run_header_changed(self, changed):
-        print('Run header has been changed, creatomg a new data_muxer')
+        print('Run header has been changed, creating a new data_muxer')
         self.info = 'Run {}'.format(self.run_header.id)
         with self.suppress_notifications():
             self.data_muxer = None
