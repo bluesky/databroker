@@ -15,6 +15,7 @@ from pprint import pprint
 logger = logging.getLogger(__name__)
 import numpy as np
 import random
+from metadataStore.api import Document
 
 
 nodata_str = "data_muxer is None"
@@ -187,7 +188,8 @@ class ScalarCollection(Atom):
     # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
     # the thing that holds all the data
-    data_muxer = Typed(DataMuxer)
+    data_muxer = Typed(DataMuxer)# the Document that holds all non-data associated with the data_muxer
+    header = Typed(Document)
     # The scan id of this data set
     scan_id = Int()
     # name of the x axis
@@ -336,6 +338,7 @@ class ScalarCollection(Atom):
         self.estimate_target = x
         self.estimate_index = estimate_index
         self.normalize_target = x
+        self.set_state()
         self.get_new_data_and_plot()
 
     @observe('data_cols')
@@ -384,6 +387,47 @@ class ScalarCollection(Atom):
     @observe('normalize')
     def update_normalize(self, changed):
         self.get_new_data_and_plot()
+
+    def set_state(self):
+        plotx = self.header.__dict__.get('plotx')
+        ploty = self.header.__dict__.get('ploty', None)
+
+        if plotx:
+            self.x = plotx
+
+        print('plotx: {}'.format(plotx))
+        print('ploty: {}'.format(ploty))
+
+        for name, model in self.scalar_models.items():
+            print(name, model, 'name in ploty: ', name in ploty)
+            self.scalar_models[name].is_plotting = name in ploty
+
+        if ploty:
+            self.x_is_time = False
+
+    def header_changed(self, changed):
+        """Callback that should be connected to whatever Atom instance has a
+        reference to a header. This callback will parse the header for any
+        interesting bits of information that modifies the state of replay
+
+        Parameters
+        ----------
+        changed : dict
+            The dict that gets emitted when the header attribute of an Atom
+            class is changed
+
+        Notes
+        -----
+        Known Keys
+        plotx : str
+            The column that should be on the x-axis
+        ploty : list
+            The columns that should be shown on the y-axis
+        """
+        value = changed['value']
+        print('header: {}'.format(value))
+        print('vars(header): {}'.format(vars(value)))
+        self.header = value
 
     def print_state(self):
         """Print the, uh, state

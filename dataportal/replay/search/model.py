@@ -13,11 +13,11 @@ class GetLastModel(Atom):
     Attributes
     ----------
     num_to_retrieve : range, min=1
-    begin_run_events : list
+    headers : list
     selected : metadataStore.api.Document
     """
     num_to_retrieve = Range(low=1)
-    begin_run_events = List()
+    headers = List()
     selected = Typed(Document)
     selected_as_dict = Dict()
     selected_keys = List()
@@ -42,11 +42,11 @@ class GetLastModel(Atom):
 
     @observe('num_to_retrieve')
     def num_changed(self, changed):
-        self.begin_run_events = simple_broker.get_last_headers(self.num_to_retrieve)
+        self.headers = simple_broker.get_last_headers(self.num_to_retrieve)
         begin_run_events_as_dict = {}
         begin_run_events_keys = {}
         header = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
-        for bre in self.begin_run_events:
+        for bre in self.headers:
             bre_vars = vars(bre)
             event_descriptors = bre_vars.pop('event_descriptors', [])
             sample = bre_vars.pop('sample', {})

@@ -52,7 +52,7 @@ enamldef GetLastView(Container):
         padding = Box(0, 0, 0, 0)
         constraints = [vbox(hbox(num_runs, select_run),
                             search_info,
-                            begin_run_events,
+                            headers,
                             run_summary)]
         # GUI element that selects the number of run headers to display
         SpinBox: num_runs:
@@ -69,11 +69,11 @@ enamldef GetLastView(Container):
         Label: search_info:
             text << "Requested: {}. Found: {}".format(
                 get_last_model.num_to_retrieve,
-                len(get_last_model.begin_run_events))
+                len(get_last_model.headers))
         # GUI element that allows for different runs to be selected
-        Container: begin_run_events:
+        Container: headers:
             Looper:
-                iterable << get_last_model.begin_run_events
+                iterable << get_last_model.headers
                 RadioButton:
                     text = '{}: {}'.format(loop_item.scan_id,
                                            loop_item.time_as_datetime)
