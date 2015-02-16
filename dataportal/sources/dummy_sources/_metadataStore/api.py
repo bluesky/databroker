@@ -32,7 +32,6 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
 # POSSIBILITY OF SUCH DAMAGE.                                          #
 ########################################################################
-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
@@ -40,9 +39,8 @@ import six
 import logging
 import uuid
 logger = logging.getLogger(__name__)
-
 from ._dummies import _events, _ev_desc, DummyEventDescriptor, DummyEvent
-
+from datetime import datetime as dt
 
 def save_event_descriptor(header=None, event_type_id=None,
                           descriptor_name=None,
@@ -121,3 +119,7 @@ def save_event(header=None, event_descriptor=None, seq_no=None,
                     timestamp=timestamp)
     _events[uid] = dd
     return dd
+
+def find(header_id=None, scan_id=None, owner=None, start_time=None,
+         beamline_id=None, end_time=None):
+    return list(_events.values())

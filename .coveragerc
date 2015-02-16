@@ -1,11 +1,12 @@
 [run]
-source=databroker
+source=dataportal
 [report]
 omit =
     */python?.?/*
     */site-packages/nose/*
     *test*
-    databroker/__init__.py
-    databroker/tests/*
+    dataportal/__init__.py
+    dataportal/tests/*
+    dataportal/replay/
 
 exclude_lines =

@@ -3,8 +3,8 @@
 import six
 from collections import deque
 from atom.api import Atom, Typed, List, Range, Dict, observe, Str, Bool
-from dataportal.api import BrokerStruct
 from dataportal.broker import simple_broker
+from metadataStore.api import Document
 
 
 class GetLastModel(Atom):
@@ -14,11 +14,11 @@ class GetLastModel(Atom):
     ----------
     num_to_retrieve : range, min=1
     begin_run_events : list
-    selected : dataportal.api.BrokerStruct
+    selected : metadataStore.api.Document
     """
     num_to_retrieve = Range(low=1)
     begin_run_events = List()
-    selected = Typed(BrokerStruct)
+    selected = Typed(Document)
     selected_as_dict = Dict()
     selected_keys = List()
     summary_visible = Bool(False)

@@ -1,15 +1,14 @@
 from __future__ import division
 
-from metadataStore.api.collection import (insert_begin_run, insert_event,
-                                          insert_beamline_config,
-                                          insert_event_descriptor)
+from metadataStore.api import (insert_begin_run, insert_event,
+                               insert_beamline_config,
+                               insert_event_descriptor,
+                               find_last)
 from pprint import pprint
-from metadataStore.api.analysis import find_last
 import random
 import time
 import string
 import numpy as np
-from dataportal.broker.struct import BrokerStruct
 from frame_source import FrameSourcerBrownian
 import uuid
 from fileStore.api import analysis as fsa

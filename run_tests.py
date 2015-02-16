@@ -9,8 +9,6 @@
 #
 # See https://nose.readthedocs.org/ for a detailed description of
 # these options.
-
-
 import nose
 from dataportal.testing.noseclasses import KnownFailure
 
@@ -26,7 +24,6 @@ multiprocess._instantiate_plugins = plugins
 
 
 def run():
-
     nose.main(addplugins=[x() for x in plugins], env=env)
 
 

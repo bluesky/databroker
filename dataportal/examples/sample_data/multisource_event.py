@@ -1,7 +1,6 @@
 from __future__ import division
 import uuid
-from metadataStore.api.collection import (insert_event,
-                                          insert_event_descriptor)
+from metadataStore.api import insert_event, insert_event_descriptor
 import numpy as np
 from . import common
 

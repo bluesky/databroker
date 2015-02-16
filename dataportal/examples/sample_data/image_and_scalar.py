@@ -1,7 +1,6 @@
 from __future__ import division
 import uuid
-from metadataStore.api.collection import (insert_event,
-                                          insert_event_descriptor)
+from metadataStore.api import insert_event, insert_event_descriptor
 from fileStore.api.analysis import save_ndarray
 from ...broker.simple_broker import fill_event
 import numpy as np

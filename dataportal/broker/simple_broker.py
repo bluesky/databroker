@@ -2,7 +2,6 @@ from __future__ import print_function
 import six  # noqa
 from collections import defaultdict, Iterable, deque
 from .. import sources
-from .struct import BrokerStruct
 import os
 # Note: Invoke contents of sources at the func/method level so that it
 # respects runtime switching between real and dummy sources.
@@ -35,7 +34,7 @@ def get_events_by_run(runs, ca_host, channels=None):
     -------
     data : list of Event objects
     """
-    find_event = sources.metadataStore.api.analysis.find_event
+    find_event = sources.metadataStore.api.find_event
 
     # Normalize input: runs is a list of BeginRun and/or EndRun objects.
     if not isinstance(runs, Iterable):
@@ -87,7 +86,7 @@ def explore(**kwargs):
     data : list
         Header objects
     """
-    find_header = sources.metadataStore.api.analysis.find_header
+    find_header = sources.metadataStore.api.find_header
     return find_header(**kwargs)
 
 
@@ -168,26 +167,23 @@ def get_last_headers(num_to_get=1):
     run_headers : list
         List of constructed run headers
     """
-    mdsapi = sources.metadataStore.api.analysis
+    mdsapi = sources.metadataStore.api
     bre_list = mdsapi.find_last(num_to_get)
-    bs_list = deque()
+    headers = deque()
     for bre in bre_list:
-        bs = BrokerStruct(bre)
-        bs.event_descriptors = [BrokerStruct(evd)
-                                for evd in mdsapi.find_event_descriptor(bre)]
-        bs_list.append(bs)
-    for _ in bs_list:
+        bre.event_descriptors = [evd for evd
+                                 in mdsapi.find_event_descriptor(bre)]
+        headers.append(bre)
+    for _ in headers:
         print(vars(_))
-    return list(bs_list)
+    return list(headers)
 
 
 def get_last(channels=None, ca_host=None):
-    mdsapi = sources.metadataStore.api.analysis
+    mdsapi = sources.metadataStore.api
     bre, = mdsapi.find_last()
     events = mdsapi.find_event(bre)
     events = [ev for desc in events for ev in desc]
-    # remove the foot cannons from the mongoengine objects
-    bre = BrokerStruct(bre)
     # fill in the events from any external data sources
     [fill_event(event) for event in events]
     tstart = bre.time
@@ -200,8 +196,7 @@ def get_last(channels=None, ca_host=None):
 
     # archiver_data = _get_archiver_data(ca_host, tstart, tfinish, channels)
 
-    return {'begin_run_event': bre,
-            'events': events}
+    return {'begin_run_event': bre, 'events': events}
 
 def _inspect_descriptor(descriptor):
     """
