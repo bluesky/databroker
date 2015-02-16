@@ -16,7 +16,8 @@ data_keys = {'linear_motor': {'source': 'PV:pv1',
                                  'shape': None,
                                  'dtype': 'number'},
              'Tsam': {'source': 'PV:pv3',
-                      'dtype': 'number'}
+                      'dtype': 'number',
+                      'shape': None}
              }
 
 try:
@@ -49,11 +50,11 @@ sleep_time = .1
 for idx, i in enumerate(np.linspace(start, stop, num)):
     data = {'linear_motor': [i, time.time()],
             'Tsam': [i + 5, time.time()],
-            'scalar_detector': [func(i), time.time()]}
+            'scalar_detector': [func(i) + np.random.randn() / 100, time.time()]}
     e = insert_event(event_descriptor=e_desc, seq_num=idx,
                      time=time.time(),
                      data=data)
-    time.sleep(sleep_time)
+    # time.sleep(sleep_time)
 last_run = find_last()[0]
 
 try:

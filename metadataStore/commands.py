@@ -1,9 +1,9 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from metadataStore.odm_templates import (BeginRunEvent, BeamlineConfig,
-                                         EndRunEvent, EventDescriptor, Event,
-                                         DataKey)
+from .odm_templates import (BeginRunEvent, BeamlineConfig, EndRunEvent,
+                            EventDescriptor, Event, DataKey)
+from .document import Document
 import datetime
 import logging
 import metadataStore
@@ -90,6 +90,7 @@ def db_connect(func):
         return func(*args, **kwargs)
     return inner
 
+####################### DATABASE INSERTION ###############################
 
 @db_connect
 def insert_begin_run(time, beamline_id, beamline_config=None, owner=None,
@@ -263,8 +264,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
     # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor, uid=uid,
-                  data=m_data, time=time, seq_num=seq_num,
-                  time_as_datetime=__todatetime(time))
+                  data=m_data, time=time, seq_num=seq_num)
 
     event = __replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
@@ -292,9 +292,15 @@ class EventDescriptorIsNoneError(ValueError):
     pass
 
 
+########################## DATABASE RETRIEVAL ##################################
+
 def __add_event_descriptors(begin_run_list):
     for begin_run in begin_run_list:
-        setattr(begin_run, 'event_descriptors', find_event_descriptor(begin_run))
+        setattr(begin_run, 'event_descriptors',
+                find_event_descriptor(begin_run))
+
+def __as_document(mongoengine_object):
+    return Document(mongoengine_object)
 
 
 @db_connect
@@ -322,8 +328,9 @@ def find_begin_run(limit=50, **kwargs):
 
     Returns
     -------
-    br_objects : mongoengine.QuerySet
-        Corresponding BeginRunObjects given search criteria
+    br_objects : metadataStore.document.Document
+        Combined documents: BeginRunEvent, BeamlineConfig, Sample and
+        EventDescriptors
 
     Usage
     ------
@@ -383,7 +390,7 @@ def find_begin_run(limit=50, **kwargs):
 
     __add_event_descriptors(br_objects)
 
-    return br_objects
+    return [__as_document(bre) for bre in br_objects]
 
 @db_connect
 def find_beamline_config(_id):
@@ -393,8 +400,13 @@ def find_beamline_config(_id):
     ----------
     _id: bson.ObjectId
 
+    Returns
+    -------
+    beamline_config : metadataStore.document.Document
+        The beamline config object
     """
-    return BeamlineConfig.objects(id=_id).order_by('-_id')
+    beamline_config = BeamlineConfig.objects(id=_id).order_by('-_id')
+    return __as_document(beamline_config)
 
 @db_connect
 def find_event_descriptor(begin_run_event):
@@ -404,6 +416,10 @@ def find_event_descriptor(begin_run_event):
     ----------
     begin_run_event : bson.ObjectId
 
+    Returns
+    -------
+    event_descriptor : list
+        List of metadataStore.document.Document.
     """
     event_descriptor_list = list()
     for event_descriptor in EventDescriptor.objects\
@@ -411,7 +427,7 @@ def find_event_descriptor(begin_run_event):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
-    return event_descriptor_list
+    return [__as_document(evd) for evd in event_descriptor_list]
 
 @db_connect
 def fetch_events(limit=1000, **kwargs):
@@ -425,6 +441,11 @@ def fetch_events(limit=1000, **kwargs):
         time of the event. dict keys must be start and end
     descriptor : mongoengine.Document, optional
         event descriptor object
+
+    Returns
+    -------
+    events : list
+        List of metadataStore.document.Document
     """
     search_dict = dict()
     try:
@@ -448,7 +469,7 @@ def fetch_events(limit=1000, **kwargs):
     except KeyError:
         pass
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
-    return result
+    return [__as_document(res) for res in result]
 
 @db_connect
 def find_event(begin_run_event):
@@ -464,7 +485,8 @@ def find_event(begin_run_event):
     Returns
     -------
     events: list
-        Set of events encapsulated within a BeginRunEvent's scope
+        Set of events encapsulated within a BeginRunEvent's scope.
+        metadataStore.document.Document
     """
     descriptors = EventDescriptor.objects(begin_run_event=begin_run_event.id)
     descriptors = descriptors.order_by('-_id')
@@ -481,6 +503,11 @@ def find_event_given_descriptor(event_descriptor):
     event_descriptor: metadataStore.database.EventDescriptor
         EventDescriptor instance that a set of events point back to
 
+    Returns
+    -------
+    event_list : list
+        Nested list. top level is each event descriptor. next level is events
+        [[ev0, ev1, ...], [ev0, ev1, ...]]
     """
     event_list = list()
     for event in Event.objects(
@@ -488,7 +515,7 @@ def find_event_given_descriptor(event_descriptor):
         event = __replace_event_data_key_dots(event, direction='out')
         event_list.append(event)
 
-    return event_list
+    return [__as_document(ev) for ev in event_list]
 
 @db_connect
 def find(data=True, limit=50, **kwargs):
@@ -514,11 +541,12 @@ def find(data=True, limit=50, **kwargs):
 
     Returns
     -------
-    result: mongoengine.Document
+    result: metadataStore.document.Document
         Returns BeginRunEvent objects
         One can access events for this given BeginRunEvent as:
         begin_run_object.events
     """
+    raise NotImplementedError()
     br_objects = find_begin_run(limit, **kwargs)
 
     if data:
@@ -527,7 +555,7 @@ def find(data=True, limit=50, **kwargs):
             for br in br_objects:
                 br.events = find_event(br)
                 result.append(br)
-    return br
+    return br_objects
 
 @db_connect
 def find_last(num=1):
@@ -539,11 +567,12 @@ def find_last(num=1):
     -------
     begin_run_event: list
         Returns a list of the last ``num`` headers created.
+        List of metadataStore.document.Document objects
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
     br_objects = [br_obj for br_obj in BeginRunEvent.objects.order_by('-_id')[0:num]]
     __add_event_descriptors(br_objects)
-    return br_objects
+    return [__as_document(br) for br in br_objects]
 
 
 def __todatetime(time_stamp):
