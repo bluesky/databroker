@@ -72,7 +72,3 @@ class GetLastModel(Atom):
             begin_run_events_keys[bre] = header + data_keys
         self.__begin_run_events_as_dict = begin_run_events_as_dict
         self.__begin_run_events_keys = begin_run_events_keys
-
-        if self.selected is None:
-            self.selected = self.begin_run_events[0]
-            self.summary_visible = True
