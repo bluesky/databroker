@@ -182,7 +182,36 @@ def fill_event(event):
 
 
 def _build_header(run_start):
-    fed = sources.metadatastore.api.find_event_descriptor
-    run_start.event_descriptors = fed(run_start)
-    # TODO merge contents of RunEnd
+    mdsapi = sources.metadatastore.api
+    run_start.event_descriptors = mdsapi.find_event_descriptor(run_start)
+    run_stop = mdsapi.find_run_stop(run_start)
+    # fix the time issue
+    adds = {'start_time': (run_start, 'time'),
+                'start_datetime': (run_start, 'time_as_datetime'),
+                'stop_time': (run_stop, 'time'),
+                'stop_datetime': (run_stop, 'time_as_datetime')
+    }
+    deletes = [(run_start, '_name'), (run_stop, '_name'),
+               (run_stop, 'run_start')]
+    add_to_id = {'run_start_uid': (run_start, 'uid'),
+                 'run_stop_uid': (run_stop, 'uid'),
+                 'run_start_id': (run_start, 'id'),
+                 'run_stop_id': (run_stop, 'id')}
+    for new_var_name, src_tuple in adds.items():
+        setattr(run_start, new_var_name, getattr(*src_tuple))
+        delattr(*src_tuple)
+    for to_delete in deletes:
+        delattr(*to_delete)
+    run_start.ids = {}
+    for new_var_name, src_tuple in add_to_id.items():
+        run_start.ids[new_var_name] = getattr(*src_tuple)
+        delattr(*src_tuple)
+
+    # dump the remaining values from the RunStop object into the header
+    for k, v in vars(run_stop).items():
+        if hasattr(run_start, k):
+            raise ValueError("The run header already has a key named {}. "
+                             "Please update the mappings".format(k))
+        setattr(run_start, k, v)
+
     run_start._name = 'Header'
