@@ -191,7 +191,8 @@ def _build_header(run_start):
                 'stop_time': (run_stop, 'time'),
                 'stop_datetime': (run_stop, 'time_as_datetime')
     }
-    deletes = [(run_start, '_name'), (run_stop, '_name')]
+    deletes = [(run_start, '_name'), (run_stop, '_name'),
+               (run_stop, 'run_start')]
     add_to_id = {'run_start_uid': (run_start, 'uid'),
                  'run_stop_uid': (run_stop, 'uid'),
                  'run_start_id': (run_start, 'id'),
