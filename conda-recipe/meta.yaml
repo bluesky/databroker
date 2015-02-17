@@ -31,3 +31,5 @@ test:
     - metadataStore.commands
     - metadataStore.api
     - metadataStore.conf
+    - metadataStore.odm_templates
+    - metadataStore.document
