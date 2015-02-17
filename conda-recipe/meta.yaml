@@ -18,7 +18,7 @@ build:
 requirements:
   build:
     - python
-    - enaml
+    - enaml [py2k]
     - numpy
     - six
 
@@ -27,16 +27,18 @@ requirements:
     - pandas
     - matplotlib
     - pyyaml
-    - enaml
-    - bubblegum
-    - scikit-xray
-    - pims
+    - enaml [py2k]
+    - bubblegum [py2k]
+    - scikit-xray [py2k]
+    - pims [py2k]
     - metadatastore
     - filestore
     - channelarchiver
+    - six
 
 test:
   imports:
     - dataportal.broker
     - dataportal.muxer
     - dataportal.replay
+    - dataportal.replay.replay [py2k]
