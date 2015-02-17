@@ -1,6 +1,6 @@
 
 connection_config = {
-    'database': 'fileStore',
+    'database': 'filestore',
     'host': "localhost",
     'port': 27017,
 }

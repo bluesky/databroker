@@ -11,7 +11,7 @@ import os
 import os.path as op
 import datetime
 
-import fileStore.commands as fsc
+import filestore.commands as fsc
 
 logger = logging.getLogger(__name__)
 

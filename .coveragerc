@@ -1,11 +1,11 @@
 [run]
-source=fileStore
+source=filestore
 [report]
 omit =
     */python?.?/*
     */site-packages/nose/*
     *test*
-    fileStore/__init__.py
+    filestore/__init__.py
 
 exclude_lines =
     def set_default

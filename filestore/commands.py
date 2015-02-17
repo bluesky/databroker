@@ -94,7 +94,7 @@ def save_file_event_link(file_base, event_id,
     Parameters
     ----------
 
-    file_base: fileStore.database.file_base.FileBase
+    file_base: filestore.database.file_base.FileBase
         FileBase object
 
     event_id: str
@@ -176,7 +176,7 @@ def find_file_attributes(file_base):
 
     Parameters
     ----------
-    file_base: fileStore.database.file_base.FileBase
+    file_base: filestore.database.file_base.FileBase
         FileBase object
 
     """

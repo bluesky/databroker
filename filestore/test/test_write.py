@@ -41,12 +41,12 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy as np
 from itertools import chain, repeat
-import fileStore.retrieve as fsr
-import fileStore.commands as fsc
-import fileStore.file_writers as fs_write
-import fileStore.file_readers as fs_read
-from fileStore.database.file_base import FileBase
-from fileStore.database.file_event_link import FileEventLink
+import filestore.retrieve as fsr
+import filestore.commands as fsc
+import filestore.file_writers as fs_write
+import filestore.file_readers as fs_read
+from filestore.database.file_base import FileBase
+from filestore.database.file_event_link import FileEventLink
 import mongoengine
 from mongoengine.context_managers import switch_db
 import uuid

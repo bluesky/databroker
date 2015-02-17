@@ -9,10 +9,10 @@ import mongoengine.connection
 from nose.tools import make_decorator
 from mongoengine.context_managers import switch_db
 
-import fileStore.commands as fc
-import fileStore.retrieve as fsr
-from fileStore.database.file_base import FileBase
-from fileStore.database.file_event_link import FileEventLink
+import filestore.commands as fc
+import filestore.retrieve as fsr
+from filestore.database.file_base import FileBase
+from filestore.database.file_event_link import FileEventLink
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
