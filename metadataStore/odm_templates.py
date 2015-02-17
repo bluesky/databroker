@@ -1,8 +1,8 @@
 __author__ = 'arkilic'
 
 from mongoengine import Document, DynamicDocument, DynamicEmbeddedDocument
-from mongoengine import (DateTimeField, StringField, DictField, IntField, FloatField, ListField,
-                         ReferenceField, EmbeddedDocumentField, DENY, MapField)
+from mongoengine import (StringField, DictField, IntField, FloatField,
+                         ListField, ReferenceField, EmbeddedDocumentField, DENY, MapField)
 from getpass import getuser
 
 
@@ -82,7 +82,7 @@ class RunEnd(DynamicDocument):
     """
     time = FloatField(required=True)
     run_start = ReferenceField(RunStart, reverse_delete_rule=DENY,
-                                     required=True, db_field='run_start_id')
+                               required=True, db_field='run_start_id')
 
     exit_status = StringField(max_length=10, required=False, default='success',
                               choices=('success', 'abort', 'fail'))
@@ -121,7 +121,7 @@ class EventDescriptor(DynamicDocument):
     Attributes
     ----------
     run_start : str
-        Globally unique ID to the run_start document this descriptor is associtaed with.
+        Globally unique ID to the run_start document this descriptor is associated with.
     uid : str
         Globally unique ID for this event descriptor.
     time : float
@@ -130,7 +130,7 @@ class EventDescriptor(DynamicDocument):
         Describes the objects in the data property of Event documents
     """
     run_start = ReferenceField(RunStart, reverse_delete_rule=DENY,
-                                     required=True, db_field='run_start_id')
+                               required=True, db_field='run_start_id')
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)

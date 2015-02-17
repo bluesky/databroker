@@ -128,11 +128,11 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
         custom = {}
 
     run_start = RunStart(time=time, scan_id=scan_id, owner=owner,
-                              time_as_datetime=__todatetime(time), uid=uid,
-                              beamline_id=beamline_id,
-                              beamline_config=beamline_config
-                              if beamline_config else None,
-                              **custom)
+                         time_as_datetime=__todatetime(time), uid=uid,
+                         beamline_id=beamline_id,
+                         beamline_config=beamline_config
+                         if beamline_config else None,
+                         **custom)
 
     run_start.save(validate=True, write_concern={"w": 1})
 
@@ -163,8 +163,8 @@ def insert_run_end(run_start, time, exit_status='success',
     if uid is None:
         uid = str(uuid.uuid4())
     end_run = RunEnd(run_start=run_start, reason=reason,
-                            time=time, time_as_datetime=__todatetime(time),
-                            uid=uid, exit_status=exit_status)
+                     time=time, time_as_datetime=__todatetime(time),
+                     uid=uid, exit_status=exit_status)
 
     end_run.save(validate=True, write_concern={"w": 1})
 
@@ -422,8 +422,8 @@ def find_event_descriptor(run_start):
         List of metadataStore.document.Document.
     """
     event_descriptor_list = list()
-    for event_descriptor in EventDescriptor.objects\
-                    (run_start=run_start.id).order_by('-_id'):
+    for event_descriptor in EventDescriptor.objects(
+            run_start=run_start.id).order_by('-_id'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
@@ -570,7 +570,7 @@ def find_last(num=1):
         List of metadataStore.document.Document objects
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
-    br_objects = [br_obj for br_obj in RunStart.objects.order_by('-_id')[0:num]]
+    br_objects = [br_obj for br_obj in RunStart.objects.order_by('-_id')[:num]]
     __add_event_descriptors(br_objects)
     return [__as_document(br) for br in br_objects]
 
