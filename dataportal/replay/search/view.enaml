@@ -63,13 +63,12 @@ enamldef GetLastView(Container):
         # GUI element that triggers replay to display the selected run
         PushButton: select_run:
             text = "Show data for selected run"
+            enabled << get_last_model.connection_is_active
             clicked ::
                 muxer_model.run_header = get_last_model.selected
         # GUI element that provides search stats
         Label: search_info:
-            text << "Requested: {}. Found: {}".format(
-                get_last_model.num_to_retrieve,
-                len(get_last_model.headers))
+            text << get_last_model.search_info
         # GUI element that allows for different runs to be selected
         Container: headers:
             Looper:

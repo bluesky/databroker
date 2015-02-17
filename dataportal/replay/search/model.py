@@ -5,6 +5,9 @@ from collections import deque
 from atom.api import Atom, Typed, List, Range, Dict, observe, Str, Bool
 from dataportal.broker import DataBroker
 from metadatastore.api import Document
+import metadatastore
+from mongoengine.connection import ConnectionError
+from pymongo.errors import AutoReconnect
 
 
 class GetLastModel(Atom):
@@ -22,6 +25,8 @@ class GetLastModel(Atom):
     selected_as_dict = Dict()
     selected_keys = List()
     summary_visible = Bool(False)
+    search_info = Str()
+    connection_is_active = Bool(False)
     __run_starts_as_dict = Dict()
     __run_starts_keys = Dict()
 
@@ -36,13 +41,27 @@ class GetLastModel(Atom):
         self.selected_as_dict = {}
         self.selected_as_dict = self.__run_starts_as_dict[self.selected]
         # set the keys dictionary
-        print('selected_changed in GetLastModel. self.selected_keys: {}'.format(self.__run_starts_keys[self.selected]))
         self.selected_keys = []
         self.selected_keys = self.__run_starts_keys[self.selected]
 
     @observe('num_to_retrieve')
     def num_changed(self, changed):
-        self.headers = DataBroker[-self.num_to_retrieve:]
+        try:
+            self.headers = DataBroker[-self.num_to_retrieve:]
+        except ConnectionError:
+            self.search_info = "Database [[{}]] not available on [[{}]]".format(
+                metadatastore.conf.mds_config['database'],
+                metadatastore.conf.mds_config['host']
+            )
+            self.connection_is_active = False
+            return
+        except AutoReconnect:
+            self.search_info = "Connection to database [[{}]] on [[{}]] was lost".format(
+                metadatastore.conf.mds_config['database'],
+                metadatastore.conf.mds_config['host']
+            )
+            self.connection_is_active = False
+            return
         run_starts_as_dict = {}
         run_starts_keys = {}
         header = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
@@ -70,5 +89,8 @@ class GetLastModel(Atom):
                     data_keys.append([name, loc, src])
             data_keys = sorted(data_keys, key=lambda x: x[0].lower())
             run_starts_keys[bre] = header + data_keys
+        self.search_info = "Requested: {}. Found: {}".format(
+            self.num_to_retrieve, len(self.headers))
         self.__run_starts_as_dict = run_starts_as_dict
         self.__run_starts_keys = run_starts_keys
+        self.connection_is_active = True
