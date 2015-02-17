@@ -67,13 +67,13 @@ else:
     FULLVERSION += QUALIFIER
 
 setup(
-    name='metadataStore',
+    name='metadatastore',
     version=FULLVERSION,
     author='Arkilic',
     author_email=None,
     license="BSD (3-clause)",
-    url = "https://github.com/NSLS-II/metadataStore",
-    packages=['metadataStore', 'metadataStore.test'],
+    url = "https://github.com/NSLS-II/metadatastore",
+    packages=['metadatastore', 'metadatastore.test'],
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: EPICS License",
