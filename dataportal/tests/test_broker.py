@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from ..sources import channelarchiver as ca
 from ..sources import switch
-from ..broker.simple_broker import POPULAR_CHANNELS
 
 
 class TestBroker(unittest.TestCase):
@@ -12,7 +11,7 @@ class TestBroker(unittest.TestCase):
     def setUp(self):
         switch(channelarchiver=False, metadatastore=False, filestore=False)
         start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
-        simulated_ca_data = generate_ca_data(POPULAR_CHANNELS, start, end)
+        simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
         ca.insert_data(simulated_ca_data)
 
     def tearDown(self):
