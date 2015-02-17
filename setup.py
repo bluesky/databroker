@@ -18,7 +18,7 @@ from distutils.core import setup, Extension
 
 MAJOR = 0
 MINOR = 0
-MICRO = 0
+MICRO = 1
 ISRELEASED = False
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
@@ -60,7 +60,7 @@ else:
     FULLVERSION += QUALIFIER
 
 setup(
-    name='DataBroker',
+    name='dataportal',
     version=FULLVERSION,
     author='Brookhaven National Laboratory',
     packages=['dataportal', 'dataportal.api', 'dataportal.testing',
