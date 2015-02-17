@@ -14,7 +14,7 @@ from nose.tools import assert_equal, assert_raises
 
 
 from metadataStore.odm_templates import (BeamlineConfig, EventDescriptor,
-                                         Event, RunStart, RunEnd)
+                                         Event, RunStart, RunStop)
 import metadataStore.commands as mdsc
 
 db_name = str(uuid.uuid4())
@@ -43,7 +43,7 @@ def context_decorator(func):
         with switch_db(BeamlineConfig, 'test_db'), \
           switch_db(EventDescriptor, 'test_db'), \
           switch_db(Event, 'test_db'), \
-          switch_db(RunEnd, 'test_db'), \
+          switch_db(RunStop, 'test_db'), \
           switch_db(RunStart, 'test_db'):
             func(*args, **kwargs)
 
@@ -172,9 +172,9 @@ def _event_tester(descriptor, seq_num, data, time):
 @context_decorator
 def _end_run_tester(run_start, time):
     print('br:', run_start)
-    end_run = mdsc.insert_run_end(run_start, time)
+    end_run = mdsc.insert_run_stop(run_start, time)
     Document(end_run) # test document creation
-    ret = RunEnd.objects.get(id=end_run.id)
+    ret = RunStop.objects.get(id=end_run.id)
     for k, v in zip(['id', 'time', 'run_start'],
                     [end_run.id, time, run_start.to_dbref()]):
         assert_equal(getattr(ret, k), v)

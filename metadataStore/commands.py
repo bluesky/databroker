@@ -1,7 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
-from .odm_templates import (RunStart, BeamlineConfig, RunEnd,
+from .odm_templates import (RunStart, BeamlineConfig, RunStop,
                             EventDescriptor, Event, DataKey)
 from .document import Document
 import datetime
@@ -140,7 +140,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
 
 
 @db_connect
-def insert_run_end(run_start, time, exit_status='success',
+def insert_run_stop(run_start, time, exit_status='success',
                    reason=None, uid=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
@@ -157,18 +157,18 @@ def insert_run_end(run_start, time, exit_status='success',
 
     Returns
     -------
-    run_start : mongoengine.Document
+    run_stop : mongoengine.Document
         Inserted mongoengine object
     """
     if uid is None:
         uid = str(uuid.uuid4())
-    end_run = RunEnd(run_start=run_start, reason=reason,
-                     time=time, time_as_datetime=__todatetime(time),
-                     uid=uid, exit_status=exit_status)
+    run_stop = RunStop(run_start=run_start, reason=reason, time=time,
+                       time_as_datetime=__todatetime(time), uid=uid,
+                       exit_status=exit_status)
 
-    end_run.save(validate=True, write_concern={"w": 1})
+    run_stop.save(validate=True, write_concern={"w": 1})
 
-    return end_run
+    return run_stop
 
 
 @db_connect
@@ -337,12 +337,12 @@ def find_run_start(limit=50, **kwargs):
     >>> find_run_start(scan_id=123)
     >>> find_run_start(owner='arkilic')
     >>> find_run_start(time={'start': 1421176750.514707,
-    ...                      'end': time.time()})
+    ...                      'stop': time.time()})
     >>> find_run_start(time={'start': 1421176750.514707,
-    ...                      'end': time.time()})
+    ...                      'stop': time.time()})
 
     >>> find_run_start(owner='arkilic', time={'start': 1421176750.514707,
-    ...                                       'end': time.time()})
+    ...                                       'stop': time.time()})
 
     """
     search_dict = dict()
@@ -371,14 +371,14 @@ def find_run_start(limit=50, **kwargs):
         time_dict = kwargs.pop('time')
         if not isinstance(time_dict, dict):
             raise ValueError('Wrong format. time must include '
-                             'start and end keys for range. Must be a dict')
+                             'start and stop keys for range. Must be a dict')
         else:
-            if 'start' in time_dict and 'end' in time_dict:
+            if 'start' in time_dict and 'stop' in time_dict:
                 search_dict['time'] = {'$gte': time_dict['start'],
-                                       '$lte': time_dict['end']}
+                                       '$lte': time_dict['stop']}
             else:
                 raise ValueError('time must include start '
-                                 'and end keys for range search')
+                                 'and stop keys for range search')
     except KeyError:
         pass
 
@@ -407,6 +407,26 @@ def find_beamline_config(_id):
     """
     beamline_config = BeamlineConfig.objects(id=_id).order_by('-_id')
     return __as_document(beamline_config)
+
+@db_connect
+def find_run_stop(run_start):
+    """Return a run_stop object given a run_start document
+
+    Parameters
+    ----------
+    run_start : metadatastore.document.Document
+        The run start to get the corresponding run end for
+
+    Returns
+    -------
+    run_stop : metadataStore.document.Document
+        The run stop object containing the `exit_status` enum, the `time` the
+        run ended and the `reason` the run ended.
+    """
+    run_stop = RunStop.objects(run_start=run_start.id).order_by('-_id')[0]
+    print('run_stop: {}'.format(run_stop))
+    print('type(run_stop): {}'.format(type(run_stop)))
+    return __as_document(run_stop)
 
 @db_connect
 def find_event_descriptor(run_start):
@@ -438,7 +458,7 @@ def fetch_events(limit=1000, **kwargs):
     limit : int
         number of events returned
     time : dict, optional
-        time of the event. dict keys must be start and end
+        time of the event. dict keys must be start and stop
     descriptor : mongoengine.Document, optional
         event descriptor object
 
@@ -452,14 +472,14 @@ def fetch_events(limit=1000, **kwargs):
         time_dict = kwargs.pop('time')
         if not isinstance(time_dict, dict):
             raise ValueError('Wrong format. time must include '
-                             'start and end keys for range. Must be a dict')
+                             'start and stop keys for range. Must be a dict')
         else:
-            if 'start' in time_dict and 'end' in time_dict:
+            if 'start' in time_dict and 'stop' in time_dict:
                 search_dict['time'] = {'$gte': time_dict['start'],
-                                       '$lte': time_dict['end']}
+                                       '$lte': time_dict['stop']}
             else:
                 raise ValueError('time must include start '
-                                 'and end keys for range search')
+                                 'and stop keys for range search')
     except KeyError:
         pass
 
@@ -559,7 +579,7 @@ def find(data=True, limit=50, **kwargs):
 
 @db_connect
 def find_last(num=1):
-    """Indexed on ObjectId NOT end_time.
+    """Indexed on ObjectId NOT stop_time.
 
     Returns the last created header not modified!!
 

@@ -12,7 +12,7 @@ from ..api import insert_event
 from ..api import insert_event_descriptor
 from ..api import insert_run_start
 from ..api import insert_beamline_config
-from ..api import insert_run_end
+from ..api import insert_run_stop
 from ..api import EventDescriptorIsNoneError
 from ..api import format_events
 from ..api import format_data_keys
