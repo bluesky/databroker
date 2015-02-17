@@ -48,6 +48,7 @@ class GetLastModel(Atom):
     def num_changed(self, changed):
         try:
             self.headers = DataBroker[-self.num_to_retrieve:]
+            print('in num_changed in search/model.py. headers: {}'.format(self.headers))
         except ConnectionError:
             self.search_info = "Database [[{}]] not available on [[{}]]".format(
                 metadatastore.conf.mds_config['database'],

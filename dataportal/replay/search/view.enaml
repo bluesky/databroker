@@ -75,7 +75,7 @@ enamldef GetLastView(Container):
                 iterable << get_last_model.headers
                 RadioButton:
                     text = '{}: {}'.format(loop_item.scan_id,
-                                           loop_item.time_as_datetime)
+                                           loop_item.start_datetime)
                     clicked ::
                         get_last_model.summary_visible = True
                         get_last_model.selected = loop_item
