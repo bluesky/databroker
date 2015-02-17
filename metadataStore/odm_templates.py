@@ -64,7 +64,7 @@ class RunStart(DynamicDocument):
     meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid']}
 
 
-class RunEnd(DynamicDocument):
+class RunStop(DynamicDocument):
     """Indicates the end of a series of events
 
     Attributes
@@ -77,8 +77,7 @@ class RunEnd(DynamicDocument):
         The date/time as found at the client side when an event is
         created.
     reason : str, optional
-        Long-form description of why the run ended.
-        20 char max.
+        Long-form description of why the run was terminated.
     """
     time = FloatField(required=True)
     run_start = ReferenceField(RunStart, reverse_delete_rule=DENY,
