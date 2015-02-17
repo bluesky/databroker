@@ -15,7 +15,7 @@ from pprint import pprint
 logger = logging.getLogger(__name__)
 import numpy as np
 import random
-from metadataStore.api import Document
+from metadatastore.api import Document
 
 
 nodata_str = "data_muxer is None"

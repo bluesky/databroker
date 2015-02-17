@@ -1,6 +1,6 @@
 from __future__ import division
 
-from metadataStore.api import (insert_run_start, insert_event,
+from metadatastore.api import (insert_run_start, insert_event,
                                insert_beamline_config,
                                insert_event_descriptor,
                                find_last)
@@ -11,7 +11,7 @@ import string
 import numpy as np
 from frame_source import FrameSourcerBrownian
 import uuid
-from fileStore.api import analysis as fsa
+from filestore.api import analysis as fsa
 
 # used below
 img_size = (500, 500)

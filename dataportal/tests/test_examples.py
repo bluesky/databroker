@@ -1,7 +1,7 @@
 import unittest
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
-from metadataStore.api import Document
+from metadatastore.api import Document
 
 class CommonSampleDataTests(object):
     def setUp(self):

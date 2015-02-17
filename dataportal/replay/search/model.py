@@ -4,7 +4,7 @@ import six
 from collections import deque
 from atom.api import Atom, Typed, List, Range, Dict, observe, Str, Bool
 from dataportal.broker import DataBroker
-from metadataStore.api import Document
+from metadatastore.api import Document
 
 
 class GetLastModel(Atom):
@@ -14,7 +14,7 @@ class GetLastModel(Atom):
     ----------
     num_to_retrieve : range, min=1
     headers : list
-    selected : metadataStore.api.Document
+    selected : metadatastore.api.Document
     """
     num_to_retrieve = Range(low=1)
     headers = List()

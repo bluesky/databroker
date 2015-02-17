@@ -210,7 +210,7 @@ class DataMuxer(object):
 
         Parameters
         ----------
-        event : metadataStore.api.Document or any object with correct attributes
+        event : metadatastore.api.Document or any object with correct attributes
         """
         for event in events:
             self.append_event(event)
@@ -220,7 +220,7 @@ class DataMuxer(object):
 
         Parameters
         ----------
-        event : metadataStore.api.Document or any object with correct attributes
+        event : metadatastore.api.Document or any object with correct attributes
 
         Returns
         -------

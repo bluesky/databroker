@@ -1,5 +1,5 @@
 from __future__ import division
-from metadataStore.api import insert_event, insert_event_descriptor
+from metadatastore.api import insert_event, insert_event_descriptor
 import numpy as np
 from . import common
 

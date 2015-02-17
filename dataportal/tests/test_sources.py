@@ -1,6 +1,6 @@
 from ..sources.dummy_sources import _channelarchiver as ca
-from ..sources.dummy_sources import _metadataStore as ds
-from ..sources.dummy_sources import _fileStore as fs
+from ..sources.dummy_sources import _metadatastore as ds
+from ..sources.dummy_sources import _filestore as fs
 from .. import sources
 import unittest
 from datetime import datetime as dt  # noqa
@@ -28,18 +28,18 @@ class TestSources(unittest.TestCase):
 
     def test_switch_metadatastore(self):
         sources.switch(metadatastore=False)
-        is_dummy = sources.metadataStore.__file__.count('dummy') == 1
+        is_dummy = sources.metadatastore.__file__.count('dummy') == 1
         self.assertTrue(is_dummy)
         sources.switch(metadatastore=True)
-        is_dummy = sources.metadataStore.__file__.count('dummy') == 1
+        is_dummy = sources.metadatastore.__file__.count('dummy') == 1
         self.assertFalse(is_dummy)
 
     def test_switch_filestore(self):
         sources.switch(filestore=False)
-        is_dummy = sources.fileStore.__file__.count('dummy') == 1
+        is_dummy = sources.filestore.__file__.count('dummy') == 1
         self.assertTrue(is_dummy)
         sources.switch(filestore=True)
-        is_dummy = sources.fileStore.__file__.count('dummy') == 1
+        is_dummy = sources.filestore.__file__.count('dummy') == 1
         self.assertFalse(is_dummy)
 
     def tearDown(self):

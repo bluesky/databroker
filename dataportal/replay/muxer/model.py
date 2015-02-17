@@ -7,7 +7,7 @@ from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
 from dataportal.muxer.api import DataMuxer
 from dataportal.broker import DataBroker
 from dataportal.muxer.data_muxer import ColSpec
-from metadataStore.api import Document
+from metadatastore.api import Document
 
 
 def get_events(run_header):
@@ -73,7 +73,7 @@ class MuxerModel(Atom):
     data_muxer : dataportal.muxer.api.DataMuxer
         The data_muxer holds the non-time-aligned data.  Upon asking the data_muxer
         to reformat its data into time-aligned bins, a dataframe is returned
-    run_header: metadataStore.api.Document
+    run_header: metadatastore.api.Document
         The bucket of information from the data broker that contains all
         non-data information
 

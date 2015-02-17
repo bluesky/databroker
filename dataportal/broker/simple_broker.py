@@ -2,7 +2,7 @@ from __future__ import print_function
 import six  # noqa
 from collections import defaultdict, Iterable, deque
 from .. import sources
-from metadataStore.api import Document
+from metadatastore.api import Document
 import os
 # Note: Invoke contents of sources at the func/method level so that it
 # respects runtime switching between real and dummy sources.
@@ -19,8 +19,8 @@ class DataBroker(object):
     def __getitem__(cls, key):
         # Define imports here so that sources can be switched
         # at run time.
-        find_last = sources.metadataStore.api.find_last
-        find_run_start = sources.metadataStore.api.find_run_start
+        find_last = sources.metadatastore.api.find_last
+        find_run_start = sources.metadatastore.api.find_run_start
         return_list = True
         if isinstance(key, slice):
             # Slice on recent runs.
@@ -72,7 +72,7 @@ class DataBroker(object):
         -------
         data : a flat list of Event objects
         """
-        find_event = sources.metadataStore.api.find_event
+        find_event = sources.metadatastore.api.find_event
 
         if not isinstance(runs, Iterable):
             runs = [runs]
@@ -93,7 +93,7 @@ class DataBroker(object):
     @classmethod
     def find_headers(cls, **kwargs):
         """
-        For now, pass through to metadataStore.api.analysis.find_header
+        For now, pass through to metadatastore.api.analysis.find_header
 
         Parameters
         ----------
@@ -104,7 +104,7 @@ class DataBroker(object):
         data : list
             Header objects
         """
-        find_header = sources.metadataStore.api.find_header
+        find_header = sources.metadatastore.api.find_header
         run_start = find_header(**kwargs)
         headers = [_build_header(rs) for rs in run_start]
         return headers
@@ -173,7 +173,7 @@ def fill_event(event):
     """
     Populate events with externally stored data.
     """
-    retrieve_data = sources.fileStore.commands.retrieve_data
+    retrieve_data = sources.filestore.commands.retrieve_data
     is_external = _inspect_descriptor(event.descriptor)
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
@@ -182,7 +182,7 @@ def fill_event(event):
 
 
 def _build_header(run_start):
-    fed = sources.metadataStore.api.find_event_descriptor
+    fed = sources.metadatastore.api.find_event_descriptor
     run_start.event_descriptors = fed(run_start)
     # TODO merge contents of RunEnd
     run_start._name = 'Header'
