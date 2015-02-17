@@ -13,7 +13,7 @@ except ImportError:
     except ImportError:
         from distutils.core import setup
 
-from distutils.core import setup, Extension
+from distutils.core import setup
 
 MAJOR = 0
 MINOR = 0
