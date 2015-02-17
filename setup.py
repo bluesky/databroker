@@ -69,7 +69,8 @@ setup(
               'dataportal.broker', 'dataportal.muxer',
               'dataportal.sources', 'dataportal.sources.dummy_sources',
               'dataportal.replay', 'dataportal.replay.muxer',
-              'dataportal.replay.scalar', 'dataportal.replay.search'
+              'dataportal.replay.scalar', 'dataportal.replay.search',
+              'dataportal.replay.view',
               ],
     include_dirs=[np.get_include()],
     entry_points={
