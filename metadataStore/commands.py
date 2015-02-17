@@ -423,9 +423,11 @@ def find_run_stop(run_start):
         The run stop object containing the `exit_status` enum, the `time` the
         run ended and the `reason` the run ended.
     """
-    run_stop = RunStop.objects(run_start=run_start.id).order_by('-_id')[0]
-    print('run_stop: {}'.format(run_stop))
-    print('type(run_stop): {}'.format(type(run_stop)))
+    run_stop = RunStop.objects(run_start=run_start.id).order_by('-_id')
+    try:
+        run_stop = run_stop[0]
+    except IndexError:
+        return None
     return __as_document(run_stop)
 
 @db_connect

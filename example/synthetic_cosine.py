@@ -56,7 +56,7 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
                      time=time.time(),
                      data=data)
 
-re = insert_run_stop(rs, time.time())
+# re = insert_run_stop(rs, time.time())
 
     # time.sleep(sleep_time)
 last_run = find_last()[0]
