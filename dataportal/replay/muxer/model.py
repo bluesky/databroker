@@ -5,13 +5,13 @@ from collections import deque
 from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
                       Bool, ReadOnly, Tuple, Float)
 from dataportal.muxer.api import DataMuxer
-from dataportal.broker import simple_broker
+from dataportal.broker import DataBroker
 from dataportal.muxer.data_muxer import ColSpec
 from metadataStore.api import Document
 
 
 def get_events(run_header):
-    return simple_broker.get_events_by_run(run_header)
+    return DataBroker.fetch_events(run_header)
 
 
 class ColumnModel(Atom):
@@ -153,7 +153,7 @@ class MuxerModel(Atom):
         grab it
         """
         print('getting new data from the data broker')
-        events = simple_broker.get_events_by_run(self.run_header, None)
+        events = get_events(self.run_header)
         if self.data_muxer is None:
             # this will automatically trigger the key updating
             self.data_muxer = DataMuxer.from_events(events)

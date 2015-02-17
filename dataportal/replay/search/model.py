@@ -3,7 +3,7 @@
 import six
 from collections import deque
 from atom.api import Atom, Typed, List, Range, Dict, observe, Str, Bool
-from dataportal.broker import simple_broker
+from dataportal.broker import DataBroker
 from metadataStore.api import Document
 
 
@@ -42,7 +42,7 @@ class GetLastModel(Atom):
 
     @observe('num_to_retrieve')
     def num_changed(self, changed):
-        self.headers = simple_broker.get_last_headers(self.num_to_retrieve)
+        self.headers = DataBroker[-self.num_to_retrieve:]
         run_starts_as_dict = {}
         run_starts_keys = {}
         header = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
