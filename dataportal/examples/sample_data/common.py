@@ -1,8 +1,8 @@
 import numpy as np
 import uuid
 from functools import wraps
-from metadataStore.api import (insert_begin_run, insert_beamline_config,
-                               insert_end_run, Document)
+from metadataStore.api import (insert_run_start, insert_beamline_config,
+                               insert_run_end, Document)
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -70,17 +70,17 @@ def noisy(val, sigma=0.01):
 
 def example(func):
     @wraps(func)
-    def mock_begin_run(begin_run=None):
-        if begin_run is None:
+    def mock_run_start(run_start=None):
+        if run_start is None:
             blc = insert_beamline_config({}, time=0.)
-            begin_run = insert_begin_run(time=0., scan_id=1, beamline_id='csx',
+            run_start = insert_run_start(time=0., scan_id=1, beamline_id='csx',
                                          uid=str(uuid.uuid4()),
                                          beamline_config=blc)
-        events = func(begin_run)
+        events = func(run_start)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
         time = max([event.time for event in events])
-        insert_end_run(begin_run, time=time, exit_status='success')
+        insert_run_end(run_start, time=time, exit_status='success')
         events = [Document(e) for e in events]
         return events
-    return mock_begin_run
+    return mock_run_start

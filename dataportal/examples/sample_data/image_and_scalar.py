@@ -8,7 +8,7 @@ from .common import example, noisy
 
 
 @example
-def run(begin_run=None):
+def run(run_start=None):
     # Make the data
     rs = np.random.RandomState(5)
 
@@ -28,11 +28,11 @@ def run(begin_run=None):
 
     # save the first event descriptor
     e_desc1 = insert_event_descriptor(
-        begin_run_event=begin_run, data_keys=data_keys1, time=0.,
+        run_start=run_start, data_keys=data_keys1, time=0.,
         uid=str(uuid.uuid4()))
 
     e_desc2 = insert_event_descriptor(
-        begin_run_event=begin_run, data_keys=data_keys2, time=0.,
+        run_start=run_start, data_keys=data_keys2, time=0.,
         uid=str(uuid.uuid4()))
 
     # number of motor positions to fake
