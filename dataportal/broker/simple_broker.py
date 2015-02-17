@@ -34,7 +34,7 @@ class DataBroker(object):
             if key.stop is not None:
                 num = key.stop - key.start
             else:
-                num = 1
+                num = -key.start
             headers = find_last(-key.start)[:num:key.step]
         elif isinstance(key, int):
             return_list = False
@@ -44,12 +44,15 @@ class DataBroker(object):
                     raise ValueError("No such run found.")
             else:
                 headers = find_last(-key)
+                if len(headers) < -key:
+                    raise IndexError(
+                        "There are only {0} runs.".format(len(headers)))
         else:
             ValueError("Must give an integer scan ID like [6] or a slice "
                        "into past scans like [-5], [-5:], or [-5:-9:2].")
         [_build_header(h) for h in headers]
         if not return_list:
-            headers = headers[0]
+            headers = headers[-1]
         return headers
 
     @classmethod
@@ -192,16 +195,17 @@ def _build_header(run_start):
     run_stop = mdsapi.find_run_stop(run_start)
     # fix the time issue
     adds = {'start_time': (run_start, 'time'),
-                'start_datetime': (run_start, 'time_as_datetime'),
-                'stop_time': (run_stop, 'time'),
-                'stop_datetime': (run_stop, 'time_as_datetime')
-    }
-    deletes = [(run_start, '_name'), (run_stop, '_name'),
-               (run_stop, 'run_start')]
+                'start_datetime': (run_start, 'time_as_datetime')}
+    deletes = [(run_start, '_name')]
     add_to_id = {'run_start_uid': (run_start, 'uid'),
-                 'run_stop_uid': (run_stop, 'uid'),
-                 'run_start_id': (run_start, 'id'),
-                 'run_stop_id': (run_stop, 'id')}
+                 'run_start_id': (run_start, 'id')}
+    if run_stop is not None:
+        adds['stop_time'] = (run_stop, 'time')
+        adds['stop_datetime'] = (run_stop, 'time_as_datetime')
+        deletes.append((run_stop, '_name'))
+        deletes.append((run_stop, 'run_start'))
+        add_to_id['run_stop_uid'] = (run_stop, 'uid')
+        add_to_id['run_stop_id'] = (run_stop, 'id')
     for new_var_name, src_tuple in adds.items():
         setattr(run_start, new_var_name, getattr(*src_tuple))
         delattr(*src_tuple)
@@ -211,12 +215,12 @@ def _build_header(run_start):
     for new_var_name, src_tuple in add_to_id.items():
         run_start.ids[new_var_name] = getattr(*src_tuple)
         delattr(*src_tuple)
-
-    # dump the remaining values from the RunStop object into the header
-    for k, v in vars(run_stop).items():
-        if hasattr(run_start, k):
-            raise ValueError("The run header already has a key named {}. "
-                             "Please update the mappings".format(k))
-        setattr(run_start, k, v)
+    if run_stop is not None:
+       # dump the remaining values from the RunStop object into the header
+        for k, v in vars(run_stop).items():
+            if hasattr(run_start, k):
+                raise ValueError("The run header already has a key named {}. "
+                                 "Please update the mappings".format(k))
+            setattr(run_start, k, v)
 
     run_start._name = 'Header'

@@ -8,6 +8,11 @@ from dataportal.replay.search import GetLastModel
 from dataportal.replay.muxer import MuxerModel
 from dataportal.replay.scalar import ScalarCollection
 
+import metadatastore
+
+#metadatastore.conf.mds_config['host'] = 'localhost'
+#metadatastore.conf.mds_config['database'] = 'test'
+
 with enaml.imports():
     from dataportal.replay.replay_view import MainView
 
