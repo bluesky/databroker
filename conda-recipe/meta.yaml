@@ -1,5 +1,5 @@
 package:
-  name: metadatastore 
+  name: metadatastore
   version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
 
 source:
@@ -22,5 +22,14 @@ requirements:
     - python
     - mongoengine
     - six
+    - pyyaml
 
-
+test:
+  # Python imports
+  imports:
+    - metadataStore
+    - metadataStore.commands
+    - metadataStore.api
+    - metadataStore.conf
+    - metadataStore.odm_templates
+    - metadataStore.document
