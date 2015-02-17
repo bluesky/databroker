@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 try:
     import enaml
 
-    import enaml
-
     from .model import GetLastModel
 
     with enaml.imports():

@@ -75,10 +75,7 @@ setup(
     entry_points={
         'console_scripts': [
             'replay = dataportal.replay.replay:main']},
-    package_data={'dataportal.replay': ['*.enaml'],
-                  'dataportal.replay.muxer': ['*.enaml'],
-                  'dataportal.replay.scalar': ['*.enaml'],
-                  'dataportal.replay.search': ['*.enaml']},
+    package_data={'': ['*.enaml']},
     requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
               'pims', 'six'],
 )
