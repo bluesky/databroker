@@ -182,7 +182,7 @@ def fill_event(event):
 
 
 def _build_header(run_start):
-    fed = sources.metadataStore.api.find_event_descriptor
+    fed = sources.metadatastore.api.find_event_descriptor
     run_start.event_descriptors = fed(run_start)
     # TODO merge contents of RunEnd
     run_start._name = 'Header'
