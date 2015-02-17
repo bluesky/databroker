@@ -21,6 +21,7 @@ requirements:
     - enaml
     - numpy
     - six
+    - setuptools
 
   run:
     - python
