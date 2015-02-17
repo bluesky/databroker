@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/NSLS-II/metadatastore.svg)](https://travis-ci.org/NSLS-II/metadatastore)
-[![Coverage Status](https://coveralls.io/repos/NSLS-II/metadatastore/badge.svg)](https://coveralls.io/r/NSLS-II/metadatastore)
+[![Coverage Status](https://coveralls.io/repos/NSLS-II/metadataStore/badge.svg)](https://coveralls.io/r/NSLS-II/metadataStore)
 # metadataStore
 NSLS2 Beamlines MetadataStore prototype implemented in MongoDB.
 
