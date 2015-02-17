@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function)
 
 import sys
 import warnings
-import numpy as np
 
 
 try:
@@ -14,7 +13,7 @@ except ImportError:
     except ImportError:
         from distutils.core import setup
 
-from distutils.core import setup, Extension
+from distutils.core import setup
 
 MAJOR = 0
 MINOR = 0
@@ -66,17 +65,16 @@ setup(
     packages=['dataportal', 'dataportal.api', 'dataportal.testing',
               'dataportal.examples',
               'dataportal.examples.sample_data',
-              'dataportal.replay',
-              'dataportal.replay.gui',
-              'dataportal.replay.model',
               'dataportal.broker', 'dataportal.muxer',
-              'dataportal.sources', 'dataportal.sources.dummy_sources'
+              'dataportal.sources', 'dataportal.sources.dummy_sources',
+              'dataportal.replay', 'dataportal.replay.muxer',
+              'dataportal.replay.scalar', 'dataportal.replay.search',
               ],
-    include_dirs=[np.get_include()],
     entry_points={
         'console_scripts': [
-        'replay = dataportal.replay.replay:main']},
-    package_data={'dataportal.replay.gui': ['*.enaml']},
+            'replay = dataportal.replay.replay:main']},
+    package_data={'': ['*.enaml']},
+    include_package_data=True,
     requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
               'pims', 'six'],
 )

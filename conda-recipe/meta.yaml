@@ -1,10 +1,11 @@
 package:
-  name: dataportal 
+  name: dataportal
   version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
 
 source:
   git_url: ../
-
+  patches:
+    - setup_py.patch
 build:
   number: 0
 
@@ -13,12 +14,12 @@ build:
   string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
   entry_points:
-    - replay = dataportal.replay.run:main
+    - replay = dataportal.replay.replay:main
 
 requirements:
   build:
     - python
-    - enaml
+    - enaml [py2k]
     - numpy
     - six
 
@@ -27,16 +28,18 @@ requirements:
     - pandas
     - matplotlib
     - pyyaml
-    - enaml
-    - bubblegum
-    - scikit-xray
-    - pims
+    - enaml [py2k]
+    - bubblegum [py2k]
+    - scikit-xray [py2k]
+    - pims [py2k]
     - metadatastore
     - filestore
     - channelarchiver
+    - six
 
 test:
   imports:
     - dataportal.broker
     - dataportal.muxer
     - dataportal.replay
+    - dataportal.replay.replay [py2k]
