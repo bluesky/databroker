@@ -17,7 +17,7 @@ import nose
 # plugins = [KnownFailure]
 plugins = []
 env = {"NOSE_WITH_COVERAGE": 1,
-       'NOSE_COVER_PACKAGE': 'fileStore',
+       'NOSE_COVER_PACKAGE': 'filestore',
        'NOSE_COVER_HTML': 1}
 # Nose doesn't automatically instantiate all of the plugins in the
 # child processes, so we have to provide the multiprocess plugin with

@@ -3,7 +3,7 @@ __author__ = 'arkilic'
 
 from mongoengine import (Document, ReferenceField, DictField, DENY,
                          StringField, FloatField)
-from fileStore.database import file_base
+from filestore.database import file_base
 
 
 class FileEventLink(Document):
@@ -12,7 +12,7 @@ class FileEventLink(Document):
     Parameters
     ----------
 
-    file_id : fileStore.file_base.FileBase
+    file_id : filestore.file_base.FileBase
         FileBase object required to create an event link. id field is used to obtain the foreignkey
 
     event_id : str

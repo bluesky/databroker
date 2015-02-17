@@ -1,10 +1,10 @@
 __author__ = 'arkilic'
 
 
-from fileStore.api.collection import save_file_event_link, save_file_base, save_file_attributes
+from filestore.api.collection import save_file_event_link, save_file_base, save_file_attributes
 
 
-base = save_file_base(spec='some spec', file_path='/tmp/fileStore/dummy/file/path', custom={'some_info': 'info'})
+base = save_file_base(spec='some spec', file_path='/tmp/filestore/dummy/file/path', custom={'some_info': 'info'})
 
 print base.id, base.file_path, base.spec
 

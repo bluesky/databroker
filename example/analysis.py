@@ -1,6 +1,6 @@
 __author__ = 'arkilic'
 
-from fileStore.api.analysis import find, find_last, find_file_event_link, find_file_attributes
+from filestore.api.analysis import find, find_last, find_file_event_link, find_file_attributes
 import time
 
 start = time.time()

@@ -39,76 +39,11 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 logger = logging.getLogger(__name__)
-
-
-from fileStore.database.file_base import FileBase
-from fileStore.database.file_event_link import FileEventLink
-import fileStore.retrieve as fsr
-import numpy as np
-from nose.tools import assert_true, assert_raises, assert_false
-
-from .t_utils import SynHandlerMod, SynHandlerEcho
+import filestore.file_readers as fs_read
+from nose.tools import assert_raises
 import uuid
 
-mock_base = FileBase(spec='syn-mod',
-                     file_path='',
-                     custom={'shape': (5, 7)})
 
-mock_event = {n: FileEventLink(file_base=mock_base,
-                               event_id=n,
-                               link_parameters={'n': n})
-                               for n in range(1, 3)}
-
-
-def test_get_handler_global():
-
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
-
-        fs_doc = mock_base
-        handle = fsr.get_spec_handler(fs_doc)
-
-        assert_true(isinstance(handle, SynHandlerMod))
-
-
-def _help_test_data(event_doc):
-    data = fsr.get_data(event_doc, {'syn-mod': SynHandlerMod})
-
-    assert_true(np.all(data < event_doc.event_id))
-
-
-def test_get_data():
-    for v in mock_event.values():
-        yield _help_test_data, v
-
-
-def test_context():
-    with SynHandlerMod('', (4, 2)) as hand:
-        for j in range(1, 5):
-            assert_true(np.all(hand(j) < j))
-
-
-def test_register_fail():
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
-        # shouldn't raise, it is a no-op as it is regiristering
-        # the same class with the same name
-        fsr.register_handler('syn-mod', SynHandlerMod)
-        # should raise as it is trying to change the registered class
-        assert_raises(RuntimeError, fsr.register_handler,
-                      'syn-mod', SynHandlerEcho)
-
-
-def test_context_manager_replace():
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
-        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
-        with fsr.handler_context({'syn-mod': SynHandlerEcho}):
-            assert_true(fsr._h_registry['syn-mod'] is SynHandlerEcho)
-        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
-    assert_false('syn-mod' in fsr._h_registry)
-
-
-def test_deregister():
-    test_spec_name = str(uuid.uuid4())
-    fsr.register_handler(test_spec_name, SynHandlerMod)
-    assert_true(fsr._h_registry[test_spec_name] is SynHandlerMod)
-    fsr.deregister_handler(test_spec_name)
-    assert_false(test_spec_name in fsr._h_registry)
+def test_npy_nofile_fail():
+    path = str(uuid.uuid4())
+    assert_raises(IOError, fs_read.NpyHandler, path)
