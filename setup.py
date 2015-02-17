@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function)
 
 import sys
 import warnings
-import numpy as np
 
 
 try:
@@ -71,7 +70,6 @@ setup(
               'dataportal.replay', 'dataportal.replay.muxer',
               'dataportal.replay.scalar', 'dataportal.replay.search',
               ],
-    include_dirs=[np.get_include()],
     entry_points={
         'console_scripts': [
             'replay = dataportal.replay.replay:main']},
