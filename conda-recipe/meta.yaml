@@ -27,9 +27,9 @@ requirements:
 test:
   # Python imports
   imports:
-    - metadataStore
-    - metadataStore.commands
-    - metadataStore.api
-    - metadataStore.conf
-    - metadataStore.odm_templates
-    - metadataStore.document
+    - metadatastore
+    - metadatastore.commands
+    - metadatastore.api
+    - metadatastore.conf
+    - metadatastore.odm_templates
+    - metadatastore.document

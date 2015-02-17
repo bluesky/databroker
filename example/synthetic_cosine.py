@@ -1,9 +1,9 @@
 from __future__ import print_function
 
-from metadataStore.api import (insert_run_start, insert_beamline_config,
+from metadatastore.api import (insert_run_start, insert_beamline_config,
                                insert_event, insert_event_descriptor,
                                insert_run_stop)
-from metadataStore.api import find_last, find_event, fetch_events
+from metadatastore.api import find_last, find_event, fetch_events
 import time
 import numpy as np
 

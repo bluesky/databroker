@@ -6,7 +6,7 @@ from .odm_templates import (RunStart, BeamlineConfig, RunStop,
 from .document import Document
 import datetime
 import logging
-import metadataStore
+import metadatastore
 from mongoengine import connect
 import uuid
 
@@ -51,7 +51,7 @@ def format_data_keys(data_key_dict):
 
 def format_events(event_dict):
     """Helper function for ophyd to format its data dictionary in whatever
-    flavor of the week metadataStore's spec says. This insulates ophyd from
+    flavor of the week metadatastore's spec says. This insulates ophyd from
     changes to the mds spec
 
     Currently formats the dictionary as {key: [value, timestamp]}
@@ -81,9 +81,9 @@ def format_events(event_dict):
 
 def db_connect(func):
     def inner(*args, **kwargs):
-        db = metadataStore.conf.mds_config['database']
-        host = metadataStore.conf.mds_config['host']
-        port = metadataStore.conf.mds_config['port']
+        db = metadatastore.conf.mds_config['database']
+        host = metadatastore.conf.mds_config['host']
+        port = metadatastore.conf.mds_config['port']
         logger.debug('connecting to db: %s, host: %s, port: %s',
                      db, host, port)
         connect(db=db, host=host, port=port)
@@ -106,7 +106,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
     beamline_id: str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    beamline_config: metadataStore.odm_temples.BeamlineConfig, optional
+    beamline_config: metadatastore.odm_temples.BeamlineConfig, optional
         Foreign key to beamline config corresponding to a given run
     owner: str, optional
         Specifies the unix user credentials of the user creating the entry
@@ -147,7 +147,7 @@ def insert_run_stop(run_start, time, exit_status='success',
 
     Parameters
     ----------
-    run_start : metadataStore.odm_temples.RunStart
+    run_start : metadatastore.odm_temples.RunStart
         Foreign key to corresponding RunStart
     time : timestamp
         The date/time as found at the client side when an event is
@@ -173,7 +173,7 @@ def insert_run_stop(run_start, time, exit_status='success',
 
 @db_connect
 def insert_beamline_config(config_params, time, uid=None):
-    """ Create a beamline_config  in metadataStore database backend
+    """ Create a beamline_config  in metadatastore database backend
 
     Parameters
     ----------
@@ -198,11 +198,11 @@ def insert_beamline_config(config_params, time, uid=None):
 
 @db_connect
 def insert_event_descriptor(run_start, data_keys, time, uid=None):
-    """ Create an event_descriptor in metadataStore database backend
+    """ Create an event_descriptor in metadatastore database backend
 
     Parameters
     ----------
-    run_start: metadataStore.odm_templates.RunStart
+    run_start: metadatastore.odm_templates.RunStart
         RunStart object created prior to a RunStart
     data_keys : dict
         Provides information about keys of the data dictionary in
@@ -235,11 +235,11 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
 
 @db_connect
 def insert_event(event_descriptor, time, data, seq_num, uid=None):
-    """Create an event in metadataStore database backend
+    """Create an event in metadatastore database backend
 
     Parameters
     ----------
-    event_descriptor : metadataStore.odm_templates.EventDescriptor
+    event_descriptor : metadatastore.odm_templates.EventDescriptor
         EventDescriptor object that specific event entry is going
         to point(foreign key)
     time : timestamp
@@ -328,7 +328,7 @@ def find_run_start(limit=50, **kwargs):
 
     Returns
     -------
-    br_objects : metadataStore.document.Document
+    br_objects : metadatastore.document.Document
         Combined documents: RunStart, BeamlineConfig, Sample and
         EventDescriptors
 
@@ -402,7 +402,7 @@ def find_beamline_config(_id):
 
     Returns
     -------
-    beamline_config : metadataStore.document.Document
+    beamline_config : metadatastore.document.Document
         The beamline config object
     """
     beamline_config = BeamlineConfig.objects(id=_id).order_by('-_id')
@@ -419,7 +419,7 @@ def find_run_stop(run_start):
 
     Returns
     -------
-    run_stop : metadataStore.document.Document
+    run_stop : metadatastore.document.Document
         The run stop object containing the `exit_status` enum, the `time` the
         run ended and the `reason` the run ended.
     """
@@ -441,7 +441,7 @@ def find_event_descriptor(run_start):
     Returns
     -------
     event_descriptor : list
-        List of metadataStore.document.Document.
+        List of metadatastore.document.Document.
     """
     event_descriptor_list = list()
     for event_descriptor in EventDescriptor.objects(
@@ -467,7 +467,7 @@ def fetch_events(limit=1000, **kwargs):
     Returns
     -------
     events : list
-        List of metadataStore.document.Document
+        List of metadatastore.document.Document
     """
     search_dict = dict()
     try:
@@ -508,7 +508,7 @@ def find_event(run_start):
     -------
     events: list
         Set of events encapsulated within a RunStart's scope.
-        metadataStore.document.Document
+        metadatastore.document.Document
     """
     descriptors = EventDescriptor.objects(run_start=run_start.id)
     descriptors = descriptors.order_by('-_id')
@@ -522,7 +522,7 @@ def find_event_given_descriptor(event_descriptor):
 
     Parameters
     ----------
-    event_descriptor: metadataStore.database.EventDescriptor
+    event_descriptor: metadatastore.database.EventDescriptor
         EventDescriptor instance that a set of events point back to
 
     Returns
@@ -563,7 +563,7 @@ def find(data=True, limit=50, **kwargs):
 
     Returns
     -------
-    result: metadataStore.document.Document
+    result: metadatastore.document.Document
         Returns RunStart objects
         One can access events for this given RunStart as:
         run_start_object.events
@@ -589,7 +589,7 @@ def find_last(num=1):
     -------
     run_start: list
         Returns a list of the last ``num`` headers created.
-        List of metadataStore.document.Document objects
+        List of metadatastore.document.Document objects
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
     br_objects = [br_obj for br_obj in RunStart.objects.order_by('-_id')[:num]]
@@ -660,7 +660,7 @@ def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
     Parameters
     ---------
 
-    event_descriptor: metadataStore.odm_templates.EventDescriptor
+    event_descriptor: metadatastore.odm_templates.EventDescriptor
     EvenDescriptor instance
 
     direction: str
@@ -680,7 +680,7 @@ def __replace_event_data_key_dots(event, direction='in'):
     Parameters
     ---------
 
-    event_descriptor: metadataStore.database.event_descriptor.EventDescriptor
+    event_descriptor: metadatastore.database.event_descriptor.EventDescriptor
     EvenDescriptor instance
 
     direction: str
