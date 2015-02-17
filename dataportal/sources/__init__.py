@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 source_names = ['channelarchiver', 'metadatastore', 'metadatastore.api',
                 'metadatastore.api', 'metadatastore.api',
-                'fileStore', 'fileStore.commands']
+                'filestore', 'filestore.commands']
 __all__ = ['switch'] + source_names
 
 
@@ -29,18 +29,18 @@ def switch(channelarchiver=None, metadatastore=None, filestore=None):
         if value is not None:
             if value:
                 globals()[name] = import_module(name)
-                if name == 'fileStore':
+                if name == 'filestore':
                     # import to do registering so things 'just work'
-                    from fileStore.retrieve import register_handler
-                    from fileStore.file_readers import NpyHandler
+                    from filestore.retrieve import register_handler
+                    from filestore.file_readers import NpyHandler
                     # register npy handler
                     register_handler('npy', NpyHandler)
             else:
                 globals()[name] = import_module(format_string.format(name))
                 logger.debug('Pointing %s to %s', name, globals()[name])
-                if name == 'fileStore':
+                if name == 'filestore':
                     # import to do registering so things 'just work'
-                    from fileStore.retrieve import deregister_handler
+                    from filestore.retrieve import deregister_handler
                     # register npy handler
                     deregister_handler('npy')
 

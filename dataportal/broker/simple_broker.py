@@ -173,7 +173,7 @@ def fill_event(event):
     """
     Populate events with externally stored data.
     """
-    retrieve_data = sources.fileStore.commands.retrieve_data
+    retrieve_data = sources.filestore.commands.retrieve_data
     is_external = _inspect_descriptor(event.descriptor)
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
