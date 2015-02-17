@@ -273,7 +273,7 @@ def _spec_tuple_factory(spec_list, dict_name, cls_name):
     """
     _as_dict_doc_tmplate = """
     Returns the contents of the object as a dictionary suitable to pass
-    to the {} function of metadataStore
+    to the {} function of metadatastore
     """
 
     _class_doc_template_param = """

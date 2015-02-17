@@ -1,8 +1,8 @@
 import numpy as np
 import uuid
 from functools import wraps
-from metadataStore.api import (insert_run_start, insert_beamline_config,
-                               insert_run_end, Document)
+from metadatastore.api import (insert_run_start, insert_beamline_config,
+                               insert_run_stop, Document)
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -80,7 +80,7 @@ def example(func):
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
         time = max([event.time for event in events])
-        insert_run_end(run_start, time=time, exit_status='success')
+        insert_run_stop(run_start, time=time, exit_status='success')
         events = [Document(e) for e in events]
         return events
     return mock_run_start

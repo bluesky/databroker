@@ -25,7 +25,7 @@ import json
 
 from epics import PV
 
-from metadataStore.api.collection import create_event
+from metadatastore.api.collection import create_event
 from pprint import pprint
 
 pv_dict = {}

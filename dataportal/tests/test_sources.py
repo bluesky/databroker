@@ -1,5 +1,5 @@
 from ..sources.dummy_sources import _channelarchiver as ca
-from ..sources.dummy_sources import _metadataStore as ds
+from ..sources.dummy_sources import _metadatastore as ds
 from ..sources.dummy_sources import _fileStore as fs
 from .. import sources
 import unittest
@@ -28,10 +28,10 @@ class TestSources(unittest.TestCase):
 
     def test_switch_metadatastore(self):
         sources.switch(metadatastore=False)
-        is_dummy = sources.metadataStore.__file__.count('dummy') == 1
+        is_dummy = sources.metadatastore.__file__.count('dummy') == 1
         self.assertTrue(is_dummy)
         sources.switch(metadatastore=True)
-        is_dummy = sources.metadataStore.__file__.count('dummy') == 1
+        is_dummy = sources.metadatastore.__file__.count('dummy') == 1
         self.assertFalse(is_dummy)
 
     def test_switch_filestore(self):

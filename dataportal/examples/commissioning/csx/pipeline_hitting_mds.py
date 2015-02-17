@@ -18,9 +18,9 @@ import enaml
 from datetime import datetime
 import time
 import json
-from metadataStore.api import analysis
+from metadatastore.api import analysis
 
-from metadataStore.api.collection import create_event
+from metadatastore.api.collection import create_event
 from pprint import pprint
 
 dm = None

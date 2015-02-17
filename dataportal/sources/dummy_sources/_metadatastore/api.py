@@ -45,7 +45,7 @@ from datetime import datetime as dt
 def save_event_descriptor(header=None, event_type_id=None,
                           descriptor_name=None,
                           data_keys=None, type_descriptor=None):
-    """ Create an event_descriptor in metadataStore database backend
+    """ Create an event_descriptor in metadatastore database backend
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ def save_event_descriptor(header=None, event_type_id=None,
 
 def save_event(header=None, event_descriptor=None, seq_no=None,
                timestamp=None, data=None, **kwargs):
-    """Create an event in metadataStore database backend
+    """Create an event in metadatastore database backend
 
     Parameters
     ----------

@@ -1,6 +1,6 @@
 from __future__ import division
 
-from metadataStore.api import (insert_run_start, insert_event,
+from metadatastore.api import (insert_run_start, insert_event,
                                insert_beamline_config,
                                insert_event_descriptor,
                                find_last)
