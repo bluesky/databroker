@@ -1,5 +1,5 @@
 package:
-  name: dataportal 
+  name: dataportal
   version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
 
 source:
@@ -13,7 +13,7 @@ build:
   string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
   entry_points:
-    - replay = dataportal.replay.run:main
+    - replay = dataportal.replay.replay:main
 
 requirements:
   build:
