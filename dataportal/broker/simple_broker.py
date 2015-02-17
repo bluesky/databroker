@@ -1,5 +1,6 @@
 from __future__ import print_function
 import six  # noqa
+import copy
 from collections import defaultdict, Iterable, deque
 from .. import sources
 from metadatastore.api import Document
@@ -77,9 +78,13 @@ class DataBroker(object):
         if not isinstance(runs, Iterable):
             runs = [runs]
 
-        runs = [find_event(run) for run in runs]
-        descriptors = [descriptor for run in runs for descriptor in run]
-        events = [event for descriptor in descriptors for event in descriptor]
+        events_by_descriptor = []
+        for run in runs:
+            run = copy.copy(run)
+            run.id = run.ids['run_start_id']
+            events_by_descriptor.extend(find_event(run))
+        events = [event for descriptor in events_by_descriptor
+                  for event in descriptor]
         [fill_event(event) for event in events]
 
         if channels is not None:

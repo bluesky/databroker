@@ -4,15 +4,22 @@ import numpy as np
 import pandas as pd
 from ..sources import channelarchiver as ca
 from ..sources import switch
+from ..examples.sample_data import temperature_ramp
+from ..broker import DataBroker as db
 
 
 class TestBroker(unittest.TestCase):
 
     def setUp(self):
-        switch(channelarchiver=False, metadatastore=False, filestore=False)
+        switch(channelarchiver=False, metadatastore=True, filestore=True)
         start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
         simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
         ca.insert_data(simulated_ca_data)
+        temperature_ramp.run()
+
+    def test_basic_usage(self):
+        header = db[-1]
+        events = db.fetch_events(header)
 
     def tearDown(self):
         switch(channelarchiver=True, metadatastore=True, filestore=True)
