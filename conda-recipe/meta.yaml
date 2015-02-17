@@ -1,0 +1,29 @@
+package:
+  name: filestore 
+  version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
+
+source:
+  git_url: ../
+
+build:
+  number: 1
+
+  # Note that this will override the default build string with the Python
+  # and NumPy versions
+  string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
+
+
+requirements:
+  build:
+    - python
+    - six
+
+  run:
+    - python
+    - mongoengine
+    - h5py
+    - numpy
+    - six
+
+
+
