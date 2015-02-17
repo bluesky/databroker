@@ -4,7 +4,8 @@ package:
 
 source:
   git_url: ../
-
+  patches:
+    - setup_py.patch
 build:
   number: 0
 
