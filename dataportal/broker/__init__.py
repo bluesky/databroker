@@ -1,1 +1,3 @@
-from .simple_broker import get_last
+from .simple_broker import DataBroker
+
+DataBroker = DataBroker()  # singleton
