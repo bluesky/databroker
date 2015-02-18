@@ -27,15 +27,19 @@ class DataBroker(object):
             # Slice on recent runs.
             if key.start is not None and key.start > -1:
                 raise ValueError("Slices must be negative. The most recent "
-                    "run is referred to as -1.")
+                                 "run is referred to as -1.")
             if key.stop is not None and key.stop > -1:
                 raise ValueError("Slices must be negative. The most recent "
-                    "run is referred to as -1.")
+                                 "run is referred to as -1.")
             if key.stop is not None:
-                num = key.stop - key.start
+                stop = -key.stop
             else:
-                num = -key.start
-            headers = find_last(-key.start)[:num:key.step]
+                stop = None
+            if key.start is None:
+                raise ValueError("Cannot slice infinitely into the past; "
+                                 "the result could become too large.")
+            start = -key.start
+            headers = find_last(start)[stop::key.step]
         elif isinstance(key, int):
             return_list = False
             if key > -1:
@@ -48,8 +52,8 @@ class DataBroker(object):
                     raise IndexError(
                         "There are only {0} runs.".format(len(headers)))
         else:
-            ValueError("Must give an integer scan ID like [6] or a slice "
-                       "into past scans like [-5], [-5:], or [-5:-9:2].")
+            raise ValueError("Must give an integer scan ID like [6] or a slice "
+                             "into past scans like [-5], [-5:], or [-5:-9:2].")
         [_build_header(h) for h in headers]
         if not return_list:
             headers = headers[-1]
@@ -112,11 +116,11 @@ class DataBroker(object):
         data : list
             Header objects
         """
-        find_header = sources.metadatastore.api.find_run_start
-        run_start = find_header(**kwargs)
+        find_run_start = sources.metadatastore.api.find_run_start
+        run_start = find_run_start(**kwargs)
         for rs in run_start:
             _build_header(rs)
-        return run_start
+        return run_start  # these have been built out into headers
 
 
 def _get_archiver_data(ca_host, channels, start_time, end_time):
@@ -191,6 +195,7 @@ def fill_event(event):
 
 
 def _build_header(run_start):
+    "Modify a RunStart Document in place into a Header Document."
     mdsapi = sources.metadatastore.api
     run_start.event_descriptors = mdsapi.find_event_descriptor(run_start)
     run_stop = mdsapi.find_run_stop(run_start)
