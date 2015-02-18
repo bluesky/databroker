@@ -27,15 +27,19 @@ class DataBroker(object):
             # Slice on recent runs.
             if key.start is not None and key.start > -1:
                 raise ValueError("Slices must be negative. The most recent "
-                    "run is referred to as -1.")
+                                 "run is referred to as -1.")
             if key.stop is not None and key.stop > -1:
                 raise ValueError("Slices must be negative. The most recent "
-                    "run is referred to as -1.")
+                                 "run is referred to as -1.")
             if key.stop is not None:
-                num = key.stop - key.start
+                stop = -key.stop
             else:
-                num = -key.start
-            headers = find_last(-key.start)[:num:key.step]
+                stop = None
+            if key.start is None:
+                raise ValueError("Cannot slice infinitely into the past; "
+                                 "the result could become too large.")
+            start = -key.start
+            headers = find_last(start)[stop::key.step]
         elif isinstance(key, int):
             return_list = False
             if key > -1:
@@ -48,8 +52,8 @@ class DataBroker(object):
                     raise IndexError(
                         "There are only {0} runs.".format(len(headers)))
         else:
-            ValueError("Must give an integer scan ID like [6] or a slice "
-                       "into past scans like [-5], [-5:], or [-5:-9:2].")
+            raise ValueError("Must give an integer scan ID like [6] or a slice "
+                             "into past scans like [-5], [-5:], or [-5:-9:2].")
         [_build_header(h) for h in headers]
         if not return_list:
             headers = headers[-1]
