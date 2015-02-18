@@ -203,7 +203,7 @@ def _build_header(run_start):
     if run_stop is not None:
         adds['stop_time'] = (run_stop, 'time')
         adds['stop_datetime'] = (run_stop, 'time_as_datetime')
-        adds['exit_report'] = (run_stop, 'reason')
+        adds['exit_reason'] = (run_stop, 'reason')
         deletes.append((run_stop, '_name'))
         deletes.append((run_stop, 'run_start'))
         add_to_id['run_stop_uid'] = (run_stop, 'uid')
