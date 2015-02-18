@@ -112,11 +112,11 @@ class DataBroker(object):
         data : list
             Header objects
         """
-        find_header = sources.metadatastore.api.find_run_start
-        run_start = find_header(**kwargs)
+        find_run_start = sources.metadatastore.api.find_run_start
+        run_start = find_run_start(**kwargs)
         for rs in run_start:
             _build_header(rs)
-        return run_start
+        return run_start  # these have been built out into headers
 
 
 def _get_archiver_data(ca_host, channels, start_time, end_time):
@@ -191,6 +191,7 @@ def fill_event(event):
 
 
 def _build_header(run_start):
+    "Modify a RunStart Document in place into a Header Document."
     mdsapi = sources.metadatastore.api
     run_start.event_descriptors = mdsapi.find_event_descriptor(run_start)
     run_stop = mdsapi.find_run_stop(run_start)
