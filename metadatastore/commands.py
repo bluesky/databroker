@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
+from functools import wraps
 from .odm_templates import (RunStart, BeamlineConfig, RunStop,
                             EventDescriptor, Event, DataKey)
 from .document import Document
@@ -80,6 +81,7 @@ def format_events(event_dict):
 
 
 def db_connect(func):
+    @wraps(func)
     def inner(*args, **kwargs):
         db = metadatastore.conf.mds_config['database']
         host = metadatastore.conf.mds_config['host']
