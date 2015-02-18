@@ -15,9 +15,9 @@ from functools import wraps
 def db_connect(func):
     @wraps(func)
     def inner(*args, **kwargs):
-        database = kwargs.pop('database', conf.connection_config['database'])
-        host = kwargs.pop('host', conf.connection_config['host'])
-        port = kwargs.pop('port', conf.connection_config['port'])
+        database = conf.connection_config['database']
+        host = conf.connection_config['host']
+        port = conf.connection_config['port']
         connect(db=database, host=host, port=port)
         return func(*args, **kwargs)
     return inner
