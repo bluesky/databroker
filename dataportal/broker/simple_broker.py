@@ -112,10 +112,11 @@ class DataBroker(object):
         data : list
             Header objects
         """
-        find_header = sources.metadatastore.api.find_header
+        find_header = sources.metadatastore.api.find_run_start
         run_start = find_header(**kwargs)
-        headers = [_build_header(rs) for rs in run_start]
-        return headers
+        for rs in run_start:
+            _build_header(rs)
+        return run_start
 
 
 def _get_archiver_data(ca_host, channels, start_time, end_time):
@@ -195,13 +196,14 @@ def _build_header(run_start):
     run_stop = mdsapi.find_run_stop(run_start)
     # fix the time issue
     adds = {'start_time': (run_start, 'time'),
-                'start_datetime': (run_start, 'time_as_datetime')}
+            'start_datetime': (run_start, 'time_as_datetime')}
     deletes = [(run_start, '_name')]
     add_to_id = {'run_start_uid': (run_start, 'uid'),
                  'run_start_id': (run_start, 'id')}
     if run_stop is not None:
         adds['stop_time'] = (run_stop, 'time')
         adds['stop_datetime'] = (run_stop, 'time_as_datetime')
+        adds['exit_report'] = (run_stop, 'reason')
         deletes.append((run_stop, '_name'))
         deletes.append((run_stop, 'run_start'))
         add_to_id['run_stop_uid'] = (run_stop, 'uid')
