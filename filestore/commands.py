@@ -18,7 +18,7 @@ def db_connect(func):
         database = kwargs.pop('database', conf.connection_config['database'])
         host = kwargs.pop('host', conf.connection_config['host'])
         port = kwargs.pop('port', conf.connection_config['port'])
-        connect(database=database, host=host, port=port)
+        connect(db=database, host=host, port=port)
         return func(*args, **kwargs)
     return inner
 
