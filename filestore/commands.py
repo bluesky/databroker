@@ -9,16 +9,16 @@ from .database.file_attributes import FileAttributes
 from .database.file_event_link import FileEventLink
 from .retrieve import get_data as _get_data
 from . import conf
-
-# TODO: Add documentation
+from functools import wraps
 
 
 def db_connect(func):
+    @wraps(func)
     def inner(*args, **kwargs):
-        db = conf.connection_config['database']
+        database = conf.connection_config['database']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
-        connect(db=db, host=host, port=port)
+        connect(db=database, host=host, port=port)
         return func(*args, **kwargs)
     return inner
 
