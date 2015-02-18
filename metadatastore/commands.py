@@ -86,8 +86,6 @@ def db_connect(func):
         db = metadatastore.conf.mds_config['database']
         host = metadatastore.conf.mds_config['host']
         port = metadatastore.conf.mds_config['port']
-        logger.debug('connecting to db: %s, host: %s, port: %s',
-                     db, host, port)
         connect(db=db, host=host, port=port)
         return func(*args, **kwargs)
     return inner
