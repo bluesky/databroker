@@ -2,13 +2,13 @@ from __future__ import division
 import uuid
 from metadatastore.api import insert_event, insert_event_descriptor
 from filestore.api.analysis import save_ndarray
-from ...broker.simple_broker import fill_event
+from dataportal.broker.simple_broker import fill_event
 import numpy as np
-from .common import example, noisy
+from dataportal.examples.sample_data.common import example, noisy
 
 
 @example
-def run(run_start=None):
+def run(run_start=None, sleep=0):
     # Make the data
     rs = np.random.RandomState(5)
 
@@ -75,3 +75,7 @@ def run(run_start=None):
             events.append(event)
 
     return events
+
+
+if __name__ == '__main__':
+    run(sleep=0.1)
