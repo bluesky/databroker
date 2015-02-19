@@ -7,6 +7,7 @@ omit =
     *test*
     dataportal/__init__.py
     dataportal/tests/*
-    dataportal/replay/
+    dataportal/testing/*
+    dataportal/replay/*
 
 exclude_lines =
