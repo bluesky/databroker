@@ -2,10 +2,10 @@ from __future__ import print_function, division
 import numpy as np
 from skxray import core
 
-# stolen from other live demo
-class FrameSourcerBrownian(object):
+def brownian(im_shape, step_scale=1, decay=30,
+             I_fluc_function=None, step_fluc_function=None):
     """
-    A QObject that has a timer and will emit synthetic data
+    Return a generator that yields simulated images
     of a dot moving around under brownian motion with varying intensity
 
     Parameters
@@ -42,44 +42,37 @@ class FrameSourcerBrownian(object):
                  else:
                      return None
     """
+    # This code was ported from a class-based implementation,
+    # so the style of what follows is a little tortured but functional.
+    im_shape = np.asarray(im_shape)
+    scale = step_scale
 
-    def __init__(self, im_shape, step_scale=1, decay=30,
-                 I_fluc_function=None, step_fluc_function=None):
-        self._im_shape = np.asarray(im_shape)
-        self._scale = step_scale
-        self._decay = decay
+    if I_fluc_function is None:
+        I_fluc_function = lambda x: np.random.randn()
 
-        if I_fluc_function is None:
-            I_fluc_function = lambda x: np.random.randn()
+    I_func = I_fluc_function
 
-        self._I_func = I_fluc_function
+    if step_fluc_function is None:
+        step_fluc_function = lambda step, count: None
 
-        if step_fluc_function is None:
-            step_fluc_function = lambda step, count: None
+    scale_func = step_fluc_function
 
-        self._scale_func = step_fluc_function
+    if im_shape.ndim != 1 and len(im_shape) != 2:
+        raise ValueError("image shape must be 2 dimensional "
+                         "you passed in {}".format(im_shape))
 
-        if self._im_shape.ndim != 1 and len(self._im_shape) != 2:
-            raise ValueError("image shape must be 2 dimensional "
-                             "you passed in {}".format(im_shape))
-        self.reset()
-
-
-    def gen_next_frame(self):
+    cur_position = np.asarray(im_shape) // 2
+    count = 0
+    while True:
         # add a random step
-        step = np.random.randn(2) * self._scale
-        self._cur_position += step
+        step = np.random.randn(2) * scale
+        cur_position += step
         # clip it
-        self._cur_position = np.array([np.clip(v, 0, mx) for
-                                       v, mx in zip(self._cur_position,
-                                                    self._im_shape)])
-        R = core.pixel_to_radius(self._im_shape,
-                                 self._cur_position).reshape(self._im_shape)
-        I = self._I_func(self._count)
-        im = np.exp((-R**2 / self._decay)) * I
-        self._count = self._count+1
-        return im
-
-    def reset(self):
-        self._count = 0
-        self._cur_position = np.array(np.asarray(self._im_shape) / 2, dtype=np.float)
+        cur_position = np.array([np.clip(v, 0, mx) for
+                                 v, mx in zip(cur_position, im_shape)])
+        R = core.pixel_to_radius(im_shape,
+                                 cur_position).reshape(im_shape)
+        I = I_func(count)
+        im = np.exp((-R**2 / decay)) * I
+        count += 1
+        yield im

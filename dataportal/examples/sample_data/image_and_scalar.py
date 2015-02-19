@@ -1,11 +1,36 @@
 from __future__ import division
 import uuid
+import numpy as np
 from metadatastore.api import insert_event, insert_event_descriptor
 from filestore.api.analysis import save_ndarray
 from dataportal.broker.simple_broker import fill_event
-import numpy as np
+from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data.common import example, noisy
 
+
+# This section sets up what the simulated images will look like.
+
+img_size = (500, 500)
+period = 150
+I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
+center = 25
+sigma = center / 4
+I_func_gaus = lambda count: (1 + np.exp(-((count - center)/sigma) ** 2))
+
+
+def scale_fluc(scale, count):
+    if not count % 50:
+        return scale - .5
+    if not count % 25:
+        return scale + .5
+    return None
+
+frame_generator = frame_generators.brownian(img_size, step_scale=.5,
+                                            I_fluc_function=I_func_gaus,
+                                            step_fluc_function=scale_fluc)
+
+
+# And this section is the actual example.
 
 @example
 def run(run_start=None, sleep=0):
@@ -42,7 +67,7 @@ def run(run_start=None, sleep=0):
 
     events = []
     for idx1, i in enumerate(range(num1)):
-        img = np.ones((5, 5))
+        img = next(frame_generator)
         img_sum = float(img.sum())
         img_sum_x = img.sum(axis=0)
         img_sum_y = img.sum(axis=1)
