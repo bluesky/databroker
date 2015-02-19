@@ -54,6 +54,10 @@ def setup():
     insert_beamline_config = sources.metadatastore.api.insert_beamline_config
     for i in range(5):
         insert_run_start(time=float(i), scan_id=i + 1,
+                         owner='docbrown', beamline_id='example',
+                         beamline_config=insert_beamline_config({}, time=0.))
+    for i in range(5):
+        insert_run_start(time=float(i), scan_id=i + 1,
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
 
@@ -125,7 +129,10 @@ def test_indexing():
 def test_lookup():
     header = db[3]
     scan_id = header.scan_id
+    owner = header.owner
     assert_equal(scan_id, 3)
+    # This should be the most *recent* Scan 3. There is ambiguity.
+    assert_equal(owner, 'nedbrainard')
 
 
 def generate_ca_data(channels, start_time, end_time):

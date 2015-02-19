@@ -22,7 +22,6 @@ class DataBroker(object):
         # at run time.
         find_last = sources.metadatastore.api.find_last
         find_run_start = sources.metadatastore.api.find_run_start
-        return_list = True
         if isinstance(key, slice):
             # Slice on recent runs.
             if key.start is not None and key.start > -1:
@@ -39,25 +38,27 @@ class DataBroker(object):
                 raise ValueError("Cannot slice infinitely into the past; "
                                  "the result could become too large.")
             start = -key.start
-            headers = find_last(start)[stop::key.step]
+            result = find_last(start)[stop::key.step]
+            [_build_header(h) for h in result]
         elif isinstance(key, int):
-            return_list = False
             if key > -1:
-                headers = find_run_start(scan_id=key)
-                if len(headers) == 0:
+                result = find_run_start(scan_id=key)
+                if len(result) == 0:
                     raise ValueError("No such run found.")
+                result = result[0]  # most recent match
+                _build_header(result)
             else:
-                headers = find_last(-key)
-                if len(headers) < -key:
+                result = find_last(-key)
+                if len(result) < -key:
                     raise IndexError(
-                        "There are only {0} runs.".format(len(headers)))
+                        "There are only {0} runs.".format(len(result)))
+                result = result[-1]
+                _build_header(result)
         else:
-            raise ValueError("Must give an integer scan ID like [6] or a slice "
-                             "into past scans like [-5], [-5:], or [-5:-9:2].")
-        [_build_header(h) for h in headers]
-        if not return_list:
-            headers = headers[-1]
-        return headers
+            raise ValueError("Must give an integer scan ID like [6], a slice "
+                             "into past scans like [-5], [-5:], or [-5:-9:2], "
+                             "or a list like [1, 7, 13].")
+        return result
 
     @classmethod
     def fetch_events(cls, runs, ca_host=None, channels=None):
