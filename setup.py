@@ -67,6 +67,7 @@ setup(
               'dataportal.examples.sample_data',
               'dataportal.broker', 'dataportal.muxer',
               'dataportal.sources', 'dataportal.sources.dummy_sources',
+              'dataportal.utils',
               'dataportal.replay', 'dataportal.replay.muxer',
               'dataportal.replay.scalar', 'dataportal.replay.search',
               ],
