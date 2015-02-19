@@ -1,5 +1,6 @@
 from __future__ import division
 import uuid
+import time as ttime
 import numpy as np
 from metadatastore.api import insert_event, insert_event_descriptor
 from filestore.api.analysis import save_ndarray
@@ -98,6 +99,7 @@ def run(run_start=None, sleep=0):
             event = insert_event(event_descriptor=e_desc2, seq_num=idx2+idx1,
                                  time=time, data=data2, uid=str(uuid.uuid4()))
             events.append(event)
+        ttime.sleep(sleep)
 
     return events
 

@@ -12,6 +12,9 @@ num_exposures = 23
 
 @common.example
 def run(run_start=None, sleep=0):
+    if sleep != 0:
+        raise NotImplementedError("A sleep time is not implemented for this "
+                                  "example.")
     # Make the data
     ramp = common.stepped_ramp(start, stop, step, points_per_step)
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
@@ -54,4 +57,4 @@ def run(run_start=None, sleep=0):
 
 
 if __name__ == '__main__':
-    run(sleep=0.1)
+    run()
