@@ -125,6 +125,16 @@ def test_indexing():
     scan_ids = [h.scan_id for h in headers]
     assert_equal(scan_ids, [4, 3])
 
+    # fancy indexing, by location
+    headers = db[[-3, -1, -2]]
+    scan_ids = [h.scan_id for h in headers]
+    assert_equal(scan_ids, [3, 5, 4])
+
+    # fancy indexing, by scan id
+    headers = db[[3, 1, 2]]
+    scan_ids = [h.scan_id for h in headers]
+    assert_equal(scan_ids, [3, 1, 2])
+
 
 def test_lookup():
     header = db[3]
