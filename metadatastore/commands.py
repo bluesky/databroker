@@ -3,14 +3,14 @@ from __future__ import (absolute_import, division, print_function,
 import six
 from functools import wraps
 from .odm_templates import (RunStart, BeamlineConfig, RunStop,
-                            EventDescriptor, Event, DataKey)
+                            EventDescriptor, Event, DataKey, ALIAS)
 from .document import Document
 import datetime
 import logging
 import metadatastore
 from mongoengine import connect
+import mongoengine.connection
 import uuid
-
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +83,42 @@ def format_events(event_dict):
 def db_connect(func):
     @wraps(func)
     def inner(*args, **kwargs):
-        db = metadatastore.conf.mds_config['database']
+        database = metadatastore.conf.mds_config['database']
         host = metadatastore.conf.mds_config['host']
         port = metadatastore.conf.mds_config['port']
-        connect(db=db, host=host, port=port)
+        connect(db=database, host=host, port=port, alias=ALIAS)
         return func(*args, **kwargs)
     return inner
 
-####################### DATABASE INSERTION ###############################
+
+def disconnect():
+    """
+    Disconnect from the data base.  The next time that a db operation
+    is called, the new connection will reflect the current state of
+    the configuration dict in `metadatastore.conf.mds_config`
+    """
+    mongoengine.connection.disconnect(ALIAS)
+
+
+def update_configuration(database=None, host=None, port=None):
+    """
+    Update the configuration (database, host, port) associated with
+    the documents in this package.
+
+    Parameters
+    ----------
+    database : string
+        The name of the data base to use.
+    """
+    conf = metadatastore.conf.mds_config
+    for key, val in zip(['database', 'host', 'port'],
+                        [database, host, port]):
+        if val:
+            conf[key] = val
+    disconnect()
+
+
+# database INSERTION ###################################################
 
 @db_connect
 def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
@@ -141,7 +169,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
 
 @db_connect
 def insert_run_stop(run_start, time, exit_status='success',
-                   reason=None, uid=None):
+                    reason=None, uid=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -292,12 +320,14 @@ class EventDescriptorIsNoneError(ValueError):
     pass
 
 
-########################## DATABASE RETRIEVAL ##################################
+# DATABASE RETRIEVAL ##########################################################
+
 
 def __add_event_descriptors(run_start_list):
     for run_start in run_start_list:
         setattr(run_start, 'event_descriptors',
                 find_event_descriptor(run_start))
+
 
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
