@@ -2,7 +2,7 @@ from __future__ import division
 import uuid
 from metadatastore.api import insert_event, insert_event_descriptor
 import numpy as np
-from . import common
+from dataportal.examples.sample_data import common
 
 # "Magic numbers" for this simulation
 start, stop, step, points_per_step = 0, 3, 1, 7
@@ -11,7 +11,10 @@ num_exposures = 23
 
 
 @common.example
-def run(run_start=None):
+def run(run_start=None, sleep=0):
+    if sleep != 0:
+        raise NotImplementedError("A sleep time is not implemented for this "
+                                  "example.")
     # Make the data
     ramp = common.stepped_ramp(start, stop, step, points_per_step)
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
@@ -51,3 +54,7 @@ def run(run_start=None):
         events.append(event)
 
     return events
+
+
+if __name__ == '__main__':
+    run()

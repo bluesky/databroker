@@ -70,13 +70,13 @@ def noisy(val, sigma=0.01):
 
 def example(func):
     @wraps(func)
-    def mock_run_start(run_start=None):
+    def mock_run_start(run_start=None, sleep=0):
         if run_start is None:
             blc = insert_beamline_config({}, time=0.)
             run_start = insert_run_start(time=0., scan_id=1, beamline_id='csx',
                                          uid=str(uuid.uuid4()),
                                          beamline_config=blc)
-        events = func(run_start)
+        events = func(run_start, sleep)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
         time = max([event.time for event in events])
