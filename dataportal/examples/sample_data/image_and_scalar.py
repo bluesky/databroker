@@ -105,4 +105,24 @@ def run(run_start=None, sleep=0):
 
 
 if __name__ == '__main__':
-    run(sleep=0.1)
+    from metadatastore.api import (insert_run_start, insert_run_stop,
+                                   insert_beamline_config, find_last)
+    import time
+    b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
+    time=time.time())
+    # b_config = None
+    try:
+        last_start_event = find_last()[0]
+        scan_id = int(last_start_event.scan_id)+1
+    except IndexError:
+        scan_id = 1
+    scan_id = str(scan_id)
+    custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
+              'moon': 'full'}
+    # insert the run start
+    run_start = insert_run_start(scan_id=scan_id, time=0.0, beamline_id='csx',
+                                 beamline_config=b_config, custom=custom)
+    events = run(run_start=run_start)
+    run_stop = insert_run_stop(run_start=run_start, time=events[-1].time+1,
+                               reason='run completed', exit_status='success',
+                               uid=str(uuid.uuid4()))
