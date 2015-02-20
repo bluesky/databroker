@@ -37,7 +37,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-
 from metadataStore.api.collection import (insert_begin_run,
                                           insert_event,
                                           insert_event_descriptor,
@@ -47,10 +46,11 @@ import filestore.commands as fsc
 
 from filestore.file_readers import HDFMapsSpectrumHandler as HDFM
 
+import h5py
 import os.path as op
 import numpy as np
-from nose.tools import assert_true, assert_raises, assert_false
-
+from nose.tools import assert_true, assert_raises, assert_false, assert_equal
+import datetime
 import uuid
 
 import logging
@@ -60,13 +60,15 @@ logger = logging.getLogger(__name__)
 fsr.register_handler('hdf_maps', HDFM)
 
 
-def save_hdf_data(data, base_path=None):
+def save_syn_data(eid, data, base_path=None):
     """
     Save a array as hdf format to disk.
     Defaults to saving files in :path:`~/.fs_cache/YYYY-MM-DD.h5`
 
     Parameters
     ----------
+    eid : unicode
+        id for file name
     data : ndarray
         The data to be saved
     base_path : str, optional
@@ -78,23 +80,30 @@ def save_hdf_data(data, base_path=None):
     if base_path is None:
         base_path = op.join(op.expanduser('~'), '.fs_cache',
                             str(datetime.date.today()))
-    #_make_sure_path_exists(base_path)
-    fpath = op.join(base_path, str(uuid.uuid4()) + '.npy')
-    with NpyWriter(fpath) as fout:
-        eid = fout.add_data(data)
+    fpath = op.join(base_path, str(eid) + '.h5')
 
-    return eid
+    with h5py.File(fpath, 'w') as f:
+        # create a group for maps to hold the data
+        mapsGrp = f.create_group('MAPS')
+        # now set a comment
+        mapsGrp.attrs['comments'] = 'MAPS group'
+
+        entryname = 'mca_arr'
+        comment = 'These are raw spectrum data.'
+        ds_data = mapsGrp.create_dataset(entryname, data=data)
+        ds_data.attrs['comments'] = comment
+    return fpath
 
 
-def get_data(x, y):
+def get_data(ind_v, ind_h):
     """
     Get data for given x, y index.
 
     Parameters
     ----------
-    x : int
+    ind_v : int
         vertical index
-    y : int
+    ind_h : int
         horizontal index
 
     Returns
@@ -102,16 +111,24 @@ def get_data(x, y):
     unicode:
         id number of event
     """
+
     uid = str(uuid.uuid1())
-    file_path = '/Users/Li/Downloads/xrf_data/2xfm_0103.h5'
+
+    # generate 3D random number with a given shape
+    syn_data = np.random.randn(20, 1, 10)
+    file_path = save_syn_data(uid, syn_data)
+
     custom = {'dset_path': 'mca_arr'}
 
     fb = fsc.save_file_base('hdf_maps', file_path, custom)
-    evl = fsc.save_file_event_link(fb, uid, link_parameters={'x': x, 'y': y})
+    evl = fsc.save_file_event_link(fb, uid, link_parameters={'x': ind_v, 'y': ind_h})
     return evl.event_id
 
 
-def save_hdf_data():
+def test_data_io():
+    """
+    Save data to db and run test when data is retrieved.
+    """
     blc = insert_beamline_config()
     begin_run = insert_begin_run(time=0., scan_id=1, beamline_id='csx',
                                  uid=str(uuid.uuid4()),
@@ -121,7 +138,8 @@ def save_hdf_data():
     data_keys = {'x_pos': dict(source='MCA:pos_x', dtype='number'),
                  'y_pos': dict(source='MCA:pos_y', dtype='number'),
                  'xrf_spectrum': dict(source='MCA:spectrum', dtype='array',
-                                      shape=(5,), external='FILESTORE:')}
+                                      #shape=(5,),
+                                      external='FILESTORE:')}
 
     # save the event descriptor
     e_desc = insert_event_descriptor(
@@ -129,30 +147,29 @@ def save_hdf_data():
         uid=str(uuid.uuid4()))
 
     # number of positions to record
-    num1 = 5
+    num = 5
 
-    events = []
-    for i in range(num1):
-        x_pos = i
-        y_pos = 0
+    for i in range(num):
+        v_pos = 0
+        h_pos = i
 
-        spectrum = get_data(i, 0)
+        spectrum = get_data(v_pos, h_pos)
 
         # Put in actual ndarray data, as broker would do.
         data1 = {'xrf_spectrum': (spectrum, error(i)),
-                 'x_pos': (x_pos, error(i)),
-                 'y_pos': (y_pos, error(i))}
+                 'v_pos': (v_pos, error(i)),
+                 'h_pos': (h_pos, error(i))}
 
         event = insert_event(event_descriptor=e_desc, seq_num=i,
                              time=error(i), data=data1, uid=str(uuid.uuid4()))
-        events.append(event)
-    return events
+
+        # test on retrieve data for all data sets
+        yield _test_retrieve_data, event
 
 
-def test_retrieve_data():
-    evts = save_hdf_data()
-    data = fsc.retrieve_data(evts[0]['data']['xrf_spectrum'][0])
-    print(data)
+def _test_retrieve_data(evt):
+    data = fsc.retrieve_data(evt['data']['xrf_spectrum'][0])
+    assert_equal(data.size, 20)
 
 
 def error(val, sigma=0.01):
