@@ -302,6 +302,9 @@ def __add_event_descriptors(run_start_list):
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
 
+def __execute_slow_search(key, value, objects):
+    return [res for res in objects if (hasattr(res, key) and res[key] == value)]
+
 
 @db_connect
 def find_run_start(limit=50, **kwargs):
@@ -311,19 +314,24 @@ def find_run_start(limit=50, **kwargs):
     ----------
     limit : int
         Number of header objects to be returned
-
-    Other Parameters
-    ----------------
-    scan_id : int
+    time : dict, optional
+        Formatted like this: {'start': timestamp, 'stop': timestamp}
+    scan_id : int, optional
         Scan identifier. Not unique
-    owner : str
+    owner : str, optional
         User name identifier associated with a scan
-    create_time : dict
+    project : str, optional
+        ???
+    group : str, optional
+        ???
+    sample : ???, optional
+        ???
+    create_time : dict, optional
         header insert time. Keys must be start and end to
         give a range to the search
-    beamline_id : str
+    beamline_id : str, optional
         String identifier for a specific beamline
-    unique_id : str
+    unique_id : str, optional
         Hashed unique identifier
 
     Returns
@@ -345,28 +353,19 @@ def find_run_start(limit=50, **kwargs):
     ...                                       'stop': time.time()})
 
     """
-    search_dict = dict()
+    fast_search_dict = dict()
+    slow_search_dict = dict()
+    known_keys = ['beamline_id', 'project', 'owner', 'group', 'scan_id',
+                  'sample']
+    # split the search into the fast keys and slow keys. Fast keys use mongo
+    # to do searching, slow keys use
+    for k, v in kwargs.items():
+        if k in known_keys:
+            fast_search_dict[k] = v
+        else:
+            slow_search_dict[k] = v
 
-    try:
-        search_dict['scan_id'] = kwargs.pop('scan_id')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['unique_id'] = kwargs.pop('unique_id')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['owner'] = kwargs.pop('owner')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['beamline_id'] = kwargs.pop('beamline_id')
-    except KeyError:
-        pass
-
+    # time needs to be special cased
     try:
         time_dict = kwargs.pop('time')
         if not isinstance(time_dict, dict):
@@ -374,22 +373,30 @@ def find_run_start(limit=50, **kwargs):
                              'start and stop keys for range. Must be a dict')
         else:
             if 'start' in time_dict and 'stop' in time_dict:
-                search_dict['time'] = {'$gte': time_dict['start'],
+                fast_search_dict['time'] = {'$gte': time_dict['start'],
                                        '$lte': time_dict['stop']}
             else:
                 raise ValueError('time must include start '
                                  'and stop keys for range search')
     except KeyError:
+        # not sure what the purpose of this exception is
         pass
 
-    if search_dict:
+    # do the fast search
+    if fast_search_dict:
         br_objects = RunStart.objects(
-            __raw__=search_dict).order_by('-_id')[:limit]
+            __raw__=fast_search_dict).order_by('-_id')[:limit]
     else:
         br_objects = list()
 
+    # do the slow search
+    for k, v in slow_search_dict.items():
+        br_objects = __execute_slow_search(k, v, br_objects)
+
+    # add the event descriptors
     __add_event_descriptors(br_objects)
 
+    # transform the mongo objects into safe, whitebread python objects
     return [__as_document(bre) for bre in br_objects]
 
 @db_connect
