@@ -28,28 +28,28 @@ class NpyWriter(HandlerBase):
     fpath : str
         Path (including filename) of where to save the file
 
-    custom : dict, optional
-        Saved in the custom field of the fileBase document.  Valid
+    resource_kwargs : dict, optional
+        Saved in the resource_kwargs field of the fileBase document.  Valid
         keys are {mmap_mode, }
     """
 
     SPEC_NAME = 'npy'
 
-    def __init__(self, fpath, custom=None):
+    def __init__(self, fpath, resource_kwargs=None):
         if op.exists(fpath):
             raise IOError("the requested file {fpath} already exist")
         self._fpath = fpath
-        if custom is None:
-            custom = dict()
-        for k in custom.keys():
+        if resource_kwargs is None:
+            resource_kwargs = dict()
+        for k in resource_kwargs.keys():
             if k != 'mmap_mode':
-                raise ValueError("The only valid custom key is 'mmaped_mode' "
+                raise ValueError("The only valid resource_kwargs key is 'mmaped_mode' "
                                  "you passed in {}".format(k))
-        self._f_custom = dict(custom)
+        self._f_custom = dict(resource_kwargs)
 
         self._writable = True
 
-    def add_data(self, data, uid=None, custom=None):
+    def add_data(self, data, uid=None, resource_kwargs=None):
         """
         Parameters
         ----------
@@ -60,7 +60,7 @@ class NpyWriter(HandlerBase):
             The uid to be used for this entry,
             if not given use uuid1 to generate one
 
-        custom : None, optional
+        resource_kwargs : None, optional
             Currently raises if not 'falsy' and is ignored.
 
         Returns
@@ -73,8 +73,8 @@ class NpyWriter(HandlerBase):
             raise RuntimeError("This writer can only write one data entry "
                                "and has already been used")
 
-        if custom:
-            raise ValueError("This writer does not support custom")
+        if resource_kwargs:
+            raise ValueError("This writer does not support resource_kwargs")
 
         if op.exists(self._fpath):
             raise IOError("the requested file {fpath} "

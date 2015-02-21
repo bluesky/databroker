@@ -22,14 +22,14 @@ class Resource(Document):
     resource_path : str
         Url to the physical location of the file
 
-    custom : dict
-        custom name/value container in case additional info save is required
+    resource_kwargs : dict
+        resource_kwargs name/value container in case additional info save is required
 
     """
 
     spec = StringField(max_length=10, required=True, unique=False)
     resource_path = StringField(max_length=100, required=True, unique=False)
-    custom = DictField(required=False)
+    resource_kwargs = DictField(required=False)
     meta = {'indexes': ['-resource_path', '-_id'], 'db_alias': ALIAS}
 
 
@@ -71,7 +71,7 @@ class Dattum(Document):
         metadataStore unqiue event identifier in string format.
 
     dattum_kwargs : dict
-        custom dictionary required for appending name/value pairs as desired
+        resource_kwargs dictionary required for appending name/value pairs as desired
     """
     resource = ReferenceField(Resource,
                               reverse_delete_rule=DENY,

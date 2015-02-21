@@ -188,9 +188,9 @@ def get_spec_handler(resource, handle_registry=None):
     if handle_registry is None:
         handle_registry = _h_registry
     spec = resource.spec
-    kwargs = resource.custom
-    fpath = resource.resource_path
-    return handle_registry[spec](fpath, **kwargs)
+    kwargs = resource.resource_kwargs
+    rpath = resource.resource_path
+    return handle_registry[spec](rpath, **kwargs)
 
 
 def get_data(dattum, handle_registry=None):

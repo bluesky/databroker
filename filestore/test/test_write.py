@@ -164,7 +164,7 @@ def test_give_uid():
 def test_custom():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     dd = np.random.rand(500, 500)
-    with fs_write.NpyWriter(test_path, custom={'mmap_mode': 'r'}) as f:
+    with fs_write.NpyWriter(test_path, resource_kwargs={'mmap_mode': 'r'}) as f:
         eid = f.add_data(dd)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
         ret = fsc.retrieve_dattum(eid)

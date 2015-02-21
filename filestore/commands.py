@@ -20,25 +20,26 @@ def db_connect(func):
 
 
 @db_connect
-def insert_resource(spec, resource_path, custom=None):
+def insert_resource(spec, resource_path, resource_kwargs=None):
     """
     Parameters
     ----------
 
-    spec: str
-        File spec used to primarily parse the contents into
-        analysis environment
+    spec : str
+        spec used to determine what handler to use to open this
+        resource.
 
-    resource_path: str
-        Url to the physical location of the file
+    resource_path : str
+        Url to the physical location of this resource
 
-    custom: dict
-        custom name/value container in case additional info save is required
+    resource_kwargs : dict
+        resource_kwargs name/value pairs of additional kwargs to be
+        passed to the handler to open this resource.
 
     """
 
     resource_object = Resource(spec=spec, resource_path=resource_path,
-                               custom=custom)
+                               resource_kwargs=resource_kwargs)
 
     resource_object.save(validate=True, write_concern={"w": 1})
 
@@ -71,7 +72,7 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
     if kwargs:
         raise AttributeError(kwargs.keys() +
                              '  field(s) are not among attribute keys. '
-                             ' Use custom attributes'
+                             ' Use resource_kwargs attributes'
                              ' dict for saving it')
     resoure_attributes.save(validate=True, write_concern={"w": 1})
 
@@ -93,7 +94,7 @@ def insert_dattum(resource, event_id,
         metadataStore unique event identifier in string format
 
     dattum_kwargs: dict
-        custom dict required for appending name/value pairs as desired
+        resource_kwargs dict required for appending name/value pairs as desired
 
     """
 
