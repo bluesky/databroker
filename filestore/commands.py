@@ -59,16 +59,13 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
     """
 
     resoure_attributes = ResoureAttributes(resource=resource.id, shape=shape,
-                                     dtype=dtype,
-                                     collection_version=collection_version)
-
-    resoure_attributes.total_bytes = kwargs.pop('total_bytes', None)
-    resoure_attributes.hashed_data = kwargs.pop('hashed_data', None)
-    resoure_attributes.last_access = kwargs.pop('last_access', None)
-    resoure_attributes.datetime_last_access = kwargs.pop('datetime_last_access',
-                                                      None)
-    resoure_attributes.in_use = kwargs.pop('in_use', None)
-    resoure_attributes.custom_attributes = kwargs.pop('custom_attributes', None)
+                                           dtype=dtype)
+    for k in ['total_bytes', 'hashed_data', 'last_access',
+              'datetime_last_access', 'in_use',
+              'custom_attributes']:
+        v = kwargs.pop(k, None)
+        if v:
+            setattr(resoure_attributes, v)
 
     if kwargs:
         raise AttributeError(kwargs.keys() +
