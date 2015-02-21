@@ -56,14 +56,14 @@ class ResoureAttributes(Document):
 # TODO: add documentation
 
 
-class Nugget(Document):
+class Dattum(Document):
     """Correlation lookup table between events and files.
     Primarily for dataBroker logic
 
     Parameters
     ----------
     file_id : filestore.resource.Resource
-        Resource object required to create an event link.
+        Resource object required to create an dattum.
         id field is used to obtain the foreignkey
 
     event_id : str

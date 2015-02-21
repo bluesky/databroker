@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 
-from .odm_templates import Resource, ResoureAttributes, Nugget, ALIAS
+from .odm_templates import Resource, ResoureAttributes, Dattum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -79,7 +79,7 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
 
 @db_connect
-def insert_nugget(resource, event_id,
+def insert_dattum(resource, event_id,
                   link_parameters=None):
     """
 
@@ -97,12 +97,12 @@ def insert_nugget(resource, event_id,
 
     """
 
-    nugget = Nugget(resource=resource.id,
+    dattum = Dattum(resource=resource.id,
                     event_id=event_id,
                     link_parameters=link_parameters)
-    nugget.save(validate=True, write_concern={"w": 1})
+    dattum.save(validate=True, write_concern={"w": 1})
 
-    return nugget
+    return dattum
 
 
 @db_connect
@@ -125,7 +125,7 @@ def find_resoure_attributes(resource):
 
 
 @db_connect
-def retrieve_data(eid):
+def retrieve_dattum(eid):
     """
     Given a resource identifier return the data.
 
@@ -140,7 +140,7 @@ def retrieve_data(eid):
         The requested data as a numpy array
     """
     query_dict = {'event_id': eid}
-    edocs = Nugget.objects(__raw__=query_dict)
+    edocs = Dattum.objects(__raw__=query_dict)
     # TODO add sanity checks
     if edocs:
         return _get_data(edocs[0])

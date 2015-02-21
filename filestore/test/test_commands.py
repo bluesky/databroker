@@ -11,7 +11,7 @@ from mongoengine.context_managers import switch_db
 
 import filestore.commands as fc
 import filestore.retrieve as fsr
-from filestore.odm_templates import Resource, Nugget
+from filestore.odm_templates import Resource, Dattum
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
@@ -42,7 +42,7 @@ def teardown():
 def context_decorator(func):
     def inner():
         with switch_db(Resource, 'test_db'), \
-          switch_db(Nugget, 'test_db'):
+          switch_db(Dattum, 'test_db'):
             func()
 
     return make_decorator(func)(inner)
@@ -54,7 +54,7 @@ def _insert_syn_data(f_type, shape, count):
     ret = []
     for k in range(count):
         r_id = str(uuid.uuid4())
-        fc.insert_nugget(fb, r_id, {'n': k + 1})
+        fc.insert_dattum(fb, r_id, {'n': k + 1})
         ret.append(r_id)
     return ret
 
@@ -65,11 +65,11 @@ def test_round_trip():
     mod_ids = _insert_syn_data('syn-mod', shape, 10)
 
     for j, r_id in enumerate(mod_ids):
-        data = fc.retrieve_data(r_id)
+        data = fc.retrieve_dattum(r_id)
         known_data = np.mod(np.arange(np.prod(shape)), j + 1).reshape(shape)
         assert_array_equal(data, known_data)
 
 
 @context_decorator
 def test_non_exist():
-    assert_raises(ValueError, fc.retrieve_data, 'aardvark')
+    assert_raises(ValueError, fc.retrieve_dattum, 'aardvark')
