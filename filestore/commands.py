@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 
-from .odm_templates import Resource, FileAttributes, FileEventLink
+from .odm_templates import Resource, FileAttributes, Nugget
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -82,7 +82,7 @@ def save_file_attributes(resource, shape, dtype,
 
 
 @db_connect
-def save_file_event_link(resource, event_id,
+def insert_nugget(resource, event_id,
                          link_parameters=None, collection_version=0):
     """
 
@@ -100,12 +100,12 @@ def save_file_event_link(resource, event_id,
 
     """
 
-    file_event_link = FileEventLink(resource=resource.id,
+    nugget = Nugget(resource=resource.id,
                                     event_id=event_id,
                                     link_parameters=link_parameters)
-    file_event_link.save(validate=True, write_concern={"w": 1})
+    nugget.save(validate=True, write_concern={"w": 1})
 
-    return file_event_link
+    return nugget
 
 
 @db_connect
@@ -129,7 +129,7 @@ def find_resource(**kwargs):
 
 
 @db_connect
-def find_file_event_link(resource=None, event_id=None):
+def find_nugget(resource=None, event_id=None):
 
     query_dict = dict()
 
@@ -142,7 +142,7 @@ def find_file_event_link(resource=None, event_id=None):
             'Search parameters are invalid. resource '
             'or event_id search is possible')
 
-    return FileEventLink.objects(__raw__=query_dict)
+    return Nugget.objects(__raw__=query_dict)
 
 
 @db_connect
@@ -181,16 +181,16 @@ def find_file_attributes(resource):
 
 def find(properties=True, **kwargs):
     file_attribute_objects = list()
-    file_event_link_objects = list()
+    nugget_objects = list()
     resource_objects = find_resource(**kwargs)
 
     for resource_object in resource_objects:
         file_attribute_objects.append(
             find_file_attributes(resource=resource_object))
-        file_event_link_objects.append(
-            find_file_event_link(resource=resource_object))
+        nugget_objects.append(
+            find_nugget(resource=resource_object))
 
-    return resource_objects, file_attribute_objects, file_event_link_objects
+    return resource_objects, file_attribute_objects, nugget_objects
 
 
 def retrieve_data(eid):
@@ -207,7 +207,7 @@ def retrieve_data(eid):
     data : ndarray
         The requested data as a numpy array
     """
-    edocs = find_file_event_link(event_id=eid)
+    edocs = find_nugget(event_id=eid)
     # TODO add sanity checks
     if edocs:
         return _get_data(edocs[0])

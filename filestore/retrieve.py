@@ -3,9 +3,9 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
-
 from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 
 class HandlerBase(object):
@@ -159,7 +159,7 @@ def deregister_handler(key):
     _h_registry.deregister_handler(key)
 
 
-def get_spec_handler(base_fs_document, handle_registry=None):
+def get_spec_handler(resource, handle_registry=None):
     """
     Given a document from the base FS collection return
     the proper Handler
@@ -169,7 +169,7 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     Parameters
     ----------
-    base_fs_document : Resource
+    resource : Resource
         Resource document.
 
     handle_registry : HandleRegistry or dict, optional
@@ -193,7 +193,7 @@ def get_spec_handler(base_fs_document, handle_registry=None):
     return handle_registry[spec](fpath, **kwargs)
 
 
-def get_data(events_fs_doc, handle_registry=None):
+def get_data(nugget, handle_registry=None):
     """
     Given a document from the events collection, get the externally
     stored data.
@@ -203,7 +203,7 @@ def get_data(events_fs_doc, handle_registry=None):
 
     Parameters
     ----------
-    events_fs_doc : FileEventLink
+    nugget : Nugget
         Document identifying the data resource
 
     get_handler_method : callable
@@ -216,8 +216,6 @@ def get_data(events_fs_doc, handle_registry=None):
         The data in ndarray form.
     """
 
-    fs_doc = events_fs_doc
-
-    kwargs = fs_doc.link_parameters
-    handler = get_spec_handler(fs_doc.resource, handle_registry)
+    kwargs = nugget.link_parameters
+    handler = get_spec_handler(nugget.resource, handle_registry)
     return handler(**kwargs)

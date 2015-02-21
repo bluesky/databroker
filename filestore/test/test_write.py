@@ -45,7 +45,7 @@ import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
 import filestore.file_readers as fs_read
-from filestore.odm_templates import Resource, FileEventLink
+from filestore.odm_templates import Resource, Nugget
 
 import mongoengine
 from mongoengine.context_managers import switch_db
@@ -86,7 +86,7 @@ def teardown():
 def context_decorator(func):
     def inner(*args, **kwargs):
         with switch_db(Resource, 'test_db'), \
-          switch_db(FileEventLink, 'test_db'):
+          switch_db(Nugget, 'test_db'):
             func(*args, **kwargs)
 
     return make_decorator(func)(inner)

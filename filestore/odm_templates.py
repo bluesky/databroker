@@ -56,7 +56,7 @@ class FileAttributes(Document):
 #TODO: add documentation
 
 
-class FileEventLink(Document):
+class Nugget(Document):
     """Correlation lookup table between events and files. Primarily for dataBroker logic
 
     Parameters

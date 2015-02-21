@@ -11,7 +11,7 @@ from mongoengine.context_managers import switch_db
 
 import filestore.commands as fc
 import filestore.retrieve as fsr
-from filestore.odm_templates import Resource, FileEventLink
+from filestore.odm_templates import Resource, Nugget
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
@@ -40,7 +40,7 @@ def teardown():
 def context_decorator(func):
     def inner():
         with switch_db(Resource, 'test_db'), \
-          switch_db(FileEventLink, 'test_db'):
+          switch_db(Nugget, 'test_db'):
             func()
 
     return make_decorator(func)(inner)
@@ -52,7 +52,7 @@ def _insert_syn_data(f_type, shape, count):
     ret = []
     for k in range(count):
         r_id = str(uuid.uuid4())
-        fc.save_file_event_link(fb, r_id, {'n': k + 1})
+        fc.insert_nugget(fb, r_id, {'n': k + 1})
         ret.append(r_id)
     return ret
 

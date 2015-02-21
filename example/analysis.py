@@ -1,6 +1,6 @@
 __author__ = 'arkilic'
 
-from filestore.api.analysis import find, find_last, find_file_event_link, find_file_attributes
+from filestore.api.analysis import find, find_last, find_nugget, find_file_attributes
 import time
 
 start = time.time()
@@ -14,7 +14,7 @@ print base.id
 #Note: The event_id below is identical to file_link created under example/collection.py.
 # Note:This is not a real id inside metadataStore.No need to blame Arman for referring to non-existent documents
 start2 = time.time()
-base2 = find_file_event_link(event_id='54b59cf5fa44833081ba8282')
+base2 = find_nugget(event_id='54b59cf5fa44833081ba8282')
 end2 = time.time()
 print "Query time to get the FileLink insert...: ", str((end2-start2)*1000) , ' milliseconds'
 
