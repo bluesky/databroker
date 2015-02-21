@@ -38,17 +38,19 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
 
 
-from filestore.database.file_base import FileBase
-from filestore.database.file_event_link import FileEventLink
+from filestore.odm_templates import FileBase, FileEventLink
+
 import filestore.retrieve as fsr
 import numpy as np
 from nose.tools import assert_true, assert_raises, assert_false
 
 from .t_utils import SynHandlerMod, SynHandlerEcho
 import uuid
+
+logger = logging.getLogger(__name__)
+
 
 mock_base = FileBase(spec='syn-mod',
                      file_path='',

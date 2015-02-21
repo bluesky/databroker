@@ -1,16 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-__author__ = 'arkilic'
 from mongoengine import connect
 
-
-from .database.file_base import FileBase
-from .database.file_attributes import FileAttributes
-from .database.file_event_link import FileEventLink
+from .odm_templates import FileBase, FileAttributes, FileEventLink
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
-
 
 def db_connect(func):
     @wraps(func)

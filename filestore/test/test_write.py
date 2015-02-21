@@ -38,15 +38,15 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
+
 import numpy as np
 from itertools import chain, repeat
 import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
 import filestore.file_readers as fs_read
-from filestore.database.file_base import FileBase
-from filestore.database.file_event_link import FileEventLink
+from filestore.odm_templates import FileBase, FileEventLink
+
 import mongoengine
 from mongoengine.context_managers import switch_db
 import uuid
@@ -56,6 +56,8 @@ from nose.tools import assert_raises, assert_equal
 import tempfile
 import shutil
 import os
+
+logger = logging.getLogger(__name__)
 
 CLEAN_FILES = True
 BASE_PATH = None

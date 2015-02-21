@@ -11,8 +11,7 @@ from mongoengine.context_managers import switch_db
 
 import filestore.commands as fc
 import filestore.retrieve as fsr
-from filestore.database.file_base import FileBase
-from filestore.database.file_event_link import FileEventLink
+from filestore.odm_templates import FileBase, FileEventLink
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
