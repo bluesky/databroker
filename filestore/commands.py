@@ -80,7 +80,7 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
 @db_connect
 def insert_dattum(resource, event_id,
-                  link_parameters=None):
+                  dattum_kwargs=None):
     """
 
     Parameters
@@ -92,14 +92,14 @@ def insert_dattum(resource, event_id,
     event_id: str
         metadataStore unique event identifier in string format
 
-    link_parameters: dict
+    dattum_kwargs: dict
         custom dict required for appending name/value pairs as desired
 
     """
 
     dattum = Dattum(resource=resource.id,
                     event_id=event_id,
-                    link_parameters=link_parameters)
+                    dattum_kwargs=dattum_kwargs)
     dattum.save(validate=True, write_concern={"w": 1})
 
     return dattum

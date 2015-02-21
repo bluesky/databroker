@@ -58,7 +58,7 @@ mock_base = Resource(spec='syn-mod',
 
 mock_event = {n: Dattum(resource=mock_base,
                                event_id=n,
-                               link_parameters={'n': n})
+                               dattum_kwargs={'n': n})
                                for n in range(1, 3)}
 
 

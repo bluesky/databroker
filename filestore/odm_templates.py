@@ -69,12 +69,12 @@ class Dattum(Document):
     event_id : str
         metadataStore unqiue event identifier in string format.
 
-    link_parameters : dict
+    dattum_kwargs : dict
         custom dictionary required for appending name/value pairs as desired
     """
     resource = ReferenceField(Resource,
                               reverse_delete_rule=DENY,
                               required=True)
     event_id = StringField(required=True, unique=True)
-    link_parameters = DictField(required=False)
+    dattum_kwargs = DictField(required=False)
     meta = {'indexes': ['-_id', '-event_id', '-resource'], 'db_alias': ALIAS}

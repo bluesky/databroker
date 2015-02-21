@@ -216,6 +216,6 @@ def get_data(dattum, handle_registry=None):
         The data in ndarray form.
     """
 
-    kwargs = dattum.link_parameters
+    kwargs = dattum.dattum_kwargs
     handler = get_spec_handler(dattum.resource, handle_registry)
     return handler(**kwargs)
