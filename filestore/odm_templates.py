@@ -32,7 +32,7 @@ class Resource(Document):
     meta = {'indexes': ['-file_path', '-_id']}
 
 
-class FileAttributes(Document):
+class ResoureAttributes(Document):
     """
 
     Parameters

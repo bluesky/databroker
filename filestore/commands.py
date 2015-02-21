@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 
-from .odm_templates import Resource, FileAttributes, Nugget
+from .odm_templates import Resource, ResoureAttributes, Nugget
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -46,11 +46,12 @@ def insert_resource(spec, file_path, custom=None, collection_version=0):
 
 
 @db_connect
-def save_file_attributes(resource, shape, dtype,
+def insert_resourse_attributes(resource, shape, dtype,
                          collection_version=0, **kwargs):
     """
 
-    resource:
+    This is to be considered provisional.  The API may change drastically
+    in the near future.
 
 
     kwargs
@@ -59,26 +60,26 @@ def save_file_attributes(resource, shape, dtype,
 
     """
 
-    file_attributes = FileAttributes(resource=resource.id, shape=shape,
+    resoure_attributes = ResoureAttributes(resource=resource.id, shape=shape,
                                      dtype=dtype,
                                      collection_version=collection_version)
 
-    file_attributes.total_bytes = kwargs.pop('total_bytes', None)
-    file_attributes.hashed_data = kwargs.pop('hashed_data', None)
-    file_attributes.last_access = kwargs.pop('last_access', None)
-    file_attributes.datetime_last_access = kwargs.pop('datetime_last_access',
+    resoure_attributes.total_bytes = kwargs.pop('total_bytes', None)
+    resoure_attributes.hashed_data = kwargs.pop('hashed_data', None)
+    resoure_attributes.last_access = kwargs.pop('last_access', None)
+    resoure_attributes.datetime_last_access = kwargs.pop('datetime_last_access',
                                                       None)
-    file_attributes.in_use = kwargs.pop('in_use', None)
-    file_attributes.custom_attributes = kwargs.pop('custom_attributes', None)
+    resoure_attributes.in_use = kwargs.pop('in_use', None)
+    resoure_attributes.custom_attributes = kwargs.pop('custom_attributes', None)
 
     if kwargs:
         raise AttributeError(kwargs.keys() +
                              '  field(s) are not among attribute keys. '
                              ' Use custom attributes'
                              ' dict for saving it')
-    file_attributes.save(validate=True, write_concern={"w": 1})
+    resoure_attributes.save(validate=True, write_concern={"w": 1})
 
-    return file_attributes
+    return resoure_attributes
 
 
 @db_connect
@@ -166,8 +167,13 @@ def find_last():
 
 
 @db_connect
-def find_file_attributes(resource):
-    """Return  file_attributes entry given a file_header object
+def find_resoure_attributes(resource):
+    """Return  resoure_attributes entry given a file_header object
+
+
+    This is to be considered provisional.  The API may change drastically
+    in the near future.
+
 
     Parameters
     ----------
@@ -176,21 +182,21 @@ def find_file_attributes(resource):
 
     """
 
-    return FileAttributes.objects(resource=resource.id)
+    return ResoureAttributes.objects(resource=resource.id)
 
 
 def find(properties=True, **kwargs):
-    file_attribute_objects = list()
+    resoure_attribute_objects = list()
     nugget_objects = list()
     resource_objects = find_resource(**kwargs)
 
     for resource_object in resource_objects:
-        file_attribute_objects.append(
-            find_file_attributes(resource=resource_object))
+        resoure_attribute_objects.append(
+            find_resoure_attributes(resource=resource_object))
         nugget_objects.append(
             find_nugget(resource=resource_object))
 
-    return resource_objects, file_attribute_objects, nugget_objects
+    return resource_objects, resoure_attribute_objects, nugget_objects
 
 
 def retrieve_data(eid):
