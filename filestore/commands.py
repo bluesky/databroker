@@ -147,26 +147,6 @@ def find_nugget(resource=None, event_id=None):
 
 
 @db_connect
-def find_last():
-    """Searches for the last resource created
-
-    Returns
-    --------
-
-    Resource object #I know i am violating numpy docs like a turkish in
-    open buffet but have not looked into how to use it yet, until #we
-    decide what doc format to use, I will not bother, just write stuff
-    we need for any format!
-    """
-
-    result = Resource.objects.order_by('-_id')[0:1][0]
-    if result:
-        return result
-    else:
-        return []
-
-
-@db_connect
 def find_resoure_attributes(resource):
     """Return  resoure_attributes entry given a file_header object
 
@@ -183,20 +163,6 @@ def find_resoure_attributes(resource):
     """
 
     return ResoureAttributes.objects(resource=resource.id)
-
-
-def find(properties=True, **kwargs):
-    resoure_attribute_objects = list()
-    nugget_objects = list()
-    resource_objects = find_resource(**kwargs)
-
-    for resource_object in resource_objects:
-        resoure_attribute_objects.append(
-            find_resoure_attributes(resource=resource_object))
-        nugget_objects.append(
-            find_nugget(resource=resource_object))
-
-    return resource_objects, resoure_attribute_objects, nugget_objects
 
 
 def retrieve_data(eid):
