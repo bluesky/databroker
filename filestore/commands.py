@@ -124,6 +124,7 @@ def find_resoure_attributes(resource):
     return ResoureAttributes.objects(resource=resource.id)
 
 
+@db_connect
 def retrieve_data(eid):
     """
     Given a resource identifier return the data.
