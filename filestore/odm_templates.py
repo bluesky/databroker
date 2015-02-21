@@ -8,6 +8,7 @@ import time
 
 ALIAS = 'fs'
 
+
 class Resource(Document):
     """
 
@@ -18,7 +19,7 @@ class Resource(Document):
         File spec used to primarily parse the contents into
         analysis environment
 
-    file_path : str
+    resource_path : str
         Url to the physical location of the file
 
     custom : dict
@@ -27,9 +28,9 @@ class Resource(Document):
     """
 
     spec = StringField(max_length=10, required=True, unique=False)
-    file_path = StringField(max_length=100, required=True, unique=False)
+    resource_path = StringField(max_length=100, required=True, unique=False)
     custom = DictField(required=False)
-    meta = {'indexes': ['-file_path', '-_id'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-resource_path', '-_id'], 'db_alias': ALIAS}
 
 
 class ResoureAttributes(Document):

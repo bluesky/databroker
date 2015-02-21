@@ -189,7 +189,7 @@ def get_spec_handler(resource, handle_registry=None):
         handle_registry = _h_registry
     spec = resource.spec
     kwargs = resource.custom
-    fpath = resource.file_path
+    fpath = resource.resource_path
     return handle_registry[spec](fpath, **kwargs)
 
 

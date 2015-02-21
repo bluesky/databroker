@@ -20,7 +20,7 @@ def db_connect(func):
 
 
 @db_connect
-def insert_resource(spec, file_path, custom=None):
+def insert_resource(spec, resource_path, custom=None):
     """
     Parameters
     ----------
@@ -29,7 +29,7 @@ def insert_resource(spec, file_path, custom=None):
         File spec used to primarily parse the contents into
         analysis environment
 
-    file_path: str
+    resource_path: str
         Url to the physical location of the file
 
     custom: dict
@@ -37,7 +37,7 @@ def insert_resource(spec, file_path, custom=None):
 
     """
 
-    resource_object = Resource(spec=spec, file_path=file_path,
+    resource_object = Resource(spec=spec, resource_path=resource_path,
                                custom=custom)
 
     resource_object.save(validate=True, write_concern={"w": 1})

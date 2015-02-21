@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 mock_base = Resource(spec='syn-mod',
-                     file_path='',
+                     resource_path='',
                      custom={'shape': (5, 7)})
 
 mock_event = {n: Dattum(resource=mock_base,
