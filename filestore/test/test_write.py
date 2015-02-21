@@ -67,7 +67,8 @@ dummy_db_name = str(uuid.uuid4())
 
 def setup():
     # need to make 'default' connection to point to no-where, just to be safe
-    mongoengine.connect(dummy_db_name)
+    # we need this so that we can re-map documents to a temp database
+    mongoengine.connect(dummy_db_name, 'fs')
     # connect to the db we are actually going to use
     mongoengine.connect(db_name, alias='test_db')
     global BASE_PATH
@@ -100,7 +101,7 @@ def _npsave_helper(dd, base_path):
 
     assert_array_equal(dd, ret)
 
-
+@context_decorator
 def test_np_save():
     shape = (7, 5)
     dd = np.arange(np.prod(shape)).reshape(*shape)

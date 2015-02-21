@@ -23,7 +23,9 @@ dummy_db_name = str(uuid.uuid4())
 
 def setup():
     # need to make 'default' connection to point to no-where, just to be safe
-    mongoengine.connect(dummy_db_name)
+    # need this to exist so the context managers work
+    mongoengine.connect(dummy_db_name, 'fs')
+
     # connect to the db we are actually going to use
     mongoengine.connect(db_name, alias='test_db')
     # register the dummy handler to use

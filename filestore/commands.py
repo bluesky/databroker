@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 
-from .odm_templates import Resource, ResoureAttributes, Nugget
+from .odm_templates import Resource, ResoureAttributes, Nugget, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -14,7 +14,7 @@ def db_connect(func):
         database = conf.connection_config['database']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
-        connect(db=database, host=host, port=port)
+        connect(db=database, host=host, port=port, alias=ALIAS)
         return func(*args, **kwargs)
     return inner
 

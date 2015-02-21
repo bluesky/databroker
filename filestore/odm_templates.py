@@ -5,8 +5,8 @@ from mongoengine import (Document, FloatField, DateTimeField, StringField,
                          DENY)
 
 import time
-from datetime import datetime
 
+ALIAS = 'fs'
 
 class Resource(Document):
     """
@@ -29,7 +29,7 @@ class Resource(Document):
     spec = StringField(max_length=10, required=True, unique=False)
     file_path = StringField(max_length=100, required=True, unique=False)
     custom = DictField(required=False)
-    meta = {'indexes': ['-file_path', '-_id']}
+    meta = {'indexes': ['-file_path', '-_id'], 'db_alias': ALIAS}
 
 
 class ResoureAttributes(Document):
@@ -51,8 +51,9 @@ class ResoureAttributes(Document):
     datetime_last_access = DateTimeField(required=False)
     in_use = BooleanField(required=False, default=False)
     custom_attributes = DictField(required=False)
-    meta = {'indexes': ['-_id', '-shape', '-dtype']}
-#TODO: add documentation
+    meta = {'indexes': ['-_id', '-shape', '-dtype'], 'db_alias': ALIAS}
+
+# TODO: add documentation
 
 
 class Nugget(Document):
@@ -76,4 +77,4 @@ class Nugget(Document):
                               required=True)
     event_id = StringField(required=True, unique=True)
     link_parameters = DictField(required=False)
-    meta = {'indexes': ['-_id', '-event_id', '-resource']}
+    meta = {'indexes': ['-_id', '-event_id', '-resource'], 'db_alias': ALIAS}
