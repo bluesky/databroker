@@ -28,7 +28,6 @@ class Resource(Document):
     spec = StringField(max_length=10, required=True, unique=False)
     file_path = StringField(max_length=100, required=True, unique=False)
     custom = DictField(required=False)
-    collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-file_path', '-_id']}
 
 
@@ -51,7 +50,6 @@ class ResoureAttributes(Document):
     datetime_last_access = DateTimeField(required=False)
     in_use = BooleanField(required=False, default=False)
     custom_attributes = DictField(required=False)
-    collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-_id', '-shape', '-dtype']}
 #TODO: add documentation
 
@@ -76,5 +74,4 @@ class Nugget(Document):
                                required=True)
     event_id = StringField(required=True, unique=True)
     link_parameters = DictField(required=False)
-    collection_version = FloatField(required=False, min_value=0)
     meta = {'indexes': ['-_id', '-event_id', '-resource']}

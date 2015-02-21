@@ -19,7 +19,7 @@ def db_connect(func):
 
 
 @db_connect
-def insert_resource(spec, file_path, custom=None, collection_version=0):
+def insert_resource(spec, file_path, custom=None):
     """
     Parameters
     ----------
@@ -37,8 +37,7 @@ def insert_resource(spec, file_path, custom=None, collection_version=0):
     """
 
     resource_object = Resource(spec=spec, file_path=file_path,
-                                custom=custom,
-                                collection_version=collection_version)
+                               custom=custom)
 
     resource_object.save(validate=True, write_concern={"w": 1})
 
@@ -46,8 +45,7 @@ def insert_resource(spec, file_path, custom=None, collection_version=0):
 
 
 @db_connect
-def insert_resourse_attributes(resource, shape, dtype,
-                         collection_version=0, **kwargs):
+def insert_resourse_attributes(resource, shape, dtype, **kwargs):
     """
 
     This is to be considered provisional.  The API may change drastically
