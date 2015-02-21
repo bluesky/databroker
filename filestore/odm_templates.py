@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 
-class FileBase(Document):
+class Resource(Document):
     """
 
     Parameters
@@ -40,8 +40,9 @@ class FileAttributes(Document):
 
 
     """
-    file_base = ReferenceField(FileBase, reverse_delete_rule=DENY, required=True,
-                               db_field='file_base_id')
+    resource = ReferenceField(Resource, reverse_delete_rule=DENY,
+                              required=True,
+                              db_field='resource_id')
     shape = StringField(unique=False, required=True)
     dtype = StringField(unique=False, required=True)
     total_bytes = IntField(min_value=0, required=False, default=0)
@@ -61,8 +62,8 @@ class FileEventLink(Document):
     Parameters
     ----------
 
-    file_id : filestore.file_base.FileBase
-        FileBase object required to create an event link. id field is used to obtain the foreignkey
+    file_id : filestore.resource.Resource
+        Resource object required to create an event link. id field is used to obtain the foreignkey
 
     event_id : str
         metadataStore unqiue event identifier in string format.
@@ -70,10 +71,10 @@ class FileEventLink(Document):
     link_parameters : dict
         custom dictionary required for appending name/value pairs as desired
     """
-    file_base = ReferenceField(FileBase,
+    resource = ReferenceField(Resource,
                                reverse_delete_rule=DENY,
                                required=True)
     event_id = StringField(required=True, unique=True)
     link_parameters = DictField(required=False)
     collection_version = FloatField(required=False, min_value=0)
-    meta = {'indexes': ['-_id', '-event_id', '-file_base']}
+    meta = {'indexes': ['-_id', '-event_id', '-resource']}

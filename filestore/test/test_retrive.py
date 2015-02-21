@@ -40,7 +40,7 @@ import six
 import logging
 
 
-from filestore.odm_templates import FileBase, FileEventLink
+from filestore.odm_templates import Resource, FileEventLink
 
 import filestore.retrieve as fsr
 import numpy as np
@@ -52,11 +52,11 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-mock_base = FileBase(spec='syn-mod',
+mock_base = Resource(spec='syn-mod',
                      file_path='',
                      custom={'shape': (5, 7)})
 
-mock_event = {n: FileEventLink(file_base=mock_base,
+mock_event = {n: FileEventLink(resource=mock_base,
                                event_id=n,
                                link_parameters={'n': n})
                                for n in range(1, 3)}

@@ -85,7 +85,7 @@ class NpyWriter(HandlerBase):
 
         np.save(self._fpath, np.asanyarray(data))
         self._writable = False
-        fb = fsc.save_file_base(self.SPEC_NAME, self._fpath, self._f_custom)
+        fb = fsc.insert_resource(self.SPEC_NAME, self._fpath, self._f_custom)
         evl = fsc.save_file_event_link(fb, uid)
 
         return evl.event_id

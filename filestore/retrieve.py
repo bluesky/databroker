@@ -118,7 +118,7 @@ def register_handler(key, handler, overwrite=False):
     """
     Register a handler to be associated with a specific file
     specification key.  This controls the dispatch to the
-    Handler classes based on the `spec` key of the `FileBase`
+    Handler classes based on the `spec` key of the `Resource`
     documents.
 
     Parameters
@@ -169,8 +169,8 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     Parameters
     ----------
-    base_fs_document : FileBase
-        FileBase document.
+    base_fs_document : Resource
+        Resource document.
 
     handle_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
@@ -187,10 +187,9 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     if handle_registry is None:
         handle_registry = _h_registry
-    fs_doc = base_fs_document
-    spec = fs_doc.spec
-    kwargs = fs_doc.custom
-    fpath = fs_doc.file_path
+    spec = resource.spec
+    kwargs = resource.custom
+    fpath = resource.file_path
     return handle_registry[spec](fpath, **kwargs)
 
 
@@ -220,5 +219,5 @@ def get_data(events_fs_doc, handle_registry=None):
     fs_doc = events_fs_doc
 
     kwargs = fs_doc.link_parameters
-    handler = get_spec_handler(fs_doc.file_base, handle_registry)
+    handler = get_spec_handler(fs_doc.resource, handle_registry)
     return handler(**kwargs)

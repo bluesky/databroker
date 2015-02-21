@@ -7,7 +7,7 @@ start = time.time()
 base = find_last()
 end = time.time()
 
-print "Query time to get the last FileBase insert...: ", str((end-start)*1000) , ' milliseconds'
+print "Query time to get the last Resource insert...: ", str((end-start)*1000) , ' milliseconds'
 
 print base.id
 
@@ -18,7 +18,7 @@ base2 = find_file_event_link(event_id='54b59cf5fa44833081ba8282')
 end2 = time.time()
 print "Query time to get the FileLink insert...: ", str((end2-start2)*1000) , ' milliseconds'
 
-print base2[0].file_base.id
+print base2[0].resource.id
 
 start3 = time.time()
 base3, attributes3, event_links3  = find(spec='some spec')

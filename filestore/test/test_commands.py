@@ -11,7 +11,7 @@ from mongoengine.context_managers import switch_db
 
 import filestore.commands as fc
 import filestore.retrieve as fsr
-from filestore.odm_templates import FileBase, FileEventLink
+from filestore.odm_templates import Resource, FileEventLink
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
@@ -39,7 +39,7 @@ def teardown():
 
 def context_decorator(func):
     def inner():
-        with switch_db(FileBase, 'test_db'), \
+        with switch_db(Resource, 'test_db'), \
           switch_db(FileEventLink, 'test_db'):
             func()
 
@@ -47,7 +47,7 @@ def context_decorator(func):
 
 
 def _insert_syn_data(f_type, shape, count):
-    fb = fc.save_file_base(f_type, '',
+    fb = fc.insert_resource(f_type, '',
                            {'shape': shape})
     ret = []
     for k in range(count):
