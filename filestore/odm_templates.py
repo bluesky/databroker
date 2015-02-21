@@ -57,25 +57,25 @@ class ResoureAttributes(Document):
 # TODO: add documentation
 
 
-class Dattum(Document):
+class Datum(Document):
     """Correlation lookup table between events and files.
     Primarily for dataBroker logic
 
     Parameters
     ----------
     file_id : filestore.resource.Resource
-        Resource object required to create an dattum.
+        Resource object required to create an datum.
         id field is used to obtain the foreignkey
 
     event_id : str
         metadataStore unqiue event identifier in string format.
 
-    dattum_kwargs : dict
+    datum_kwargs : dict
         resource_kwargs dictionary required for appending name/value pairs as desired
     """
     resource = ReferenceField(Resource,
                               reverse_delete_rule=DENY,
                               required=True)
     event_id = StringField(required=True, unique=True)
-    dattum_kwargs = DictField(required=False)
+    datum_kwargs = DictField(required=False)
     meta = {'indexes': ['-_id', '-event_id', '-resource'], 'db_alias': ALIAS}

@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 
-from .odm_templates import Resource, ResoureAttributes, Dattum, ALIAS
+from .odm_templates import Resource, ResoureAttributes, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -80,8 +80,8 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
 
 @db_connect
-def insert_dattum(resource, event_id,
-                  dattum_kwargs=None):
+def insert_datum(resource, event_id,
+                  datum_kwargs=None):
     """
 
     Parameters
@@ -93,17 +93,17 @@ def insert_dattum(resource, event_id,
     event_id: str
         metadataStore unique event identifier in string format
 
-    dattum_kwargs: dict
+    datum_kwargs: dict
         resource_kwargs dict required for appending name/value pairs as desired
 
     """
 
-    dattum = Dattum(resource=resource.id,
+    datum = Datum(resource=resource.id,
                     event_id=event_id,
-                    dattum_kwargs=dattum_kwargs)
-    dattum.save(validate=True, write_concern={"w": 1})
+                    datum_kwargs=datum_kwargs)
+    datum.save(validate=True, write_concern={"w": 1})
 
-    return dattum
+    return datum
 
 
 @db_connect
@@ -126,7 +126,7 @@ def find_resoure_attributes(resource):
 
 
 @db_connect
-def retrieve_dattum(eid):
+def retrieve_datum(eid):
     """
     Given a resource identifier return the data.
 
@@ -141,7 +141,7 @@ def retrieve_dattum(eid):
         The requested data as a numpy array
     """
     query_dict = {'event_id': eid}
-    edocs = Dattum.objects(__raw__=query_dict)
+    edocs = Datum.objects(__raw__=query_dict)
     # TODO add sanity checks
     if edocs:
         return _get_data(edocs[0])

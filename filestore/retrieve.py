@@ -89,12 +89,12 @@ def handler_context(temp_handlers):
 
     Examples
     --------
-    To use a different handler for a call to `retrieve_dattum` use
+    To use a different handler for a call to `retrieve_datum` use
     the context manager to add (and possibly over-ride existing
     handlers) temporarily:
 
        with handler_context({'syn-spec', SynHandler}):
-           FS.retrieve_dattum(EID)
+           FS.retrieve_datum(EID)
 
     """
     remove_list = []
@@ -193,7 +193,7 @@ def get_spec_handler(resource, handle_registry=None):
     return handle_registry[spec](rpath, **kwargs)
 
 
-def get_data(dattum, handle_registry=None):
+def get_data(datum, handle_registry=None):
     """
     Given a document from the events collection, get the externally
     stored data.
@@ -203,7 +203,7 @@ def get_data(dattum, handle_registry=None):
 
     Parameters
     ----------
-    dattum : Dattum
+    datum : Datum
         Document identifying the data resource
 
     get_handler_method : callable
@@ -216,6 +216,6 @@ def get_data(dattum, handle_registry=None):
         The data in ndarray form.
     """
 
-    kwargs = dattum.dattum_kwargs
-    handler = get_spec_handler(dattum.resource, handle_registry)
+    kwargs = datum.datum_kwargs
+    handler = get_spec_handler(datum.resource, handle_registry)
     return handler(**kwargs)

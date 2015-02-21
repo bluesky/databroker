@@ -40,7 +40,7 @@ import six
 import logging
 
 
-from filestore.odm_templates import Resource, Dattum
+from filestore.odm_templates import Resource, Datum
 
 import filestore.retrieve as fsr
 import numpy as np
@@ -56,9 +56,9 @@ mock_base = Resource(spec='syn-mod',
                      resource_path='',
                      resource_kwargs={'shape': (5, 7)})
 
-mock_event = {n: Dattum(resource=mock_base,
+mock_event = {n: Datum(resource=mock_base,
                                event_id=n,
-                               dattum_kwargs={'n': n})
+                               datum_kwargs={'n': n})
                                for n in range(1, 3)}
 
 
@@ -66,8 +66,8 @@ def test_get_handler_global():
 
     with fsr.handler_context({'syn-mod': SynHandlerMod}):
 
-        dattum = mock_base
-        handle = fsr.get_spec_handler(dattum)
+        datum = mock_base
+        handle = fsr.get_spec_handler(datum)
 
         assert_true(isinstance(handle, SynHandlerMod))
 

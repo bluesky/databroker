@@ -45,7 +45,7 @@ import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
 import filestore.file_readers as fs_read
-from filestore.odm_templates import Resource, Dattum
+from filestore.odm_templates import Resource, Datum
 
 import mongoengine
 from mongoengine.context_managers import switch_db
@@ -87,7 +87,7 @@ def teardown():
 def context_decorator(func):
     def inner(*args, **kwargs):
         with switch_db(Resource, 'test_db'), \
-          switch_db(Dattum, 'test_db'):
+          switch_db(Datum, 'test_db'):
             func(*args, **kwargs)
 
     return make_decorator(func)(inner)
@@ -97,7 +97,7 @@ def context_decorator(func):
 def _npsave_helper(dd, base_path):
     eid = fs_write.save_ndarray(dd, base_path)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve_dattum(eid)
+        ret = fsc.retrieve_datum(eid)
 
     assert_array_equal(dd, ret)
 
@@ -167,6 +167,6 @@ def test_custom():
     with fs_write.NpyWriter(test_path, resource_kwargs={'mmap_mode': 'r'}) as f:
         eid = f.add_data(dd)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve_dattum(eid)
+        ret = fsc.retrieve_datum(eid)
 
     assert_array_equal(dd, ret)
