@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 from mongoengine import (Document, FloatField, DateTimeField, StringField,
-                         DictField, ReferenceField, IntField, BooleanField, DENY)
+                         DictField, ReferenceField, IntField, BooleanField,
+                         DENY)
 
 import time
 from datetime import datetime
@@ -55,13 +56,14 @@ class ResoureAttributes(Document):
 
 
 class Nugget(Document):
-    """Correlation lookup table between events and files. Primarily for dataBroker logic
+    """Correlation lookup table between events and files.
+    Primarily for dataBroker logic
 
     Parameters
     ----------
-
     file_id : filestore.resource.Resource
-        Resource object required to create an event link. id field is used to obtain the foreignkey
+        Resource object required to create an event link.
+        id field is used to obtain the foreignkey
 
     event_id : str
         metadataStore unqiue event identifier in string format.
@@ -70,8 +72,8 @@ class Nugget(Document):
         custom dictionary required for appending name/value pairs as desired
     """
     resource = ReferenceField(Resource,
-                               reverse_delete_rule=DENY,
-                               required=True)
+                              reverse_delete_rule=DENY,
+                              required=True)
     event_id = StringField(required=True, unique=True)
     link_parameters = DictField(required=False)
     meta = {'indexes': ['-_id', '-event_id', '-resource']}
