@@ -7,6 +7,7 @@ from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
 
+
 def db_connect(func):
     @wraps(func)
     def inner(*args, **kwargs):
@@ -105,43 +106,6 @@ def insert_nugget(resource, event_id,
 
 
 @db_connect
-def find_resource(**kwargs):
-
-    query_dict = dict()
-
-    try:
-        query_dict['spec'] = kwargs.pop('spec')
-    except:
-        pass
-
-    try:
-        query_dict['file_path'] = kwargs.pop('file_path')
-    except:
-        pass
-
-    resource_objects = Resource.objects(__raw__=query_dict).order_by('-_id')
-
-    return resource_objects
-
-
-@db_connect
-def find_nugget(resource=None, event_id=None):
-
-    query_dict = dict()
-
-    if resource is not None:
-        query_dict['resource'] = resource.id
-    elif event_id is not None:
-        query_dict['event_id'] = event_id
-    else:
-        raise AttributeError(
-            'Search parameters are invalid. resource '
-            'or event_id search is possible')
-
-    return Nugget.objects(__raw__=query_dict)
-
-
-@db_connect
 def find_resoure_attributes(resource):
     """Return  resoure_attributes entry given a file_header object
 
@@ -174,7 +138,8 @@ def retrieve_data(eid):
     data : ndarray
         The requested data as a numpy array
     """
-    edocs = find_nugget(event_id=eid)
+    query_dict = {'event_id': eid}
+    edocs = Nugget.objects(__raw__=query_dict)
     # TODO add sanity checks
     if edocs:
         return _get_data(edocs[0])
