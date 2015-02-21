@@ -27,10 +27,10 @@ class Resource(Document):
 
     """
 
-    spec = StringField(max_length=10, required=True, unique=False)
-    resource_path = StringField(max_length=100, required=True, unique=False)
+    spec = StringField(required=True, unique=False)
+    resource_path = StringField(required=True, unique=False)
     resource_kwargs = DictField(required=False)
-    meta = {'indexes': ['-resource_path', '-_id'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-_id'], 'db_alias': ALIAS}
 
 
 class ResoureAttributes(Document):
@@ -80,4 +80,4 @@ class Datum(Document):
                               required=True)
     datum_id = StringField(required=True, unique=True)
     datum_kwargs = DictField(required=False)
-    meta = {'indexes': ['-_id', '-datum_id', '-resource'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-_id', '-datum_id'], 'db_alias': ALIAS}
