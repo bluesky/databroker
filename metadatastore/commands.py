@@ -302,10 +302,6 @@ def __add_event_descriptors(run_start_list):
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
 
-def __execute_slow_search(key, value, objects):
-    return [res for res in objects if (hasattr(res, key) and res[key] == value)]
-
-
 @db_connect
 def find_run_start(limit=50, **kwargs):
     """ Given search criteria, locate the RunStart object
@@ -326,9 +322,6 @@ def find_run_start(limit=50, **kwargs):
         ???
     sample : ???, optional
         ???
-    create_time : dict, optional
-        header insert time. Keys must be start and end to
-        give a range to the search
     beamline_id : str, optional
         String identifier for a specific beamline
     unique_id : str, optional
@@ -344,54 +337,34 @@ def find_run_start(limit=50, **kwargs):
     ------
     >>> find_run_start(scan_id=123)
     >>> find_run_start(owner='arkilic')
-    >>> find_run_start(time={'start': 1421176750.514707,
-    ...                      'stop': time.time()})
-    >>> find_run_start(time={'start': 1421176750.514707,
-    ...                      'stop': time.time()})
+    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time())
 
-    >>> find_run_start(owner='arkilic', time={'start': 1421176750.514707,
-    ...                                       'stop': time.time()})
+    >>> find_run_start(owner='arkilic', start_time=1421176750.514707,
+    ...                stop_time=time.time())
 
     """
-    fast_search_dict = dict()
-    slow_search_dict = dict()
-    known_keys = ['beamline_id', 'project', 'owner', 'group', 'scan_id',
-                  'sample']
-    # split the search into the fast keys and slow keys. Fast keys use mongo
-    # to do searching, slow keys use
-    for k, v in kwargs.items():
-        if k in known_keys:
-            fast_search_dict[k] = v
-        else:
-            slow_search_dict[k] = v
-
-    # time needs to be special cased
+    # format time correctly
     try:
-        time_dict = kwargs.pop('time')
-        if not isinstance(time_dict, dict):
-            raise ValueError('Wrong format. time must include '
-                             'start and stop keys for range. Must be a dict')
-        else:
-            if 'start' in time_dict and 'stop' in time_dict:
-                fast_search_dict['time'] = {'$gte': time_dict['start'],
-                                       '$lte': time_dict['stop']}
-            else:
-                raise ValueError('time must include start '
-                                 'and stop keys for range search')
+        start_time = kwargs['start_time']
     except KeyError:
-        # not sure what the purpose of this exception is
         pass
-
-    # do the fast search
-    if fast_search_dict:
-        br_objects = RunStart.objects(
-            __raw__=fast_search_dict).order_by('-_id')[:limit]
     else:
-        br_objects = list()
+        kwargs['time'] = {'$gte': start_time}
 
-    # do the slow search
-    for k, v in slow_search_dict.items():
-        br_objects = __execute_slow_search(k, v, br_objects)
+    try:
+        stop_time = kwargs['stop_time']
+    except KeyError:
+        pass
+    else:
+        tt = {'$lte': stop_time}
+        try:
+            kwargs['time'].update(tt)
+        except KeyError:
+            kwargs['time'] = tt
+
+    # do the search
+    br_objects = RunStart.objects(__raw__=kwargs).order_by('-_id')[:limit]
 
     # add the event descriptors
     __add_event_descriptors(br_objects)
