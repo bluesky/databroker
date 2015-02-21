@@ -82,7 +82,7 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
 @db_connect
 def insert_nugget(resource, event_id,
-                         link_parameters=None, collection_version=0):
+                  link_parameters=None):
     """
 
     Parameters
@@ -100,8 +100,8 @@ def insert_nugget(resource, event_id,
     """
 
     nugget = Nugget(resource=resource.id,
-                                    event_id=event_id,
-                                    link_parameters=link_parameters)
+                    event_id=event_id,
+                    link_parameters=link_parameters)
     nugget.save(validate=True, write_concern={"w": 1})
 
     return nugget
