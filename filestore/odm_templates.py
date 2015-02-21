@@ -63,12 +63,14 @@ class Datum(Document):
 
     Parameters
     ----------
-    file_id : filestore.resource.Resource
-        Resource object required to create an datum.
-        id field is used to obtain the foreignkey
 
-    event_id : str
-        metadataStore unqiue event identifier in string format.
+    resource : Resource or Resource.id
+        Resource object
+
+    datum_id : str
+        Unique identifier for this datum.  This is the value stored in
+        metadatastore and is the value passed to `retrieve_datum` to get
+        the data back out.
 
     datum_kwargs : dict
         resource_kwargs dictionary required for appending name/value pairs as desired
@@ -76,6 +78,6 @@ class Datum(Document):
     resource = ReferenceField(Resource,
                               reverse_delete_rule=DENY,
                               required=True)
-    event_id = StringField(required=True, unique=True)
+    datum_id = StringField(required=True, unique=True)
     datum_kwargs = DictField(required=False)
-    meta = {'indexes': ['-_id', '-event_id', '-resource'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-_id', '-datum_id', '-resource'], 'db_alias': ALIAS}

@@ -80,7 +80,7 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
 
 @db_connect
-def insert_datum(resource, event_id,
+def insert_datum(resource, datum_id,
                   datum_kwargs=None):
     """
 
@@ -90,8 +90,10 @@ def insert_datum(resource, event_id,
     resource: filestore.database.resource.Resource
         Resource object
 
-    event_id: str
-        metadataStore unique event identifier in string format
+    datum_id : str
+        Unique identifier for this datum.  This is the value stored in
+        metadatastore and is the value passed to `retrieve_datum` to get
+        the data back out.
 
     datum_kwargs: dict
         resource_kwargs dict required for appending name/value pairs as desired
@@ -99,7 +101,7 @@ def insert_datum(resource, event_id,
     """
 
     datum = Datum(resource=resource.id,
-                    event_id=event_id,
+                    datum_id=datum_id,
                     datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
 
@@ -140,7 +142,7 @@ def retrieve_datum(eid):
     data : ndarray
         The requested data as a numpy array
     """
-    query_dict = {'event_id': eid}
+    query_dict = {'datum_id': eid}
     edocs = Datum.objects(__raw__=query_dict)
     # TODO add sanity checks
     if edocs:

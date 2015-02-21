@@ -88,7 +88,7 @@ class NpyWriter(HandlerBase):
         fb = fsc.insert_resource(self.SPEC_NAME, self._fpath, self._f_custom)
         evl = fsc.insert_datum(fb, uid)
 
-        return evl.event_id
+        return evl.datum_id
 
 
 def save_ndarray(data, base_path=None):

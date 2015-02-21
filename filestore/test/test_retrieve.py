@@ -57,7 +57,7 @@ mock_base = Resource(spec='syn-mod',
                      resource_kwargs={'shape': (5, 7)})
 
 mock_event = {n: Datum(resource=mock_base,
-                               event_id=n,
+                               datum_id=n,
                                datum_kwargs={'n': n})
                                for n in range(1, 3)}
 
@@ -75,7 +75,7 @@ def test_get_handler_global():
 def _help_test_data(event_doc):
     data = fsr.get_data(event_doc, {'syn-mod': SynHandlerMod})
 
-    assert_true(np.all(data < event_doc.event_id))
+    assert_true(np.all(data < event_doc.datum_id))
 
 
 def test_get_data():
