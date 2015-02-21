@@ -72,4 +72,4 @@ def test_round_trip():
 
 @context_decorator
 def test_non_exist():
-    assert_raises(ValueError, fc.retrieve_datum, 'aardvark')
+    assert_raises(Datum.DoesNotExist, fc.retrieve_datum, 'aardvark')

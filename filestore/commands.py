@@ -142,10 +142,5 @@ def retrieve_datum(eid):
     data : ndarray
         The requested data as a numpy array
     """
-    query_dict = {'datum_id': eid}
-    edocs = Datum.objects(__raw__=query_dict)
-    # TODO add sanity checks
-    if edocs:
-        return _get_data(edocs[0])
-    else:
-        raise ValueError("none found")
+    edoc = Datum.objects.get(datum_id=eid)
+    return _get_data(edoc)
