@@ -16,14 +16,15 @@ class Resource(Document):
     ----------
 
     spec : str
-        File spec used to primarily parse the contents into
-        analysis environment
+        spec used to determine what handler to use to open this
+        resource.
 
     resource_path : str
-        Url to the physical location of the file
+        Url to the physical location of the resource
 
     resource_kwargs : dict
-        resource_kwargs name/value container in case additional info save is required
+        name/value pairs of additional kwargs to be
+        passed to the handler to open this resource.
 
     """
 
@@ -58,8 +59,10 @@ class ResoureAttributes(Document):
 
 
 class Datum(Document):
-    """Correlation lookup table between events and files.
-    Primarily for dataBroker logic
+    """
+    Document to represent a single datum in a resource.
+
+    There is a many-to-one mapping between Datum and Resource
 
     Parameters
     ----------
@@ -73,7 +76,9 @@ class Datum(Document):
         the data back out.
 
     datum_kwargs : dict
-        resource_kwargs dictionary required for appending name/value pairs as desired
+        dict with any kwargs needed to retrieve this specific datum from the
+        resource.
+
     """
     resource = ReferenceField(Resource,
                               reverse_delete_rule=DENY,

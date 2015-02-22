@@ -80,14 +80,13 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
 
 @db_connect
-def insert_datum(resource, datum_id,
-                  datum_kwargs=None):
+def insert_datum(resource, datum_id, datum_kwargs=None):
     """
 
     Parameters
     ----------
 
-    resource: filestore.database.resource.Resource
+    resource : Resource on Resource.id
         Resource object
 
     datum_id : str
@@ -95,14 +94,14 @@ def insert_datum(resource, datum_id,
         metadatastore and is the value passed to `retrieve_datum` to get
         the data back out.
 
-    datum_kwargs: dict
-        resource_kwargs dict required for appending name/value pairs as desired
+    datum_kwargs : dict
+        dict with any kwargs needed to retrieve this specific datum from the
+        resource.
 
     """
 
-    datum = Datum(resource=resource.id,
-                    datum_id=datum_id,
-                    datum_kwargs=datum_kwargs)
+    datum = Datum(resource=resource, datum_id=datum_id,
+                  datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
 
     return datum
@@ -110,7 +109,7 @@ def insert_datum(resource, datum_id,
 
 @db_connect
 def find_resoure_attributes(resource):
-    """Return  resoure_attributes entry given a file_header object
+    """Return resource_attributes entry given a resource object
 
 
     This is to be considered provisional.  The API may change drastically
