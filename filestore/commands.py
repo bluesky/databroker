@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 
-from .odm_templates import Resource, ResoureAttributes, Datum, ALIAS
+from .odm_templates import Resource, ResourceAttributes, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -60,23 +60,23 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
 
     """
 
-    resoure_attributes = ResoureAttributes(resource=resource.id, shape=shape,
+    resource_attributes = ResourceAttributes(resource=resource.id, shape=shape,
                                            dtype=dtype)
     for k in ['total_bytes', 'hashed_data', 'last_access',
               'datetime_last_access', 'in_use',
               'custom_attributes']:
         v = kwargs.pop(k, None)
         if v:
-            setattr(resoure_attributes, v)
+            setattr(resource_attributes, v)
 
     if kwargs:
         raise AttributeError(kwargs.keys() +
                              '  field(s) are not among attribute keys. '
                              ' Use resource_kwargs attributes'
                              ' dict for saving it')
-    resoure_attributes.save(validate=True, write_concern={"w": 1})
+    resource_attributes.save(validate=True, write_concern={"w": 1})
 
-    return resoure_attributes
+    return resource_attributes
 
 
 @db_connect
@@ -108,7 +108,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 
 
 @db_connect
-def find_resoure_attributes(resource):
+def find_resource_attributes(resource):
     """Return resource_attributes entry given a resource object
 
 
@@ -123,7 +123,7 @@ def find_resoure_attributes(resource):
 
     """
 
-    return ResoureAttributes.objects(resource=resource.id)
+    return ResourceAttributes.objects(resource=resource.id)
 
 
 @db_connect

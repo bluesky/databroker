@@ -34,7 +34,7 @@ class Resource(Document):
     meta = {'indexes': ['-_id'], 'db_alias': ALIAS}
 
 
-class ResoureAttributes(Document):
+class ResourceAttributes(Document):
     """
 
     Parameters
