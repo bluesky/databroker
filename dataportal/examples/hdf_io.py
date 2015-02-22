@@ -42,8 +42,9 @@ from metadatastore.api import (insert_run_start,
                                insert_beamline_config)
 import filestore.retrieve as fsr
 import filestore.commands as fsc
-from dataportal.examples.sample_data.common import noisy
+import filestore.file_writers as fw
 from filestore.file_readers import HDFMapsSpectrumHandler as HDFM
+from dataportal.examples.sample_data.common import noisy
 
 import six
 import h5py
@@ -79,6 +80,7 @@ def save_syn_data(eid, data, base_path=None):
     if base_path is None:
         base_path = op.join(op.expanduser('~'), '.fs_cache',
                             str(datetime.date.today()))
+    fw._make_sure_path_exists(base_path)
     fpath = op.join(base_path, str(eid) + '.h5')
 
     with h5py.File(fpath, 'w') as f:
