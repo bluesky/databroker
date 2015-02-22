@@ -37,10 +37,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-from metadataStore.api.collection import (insert_begin_run,
-                                          insert_event,
-                                          insert_event_descriptor,
-                                          insert_beamline_config)
+from metadatastore.api import (insert_run_start,
+                               insert_event,
+                               insert_event_descriptor,
+                               insert_beamline_config)
 import filestore.retrieve as fsr
 import filestore.commands as fsc
 
@@ -129,8 +129,8 @@ def test_data_io():
     """
     Save data to db and run test when data is retrieved.
     """
-    blc = insert_beamline_config()
-    begin_run = insert_begin_run(time=0., scan_id=1, beamline_id='csx',
+    blc = insert_beamline_config({'cfg1': 1}, 0.0)
+    begin_run = insert_run_start(time=0., scan_id=1, beamline_id='csx',
                                  uid=str(uuid.uuid4()),
                                  beamline_config=blc)
 
@@ -143,10 +143,10 @@ def test_data_io():
 
     # save the event descriptor
     e_desc = insert_event_descriptor(
-        begin_run_event=begin_run, data_keys=data_keys, time=0.,
+        run_start=begin_run, data_keys=data_keys, time=0.,
         uid=str(uuid.uuid4()))
 
-    # number of positions to record
+    # number of positions to record, basically along a horizontal line
     num = 5
 
     for i in range(num):
