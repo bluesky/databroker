@@ -1,12 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-__author__ = 'arkilic'
 from mongoengine import connect
 
-
-from .database.file_base import FileBase
-from .database.file_attributes import FileAttributes
-from .database.file_event_link import FileEventLink
+from .odm_templates import Resource, ResourceAttributes, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -18,44 +14,44 @@ def db_connect(func):
         database = conf.connection_config['database']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
-        connect(db=database, host=host, port=port)
+        connect(db=database, host=host, port=port, alias=ALIAS)
         return func(*args, **kwargs)
     return inner
 
 
 @db_connect
-def save_file_base(spec, file_path, custom=None, collection_version=0):
+def insert_resource(spec, resource_path, resource_kwargs=None):
     """
     Parameters
     ----------
 
-    spec: str
-        File spec used to primarily parse the contents into
-        analysis environment
+    spec : str
+        spec used to determine what handler to use to open this
+        resource.
 
-    file_path: str
-        Url to the physical location of the file
+    resource_path : str
+        Url to the physical location of this resource
 
-    custom: dict
-        custom name/value container in case additional info save is required
+    resource_kwargs : dict
+        resource_kwargs name/value pairs of additional kwargs to be
+        passed to the handler to open this resource.
 
     """
 
-    file_base_object = FileBase(spec=spec, file_path=file_path,
-                                custom=custom,
-                                collection_version=collection_version)
+    resource_object = Resource(spec=spec, resource_path=resource_path,
+                               resource_kwargs=resource_kwargs)
 
-    file_base_object.save(validate=True, write_concern={"w": 1})
+    resource_object.save(validate=True, write_concern={"w": 1})
 
-    return file_base_object
+    return resource_object
 
 
 @db_connect
-def save_file_attributes(file_base, shape, dtype,
-                         collection_version=0, **kwargs):
+def insert_resourse_attributes(resource, shape, dtype, **kwargs):
     """
 
-    file_base:
+    This is to be considered provisional.  The API may change drastically
+    in the near future.
 
 
     kwargs
@@ -64,141 +60,74 @@ def save_file_attributes(file_base, shape, dtype,
 
     """
 
-    file_attributes = FileAttributes(file_base=file_base.id, shape=shape,
-                                     dtype=dtype,
-                                     collection_version=collection_version)
-
-    file_attributes.total_bytes = kwargs.pop('total_bytes', None)
-    file_attributes.hashed_data = kwargs.pop('hashed_data', None)
-    file_attributes.last_access = kwargs.pop('last_access', None)
-    file_attributes.datetime_last_access = kwargs.pop('datetime_last_access',
-                                                      None)
-    file_attributes.in_use = kwargs.pop('in_use', None)
-    file_attributes.custom_attributes = kwargs.pop('custom_attributes', None)
+    resource_attributes = ResourceAttributes(resource=resource.id, shape=shape,
+                                           dtype=dtype)
+    for k in ['total_bytes', 'hashed_data', 'last_access',
+              'datetime_last_access', 'in_use',
+              'custom_attributes']:
+        v = kwargs.pop(k, None)
+        if v:
+            setattr(resource_attributes, v)
 
     if kwargs:
         raise AttributeError(kwargs.keys() +
                              '  field(s) are not among attribute keys. '
-                             ' Use custom attributes'
+                             ' Use resource_kwargs attributes'
                              ' dict for saving it')
-    file_attributes.save(validate=True, write_concern={"w": 1})
+    resource_attributes.save(validate=True, write_concern={"w": 1})
 
-    return file_attributes
+    return resource_attributes
 
 
 @db_connect
-def save_file_event_link(file_base, event_id,
-                         link_parameters=None, collection_version=0):
+def insert_datum(resource, datum_id, datum_kwargs=None):
     """
 
     Parameters
     ----------
 
-    file_base: filestore.database.file_base.FileBase
-        FileBase object
+    resource : Resource on Resource.id
+        Resource object
 
-    event_id: str
-        metadataStore unique event identifier in string format
+    datum_id : str
+        Unique identifier for this datum.  This is the value stored in
+        metadatastore and is the value passed to `retrieve` to get
+        the data back out.
 
-    link_parameters: dict
-        custom dict required for appending name/value pairs as desired
+    datum_kwargs : dict
+        dict with any kwargs needed to retrieve this specific datum from the
+        resource.
 
     """
 
-    file_event_link = FileEventLink(file_base=file_base.id,
-                                    event_id=event_id,
-                                    link_parameters=link_parameters)
-    file_event_link.save(validate=True, write_concern={"w": 1})
+    datum = Datum(resource=resource, datum_id=datum_id,
+                  datum_kwargs=datum_kwargs)
+    datum.save(validate=True, write_concern={"w": 1})
 
-    return file_event_link
-
-
-@db_connect
-def find_file_base(**kwargs):
-
-    query_dict = dict()
-
-    try:
-        query_dict['spec'] = kwargs.pop('spec')
-    except:
-        pass
-
-    try:
-        query_dict['file_path'] = kwargs.pop('file_path')
-    except:
-        pass
-
-    file_base_objects = FileBase.objects(__raw__=query_dict).order_by('-_id')
-
-    return file_base_objects
+    return datum
 
 
 @db_connect
-def find_file_event_link(file_base=None, event_id=None):
-
-    query_dict = dict()
-
-    if file_base is not None:
-        query_dict['file_base'] = file_base.id
-    elif event_id is not None:
-        query_dict['event_id'] = event_id
-    else:
-        raise AttributeError(
-            'Search parameters are invalid. file_base '
-            'or event_id search is possible')
-
-    return FileEventLink.objects(__raw__=query_dict)
+def find_resource_attributes(resource):
+    """Return resource_attributes entry given a resource object
 
 
-@db_connect
-def find_last():
-    """Searches for the last file_base created
+    This is to be considered provisional.  The API may change drastically
+    in the near future.
 
-    Returns
-    --------
-
-    FileBase object #I know i am violating numpy docs like a turkish in
-    open buffet but have not looked into how to use it yet, until #we
-    decide what doc format to use, I will not bother, just write stuff
-    we need for any format!
-    """
-
-    result = FileBase.objects.order_by('-_id')[0:1][0]
-    if result:
-        return result
-    else:
-        return []
-
-
-@db_connect
-def find_file_attributes(file_base):
-    """Return  file_attributes entry given a file_header object
 
     Parameters
     ----------
-    file_base: filestore.database.file_base.FileBase
-        FileBase object
+    resource: filestore.database.resource.Resource
+        Resource object
 
     """
 
-    return FileAttributes.objects(file_base=file_base.id)
+    return ResourceAttributes.objects(resource=resource.id)
 
 
-def find(properties=True, **kwargs):
-    file_attribute_objects = list()
-    file_event_link_objects = list()
-    file_base_objects = find_file_base(**kwargs)
-
-    for file_base_object in file_base_objects:
-        file_attribute_objects.append(
-            find_file_attributes(file_base=file_base_object))
-        file_event_link_objects.append(
-            find_file_event_link(file_base=file_base_object))
-
-    return file_base_objects, file_attribute_objects, file_event_link_objects
-
-
-def retrieve_data(eid):
+@db_connect
+def retrieve(eid):
     """
     Given a resource identifier return the data.
 
@@ -212,9 +141,5 @@ def retrieve_data(eid):
     data : ndarray
         The requested data as a numpy array
     """
-    edocs = find_file_event_link(event_id=eid)
-    # TODO add sanity checks
-    if edocs:
-        return _get_data(edocs[0])
-    else:
-        raise ValueError("none found")
+    edoc = Datum.objects.get(datum_id=eid)
+    return _get_data(edoc)

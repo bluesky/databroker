@@ -38,11 +38,10 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
 
 
-from filestore.database.file_base import FileBase
-from filestore.database.file_event_link import FileEventLink
+from filestore.odm_templates import Resource, Datum
+
 import filestore.retrieve as fsr
 import numpy as np
 from nose.tools import assert_true, assert_raises, assert_false
@@ -50,13 +49,16 @@ from nose.tools import assert_true, assert_raises, assert_false
 from .t_utils import SynHandlerMod, SynHandlerEcho
 import uuid
 
-mock_base = FileBase(spec='syn-mod',
-                     file_path='',
-                     custom={'shape': (5, 7)})
+logger = logging.getLogger(__name__)
 
-mock_event = {n: FileEventLink(file_base=mock_base,
-                               event_id=n,
-                               link_parameters={'n': n})
+
+mock_base = Resource(spec='syn-mod',
+                     resource_path='',
+                     resource_kwargs={'shape': (5, 7)})
+
+mock_event = {n: Datum(resource=mock_base,
+                               datum_id=n,
+                               datum_kwargs={'n': n})
                                for n in range(1, 3)}
 
 
@@ -64,8 +66,8 @@ def test_get_handler_global():
 
     with fsr.handler_context({'syn-mod': SynHandlerMod}):
 
-        fs_doc = mock_base
-        handle = fsr.get_spec_handler(fs_doc)
+        datum = mock_base
+        handle = fsr.get_spec_handler(datum)
 
         assert_true(isinstance(handle, SynHandlerMod))
 
@@ -73,7 +75,7 @@ def test_get_handler_global():
 def _help_test_data(event_doc):
     data = fsr.get_data(event_doc, {'syn-mod': SynHandlerMod})
 
-    assert_true(np.all(data < event_doc.event_id))
+    assert_true(np.all(data < event_doc.datum_id))
 
 
 def test_get_data():

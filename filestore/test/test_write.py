@@ -38,15 +38,15 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
+
 import numpy as np
 from itertools import chain, repeat
 import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
 import filestore.file_readers as fs_read
-from filestore.database.file_base import FileBase
-from filestore.database.file_event_link import FileEventLink
+from filestore.odm_templates import Resource, Datum
+
 import mongoengine
 from mongoengine.context_managers import switch_db
 import uuid
@@ -57,6 +57,8 @@ import tempfile
 import shutil
 import os
 
+logger = logging.getLogger(__name__)
+
 CLEAN_FILES = True
 BASE_PATH = None
 db_name = str(uuid.uuid4())
@@ -65,7 +67,8 @@ dummy_db_name = str(uuid.uuid4())
 
 def setup():
     # need to make 'default' connection to point to no-where, just to be safe
-    mongoengine.connect(dummy_db_name)
+    # we need this so that we can re-map documents to a temp database
+    mongoengine.connect(dummy_db_name, 'fs')
     # connect to the db we are actually going to use
     mongoengine.connect(db_name, alias='test_db')
     global BASE_PATH
@@ -83,8 +86,8 @@ def teardown():
 
 def context_decorator(func):
     def inner(*args, **kwargs):
-        with switch_db(FileBase, 'test_db'), \
-          switch_db(FileEventLink, 'test_db'):
+        with switch_db(Resource, 'test_db'), \
+          switch_db(Datum, 'test_db'):
             func(*args, **kwargs)
 
     return make_decorator(func)(inner)
@@ -94,11 +97,11 @@ def context_decorator(func):
 def _npsave_helper(dd, base_path):
     eid = fs_write.save_ndarray(dd, base_path)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve_data(eid)
+        ret = fsc.retrieve(eid)
 
     assert_array_equal(dd, ret)
 
-
+@context_decorator
 def test_np_save():
     shape = (7, 5)
     dd = np.arange(np.prod(shape)).reshape(*shape)
@@ -161,9 +164,9 @@ def test_give_uid():
 def test_custom():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     dd = np.random.rand(500, 500)
-    with fs_write.NpyWriter(test_path, custom={'mmap_mode': 'r'}) as f:
+    with fs_write.NpyWriter(test_path, resource_kwargs={'mmap_mode': 'r'}) as f:
         eid = f.add_data(dd)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve_data(eid)
+        ret = fsc.retrieve(eid)
 
     assert_array_equal(dd, ret)

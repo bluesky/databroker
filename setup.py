@@ -75,7 +75,7 @@ setup(
     author_email=None,
     license="BSD (3-clause)",
     url="https://github.com/NSLS-II/filestore",
-    packages=['filestore', 'filestore.database', 'filestore.api'],
+    packages=['filestore'],
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: EPICS License",

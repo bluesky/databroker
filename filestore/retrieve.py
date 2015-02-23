@@ -3,9 +3,9 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
-
 from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 
 class HandlerBase(object):
@@ -89,12 +89,12 @@ def handler_context(temp_handlers):
 
     Examples
     --------
-    To use a different handler for a call to `retrieve_data` use
+    To use a different handler for a call to `retrieve` use
     the context manager to add (and possibly over-ride existing
     handlers) temporarily:
 
        with handler_context({'syn-spec', SynHandler}):
-           FS.retrieve_data(EID)
+           FS.retrieve(EID)
 
     """
     remove_list = []
@@ -118,7 +118,7 @@ def register_handler(key, handler, overwrite=False):
     """
     Register a handler to be associated with a specific file
     specification key.  This controls the dispatch to the
-    Handler classes based on the `spec` key of the `FileBase`
+    Handler classes based on the `spec` key of the `Resource`
     documents.
 
     Parameters
@@ -159,7 +159,7 @@ def deregister_handler(key):
     _h_registry.deregister_handler(key)
 
 
-def get_spec_handler(base_fs_document, handle_registry=None):
+def get_spec_handler(resource, handle_registry=None):
     """
     Given a document from the base FS collection return
     the proper Handler
@@ -169,8 +169,8 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     Parameters
     ----------
-    base_fs_document : FileBase
-        FileBase document.
+    resource : Resource
+        Resource document.
 
     handle_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
@@ -187,14 +187,13 @@ def get_spec_handler(base_fs_document, handle_registry=None):
 
     if handle_registry is None:
         handle_registry = _h_registry
-    fs_doc = base_fs_document
-    spec = fs_doc.spec
-    kwargs = fs_doc.custom
-    fpath = fs_doc.file_path
-    return handle_registry[spec](fpath, **kwargs)
+    spec = resource.spec
+    kwargs = resource.resource_kwargs
+    rpath = resource.resource_path
+    return handle_registry[spec](rpath, **kwargs)
 
 
-def get_data(events_fs_doc, handle_registry=None):
+def get_data(datum, handle_registry=None):
     """
     Given a document from the events collection, get the externally
     stored data.
@@ -204,7 +203,7 @@ def get_data(events_fs_doc, handle_registry=None):
 
     Parameters
     ----------
-    events_fs_doc : FileEventLink
+    datum : Datum
         Document identifying the data resource
 
     get_handler_method : callable
@@ -217,8 +216,6 @@ def get_data(events_fs_doc, handle_registry=None):
         The data in ndarray form.
     """
 
-    fs_doc = events_fs_doc
-
-    kwargs = fs_doc.link_parameters
-    handler = get_spec_handler(fs_doc.file_base, handle_registry)
+    kwargs = datum.datum_kwargs
+    handler = get_spec_handler(datum.resource, handle_registry)
     return handler(**kwargs)
