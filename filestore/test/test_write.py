@@ -97,7 +97,7 @@ def context_decorator(func):
 def _npsave_helper(dd, base_path):
     eid = fs_write.save_ndarray(dd, base_path)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve_datum(eid)
+        ret = fsc.retrieve(eid)
 
     assert_array_equal(dd, ret)
 
@@ -167,6 +167,6 @@ def test_custom():
     with fs_write.NpyWriter(test_path, resource_kwargs={'mmap_mode': 'r'}) as f:
         eid = f.add_data(dd)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve_datum(eid)
+        ret = fsc.retrieve(eid)
 
     assert_array_equal(dd, ret)

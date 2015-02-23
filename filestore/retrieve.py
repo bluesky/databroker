@@ -89,12 +89,12 @@ def handler_context(temp_handlers):
 
     Examples
     --------
-    To use a different handler for a call to `retrieve_datum` use
+    To use a different handler for a call to `retrieve` use
     the context manager to add (and possibly over-ride existing
     handlers) temporarily:
 
        with handler_context({'syn-spec', SynHandler}):
-           FS.retrieve_datum(EID)
+           FS.retrieve(EID)
 
     """
     remove_list = []

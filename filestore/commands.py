@@ -91,7 +91,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 
     datum_id : str
         Unique identifier for this datum.  This is the value stored in
-        metadatastore and is the value passed to `retrieve_datum` to get
+        metadatastore and is the value passed to `retrieve` to get
         the data back out.
 
     datum_kwargs : dict
@@ -127,7 +127,7 @@ def find_resource_attributes(resource):
 
 
 @db_connect
-def retrieve_datum(eid):
+def retrieve(eid):
     """
     Given a resource identifier return the data.
 

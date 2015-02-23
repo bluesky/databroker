@@ -72,7 +72,7 @@ class Datum(Document):
 
     datum_id : str
         Unique identifier for this datum.  This is the value stored in
-        metadatastore and is the value passed to `retrieve_datum` to get
+        metadatastore and is the value passed to `retrieve` to get
         the data back out.
 
     datum_kwargs : dict

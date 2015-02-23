@@ -65,11 +65,11 @@ def test_round_trip():
     mod_ids = _insert_syn_data('syn-mod', shape, 10)
 
     for j, r_id in enumerate(mod_ids):
-        data = fc.retrieve_datum(r_id)
+        data = fc.retrieve(r_id)
         known_data = np.mod(np.arange(np.prod(shape)), j + 1).reshape(shape)
         assert_array_equal(data, known_data)
 
 
 @context_decorator
 def test_non_exist():
-    assert_raises(Datum.DoesNotExist, fc.retrieve_datum, 'aardvark')
+    assert_raises(Datum.DoesNotExist, fc.retrieve, 'aardvark')
