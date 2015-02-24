@@ -18,7 +18,7 @@ from distutils.core import setup
 MAJOR = 0
 MINOR = 0
 MICRO = 2
-ISRELEASED = True
+ISRELEASED = False
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 QUALIFIER = ''
@@ -28,7 +28,7 @@ print(FULLVERSION)
 
 if not ISRELEASED:
     import subprocess
-    FULLVERSION += '.dev'
+    FULLVERSION += '.post'
     if SNAPSHOT:
         pipe = None
         for cmd in ['git', 'git.cmd']:
