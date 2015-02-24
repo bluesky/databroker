@@ -141,8 +141,7 @@ class EventDescriptor(DynamicDocument):
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
-    meta = {'indexes': ['-run_start', '-time']}
-    db_alias = ALIAS
+    meta = {'indexes': ['-run_start', '-time'], 'db_alias': ALIAS}
 
 
 class Event(Document):
