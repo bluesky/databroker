@@ -332,7 +332,6 @@ def __add_event_descriptors(run_start_list):
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
 
-
 @db_connect
 def find_run_start(limit=50, **kwargs):
     """ Given search criteria, locate the RunStart object
@@ -341,19 +340,23 @@ def find_run_start(limit=50, **kwargs):
     ----------
     limit : int
         Number of header objects to be returned
-
-    Other Parameters
-    ----------------
-    scan_id : int
+    start_time : float, optional
+        timestamp of the earliest time to return run_start events
+    stop_time : float, optional
+        timestamp of the latest time to return run_start events
+    scan_id : int, optional
         Scan identifier. Not unique
-    owner : str
+    owner : str, optional
         User name identifier associated with a scan
-    create_time : dict
-        header insert time. Keys must be start and end to
-        give a range to the search
-    beamline_id : str
+    project : str, optional
+        ???
+    group : str, optional
+        ???
+    sample : ???, optional
+        ???
+    beamline_id : str, optional
         String identifier for a specific beamline
-    unique_id : str
+    unique_id : str, optional
         Hashed unique identifier
 
     Returns
@@ -366,60 +369,28 @@ def find_run_start(limit=50, **kwargs):
     ------
     >>> find_run_start(scan_id=123)
     >>> find_run_start(owner='arkilic')
-    >>> find_run_start(time={'start': 1421176750.514707,
-    ...                      'stop': time.time()})
-    >>> find_run_start(time={'start': 1421176750.514707,
-    ...                      'stop': time.time()})
+    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time())
 
-    >>> find_run_start(owner='arkilic', time={'start': 1421176750.514707,
-    ...                                       'stop': time.time()})
+    >>> find_run_start(owner='arkilic', start_time=1421176750.514707,
+    ...                stop_time=time.time())
 
     """
-    search_dict = dict()
-
-    try:
-        search_dict['scan_id'] = kwargs.pop('scan_id')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['unique_id'] = kwargs.pop('unique_id')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['owner'] = kwargs.pop('owner')
-    except KeyError:
-        pass
-
-    try:
-        search_dict['beamline_id'] = kwargs.pop('beamline_id')
-    except KeyError:
-        pass
-
-    try:
-        time_dict = kwargs.pop('time')
-        if not isinstance(time_dict, dict):
-            raise ValueError('Wrong format. time must include '
-                             'start and stop keys for range. Must be a dict')
-        else:
-            if 'start' in time_dict and 'stop' in time_dict:
-                search_dict['time'] = {'$gte': time_dict['start'],
-                                       '$lte': time_dict['stop']}
-            else:
-                raise ValueError('time must include start '
-                                 'and stop keys for range search')
-    except KeyError:
-        pass
-
-    if search_dict:
-        br_objects = RunStart.objects(
-            __raw__=search_dict).order_by('-_id')[:limit]
-    else:
-        br_objects = list()
-
+    # format time correctly
+    time_dict = {}
+    start_time = kwargs.pop('start_time') # defaults to None
+    stop_time = kwargs.pop('stop_time')
+    if start_time:
+        time_dict['$gte'] = start_time
+    if stop_time:
+        time_dict['$lte'] = stop_time
+    if time_dict:
+        kwargs['time'] = time_dict
+    # do the search
+    br_objects = RunStart.objects(__raw__=kwargs).order_by('-_id')[:limit]
+    # add the event descriptors
     __add_event_descriptors(br_objects)
-
+    # transform the mongo objects into safe, whitebread python objects
     return [__as_document(bre) for bre in br_objects]
 
 @db_connect
