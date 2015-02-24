@@ -1,9 +1,13 @@
-__author__ = 'arkilic'
-
+"""
+ODM templates for use with metadatstore
+"""
 from mongoengine import Document, DynamicDocument, DynamicEmbeddedDocument
 from mongoengine import (StringField, DictField, IntField, FloatField,
-                         ListField, ReferenceField, EmbeddedDocumentField, DENY, MapField)
+                         ListField, ReferenceField, EmbeddedDocumentField,
+                         DENY, MapField)
 from getpass import getuser
+
+ALIAS = 'mds'
 
 
 class BeamlineConfig(DynamicDocument):
@@ -11,21 +15,22 @@ class BeamlineConfig(DynamicDocument):
     Attributes
     ----------
     config_params: dict
-        Custom configuration parameters for a given run. Avoid using '.' in field names.
+        Custom configuration parameters for a given run. Avoid using '.'
+        in field names.
         If you're interested in doing so, let me know @arkilic
         This has a one-to-many relationship with RunStart documents
     """
     config_params = DictField(required=False, unique=False)
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
-    meta = {'indexes': ['-_id']}
+    meta = {'indexes': ['-_id'], 'db_alias': ALIAS}
 
 
 class RunStart(DynamicDocument):
     """ Provide a head for a sequence of events. Entry point for
     an experiment's run. BeamlineConfig is NOT required to create a RunStart
-    The only prereq is an EventDescriptor that identifies the nature of event that is
-    starting and
+    The only prereq is an EventDescriptor that identifies the nature of
+    event that is starting and
 
     Attributes
     ----------
@@ -61,7 +66,8 @@ class RunStart(DynamicDocument):
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
     sample = DictField(required=False)  # lightweight sample placeholder.
-    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid']}
+    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid'],
+            'db_alias': ALIAS}
 
 
 class RunStop(DynamicDocument):
@@ -86,8 +92,9 @@ class RunStop(DynamicDocument):
     exit_status = StringField(max_length=10, required=False, default='success',
                               choices=('success', 'abort', 'fail'))
     reason = StringField(required=False)
-    meta = {'indexes': ['-_id', '-time', '-exit_status', '-run_start']}
     uid = StringField(required=True, unique=True)
+    meta = {'indexes': ['-_id', '-time', '-exit_status', '-run_start'],
+            'db_alias': ALIAS}
 
 
 class DataKey(DynamicEmbeddedDocument):
@@ -112,6 +119,7 @@ class DataKey(DynamicEmbeddedDocument):
     shape = ListField(field=IntField())  # defaults to empty list
     source = StringField(required=True)
     external = StringField(required=False)
+    meta = {'db_alias': ALIAS}
 
 
 class EventDescriptor(DynamicDocument):
@@ -134,6 +142,7 @@ class EventDescriptor(DynamicDocument):
     time = FloatField(required=True)
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
     meta = {'indexes': ['-run_start', '-time']}
+    db_alias = ALIAS
 
 
 class Event(Document):
@@ -152,18 +161,20 @@ class Event(Document):
     uid : str
         Globally unique identifier for this Event
     seq_num: int
-        Sequence number to identify the location of this Event in the Event stream
+        Sequence number to identify the location of this Event in
+        the Event stream
     data: dict
         Dict of lists that contain e.g. data = {'motor1': [value, timestamp]}
     time : float
-        The event time.  This maybe different than the timestamps on each of the data entries
+        The event time.  This maybe different than the timestamps
+        on each of the data entries
 
     """
-    descriptor = ReferenceField(EventDescriptor,reverse_delete_rule=DENY,
+    descriptor = ReferenceField(EventDescriptor, reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
     uid = StringField(required=True, unique=True)
     seq_num = IntField(min_value=0, required=True)
     # TODO validate on this better
     data = DictField(required=True)
     time = FloatField(required=True)
-    meta = {'indexes': ['-descriptor', '-_id']}
+    meta = {'indexes': ['-descriptor', '-_id'], 'db_alias': ALIAS}
