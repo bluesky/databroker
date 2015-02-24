@@ -187,12 +187,12 @@ def fill_event(event):
     """
     Populate events with externally stored data.
     """
-    retrieve_data = sources.filestore.commands.retrieve_data
+    retrieve_data = sources.filestore.api.retrieve
     is_external = _inspect_descriptor(event.descriptor)
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key][0]= retrieve_data(value)
+            event.data[data_key][0] = retrieve_data(value)
 
 
 def _build_header(run_start):

@@ -1,7 +1,7 @@
 import numpy as numpy
 import numpy as np  # support both 'numpy' and 'np' in evaluated string
 
-def retrieve_data(eid):
+def retrieve(eid):
     """
     Given a resource identifier return the data.
 
