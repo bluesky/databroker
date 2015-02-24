@@ -11,7 +11,33 @@ import os.path
 logger = logging.getLogger(__name__)
 
 
-class _HdfMapsHandlerBase(HandlerBase):
+class _HDF5HandlerBase(HandlerBase):
+
+    def open(self):
+        if self._file:
+            return
+        self._file = h5py.File(self._filename)
+
+    def close(self):
+        super(HDF5HandlerBase, self).close()
+        self._file.close()
+
+
+class HDF5DatasetSliceHandler(_HDF5HandlerBase):
+    "Handler for Stuart's first detector demo"
+    def __init__(self, filename, frame_per_point):
+        self._filename = filename
+        self.open()
+
+    def __call__(self, point_number):
+        dataset_name = '/entry/data/data'
+        # Don't read out the dataset until it is requested for the first time.
+        if not hasattr(self, '_dataset'):
+            self._dataset = self._file[dataset_name]
+        return self._dataset[point_number, :, :]
+
+
+class _HdfMapsHandlerBase(_HDF5HandlerBase):
     """
     Reader for XRF data stored in hdf5 files.
 
