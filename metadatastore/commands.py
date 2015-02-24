@@ -356,13 +356,10 @@ def find_run_start(limit=50, **kwargs):
         time_dict['$lte'] = stop_time
     if time_dict:
         kwargs['time'] = time_dict
-
     # do the search
     br_objects = RunStart.objects(__raw__=kwargs).order_by('-_id')[:limit]
-
     # add the event descriptors
     __add_event_descriptors(br_objects)
-
     # transform the mongo objects into safe, whitebread python objects
     return [__as_document(bre) for bre in br_objects]
 
