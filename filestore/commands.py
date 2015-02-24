@@ -29,7 +29,7 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
         spec used to determine what handler to use to open this
         resource.
 
-    resource_path : str
+    resource_path : str or None
         Url to the physical location of this resource
 
     resource_kwargs : dict
@@ -37,7 +37,8 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
         passed to the handler to open this resource.
 
     """
-
+    if resource_path is None:
+        resource_path = ''
     resource_object = Resource(spec=spec, resource_path=resource_path,
                                resource_kwargs=resource_kwargs)
 
