@@ -310,8 +310,10 @@ def find_run_start(limit=50, **kwargs):
     ----------
     limit : int
         Number of header objects to be returned
-    time : dict, optional
-        Formatted like this: {'start': timestamp, 'stop': timestamp}
+    start_time : float, optional
+        timestamp of the earliest time to return run_start events
+    stop_time : float, optional
+        timestamp of the latest time to return run_start events
     scan_id : int, optional
         Scan identifier. Not unique
     owner : str, optional
@@ -345,23 +347,15 @@ def find_run_start(limit=50, **kwargs):
 
     """
     # format time correctly
-    try:
-        start_time = kwargs['start_time']
-    except KeyError:
-        pass
-    else:
-        kwargs['time'] = {'$gte': start_time}
-
-    try:
-        stop_time = kwargs['stop_time']
-    except KeyError:
-        pass
-    else:
-        tt = {'$lte': stop_time}
-        try:
-            kwargs['time'].update(tt)
-        except KeyError:
-            kwargs['time'] = tt
+    time_dict = {}
+    start_time = kwargs.pop('start_time') # defaults to None
+    stop_time = kwargs.pop('stop_time')
+    if start_time:
+        time_dict['$gte'] = start_time
+    if stop_time:
+        time_dict['$lte'] = stop_time
+    if time_dict:
+        kwargs['time'] = time_dict
 
     # do the search
     br_objects = RunStart.objects(__raw__=kwargs).order_by('-_id')[:limit]
