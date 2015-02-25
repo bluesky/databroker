@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
-
+import mongoengine.connection
 from .odm_templates import Resource, ResourceAttributes, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
@@ -17,6 +17,10 @@ def db_connect(func):
         connect(db=database, host=host, port=port, alias=ALIAS)
         return func(*args, **kwargs)
     return inner
+
+
+def db_disconnect():
+    mongoengine.connection.disconnect(ALIAS)
 
 
 @db_connect
