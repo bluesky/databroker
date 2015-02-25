@@ -68,10 +68,10 @@ def define_parser():
 def main():
     parser = define_parser()
     args = parser.parse_args()
-    print('args: {}'.format(args))
-    params_dict = define_default_params()
     if args.live:
         params_dict = define_ophyd_params()
+    else:
+        params_dict = define_default_params()
     app = QtApplication()
     ui = create_default_ui(params_dict)
     ui.show()
