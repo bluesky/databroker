@@ -22,7 +22,7 @@ def define_default_params():
     }
     return params_dict
 
-def define_ophyd_params():
+def define_live_params():
     params_dict = {
         'search_tab_index': 1,
         'automatically_update_header': True,
@@ -69,7 +69,7 @@ def main():
     parser = define_parser()
     args = parser.parse_args()
     if args.live:
-        params_dict = define_ophyd_params()
+        params_dict = define_live_params()
     else:
         params_dict = define_default_params()
     app = QtApplication()
