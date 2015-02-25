@@ -1,18 +1,27 @@
-from dataportal.replay.search import GetLastView
+from dataportal.replay.search import (GetLastView, WatchForHeadersView,
+                                      DisplayHeaderView)
 from dataportal.replay.muxer import MuxerController
 from dataportal.replay.scalar import PlotView, PlotControls
 
 from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem)
-from enaml.layout.api import VSplitLayout, HSplitLayout
+from enaml.layout.api import VSplitLayout, HSplitLayout, TabLayout
 
 enamldef MainView(MainWindow): main_view:
     attr get_last_model
     attr muxer_model
     attr scalar_collection
+    attr watch_headers_model
+    attr display_header_model
+    attr init_params
     Container: container:
         DockArea: area:
             layout = HSplitLayout(
-                HSplitLayout('search', 'muxer', 'scalar plot controls'),
+                HSplitLayout(
+                    VSplitLayout(
+                        TabLayout('search', 'watch_header',
+                                  index=init_params['search_tab_index']),
+                        'header_view'),
+                    'muxer', 'scalar plot controls'),
                 'scalar plot'
             )
             DockItem:
@@ -21,6 +30,16 @@ enamldef MainView(MainWindow): main_view:
                 GetLastView:
                     get_last_model = main_view.get_last_model
                     muxer_model = main_view.muxer_model
+            DockItem:
+                name = 'watch_header'
+                title = "Most Recent Header"
+                WatchForHeadersView:
+                    watch_headers_model = main_view.watch_headers_model
+            DockItem:
+                name = 'header_view'
+                title = "Run Summary"
+                DisplayHeaderView:
+                    display_header_model = main_view.display_header_model
             DockItem:
                 name = 'muxer'
                 title = 'Muxer'
