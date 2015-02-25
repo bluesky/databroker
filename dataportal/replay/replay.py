@@ -10,10 +10,7 @@ from dataportal.replay.muxer import MuxerModel
 from dataportal.replay.scalar import ScalarCollection
 import sys
 
-import metadatastore
-
-#metadatastore.conf.mds_config['host'] = 'localhost'
-#metadatastore.conf.mds_config['database'] = 'test'
+import argparse
 
 with enaml.imports():
     from dataportal.replay.replay_view import MainView
@@ -29,6 +26,7 @@ def define_ophyd_params():
     params_dict = {
         'search_tab_index': 1,
         'automatically_update_header': True,
+        'muxer_auto_update': True,
     }
     return params_dict
 
@@ -40,6 +38,8 @@ def create_default_ui(init_params_dict):
     watch_headers_model = WatchForHeadersModel()
     watch_headers_model.auto_update = init_params_dict['automatically_update_header']
 
+    if 'muxer_auto_update' in init_params_dict:
+        muxer_model.auto_updating = init_params_dict['muxer_auto_update']
 
     # set up observers
     muxer_model.observe('data_muxer', scalar_collection.new_data_muxer)
@@ -59,10 +59,18 @@ def create_default_ui(init_params_dict):
                          init_params=init_params_dict)
     return main_view
 
+def define_parser():
+    parser = argparse.ArgumentParser(description='Launch a data viewer')
+    parser.add_argument('--live', action="store_true",
+                        help="Launch Replay configured for viewing live data")
+    return parser
+
 def main():
-    args = sys.argv
+    parser = define_parser()
+    args = parser.parse_args()
+    print('args: {}'.format(args))
     params_dict = define_default_params()
-    if '--ophyd' in args:
+    if args.live:
         params_dict = define_ophyd_params()
     app = QtApplication()
     ui = create_default_ui(params_dict)
