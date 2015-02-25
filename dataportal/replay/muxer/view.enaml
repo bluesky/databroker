@@ -46,6 +46,7 @@ enamldef MuxerController(Container):
         timeout ::
             muxer_model.get_new_data()
     TimerButton: refresh_button:
+        checked := muxer_model.auto_updating
         timer = the_timer
         text = "Automatically update data"
     Container: update_rate:
@@ -56,7 +57,7 @@ enamldef MuxerController(Container):
         SpinBox: update_input:
             minimum = 1000
             maximum = 3600000
-            special_value_text = 'Autotune'
+            #special_value_text = 'Autotune'
             value := muxer_model.update_rate
             suffix = ' ms'
             single_step << value / 100
