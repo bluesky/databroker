@@ -14,6 +14,8 @@ class HandlerBase(object):
     make them usable in context managers by provding stubs of
     ``__enter__``, ``__exit__`` and ``close``
     """
+    specs = set()
+
     def __enter__(self):
         return self
 
