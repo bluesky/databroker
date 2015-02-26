@@ -14,7 +14,7 @@ def _ensure_connection(func):
         database = conf.connection_config['database']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
-        db_connect(db=database, host=host, port=port)
+        db_connect(database=database, host=host, port=port)
         return func(*args, **kwargs)
     return inner
 
