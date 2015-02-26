@@ -1,6 +1,4 @@
 from ..sources.dummy_sources import _channelarchiver as ca
-from ..sources.dummy_sources import _metadatastore as ds
-from ..sources.dummy_sources import _filestore as fs
 from .. import sources
 import unittest
 from datetime import datetime as dt  # noqa
