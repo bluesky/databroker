@@ -9,8 +9,8 @@ import uuid
 import mongoengine
 import mongoengine.connection
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler, deregister_handler, db_disconnect)
-from filestore.odm_templates import ALIAS
+                           register_handler, deregister_handler, db_disconnect,
+                           db_connect)
 from filestore.file_readers import AreaDetectorHDF5Handler
 from numpy.testing import assert_array_equal
 
@@ -21,11 +21,8 @@ conn = None
 
 def setup():
     global conn
-    # make sure nothing is connected
     db_disconnect()
-    # make sure it _is_ connected
-    conn = mongoengine.connect(db_name, host='localhost', alias=ALIAS)
-    print(id(conn.database))
+    db_connect(db_name, 'localhost', 27017)
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
 
@@ -49,16 +46,13 @@ def test_AD_round_trip():
     f.close()
 
     # Insert the data records.
-    print(id(conn.database))
     resource_id = insert_resource('AD_HDF5', filename)
     datum_ids = [str(uuid.uuid4()) for i in range(N)]
     for i, datum_id in enumerate(datum_ids):
         insert_datum(resource_id, datum_id, dict(point_number=i))
-    print(id(conn.database))
 
     # Retrieve the data.
     for i, datum_id in enumerate(datum_ids):
-        print(id(conn.database))
         data = retrieve(datum_id)
         known_data = i * np.ones((2, 2))
         assert_array_equal(data, known_data)

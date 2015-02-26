@@ -10,8 +10,8 @@ import mongoengine.connection
 
 import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler, db_disconnect)
-from filestore.odm_templates import Datum, ALIAS
+                           register_handler, db_disconnect, db_connect)
+from filestore.odm_templates import Datum
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
@@ -23,11 +23,8 @@ conn = None
 
 def setup():
     global conn
-    # make sure nothing is connected
     db_disconnect()
-    # make sure it _is_ connected
-    conn = mongoengine.connect(db_name, host='localhost',
-                        alias=ALIAS)
+    db_connect(db_name, 'localhost', 27017)
 
     # register the dummy handler to use
     register_handler('syn-mod', SynHandlerMod)
