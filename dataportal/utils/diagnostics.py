@@ -2,6 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from collections import OrderedDict
 import importlib
+import sys
 import six
 
 
@@ -25,7 +26,11 @@ def watermark():
         except ImportError:
             result[package_name] = None
         else:
-            version = package.__version__
+            try:
+                version = package.__version__
+            except AttributeError as err:
+                version = "FAILED TO DETECT: {0}".format(err)
+        result[package_name] = version
 
     # enaml provides its version differently
     try:
