@@ -23,27 +23,6 @@ enamldef PlotControls(Container):
     ScrollArea: scroller:
         Container:
             padding = Box(0, 0, 0, 0)
-            Form:
-                row_spacing = 0
-                Label:
-                    text = 'update frequency'
-                FloatField: rate:
-                    value := scalar_collection.redraw_every
-                    minimum = 0.0
-                    #fix_invalid_input = True
-                Label:
-                    text = 'update unit'
-                ComboBox:
-                    items << list(ScalarCollection.redraw_type.items)
-                    selected_item >> scalar_collection.redraw_type
-                    index << ScalarCollection.redraw_type.items.index(
-                        scalar_collection.redraw_type
-                    )
-                Label:
-                    text = 'update rate'
-                Label:
-                    text := scalar_collection.update_rate
-
             GroupBox: plot:
                 title_align = 'center'
                 title = 'Plot'

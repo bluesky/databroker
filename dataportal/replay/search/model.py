@@ -48,8 +48,8 @@ class DisplayHeaderModel(Atom):
     selected : metadatastore.api.Document
     """
     header = Typed(Document)
-    selected_as_dict = Dict()
-    selected_keys = List()
+    header_as_dict = Dict()
+    header_keys = List()
 
     def new_run_header(self, changed):
         """Observer function for a new run header"""
@@ -69,11 +69,11 @@ class DisplayHeaderModel(Atom):
         run_start_keys = key_labels + data_keys
 
         # set the summary dictionary
-        self.selected_as_dict = {}
-        self.selected_as_dict = run_start_dict
+        self.header_as_dict = {}
+        self.header_as_dict = run_start_dict
         # set the keys dictionary
-        self.selected_keys = []
-        self.selected_keys = run_start_keys
+        self.header_keys = []
+        self.header_keys = run_start_keys
 
     def _format_for_enaml(self, event_descriptors):
         """
@@ -141,3 +141,4 @@ class GetLastModel(Atom):
             return
         self.search_info = "Requested: {}. Found: {}".format(
             self.num_to_retrieve, len(self.headers))
+        self.connection_is_active = True

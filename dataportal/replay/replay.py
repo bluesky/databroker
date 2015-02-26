@@ -15,20 +15,35 @@ import argparse
 with enaml.imports():
     from dataportal.replay.replay_view import MainView
 
+
 def define_default_params():
+    """Default replay view. No auto updating of anything
+    """
     params_dict = {
         'search_tab_index': 0,
         'automatically_update_header': False,
     }
     return params_dict
 
+
 def define_live_params():
+    """Stopgap for live data viewing
+    """
     params_dict = {
         'search_tab_index': 1,
         'automatically_update_header': True,
         'muxer_auto_update': True,
     }
     return params_dict
+
+
+def read_from_yaml(fname):
+    """Read Replay parameters from a yaml config
+    """
+    import yaml
+    with open(fname, 'r') as f:
+        return yaml.load(f)
+
 
 def create_default_ui(init_params_dict):
     get_last_model = GetLastModel()
@@ -42,6 +57,8 @@ def create_default_ui(init_params_dict):
         muxer_model.auto_updating = init_params_dict['muxer_auto_update']
 
     # set up observers
+
+
     muxer_model.observe('data_muxer', scalar_collection.new_data_muxer)
     muxer_model.new_data_callbacks.append(scalar_collection.notify_new_data)
 
@@ -63,6 +80,9 @@ def define_parser():
     parser = argparse.ArgumentParser(description='Launch a data viewer')
     parser.add_argument('--live', action="store_true",
                         help="Launch Replay configured for viewing live data")
+    # parser.add_argument('--conf',
+    #                     help="Launch Replay based on configuration from "
+    #                          "specified file")
     return parser
 
 def main():
