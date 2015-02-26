@@ -378,8 +378,8 @@ def find_run_start(limit=50, **kwargs):
     """
     # format time correctly
     time_dict = {}
-    start_time = kwargs.pop('start_time') # defaults to None
-    stop_time = kwargs.pop('stop_time')
+    start_time = kwargs.pop('start_time', None)
+    stop_time = kwargs.pop('stop_time', None)
     if start_time:
         time_dict['$gte'] = start_time
     if stop_time:
