@@ -44,7 +44,7 @@ from itertools import chain, repeat
 import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
-import filestore.file_readers as fs_read
+import filestore.handlers as fs_read
 from filestore.odm_templates import Resource, Datum
 
 import mongoengine

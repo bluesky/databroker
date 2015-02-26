@@ -11,7 +11,7 @@ import mongoengine.connection
 from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler, db_disconnect,
                            db_connect)
-from filestore.file_readers import AreaDetectorHDF5Handler
+from filestore.handlers import AreaDetectorHDF5Handler
 from numpy.testing import assert_array_equal
 
 

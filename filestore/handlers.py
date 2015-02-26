@@ -166,7 +166,7 @@ class NpyHandler(HandlerBase):
     mmap_mode : {'r', 'r+', c}, optional
         memmap mode to use to open file
     """
-    spec = {'npy'} | HandlerBase.spec
+    specs = {'npy'} | HandlerBase.specs
 
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
