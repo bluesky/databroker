@@ -39,7 +39,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 logger = logging.getLogger(__name__)
-import filestore.file_readers as fs_read
+import filestore.handlers as fs_read
 from nose.tools import assert_raises
 import uuid
 
