@@ -3,25 +3,17 @@ import six  # noqa
 import copy
 from collections import defaultdict, Iterable, deque
 from .. import sources
-from metadatastore.api import Document
+from metadatastore.api import (Document, find_last, find_run_start,
+                               find_event_descriptor, find_run_stop,
+                               fetch_events)
+from filestore.api import retrieve
 import os
-# Note: Invoke contents of sources at the func/method level so that it
-# respects runtime switching between real and dummy sources.
-
-
-# These should be specified elsewhere in a way that can be easily updated.
-# This is merely a placeholder, but it can be used with the real
-# channelarchiver as well as the dummy one.
 
 
 class DataBroker(object):
 
     @classmethod
     def __getitem__(cls, key):
-        # Define imports here so that sources can be switched
-        # at run time.
-        find_last = sources.metadatastore.api.find_last
-        find_run_start = sources.metadatastore.api.find_run_start
         if isinstance(key, slice):
             # Slice on recent runs.
             if key.start is not None and key.start > -1:
@@ -81,8 +73,6 @@ class DataBroker(object):
         -------
         data : a flat list of Event objects
         """
-        find_event = sources.metadatastore.api.find_event
-
         if not isinstance(runs, Iterable):
             runs = [runs]
 
@@ -117,7 +107,6 @@ class DataBroker(object):
         data : list
             Header objects
         """
-        find_run_start = sources.metadatastore.api.find_run_start
         run_start = find_run_start(**kwargs)
         for rs in run_start:
             _build_header(rs)
@@ -187,19 +176,17 @@ def fill_event(event):
     """
     Populate events with externally stored data.
     """
-    retrieve_data = sources.filestore.api.retrieve
     is_external = _inspect_descriptor(event.descriptor)
     for data_key, (value, timestamp) in event.data.items():
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key][0] = retrieve_data(value)
+            event.data[data_key][0] = retrieve(value)
 
 
 def _build_header(run_start):
     "Modify a RunStart Document in place into a Header Document."
-    mdsapi = sources.metadatastore.api
-    run_start.event_descriptors = mdsapi.find_event_descriptor(run_start)
-    run_stop = mdsapi.find_run_stop(run_start)
+    run_start.event_descriptors = find_event_descriptor(run_start)
+    run_stop = find_run_stop(run_start)
     # fix the time issue
     adds = {'start_time': (run_start, 'time'),
             'start_datetime': (run_start, 'time_as_datetime')}
