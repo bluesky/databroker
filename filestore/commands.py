@@ -8,13 +8,13 @@ from . import conf
 from functools import wraps
 
 
-def db_connect(func):
+def _ensure_connection(func):
     @wraps(func)
     def inner(*args, **kwargs):
         database = conf.connection_config['database']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
-        connect(db=database, host=host, port=port, alias=ALIAS)
+        db_connect(db=database, host=host, port=port)
         return func(*args, **kwargs)
     return inner
 
@@ -25,8 +25,10 @@ def db_disconnect():
     Resource._collection = None
     ResourceAttributes._collection = None
 
+def db_connect(database, host, port):
+    connect(db=database, host=host, port=port, alias=ALIAS)
 
-@db_connect
+@_ensure_connection
 def insert_resource(spec, resource_path, resource_kwargs=None):
     """
     Parameters
@@ -54,7 +56,7 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
     return resource_object
 
 
-@db_connect
+@_ensure_connection
 def insert_resourse_attributes(resource, shape, dtype, **kwargs):
     """
 
@@ -87,7 +89,7 @@ def insert_resourse_attributes(resource, shape, dtype, **kwargs):
     return resource_attributes
 
 
-@db_connect
+@_ensure_connection
 def insert_datum(resource, datum_id, datum_kwargs=None):
     """
 
@@ -115,7 +117,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
     return datum
 
 
-@db_connect
+@_ensure_connection
 def find_resource_attributes(resource):
     """Return resource_attributes entry given a resource object
 
@@ -134,7 +136,7 @@ def find_resource_attributes(resource):
     return ResourceAttributes.objects(resource=resource.id)
 
 
-@db_connect
+@_ensure_connection
 def retrieve(eid):
     """
     Given a resource identifier return the data.
