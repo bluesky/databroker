@@ -10,7 +10,6 @@ from collections import Iterable
 from datetime import datetime
 import numpy as np
 import pandas as pd
-import mongoengine
 from .. import sources
 from ..sources import channelarchiver as ca
 from ..sources import switch
@@ -24,7 +23,7 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import insert_run_start, insert_beamline_config
-from filestore.api import db_disconnect, ALIAS
+from filestore.api import db_connect, db_disconnect
 logger = logging.getLogger(__name__)
 
 db_name = str(uuid.uuid4())
@@ -35,8 +34,7 @@ blc = None
 def setup():
     global conn
     db_disconnect()
-    conn = mongoengine.connect(db_name, host='localhost',
-                               alias=ALIAS)
+    conn = db_connect(db_name, 'localhost', 27017)
     blc = insert_beamline_config({}, ttime.time())
 
     switch(channelarchiver=False)
