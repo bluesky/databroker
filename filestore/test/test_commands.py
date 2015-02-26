@@ -6,46 +6,39 @@ import numpy as np
 import uuid
 import mongoengine
 import mongoengine.connection
-from nose.tools import make_decorator
-from mongoengine.context_managers import switch_db
+
 
 import filestore.commands as fc
 import filestore.retrieve as fsr
-from filestore.odm_templates import Resource, Datum
+from filestore.odm_templates import Datum, ALIAS
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
 from .t_utils import SynHandlerMod
 
 db_name = str(uuid.uuid4())
-dummy_db_name = str(uuid.uuid4())
+conn = None
 
 
 def setup():
-    # need to make 'default' connection to point to no-where, just to be safe
-    # need this to exist so the context managers work
-    mongoengine.connect(dummy_db_name, 'fs')
+    global conn
+    # make sure nothing is connected
+    fc.db_disconnect()
+    # make sure it _is_ connected
+    conn = mongoengine.connect(db_name, host='localhost',
+                        alias=ALIAS)
 
-    # connect to the db we are actually going to use
-    mongoengine.connect(db_name, alias='test_db')
     # register the dummy handler to use
     fsr.register_handler('syn-mod', SynHandlerMod)
 
 
 def teardown():
-    conn = mongoengine.connection.get_connection('test_db')
-    conn.drop_database(db_name)
-    conn.drop_database(dummy_db_name)
+    fc.db_disconnect()
+    # if we know about a connection, drop the database
+    if conn:
+        conn.drop_database(db_name)
+
     del fsr._h_registry['syn-mod']
-
-
-def context_decorator(func):
-    def inner():
-        with switch_db(Resource, 'test_db'), \
-          switch_db(Datum, 'test_db'):
-            func()
-
-    return make_decorator(func)(inner)
 
 
 def _insert_syn_data(f_type, shape, count):
@@ -59,7 +52,6 @@ def _insert_syn_data(f_type, shape, count):
     return ret
 
 
-@context_decorator
 def test_round_trip():
     shape = (25, 32)
     mod_ids = _insert_syn_data('syn-mod', shape, 10)
@@ -70,6 +62,5 @@ def test_round_trip():
         assert_array_equal(data, known_data)
 
 
-@context_decorator
 def test_non_exist():
     assert_raises(Datum.DoesNotExist, fc.retrieve, 'aardvark')
