@@ -116,7 +116,7 @@ if __name__ == '__main__':
     parser = define_parser()
 
     args = parser.parse_args()
-    sleep_time = args.time
+    sleep_time = float(args.time)
 
     from metadatastore.api import (insert_run_start, insert_run_stop,
                                    insert_beamline_config, find_last)
