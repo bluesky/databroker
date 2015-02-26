@@ -21,6 +21,9 @@ def db_connect(func):
 
 def db_disconnect():
     mongoengine.connection.disconnect(ALIAS)
+    Datum._collection = None
+    Resource._collection = None
+    ResourceAttributes._collection = None
 
 
 @db_connect
