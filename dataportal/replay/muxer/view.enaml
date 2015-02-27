@@ -55,7 +55,7 @@ enamldef MuxerController(Container):
         Label: update_label:
             text = "Update Rate"
         SpinBox: update_input:
-            minimum = 1000
+            minimum = 2000
             maximum = 3600000
             #special_value_text = 'Autotune'
             value := muxer_model.update_rate

@@ -132,7 +132,7 @@ class MuxerModel(Atom):
 
     auto_updating = Bool(False)
 
-    update_rate = Int(1000) # in ms
+    update_rate = Int(2000) # in ms
 
     def __init__(self):
         # initialize everything to be the equivalent of None. It would seem
