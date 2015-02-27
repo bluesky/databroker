@@ -8,7 +8,20 @@ from ..muxer.data_muxer import DataMuxer, BinningError, ColSpec
 from ..sources import switch
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
+from filestore.utils.testing import fs_setup, fs_teardown
+from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore.api import insert_run_start, insert_beamline_config
+import time as ttime
 
+# def setup():
+#     fs_setup()
+#     mds_setup()
+#
+#     blc = insert_beamline_config({}, ttime.time())
+#     rs = insert_run_start(time=float(i), scan_id=i + 1,
+#                           owner=owner, beamline_id='example',
+#                           beamline_config=blc)
+#     temperature_ramp.run()
 
 class TestMuggler(unittest.TestCase):
 
