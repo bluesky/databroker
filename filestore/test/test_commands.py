@@ -10,31 +10,23 @@ import mongoengine.connection
 
 import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler, db_disconnect, db_connect)
+                           register_handler)
 from filestore.odm_templates import Datum
+from filestore.utils.testing import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
 from .t_utils import SynHandlerMod
 
-db_name = str(uuid.uuid4())
-conn = None
-
 
 def setup():
-    global conn
-    db_disconnect()
-    db_connect(db_name, 'localhost', 27017)
-
+    fs_setup()
     # register the dummy handler to use
     register_handler('syn-mod', SynHandlerMod)
 
 
 def teardown():
-    db_disconnect()
-    # if we know about a connection, drop the database
-    if conn:
-        conn.drop_database(db_name)
+    fs_teardown()
 
     del filestore.retrieve._h_registry['syn-mod']
 

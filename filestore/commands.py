@@ -25,8 +25,10 @@ def db_disconnect():
     Resource._collection = None
     ResourceAttributes._collection = None
 
+
 def db_connect(database, host, port):
-    connect(db=database, host=host, port=port, alias=ALIAS)
+    return connect(db=database, host=host, port=port, alias=ALIAS)
+
 
 @_ensure_connection
 def insert_resource(spec, resource_path, resource_kwargs=None):
