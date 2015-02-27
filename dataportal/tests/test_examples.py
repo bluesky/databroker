@@ -29,18 +29,7 @@ def run_example_programmatically(example):
     assert_true(isinstance(events[0], Document))
 
 
-def run_example_from_commandline(example):
-    command = ['python', example.__file__]
-    p = subprocess.Popen(command)
-    return_code = p.wait()
-    assert_equal(return_code, 0)  # successful execution
-
-
 def test_examples_programmatically():
     for example in examples:
         yield run_example_programmatically, example
 
-
-def test_examples_from_commandline():
-    for example in examples:
-        yield run_example_from_commandline, example
