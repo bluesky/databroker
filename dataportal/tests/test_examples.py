@@ -3,8 +3,8 @@ from nose.tools import assert_true, assert_equal
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
 from metadatastore.api import Document
-
-from filestore.api import db_connect, db_disconnect
+from filestore.utils.testing import fs_setup, fs_teardown
+from metadatastore.utils.testing import mds_setup, mds_teardown
 import uuid
 db_name = str(uuid.uuid4())
 conn = None
@@ -13,14 +13,13 @@ examples = [temperature_ramp, multisource_event, image_and_scalar]
 
 
 def setup():
-    global conn
-    db_disconnect()
-    conn = db_connect(db_name, 'localhost', 27017)
+    fs_setup()
+    mds_setup()
 
 
 def teardown():
-    conn.drop_database(db_name)
-    db_disconnect()
+    fs_teardown()
+    mds_teardown()
 
 
 def run_example_programmatically(example):

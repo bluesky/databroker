@@ -23,7 +23,8 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import insert_run_start, insert_beamline_config
-from filestore.api import db_connect, db_disconnect
+from filestore.utils.testing import fs_setup, fs_teardown
+from metadatastore.utils.testing import mds_setup, mds_teardown
 from ..examples.sample_data import temperature_ramp, image_and_scalar
 logger = logging.getLogger(__name__)
 
@@ -33,16 +34,14 @@ blc = None
 
 
 def setup():
-    global conn
-    db_disconnect()
-    conn = db_connect(db_name, 'localhost', 27017)
+    fs_setup()
+    mds_setup()
     blc = insert_beamline_config({}, ttime.time())
 
     switch(channelarchiver=False)
     start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
     simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
     ca.insert_data(simulated_ca_data)
-    blc = insert_beamline_config({}, time=0.)
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
     for owner in owners:
@@ -57,8 +56,8 @@ def setup():
 
 
 def teardown():
-    conn.drop_database(db_name)
-    db_disconnect()
+    fs_teardown()
+    mds_teardown()
 
 
 def test_basic_usage():
