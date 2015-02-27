@@ -1,16 +1,11 @@
-import subprocess
-from nose.tools import assert_true, assert_equal
+from nose.tools import assert_true
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
 from metadatastore.api import Document
 from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
-import uuid
-db_name = str(uuid.uuid4())
-conn = None
-blc = None
-examples = [temperature_ramp, multisource_event, image_and_scalar]
 
+examples = [temperature_ramp, multisource_event, image_and_scalar]
 
 def setup():
     fs_setup()

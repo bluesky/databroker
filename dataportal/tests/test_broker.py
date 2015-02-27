@@ -52,7 +52,9 @@ def setup():
                                   beamline_config=blc)
             # insert some events into mds
             temperature_ramp.run(run_start=rs)
-            image_and_scalar.run(run_start=rs)
+            if i == 0:
+                # only need to do images once, it takes a while...
+                image_and_scalar.run(run_start=rs)
 
 
 def teardown():

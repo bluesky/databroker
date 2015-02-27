@@ -8,118 +8,135 @@ from ..muxer.data_muxer import DataMuxer, BinningError, ColSpec
 from ..sources import switch
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
+from ..broker import DataBroker
 from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.api import insert_run_start, insert_beamline_config
 import time as ttime
+from nose.tools import (assert_equal, assert_raises, assert_true,
+                        assert_false)
 
-# def setup():
-#     fs_setup()
-#     mds_setup()
+def setup():
+    fs_setup()
+    mds_setup()
+
+    blc = insert_beamline_config({}, ttime.time())
+    rs = insert_run_start(time=0.0, scan_id=1, owner='test', beamline_id='test',
+                          beamline_config=blc)
+    temperature_ramp.run(run_start=rs)
+
+def teardown():
+    fs_teardown()
+    mds_teardown()
+
+
+def test_empty_muxer():
+    DataMuxer()
+
+
+def test_attributes():
+    hdr = DataBroker[-1]
+    events = DataBroker.fetch_events(hdr)
+    dm = DataMuxer.from_events(events)
+    # merely testing that basic usage does not error
+    for data_key in dm.sources.keys():
+        getattr(dm, data_key)
+        dm[data_key]
+    properties = ['ncols', '_dataframe', 'col_info_by_ndim', 'sources',
+                  'col_info', '_data', '_time', '_timestamps',
+                  '_timestamps_as_data', '_known_events', '_known_descriptors',
+                  '_stale']
+    for prop in properties:
+        getattr(dm, prop)
+    # dm._dataframe
+    # dm.col_info_by_ndim
+    # dm.col_info
+
+def test_timestamps_as_data():
+    hdr = DataBroker[-1]
+    events = DataBroker.fetch_events(hdr)
+    dm = DataMuxer.from_events(events)
+    data_name = list(dm.sources.keys())
+    for name in data_name:
+        dm.include_timestamp_data(name)
+        assert_true('{}_timestamp'.format(name) in dm._dataframe)
+        dm.remove_timestamp_data(name)
+        assert_false('{}_timestamp'.format(name) in dm._dataframe)
+
+
+
+# class CommonBinningTests(object):
 #
-#     blc = insert_beamline_config({}, ttime.time())
-#     rs = insert_run_start(time=float(i), scan_id=i + 1,
-#                           owner=owner, beamline_id='example',
-#                           beamline_config=blc)
-#     temperature_ramp.run()
-
-class TestMuggler(unittest.TestCase):
-
-    def setUp(self):
-        self.mixed_scalars = temperature_ramp.run()
-
-    def test_empty_muxer(self):
-        DataMuxer()
-
-    def test_attributes(self):
-        dm = DataMuxer.from_events(self.mixed_scalars)
-        # merely testing that basic usage does not error
-        dm._dataframe
-        dm.Tsam
-        dm['Tsam']
-        dm.col_info_by_ndim
-        dm.col_info
-
-    def test_timestamps_as_data(self):
-        dm = DataMuxer.from_events(self.mixed_scalars)
-        dm.include_timestamp_data('Tsam')
-        self.assertTrue('Tsam_timestamp' in dm._dataframe)
-        dm.remove_timestamp_data('Tsam')
-        self.assertFalse('Tsam_timestamp' in dm._dataframe)
-
-
-class CommonBinningTests(object):
-
-    def test_bin_on_sparse(self):
-        "Align a dense column to a sparse column."
-
-        # If downsampling is necessary but there is no rule, fail.
-        bad_binning = lambda: self.dm.bin_on(self.sparse)
-        self.assertRaises(BinningError, bad_binning)
-
-        result = self.dm.bin_on(self.sparse,
-                                agg={self.dense: self.agg})
-        # With downsampling, the result should have as many entires as the
-        # data source being "binned on" (aligned to).
-        actual_len = len(result)
-        expected_len = len(self.dm[self.sparse])
-        self.assertEqual(actual_len, expected_len)
-
-        # There should be stats columns.
-        self.assertTrue('max' in result[self.dense].columns)
-
-    def test_bin_on_dense(self):
-        "Align a sparse column to a dense column"
-
-        # With or without upsampling, the result should have the sample
-        # length as the dense column.
-        expected_len = len(self.dm[self.dense])
-        result1 = self.dm.bin_on(self.dense)
-        actual_len1 = len(result1)
-        self.assertEqual(actual_len1, expected_len)
-        result2 = self.dm.bin_on(self.dense,
-                                 interpolation={self.sparse: self.interp})
-        actual_len2 = len(result2)
-        self.assertEqual(actual_len2, expected_len)
-
-        # If there is an interpolation rule, there should be no missing values
-        # except (perhaps) at the edges outside the domain of the sparse col.
-        first = self.dm[self.sparse].first_valid_index()
-        last = self.dm[self.sparse].last_valid_index()
-        expected_len = 2 + len(self.dm[self.dense].loc[first:last])
-        self.assertLess(result1[self.sparse]['val'].count(), expected_len)
-        self.assertEqual(result2[self.sparse]['val'].count(), expected_len)
-
-        # There should not be stats columns.
-        self.assertFalse('max' in result1[self.dense].columns)
-
-        # The dense column, being binned on, should have no 'count' column.
-        self.assertFalse('count' in result1[self.dense].columns)
-        # But the sparse column should.
-        self.assertTrue('count' in result1[self.sparse].columns)
-
-
-class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
-
-    def setUp(self):
-        self.dm = DataMuxer.from_events(temperature_ramp.run())
-        self.sparse = 'Tsam'
-        self.dense = 'point_det'
-        self.agg = np.mean
-        self.interp = 'linear'
-
-
-class TestBinningMultiSourceEvents(CommonBinningTests, unittest.TestCase):
-
-    def setUp(self):
-        self.dm = DataMuxer.from_events(multisource_event.run())
-        self.sparse = 'Troom'
-        self.dense = 'point_det'
-        self.agg = np.mean
-        self.interp = 'linear'
-
-
-class TestImageAndScalar(unittest.TestCase):
-
-    def setUp(self):
-        self.dm = DataMuxer.from_events(image_and_scalar.run())
+#     def test_bin_on_sparse(self):
+#         "Align a dense column to a sparse column."
+#
+#         # If downsampling is necessary but there is no rule, fail.
+#         bad_binning = lambda: self.dm.bin_on(self.sparse)
+#         self.assertRaises(BinningError, bad_binning)
+#
+#         result = self.dm.bin_on(self.sparse,
+#                                 agg={self.dense: self.agg})
+#         # With downsampling, the result should have as many entires as the
+#         # data source being "binned on" (aligned to).
+#         actual_len = len(result)
+#         expected_len = len(self.dm[self.sparse])
+#         self.assertEqual(actual_len, expected_len)
+#
+#         # There should be stats columns.
+#         self.assertTrue('max' in result[self.dense].columns)
+#
+#     def test_bin_on_dense(self):
+#         "Align a sparse column to a dense column"
+#
+#         # With or without upsampling, the result should have the sample
+#         # length as the dense column.
+#         expected_len = len(self.dm[self.dense])
+#         result1 = self.dm.bin_on(self.dense)
+#         actual_len1 = len(result1)
+#         self.assertEqual(actual_len1, expected_len)
+#         result2 = self.dm.bin_on(self.dense,
+#                                  interpolation={self.sparse: self.interp})
+#         actual_len2 = len(result2)
+#         self.assertEqual(actual_len2, expected_len)
+#
+#         # If there is an interpolation rule, there should be no missing values
+#         # except (perhaps) at the edges outside the domain of the sparse col.
+#         first = self.dm[self.sparse].first_valid_index()
+#         last = self.dm[self.sparse].last_valid_index()
+#         expected_len = 2 + len(self.dm[self.dense].loc[first:last])
+#         self.assertLess(result1[self.sparse]['val'].count(), expected_len)
+#         self.assertEqual(result2[self.sparse]['val'].count(), expected_len)
+#
+#         # There should not be stats columns.
+#         self.assertFalse('max' in result1[self.dense].columns)
+#
+#         # The dense column, being binned on, should have no 'count' column.
+#         self.assertFalse('count' in result1[self.dense].columns)
+#         # But the sparse column should.
+#         self.assertTrue('count' in result1[self.sparse].columns)
+#
+#
+# class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
+#
+#     def setUp(self):
+#         self.dm = DataMuxer.from_events(temperature_ramp.run())
+#         self.sparse = 'Tsam'
+#         self.dense = 'point_det'
+#         self.agg = np.mean
+#         self.interp = 'linear'
+#
+#
+# class TestBinningMultiSourceEvents(CommonBinningTests, unittest.TestCase):
+#
+#     def setUp(self):
+#         self.dm = DataMuxer.from_events(multisource_event.run())
+#         self.sparse = 'Troom'
+#         self.dense = 'point_det'
+#         self.agg = np.mean
+#         self.interp = 'linear'
+#
+#
+# class TestImageAndScalar(unittest.TestCase):
+#
+#     def setUp(self):
+#         self.dm = DataMuxer.from_events(image_and_scalar.run())
