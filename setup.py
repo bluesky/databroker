@@ -17,7 +17,7 @@ from distutils.core import setup
 
 MAJOR = 0
 MINOR = 0
-MICRO = 1
+MICRO = 2
 ISRELEASED = False
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
@@ -28,7 +28,7 @@ print(FULLVERSION)
 
 if not ISRELEASED:
     import subprocess
-    FULLVERSION += '.dev'
+    FULLVERSION += '.post'
     if SNAPSHOT:
         pipe = None
         for cmd in ['git', 'git.cmd']:
@@ -67,6 +67,7 @@ setup(
               'dataportal.examples.sample_data',
               'dataportal.broker', 'dataportal.muxer',
               'dataportal.sources', 'dataportal.sources.dummy_sources',
+              'dataportal.utils',
               'dataportal.replay', 'dataportal.replay.muxer',
               'dataportal.replay.scalar', 'dataportal.replay.search',
               ],

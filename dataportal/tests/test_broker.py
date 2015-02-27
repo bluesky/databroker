@@ -5,7 +5,6 @@ import six
 import uuid
 import logging
 import time as ttime
-import mongoengine
 import logging
 from collections import Iterable
 from datetime import datetime
@@ -15,8 +14,6 @@ from .. import sources
 from ..sources import channelarchiver as ca
 from ..sources import switch
 from ..broker import DataBroker as db
-import mongoengine.connection
-from mongoengine.context_managers import switch_db
 
 from nose.tools import make_decorator
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -25,33 +22,26 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
-import metadatastore.commands as mdsc
+from metadatastore.api import insert_run_start, insert_beamline_config
+from filestore.api import db_connect, db_disconnect
 logger = logging.getLogger(__name__)
 
 db_name = str(uuid.uuid4())
-dummy_db_name = str(uuid.uuid4())
+conn = None
 blc = None
 
 
 def setup():
-    global blc
-    logger.debug('setting up')
-    # need to make 'default' connection to point to no-where, just to be safe
-    mongoengine.connection.disconnect()
-    mongoengine.connect(dummy_db_name)
-    mongoengine.connection.disconnect(alias='test_db')  # whaaaat
-    # connect to the db we are actually going to use
-    mongoengine.connect(db_name, alias='test_db')
-    blc = mdsc.insert_beamline_config({}, ttime.time())
+    global conn
+    db_disconnect()
+    conn = db_connect(db_name, 'localhost', 27017)
+    blc = insert_beamline_config({}, ttime.time())
 
-    switch(channelarchiver=False, metadatastore=True, filestore=True)
+    switch(channelarchiver=False)
     start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
     simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
     ca.insert_data(simulated_ca_data)
     
-    # Make some well-controlled test entries.
-    insert_run_start = sources.metadatastore.api.insert_run_start
-    insert_beamline_config = sources.metadatastore.api.insert_beamline_config
     for i in range(5):
         insert_run_start(time=float(i), scan_id=i + 1,
                          owner='docbrown', beamline_id='example',
@@ -63,11 +53,10 @@ def setup():
 
 
 def teardown():
-    logger.debug('tearing down')
-    conn = mongoengine.connection.get_connection('test_db')
-    conn.drop_database(db_name)
-    conn.drop_database(dummy_db_name)
-    switch(channelarchiver=True, metadatastore=True, filestore=True)
+    db_disconnect()
+    if conn:
+        conn.drop_database(db_name)
+
 
 
 def test_basic_usage():
@@ -90,7 +79,7 @@ def test_indexing():
     scan_id = header.scan_id
     assert_equal(scan_id, 4)
 
-    f = lambda: db[-13]
+    f = lambda: db[-100000]
     assert_raises(IndexError, f)
 
     headers = db[-5:]

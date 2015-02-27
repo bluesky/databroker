@@ -89,22 +89,29 @@ class MuxerModel(Atom):
     volume_columns : atom.list.List
         The list of column names whos cells contain 3-D arrays
 
-    scalar_columns_visible: atom.scalars.Bool
+    scalar_columns_visible : atom.scalars.Bool
         Instructs the GUI to show/hide the scalar info
-    line_columns_visible: atom.scalars.Bool
+    line_columns_visible : atom.scalars.Bool
         Instructs the GUI to show/hide the line info
-    image_columns_visible: atom.scalars.Bool
+    image_columns_visible : atom.scalars.Bool
         Instructs the GUI to show/hide the image info
-    volume_columns_visible: atom.scalars.Bool
+    volume_columns_visible : atom.scalars.Bool
         Instructs the GUI to show/hide the volume info
 
     info : atom.scalars.Str
         A short string describing the `data_muxer` attribute of the Atom
         MuxerModel
 
-    new_data_callbacks: atom.list.List
+    new_data_callbacks : atom.list.List
         List of callbacks that care when the data_muxer gets new data.
         Callback functions should expect no information to be passed.
+
+    auto_updating : atom.Bool
+        Is the databroker going to be regularly asked for data?
+        True -> yes. False -> no
+
+    update_rate : atom.Int
+        The rate at which the databroker will be asked for new data
     """
     column_models = Dict()
     scalar_columns = List(item=ColumnModel)
@@ -118,10 +125,12 @@ class MuxerModel(Atom):
     volume_columns_visible = Bool(False)
 
     data_muxer = Typed(DataMuxer)
-    run_header = Typed(Document)
+    header = Typed(Document)
     info = Str()
 
     new_data_callbacks = List()
+
+    auto_updating = Bool(False)
 
     update_rate = Int(1000) # in ms
 
@@ -136,24 +145,29 @@ class MuxerModel(Atom):
             self.image_columns = []
             self.volume_columns = []
             self.data_muxer = None
-            self.run_header = None
+            self.header = None
             self.info = 'No run header received yet'
             self.new_data_callbacks = []
 
-    @observe('run_header')
+    @observe('header')
     def run_header_changed(self, changed):
         print('Run header has been changed, creating a new data_muxer')
-        self.info = 'Run {}'.format(self.run_header.scan_id)
+        self.info = 'Run {}'.format(self.header.scan_id)
         with self.suppress_notifications():
             self.data_muxer = None
         self.get_new_data()
+
+    def new_run_header(self, changed):
+        """Observer function for the `header` attribute of the SearchModels
+        """
+        self.header = changed['value']
 
     def get_new_data(self):
         """Hit the dataportal to first see if there is new data and, if so,
         grab it
         """
         print('getting new data from the data broker')
-        events = get_events(self.run_header)
+        events = get_events(self.header)
         if self.data_muxer is None:
             # this will automatically trigger the key updating
             self.data_muxer = DataMuxer.from_events(events)

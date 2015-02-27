@@ -3,7 +3,7 @@ import uuid
 import time as ttime
 import numpy as np
 from metadatastore.api import insert_event, insert_event_descriptor
-from filestore.api.analysis import save_ndarray
+from filestore.file_writers import save_ndarray
 from dataportal.broker.simple_broker import fill_event
 from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data.common import example, noisy
