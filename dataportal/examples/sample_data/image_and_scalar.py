@@ -7,7 +7,8 @@ from filestore.file_writers import save_ndarray
 from dataportal.broker.simple_broker import fill_event
 from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data.common import example, noisy
-
+import argparse
+import sys
 
 # This section sets up what the simulated images will look like.
 
@@ -104,5 +105,35 @@ def run(run_start=None, sleep=0):
     return events
 
 
+
+def define_parser():
+    parser = argparse.ArgumentParser(description='Launch a data viewer')
+    parser.add_argument('time', nargs='?', default=0,
+                        help="Sleep duration between scan steps")
+    return parser
+
 if __name__ == '__main__':
-    run(sleep=0.1)
+    parser = define_parser()
+
+    args = parser.parse_args()
+    sleep_time = float(args.time)
+
+    from metadatastore.api import (insert_run_start, insert_run_stop,
+                                   insert_beamline_config, find_last)
+    b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
+                                      time=0)
+    try:
+        last_start_event = find_last()[0]
+        scan_id = int(last_start_event.scan_id)+1
+    except IndexError:
+        scan_id = 1
+    scan_id = str(scan_id)
+    custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
+              'moon': 'full'}
+    # insert the run start
+    run_start = insert_run_start(scan_id=scan_id, time=0.0, beamline_id='csx',
+                                 beamline_config=b_config, custom=custom)
+    events = run(run_start=run_start, sleep=sleep_time)
+    run_stop = insert_run_stop(run_start=run_start, time=events[-1].time+1,
+                               reason='run completed', exit_status='success',
+                               uid=str(uuid.uuid4()))
