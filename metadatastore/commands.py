@@ -396,7 +396,7 @@ def find_beamline_config(**kwargs):
 
 
 @_ensure_connection
-def find_run_stop(run_start):
+def find_run_stop(**kwargs):
     """Return a run_stop object given a run_start document
 
     Parameters
@@ -410,7 +410,13 @@ def find_run_stop(run_start):
         The run stop object containing the `exit_status` enum, the `time` the
         run ended and the `reason` the run ended.
     """
-    run_stop = RunStop.objects(run_start=run_start.id).order_by('-_id')
+    query_dict = dict()
+    try:
+        query_dict['run_start_id'] = kwargs.pop('run_start').id
+    except KeyError:
+        pass
+    query_dict.update(kwargs)
+    run_stop = RunStop.objects(__raw__=query_dict).order_by('-_id')
     try:
         run_stop = run_stop[0]
     except IndexError:
