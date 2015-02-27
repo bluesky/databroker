@@ -65,8 +65,8 @@ def format_data_keys(data_key_dict):
     """
     data_key_dict = {key_name: (
                      DataKey(**data_key_description) if
-                           not isinstance(data_key_description, DataKey) else
-                           data_key_description)
+                     not isinstance(data_key_description, DataKey) else
+                     data_key_description)
                      for key_name, data_key_description
                      in six.iteritems(data_key_dict)}
     return data_key_dict
@@ -273,8 +273,6 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     if uid is None:
         uid = str(uuid.uuid4())
 
-    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
-    # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
@@ -315,6 +313,7 @@ def __add_event_descriptors(run_start_list):
 
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
+
 
 @_ensure_connection
 def find_run_start(limit=50, **kwargs):
@@ -377,21 +376,24 @@ def find_run_start(limit=50, **kwargs):
     # transform the mongo objects into safe, whitebread python objects
     return [__as_document(bre) for bre in br_objects]
 
+
 @_ensure_connection
-def find_beamline_config(_id):
+def find_beamline_config(**kwargs):
     """Return beamline config objects given a unique mongo _id
 
     Parameters
     ----------
-    _id: bson.ObjectId
-
+    kwargs: dict
+        Any Mongo query on beamline config can be represented
+        as a dict and submitted
     Returns
     -------
     beamline_config : metadatastore.document.Document
         The beamline config object
     """
-    beamline_config = BeamlineConfig.objects(id=_id).order_by('-_id')
+    beamline_config = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
     return __as_document(beamline_config)
+
 
 @_ensure_connection
 def find_run_stop(run_start):
@@ -415,6 +417,7 @@ def find_run_stop(run_start):
         return None
     return __as_document(run_stop)
 
+
 @_ensure_connection
 def find_event_descriptor(run_start):
     """Return beamline config objects given a unique mongo id
@@ -435,6 +438,7 @@ def find_event_descriptor(run_start):
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
     return [__as_document(evd) for evd in event_descriptor_list]
+
 
 @_ensure_connection
 def fetch_events(limit=1000, **kwargs):
@@ -478,6 +482,7 @@ def fetch_events(limit=1000, **kwargs):
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
     return [__as_document(res) for res in result]
 
+
 @_ensure_connection
 def find_event(run_start):
     """Returns a set of events given a RunStart object
@@ -501,6 +506,7 @@ def find_event(run_start):
               for descriptor in descriptors]
     return events
 
+
 @_ensure_connection
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
@@ -523,6 +529,7 @@ def find_event_given_descriptor(event_descriptor):
         event_list.append(event)
 
     return [__as_document(ev) for ev in event_list]
+
 
 @_ensure_connection
 def find(data=True, limit=50, **kwargs):
@@ -563,6 +570,7 @@ def find(data=True, limit=50, **kwargs):
                 br.events = find_event(br)
                 result.append(br)
     return br_objects
+
 
 @_ensure_connection
 def find_last(num=1):
