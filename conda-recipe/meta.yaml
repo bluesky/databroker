@@ -33,3 +33,4 @@ test:
     - metadatastore.conf
     - metadatastore.odm_templates
     - metadatastore.document
+    - metadatastore.utils
