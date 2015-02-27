@@ -73,7 +73,7 @@ setup(
     author_email=None,
     license="BSD (3-clause)",
     url = "https://github.com/NSLS-II/metadatastore",
-    packages=['metadatastore', 'metadatastore.test'],
+    packages=['metadatastore', 'metadatastore.test', 'metadatastore.utils'],
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: EPICS License",

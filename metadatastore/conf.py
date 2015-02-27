@@ -7,14 +7,14 @@ filename = os.path.join(os.path.expanduser('~'), '.config', 'metadatastore',
                         'connection.yml')
 if os.path.isfile(filename):
     with open(filename) as f:
-        mds_config = yaml.load(f)
+        connection_config = yaml.load(f)
     logger.debug("Using db connection specified in config file. \n%r",
-                 mds_config)
+                 connection_config)
 else:
-    mds_config = {
+    connection_config = {
         'database': 'test',
         'host': "localhost",
         'port': 27017,
         }
     logger.debug("Using default db connection. \n%r",
-                 mds_config)
+                 connection_config)
