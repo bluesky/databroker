@@ -46,6 +46,8 @@ class DataBroker(object):
                         "There are only {0} runs.".format(len(result)))
                 result = result[-1]
                 _build_header(result)
+        elif isinstance(key, Iterable):
+            return [cls.__getitem__(k) for k in key]
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
