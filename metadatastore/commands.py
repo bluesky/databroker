@@ -7,12 +7,34 @@ from .odm_templates import (RunStart, BeamlineConfig, RunStop,
 from .document import Document
 import datetime
 import logging
-import metadatastore
+from metadatastore import conf
 from mongoengine import connect
 import mongoengine.connection
 import uuid
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_connection(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        database = conf.connection_config['database']
+        host = conf.connection_config['host']
+        port = conf.connection_config['port']
+        db_connect(database=database, host=host, port=port)
+        return func(*args, **kwargs)
+    return inner
+
+
+def db_disconnect():
+    mongoengine.connection.disconnect(ALIAS)
+    for collection in [RunStart, BeamlineConfig, RunStop, EventDescriptor,
+                       Event, DataKey]:
+        collection._collection = None
+
+
+def db_connect(database, host, port):
+    return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
 def format_data_keys(data_key_dict):
@@ -80,47 +102,9 @@ def format_events(event_dict):
             for key, data_dict in six.iteritems(event_dict)}
 
 
-def db_connect(func):
-    @wraps(func)
-    def inner(*args, **kwargs):
-        database = metadatastore.conf.mds_config['database']
-        host = metadatastore.conf.mds_config['host']
-        port = metadatastore.conf.mds_config['port']
-        connect(db=database, host=host, port=port, alias=ALIAS)
-        return func(*args, **kwargs)
-    return inner
-
-
-def disconnect():
-    """
-    Disconnect from the data base.  The next time that a db operation
-    is called, the new connection will reflect the current state of
-    the configuration dict in `metadatastore.conf.mds_config`
-    """
-    mongoengine.connection.disconnect(ALIAS)
-
-
-def update_configuration(database=None, host=None, port=None):
-    """
-    Update the configuration (database, host, port) associated with
-    the documents in this package.
-
-    Parameters
-    ----------
-    database : string
-        The name of the data base to use.
-    """
-    conf = metadatastore.conf.mds_config
-    for key, val in zip(['database', 'host', 'port'],
-                        [database, host, port]):
-        if val:
-            conf[key] = val
-    disconnect()
-
-
 # database INSERTION ###################################################
 
-@db_connect
+@_ensure_connection
 def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
                      scan_id=None, custom=None, uid=None):
     """ Provide a head for a sequence of events. Entry point for an
@@ -167,7 +151,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
     return run_start
 
 
-@db_connect
+@_ensure_connection
 def insert_run_stop(run_start, time, exit_status='success',
                     reason=None, uid=None):
     """ Provide an end to a sequence of events. Exit point for an
@@ -199,7 +183,7 @@ def insert_run_stop(run_start, time, exit_status='success',
     return run_stop
 
 
-@db_connect
+@_ensure_connection
 def insert_beamline_config(config_params, time, uid=None):
     """ Create a beamline_config  in metadatastore database backend
 
@@ -224,7 +208,7 @@ def insert_beamline_config(config_params, time, uid=None):
     return beamline_config
 
 
-@db_connect
+@_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid=None):
     """ Create an event_descriptor in metadatastore database backend
 
@@ -261,7 +245,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
     return event_descriptor
 
 
-@db_connect
+@_ensure_connection
 def insert_event(event_descriptor, time, data, seq_num, uid=None):
     """Create an event in metadatastore database backend
 
@@ -332,7 +316,7 @@ def __add_event_descriptors(run_start_list):
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
 
-@db_connect
+@_ensure_connection
 def find_run_start(limit=50, **kwargs):
     """ Given search criteria, locate the RunStart object
 
@@ -393,7 +377,7 @@ def find_run_start(limit=50, **kwargs):
     # transform the mongo objects into safe, whitebread python objects
     return [__as_document(bre) for bre in br_objects]
 
-@db_connect
+@_ensure_connection
 def find_beamline_config(_id):
     """Return beamline config objects given a unique mongo _id
 
@@ -409,7 +393,7 @@ def find_beamline_config(_id):
     beamline_config = BeamlineConfig.objects(id=_id).order_by('-_id')
     return __as_document(beamline_config)
 
-@db_connect
+@_ensure_connection
 def find_run_stop(run_start):
     """Return a run_stop object given a run_start document
 
@@ -431,7 +415,7 @@ def find_run_stop(run_start):
         return None
     return __as_document(run_stop)
 
-@db_connect
+@_ensure_connection
 def find_event_descriptor(run_start):
     """Return beamline config objects given a unique mongo id
 
@@ -452,7 +436,7 @@ def find_event_descriptor(run_start):
         event_descriptor_list.append(event_descriptor)
     return [__as_document(evd) for evd in event_descriptor_list]
 
-@db_connect
+@_ensure_connection
 def fetch_events(limit=1000, **kwargs):
     """
 
@@ -494,7 +478,7 @@ def fetch_events(limit=1000, **kwargs):
     result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
     return [__as_document(res) for res in result]
 
-@db_connect
+@_ensure_connection
 def find_event(run_start):
     """Returns a set of events given a RunStart object
 
@@ -517,7 +501,7 @@ def find_event(run_start):
               for descriptor in descriptors]
     return events
 
-@db_connect
+@_ensure_connection
 def find_event_given_descriptor(event_descriptor):
     """Return all Event(s) associated with an EventDescriptor
 
@@ -540,7 +524,7 @@ def find_event_given_descriptor(event_descriptor):
 
     return [__as_document(ev) for ev in event_list]
 
-@db_connect
+@_ensure_connection
 def find(data=True, limit=50, **kwargs):
     """
     Returns dictionary of objects
@@ -580,7 +564,7 @@ def find(data=True, limit=50, **kwargs):
                 result.append(br)
     return br_objects
 
-@db_connect
+@_ensure_connection
 def find_last(num=1):
     """Indexed on ObjectId NOT stop_time.
 
