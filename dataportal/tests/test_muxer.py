@@ -65,6 +65,22 @@ def test_timestamps_as_data():
         assert_false('{}_timestamp'.format(name) in dm._dataframe)
 
 
+def run_colspec_programmatically(name, ndim, shape, upsample, downsample):
+    ColSpec(name, ndim, shape, upsample, downsample)
+
+def test_colspec():
+    name = [1, 'name', '', 1.0, range(5), {'a': 5}, [1, 'name']]
+    ndim = range(0, 5)
+    shape = [None, tuple([1]), (1, 2), (1, 2, 3)]
+    upsample = ColSpec.upsampling_methods
+    downsample = ColSpec.downsampling_methods
+    for n in name:
+        for dim in ndim:
+            for s in shape:
+                for up in upsample:
+                    for down in downsample:
+                        yield run_colspec_programmatically, n, dim, s, up, down
+
 
 class CommonBinningTests(object):
 
