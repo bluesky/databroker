@@ -1,8 +1,6 @@
 #
 # files.py (c) Stuart B. Wilkins 2010
 #
-# $Id: files.py 229 2012-01-29 21:52:35Z stuwilkins $
-# $HeadURL: https://pyspec.svn.sourceforge.net/svnroot/pyspec/trunk/pyspec/ccd/files.py $
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -22,28 +20,12 @@
 
 import numpy
 import time
-import struct
+from pims.base_frames import FramesSequence
 
-from scipy import *
-from pylab import *
-
-
-__version__   = "$Revision: 229 $"
-__author__    = "Stuart B. Wilkins <stuwilkins@mac.com>"
-__date__      = "$LastChangedDate: 2012-01-29 16:52:35 -0500 (Sun, 29 Jan 2012) $"
-__id__        = "$Id: files.py 229 2012-01-29 21:52:35Z stuwilkins $"
-
-def LCLSdataformat(iname, dataFormat = "142500f"):
-    """function to read LCLS data.  no headers in this"""
-    print 'current image', iname
-    FH = open(iname, "rb")
-    data = numpy.array(struct.unpack(dataFormat, FH.read()))
-    FH.close()
-    return data
+__author__ = "Stuart B. Wilkins <stuwilkins@mac.com>"
 
 
-
-class PrincetonSPEFile():
+class PrincetonSPEFile(FramesSequence):
     """Class to read SPE files from Princeton CCD cameras"""
 
     TEXTCOMMENTMAX = 80
@@ -52,7 +34,7 @@ class PrincetonSPEFile():
     DATEMAX = 10
     TIMEMAX = 7
 
-    def __init__(self, fname = None, fid = None):
+    def __init__(self, fname):
         """Initialize class.
         Parameters:
            fname = Filename of SPE file
@@ -61,20 +43,17 @@ class PrincetonSPEFile():
         This function initializes the class and, if either a filename or fid is
         provided opens the datafile and reads the contents"""
 
-        self._fid = None
-        self.fname = fname
-        if fname is not None:
-            self.openFile(fname)
-        elif fid is not None:
-            self._fid = fid
-
-        if self._fid:
-            self.readData()
+        self.__array = None
+        self._fname = fname
+        self._fid = open(fname, "rb")
+        # TODO refactor this a bit to clean up the __init__
+        # take make it clear what attributes this class has
+        self.readData()
 
     def __str__(self):
         """Provide a text representation of the file."""
-        s =  "Filename      : %s\n" % self.fname
-        s += "Data size     : %d x %d x %d\n" % (self._size[::-1])
+        s = "Filename      : %s\n" % self._fname
+        s += "Data size     : %d x %d x %d\n" % (self._shape[::-1])
         s += "CCD Chip Size : %d x %d\n" % self._chipSize[::-1]
         s += "File date     : %s\n" % time.asctime(self._filedate)
         s += "Exposure Time : %f\n" % self.Exposure
@@ -82,7 +61,7 @@ class PrincetonSPEFile():
         s += "Num ROI Exp   : %d\n" % self.NumROIExperiment
         s += "Contoller Ver.: %d\n" % self.ControllerVersion
         s += "Logic Output  : %d\n" % self.LogicOutput
-        #self.AppHiCapLowNoise = self._readInt(4)
+        # self.AppHiCapLowNoise = self._readInt(4)
         s += "Timing Mode   : %d\n" % self.TimingMode
         s += "Det. Temp     : %d\n" % self.DetTemperature
         s += "Det. Type     : %d\n" % self.DetectorType
@@ -106,8 +85,8 @@ class PrincetonSPEFile():
 
         i = 0
         for roi in self.allROI:
-            s += "ROI %-4d      : %-5d %-5d %-5d %-5d %-5d %-5d\n" % (i,roi[0], roi[1], roi[2],
-                                                                  roi[3], roi[4], roi[5])
+            s += "ROI %-4d      : %-5d %-5d %-5d %-5d %-5d %-5d\n" % (
+                i, roi[0], roi[1], roi[2], roi[3], roi[4], roi[5])
             i += 1
 
         s += "\nComments :\n"
@@ -119,11 +98,33 @@ class PrincetonSPEFile():
             s += "\n"
         return s
 
-    def __getitem__(self, n):
+    def get_frame(self, n):
         """Return the array with zdimension n
 
         This method can be used to quickly obtain a 2-D array of the data"""
         return self._array[n]
+
+    def __len__(self):
+        return self._shape[0]
+
+    @property
+    def _array(self):
+        if self.__array is not None:
+            self.readData()
+        return self.__array
+
+    @property
+    def frame_shape(self):
+        return self._shape[1:]
+
+    @property
+    def pixel_type(self):
+        return self._array.dtype
+
+    @classmethod
+    def class_exts(cls):
+        bc = super(PrincetonSPEFile, cls).class_ext()
+        return bc | {'spe'}
 
     def getData(self):
         """Return the array of data"""
@@ -142,22 +143,19 @@ class PrincetonSPEFile():
         self._readDate()
         self._readArray()
 
-    def openFile(self, fname):
-        """Open a SPE file"""
-        self._fname = fname
-        self._fid = open(fname, "rb")
-
     def getSize(self):
         """Return a tuple of the size of the data array"""
-        return self._size
+        return self._shape
+
     def getChipSize(self):
         """Return a tuple of the size of the CCD chip"""
         return self._chipSize
+
     def getVirtualChipSize(self):
         """Return the virtual chip size"""
         return self._vChipSize
 
-    def getComment(self, n = None):
+    def getComment(self, n=None):
         """Return the comments in the data file
 
         If n is not provided then all the comments are returned as a list of
@@ -174,7 +172,7 @@ class PrincetonSPEFile():
 
     def _readAtString(self, pos, size):
         self._fid.seek(pos)
-        return self._fid.read(size).rstrip(chr(0))
+        return self._fid.read(size).decode('ascii').rstrip(chr(0))
 
     def _readInt(self, pos):
         return self._readAtNumpy(pos, 1, numpy.int16)[0]
@@ -210,7 +208,7 @@ class PrincetonSPEFile():
         self.GeometricOps = self._readInt(600)
 
     def _readAllROI(self):
-        self.allROI = self._readAtNumpy(1512, 60, numpy.int16).reshape(-1,6)
+        self.allROI = self._readAtNumpy(1512, 60, numpy.int16).reshape(-1, 6)
         self.NumROI = self._readAtNumpy(1510, 1, numpy.int16)[0]
         self.NumROIExperiment = self._readAtNumpy(1488, 1, numpy.int16)[0]
         if self.NumROI == 0:
@@ -236,7 +234,7 @@ class PrincetonSPEFile():
         if (dt > 3) or (dt < 0):
             raise Exception("Unknown data type")
         self._dataType = data_types[dt]
-        self._size = (zdim, ydim, xdim)
+        self._shape = (zdim, ydim, xdim)
         self._chipSize = (dydim, dxdim)
         self._vChipSize = (vydim, vxdim)
 
@@ -244,15 +242,10 @@ class PrincetonSPEFile():
         self._comments = []
         for n in range(5):
             self._comments.append(
-                self._readAtString(200 + (n * self.TEXTCOMMENTMAX), self.TEXTCOMMENTMAX))
+                self._readAtString(200 + (n * self.TEXTCOMMENTMAX),
+                                   self.TEXTCOMMENTMAX))
 
     def _readArray(self):
         self._fid.seek(self.DATASTART)
-        self._array = numpy.fromfile(self._fid, dtype = self._dataType, count = -1)
-        self._array = self._array.reshape(self._size)
-
-
-if __name__ == "__main__":
-    # Run a test
-    data = PrincetonSPEFile("../../tests/testimage.spe")
-    print data
+        in_array = numpy.fromfile(self._fid, dtype=self._dataType, count=-1)
+        self.__array = in_array.reshape(self._shape)
