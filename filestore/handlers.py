@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from .retrieve import HandlerBase
+from .readers.spe import PrincetonSPEFile
 
 import six
 import logging
@@ -9,6 +10,17 @@ import numpy as np
 import os.path
 
 logger = logging.getLogger(__name__)
+
+
+class SPESingleFrameHandler(HandlerBase):
+    def __init__(self, filename):
+        self._fpath = filename
+        self._dd = None
+
+    def __call__(self):
+        if self._dd is None:
+            self._dd = PrincetonSPEFile(self._fpath)
+        return self._dd[0]
 
 
 class _HDF5HandlerBase(HandlerBase):
