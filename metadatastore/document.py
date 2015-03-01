@@ -1,6 +1,44 @@
+import six
 import mongoengine
+from mongoengine.base.datastructures import BaseDict, BaseList
+from bson.objectid import ObjectId
 from datetime import datetime
 from itertools import chain
+
+
+def _normalize(in_val):
+    """
+    Helper function for cleaning up the mongoegine documents to be safe.
+
+    Converts Mongoengine.Document to mds.Document objects recursively
+
+    Converts:
+
+     -  mongoengine.base.datastructures.BaseDict -> dict
+     -  mongoengine.base.datastructures.BaseList -> list
+     -  ObjectID -> str
+
+    Parameters
+    ----------
+    in_val : object
+        Object to be sanitized
+
+    Returns
+    -------
+    ret : object
+        The 'sanitized' object
+
+    """
+    if isinstance(in_val, mongoengine.Document):
+        return Document(in_val)
+    elif isinstance(in_val, BaseDict):
+        return {_normalize(k): _normalize(v) for k, v in six.iteritems(in_val)}
+    elif isinstance(in_val, BaseList):
+        return [_normalize(v) for v in in_val]
+    elif isinstance(in_val, ObjectId):
+        return str(in_val)
+    return in_val
+
 
 class Document(object):
     """
@@ -18,13 +56,13 @@ class Document(object):
                            mongo_document._data.keys()))
         for field in fields:
             attr = getattr(mongo_document, field)
-            if isinstance(attr, mongoengine.Document):
-                attr = Document(attr)
+
+            attr = _normalize(attr)
+
             setattr(self, field, attr)
             # For debugging, add a human-friendly time_as_datetime attribute.
             if hasattr(self, 'time'):
                 self.time_as_datetime = datetime.fromtimestamp(self.time)
-
 
     def __repr__(self):
         return "<{0} Document>".format(self._name)
