@@ -43,12 +43,10 @@ class PrincetonSPEFile(FramesSequence):
         This function initializes the class and, if either a filename or fid is
         provided opens the datafile and reads the contents"""
 
-        self.__array = None
+        self._array = None
         self._fname = fname
-        self._fid = open(fname, "rb")
-        # TODO refactor this a bit to clean up the __init__
-        # take make it clear what attributes this class has
-        self.readData()
+        with open(fname, "rb") as fid:
+            self.readData(fid)
 
     def __str__(self):
         """Provide a text representation of the file."""
@@ -108,12 +106,6 @@ class PrincetonSPEFile(FramesSequence):
         return self._shape[0]
 
     @property
-    def _array(self):
-        if self.__array is not None:
-            self.readData()
-        return self.__array
-
-    @property
     def frame_shape(self):
         return self._shape[1:]
 
@@ -134,14 +126,14 @@ class PrincetonSPEFile(FramesSequence):
         """Return the binned (sum of all frames) data"""
         return self._array.sum(0)
 
-    def readData(self):
+    def readData(self, fid):
         """Read all the data into the class"""
-        self._readHeader()
-        self._readSize()
-        self._readComments()
-        self._readAllROI()
-        self._readDate()
-        self._readArray()
+        self._readHeader(fid)
+        self._readSize(fid)
+        self._readComments(fid)
+        self._readAllROI(fid)
+        self._readDate(fid)
+        self._readArray(fid)
 
     def getSize(self):
         """Return a tuple of the size of the data array"""
@@ -166,70 +158,71 @@ class PrincetonSPEFile(FramesSequence):
         else:
             return self._comments[n]
 
-    def _readAtNumpy(self, pos, size, ntype):
-        self._fid.seek(pos)
-        return numpy.fromfile(self._fid, ntype, size)
+    def _readAtNumpy(self, fid, pos, size, ntype):
+        fid.seek(pos)
+        return numpy.fromfile(fid, ntype, size)
 
-    def _readAtString(self, pos, size):
-        self._fid.seek(pos)
-        return self._fid.read(size).decode('ascii').rstrip(chr(0))
+    def _readAtString(self, fid, pos, size):
+        fid.seek(pos)
+        return fid.read(size).decode('ascii').rstrip(chr(0))
 
-    def _readInt(self, pos):
-        return self._readAtNumpy(pos, 1, numpy.int16)[0]
+    def _readInt(self, fid, pos):
+        return self._readAtNumpy(fid, pos, 1, numpy.int16)[0]
 
-    def _readFloat(self, pos):
-        return self._readAtNumpy(pos, 1, numpy.float32)[0]
+    def _readFloat(self, fid, pos):
+        return self._readAtNumpy(fid, pos, 1, numpy.float32)[0]
 
-    def _readHeader(self):
+    def _readHeader(self, fid):
         """This routine contains all other information"""
-        self.ControllerVersion = self._readInt(0)
-        self.LogicOutput = self._readInt(2)
-        self.AppHiCapLowNoise = self._readInt(4)
-        self.TimingMode = self._readInt(8)
-        self.Exposure = self._readFloat(10)
-        self.DetTemperature = self._readFloat(36)
-        self.DetectorType = self._readInt(40)
-        self.TriggerDiode = self._readInt(44)
-        self.DelayTime = self._readFloat(46)
-        self.ShutterControl = self._readInt(50)
-        self.AbsorbLive = self._readInt(52)
-        self.AbsorbMode = self._readInt(54)
-        self.CanDoVirtualChip = self._readInt(56)
-        self.ThresholdMinLive = self._readInt(58)
-        self.ThresholdMin = self._readFloat(60)
-        self.ThresholdMaxLive = self._readInt(64)
-        self.ThresholdMax = self._readFloat(66)
-        self.ADCOffset = self._readInt(188)
-        self.ADCRate = self._readInt(190)
-        self.ADCType = self._readInt(192)
-        self.ADCRes = self._readInt(194)
-        self.ADCBitAdj = self._readInt(196)
-        self.Gain = self._readInt(198)
-        self.GeometricOps = self._readInt(600)
+        self.ControllerVersion = self._readInt(fid, 0)
+        self.LogicOutput = self._readInt(fid, 2)
+        self.AppHiCapLowNoise = self._readInt(fid, 4)
+        self.TimingMode = self._readInt(fid, 8)
+        self.Exposure = self._readFloat(fid, 10)
+        self.DetTemperature = self._readFloat(fid, 36)
+        self.DetectorType = self._readInt(fid, 40)
+        self.TriggerDiode = self._readInt(fid, 44)
+        self.DelayTime = self._readFloat(fid, 46)
+        self.ShutterControl = self._readInt(fid, 50)
+        self.AbsorbLive = self._readInt(fid, 52)
+        self.AbsorbMode = self._readInt(fid, 54)
+        self.CanDoVirtualChip = self._readInt(fid, 56)
+        self.ThresholdMinLive = self._readInt(fid, 58)
+        self.ThresholdMin = self._readFloat(fid, 60)
+        self.ThresholdMaxLive = self._readInt(fid, 64)
+        self.ThresholdMax = self._readFloat(fid, 66)
+        self.ADCOffset = self._readInt(fid, 188)
+        self.ADCRate = self._readInt(fid, 190)
+        self.ADCType = self._readInt(fid, 192)
+        self.ADCRes = self._readInt(fid, 194)
+        self.ADCBitAdj = self._readInt(fid, 196)
+        self.Gain = self._readInt(fid, 198)
+        self.GeometricOps = self._readInt(fid, 600)
 
-    def _readAllROI(self):
-        self.allROI = self._readAtNumpy(1512, 60, numpy.int16).reshape(-1, 6)
-        self.NumROI = self._readAtNumpy(1510, 1, numpy.int16)[0]
-        self.NumROIExperiment = self._readAtNumpy(1488, 1, numpy.int16)[0]
+    def _readAllROI(self, fid):
+        self.allROI = self._readAtNumpy(fid, 1512, 60,
+                                        numpy.int16).reshape(-1, 6)
+        self.NumROI = self._readAtNumpy(fid, 1510, 1, numpy.int16)[0]
+        self.NumROIExperiment = self._readAtNumpy(fid, 1488, 1, numpy.int16)[0]
         if self.NumROI == 0:
             self.NumROI = 1
         if self.NumROIExperiment == 0:
             self.NumROIExperiment = 1
 
-    def _readDate(self):
-        _date = self._readAtString(20, self.DATEMAX)
-        _time = self._readAtString(172, self.TIMEMAX)
+    def _readDate(self, fid):
+        _date = self._readAtString(fid, 20, self.DATEMAX)
+        _time = self._readAtString(fid, 172, self.TIMEMAX)
         self._filedate = time.strptime(_date + _time, "%d%b%Y%H%M%S")
 
-    def _readSize(self):
-        xdim = self._readAtNumpy(42, 1, numpy.int16)[0]
-        ydim = self._readAtNumpy(656, 1, numpy.int16)[0]
-        zdim = self._readAtNumpy(1446, 1, numpy.uint32)[0]
-        dxdim = self._readAtNumpy(6, 1, numpy.int16)[0]
-        dydim = self._readAtNumpy(18, 1, numpy.int16)[0]
-        vxdim = self._readAtNumpy(14, 1, numpy.int16)[0]
-        vydim = self._readAtNumpy(16, 1, numpy.int16)[0]
-        dt = numpy.int16(self._readAtNumpy(108, 1, numpy.int16)[0])
+    def _readSize(self, fid):
+        xdim = self._readAtNumpy(fid, 42, 1, numpy.int16)[0]
+        ydim = self._readAtNumpy(fid, 656, 1, numpy.int16)[0]
+        zdim = self._readAtNumpy(fid, 1446, 1, numpy.uint32)[0]
+        dxdim = self._readAtNumpy(fid, 6, 1, numpy.int16)[0]
+        dydim = self._readAtNumpy(fid, 18, 1, numpy.int16)[0]
+        vxdim = self._readAtNumpy(fid, 14, 1, numpy.int16)[0]
+        vydim = self._readAtNumpy(fid, 16, 1, numpy.int16)[0]
+        dt = numpy.int16(self._readAtNumpy(fid, 108, 1, numpy.int16)[0])
         data_types = (numpy.float32, numpy.int32, numpy.int16, numpy.uint16)
         if (dt > 3) or (dt < 0):
             raise Exception("Unknown data type")
@@ -238,14 +231,14 @@ class PrincetonSPEFile(FramesSequence):
         self._chipSize = (dydim, dxdim)
         self._vChipSize = (vydim, vxdim)
 
-    def _readComments(self):
+    def _readComments(self, fid):
         self._comments = []
         for n in range(5):
             self._comments.append(
-                self._readAtString(200 + (n * self.TEXTCOMMENTMAX),
+                self._readAtString(fid, 200 + (n * self.TEXTCOMMENTMAX),
                                    self.TEXTCOMMENTMAX))
 
-    def _readArray(self):
-        self._fid.seek(self.DATASTART)
-        in_array = numpy.fromfile(self._fid, dtype=self._dataType, count=-1)
-        self.__array = in_array.reshape(self._shape)
+    def _readArray(self, fid):
+        fid.seek(self.DATASTART)
+        in_array = numpy.fromfile(fid, dtype=self._dataType, count=-1)
+        self._array = in_array.reshape(self._shape)
