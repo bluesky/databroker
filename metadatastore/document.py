@@ -16,6 +16,7 @@ def _normalize(in_val):
 
      -  mongoengine.base.datastructures.BaseDict -> dict
      -  mongoengine.base.datastructures.BaseList -> list
+     -  ObjectID -> str
 
     Parameters
     ----------
