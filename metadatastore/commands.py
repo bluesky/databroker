@@ -308,7 +308,7 @@ class EventDescriptorIsNoneError(ValueError):
 def __add_event_descriptors(run_start_list):
     for run_start in run_start_list:
         setattr(run_start, 'event_descriptors',
-                find_event_descriptor(run_start))
+                find_event_descriptor(run_start=run_start))
 
 
 def __as_document(mongoengine_object):
@@ -425,12 +425,13 @@ def find_run_stop(**kwargs):
 
 
 @_ensure_connection
-def find_event_descriptor(run_start):
+def find_event_descriptor(**kwargs):
     """Return beamline config objects given a unique mongo id
 
     Parameters
     ----------
-    run_start : bson.ObjectId
+    run_start : mongoengine.Document.Document
+        RunStart object EventDescriptor points to
 
     Returns
     -------
@@ -438,8 +439,15 @@ def find_event_descriptor(run_start):
         List of metadatastore.document.Document.
     """
     event_descriptor_list = list()
-    for event_descriptor in EventDescriptor.objects(
-            run_start=run_start.id).order_by('-_id'):
+    query_dict = dict()
+    try:
+        query_dict['run_start_id'] = kwargs.pop('run_start').id
+    except KeyError:
+        pass
+    query_dict.update(kwargs)
+    event_descriptor_objects = EventDescriptor.objects(__raw__=query_dict)
+    ordered_e_desc = event_descriptor_objects.order_by('-time')
+    for event_descriptor in ordered_e_desc:
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
