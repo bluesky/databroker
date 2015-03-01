@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 class SPESingleFrameHandler(HandlerBase):
     def __init__(self, filename):
         self._fpath = filename
-        self._dd = None
+        self._spe_obj = None
 
-    def __call__(self):
-        if self._dd is None:
-            self._dd = PrincetonSPEFile(self._fpath)
-        return self._dd[0]
+    def __call__(self, frame_no=0):
+        if self._spe_obj is None:
+            self._spe_obj = PrincetonSPEFile(self._fpath)
+        return self._spe_obj[frame_no]
 
 
 class _HDF5HandlerBase(HandlerBase):
