@@ -2,8 +2,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from .retrieve import HandlerBase
 from .readers.spe import PrincetonSPEFile
-
+from collections import deque
 import six
+from six.moves import range
 import logging
 import h5py
 import numpy as np
@@ -23,17 +24,32 @@ class SPESingleFrameHandler(HandlerBase):
         return self._spe_obj[frame_no]
 
 
-class SPEPatternFilepathHandler(HandlerBase):
-    def __init__(self, filename_pattern):
-        self._fpath_pattern = filename_pattern
+class AreaDectectorSPEHandler(HandlerBase):
+    def __init__(self, fpath, template, filename,
+                 frame_per_point=1):
+        self._path = fpath
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
         self._f_cache = dict()
 
-    def __call__(self, file_number, frame_no=0):
-        if file_number not in self._f_cache:
-            spe_obj = PrincetonSPEFile(
-                self._fpath_pattern.format(file_number=file_number))
-            self._f_cache[file_number] = spe_obj
-        return self._f_cache[file_number][frame_no]
+    def __call__(self, point_number):
+        # hard code this due to AD constraints
+        frame_no = 0
+        # get the start/stop limits
+        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
+        # loop over them + cache results
+        out_stack = deque()
+        for file_number in range(start, stop):
+            if file_number not in self._f_cache:
+                fname = self._template % (self._path,
+                                          self._filename,
+                                          file_number)
+                spe_obj = PrincetonSPEFile(fname)
+                self._f_cache[file_number] = spe_obj
+            out_stack.append(self._f_cache[file_number][frame_no])
+        # return stacked and squeezed results
+        return np.dstack(out_stack).sequeeze()
 
 
 class _HDF5HandlerBase(HandlerBase):
