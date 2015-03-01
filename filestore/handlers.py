@@ -23,6 +23,19 @@ class SPESingleFrameHandler(HandlerBase):
         return self._spe_obj[frame_no]
 
 
+class SPEPatternFilepathHandler(HandlerBase):
+    def __init__(self, filename_pattern):
+        self._fpath_pattern = filename_pattern
+        self._f_cache = dict()
+
+    def __call__(self, file_number, frame_no=0):
+        if file_number not in self._f_cache:
+            spe_obj = PrincetonSPEFile(
+                self._fpath_pattern.format(file_number=file_number))
+            self._f_cache[file_number] = spe_obj
+        return self._f_cache[file_number][frame_no]
+
+
 class _HDF5HandlerBase(HandlerBase):
 
     def open(self):
