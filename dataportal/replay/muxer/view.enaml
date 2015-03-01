@@ -33,11 +33,12 @@ enamldef KeyForm(Form):
         ColumnView:
             column_model = loop_item
 
+
 enamldef MuxerController(Container):
     padding = Box(0, 0, 0, 0)
     attr muxer_model
-    constraints = [vbox(refresh_button, update_rate, muxer_info, scalar, line,
-                        image, volume),
+    constraints = [vbox(refresh_button, update_rate, operations, muxer_info,
+                        scalar, line, image, volume),
                    align('midline', scalar.form, line.form, image.form,
                          volume.form)]
     Timer: the_timer:
@@ -64,6 +65,24 @@ enamldef MuxerController(Container):
 
     Label: muxer_info:
         text << muxer_model.info
+    GroupBox: operations:
+        title = "Data Operations"
+        PushButton:
+            text = "Rebin data"
+            enabled << muxer_model.binning_axis != "None"
+            clicked ::
+                muxer_model.perform_binning()
+        Form:
+            Label:
+                text = "Dataset to bin against"
+            ComboBox:
+                items << muxer_model.binning_options
+                selected_item >> muxer_model.binning_axis
+            Label:
+                text = "Dataset to normalize by"
+            ComboBox:
+                items << muxer_model.norm_options
+                selected_item >> muxer_model.norm_axis
     GroupBox: scalar:
         share_layout = True
         alias form: scalar_keys

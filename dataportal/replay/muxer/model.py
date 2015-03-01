@@ -8,6 +8,7 @@ from dataportal.muxer.api import DataMuxer
 from dataportal.broker import DataBroker
 from dataportal.muxer.data_muxer import ColSpec
 from metadatastore.api import Document
+from pandas import DataFrame
 
 
 def get_events(run_header):
@@ -112,6 +113,16 @@ class MuxerModel(Atom):
 
     update_rate : atom.Int
         The rate at which the databroker will be asked for new data
+
+    binning_axis : atom.Str
+        The name of the data stream to use as the binning axis
+    _bin_index : atom.Int
+        The index of the currently selected data stream to bin on
+
+    norm_axis : atom>Str
+        The name of the data stream to use as the binning axis
+    _norm_index : atom.Int
+        The index of the currently selected data stream to normalize against
     """
     column_models = Dict()
     scalar_columns = List(item=ColumnModel)
@@ -125,6 +136,7 @@ class MuxerModel(Atom):
     volume_columns_visible = Bool(False)
 
     data_muxer = Typed(DataMuxer)
+    data_frame = Typed(DataFrame)
     header = Typed(Document)
     info = Str()
 
@@ -133,6 +145,14 @@ class MuxerModel(Atom):
     auto_updating = Bool(False)
 
     update_rate = Int(2000) # in ms
+
+    binning_options = List()
+    binning_axis = Str('None')
+    _bin_index = Int(0)
+
+    norm_options = List()
+    norm_axis = Str('None')
+    _norm_index = Int(0)
 
     def __init__(self):
         # initialize everything to be the equivalent of None. It would seem
@@ -148,6 +168,7 @@ class MuxerModel(Atom):
             self.header = None
             self.info = 'No run header received yet'
             self.new_data_callbacks = []
+
 
     @observe('header')
     def run_header_changed(self, changed):
@@ -186,6 +207,10 @@ class MuxerModel(Atom):
         print('new data muxer received')
         self._verify_column_info()
 
+
+    def perform_binning(self):
+        self.data_frame = self.data_muxer.bin_on(self.binning_axis)
+
     def _verify_column_info(self):
         print('verifying column information')
         updated_cols = []
@@ -221,16 +246,21 @@ class MuxerModel(Atom):
         for col_name, col_model in self.column_models.items():
             mapping[col_model.dim].add(col_model)
 
+        column_models = self.column_models
         # update the column key lists, if necessary
         self.scalar_columns = []
         self.line_columns = []
         self.image_columns = []
         self.volume_columns = []
+        self.column_models = {}
+        self.binning_options = []
+        self.norm_options = []
 
         self.scalar_columns = list(mapping[0])
         self.line_columns = list(mapping[1])
         self.image_columns = list(mapping[2])
         self.volume_columns = list(mapping[3])
+        self.column_models = column_models
 
         # set the GUI elements to be visible/hidden if there are/aren't any
         # column_models
@@ -238,3 +268,5 @@ class MuxerModel(Atom):
         self.line_columns_visible = len(self.line_columns) != 0
         self.image_columns_visible = len(self.image_columns) != 0
         self.volume_columns_visible = len(self.volume_columns) != 0
+        self.binning_options = ['None'] + list(column_models.keys())
+        self.norm_options = ['None'] + list(column_models.keys())
