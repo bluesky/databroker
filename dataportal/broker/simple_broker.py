@@ -216,9 +216,9 @@ def _build_header(run_start):
     for to_delete in deletes:
         delattr(*to_delete)
     if run_stop is not None:
-       # dump the remaining values from the RunStop object into the header
-        for k, v in vars(run_stop).items():
-            if hasattr(run_start, k):
+        # dump the remaining values from the RunStop object into the header
+        for k, v in run_stop.items():
+            if k in run_start:
                 raise ValueError("The run header already has a key named {}. "
                                  "Please update the mappings".format(k))
             setattr(run_start, k, v)
