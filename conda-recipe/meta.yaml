@@ -25,3 +25,10 @@ requirements:
     - numpy
     - six
     - pims
+    - pyyaml
+    - setuptools
+
+test:
+  imports:
+    - filestore.api
+    - filestore.spec
