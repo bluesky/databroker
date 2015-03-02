@@ -184,7 +184,7 @@ class EventQueue(object):
         events_by_descriptor = []
         for header in self.headers:
             header = copy.copy(header)
-            header.id = header.ids['run_start_id']
+            header.id = header.run_start_id
             events_by_descriptor.extend(find_event(header))
         events = [event for descriptor in events_by_descriptor
                   for event in descriptor]
