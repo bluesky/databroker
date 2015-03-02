@@ -116,15 +116,30 @@ class MuxerModel(Atom):
     update_rate : atom.Int
         The rate at which the databroker will be asked for new data
 
+    binning_options : atom.List
+        The column names that can be used to bin on
     binning_axis : atom.Str
         The name of the data stream to use as the binning axis
-    _bin_index : atom.Int
-        The index of the currently selected data stream to bin on
 
+    norm_options : atom.List
+        The column names that can be used as normalization target
     norm_axis : atom.Str
         The name of the data stream to use as the binning axis
-    _norm_index : atom.Int
-        The index of the currently selected data stream to normalize against
+
+    upsample : atom.Enum
+        An enum which details the valid options for upsampling the
+        data in the data muxer.  This is obtained from
+        dataportal.muxer.ColSpec.upsampling_methods and defaults to 'linear'
+    downsample : atom.Enum
+        An enum which details the valid options for downsampling the
+        data in the data muxer.  This is obtained from
+        dataportal.muxer.ColSpec.downsampling_methods and defaults to 'mean'
+
+    plot_state : atom.Dict
+        The state that should be passed along to any/all plotting widgets.
+        This should be hooked up via the 'observe' top level atom function.
+        e.g., instance_of_muxer_model.observe('plot_state', target_function)
+
     """
     column_models = Dict()
     scalar_columns = List(item=ColumnModel)
@@ -152,14 +167,14 @@ class MuxerModel(Atom):
 
     binning_options = List()
     binning_axis = Str('None')
-    _bin_index = Int(0)
 
     norm_options = List()
     norm_column = Str('None')
-    _norm_index = Int(0)
 
     upsample = Enum('linear', *ColSpec.upsampling_methods)
     downsample = Enum('mean', *ColSpec.downsampling_methods)
+
+    plot_state = Dict()
 
     def __init__(self):
         # initialize everything to be the equivalent of None. It would seem
@@ -183,6 +198,22 @@ class MuxerModel(Atom):
         with self.suppress_notifications():
             self.data_muxer = None
         self.get_new_data()
+        self.init_state()
+
+    def init_state(self):
+        # set up the state for the muxer
+        plot_state = {}
+        plotx = self.header.get('plotx', None)
+        if plotx is not None and plotx in self.column_models.keys():
+            self.binning_axis = plotx
+            plot_state['plotx'] = plotx
+
+        ploty = self.header.get('ploty', None)
+        if ploty is not None:
+            ploty = [y for y in ploty if y in self.column_models.keys()]
+            plot_state['ploty'] = ploty
+
+        self.plot_state = plot_state
 
     def new_run_header(self, changed):
         """Observer function for the `header` attribute of the SearchModels
@@ -313,7 +344,6 @@ class MuxerModel(Atom):
                 # column has already been accounted for, move on to the next one
                 continue
             # insert a new column model
-            print(col_info)
             self.column_models[col_name] = ColumnModel(
                 data_muxer=self.data_muxer, dim=col_info.ndim,
                 name=col_name, shape=col_info.shape)
