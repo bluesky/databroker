@@ -42,7 +42,7 @@ class AreaDetectorSPEHandler(HandlerBase):
 
 
 class DummyAreaDetectorHandler(HandlerBase):
-    def __init__(self, frame_per_point=1, **kwargs):
+    def __init__(self, fpath, frame_per_point=1, **kwargs):
 
         self._fpp = frame_per_point
 
