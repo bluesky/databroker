@@ -271,8 +271,11 @@ class DataMuxer(object):
                     # assume scalar.
                     shape = None
                     ndim = 0
+                upsample = self.default_upsample
+                if ndim > 0:
+                    upsample = None
 
-                col_info = ColSpec(name, ndim, shape, self.default_upsample,
+                col_info = ColSpec(name, ndim, shape, upsample,
                                    self.default_downsample)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
