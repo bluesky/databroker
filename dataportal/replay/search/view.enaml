@@ -77,8 +77,6 @@ enamldef GetLastView(Container):
     """Enaml definition for the widget that displays the controls for
     searching the dataportal for the last N runs
     """
-    attr muxer_model
-    attr display_header_model
     attr get_last_model
     Container:
         padding = Box(0, 0, 0, 0)
@@ -109,7 +107,7 @@ enamldef GetLastView(Container):
                     text = '{}: {}'.format(
                         loop_item.scan_id, loop_item.start_datetime)
                     clicked ::
-                        display_header_model.selected = loop_item
+                        get_last_model.header = loop_item
 
 enamldef DisplayHeaderView(Container):
     attr display_header_model
