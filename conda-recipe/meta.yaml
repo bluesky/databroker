@@ -27,6 +27,7 @@ requirements:
     - pims
     - pyyaml
     - setuptools
+    - jsonschema
 
 test:
   imports:

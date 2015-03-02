@@ -7,6 +7,9 @@ from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
 
+from .spec import known_spec
+from jsonschema import validate as js_validate
+
 
 def _ensure_connection(func):
     @wraps(func)
@@ -50,6 +53,11 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
     """
     if resource_path is None:
         resource_path = ''
+    if resource_kwargs is None:
+        resource_kwargs = {}
+    if spec in known_spec:
+        js_validate(resource_kwargs, known_spec[spec]['resource'])
+
     resource_object = Resource(spec=spec, resource_path=resource_path,
                                resource_kwargs=resource_kwargs)
 
@@ -111,7 +119,15 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
         resource.
 
     """
-
+    try:
+        spec = Resource.spec
+    except AttributeError:
+        resource = Resource.objects.get(id=resource)
+        spec = resource.spec
+    if datum_kwargs is None:
+        datum_kwargs = {}
+    if spec in known_spec:
+        js_validate(datum_kwargs, known_spec[spec]['datum'])
     datum = Datum(resource=resource, datum_id=datum_id,
                   datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
