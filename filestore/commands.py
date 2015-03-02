@@ -98,7 +98,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
     Parameters
     ----------
 
-    resource : Resource on Resource.id
+    resource : Resource or Resource.id
         Resource object
 
     datum_id : str
