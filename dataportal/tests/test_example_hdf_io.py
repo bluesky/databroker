@@ -1,6 +1,5 @@
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal
-#import filestore.commands as fsc
 from filestore.api import retrieve
 from ..examples.hdf_io import hdf_data_io
 
@@ -15,4 +14,3 @@ def test_hdf_io():
     events = hdf_data_io()
     for e in events:
         yield _test_retrieve_data, e
-

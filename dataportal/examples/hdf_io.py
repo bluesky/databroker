@@ -122,7 +122,6 @@ def get_data(ind_v, ind_h):
 
     fb = insert_resource('hdf_maps', file_path, resource_kwargs=custom)
     evl = insert_datum(fb, uid, datum_kwargs={'x': ind_v, 'y': ind_h})
-    print('### id is {}'.format(evl.datum_id))
     return evl.datum_id
 
 
@@ -166,6 +165,5 @@ def hdf_data_io():
                              time=noisy(i), data=data1, uid=str(uuid.uuid4()))
 
         # test on retrieve data for all data sets
-        #yield _test_retrieve_data, event
         events.append(event)
     return events
