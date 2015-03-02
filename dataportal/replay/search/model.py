@@ -57,23 +57,25 @@ class DisplayHeaderModel(Atom):
 
     @observe('header')
     def header_changed(self, changed):
-
         key_labels = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
-        run_start_dict = dict(self.header.items())
-        event_descriptors = run_start_dict.pop('event_descriptors', [])
+        header_dict = dict(self.header.items())
+        event_descriptors = header_dict.pop('event_descriptors', [])
         data_keys = self._format_for_enaml(event_descriptors)
-        sample = run_start_dict.pop('sample', {})
-        beamline_config = run_start_dict.pop('beamline_config', {})
-
+        sample = header_dict.pop('sample', {})
+        beamline_config = header_dict.pop('beamline_config', {})
+        # unpack the 'ids' fields
+        ids = header_dict.pop('ids', {})
+        for id_name, id_val in ids.items():
+            header_dict[id_name] = id_val
         data_keys = sorted(data_keys, key=lambda x: x[0].lower())
-        run_start_keys = key_labels + data_keys
+        header_keys = key_labels + data_keys
 
         # set the summary dictionary
         self.header_as_dict = {}
-        self.header_as_dict = run_start_dict
+        self.header_as_dict = header_dict
         # set the keys dictionary
         self.header_keys = []
-        self.header_keys = run_start_keys
+        self.header_keys = header_keys
 
     def _format_for_enaml(self, event_descriptors):
         """
