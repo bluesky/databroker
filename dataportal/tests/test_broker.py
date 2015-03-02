@@ -73,13 +73,13 @@ def test_basic_usage():
 
 def test_indexing():
     header = db[-1]
-    is_list = isinstance(header, Iterable)
+    is_list = isinstance(header, list)
     assert_false(is_list)
     scan_id = header.scan_id
     assert_equal(scan_id, 5)
 
     header = db[-2]
-    is_list = isinstance(header, Iterable)
+    is_list = isinstance(header, list)
     assert_false(is_list)
     scan_id = header.scan_id
     assert_equal(scan_id, 4)
@@ -88,7 +88,7 @@ def test_indexing():
     assert_raises(IndexError, f)
 
     headers = db[-5:]
-    is_list = isinstance(headers, Iterable)
+    is_list = isinstance(headers, list)
     assert_true(is_list)
     num = len(headers)
     assert_equal(num, 5)
