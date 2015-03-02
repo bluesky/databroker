@@ -11,10 +11,16 @@ import mongoengine.connection
 from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler, db_disconnect,
                            db_connect)
+
+import filestore.retrieve as fsr
+
 from filestore.handlers import AreaDetectorHDF5Handler
+from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from numpy.testing import assert_array_equal
 import os
+from itertools import product
 
+from six.moves import range
 db_name = str(uuid.uuid4())
 conn = None
 
@@ -72,3 +78,41 @@ class test_AD_hdf5_files(_with_file):
         with AreaDetectorHDF5Handler(self.filename) as hand:
             assert hand._file
             hand.open()
+
+
+class test_maps_hdf5(_with_file):
+    def _make_data(self):
+        n_pts = 20
+        N = 10
+        M = 11
+        self.th = np.linspace(0, 2*np.pi, n_pts)
+        self.scale = np.arange(N*M)
+        with h5py.File(self.filename, 'w') as f:
+            # create a group for maps to hold the data
+            mapsGrp = f.create_group('MAPS')
+            # now set a comment
+            mapsGrp.attrs['comments'] = 'MAPS group'
+
+            entryname = 'mca_arr'
+            comment = 'These are raw spectrum data.'
+            sn = np.sin(self.th).reshape(n_pts, 1, 1)
+            XY = self.scale.reshape(1, N, M)
+            data = XY * sn
+            ds_data = mapsGrp.create_dataset(entryname, data=data)
+            ds_data.attrs['comments'] = comment
+
+        resource_id = insert_resource('hdf5_maps', self.filename,
+                                      {'dset_path': 'mca_arr'})
+        self.eids = [str(uuid.uuid4()) for j in range(N*M)]
+
+        for uid, (i, j) in zip(self.eids, product(range(N), range(M))):
+            insert_datum(resource_id, uid, {'x': i, 'y': j})
+
+    def test_maps_round_trip(self):
+        sn = np.sin(self.th)
+
+        with fsr.handler_context({'hdf5_maps': HDFM}):
+            for eid, sc in zip(self.eids, self.scale):
+                print(eid)
+                data = retrieve(eid)
+                assert_array_equal(data, sc * sn)
