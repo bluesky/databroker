@@ -75,7 +75,11 @@ class DataBroker(object):
         -------
         data : a flat list of Event objects
         """
-        if not isinstance(runs, Iterable):
+        try:
+            runs.items()
+        except AttributeError:
+            pass
+        else:
             runs = [runs]
 
         events_by_descriptor = []
@@ -169,7 +173,7 @@ def _inspect_descriptor(descriptor):
     data_keys = descriptor.data_keys
     is_external = defaultdict(lambda: False)
     for data_key, data_key_dict in data_keys.items():
-        if 'external' in data_key_dict:
+        if 'external' in data_key_dict and data_key_dict['external']:
             is_external[data_key] = True
     return is_external
 
