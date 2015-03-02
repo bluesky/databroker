@@ -13,7 +13,7 @@ import os.path
 logger = logging.getLogger(__name__)
 
 
-class AreaDectectorSPEHandler(HandlerBase):
+class AreaDetectorSPEHandler(HandlerBase):
     def __init__(self, fpath, template, filename,
                  frame_per_point=1):
         self._path = fpath
