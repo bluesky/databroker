@@ -119,7 +119,7 @@ class MuxerModel(Atom):
     _bin_index : atom.Int
         The index of the currently selected data stream to bin on
 
-    norm_axis : atom>Str
+    norm_axis : atom.Str
         The name of the data stream to use as the binning axis
     _norm_index : atom.Int
         The index of the currently selected data stream to normalize against
