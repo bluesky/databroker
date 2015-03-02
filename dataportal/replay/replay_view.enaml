@@ -29,7 +29,6 @@ enamldef MainView(MainWindow): main_view:
                 title = "Search"
                 GetLastView:
                     get_last_model = main_view.get_last_model
-                    muxer_model = main_view.muxer_model
             DockItem:
                 name = 'watch_header'
                 title = "Most Recent Header"
