@@ -512,9 +512,9 @@ def find_last(num=1):
         List of metadatastore.document.Document objects
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
-    br_objects = [br_obj for br_obj in RunStart.objects.order_by('-_id')[:num]]
-    __add_event_descriptors(br_objects)
-    return [__as_document(br) for br in br_objects]
+    rs_objects = [rs_obj for rs_obj in RunStart.objects.order_by('-time')[:num]]
+    __add_event_descriptors(rs_objects)
+    return [__as_document(rs) for rs in rs_objects]
 
 
 def __todatetime(time_stamp):
