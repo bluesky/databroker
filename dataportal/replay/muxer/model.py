@@ -33,10 +33,10 @@ class ColumnModel(Atom):
         self.dim = dim
         self.data_muxer = data_muxer
         self.shape = shape
-        if upsample is None or upsample is 'None':
-            upsample = 'linear'
-        if downsample is None or downsample is 'None':
-            downsample = 'mean'
+        if upsample is None:
+            upsample = 'None'
+        if downsample is None:
+            downsample = 'None'
         self.upsample = upsample
         self.downsample = downsample
 
@@ -203,15 +203,20 @@ class MuxerModel(Atom):
     def init_state(self):
         # set up the state for the muxer
         plot_state = {}
-        plotx = self.header.get('plotx', None)
+        try:
+            plotx = getattr(self.header, 'plotx')
+        except AttributeError:
+            plotx = None
         if plotx is not None and plotx in self.column_models.keys():
             self.binning_axis = plotx
-            plot_state['plotx'] = plotx
-
-        ploty = self.header.get('ploty', None)
-        if ploty is not None:
+            plot_state['x'] = plotx
+        try:
+            ploty = getattr(self.header, 'ploty')
+        except AttributeError:
+            ploty = None
+        else:
             ploty = [y for y in ploty if y in self.column_models.keys()]
-            plot_state['ploty'] = ploty
+            plot_state['y'] = ploty
 
         self.plot_state = plot_state
 
@@ -346,7 +351,8 @@ class MuxerModel(Atom):
             # insert a new column model
             self.column_models[col_name] = ColumnModel(
                 data_muxer=self.data_muxer, dim=col_info.ndim,
-                name=col_name, shape=col_info.shape)
+                name=col_name, shape=col_info.shape, upsample=col_info.upsample,
+                downsample=col_info.downsample)
         self._update_column_sortings()
 
     def _update_column_sortings(self):

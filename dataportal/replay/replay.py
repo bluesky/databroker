@@ -59,7 +59,7 @@ def create_default_ui(init_params_dict):
     # set up observers
 
 
-    # muxer_model.observe('data_muxer', scalar_collection.new_data_muxer)
+    muxer_model.observe('dataframe', scalar_collection.new_dataframe)
     # muxer_model.new_data_callbacks.append(scalar_collection.notify_new_data)
 
     watch_headers_model.observe('header', display_header_model.new_run_header)

@@ -185,21 +185,13 @@ class ScalarCollection(Atom):
     # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
     # the thing that holds all the data
-<<<<<<< HEAD
-    data_muxer = Typed(DataMuxer)
-    # the Document that holds all non-data associated with the data_muxer
-=======
-    data_muxer = Typed(DataMuxer)# the Document that holds all non-data associated with the data_muxer
-    data_frame = Typed(DataFrame)
->>>>>>> MNT: Handle default up/downsample better
-    header = Typed(Document)
-    # The scan id of this data set
-    scan_id = Int()
+    dataframe = Typed(DataFrame)
     # name of the x axis
     x = Str()
     # index of x in data_cols
     # x_index = data_cols.index(x)
     x_index = Int()
+
 
     # name of the column to align against
     bin_on = Str()
@@ -260,12 +252,60 @@ class ScalarCollection(Atom):
             self.estimate_plot = ['cen', 'x_at_max']
             self.estimate_stats = OrderedDict()
 
+    def set_state(self, state_dict):
+        try:
+            x = state_dict.pop('x')
+        except KeyError:
+            # x is not present in the state_dict
+            x = None
+        if x is not None:
+            self.x = x
+        try:
+            y = state_dict.get('y')
+        except KeyError:
+            # y is not present in the state_dict
+            y = None
+        if y is not None:
+            for name, model in self.scalar_models.items():
+                model.is_plotting = name in y
+
+        for k, v in state_dict.items():
+            setattr(self, k, v)
+
     def init_scalar_models(self):
+        self._ax.cla()
         self.scalar_models.clear()
         line_artist, = self._ax.plot([], [], label=nodata_str)
-        self.scalar_models[nodata_str] = ScalarModel(line_artist=line_artist,
-                                               name=nodata_str,
-                                               is_plotting=True)
+        self.scalar_models[nodata_str] = ScalarModel(
+            line_artist=line_artist, name=nodata_str, is_plotting=True)
+
+    def new_dataframe(self, changed):
+        self.dataframe = changed['value']
+
+    @observe('dataframe')
+    def dataframe_changed(self, changed):
+        self.init_scalar_models()
+
+        valid_cols= [col for col in self.dataframe.columns
+                     if self.dataframe[col].dropna().values[0].shape == tuple()]
+        # sort columns into single-level and multi-level
+        multi_level = []
+        single_level = []
+        for col in valid_cols:
+            if isinstance(col, tuple):
+                multi_level.append(col)
+            else:
+                single_level.append(col)
+
+        # aggregate columns
+        # create new scalar models
+        for col_name in valid_cols:
+            # create a new line artist and scalar model
+            x = np.asarray(self.dataframe[col_name].index)
+            y = np.asarray(self.dataframe[col_name].values)
+            line_artist, = self._ax.plot(x, y, label=col_name, marker='D')
+            self.scalar_models[col_name] = ScalarModel(
+                line_artist=line_artist, name=str(col_name), is_plotting=True)
 
     def new_data_muxer(self, changed):
         """Function to be registered with a MugglerModel on its `muxer`
@@ -347,14 +387,6 @@ class ScalarCollection(Atom):
     @observe('data_cols')
     def update_col_names(self, changed):
         print('data_cols changed: {}'.format(self.data_cols))
-
-    @observe('x_is_time')
-    def update_x_axis(self, changed):
-        lbl = 'Time (s)'
-        if not changed['value']:
-            lbl = self.x
-        self._conf.xlabel = lbl
-        self.get_new_data_and_plot()
 
     @observe('x')
     def update_x(self, changed):

@@ -30,14 +30,6 @@ enamldef PlotControls(Container):
                 Form:
                     row_spacing = 0
                     Label:
-                        text = "Column to bin against"
-                    ComboBox: xcmb:
-                        items << list(scalar_collection.data_cols)
-                        editable = True
-                        index << scalar_collection.x_index
-                        selected_item >> scalar_collection.bin_on
-                        enabled = False
-                    Label:
                         text = "X axis"
                     ComboBox: x_axis:
                         items << list(scalar_collection.data_cols)
@@ -66,18 +58,6 @@ enamldef PlotControls(Container):
                         index << scalar_collection.estimate_index
                         enabled = True
                         selected_item >> scalar_collection.estimate_target
-                    Label:
-                        text = "Dataset to normalize by"
-                    Container:
-                        constraints = [vbox(norm_check, norm_cmb)]
-                        CheckBox: norm_check:
-                            text = 'Normalize?'
-                            checked := scalar_collection.normalize
-                        ComboBox: norm_cmb:
-                            items << list(scalar_collection.data_cols)
-                            index << 0
-                            enabled = True
-                            selected_item >> scalar_collection.normalize_target
                     Label:
                         text = "Y axis"
                     Label:
