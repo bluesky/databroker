@@ -69,9 +69,9 @@ class Document(MutableMapping):
                 self.time_as_datetime = datetime.fromtimestamp(self.time)
 
     def __setattr__(self, k, v):
+        self.__dict__[k] = v
         if not k.startswith('_'):
             self._fields.add(k)
-        self.__dict__[k] = v
 
     def __delattr__(self, k):
         del self.__dict__[k]
