@@ -150,6 +150,65 @@ def _get_archiver_data(ca_host, channels, start_time, end_time):
     return events
 
 
+class EventQueue(object):
+    """
+    Get Events from Headers during data collection.
+
+    This is a simple single-process implementation.
+
+    Example
+    -------
+
+    from dataportal.broker import DataBroker, EventQueue
+    header = DataBroker[-1]  # for example, most recent header
+    queue = EventQueue(header)
+    while True:
+        queue.update()
+        new_events = queue.pop()
+        # Do something with them, such as dm.append_events(new_events)
+    """
+
+    def __init__(self, headers):
+        if not isinstance(headers, Iterable):
+            headers = [headers]
+        self.headers = headers
+        self._known_ids = set()
+        # This is nested, a deque of lists that are bundles of events
+        # discovered in the same update.
+        self._queue = deque()
+
+    def update(self):
+        """Obtain a fresh list of the relevant Events."""
+
+        # like fetch_events, but we don't fill in the data right away
+        events_by_descriptor = []
+        for header in self.headers:
+            header = copy.copy(header)
+            header.id = header.ids['run_start_id']
+            events_by_descriptor.extend(find_event(header))
+        events = [event for descriptor in events_by_descriptor
+                  for event in descriptor]
+
+        new_events = []
+        for event in events:
+            if event.id not in self._known_ids:
+                new_events.append(event)
+                self._known_ids.add(event.id)
+
+        # The major performance savings is here: only fill the new events.
+        [fill_event(event) for event in new_events]
+        self._queue.append(new_events)  # the entry can be an empty list
+
+    def pop(self):
+        """
+        Get a list of new Events.
+
+        Each call returns a (maybe empty) list of Events that were
+        discovered in the same call to update().
+        """
+        return self._queue.popleft()
+
+
 class LocationError(ValueError):
     pass
 
