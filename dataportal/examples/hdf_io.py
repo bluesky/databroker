@@ -122,8 +122,8 @@ def get_data(ind_v, ind_h):
 
     fb = insert_resource('hdf_maps', file_path, resource_kwargs=custom)
     evl = insert_datum(fb, uid, datum_kwargs={'x': ind_v, 'y': ind_h})
-
-    return evl.event_id
+    print('### id is {}'.format(evl.datum_id))
+    return evl.datum_id
 
 
 def hdf_data_io():
