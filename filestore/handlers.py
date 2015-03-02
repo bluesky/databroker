@@ -41,6 +41,17 @@ class AreaDetectorSPEHandler(HandlerBase):
         return np.dstack(out_stack).sequeeze()
 
 
+class DummyAreaDetectorHandler(HandlerBase):
+    def __init__(self, frame_per_point=1, **kwargs):
+
+        self._fpp = frame_per_point
+
+    def __call__(self, **kwargs):
+        out_stack = np.ones((self._fpp, 10, 10)) * np.nan
+        # return stacked and squeezed results
+        return np.dstack(out_stack).sequeeze()
+
+
 class _HDF5HandlerBase(HandlerBase):
 
     def open(self):
