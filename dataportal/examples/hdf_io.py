@@ -40,10 +40,9 @@ from metadatastore.api import (insert_run_start,
                                insert_event,
                                insert_event_descriptor,
                                insert_beamline_config)
-import filestore.retrieve as fsr
-import filestore.commands as fsc
+from filestore.api import register_handler, insert_resource, insert_datum
 import filestore.file_writers as fw
-from filestore.file_readers import HDFMapsSpectrumHandler as HDFM
+from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from dataportal.examples.sample_data.common import noisy
 
 import six
@@ -57,7 +56,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-fsr.register_handler('hdf_maps', HDFM)
+register_handler('hdf_maps', HDFM)
 
 
 def save_syn_data(eid, data, base_path=None):
@@ -121,8 +120,9 @@ def get_data(ind_v, ind_h):
 
     custom = {'dset_path': 'mca_arr'}
 
-    fb = fsc.save_file_base('hdf_maps', file_path, custom)
-    evl = fsc.save_file_event_link(fb, uid, link_parameters={'x': ind_v, 'y': ind_h})
+    fb = insert_resource('hdf_maps', file_path, resource_kwargs=custom)
+    evl = insert_datum(fb, uid, datum_kwargs={'x': ind_v, 'y': ind_h})
+
     return evl.event_id
 
 
