@@ -23,7 +23,9 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import insert_run_start, insert_beamline_config
-from filestore.api import db_connect, db_disconnect
+from filestore.utils.testing import fs_setup, fs_teardown
+from metadatastore.utils.testing import mds_setup, mds_teardown
+from ..examples.sample_data import temperature_ramp, image_and_scalar
 logger = logging.getLogger(__name__)
 
 db_name = str(uuid.uuid4())
@@ -32,38 +34,41 @@ blc = None
 
 
 def setup():
-    global conn
-    db_disconnect()
-    conn = db_connect(db_name, 'localhost', 27017)
+    fs_setup()
+    mds_setup()
     blc = insert_beamline_config({}, ttime.time())
 
     switch(channelarchiver=False)
     start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
     simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
     ca.insert_data(simulated_ca_data)
-    
-    for i in range(5):
-        insert_run_start(time=float(i), scan_id=i + 1,
-                         owner='docbrown', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-    for i in range(5):
-        insert_run_start(time=float(i), scan_id=i + 1,
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
+    owners = ['docbrown', 'nedbrainard']
+    num_entries = 5
+    for owner in owners:
+        for i in range(num_entries):
+            logger.debug('{}: {} of {}'.format(owner, i+1, num_entries))
+            rs = insert_run_start(time=float(i), scan_id=i + 1,
+                                  owner=owner, beamline_id='example',
+                                  beamline_config=blc)
+            # insert some events into mds
+            temperature_ramp.run(run_start=rs)
+            if i == 0:
+                # only need to do images once, it takes a while...
+                image_and_scalar.run(run_start=rs)
 
 
 def teardown():
-    db_disconnect()
-    if conn:
-        conn.drop_database(db_name)
-
+    fs_teardown()
+    mds_teardown()
 
 
 def test_basic_usage():
-    header = db[-1]
-    header = db.find_headers(owner='nedbrainard')
-    header = db.find_headers(owner='this owner does not exist')
-    events = db.fetch_events(header)
+    header_1 = db[-1]
+    header_ned = db.find_headers(owner='nedbrainard')
+    header_null = db.find_headers(owner='this owner does not exist')
+    events_1 = db.fetch_events(header_1)
+    events_ned = db.fetch_events(header_ned)
+    events_null = db.fetch_events(header_null)
 
 
 def test_indexing():

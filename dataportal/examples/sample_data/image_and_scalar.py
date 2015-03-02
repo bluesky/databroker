@@ -27,15 +27,15 @@ def scale_fluc(scale, count):
         return scale + .5
     return None
 
-frame_generator = frame_generators.brownian(img_size, step_scale=.5,
-                                            I_fluc_function=I_func_gaus,
-                                            step_fluc_function=scale_fluc)
 
 
 # And this section is the actual example.
 
 @example
 def run(run_start=None, sleep=0):
+    frame_generator = frame_generators.brownian(img_size, step_scale=.5,
+                                                I_fluc_function=I_func_gaus,
+                                                step_fluc_function=scale_fluc)
     # Make the data
     rs = np.random.RandomState(5)
 

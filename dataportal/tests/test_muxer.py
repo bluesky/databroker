@@ -8,31 +8,61 @@ from ..muxer.data_muxer import DataMuxer, BinningError, ColSpec
 from ..sources import switch
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
+from ..broker import DataBroker
+from filestore.utils.testing import fs_setup, fs_teardown
+from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore.api import insert_run_start, insert_beamline_config
+import time as ttime
+from nose.tools import (assert_equal, assert_raises, assert_true,
+                        assert_false)
+
+def setup():
+    fs_setup()
+    mds_setup()
+
+    blc = insert_beamline_config({}, ttime.time())
+    rs = insert_run_start(time=0.0, scan_id=1, owner='test', beamline_id='test',
+                          beamline_config=blc)
+    temperature_ramp.run(run_start=rs)
+
+def teardown():
+    fs_teardown()
+    mds_teardown()
 
 
-class TestMuggler(unittest.TestCase):
+def test_empty_muxer():
+    DataMuxer()
 
-    def setUp(self):
-        self.mixed_scalars = temperature_ramp.run()
 
-    def test_empty_muxer(self):
-        DataMuxer()
+def test_attributes():
+    hdr = DataBroker[-1]
+    events = DataBroker.fetch_events(hdr)
+    dm = DataMuxer.from_events(events)
+    # merely testing that basic usage does not error
+    for data_key in dm.sources.keys():
+        getattr(dm, data_key)
+        dm[data_key]
+    properties = ['ncols', '_dataframe', 'col_info_by_ndim', 'sources',
+                  'col_info', '_data', '_time', '_timestamps',
+                  '_timestamps_as_data', '_known_events', '_known_descriptors',
+                  '_stale']
+    for prop in properties:
+        getattr(dm, prop)
+    # dm._dataframe
+    # dm.col_info_by_ndim
+    # dm.col_info
 
-    def test_attributes(self):
-        dm = DataMuxer.from_events(self.mixed_scalars)
-        # merely testing that basic usage does not error
-        dm._dataframe
-        dm.Tsam
-        dm['Tsam']
-        dm.col_info_by_ndim
-        dm.col_info
+def test_timestamps_as_data():
+    hdr = DataBroker[-1]
+    events = DataBroker.fetch_events(hdr)
+    dm = DataMuxer.from_events(events)
+    data_name = list(dm.sources.keys())
+    for name in data_name:
+        dm.include_timestamp_data(name)
+        assert_true('{}_timestamp'.format(name) in dm._dataframe)
+        dm.remove_timestamp_data(name)
+        assert_false('{}_timestamp'.format(name) in dm._dataframe)
 
-    def test_timestamps_as_data(self):
-        dm = DataMuxer.from_events(self.mixed_scalars)
-        dm.include_timestamp_data('Tsam')
-        self.assertTrue('Tsam_timestamp' in dm._dataframe)
-        dm.remove_timestamp_data('Tsam')
-        self.assertFalse('Tsam_timestamp' in dm._dataframe)
 
 
 class CommonBinningTests(object):

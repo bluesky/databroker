@@ -5,7 +5,7 @@ from collections import defaultdict, Iterable, deque
 from .. import sources
 from metadatastore.api import (Document, find_last, find_run_start,
                                find_event_descriptor, find_run_stop,
-                               fetch_events)
+                               fetch_events, find_event)
 from filestore.api import retrieve
 import os
 
