@@ -5,6 +5,7 @@ from mongoengine.base.document import BaseDocument
 from bson.objectid import ObjectId
 from datetime import datetime
 from itertools import chain
+from collections import MutableMapping
 
 
 def _normalize(in_val):
@@ -41,7 +42,7 @@ def _normalize(in_val):
     return in_val
 
 
-class Document(object):
+class Document(MutableMapping):
     """
     Copy the data out of a mongoengine.Document, including nested Documents,
     but do not copy any of the mongo-specific methods or attributes.
@@ -52,9 +53,11 @@ class Document(object):
         ----------
         mongo_document : mongoengine.Document
         """
+        self._fields = set()
         self._name = mongo_document.__class__.__name__
-        self.fields = fields = set(chain(mongo_document._fields.keys(),
-                                         mongo_document._data.keys()))
+        fields = set(chain(mongo_document._fields.keys(),
+                           mongo_document._data.keys()))
+
         for field in fields:
             attr = getattr(mongo_document, field)
 
@@ -65,11 +68,20 @@ class Document(object):
             if hasattr(self, 'time'):
                 self.time_as_datetime = datetime.fromtimestamp(self.time)
 
+    def __setattr__(self, k, v):
+        if not k.startswith('_'):
+            self._fields.add(k)
+        self.__dict__[k] = v
+
+    def __delattr__(self, k):
+        del self.__dict__[k]
+        self._fields.remove(k)
+
     def __repr__(self):
         return "<{0} Document>".format(self._name)
 
     def __iter__(self):
-        return self.fields
+        return self._fields
 
     def __getitem__(self, key):
         try:
@@ -77,8 +89,14 @@ class Document(object):
         except AttributeError:
             raise KeyError()
 
+    def __delitem__(self, key):
+        delattr(self, key)
+
+    def __setitem__(self, key, val):
+        setattr(self, key, val)
+
     def __len__(self):
-        return len(self.fields)
+        return len(self._fields)
 
     def __contains__(self, key):
-        return key in self.fields
+        return key in self._fields
