@@ -11,6 +11,7 @@ import logging
 import numpy as np
 
 from metadatastore.api import Document
+from pandas import DataFrame
 
 __author__ = 'edill'
 logger = logging.getLogger(__name__)
@@ -184,8 +185,13 @@ class ScalarCollection(Atom):
     # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
     # the thing that holds all the data
+<<<<<<< HEAD
     data_muxer = Typed(DataMuxer)
     # the Document that holds all non-data associated with the data_muxer
+=======
+    data_muxer = Typed(DataMuxer)# the Document that holds all non-data associated with the data_muxer
+    data_frame = Typed(DataFrame)
+>>>>>>> MNT: Handle default up/downsample better
     header = Typed(Document)
     # The scan id of this data set
     scan_id = Int()

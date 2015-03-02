@@ -21,8 +21,8 @@ class ColumnModel(Atom):
     name = Str()
     dim = Int()
     data_muxer = Typed(DataMuxer)
-    upsample = Enum('linear', *ColSpec.upsampling_methods)
-    downsample = Enum('mean', *ColSpec.downsampling_methods)
+    upsample = Enum(*ColSpec.upsampling_methods)
+    downsample = Enum(*ColSpec.downsampling_methods)
     _shape = Tuple()
 
     def __init__(self, data_muxer, dim, name, shape, upsample=None,
@@ -154,6 +154,9 @@ class MuxerModel(Atom):
     norm_axis = Str('None')
     _norm_index = Int(0)
 
+    upsample = Enum('linear', *ColSpec.upsampling_methods)
+    downsample = Enum('mean', *ColSpec.downsampling_methods)
+
     def __init__(self):
         # initialize everything to be the equivalent of None. It would seem
         # that the first accessing of an Atom instance attribute causes the
@@ -168,7 +171,6 @@ class MuxerModel(Atom):
             self.header = None
             self.info = 'No run header received yet'
             self.new_data_callbacks = []
-
 
     @observe('header')
     def run_header_changed(self, changed):
@@ -191,7 +193,11 @@ class MuxerModel(Atom):
         events = get_events(self.header)
         if self.data_muxer is None:
             # this will automatically trigger the key updating
-            self.data_muxer = DataMuxer.from_events(events)
+            data_muxer = DataMuxer()
+            data_muxer.default_upsample = self.upsample
+            data_muxer.default_downsample = self.downsample
+            data_muxer.append_events(events)
+            self.data_muxer = data_muxer
         else:
             self.data_muxer.append_events(events)
             for data_cb in self.new_data_callbacks:
@@ -206,7 +212,6 @@ class MuxerModel(Atom):
         # data_muxer object has been changed. Remake the columns
         print('new data muxer received')
         self._verify_column_info()
-
 
     def perform_binning(self):
         self.data_frame = self.data_muxer.bin_on(self.binning_axis)
