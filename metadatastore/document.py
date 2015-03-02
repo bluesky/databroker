@@ -75,13 +75,14 @@ class Document(MutableMapping):
 
     def __delattr__(self, k):
         del self.__dict__[k]
-        self._fields.remove(k)
+        if not k.startswith('_'):
+            self._fields.remove(k)
 
     def __repr__(self):
         return "<{0} Document>".format(self._name)
 
     def __iter__(self):
-        return self._fields
+        return iter(self._fields)
 
     def __getitem__(self, key):
         try:
