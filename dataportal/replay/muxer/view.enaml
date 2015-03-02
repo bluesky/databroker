@@ -26,6 +26,16 @@ enamldef KeyForm(Form):
     """
     attr column_model_list = []
     row_spacing = 0
+    Label:
+        text = 'PV'
+    Container:
+        constraints = [hbox(up, down),
+                       contents_left == up.left,
+                       contents_right == down.right]
+        Label: up:
+            text = 'Upsample'
+        Label: down:
+            text = 'Downsample'
     Looper:
         iterable << column_model_list
         Label:
