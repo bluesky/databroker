@@ -19,5 +19,6 @@
         "filename"
     ],
     "description": "Output from AreaDector talking to a Princeton camera",
-    "type": "object"
+    "type": "object",
+    "additionalProperties": false
 }

@@ -6,5 +6,6 @@
         }
     },
     "required": ["point_number"],
-    "type": "object"
+    "type": "object",
+    "additionalProperties": false
 }
