@@ -38,7 +38,7 @@ class AreaDetectorSPEHandler(HandlerBase):
                 self._f_cache[file_number] = spe_obj
             out_stack.append(self._f_cache[file_number][frame_no])
         # return stacked and squeezed results
-        return np.dstack(out_stack).sequeeze()
+        return np.dstack(out_stack).squeeze()
 
 
 class DummyAreaDetectorHandler(HandlerBase):
@@ -49,7 +49,7 @@ class DummyAreaDetectorHandler(HandlerBase):
     def __call__(self, **kwargs):
         out_stack = np.ones((self._fpp, 10, 10)) * np.nan
         # return stacked and squeezed results
-        return np.dstack(out_stack).sequeeze()
+        return np.dstack(out_stack).squeeze()
 
 
 class _HDF5HandlerBase(HandlerBase):
