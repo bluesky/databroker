@@ -1,5 +1,5 @@
 # Data retrieval
-from .commands import (find, find_event, find_event_descriptor,
+from .commands import (find_event, find_event_descriptor,
                        find_beamline_config, find_run_start, find_last,
                        find_event_given_descriptor, find_run_stop)
 # Data insertion
