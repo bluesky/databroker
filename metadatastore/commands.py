@@ -304,7 +304,7 @@ class EventDescriptorIsNoneError(ValueError):
 
 # DATABASE RETRIEVAL ##########################################################
 
-
+# TODO: Update all query routine documentation
 def __add_event_descriptors(run_start_list):
     for run_start in run_start_list:
         setattr(run_start, 'event_descriptors',
@@ -391,6 +391,7 @@ def find_beamline_config(**kwargs):
     beamline_config : metadatastore.document.Document
         The beamline config object
     """
+    # ordered by _id because it is not guaranteed there will be time in cbonfig
     beamline_config = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
     return __as_document(beamline_config)
 
@@ -446,8 +447,7 @@ def find_event_descriptor(**kwargs):
         pass
     query_dict.update(kwargs)
     event_descriptor_objects = EventDescriptor.objects(__raw__=query_dict)
-    ordered_e_desc = event_descriptor_objects.order_by('-time')
-    for event_descriptor in ordered_e_desc:
+    for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
         event_descriptor_list.append(event_descriptor)
@@ -455,7 +455,7 @@ def find_event_descriptor(**kwargs):
 
 
 @_ensure_connection
-def fetch_events(limit=1000, **kwargs):
+def find_event(limit=1000, **kwargs):
     """
 
     Parameters
@@ -466,96 +466,6 @@ def fetch_events(limit=1000, **kwargs):
         time of the event. dict keys must be start and stop
     descriptor : mongoengine.Document, optional
         event descriptor object
-
-    Returns
-    -------
-    events : list
-        List of metadatastore.document.Document
-    """
-    search_dict = dict()
-    try:
-        time_dict = kwargs.pop('time')
-        if not isinstance(time_dict, dict):
-            raise ValueError('Wrong format. time must include '
-                             'start and stop keys for range. Must be a dict')
-        else:
-            if 'start' in time_dict and 'stop' in time_dict:
-                search_dict['time'] = {'$gte': time_dict['start'],
-                                       '$lte': time_dict['stop']}
-            else:
-                raise ValueError('time must include start '
-                                 'and stop keys for range search')
-    except KeyError:
-        pass
-
-    try:
-        desc = kwargs.pop('descriptor')
-        search_dict['descriptor_id'] = desc.id
-    except KeyError:
-        pass
-    result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
-    return [__as_document(res) for res in result]
-
-
-@_ensure_connection
-def find_event(run_start):
-    """Returns a set of events given a RunStart object
-
-    Parameters
-    ---------
-    run_start: mongoengine.Document
-        RunStart object that events possibly fall under
-    limit: int
-        Number of headers to be returned
-
-    Returns
-    -------
-    events: list
-        Set of events encapsulated within a RunStart's scope.
-        metadatastore.document.Document
-    """
-    descriptors = EventDescriptor.objects(run_start=run_start.id)
-    descriptors = descriptors.order_by('-_id')
-    events = [find_event_given_descriptor(descriptor)
-              for descriptor in descriptors]
-    return events
-
-
-@_ensure_connection
-def find_event_given_descriptor(event_descriptor):
-    """Return all Event(s) associated with an EventDescriptor
-
-    Parameters
-    ----------
-    event_descriptor: metadatastore.database.EventDescriptor
-        EventDescriptor instance that a set of events point back to
-
-    Returns
-    -------
-    event_list : list
-        Nested list. top level is each event descriptor. next level is events
-        [[ev0, ev1, ...], [ev0, ev1, ...]]
-    """
-    event_list = list()
-    for event in Event.objects(
-            descriptor=event_descriptor.id).order_by('-_id'):
-        event = __replace_event_data_key_dots(event, direction='out')
-        event_list.append(event)
-
-    return [__as_document(ev) for ev in event_list]
-
-
-@_ensure_connection
-def find(data=True, limit=50, **kwargs):
-    """
-    Returns dictionary of objects
-    Headers keyed on unique scan_id in header_scan_id format
-    data flag is set to True by default since users
-    intuitively expect data back
-
-    Parameters
-    ---------
-
     scan_id: int
         Non-unique human friendly scan identifier
     owner: str
@@ -569,21 +479,24 @@ def find(data=True, limit=50, **kwargs):
 
     Returns
     -------
-    result: metadatastore.document.Document
-        Returns RunStart objects
-        One can access events for this given RunStart as:
-        run_start_object.events
+    events : list
+        List of metadatastore.document.Document
     """
-    raise NotImplementedError()
-    br_objects = find_run_start(limit, **kwargs)
-
-    if data:
-        result = list
-        if br_objects:
-            for br in br_objects:
-                br.events = find_event(br)
-                result.append(br)
-    return br_objects
+    results = list()
+    try:
+        run_start_id = kwargs.pop('run_start').id
+        event_descriptors = EventDescriptor.objects(__raw__=run_start_id)
+    except KeyError:
+        pass
+    if event_descriptors:
+        for e_desc in event_descriptors.order_by('-time'):
+            query_dict = dict()
+            query_dict['descriptor_id'] = event_descriptor.id
+            query_dict.update(kwargs)
+            results.append(Event.objects(__raw__=query_dict).order_by('-time')[:limit])
+    else:
+        results = Event.objects(__raw___=query_dict).order_by('-time')[:limit]
+    return [__as_document(res) for res in result]
 
 
 @_ensure_connection
