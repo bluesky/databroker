@@ -34,30 +34,6 @@ class Resource(Document):
     meta = {'indexes': ['-_id'], 'db_alias': ALIAS}
 
 
-class ResourceAttributes(Document):
-    """
-
-    Parameters
-    ----------
-
-
-    """
-    resource = ReferenceField(Resource, reverse_delete_rule=DENY,
-                              required=True,
-                              db_field='resource_id')
-    shape = StringField(unique=False, required=True)
-    dtype = StringField(unique=False, required=True)
-    total_bytes = IntField(min_value=0, required=False, default=0)
-    hashed_data = StringField(required=False)
-    last_access = FloatField(required=False, default=time.time())
-    datetime_last_access = DateTimeField(required=False)
-    in_use = BooleanField(required=False, default=False)
-    custom_attributes = DictField(required=False)
-    meta = {'indexes': ['-_id', '-shape', '-dtype'], 'db_alias': ALIAS}
-
-# TODO: add documentation
-
-
 class Datum(Document):
     """
     Document to represent a single datum in a resource.

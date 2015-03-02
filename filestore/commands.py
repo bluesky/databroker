@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 import mongoengine.connection
-from .odm_templates import Resource, ResourceAttributes, Datum, ALIAS
+from .odm_templates import Resource, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
@@ -26,7 +26,6 @@ def db_disconnect():
     mongoengine.connection.disconnect(ALIAS)
     Datum._collection = None
     Resource._collection = None
-    ResourceAttributes._collection = None
 
 
 def db_connect(database, host, port):
@@ -67,39 +66,6 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
 
 
 @_ensure_connection
-def insert_resourse_attributes(resource, shape, dtype, **kwargs):
-    """
-
-    This is to be considered provisional.  The API may change drastically
-    in the near future.
-
-
-    kwargs
-    ------
-
-
-    """
-
-    resource_attributes = ResourceAttributes(resource=resource.id, shape=shape,
-                                           dtype=dtype)
-    for k in ['total_bytes', 'hashed_data', 'last_access',
-              'datetime_last_access', 'in_use',
-              'custom_attributes']:
-        v = kwargs.pop(k, None)
-        if v:
-            setattr(resource_attributes, v)
-
-    if kwargs:
-        raise AttributeError(kwargs.keys() +
-                             '  field(s) are not among attribute keys. '
-                             ' Use resource_kwargs attributes'
-                             ' dict for saving it')
-    resource_attributes.save(validate=True, write_concern={"w": 1})
-
-    return resource_attributes
-
-
-@_ensure_connection
 def insert_datum(resource, datum_id, datum_kwargs=None):
     """
 
@@ -133,25 +99,6 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
     datum.save(validate=True, write_concern={"w": 1})
 
     return datum
-
-
-@_ensure_connection
-def find_resource_attributes(resource):
-    """Return resource_attributes entry given a resource object
-
-
-    This is to be considered provisional.  The API may change drastically
-    in the near future.
-
-
-    Parameters
-    ----------
-    resource: filestore.database.resource.Resource
-        Resource object
-
-    """
-
-    return ResourceAttributes.objects(resource=resource.id)
 
 
 @_ensure_connection
