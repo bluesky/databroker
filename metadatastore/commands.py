@@ -344,7 +344,7 @@ def find_run_start(limit=50, **kwargs):
 
     Returns
     -------
-    br_objects : metadatastore.document.Document
+    rs_objects : metadatastore.document.Document
         Combined documents: RunStart, BeamlineConfig, Sample and
         EventDescriptors
 
@@ -359,7 +359,6 @@ def find_run_start(limit=50, **kwargs):
     ...                stop_time=time.time())
 
     """
-    # format time correctly
     time_dict = {}
     start_time = kwargs.pop('start_time', None)
     stop_time = kwargs.pop('stop_time', None)
@@ -369,12 +368,9 @@ def find_run_start(limit=50, **kwargs):
         time_dict['$lte'] = stop_time
     if time_dict:
         kwargs['time'] = time_dict
-    # do the search
-    br_objects = RunStart.objects(__raw__=kwargs).order_by('-_id')[:limit]
-    # add the event descriptors
-    __add_event_descriptors(br_objects)
-    # transform the mongo objects into safe, whitebread python objects
-    return [__as_document(bre) for bre in br_objects]
+    rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
+    __add_event_descriptors(rs_objects)
+    return [__as_document(rs) for rs in rs_objects]
 
 
 @_ensure_connection
@@ -417,7 +413,7 @@ def find_run_stop(**kwargs):
     except KeyError:
         pass
     query_dict.update(kwargs)
-    run_stop = RunStop.objects(__raw__=query_dict).order_by('-_id')
+    run_stop = RunStop.objects(__raw__=query_dict).order_by('-time')
     try:
         run_stop = run_stop[0]
     except IndexError:
@@ -501,7 +497,7 @@ def find_event(limit=1000, **kwargs):
 
 @_ensure_connection
 def find_last(num=1):
-    """Indexed on ObjectId NOT stop_time.
+    """Indexed on time.
 
     Returns the last created header not modified!!
 
