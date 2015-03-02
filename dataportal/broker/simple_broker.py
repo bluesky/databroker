@@ -81,7 +81,7 @@ class DataBroker(object):
         events_by_descriptor = []
         for run in runs:
             run = copy.copy(run)
-            run.id = run.ids['run_start_id']
+            run.id = run.run_start_id
             events_by_descriptor.extend(find_event(run))
         events = [event for descriptor in events_by_descriptor
                   for event in descriptor]
@@ -186,32 +186,35 @@ def fill_event(event):
 
 
 def _build_header(run_start):
-    "Modify a RunStart Document in place into a Header Document."
+    """Transform a RunStart Document in place into a Header Document.
+
+    Parameters
+    ----------
+    run_start : dataportal.broker.Document
+        The run_start document from metadatastore that has been sanitized into
+        a safe dataportal.broker.Document
+    """
     run_start.event_descriptors = find_event_descriptor(run_start)
     run_stop = find_run_stop(run_start)
     # fix the time issue
     adds = {'start_time': (run_start, 'time'),
-            'start_datetime': (run_start, 'time_as_datetime')}
+            'start_datetime': (run_start, 'time_as_datetime'),
+            'run_start_uid': (run_start, 'uid'),
+            'run_start_id': (run_start, 'id')}
     deletes = [(run_start, '_name')]
-    add_to_id = {'run_start_uid': (run_start, 'uid'),
-                 'run_start_id': (run_start, 'id')}
     if run_stop is not None:
         adds['stop_time'] = (run_stop, 'time')
         adds['stop_datetime'] = (run_stop, 'time_as_datetime')
         adds['exit_reason'] = (run_stop, 'reason')
+        adds['run_stop_uid'] = (run_stop, 'uid')
+        adds['run_stop_id'] = (run_stop, 'id')
         deletes.append((run_stop, '_name'))
         deletes.append((run_stop, 'run_start'))
-        add_to_id['run_stop_uid'] = (run_stop, 'uid')
-        add_to_id['run_stop_id'] = (run_stop, 'id')
     for new_var_name, src_tuple in adds.items():
         setattr(run_start, new_var_name, getattr(*src_tuple))
         delattr(*src_tuple)
     for to_delete in deletes:
         delattr(*to_delete)
-    run_start.ids = {}
-    for new_var_name, src_tuple in add_to_id.items():
-        run_start.ids[new_var_name] = getattr(*src_tuple)
-        delattr(*src_tuple)
     if run_stop is not None:
        # dump the remaining values from the RunStop object into the header
         for k, v in vars(run_stop).items():
@@ -219,5 +222,4 @@ def _build_header(run_start):
                 raise ValueError("The run header already has a key named {}. "
                                  "Please update the mappings".format(k))
             setattr(run_start, k, v)
-
     run_start._name = 'Header'
