@@ -24,6 +24,8 @@ class ColumnModel(Atom):
     upsample = Enum(*ColSpec.upsampling_methods)
     downsample = Enum(*ColSpec.downsampling_methods)
     _shape = Tuple()
+    is_being_normalized = Bool(False)
+    can_be_normalized = Bool(True)
 
     def __init__(self, data_muxer, dim, name, shape, upsample=None,
                  downsample=None):
@@ -136,7 +138,9 @@ class MuxerModel(Atom):
     volume_columns_visible = Bool(False)
 
     data_muxer = Typed(DataMuxer)
-    data_frame = Typed(DataFrame)
+    dataframe = Typed(DataFrame)
+    _df_binned = Typed(DataFrame)
+    _df_normalized = Typed(DataFrame)
     header = Typed(Document)
     info = Str()
 
@@ -151,7 +155,7 @@ class MuxerModel(Atom):
     _bin_index = Int(0)
 
     norm_options = List()
-    norm_axis = Str('None')
+    norm_column = Str('None')
     _norm_index = Int(0)
 
     upsample = Enum('linear', *ColSpec.upsampling_methods)
@@ -173,7 +177,7 @@ class MuxerModel(Atom):
             self.new_data_callbacks = []
 
     @observe('header')
-    def run_header_changed(self, changed):
+    def _run_header_changed(self, changed):
         print('Run header has been changed, creating a new data_muxer')
         self.info = 'Run {}'.format(self.header.scan_id)
         with self.suppress_notifications():
@@ -207,14 +211,84 @@ class MuxerModel(Atom):
             for data_cb in self.new_data_callbacks:
                 data_cb()
 
+    @observe('norm_column')
+    def _norm_column_changed(self, changed):
+        # if oldvalue exists and it is not None, reset its value to the
+        # non-normalized state
+        old_norm_col = changed.get('oldvalue', None)
+        print('old norm col: {}'.format(old_norm_col))
+        if old_norm_col == 'None':
+            for name, model in self.column_models.items():
+                model.can_be_normalized = True
+        elif old_norm_col is not None and old_norm_col != 'None':
+            self.column_models[old_norm_col].can_be_normalized = True
+        new_norm_col = changed.get('value', None)
+        if new_norm_col is None or new_norm_col == 'None':
+            # disable all normalization check boxes
+            for name, model in self.column_models.items():
+                model.can_be_normalized = False
+            return
+        self.column_models[new_norm_col].is_being_normalized = False
+        self.column_models[new_norm_col].can_be_normalized = False
+
     @observe('data_muxer')
-    def new_muxer(self, changed):
+    def _new_muxer(self, changed):
         # data_muxer object has been changed. Remake the columns
         print('new data muxer received')
         self._verify_column_info()
 
     def perform_binning(self):
-        self.data_frame = self.data_muxer.bin_on(self.binning_axis)
+        # rebin the data
+        dataframe = self.data_muxer.bin_on(self.binning_axis)
+        # normalize the new dataframe
+        self._normalize_all(dataframe)
+        # trigger the magic message passing cascade by assigning a new
+        # dataframe to the instance data_frame attribute
+        self.dataframe = dataframe
+
+    def _normalize_all(self, dataframe):
+        print('data frame before normalizing all')
+        print(dataframe)
+        norm_cols = [col_name for col_name, col_model
+                     in self.column_models.items()
+                     if col_model.is_being_normalized]
+        for col in dataframe.columns:
+            if col[0] in norm_cols:
+                dataframe[col] /= dataframe[(self.norm_column, 'val')]
+
+        print('data frame after normalizing all')
+        print(dataframe)
+
+
+    def normalize(self, column_name, should_be_normalized):
+        """
+        Parameters
+        ----------
+        column_name : string
+            The column name to un/normalize
+        should_be_normalized : bool
+            If the column name should be normalized(True) or
+            unnormalized (False)
+        """
+        if self.dataframe is None:
+            print('Data must be binned before it can be normalized')
+            return
+        print('data frame before normalization')
+        print(self.dataframe)
+
+        to_be_normalized = None
+        for col in self.dataframe.columns:
+            if col[0] == column_name:
+                to_be_normalized = col
+                break
+
+        if should_be_normalized:
+            self.dataframe[col] /= self.dataframe[(self.norm_column, 'val')]
+        else:
+            self.dataframe[col] *= self.dataframe[(self.norm_column, 'val')]
+        print('data frame after normalization')
+        print(self.dataframe)
+        # self.dataframe = combined
 
     def _verify_column_info(self):
         print('verifying column information')

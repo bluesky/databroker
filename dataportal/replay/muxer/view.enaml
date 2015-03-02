@@ -1,56 +1,51 @@
 """Enaml definitions for GUI views related to the DataMuxer"""
 
-from enaml.layout.api import (vbox, hbox, Box, spacer, align)
+from enaml.layout.api import (vbox, hbox, Box, spacer, align, factory)
 from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
-                               Action, Menu, ComboBox, Timer, SpinBox)
-from enaml.core.api import Looper
+                               Action, Menu, ComboBox, Timer, SpinBox, CheckBox)
+from enaml.core.api import Looper, Include
 from .model import ColumnModel
-from ..core import TimerButton
+from ..core import TimerButton, generate_grid
 
-enamldef ColumnView(Container):
-    padding = Box(0, 0, 0, 0)
+
+enamldef NormalizeCheckBox(CheckBox):
     attr column_model
-    constraints = [hbox(up, down, spacer)]
-    ComboBox: up:
-        items << list(ColumnModel.upsample.items)
-        index << ColumnModel.upsample.items.index(column_model.upsample)
-        selected_item >> column_model.upsample
-    ComboBox: down:
-        items << list(ColumnModel.downsample.items)
-        index << ColumnModel.downsample.items.index(column_model.downsample)
-        selected_item >> column_model.downsample
+    checked := column_model.is_being_normalized
+    enabled << column_model.can_be_normalized
+    clicked ::
+        muxer_model.normalize(column_model.name, checked)
 
-enamldef KeyForm(Form):
+
+enamldef DownsampleComboBox(ComboBox):
+    attr column_model
+    items << list(ColumnModel.downsample.items)
+    index << ColumnModel.downsample.items.index(column_model.downsample)
+    selected_item >> column_model.downsample
+
+
+enamldef UpsampleComboBox(ComboBox):
+    attr column_model
+    items << list(ColumnModel.upsample.items)
+    index << ColumnModel.upsample.items.index(column_model.upsample)
+    selected_item >> column_model.upsample
+
+
+enamldef ColumnModelGrid(Container):
     """Special snowflake Container object that takes a list of ColumnModel
     objects and displays them in a Form
     """
     attr column_model_list = []
-    row_spacing = 0
-    Label:
-        text = 'PV'
-    Container:
-        constraints = [hbox(up, down),
-                       contents_left == up.left,
-                       contents_right == down.right]
-        Label: up:
-            text = 'Upsample'
-        Label: down:
-            text = 'Downsample'
-    Looper:
-        iterable << column_model_list
-        Label:
-            text = loop_item.name
-        ColumnView:
-            column_model = loop_item
+    padding = Box(0, 0, 0, 0)
+    constraints << [factory(generate_grid, 4)]
+    Include:
+        objects << gen_objects(column_model_list)
 
 
 enamldef MuxerController(Container):
     padding = Box(0, 0, 0, 0)
     attr muxer_model
     constraints = [vbox(refresh_button, update_rate, operations, muxer_info,
-                        scalar, line, image, volume),
-                   align('midline', scalar.form, line.form, image.form,
-                         volume.form)]
+                        scalar, line, image, volume),]
     Timer: the_timer:
         interval << muxer_model.update_rate
         single_shot = False
@@ -77,55 +72,55 @@ enamldef MuxerController(Container):
         text << muxer_model.info
     GroupBox: operations:
         title = "Data Operations"
-        PushButton:
-            text = "Rebin data"
-            enabled << muxer_model.binning_axis != "None"
-            clicked ::
-                muxer_model.perform_binning()
+        padding = Box(0, 0, 0, 0)
         Form:
-            Label:
-                text = "Dataset to bin against"
+            PushButton:
+                text = "Perform Binning"
+                enabled << muxer_model.binning_axis != "None"
+                clicked ::
+                    muxer_model.perform_binning()
+                    print('rebin clicked')
             ComboBox:
                 items << muxer_model.binning_options
                 selected_item >> muxer_model.binning_axis
             Label:
-                text = "Dataset to normalize by"
+                text = "Normalize data by"
             ComboBox:
                 items << muxer_model.norm_options
-                selected_item >> muxer_model.norm_axis
+                selected_item >> muxer_model.norm_column
     GroupBox: scalar:
-        share_layout = True
-        alias form: scalar_keys
-        title = 'Scalar keys'
+        title = 'Scalar PVs'
         padding = Box(0, 0, 0, 0)
         visible << muxer_model.scalar_columns_visible
-        KeyForm: scalar_keys:
-            share_layout = True
+        ColumnModelGrid: scalars:
             column_model_list << muxer_model.scalar_columns
     GroupBox: line:
-        share_layout = True
-        alias form: line_keys
-        title = 'Line keys'
+        title = 'Line PVs'
         padding = Box(0, 0, 0, 0)
         visible << muxer_model.line_columns_visible
-        KeyForm: line_keys:
-            share_layout = True
+        ColumnModelGrid: lines:
             column_model_list << muxer_model.line_columns
     GroupBox: image:
-        share_layout = True
-        alias form: image_keys
-        title = 'Image keys'
+        title = 'Image PVs'
         padding = Box(0, 0, 0, 0)
         visible << muxer_model.image_columns_visible
-        KeyForm: image_keys:
-            share_layout = True
+        ColumnModelGrid: images:
             column_model_list << muxer_model.image_columns
     GroupBox: volume:
-        share_layout = True
-        alias form: volume_keys
-        title = 'Volume keys'
+        title = 'Volume PVs'
         padding = Box(0, 0, 0, 0)
         visible << muxer_model.volume_columns_visible
-        KeyForm: volume_keys:
-            share_layout = True
+        ColumnModelGrid: volumes:
             column_model_list << muxer_model.volume_columns
+
+
+def gen_objects(column_models):
+    objs = [Label(text='PV alias'), Label(text='Upsample'),
+            Label(text='Downsample'), Label(text='Normalize?')]
+    for col in column_models:
+        objs.append(Label(text=col.name))
+        objs.append(UpsampleComboBox(column_model=col))
+        objs.append(DownsampleComboBox(column_model=col))
+        objs.append(NormalizeCheckBox(column_model=col))
+
+    return objs
