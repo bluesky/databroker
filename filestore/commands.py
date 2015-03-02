@@ -120,7 +120,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 
     """
     try:
-        spec = Resource.spec
+        spec = resource.spec
     except AttributeError:
         resource = Resource.objects.get(id=resource)
         spec = resource.spec
