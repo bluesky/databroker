@@ -1,6 +1,7 @@
 import six
 import mongoengine
 from mongoengine.base.datastructures import BaseDict, BaseList
+from mongoengine.base.document import BaseDocument
 from bson.objectid import ObjectId
 from datetime import datetime
 from itertools import chain
@@ -29,7 +30,7 @@ def _normalize(in_val):
         The 'sanitized' object
 
     """
-    if isinstance(in_val, mongoengine.Document):
+    if isinstance(in_val, BaseDocument):
         return Document(in_val)
     elif isinstance(in_val, BaseDict):
         return {_normalize(k): _normalize(v) for k, v in six.iteritems(in_val)}
