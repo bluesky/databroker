@@ -53,8 +53,8 @@ class Document(object):
         mongo_document : mongoengine.Document
         """
         self._name = mongo_document.__class__.__name__
-        fields = set(chain(mongo_document._fields.keys(),
-                           mongo_document._data.keys()))
+        self.fields = fields = set(chain(mongo_document._fields.keys(),
+                                         mongo_document._data.keys()))
         for field in fields:
             attr = getattr(mongo_document, field)
 
@@ -67,3 +67,18 @@ class Document(object):
 
     def __repr__(self):
         return "<{0} Document>".format(self._name)
+
+    def __iter__(self):
+        return self.fields
+
+    def __getitem__(self, key):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError()
+
+    def __len__(self):
+        return len(self.fields)
+
+    def __contains__(self, key):
+        return key in self.fields
