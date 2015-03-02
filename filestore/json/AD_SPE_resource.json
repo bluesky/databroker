@@ -15,7 +15,6 @@
 
     },
     "required": [
-        "frame_per_point",
         "template",
         "filename"
     ],
