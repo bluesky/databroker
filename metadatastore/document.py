@@ -72,11 +72,14 @@ class Document(MutableMapping):
         self.__dict__[k] = v
         if not k.startswith('_'):
             self._fields.add(k)
+        assert hasattr(self, k)
+        assert k in self.__dict__
 
     def __delattr__(self, k):
         del self.__dict__[k]
         if not k.startswith('_'):
             self._fields.remove(k)
+        assert k not in self._fields
 
     def __repr__(self):
         return "<{0} Document>".format(self._name)
@@ -92,6 +95,7 @@ class Document(MutableMapping):
 
     def __delitem__(self, key):
         delattr(self, key)
+        assert key not in self._fields
 
     def __setitem__(self, key, val):
         setattr(self, key, val)
