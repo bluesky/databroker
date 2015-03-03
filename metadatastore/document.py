@@ -88,7 +88,7 @@ class Document(MutableMapping):
         try:
             return getattr(self, key)
         except AttributeError:
-            raise KeyError()
+            raise KeyError(key)
 
     def __delitem__(self, key):
         delattr(self, key)
