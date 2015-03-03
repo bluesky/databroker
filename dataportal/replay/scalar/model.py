@@ -396,8 +396,9 @@ class ScalarCollection(Atom):
         print('ploty: {}'.format(ploty))
 
         for name, model in self.scalar_models.items():
-            print(name, model, 'name in ploty: ', name in ploty)
-            self.scalar_models[name].is_plotting = name in ploty
+            is_plt = bool(ploty is None or name in ploty)
+            print(name, model, 'name in ploty: ', is_plt)
+            self.scalar_models[name].is_plotting = is_plt
 
         if ploty:
             self.x_is_time = False
