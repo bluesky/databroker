@@ -354,6 +354,8 @@ class ScalarCollection(Atom):
     def update_x(self, changed):
         print('x updated: {}'.format(self.x))
         self._conf.xlabel = self.x
+        if not self.x:
+            return
         self.get_new_data_and_plot()
         self.x_index = self.data_cols.index(self.x)
 
@@ -591,8 +593,12 @@ class ScalarCollection(Atom):
         self._plot(data_dict)
 
     def plot_by_x(self):
+        if not self.x:
+            return
+
         interpolation = {name: 'linear' for name in self.data_cols}
         agg = {name: np.mean for name in self.data_cols}
+
         df = self.data_muxer.bin_on(self.x, interpolation=interpolation,
                                       agg=agg, col_names=self.data_cols)
         x_axis = df[self.x].val.values
