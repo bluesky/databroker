@@ -451,7 +451,7 @@ def find_event_descriptor(**kwargs):
 
 
 @_ensure_connection
-def find_event(limit=1000, **kwargs):
+def find_event(**kwargs):
     """
 
     Parameters
@@ -478,23 +478,25 @@ def find_event(limit=1000, **kwargs):
     events : list
         List of metadatastore.document.Document
     """
-    results = list()
+    query_dict = dict()
+    run_start = None
     try:
-        run_start_id = kwargs.pop('run_start').id
-        event_descriptors = EventDescriptor.objects(__raw__=run_start_id)
+        run_start = kwargs.pop('run_start')
     except KeyError:
         pass
-    if event_descriptors:
-        for e_desc in event_descriptors.order_by('-time'):
-            query_dict = dict()
-            query_dict['descriptor_id'] = event_descriptor.id
-            query_dict.update(kwargs)
-            results.append(Event.objects(__raw__=query_dict).order_by('-time')[:limit])
+    if run_start:
+        e_desc_ids = list()
+        e_descs = find_event_descriptor(run_start=run_start)
+        e_desc_ids = [entry.id for entry in e_descs]
+        query_dict['descriptor_id'] = {'$in': e_desc_ids}
+        query_dict.update(kwargs)
+        results = Event.objects(__raw__=query_dict).order_by('-time')
     else:
-        results = Event.objects(__raw___=query_dict).order_by('-time')[:limit]
-    return [__as_document(res) for res in result]
+        query_dict.update(kwargs)
+        results = Event.objects(__raw__=query_dict).order_by('-time')
+    return [__as_document(ev) for ev in results]
 
-
+    
 @_ensure_connection
 def find_last(num=1):
     """Indexed on time.
