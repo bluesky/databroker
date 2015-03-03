@@ -59,7 +59,7 @@ class DisplayHeaderModel(Atom):
     def header_changed(self, changed):
         run_start_keys = {}
         key_labels = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
-        run_start_dict = vars(self.header)
+        run_start_dict = dict(self.header.items())
         event_descriptors = run_start_dict.pop('event_descriptors', [])
         data_keys = self._format_for_enaml(event_descriptors)
         sample = run_start_dict.pop('sample', {})
