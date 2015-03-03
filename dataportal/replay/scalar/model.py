@@ -1,5 +1,3 @@
-__author__ = 'edill'
-
 from collections import OrderedDict
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
                       Typed, Dict, Constant, Coerced)
@@ -10,13 +8,12 @@ import six
 from ...muxer.data_muxer import DataMuxer
 from datetime import datetime
 import logging
-from copy import copy
-from pprint import pprint
-logger = logging.getLogger(__name__)
 import numpy as np
-import random
+
 from metadatastore.api import Document
 
+__author__ = 'edill'
+logger = logging.getLogger(__name__)
 
 nodata_str = "data_muxer is None"
 
@@ -49,7 +46,6 @@ class ScalarConfig(Atom):
         self._ax.set_xlabel(self.xlabel)
         self._ax.set_ylabel(self.ylabel)
         self._ax.grid(self.grid)
-
 
     @observe('title')
     def title_changed(self, changed):
@@ -188,7 +184,8 @@ class ScalarCollection(Atom):
     # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
     # the thing that holds all the data
-    data_muxer = Typed(DataMuxer)# the Document that holds all non-data associated with the data_muxer
+    data_muxer = Typed(DataMuxer)
+    # the Document that holds all non-data associated with the data_muxer
     header = Typed(Document)
     # The scan id of this data set
     scan_id = Int()
@@ -209,8 +206,7 @@ class ScalarCollection(Atom):
     single_plot = Bool(False)
     # shape of the subplots
     ncols = Range(low=0)
-    nrows = Range(low=0) # 0 here
-
+    nrows = Range(low=0)  # 0 here
 
     # ESTIMATING
     # the current set of data to perform peak estimates for
@@ -250,7 +246,7 @@ class ScalarCollection(Atom):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             # plotting initialization
-            self._fig = Figure(figsize=(1,1))
+            self._fig = Figure(figsize=(1, 1))
             self._fig.set_tight_layout(True)
             self._ax = self._fig.add_subplot(111)
             self._conf = ScalarConfig(self._ax)
@@ -315,7 +311,8 @@ class ScalarCollection(Atom):
                     line_artist=line_artist, name=name, is_plotting=True)
             # add the estimate
             name = 'peak stats'
-            line_artist, = self._ax.plot([], [], 'ro', label=name, markersize=15)
+            line_artist, = self._ax.plot([], [], 'ro',
+                                         label=name, markersize=15)
             self.scalar_models[name] = ScalarModel(line_artist=line_artist,
                                                    name=name, is_plotting=True)
 
@@ -608,7 +605,6 @@ class ScalarCollection(Atom):
                 # self.scalar_models[dname].is_plotting = True
         self.reformat_view()
 
-
     def plot_by_x_old(self, y_names):
         # interpolation = {name: 'linear' for name in self.data_muxer.col_info.keys()}
         # agg = {name: np.mean for name in self.data_muxer.col_info.keys()}
@@ -669,7 +665,6 @@ class ScalarCollection(Atom):
         # self._ax.axvline(x=self.estimate_stats['x_at_max'], linewidth=4,
         #                  color='k')
 
-
     def reformat_view(self, *args, **kwargs):
         """
         Recompute the limits, rescale the view, reformat the legend and redraw
@@ -677,7 +672,6 @@ class ScalarCollection(Atom):
         """
         # ignore the args and kwargs. They are here so that any function can be
         # connected to this one
-
 
         x_data = []
         y_data = []
@@ -723,6 +717,6 @@ class ScalarCollection(Atom):
             self._fig.canvas.draw()
         # self._ax.figure.canvas.draw()
         # print('current figure id: {}'.format(id(self._fig)))
-        except AttributeError as ae:
+        except AttributeError:
             # should only happen once
             pass
