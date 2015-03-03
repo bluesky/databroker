@@ -379,7 +379,8 @@ class ScalarCollection(Atom):
 
     @observe('estimate_target')
     def update_estimate_target(self, changed):
-        self.estimate_index = self.data_cols.index(self.estimate_target)
+        if self.estimate_target:
+            self.estimate_index = self.data_cols.index(self.estimate_target)
 
     @observe('normalize')
     def update_normalize(self, changed):
