@@ -122,17 +122,19 @@ class GetLastModel(Atom):
         try:
             self.headers = DataBroker[-self.num_to_retrieve:]
         except ConnectionError:
-            self.search_info = "Database [[{}]] not available on [[{}]]".format(
-                metadatastore.conf.mds_config['database'],
-                metadatastore.conf.mds_config['host']
+            self.search_info = (
+                "Database {} not available at {} on port {}").format(
+                metadatastore.conf.connection_config['database'],
+                metadatastore.conf.connection_config['host'],
+                metadatastore.conf.connection_config['port']
             )
             self.connection_is_active = False
             return
         except AutoReconnect:
             self.search_info = (
                 "Connection to database [[{}]] on [[{}]] was lost".format(
-                    metadatastore.conf.mds_config['database'],
-                    metadatastore.conf.mds_config['host']
+                    metadatastore.conf.connection_config['database'],
+                    metadatastore.conf.connection_config['host']
                 )
             )
             self.connection_is_active = False
