@@ -11,6 +11,8 @@ from metadatastore import conf
 from mongoengine import connect
 import mongoengine.connection
 import uuid
+from bson import ObjectId
+
 
 logger = logging.getLogger(__name__)
 
@@ -487,7 +489,7 @@ def find_event(**kwargs):
     if run_start:
         e_desc_ids = list()
         e_descs = find_event_descriptor(run_start=run_start)
-        e_desc_ids = [entry.id for entry in e_descs]
+        e_desc_ids = [ObjectId(entry.id) for entry in e_descs]
         query_dict['descriptor_id'] = {'$in': e_desc_ids}
         query_dict.update(kwargs)
         results = Event.objects(__raw__=query_dict).order_by('-time')
