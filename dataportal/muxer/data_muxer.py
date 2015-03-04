@@ -119,7 +119,7 @@ class ColSpec(namedtuple(
 
 def _validate_upsample(input):
     # TODO The upsampling method could be any callable.
-    if input is None:
+    if input is None or input == 'None':
         return 'None'
     if not (input in ColSpec.upsampling_methods):
         raise ValueError("{} is not a valid upsampling method. It "
@@ -448,7 +448,7 @@ class DataMuxer(object):
                 upsample = col_info.upsample
             else:
                 upsample = _validate_upsample(upsample)
-            if ((upsample is not None) or (upsample != 'None')) and (col_info.ndim > 0):
+            if not (upsample is None or upsample == 'None') and (col_info.ndim > 0):
                 raise NotImplementedError(
                     "Only scalar data can be upsampled. "
                     "The {0}-dimensional source {1} was given the upsampling "
@@ -462,9 +462,9 @@ class DataMuxer(object):
 
             # Start by using the first point in a bin. (If there are actually
             # multiple points, we will either overwrite or raise below.)
-            val_name = 'value: {}'.format(downsample)
+            val_name = downsample
             if val_name is None or val_name == 'None':
-                val_name = 'value: raw'
+                val_name = 'raw'
             result[name][val_name] = first_point[name]
 
             # Short-circuit if we are done.
