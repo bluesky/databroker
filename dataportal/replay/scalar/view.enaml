@@ -78,22 +78,6 @@ enamldef PlotControls(Container):
                                         scalar_collection.estimate_target = loop_item
                             Label:
                                 text << str(id(scalar_collection.scalar_models[loop_item]))
-                GroupBox: derived:
-                    padding = Box(0, 0, 0, 0)
-                    title = "Derived Data"
-                    Form:
-                        row_spacing = 0
-                        Looper: looper:
-                            iterable << scalar_collection.derived_cols
-                            PushButton: cb_plot:
-                                text = loop_item
-                                checkable = True
-                                checked := scalar_collection.scalar_models[loop_item].is_plotting
-                                clicked ::
-                                    if loop_item != 'peak stats' and loop_item != 'fit':
-                                        scalar_collection.estimate_target = loop_item
-                            Label:
-                                text << str(id(scalar_collection.scalar_models[loop_item]))
             GroupBox: estimate:
                 title_align = 'center'
                 title = 'Estimate'

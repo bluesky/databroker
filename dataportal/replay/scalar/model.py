@@ -194,17 +194,9 @@ class ScalarCollection(Atom):
 
 
     # name of the column to align against
-    bin_on = Str()
     x_is_time = Bool(False)
     # name of all columns that the data muxer knows about
     data_cols = List()
-    derived_cols = List()
-
-    # should the pandas dataframe plotting use subplots for each column
-    single_plot = Bool(False)
-    # shape of the subplots
-    ncols = Range(low=0)
-    nrows = Range(low=0)  # 0 here
 
     # ESTIMATING
     # the current set of data to perform peak estimates for
@@ -288,14 +280,6 @@ class ScalarCollection(Atom):
 
         valid_cols= [col for col in self.dataframe.columns
                      if self.dataframe[col].dropna().values[0].shape == tuple()]
-        # sort columns into single-level and multi-level
-        multi_level = []
-        single_level = []
-        for col in valid_cols:
-            if isinstance(col, tuple):
-                multi_level.append(col)
-            else:
-                single_level.append(col)
 
         # aggregate columns
         # create new scalar models
@@ -303,9 +287,12 @@ class ScalarCollection(Atom):
             # create a new line artist and scalar model
             x = np.asarray(self.dataframe[col_name].index)
             y = np.asarray(self.dataframe[col_name].values)
+            col_name = str(col_name)
             line_artist, = self._ax.plot(x, y, label=col_name, marker='D')
             self.scalar_models[col_name] = ScalarModel(
-                line_artist=line_artist, name=str(col_name), is_plotting=True)
+                line_artist=line_artist, name=col_name, is_plotting=True)
+
+        self.data_cols = [str(col) for col in valid_cols]
 
     def new_data_muxer(self, changed):
         """Function to be registered with a MugglerModel on its `muxer`
