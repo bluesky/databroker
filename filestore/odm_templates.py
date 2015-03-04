@@ -1,10 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from mongoengine import (Document, FloatField, DateTimeField, StringField,
-                         DictField, ReferenceField, IntField, BooleanField,
+from mongoengine import (Document, StringField, DictField, ReferenceField,
                          DENY)
 
-import time
 
 ALIAS = 'fs'
 
