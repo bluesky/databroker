@@ -28,7 +28,7 @@ def read_connection_config(filename=None):
                      filename, connection_config)
     else:
         connection_config = {
-            'database': 'test-{0}'.format(uuid.uuid4()),
+            'database': 'default-filestore',
             'host': "localhost",
             'port': 27017,
             }
