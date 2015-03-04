@@ -55,6 +55,8 @@ def _ev_desc_tester(run_start, data_keys, time):
     q_ret = mdsc.find_event_descriptor(run_start=run_start)[0]
     ret = EventDescriptor.objects.get(run_start_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), ret.id)
+    q_ret2 = mdsc.find_event_descriptor(_id=ev_desc.id)[0]
+    assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id) 
     for name, val in zip(['run_start', 'time'], [run_start, time]):
         assert_equal(getattr(ret, name), val)
 
