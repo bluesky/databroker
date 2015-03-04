@@ -7,7 +7,7 @@ from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
 
-from .spec import known_spec
+from .odm_templates import known_spec
 from jsonschema import validate as js_validate
 
 
