@@ -460,18 +460,20 @@ class DataMuxer(object):
             else:
                 downsample = _validate_downsample(downsample)
 
+            # init the name and series for the column that holds information
+            # pertaining to the measured data
+            val_col_name = 'val'
             # Start by using the first point in a bin. (If there are actually
             # multiple points, we will either overwrite or raise below.)
-            val_name = downsample
-            if val_name is None or val_name == 'None':
-                val_name = 'raw'
-            result[name][val_name] = first_point[name]
+            val_col_series = pd.Series(data=first_point[name])
 
             # Short-circuit if we are done.
             if np.all(has_one_point[name]):
+                val_col_name += '_raw'
+                result[name][val_col_name] = val_col_series
                 continue
 
-            result[name]['count'] = counts[name]
+            count_series = counts[name]
 
             # If any bin has no data, use the upsampling rule to interpolate
             # at the center of the empty bins. If there is no rule, simply
@@ -495,11 +497,18 @@ class DataMuxer(object):
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
                              len(safe_bins), has_no_points[name].sum(), name)
-                result[name][val_name].fillna(interpolated_points, inplace=True)
+                val_col_name += '_{}'.format(upsample[:4])
+                val_col_series.fillna(interpolated_points, inplace=True)
 
             # Short-circuit if we are done.
             if np.all(~has_multiple_points[name]):
+                result[name][val_col_name] = val_col_series
+                result[name]['count'] = count_series
                 continue
+
+            # append the downsample method to the value column name,
+            # but keep it short
+            val_col_name += '_{}'.format(six.text_type(downsample)[:4])
 
             # Multi-valued bins must be downsampled (reduced). If there is no
             # rule for downsampling, we have no recourse: we must raise.
@@ -516,9 +525,9 @@ class DataMuxer(object):
             if col_info.ndim == 0:
                 # For scalars, pandas knows what to do.
                 downsampled = g.agg(downsample)
-                result[name]['std'] = g.std()
-                result[name]['max'] = g.max()
-                result[name]['min'] = g.min()
+                std_series = g.std()
+                max_series = g.max()
+                min_series = g.min()
             else:
                 # For nonscalars, we are abusing groupby and must go to a
                 # a little more trouble to guarantee success.
@@ -527,14 +536,16 @@ class DataMuxer(object):
                     # in the call to resample.
                     downsample = ColSpec._downsample_mapping[downsample]
                 downsampled = g.apply(lambda x: downsample(np.asarray(x.dropna())))
-                result[name]['std'] = g.apply(
-                    lambda x: np.std(np.asarray(x.dropna()), 0))
-                result[name]['max'] = g.apply(
-                    lambda x: np.max(np.asarray(x.dropna()), 0))
-                result[name]['min'] = g.apply(
-                    lambda x: np.min(np.asarray(x.dropna()), 0))
-            result[name][val_name].where(~has_multiple_points[name], downsampled,
-                                      inplace=True)
+                std_series = g.apply(lambda x: np.std(np.asarray(x.dropna()), 0))
+                max_series = g.apply(lambda x: np.max(np.asarray(x.dropna()), 0))
+                min_series = g.apply(lambda x: np.min(np.asarray(x.dropna()), 0))
+
+            val_col_series.where(~has_multiple_points[name], downsampled, inplace=True)
+            result[name][val_col_name] = val_col_series
+            result[name]['count'] = count_series
+            result[name]['std'] = std_series
+            result[name]['max'] = max_series
+            result[name]['min'] = min_series
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
         # Label the bins with time points.
