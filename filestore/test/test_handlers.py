@@ -14,6 +14,7 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
 import filestore.retrieve as fsr
 
 from filestore.handlers import AreaDetectorHDF5Handler
+from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from filestore.handlers import HDFMapsEnergyHandler as HDFE
 from numpy.testing import assert_array_equal
@@ -164,3 +165,17 @@ class test_maps_hdf5(_with_file):
         hand = HDFE(self.filename, 'mca_arr')
         hand.close()
         assert_raises(RuntimeError, hand, 0)
+
+
+def _dummy_helper(n_pts, hand, kwargs):
+    target_data = (np.ones((n_pts, 10, 10)) * np.nan).squeeze()
+
+    assert_array_equal(target_data, hand(**kwargs))
+
+
+def test_ADDummy():
+
+    for n_pts in [1, 5]:
+        hand = DummyAreaDetectorHandler(None, frame_per_point=n_pts, aadvark=5)
+        for kw in [{}, {'a': 1}]:
+            yield _dummy_helper, n_pts, hand, kw

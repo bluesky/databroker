@@ -51,7 +51,7 @@ class DummyAreaDetectorHandler(HandlerBase):
     def __call__(self, **kwargs):
         out_stack = np.ones((self._fpp, 10, 10)) * np.nan
         # return stacked and squeezed results
-        return np.dstack(out_stack).squeeze()
+        return out_stack.squeeze()
 
 
 class _HDF5HandlerBase(HandlerBase):
