@@ -15,6 +15,7 @@ import filestore.retrieve as fsr
 
 from filestore.handlers import AreaDetectorHDF5Handler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
+from filestore.handlers import HDFMapsEnergyHandler as HDFE
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
@@ -103,13 +104,14 @@ class test_AD_hdf5_files(_with_file):
 
 
 class test_maps_hdf5(_with_file):
+    n_pts = 20
+    N = 10
+    M = 11
+
     # tests the MAPS handler (product specification from APS)
     def _make_data(self):
-        n_pts = 20
-        N = 10
-        M = 11
-        self.th = np.linspace(0, 2*np.pi, n_pts)
-        self.scale = np.arange(N*M)
+        self.th = np.linspace(0, 2*np.pi, self.n_pts)
+        self.scale = np.arange(self.N*self.M)
 
         with h5py.File(self.filename, 'w') as f:
             # create a group for maps to hold the data
@@ -119,24 +121,41 @@ class test_maps_hdf5(_with_file):
 
             entryname = 'mca_arr'
             comment = 'These are raw spectrum data.'
-            sn = np.sin(self.th).reshape(n_pts, 1, 1)
-            XY = self.scale.reshape(1, N, M)
+            sn = np.sin(self.th).reshape(self.n_pts, 1, 1)
+            XY = self.scale.reshape(1, self.N, self.M)
             data = XY * sn
             ds_data = mapsGrp.create_dataset(entryname, data=data)
             ds_data.attrs['comments'] = comment
 
+        # insert spectrum-wise resource and datum
         resource_id = insert_resource('hdf5_maps', self.filename,
                                       {'dset_path': 'mca_arr'})
-        self.eids = [str(uuid.uuid4()) for j in range(N*M)]
+        self.eids_spectrum = [str(uuid.uuid4()) for j in range(self.N*self.M)]
 
-        for uid, (i, j) in zip(self.eids, product(range(N), range(M))):
+        for uid, (i, j) in zip(self.eids_spectrum,
+                               product(range(self.N), range(self.M))):
             insert_datum(resource_id, uid, {'x': i, 'y': j})
 
-    def test_maps_round_trip(self):
+        # insert plane-wise resource and datum
+        resource_id = insert_resource('hdf5_planes', self.filename,
+                                      {'dset_path': 'mca_arr'})
+        self.eids_planes = [str(uuid.uuid4()) for j in range(self.n_pts)]
+
+        for uid, n in zip(self.eids_planes, range(self.n_pts)):
+            insert_datum(resource_id, uid, {'e_index': n})
+
+    def test_maps_spectrum_round_trip(self):
         sn = np.sin(self.th)
 
         with fsr.handler_context({'hdf5_maps': HDFM}):
-            for eid, sc in zip(self.eids, self.scale):
+            for eid, sc in zip(self.eids_spectrum, self.scale):
                 print(eid)
                 data = retrieve(eid)
                 assert_array_equal(data, sc * sn)
+
+    def test_maps_plane_round_trip(self):
+        base = self.scale.reshape(self.N, self.M)
+        with fsr.handler_context({'hdf5_planes': HDFE}):
+            for eid, v in zip(self.eids_planes, np.sin(self.th)):
+                data = retrieve(eid)
+                assert_array_equal(data, base * v)
