@@ -497,7 +497,7 @@ class DataMuxer(object):
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
                              len(safe_bins), has_no_points[name].sum(), name)
-                val_col_name += '_{}'.format(upsample[:4])
+                val_col_name += '_{}'.format(upsample)
                 val_col_series.fillna(interpolated_points, inplace=True)
 
             # Short-circuit if we are done.
@@ -508,7 +508,7 @@ class DataMuxer(object):
 
             # append the downsample method to the value column name,
             # but keep it short
-            val_col_name += '_{}'.format(six.text_type(downsample)[:4])
+            val_col_name += '_{}'.format(six.text_type(downsample))
 
             # Multi-valued bins must be downsampled (reduced). If there is no
             # rule for downsampling, we have no recourse: we must raise.
