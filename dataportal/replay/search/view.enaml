@@ -89,26 +89,19 @@ enamldef GetLastView(Container):
 
 enamldef DisplayHeaderView(Container):
     attr display_header_model
+    # GUI Element to show a RunHeader
+    DisplaySummary:
+        padding = Box(0, 0, 0, 0)
+        display_dict << display_header_model.header_as_dict
+
+enamldef DisplayPVView(Container):
+    attr display_header_model
     Container:
         padding = Box(0, 0, 0, 0)
-        # GUI Element to show a Run Summary and the corresponding Data Keys
-        GroupBox: run_summary:
-            #visible := get_last_model.summary_visible
-            padding = Box(0, 0, 0, 0)
-            title = "Run Summary"
-            flat = True
-            DisplaySummary:
-                padding = Box(0, 0, 0, 0)
-                display_dict << display_header_model.header_as_dict
-            GroupBox:
-                padding = Box(0, 0, 0, 0)
-                title = "Data Key Information"
-                flat = True
-                Container:
-                    padding = Box(0, 0, 0, 0)
-                    constraints << [factory(generate_grid, 3)]
-                    Include:
-                        objects << gen_objects(display_header_model.header_keys)
+        # GUI element to show a grid of PV information
+        constraints << [factory(generate_grid, 3)]
+        Include:
+            objects << gen_objects(display_header_model.header_keys)
 
 def gen_objects(keys):
     try:

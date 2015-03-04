@@ -10,7 +10,7 @@ try:
 
     with enaml.imports():
         from .view import (GetLastView, GetLastWindow, WatchForHeadersView,
-                           DisplayHeaderView)
+                           DisplayHeaderView, DisplayPVView)
 
 except ImportError:
     if six.PY3:

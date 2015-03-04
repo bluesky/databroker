@@ -1,5 +1,5 @@
 from dataportal.replay.search import (GetLastView, WatchForHeadersView,
-                                      DisplayHeaderView)
+                                      DisplayHeaderView, DisplayPVView)
 from dataportal.replay.muxer import MuxerController
 from dataportal.replay.scalar import PlotView, PlotControls
 
@@ -21,11 +21,13 @@ enamldef MainView(MainWindow): main_view:
                     VSplitLayout(
                         TabLayout('search', 'watch_header',
                                   index=init_params['search_tab_index']),
-                        'header_view'),
-                    'muxer', 'scalar plot controls'),
+                        TabLayout('header_view', 'pv_view',),
+                        'muxer'),
+                    'scalar plot controls'),
                 'scalar plot'
             )
             DockItem:
+                closable = False
                 name = 'search'
                 title = "Search"
                 Container:
@@ -33,6 +35,7 @@ enamldef MainView(MainWindow): main_view:
                         GetLastView:
                             get_last_model = main_view.get_last_model
             DockItem:
+                closable = False
                 name = 'watch_header'
                 title = "Most Recent Header"
                 Container:
@@ -40,6 +43,7 @@ enamldef MainView(MainWindow): main_view:
                         WatchForHeadersView:
                             watch_headers_model = main_view.watch_headers_model
             DockItem:
+                closable = False
                 name = 'header_view'
                 title = "Run Summary"
                 Container:
@@ -47,6 +51,15 @@ enamldef MainView(MainWindow): main_view:
                         DisplayHeaderView:
                             display_header_model = main_view.display_header_model
             DockItem:
+                closable = False
+                name = 'pv_view'
+                title = "PV info "
+                Container:
+                    ScrollArea:
+                        DisplayPVView:
+                            display_header_model = main_view.display_header_model
+            DockItem:
+                closable = False
                 name = 'muxer'
                 title = 'Muxer'
                 Container:
@@ -54,6 +67,7 @@ enamldef MainView(MainWindow): main_view:
                         MuxerController:
                             muxer_model = main_view.muxer_model
             DockItem:
+                closable = False
                 name = 'scalar plot controls'
                 title = 'Scalar Plot Controls'
                 Container:
@@ -61,6 +75,7 @@ enamldef MainView(MainWindow): main_view:
                         PlotControls:
                             scalar_collection = main_view.scalar_collection
             DockItem:
+                closable = False
                 name = 'scalar plot'
                 title = "Scalar Plot"
                 PlotView:
