@@ -390,8 +390,9 @@ def find_beamline_config(**kwargs):
         The beamline config object
     """
     # ordered by _id because it is not guaranteed there will be time in cbonfig
-    beamline_config = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
-    return __as_document(beamline_config)
+    bc_list = list()
+    beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
+    return [__as_document(bc) for bc in beamline_configs]
 
 
 @_ensure_connection
