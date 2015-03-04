@@ -462,7 +462,10 @@ class DataMuxer(object):
 
             # Start by using the first point in a bin. (If there are actually
             # multiple points, we will either overwrite or raise below.)
-            result[name]['val'] = first_point[name]
+            val_name = 'value: {}'.format(downsample)
+            if val_name is None or val_name == 'None':
+                val_name = 'value: raw'
+            result[name][val_name] = first_point[name]
 
             # Short-circuit if we are done.
             if np.all(has_one_point[name]):
@@ -492,7 +495,7 @@ class DataMuxer(object):
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
                              len(safe_bins), has_no_points[name].sum(), name)
-                result[name]['val'].fillna(interpolated_points, inplace=True)
+                result[name][val_name].fillna(interpolated_points, inplace=True)
 
             # Short-circuit if we are done.
             if np.all(~has_multiple_points[name]):
@@ -530,7 +533,7 @@ class DataMuxer(object):
                     lambda x: np.max(np.asarray(x.dropna()), 0))
                 result[name]['min'] = g.apply(
                     lambda x: np.min(np.asarray(x.dropna()), 0))
-            result[name]['val'].where(~has_multiple_points[name], downsampled,
+            result[name][val_name].where(~has_multiple_points[name], downsampled,
                                       inplace=True)
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
