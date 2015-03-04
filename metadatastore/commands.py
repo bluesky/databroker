@@ -496,7 +496,7 @@ def find_event(**kwargs):
         results = Event.objects(__raw__=query_dict).order_by('-time')
     return [__as_document(ev) for ev in results]
 
-    
+
 @_ensure_connection
 def find_last(num=1):
     """Indexed on time.
@@ -510,7 +510,7 @@ def find_last(num=1):
         List of metadatastore.document.Document objects
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
-    rs_objects = [rs_obj for rs_obj in RunStart.objects.order_by('-time')[:num]]
+    rs_objects = [rs for rs in RunStart.objects.order_by('-time')[:num]]
     __add_event_descriptors(rs_objects)
     return [__as_document(rs) for rs in rs_objects]
 
