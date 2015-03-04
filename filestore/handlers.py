@@ -62,6 +62,7 @@ class _HDF5HandlerBase(HandlerBase):
     def close(self):
         super(_HDF5HandlerBase, self).close()
         self._file.close()
+        self._file = None
 
 
 class HDF5DatasetSliceHandler(_HDF5HandlerBase):

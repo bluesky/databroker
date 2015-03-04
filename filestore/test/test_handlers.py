@@ -18,6 +18,7 @@ from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
+from nose.tools import assert_true
 
 from six.moves import range
 db_name = str(uuid.uuid4())
@@ -78,6 +79,17 @@ class test_AD_hdf5_files(_with_file):
             assert hand._file
             hand.open()
 
+    def test_open_close(self):
+
+        hand = AreaDetectorHDF5Handler(self.filename)  # calls open()
+        assert_true(hand._file is not None)
+        hand.close()
+        assert_true(hand._file is None)
+        hand.open()
+        assert_true(hand._file is not None)
+        hand.close()
+        assert_true(hand._file is None)
+
 
 class test_maps_hdf5(_with_file):
     def _make_data(self):
@@ -90,6 +102,7 @@ class test_maps_hdf5(_with_file):
             # create a group for maps to hold the data
             mapsGrp = f.create_group('MAPS')
             # now set a comment
+
             mapsGrp.attrs['comments'] = 'MAPS group'
 
             entryname = 'mca_arr'
