@@ -19,7 +19,7 @@ from filestore.handlers import HDFMapsEnergyHandler as HDFE
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
-from nose.tools import assert_true
+from nose.tools import assert_true, assert_raises
 
 from six.moves import range
 db_name = str(uuid.uuid4())
@@ -159,3 +159,8 @@ class test_maps_hdf5(_with_file):
             for eid, v in zip(self.eids_planes, np.sin(self.th)):
                 data = retrieve(eid)
                 assert_array_equal(data, base * v)
+
+    def test_closed_rasise(self):
+        hand = HDFE(self.filename, 'mca_arr')
+        hand.close()
+        assert_raises(RuntimeError, hand, 0)
