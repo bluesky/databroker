@@ -146,6 +146,8 @@ def _event_tester(descriptor, seq_num, data, time):
 def _end_run_tester(run_start, time):
     print('br:', run_start)
     end_run = mdsc.insert_run_stop(run_start, time)
+    q_ret = mdsc.find_run_stop(_id=end_run.id)
+    assert_equal(bson.ObjectId(q_ret.id), end_run.id)   
     Document(end_run) # test document creation
     ret = RunStop.objects.get(id=end_run.id)
     for name, val in zip(['id', 'time', 'run_start'],
