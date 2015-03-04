@@ -35,8 +35,8 @@ def _blc_tester(config_dict):
     blc = mdsc.insert_beamline_config(config_dict, ttime.time())
     q_ret = mdsc.find_beamline_config(_id=blc.id)[0]
     assert_equal(bson.ObjectId(q_ret.id), blc.id)
-    doc = Document(blc) # test document creation
-    repr(doc) # exercise Document.__repr__
+    doc = Document(blc)
+    repr(doc)
     BeamlineConfig.objects.get(id=blc.id)
     if config_dict is None:
         config_dict = dict()
@@ -71,17 +71,17 @@ def test_ev_desc():
                                 beamline_id='sample_beamline',
                                 scan_id=42,
                                 beamline_config=blc)
-    Document(bre) # test document creation
+    Document(bre)
     data_keys = {'some_value': {'source': 'PV:pv1',
-                              'shape': [1, 2],
-                              'dtype': 'array'},
+                                'shape': [1, 2],
+                                'dtype': 'array'},
                  'some_other_val': {'source': 'PV:pv2',
-                              'shape': [],
-                              'dtype': 'number'},
+                                    'shape': [],
+                                    'dtype': 'number'},
                  'data_key3': {'source': 'PV:pv1',
-                              'shape': [],
-                              'dtype': 'number',
-                              'external': 'FS:foobar'}}
+                               'shape': [],
+                               'dtype': 'number',
+                               'external': 'FS:foobar'}}
     time = ttime.time()
     yield _ev_desc_tester, bre, data_keys, time
 
@@ -105,7 +105,7 @@ def _run_start_tester(time, beamline_id, scan_id):
                                       beamline_config=blc)
     q_ret = mdsc.find_run_start(_id=run_start.id)[0]
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
-    Document(run_start) # test document creation
+    Document(run_start)
     ret = RunStart.objects.get(id=run_start.id)
 
     for name, val in zip(['time', 'beamline_id', 'scan_id'],
@@ -123,7 +123,7 @@ def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
     run_start = mdsc.insert_run_start(time, beamline_id,
                                       beamline_config=beamline_cfg,
                                       scan_id=scan_id)
-    Document(run_start) # test document creation
+    Document(run_start)
     ret = RunStart.objects.get(id=run_start.id)
 
     for name, val in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
@@ -144,14 +144,13 @@ def _event_tester(descriptor, seq_num, data, time):
 
 
 def _end_run_tester(run_start, time):
-    print('br:', run_start)
     end_run = mdsc.insert_run_stop(run_start, time)
     q_ret = mdsc.find_run_stop(_id=end_run.id)
-    assert_equal(bson.ObjectId(q_ret.id), end_run.id)   
-    Document(end_run) # test document creation
+    assert_equal(bson.ObjectId(q_ret.id), end_run.id)
+    Document(end_run)
     ret = RunStop.objects.get(id=end_run.id)
     for name, val in zip(['id', 'time', 'run_start'],
-                    [end_run.id, time, run_start]):
+                         [end_run.id, time, run_start]):
         assert_equal(getattr(ret, name), val)
 
 
@@ -159,7 +158,7 @@ def test_end_run():
     bre = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline', scan_id=42,
                                 beamline_config=blc)
-    Document(bre) # test document creation
+    Document(bre)
     print('bre:', bre)
     time = ttime.time()
     yield _end_run_tester, bre, time
@@ -173,7 +172,7 @@ def test_bre_custom():
                                 scan_id=42,
                                 beamline_config=blc,
                                 custom=cust)
-    Document(bre) # test document creation
+    Document(bre)
     ret = RunStart.objects.get(id=bre.id)
 
     for k in cust:
