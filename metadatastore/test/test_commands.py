@@ -103,6 +103,8 @@ def _run_start_tester(time, beamline_id, scan_id):
 
     run_start = mdsc.insert_run_start(time, beamline_id, scan_id=scan_id,
                                       beamline_config=blc)
+    q_ret = mdsc.find_run_start(_id=run_start.id)[0]
+    assert_equal(bson.ObjectId(q_ret.id), run_start.id)
     Document(run_start) # test document creation
     ret = RunStart.objects.get(id=run_start.id)
 
