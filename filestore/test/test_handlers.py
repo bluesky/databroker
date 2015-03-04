@@ -42,6 +42,10 @@ def teardown():
 
 
 class _with_file(object):
+    # a base-class for testing which provides a temporary file for
+    # I/O tests.  This class provides a setup function which creates
+    # a temporary file (path stored in `self.filename`).  Sub-classes
+    # should over-ride `_make_data` to fill the file with data for the test.
     def setup(self):
         with tempfile.NamedTemporaryFile(delete=False) as fn:
             self.filename = fn.name
@@ -50,8 +54,13 @@ class _with_file(object):
     def teardown(self):
         os.unlink(self.filename)
 
+    def _make_data(self):
+        # sub-classes need to override this to put data into the test file
+        pass
+
 
 class test_AD_hdf5_files(_with_file):
+    # test the HDF5 product emitted by the hdf5 plugin to area detector
     def _make_data(self):
         filename = self.filename
         with h5py.File(filename) as f:
@@ -75,8 +84,10 @@ class test_AD_hdf5_files(_with_file):
             assert_array_equal(data, known_data)
 
     def test_context_manager(self):
+        # make sure context manager works
         with AreaDetectorHDF5Handler(self.filename) as hand:
             assert hand._file
+            # also test double opening a handler
             hand.open()
 
     def test_open_close(self):
@@ -92,17 +103,18 @@ class test_AD_hdf5_files(_with_file):
 
 
 class test_maps_hdf5(_with_file):
+    # tests the MAPS handler (product specification from APS)
     def _make_data(self):
         n_pts = 20
         N = 10
         M = 11
         self.th = np.linspace(0, 2*np.pi, n_pts)
         self.scale = np.arange(N*M)
+
         with h5py.File(self.filename, 'w') as f:
             # create a group for maps to hold the data
             mapsGrp = f.create_group('MAPS')
             # now set a comment
-
             mapsGrp.attrs['comments'] = 'MAPS group'
 
             entryname = 'mca_arr'
