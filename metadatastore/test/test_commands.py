@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import bson
 import six
 import uuid
 import time as ttime
@@ -49,9 +50,9 @@ def test_blc_insert():
 def _ev_desc_tester(run_start, data_keys, time):
     ev_desc = mdsc.insert_event_descriptor(run_start,
                                            data_keys, time)
-    Document(ev_desc) # test document creation
-    ret = EventDescriptor.objects.get(id=ev_desc.id)
-
+    q_ret = mdsc.find_event_descriptor(run_start=run_start)[0]
+    ret = EventDescriptor.objects.get(run_start_id=run_start.id)
+    assert_equal(bson.ObjectId(q_ret.id), ret.id)
     for name, val in zip(['run_start', 'time'], [run_start, time]):
         assert_equal(getattr(ret, name), val)
 
