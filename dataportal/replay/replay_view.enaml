@@ -3,7 +3,8 @@ from dataportal.replay.search import (GetLastView, WatchForHeadersView,
 from dataportal.replay.muxer import MuxerController
 from dataportal.replay.scalar import PlotView, PlotControls
 
-from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem)
+from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem,
+                               ScrollArea)
 from enaml.layout.api import VSplitLayout, HSplitLayout, TabLayout
 
 enamldef MainView(MainWindow): main_view:
@@ -27,28 +28,38 @@ enamldef MainView(MainWindow): main_view:
             DockItem:
                 name = 'search'
                 title = "Search"
-                GetLastView:
-                    get_last_model = main_view.get_last_model
+                Container:
+                    ScrollArea:
+                        GetLastView:
+                            get_last_model = main_view.get_last_model
             DockItem:
                 name = 'watch_header'
                 title = "Most Recent Header"
-                WatchForHeadersView:
-                    watch_headers_model = main_view.watch_headers_model
+                Container:
+                    ScrollArea:
+                        WatchForHeadersView:
+                            watch_headers_model = main_view.watch_headers_model
             DockItem:
                 name = 'header_view'
                 title = "Run Summary"
-                DisplayHeaderView:
-                    display_header_model = main_view.display_header_model
+                Container:
+                    ScrollArea:
+                        DisplayHeaderView:
+                            display_header_model = main_view.display_header_model
             DockItem:
                 name = 'muxer'
                 title = 'Muxer'
-                MuxerController:
-                    muxer_model = main_view.muxer_model
+                Container:
+                    ScrollArea:
+                        MuxerController:
+                            muxer_model = main_view.muxer_model
             DockItem:
                 name = 'scalar plot controls'
                 title = 'Scalar Plot Controls'
-                PlotControls:
-                    scalar_collection = main_view.scalar_collection
+                Container:
+                    ScrollArea:
+                        PlotControls:
+                            scalar_collection = main_view.scalar_collection
             DockItem:
                 name = 'scalar plot'
                 title = "Scalar Plot"

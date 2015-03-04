@@ -188,49 +188,17 @@ class ScalarCollection(Atom):
     dataframe = Typed(DataFrame)
     # name of the x axis
     x = Str()
-    # index of x in data_cols
-    # x_index = data_cols.index(x)
-    x_index = Int()
-
 
     # name of the column to align against
     x_is_time = Bool(False)
     # name of all columns that the data muxer knows about
     data_cols = List()
 
-    # ESTIMATING
-    # the current set of data to perform peak estimates for
-    estimate_target = Str()
-    # the result of the estimates, stored as a dictionary
-    # The list of peak parameters to plot
-    estimate_stats = Typed(OrderedDict)
-    estimate_plot = List()
-    # the index of the data set to perform estimates for
-    # estimate_index = data_cols.index(estimate_target)
-    estimate_index = Int()
-
-    # NORMALIZING
-    normalize_target = Str()
-    # should the data be normalized?
-    normalize = Bool(False)
-
     # MPL PLOTTING STUFF
     _fig = Typed(Figure)
     _ax = Typed(Axes)
     # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
-
-    # CONTROL OF THE PLOT UPDATE SPEED
-    redraw_every = Float(default=1)
-    redraw_type = Enum('max rate', 's')
-    update_rate = Str()
-    # the last time that the plot was updated
-    _last_update_time = Typed(datetime)
-    # the last frame that the plot was updated
-    _last_update_frame = Int()
-    # the number of times that `notify_new_data` has been called since the last
-    # update
-    _num_updates = Int()
 
     def __init__(self):
         with self.suppress_notifications():
@@ -240,9 +208,6 @@ class ScalarCollection(Atom):
             self._fig.set_tight_layout(True)
             self._ax = self._fig.add_subplot(111)
             self._conf = ScalarConfig(self._ax)
-            self.redraw_type = 's'
-            self.estimate_plot = ['cen', 'x_at_max']
-            self.estimate_stats = OrderedDict()
 
     def set_state(self, state_dict):
         try:
@@ -294,83 +259,6 @@ class ScalarCollection(Atom):
 
         self.data_cols = [str(col) for col in valid_cols]
 
-    def new_data_muxer(self, changed):
-        """Function to be registered with a MugglerModel on its `muxer`
-        attribute
-
-        Parameters
-        ----------
-        changed : dict
-            Changed is emitted by Atom and has the following keys:
-            {'value', 'object', 'type', 'name', 'oldvalue'}
-        """
-        print('new_data_muxer callback function triggered in '
-              'ScalarCollection')
-        self.data_muxer = changed['value']
-
-    @observe('data_muxer')
-    def update_datamuxer(self, changed):
-        print('data muxer update triggered')
-        with self.suppress_notifications():
-            if self.data_muxer is None:
-                self.data_cols = [nodata_str]
-                self.x = nodata_str
-                self.estimate_target = self.x
-                self.estimate_index = self.data_cols.index(self.x)
-                self.normalize_target = self.x
-                self.bin_on = self.x
-                self.init_scalar_models()
-                return
-            # get the column names with dimensionality equal to zero
-            # print('data muxer col info by ndim: {}'.format(self.data_muxer.col_info_by_ndim))
-            data_cols = [col_info.name for col_info
-                         in self.data_muxer.col_info_by_ndim[0]]
-            derived_cols = []
-            # init the x axis to be the first column name
-            x = data_cols[0]
-            # default to time
-            x_is_time = True
-            estimate_target = x
-            estimate_index = data_cols.index(estimate_target)
-            # don't bin by any of the columns by default and plot by time
-            bin_on = x
-            # blow away scalar models
-            self.scalar_models.clear()
-            self._ax.cla()
-            for name in data_cols:
-                # create a new line artist and scalar model
-                line_artist, = self._ax.plot([], [], label=name, marker='D')
-                self.scalar_models[name] = ScalarModel(
-                    line_artist=line_artist, name=name, is_plotting=True)
-            # add the estimate
-            name = 'peak stats'
-            line_artist, = self._ax.plot([], [], 'ro',
-                                         label=name, markersize=15)
-            self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                   name=name, is_plotting=True)
-
-            for model in self.scalar_models.values():
-                model.observe('is_plotting', self.reformat_view)
-            derived_cols.append(name)
-
-        # trigger the updates
-        # print('data_cols', data_cols)
-        # for model_name, model in six.iteritems(self.scalar_models):
-        #     print(model.state)
-        self.derived_cols = []
-        self.derived_cols = derived_cols
-        self.data_cols = []
-        self.data_cols = data_cols
-        self.x_is_time = x_is_time
-        self._last_update_time = datetime.utcnow()
-        self.bin_on = bin_on
-        self.x = x
-        self.estimate_target = x
-        self.estimate_index = estimate_index
-        self.normalize_target = x
-        self.set_state()
-        self.get_new_data_and_plot()
-
     @observe('data_cols')
     def update_col_names(self, changed):
         print('data_cols changed: {}'.format(self.data_cols))
@@ -381,36 +269,6 @@ class ScalarCollection(Atom):
         self._conf.xlabel = self.x
         if not self.x:
             return
-        self.get_new_data_and_plot()
-        self.x_index = self.data_cols.index(self.x)
-
-    @observe('alignment_col')
-    def update_alignment_col(self, changed):
-        # check with the muxer for the columns that can be plotted against
-        sliceable = self.data_muxer.align_against(self.bin_on)
-        for name, scalar_model in six.iteritems(self.scalar_models):
-            if name == 'fit' or name == 'peak stats':
-                continue
-            if not sliceable[name]:
-                # turn off the plotting and disable the check box
-                scalar_model.is_plotting = False
-                scalar_model.can_plot = False
-            else:
-                # enable the check box but don't turn on the plotting
-                scalar_model.can_plot = True
-        self.get_new_data_and_plot()
-
-    @observe('estimate_plot')
-    def update_estimate(self, changed):
-        self.reformat_view()
-
-    @observe('estimate_target')
-    def update_estimate_target(self, changed):
-        if self.estimate_target:
-            self.estimate_index = self.data_cols.index(self.estimate_target)
-
-    @observe('normalize')
-    def update_normalize(self, changed):
         self.get_new_data_and_plot()
 
     def set_state(self):
@@ -431,165 +289,8 @@ class ScalarCollection(Atom):
         if ploty:
             self.x_is_time = False
 
-    def header_changed(self, changed):
-        """Callback that should be connected to whatever Atom instance has a
-        reference to a header. This callback will parse the header for any
-        interesting bits of information that modifies the state of replay
-
-        Parameters
-        ----------
-        changed : dict
-            The dict that gets emitted when the header attribute of an Atom
-            class is changed
-
-        Notes
-        -----
-        Known Keys
-        plotx : str
-            The column that should be on the x-axis
-        ploty : list
-            The columns that should be shown on the y-axis
-        """
-        value = changed['value']
-        print('header: {}'.format(value))
-        print('vars(header): {}'.format(vars(value)))
-        self.header = value
-
-    def print_state(self):
-        """Print the, uh, state
-        """
-        for model_name, model in six.iteritems(self.scalar_models):
-            print(model.get_state())
-
-    def notify_new_column(self, new_columns):
-        """Function to call when there is a new column in the data muxer
-
-        Parameters
-        ----------
-        new_columns: list
-            The new column name that the data muxer knows about
-        """
-        scalar_cols = self.data_muxer.keys(dim=0)
-        alignable = self.data_muxer.align_against(self.bin_on,
-                                                    self.data_cols)
-        for name, is_plottable in six.iteritems(alignable):
-            if name in new_columns and not self.data_muxer.col_dims[name]:
-                line_artist,  = self._ax.plot([], [], label=name)
-                self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-                                                       name=name)
-                self.scalar_models[name].can_plot = is_plottable
-
     def format_number(self, number):
         return '{:.5f}'.format(number)
-
-    def estimate(self):
-
-        """Return a dictionary of the vital stats of a 'peak'"""
-        stats = OrderedDict()
-        print('self.fit_target: {}'.format(self.fit_target))
-        print('self.alignment_col: {}'.format(self.bin_on))
-        print('self.x: {}'.format(self.x))
-        other_cols = [self.x, self.estimate_target]
-        if self.normalize:
-            other_cols.append(self.normalize_target)
-        print('other_cols: {}'.format(other_cols))
-        time, data = self.data_muxer.get_values(ref_col=self.bin_on,
-                                                  other_cols=other_cols)
-        x = np.asarray(data[self.x])
-
-        y = np.asarray(data[self.estimate_target])
-
-        if self.normalize:
-            y = y / np.asarray(data[self.normalize_target])
-
-        # print('x, len(x): {}, {}'.format(x, len(x)))
-        # print('y, len(y): {}, {}'.format(y, len(y)))
-
-        fn = lambda num: '{:.5}'.format(num)
-        # Center of peak
-        stats['ymin'] = y.min()
-        stats['ymax'] = y.max()
-        stats['avg_y'] = fn(np.average(y))
-        stats['x_at_ymin'] = x[y.argmin()]
-        stats['x_at_ymax'] = x[y.argmax()]
-
-        # Calculate CEN from derivative
-        zero_cross = np.where(np.diff(np.sign(y - (stats['ymax'] + stats['ymin'])/2)))[0]
-        if zero_cross.size == 2:
-            stats['cen'] = (fn(x[zero_cross].sum() / 2),
-                            fn((stats['ymax'] + stats['ymin'])/2))
-        elif zero_cross.size == 1:
-            stats['cen'] = x[zero_cross[0]]
-        if zero_cross.size == 2:
-            fwhm = x[zero_cross]
-            stats['width'] = fwhm[1] - fwhm[0]
-            stats['fwhm_left'] = (fn(fwhm[0]), fn(y[zero_cross[0]]))
-            stats['fwhm_right'] = (fn(fwhm[1]), fn(y[zero_cross[1]]))
-
-        # Center of mass
-        stats['center_of_mass'] = fn((x * y).sum() / y.sum())
-        #
-        #
-        # extra_models = []
-        # for model_name, model in six.iteritems(self.scalar_models):
-        #     if model_name in self.estimate_stats:
-        #         line_artist = self.scalar_models[model_name].line_artist
-        #         self._ax.lines.remove(line_artist)
-        #         line_artist.remove()
-        #         del line_artist
-        #         print(line_artist)
-        #         model = self.scalar_models.pop(model_name)
-        #         model = None
-        #
-        # # create new line artists
-        # for name, val in six.iteritems(stats):
-        #     line_artist, = self._ax.axvline(label=name, color = 'r',
-        #                                     linewidth=2,
-        #                                     x=val)
-        #     self.scalar_models[name] = ScalarModel(line_artist=line_artist,
-        #                                            name=name,
-        #                                            can_plot=True,
-        #                                            is_plotting=False)
-        # self.data_cols = []
-        # self.data_cols = list(six.iterkeys(self.scalar_models))
-
-        # trigger the automatic update of the GUI
-        self.estimate_stats = OrderedDict()
-        self.estimate_stats = stats
-
-    def notify_new_data(self):
-        """ Function to call when there is new data in the data muxer
-
-        Parameters
-        ----------
-        new_data : list
-            List of names of updated columns from the data muxer
-        """
-
-        # self._num_updates += 1
-        # redraw = False
-        # if self.redraw_type == 's':
-        #     if ((datetime.utcnow() - self._last_update_time).total_seconds()
-        #             >= self.redraw_every):
-        #         redraw = True
-        #     else:
-        #         # do nothing
-        #         pass
-        # elif self.redraw_type == 'max rate':
-        #     redraw = True
-        # if self.bin_on in new_data:
-        #     # update all the data in the line plot
-        #     y_names = list(self.scalar_models)
-        # else:
-        #     # find out which new_data keys overlap with the data that is
-        #     # supposed to be shown on the plot
-        #     y_names = []
-        #     for model_name, model in six.iteritems(self.scalar_models):
-        #         if model.is_plotting and model.name in new_data:
-        #             y_names.append(model.name)
-        # if redraw:
-        self.get_new_data_and_plot()
-        # self.estimate()
 
     def get_new_data_and_plot(self, y_names=None):
         """
@@ -602,7 +303,7 @@ class ScalarCollection(Atom):
             List of the names of columns in the data muxer. If None, get all
             data from the data muxer
         """
-        if self.data_muxer is None:
+        if self.dataframe is None:
             return
         if self.x_is_time:
             self.plot_by_time()
@@ -610,7 +311,7 @@ class ScalarCollection(Atom):
             self.plot_by_x()
 
     def plot_by_time(self):
-        df = self.data_muxer._dataframe
+        df = self.dataframe
         data_dict = {data_name: {'x': df[data_name].index.tolist(),
                                  'y': df[data_name].tolist()}
                      for data_name in df.columns
@@ -621,11 +322,7 @@ class ScalarCollection(Atom):
         if not self.x:
             return
 
-        interpolation = {name: 'linear' for name in self.data_cols}
-        agg = {name: np.mean for name in self.data_cols}
-
-        df = self.data_muxer.bin_on(self.x, interpolation=interpolation,
-                                      agg=agg, col_names=self.data_cols)
+        df = self.dataframe
         x_axis = df[self.x].val.values
         data_dict = {data_name[0]: {'x': x_axis, 'y': df[data_name].tolist()}
                      for data_name in df}
@@ -637,66 +334,6 @@ class ScalarCollection(Atom):
                 self.scalar_models[dname].set_data(dvals['x'], dvals['y'])
                 # self.scalar_models[dname].is_plotting = True
         self.reformat_view()
-
-    def plot_by_x_old(self, y_names):
-        # interpolation = {name: 'linear' for name in self.data_muxer.col_info.keys()}
-        # agg = {name: np.mean for name in self.data_muxer.col_info.keys()}
-        df = self.data_muxer.bin_on(self.x)#, interpolation=interpolation, agg=agg)
-        self._fig.clf()
-        print('fig before df.plot call', self._fig)
-        self._ax = self._fig.add_subplot(111)
-        df.plot(subplots=False, ax=self._ax)
-        print('fig after df.plot call', self._fig)
-        return
-
-        time, data = self.data_muxer.get_values(ref_col=self.bin_on,
-                                                  other_cols=other_cols)
-        ref_data = data.pop(self.x)
-        if self.normalize:
-            norm_data = data.pop(self.normalize_target)
-        # switch between x axis as data and x axis as time
-        if self.x_is_data:
-            ref_data_vals = ref_data.values
-        else:
-            ref_data_vals = time
-        # print('ref_data_vals: {}'.format(ref_data_vals))
-
-        if self.scalar_models[self.x].is_plotting:
-            self.scalar_models[self.x].set_data(x=ref_data_vals, y=ref_data)
-        for dname, dvals in six.iteritems(data):
-            # print('{}: {}'.format(dname, id(self.scalar_models[dname])))
-            if self.normalize:
-                dvals = dvals/norm_data
-            self.scalar_models[dname].set_data(x=ref_data_vals, y=dvals)
-
-        # manage the fitting
-        if self.fit_target is not '':
-            target_data = ref_data
-            if self.fit_target != self.x:
-                target_data = data[self.fit_target]
-            self.multi_fit_controller.set_xy(x=ref_data_vals,
-                                             y=target_data.values)
-        if self.multi_fit_controller.guess:
-            self.multi_fit_controller.do_guess()
-        if self.multi_fit_controller.autofit:
-            self.multi_fit_controller.fit()
-        try:
-            self.scalar_models['fit'].set_data(
-                x=ref_data_vals, y=self.multi_fit_controller.best_fit)
-        except RuntimeError:
-            # thrown when x and y are not the same length
-            pass
-        self.reformat_view()
-        self.update_rate = "{0:.2f} s<sup>-1</sup>".format(float(
-            self._num_updates) / (datetime.utcnow() -
-                                 self._last_update_time).total_seconds())
-        self._num_updates = 0
-        self._last_update_time = datetime.utcnow()
-        # except KeyError:
-        #     pass
-        # self._ax.axvline(x=self.estimate_stats['cen'], linewidth=2, color='r')
-        # self._ax.axvline(x=self.estimate_stats['x_at_max'], linewidth=4,
-        #                  color='k')
 
     def reformat_view(self, *args, **kwargs):
         """

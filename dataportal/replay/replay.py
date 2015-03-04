@@ -67,8 +67,6 @@ def create_default_ui(init_params_dict):
     display_header_model.observe('header', muxer_model.new_run_header)
 
 
-    get_last_model.observe('selected', scalar_collection.header_changed)
-
     main_view = MainView(get_last_model=get_last_model, muxer_model=muxer_model,
                          scalar_collection=scalar_collection,
                          watch_headers_model=watch_headers_model,
