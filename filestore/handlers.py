@@ -155,6 +155,10 @@ class _HdfMapsHandlerBase(_HDF5HandlerBase):
 
 
 class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
+    """
+    Handler which selects energy spectrum from
+    a MAPS XRF data product.
+    """
     def __call__(self, x, y):
         """
         Return the spectrum at the x, y position
@@ -177,6 +181,10 @@ class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
 
 
 class HDFMapsEnergyHandler(_HdfMapsHandlerBase):
+    """
+    Handler which select fixed-energy slices from
+    a MAPS XRF data file.
+    """
     def __call__(self, e_index):
         """
         Return the raster plane at a fixed energy
