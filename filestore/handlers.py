@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class AreaDetectorSPEHandler(HandlerBase):
+    specs = {'AD_SPE'} | HandlerBase.specs
+
     def __init__(self, fpath, template, filename,
                  frame_per_point=1):
         self._path = fpath
@@ -160,6 +162,8 @@ class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
     Handler which selects energy spectrum from
     a MAPS XRF data product.
     """
+    specs = {'MAPS_SPECTRUM'} | _HdfMapsHandlerBase.specs
+
     def __call__(self, x, y):
         """
         Return the spectrum at the x, y position
@@ -186,6 +190,8 @@ class HDFMapsEnergyHandler(_HdfMapsHandlerBase):
     Handler which select fixed-energy slices from
     a MAPS XRF data file.
     """
+    specs = {'MAPS_PLANE'} | _HdfMapsHandlerBase.specs
+
     def __call__(self, e_index):
         """
         Return the raster plane at a fixed energy
