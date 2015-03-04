@@ -76,18 +76,20 @@ enamldef MuxerController(Container):
         Form:
             PushButton:
                 text = "Perform Binning"
-                enabled << muxer_model.binning_axis != "None"
                 clicked ::
                     muxer_model.perform_binning()
                     print('rebin clicked')
             ComboBox:
                 items << muxer_model.binning_options
-                selected_item >> muxer_model.binning_axis
+                selected_item >> muxer_model.binning_column
+                index << muxer_model.binning_index
             Label:
                 text = "Normalize data by"
+                align = 'right'
             ComboBox:
                 items << muxer_model.norm_options
                 selected_item >> muxer_model.norm_column
+                index << muxer_model.norm_index
     GroupBox: scalar:
         title = 'Scalar PVs'
         padding = Box(0, 0, 0, 0)

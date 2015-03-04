@@ -154,8 +154,6 @@ class MuxerModel(Atom):
 
     data_muxer = Typed(DataMuxer)
     dataframe = Typed(DataFrame)
-    _df_binned = Typed(DataFrame)
-    _df_normalized = Typed(DataFrame)
     header = Typed(Document)
     info = Str()
 
@@ -165,11 +163,13 @@ class MuxerModel(Atom):
 
     update_rate = Int(2000) # in ms
 
-    binning_options = List()
-    binning_axis = Str('None')
+    binning_options = List(default=['None'])
+    binning_column = Str('None')
+    binning_index = Int()
 
-    norm_options = List()
+    norm_options = List(default=['None'])
     norm_column = Str('None')
+    norm_index = Int()
 
     upsample = Enum('linear', *ColSpec.upsampling_methods)
     downsample = Enum('mean', *ColSpec.downsampling_methods)
@@ -199,6 +199,7 @@ class MuxerModel(Atom):
             self.data_muxer = None
         self.get_new_data()
         self.init_state()
+        self.dataframe = self.data_muxer._dataframe
 
     def init_state(self):
         # set up the state for the muxer
@@ -208,7 +209,7 @@ class MuxerModel(Atom):
         except AttributeError:
             plotx = None
         if plotx is not None and plotx in self.column_models.keys():
-            self.binning_axis = plotx
+            self.binning_column = plotx
             plot_state['x'] = plotx
         try:
             ploty = getattr(self.header, 'ploty')
@@ -246,6 +247,15 @@ class MuxerModel(Atom):
             self._verify_column_info()
             for data_cb in self.new_data_callbacks:
                 data_cb()
+    @observe('binning_column')
+    def _binning_column_changed(self, changed):
+        # make sure that the binning column combo box is kept in sync with the
+        # actually selected value
+        try:
+            binning_index = self.binning_options.index(self.binning_column)
+        except ValueError:
+            binning_index = 0
+        self.binning_index = binning_index
 
     @observe('norm_column')
     def _norm_column_changed(self, changed):
@@ -266,6 +276,13 @@ class MuxerModel(Atom):
             return
         self.column_models[new_norm_col].is_being_normalized = False
         self.column_models[new_norm_col].can_be_normalized = False
+        # make sure that the norm column combo box is kept in sync with the
+        # actually selected value
+        try:
+            norm_index = self.norm_options.index(self.norm_column)
+        except ValueError:
+            norm_index = 0
+        self.norm_index = norm_index
 
     @observe('data_muxer')
     def _new_muxer(self, changed):
@@ -274,10 +291,14 @@ class MuxerModel(Atom):
         self._verify_column_info()
 
     def perform_binning(self):
-        # rebin the data
-        dataframe = self.data_muxer.bin_on(self.binning_axis)
-        # normalize the new dataframe
-        self._normalize_all(dataframe)
+        print('\n\n\nbinning column: {}'.format(self.binning_column))
+        if not (self.binning_column is None or self.binning_column == 'None'):
+            # rebin the data
+            dataframe = self.data_muxer.bin_on(self.binning_column)
+            # normalize the new dataframe
+            self._normalize_all(dataframe)
+        else:
+            dataframe = self.data_muxer._dataframe
         # trigger the magic message passing cascade by assigning a new
         # dataframe to the instance data_frame attribute
         self.dataframe = dataframe
