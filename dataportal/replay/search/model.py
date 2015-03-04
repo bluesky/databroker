@@ -10,7 +10,6 @@ from mongoengine.connection import ConnectionError
 from pymongo.errors import AutoReconnect
 
 
-
 class WatchForHeadersModel(Atom):
     """ Class that defines the model for a UI component that watches the
     databroker for new scans
@@ -37,8 +36,9 @@ class WatchForHeadersModel(Atom):
         else:
             self.search_info = "Run Found."
         if (not self.header or self.header.ids['run_start_uid'] !=
-            header.ids['run_start_uid']):
+                header.ids['run_start_uid']):
             self.header = header
+
 
 class DisplayHeaderModel(Atom):
     """Class that defines the model for displaying header information
@@ -57,9 +57,9 @@ class DisplayHeaderModel(Atom):
 
     @observe('header')
     def header_changed(self, changed):
-        run_start_keys = {}
+
         key_labels = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
-        run_start_dict = vars(self.header)
+        run_start_dict = dict(self.header.items())
         event_descriptors = run_start_dict.pop('event_descriptors', [])
         data_keys = self._format_for_enaml(event_descriptors)
         sample = run_start_dict.pop('sample', {})
@@ -74,7 +74,6 @@ class DisplayHeaderModel(Atom):
         # set the keys dictionary
         self.selected_keys = []
         self.selected_keys = run_start_keys
-
 
     def _format_for_enaml(self, event_descriptors):
         """

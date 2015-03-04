@@ -75,7 +75,11 @@ class DataBroker(object):
         -------
         data : a flat list of Event objects
         """
-        if not isinstance(runs, Iterable):
+        try:
+            runs.items()
+        except AttributeError:
+            pass
+        else:
             runs = [runs]
 
         events_by_descriptor = []
@@ -169,8 +173,8 @@ def _inspect_descriptor(descriptor):
     data_keys = descriptor.data_keys
     is_external = defaultdict(lambda: False)
     for data_key, data_key_dict in data_keys.items():
-        if 'external' in data_key_dict:
-            is_external[data_key] = True
+        if (data_key_dict and 'external' in data_key_dict):
+            is_external[data_key] = bool(data_key_dict['external'])
     return is_external
 
 
@@ -216,9 +220,9 @@ def _build_header(run_start):
     for to_delete in deletes:
         delattr(*to_delete)
     if run_stop is not None:
-       # dump the remaining values from the RunStop object into the header
-        for k, v in vars(run_stop).items():
-            if hasattr(run_start, k):
+        # dump the remaining values from the RunStop object into the header
+        for k, v in run_stop.items():
+            if k in run_start:
                 raise ValueError("The run header already has a key named {}. "
                                  "Please update the mappings".format(k))
             setattr(run_start, k, v)
