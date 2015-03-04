@@ -6,8 +6,7 @@ import numpy as np
 import h5py
 import tempfile
 import uuid
-import mongoengine
-import mongoengine.connection
+
 from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler, db_disconnect,
                            db_connect)
