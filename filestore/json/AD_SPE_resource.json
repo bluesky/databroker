@@ -10,7 +10,7 @@
         },
         "filename": {
             "type": "string",
-            "descritption": "filename part of the template."
+            "description": "filename part of the template."
         }
 
     },
