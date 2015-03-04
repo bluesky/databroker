@@ -487,6 +487,7 @@ def find_event(**kwargs):
         run_start = kwargs.pop('run_start')
     except KeyError:
         pass
+    #TODO: Add event_descriptor based event search!!!!!
     if run_start:
         e_desc_ids = list()
         e_descs = find_event_descriptor(run_start=run_start)
