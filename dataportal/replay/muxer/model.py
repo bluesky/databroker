@@ -262,6 +262,8 @@ class MuxerModel(Atom):
         # if oldvalue exists and it is not None, reset its value to the
         # non-normalized state
         old_norm_col = changed.get('oldvalue', None)
+        if old_norm_col is None or old_norm_col == '':
+            return
         print('old norm col: {}'.format(old_norm_col))
         if old_norm_col == 'None':
             for name, model in self.column_models.items():
