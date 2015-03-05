@@ -83,16 +83,20 @@ def define_parser():
     #                          "specified file")
     return parser
 
+def create_and_show(params_dict=None):
+    if params_dict is None:
+        params_dict = define_default_params()
+    ui = create_default_ui(params_dict)
+    ui.show()
+
 def main():
     parser = define_parser()
     args = parser.parse_args()
+    params_dict = None
     if args.live:
         params_dict = define_live_params()
-    else:
-        params_dict = define_default_params()
     app = QtApplication()
-    ui = create_default_ui(params_dict)
-    ui.show()
+    create_and_show(params_dict)
     app.start()
 
 if __name__ == "__main__":
