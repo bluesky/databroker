@@ -152,30 +152,88 @@ class ScalarModel(Atom):
 
 
 class ColumnModel(Atom):
-    _column_address = Typed(object) # really this is a tuple or a string
+    column_address = Typed(object) # really this is a tuple or a string
     dataframe = Typed(pd.DataFrame)
+
+    def _launder(self, obj):
+        return np.asarray(obj)
 
     @property
     def data(self):
-        return np.asarray(self.dataframe[self._column_address].values)
+        return self._launder(self.dataframe[self.column_address].values)
 
     @property
     def index(self):
-        return np.asarray(self.dataframe[self._column_address].index)
+        return self._launder(self.dataframe[self.column_address].index)
 
     @property
     def name(self):
-        if isinstance(self._column_address, six.string_types):
-            return self._column_address
-        return '-'.join(self._column_address)
+        if isinstance(self.column_address, six.string_types):
+            return self.column_address
+        return '-'.join(self.column_address)
+
+    def _get_stats(self, stats_name):
+        """Helper function to get a specific column from the nested dataframe
+
+        Parameters
+        ----------
+        stats_name : str
+            The name of the derived statistic to obtain
+
+        Returns
+        -------
+        stats_arr : {None, np.ndarray}
+            None if the stats column does not exist or an ndarray if it does
+        """
+        if isinstance(self.column_address, six.string_types):
+            return None
+        stats_name = tuple(list(self.column_address[:-1]) + [stats_name])
+        try:
+            return self._launder(self.dataframe[stats_name])
+        except KeyError:
+            return None
 
     @property
-    def column_address(self):
-        return self._column_address
+    def min(self):
+        return self._get_stats('min')
 
-    @column_address.setter
-    def column_address(self, column_address):
-        self._column_address = column_address
+    @property
+    def max(self):
+        return self._get_stats('max')
+
+    @property
+    def count(self):
+        return self._get_stats('count')
+
+    @property
+    def std(self):
+        return self._get_stats('std')
+
+    @property
+    def has_which_stats(self):
+        """
+        Returns
+        -------
+        stats : list
+            A list of all the extra columns that this ColumnModel knows about
+        """
+        stats = ['min', 'max', 'count', 'std']
+        col_names = []
+        for stat in stats:
+            if getattr(self, stat) is not None:
+                col_names.append((stat, '-'.join(tuple(list(self.column_address[:-1]) + [stat]))))
+        # for stat in stats:
+        #     if getattr(self, stat) is not None:
+        #         col_name_map[stat] = tuple(list(self.column_address[:-1]) + [stat])
+        # if self.min is not None:
+        #     stats['min'] = tuple(list(self.column_address[:-1]) + ['min'])
+        # if self.max is not None:
+        #     stats.append('max')
+        # if self.count is not None:
+        #     stats.append('count')
+        # if self.std is not None:
+        #     stats.append('std')
+        return col_names
 
 
 class ScalarCollection(Atom):
@@ -269,7 +327,8 @@ class ScalarCollection(Atom):
 
     def clear_scalar_models(self):
         self._ax.cla()
-        self.scalar_models.clear()
+        self.column_models = {}
+        self.scalar_models = {}
 
     def new_dataframe(self, changed):
         self.dataframe = changed['value']
@@ -311,6 +370,8 @@ class ScalarCollection(Atom):
         # throw an empty list at data cols before using list comprehension to
         # set the new values. This is one method to trigger the Atom magic,
         # though I'm sure there is a better way to do it
+        print('scalar models: {}'.format([model.name for model in scalar_models.values()]))
+        print('column models: {}'.format([model.name for model in column_models.values()]))
         self.scalar_models = {}
         self.scalar_models = scalar_models
         self.column_models = {}

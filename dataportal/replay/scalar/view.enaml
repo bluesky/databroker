@@ -49,15 +49,21 @@ enamldef PlotControls(Container):
             title = "Data"
             Form:
                 row_spacing = 0
-                Looper: looper:
-                    iterable << scalar_collection.scalar_models.values()
+                Looper: looper1:
+                    iterable << scalar_collection.column_models.keys()
                     PushButton: cb_plot:
-                        text = loop_item.name
+                        text = loop_item
                         checkable = True
-                        checked := loop_item.is_plotting
-                    Label:
-                        text << str(id(loop_item))
-
+                        checked := scalar_collection.scalar_models[loop_item].is_plotting
+                    Form:
+                        row_spacing = 0
+                        Looper: looper2:
+                            iterable << scalar_collection.column_models[loop_item].has_which_stats
+                            # here loop_item is going to be a tuple of short stat name, full stat name
+                            PushButton:
+                                text = loop_item[0]
+                                checkable = True
+                                checked := scalar_collection.scalar_models[loop_item[1]].is_plotting
 
 enamldef PlotView(Container):
     Container:
