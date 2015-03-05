@@ -92,7 +92,7 @@ class DataBroker(object):
             descriptors = find_event_descriptors(run_start_id=run.run_start_id)
             for descriptor in descriptors:
                 events.extend(find_events(descriptor=descriptor))
-        [fill_event(event) for event in events]
+       git  [fill_event(event) for event in events]
 
         if channels is not None:
             if ca_host is None:
