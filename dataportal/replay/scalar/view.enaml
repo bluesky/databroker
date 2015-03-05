@@ -78,10 +78,6 @@ enamldef PlotControls(Container):
                 iterable << sorted(scalar_collection.data_cols, key=lambda x: x.lower())
                 ButtonSet:
                     model_name = loop_item
-                #PushButton: cb_plot:
-                #    text = loop_item
-                #    checkable = True
-                #    checked := scalar_collection.scalar_models[loop_item].is_plotting
 
 
 enamldef PlotView(Container):
@@ -89,7 +85,6 @@ enamldef PlotView(Container):
         constraints = [
             vbox(
                 hbox(check, spacer, fit),
-                #vbox(canvas, fitter),
                 vbox(canvas),
             ),
         ]
@@ -99,7 +94,6 @@ enamldef PlotView(Container):
             checked := canvas.toolbar_visible
         CheckBox: fit:
             text = 'Fitting Visible'
-            #checked := fitter.show_fit
         MPLCanvas: canvas:
             figure << scalar_collection._fig
             toolbar_visible = True

@@ -312,8 +312,6 @@ class ScalarCollection(Atom):
         # throw an empty list at data cols before using list comprehension to
         # set the new values. This is one method to trigger the Atom magic,
         # though I'm sure there is a better way to do it
-        print('scalar models: {}'.format([model.name for model in scalar_models.values()]))
-        print('column models: {}'.format([model.name for model in column_models.values()]))
         self.column_models = {}
         self.column_models = column_models
         self.scalar_models = {}
@@ -327,11 +325,10 @@ class ScalarCollection(Atom):
 
     @observe('data_cols')
     def update_col_names(self, changed):
-        print('data_cols changed: {}'.format(self.data_cols))
+        pass
 
     @observe('x')
     def update_x(self, changed):
-        print('x updated: {}'.format(self.x))
         self._conf.xlabel = self.x
         if not self.x:
             return
@@ -344,19 +341,12 @@ class ScalarCollection(Atom):
         if plotx:
             self.x = plotx
 
-        print('plotx: {}'.format(plotx))
-        print('ploty: {}'.format(ploty))
-
         for name, model in self.scalar_models.items():
             is_plt = bool(ploty is None or name in ploty)
-            print(name, model, 'name in ploty: ', is_plt)
             self.scalar_models[name].is_plotting = is_plt
 
         if ploty:
             self.x_is_time = False
-
-    def format_number(self, number):
-        return '{:.5f}'.format(number)
 
     def get_new_data_and_plot(self, y_names=None):
         """
@@ -371,9 +361,6 @@ class ScalarCollection(Atom):
         """
         if self.dataframe is None:
             return
-        print('column models: {}'.format(self.column_models.keys()))
-        print('data names: {}'.format(self.data_cols))
-        print('scalar names: {}'.format(self.scalar_models.keys()))
         if self.x_is_time:
             self.plot_by_time()
         else:
@@ -422,8 +409,6 @@ class ScalarCollection(Atom):
             self._ax.set_xlabel(self._conf.xlabel)
             self._ax.set_title(self._conf.title)
             self._fig.canvas.draw()
-        # self._ax.figure.canvas.draw()
-        # print('current figure id: {}'.format(id(self._fig)))
         except AttributeError:
             # should only happen once
             pass
