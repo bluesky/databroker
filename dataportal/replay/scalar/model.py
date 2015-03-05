@@ -98,7 +98,7 @@ class ScalarModel(Atom):
 
     """
     name = Str()
-    is_plotting = Bool()
+    is_plotting = Bool(False)
     line_artist = Typed(Line2D)
 
     def set_data(self, x, y):
@@ -115,7 +115,7 @@ class ScalarModel(Atom):
     def _line_artist_changed(self, changed):
         if self.line_artist is None:
             return
-        self.is_plotting = self.line_artist.get_visible()
+        self.line_artist.set_visible(self.is_plotting)
 
     @observe('is_plotting')
     def _is_plotting_changed(self, changed):
@@ -305,7 +305,7 @@ class ScalarCollection(Atom):
                                        column_address=col_name)
             line_artist, = self._ax.plot([], [], label=column_model.name, marker='D')
             scalar_model = ScalarModel(line_artist=line_artist,
-                                       is_plotting=True,
+                                       is_plotting=False,
                                        name=column_model.name)
             scalar_models[scalar_model.name] = scalar_model
             column_models[column_model.name] = column_model
