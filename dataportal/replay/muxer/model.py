@@ -198,8 +198,8 @@ class MuxerModel(Atom):
         with self.suppress_notifications():
             self.data_muxer = None
         self.get_new_data()
-        self.init_state()
         self.dataframe = self.data_muxer._dataframe
+        self.init_state()
 
     def init_state(self):
         # set up the state for the muxer
@@ -247,6 +247,7 @@ class MuxerModel(Atom):
             self._verify_column_info()
             for data_cb in self.new_data_callbacks:
                 data_cb()
+
     @observe('binning_column')
     def _binning_column_changed(self, changed):
         # make sure that the binning column combo box is kept in sync with the
