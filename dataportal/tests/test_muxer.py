@@ -104,8 +104,12 @@ class CommonBinningTests(object):
         first = self.dm[self.sparse].first_valid_index()
         last = self.dm[self.sparse].last_valid_index()
         expected_len = 2 + len(self.dm[self.dense].loc[first:last])
-        self.assertLess(result1[self.sparse]['val'].count(), expected_len)
-        self.assertEqual(result2[self.sparse]['val'].count(), expected_len)
+        # print('result1 columns: {}'.format(result1[self.sparse].columns))
+        # print('result2 columns: {}'.format(result2[self.sparse].columns))
+        res1 = result1[self.sparse][result1[self.sparse].columns[0]]
+        res2 = result2[self.sparse][result2[self.sparse].columns[0]]
+        self.assertLess(res1.count(), expected_len)
+        self.assertEqual(res2.count(), expected_len)
 
         # There should not be stats columns.
         self.assertFalse('max' in result1[self.dense].columns)
