@@ -50,13 +50,13 @@ enamldef PlotControls(Container):
             Form:
                 row_spacing = 0
                 Looper: looper:
-                    iterable << scalar_collection.data_cols
+                    iterable << scalar_collection.scalar_models.values()
                     PushButton: cb_plot:
-                        text = loop_item
+                        text = loop_item.name
                         checkable = True
-                        checked := scalar_collection.scalar_models[loop_item].is_plotting
+                        checked := loop_item.is_plotting
                     Label:
-                        text << str(id(scalar_collection.scalar_models[loop_item]))
+                        text << str(id(loop_item))
 
 
 enamldef PlotView(Container):
