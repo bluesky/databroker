@@ -167,73 +167,14 @@ class ColumnModel(Atom):
         return self._launder(self.dataframe[self.column_address].index)
 
     @property
+    def time(self):
+        return self._launder(self._dataframe['time'])
+
+    @property
     def name(self):
         if isinstance(self.column_address, six.string_types):
             return self.column_address
         return '-'.join(self.column_address)
-
-    def _get_stats(self, stats_name):
-        """Helper function to get a specific column from the nested dataframe
-
-        Parameters
-        ----------
-        stats_name : str
-            The name of the derived statistic to obtain
-
-        Returns
-        -------
-        stats_arr : {None, np.ndarray}
-            None if the stats column does not exist or an ndarray if it does
-        """
-        if isinstance(self.column_address, six.string_types):
-            return None
-        stats_name = tuple(list(self.column_address[:-1]) + [stats_name])
-        try:
-            return self._launder(self.dataframe[stats_name])
-        except KeyError:
-            return None
-
-    @property
-    def min(self):
-        return self._get_stats('min')
-
-    @property
-    def max(self):
-        return self._get_stats('max')
-
-    @property
-    def count(self):
-        return self._get_stats('count')
-
-    @property
-    def std(self):
-        return self._get_stats('std')
-
-    @property
-    def has_which_stats(self):
-        """
-        Returns
-        -------
-        stats : list
-            A list of all the extra columns that this ColumnModel knows about
-        """
-        stats = ['min', 'max', 'count', 'std']
-        col_names = []
-        for stat in stats:
-            if getattr(self, stat) is not None:
-                col_names.append((stat, '-'.join(tuple(list(self.column_address[:-1]) + [stat]))))
-        # for stat in stats:
-        #     if getattr(self, stat) is not None:
-        #         col_name_map[stat] = tuple(list(self.column_address[:-1]) + [stat])
-        # if self.min is not None:
-        #     stats['min'] = tuple(list(self.column_address[:-1]) + ['min'])
-        # if self.max is not None:
-        #     stats.append('max')
-        # if self.count is not None:
-        #     stats.append('count')
-        # if self.std is not None:
-        #     stats.append('std')
-        return col_names
 
 
 class ScalarCollection(Atom):
@@ -327,6 +268,7 @@ class ScalarCollection(Atom):
 
     def clear_scalar_models(self):
         self._ax.cla()
+        self.data_cols = []
         self.column_models = {}
         self.scalar_models = {}
 
@@ -372,12 +314,12 @@ class ScalarCollection(Atom):
         # though I'm sure there is a better way to do it
         print('scalar models: {}'.format([model.name for model in scalar_models.values()]))
         print('column models: {}'.format([model.name for model in column_models.values()]))
-        self.scalar_models = {}
-        self.scalar_models = scalar_models
         self.column_models = {}
         self.column_models = column_models
+        self.scalar_models = {}
+        self.scalar_models = scalar_models
         self.data_cols = []
-        self.data_cols = [model.name for model in self.scalar_models.values()]
+        self.data_cols = list({name.split('-')[0] for name in scalar_models.keys()})
         pass
 
     def _do_nested_magic(self, scalar_cols):
@@ -429,6 +371,9 @@ class ScalarCollection(Atom):
         """
         if self.dataframe is None:
             return
+        print('column models: {}'.format(self.column_models.keys()))
+        print('data names: {}'.format(self.data_cols))
+        print('scalar names: {}'.format(self.scalar_models.keys()))
         if self.x_is_time:
             self.plot_by_time()
         else:
@@ -442,7 +387,7 @@ class ScalarCollection(Atom):
     def plot_by_x(self):
         if not self.x:
             return
-        x_data = self.column_models[self.x].data
+        x_data = self.column_models[six.text_type(self.x)].data
         data_dict = {model_name: (x_data, model.data)
                      for model_name, model in self.column_models.items()}
         self._plot(data_dict)
