@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from atom.api import (Atom, List, observe, Bool, Enum, Str, Int, Range, Float,
-                      Typed, Dict, Constant, Coerced)
+                      Typed, Dict, Constant, Coerced, Tuple)
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
@@ -11,7 +11,7 @@ import logging
 import numpy as np
 
 from metadatastore.api import Document
-from pandas import DataFrame
+import pandas as pd
 
 __author__ = 'edill'
 logger = logging.getLogger(__name__)
@@ -101,13 +101,6 @@ class ScalarModel(Atom):
     is_plotting = Bool()
     line_artist = Typed(Line2D)
 
-    def __init__(self, line_artist, **kwargs):
-        self.line_artist = line_artist
-        self.is_plotting = line_artist.get_visible()
-        # print(kwargs)
-        for name, val in six.iteritems(kwargs):
-            setattr(self, name, val)
-
     def set_data(self, x, y):
         """Update the data stored in line_artist
 
@@ -118,14 +111,29 @@ class ScalarModel(Atom):
         """
         self.line_artist.set_data(x, y)
 
+    @observe('line_artist')
+    def _line_artist_changed(self, changed):
+        if self.line_artist is None:
+            return
+        self.is_plotting = self.line_artist.get_visible()
+
     @observe('is_plotting')
-    def set_visible(self, changed):
-        # print('{} is visible: {}'.format(self.name, self.is_plotting))
-        self.line_artist.set_visible(changed['value'])
+    def _is_plotting_changed(self, changed):
+        if self.line_artist is None:
+            return
+        self.line_artist.set_visible(self.is_plotting)
         try:
             self.line_artist.axes.figure.canvas.draw()
         except AttributeError:
             pass
+
+    @property
+    def x(self):
+        return self.line_artist.get_xdata()
+
+    @property
+    def y(self):
+        return self.line_artist.get_ydata()
 
     @property
     def state(self):
@@ -141,6 +149,33 @@ class ScalarModel(Atom):
         state += '\nis_plotting: {}'.format(self.is_plotting)
         state += '\nline_artist: {}'.format(self.line_artist)
         return state
+
+
+class ColumnModel(Atom):
+    _column_address = Typed(object) # really this is a tuple or a string
+    dataframe = Typed(pd.DataFrame)
+
+    @property
+    def data(self):
+        return np.asarray(self.dataframe[self._column_address].values)
+
+    @property
+    def index(self):
+        return np.asarray(self.dataframe[self._column_address].index)
+
+    @property
+    def name(self):
+        if isinstance(self._column_address, six.string_types):
+            return self._column_address
+        return '-'.join(self._column_address)
+
+    @property
+    def column_address(self):
+        return self._column_address
+
+    @column_address.setter
+    def column_address(self, column_address):
+        self._column_address = column_address
 
 
 class ScalarCollection(Atom):
@@ -184,8 +219,11 @@ class ScalarCollection(Atom):
     """
     # dictionary of lines that can be toggled on and off
     scalar_models = Dict(key=Str(), value=ScalarModel)
+    # dictionary of data for the pandas dataframe that backs the
+    # ScalarCollection
+    column_models = Dict(key=Str(), value=ColumnModel)
     # the thing that holds all the data
-    dataframe = Typed(DataFrame)
+    dataframe = Typed(pd.DataFrame)
     # name of the x axis
     x = Str()
 
@@ -229,35 +267,60 @@ class ScalarCollection(Atom):
         for k, v in state_dict.items():
             setattr(self, k, v)
 
-    def init_scalar_models(self):
+    def clear_scalar_models(self):
         self._ax.cla()
         self.scalar_models.clear()
-        line_artist, = self._ax.plot([], [], label=nodata_str)
-        self.scalar_models[nodata_str] = ScalarModel(
-            line_artist=line_artist, name=nodata_str, is_plotting=True)
 
     def new_dataframe(self, changed):
         self.dataframe = changed['value']
 
     @observe('dataframe')
     def dataframe_changed(self, changed):
-        self.init_scalar_models()
+        self.clear_scalar_models()
+        if self.dataframe is None:
+            return
 
-        valid_cols= [col for col in self.dataframe.columns
+        scalar_cols= [col for col in self.dataframe.columns
                      if self.dataframe[col].dropna().values[0].shape == tuple()]
 
-        # aggregate columns
-        # create new scalar models
-        for col_name in valid_cols:
-            # create a new line artist and scalar model
-            x = np.asarray(self.dataframe[col_name].index)
-            y = np.asarray(self.dataframe[col_name].values)
-            col_name = str(col_name)
-            line_artist, = self._ax.plot(x, y, label=col_name, marker='D')
-            self.scalar_models[col_name] = ScalarModel(
-                line_artist=line_artist, name=col_name, is_plotting=True)
+        # figure out if the dataframe has one or more levels of labels
+        # for now these need to be handled differently
+        if isinstance(self.dataframe.columns[0], six.string_types):
+            # then the dataframe does not have hierarchical indexing
+            self._do_magic(scalar_cols)
+        elif isinstance(self.dataframe.columns[0], tuple):
+            # then the dataframe has hierarchical indexing
+            # self._do_nested_magic(scalar_cols)
+            # but for now treat them the same...
+            self._do_magic(scalar_cols)
 
-        self.data_cols = [str(col) for col in valid_cols]
+    def _do_magic(self, scalar_cols):
+        # create new scalar models
+        scalar_models = {}
+        column_models = {}
+        for col_name in scalar_cols:
+            # create a new line artist and scalar model
+            column_model = ColumnModel(dataframe=self.dataframe,
+                                       column_address=col_name)
+            line_artist, = self._ax.plot([], [], label=column_model.name, marker='D')
+            scalar_model = ScalarModel(line_artist=line_artist,
+                                       is_plotting=True,
+                                       name=column_model.name)
+            scalar_models[scalar_model.name] = scalar_model
+            column_models[column_model.name] = column_model
+        # throw an empty list at data cols before using list comprehension to
+        # set the new values. This is one method to trigger the Atom magic,
+        # though I'm sure there is a better way to do it
+        self.scalar_models = {}
+        self.scalar_models = scalar_models
+        self.column_models = {}
+        self.column_models = column_models
+        self.data_cols = []
+        self.data_cols = [model.name for model in self.scalar_models.values()]
+        pass
+
+    def _do_nested_magic(self, scalar_cols):
+        pass
 
     @observe('data_cols')
     def update_col_names(self, changed):
@@ -311,27 +374,21 @@ class ScalarCollection(Atom):
             self.plot_by_x()
 
     def plot_by_time(self):
-        df = self.dataframe
-        data_dict = {data_name: {'x': df[data_name].index.tolist(),
-                                 'y': df[data_name].tolist()}
-                     for data_name in df.columns
-                     if data_name in self.data_cols}
+        data_dict = {model_name: (model.index, model.data)
+                     for model_name, model in self.column_models.items()}
         self._plot(data_dict)
 
     def plot_by_x(self):
         if not self.x:
             return
-
-        df = self.dataframe
-        x_axis = df[self.x].val.values
-        data_dict = {data_name[0]: {'x': x_axis, 'y': df[data_name].tolist()}
-                     for data_name in df}
+        x_data = self.column_models[self.x].data
+        data_dict = {model_name: (x_data, model.data)
+                     for model_name, model in self.column_models.items()}
         self._plot(data_dict)
 
     def _plot(self, data_dict):
-        for dname, dvals in data_dict.items():
-            if dname in self.data_cols:
-                self.scalar_models[dname].set_data(dvals['x'], dvals['y'])
+        for model_name, xy_tuple in data_dict.items():
+            self.scalar_models[model_name].set_data(*xy_tuple)
                 # self.scalar_models[dname].is_plotting = True
         self.reformat_view()
 
@@ -343,32 +400,6 @@ class ScalarCollection(Atom):
         # ignore the args and kwargs. They are here so that any function can be
         # connected to this one
 
-        x_data = []
-        y_data = []
-        try:
-            y_val = self.estimate_stats['avg_y']
-        except KeyError:
-            y_val = 1
-        for plot in self.estimate_plot:
-            try:
-                stats = self.estimate_stats[plot]
-            except KeyError:
-                continue
-            try:
-                stats_len = len(stats)
-            except TypeError:
-                stats_len = 1
-            if stats_len == 2:
-                x_data.append(stats[0])
-                y_data.append(stats[1])
-            else:
-                x_data.append(stats)
-                y_data.append(y_val)
-        try:
-            self.scalar_models['peak stats'].set_data(x=x_data, y=y_data)
-        except KeyError:
-            # data muxer hasn't been created yet
-            pass
         try:
             legend_pairs = [(v.line_artist, k)
                             for k, v in six.iteritems(self.scalar_models)

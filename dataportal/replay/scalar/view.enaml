@@ -42,6 +42,8 @@ enamldef PlotControls(Container):
                 CheckBox: btn_time:
                     text = 'Plot againt time'
                     checked := scalar_collection.x_is_time
+                    clicked ::
+                        scalar_collection.get_new_data_and_plot()
         GroupBox: measured:
             padding = Box(0, 0, 0, 0)
             title = "Data"
@@ -53,9 +55,6 @@ enamldef PlotControls(Container):
                         text = loop_item
                         checkable = True
                         checked := scalar_collection.scalar_models[loop_item].is_plotting
-                        clicked ::
-                            if loop_item != 'peak stats' and loop_item != 'fit':
-                                scalar_collection.estimate_target = loop_item
                     Label:
                         text << str(id(scalar_collection.scalar_models[loop_item]))
 
