@@ -271,7 +271,7 @@ class MuxerModel(Atom):
         elif old_norm_col is not None and old_norm_col != 'None':
             self.column_models[old_norm_col].can_be_normalized = True
         new_norm_col = changed.get('value', None)
-        if new_norm_col is None or new_norm_col == 'None':
+        if new_norm_col is None or new_norm_col == 'None' or new_norm_col == '':
             # disable all normalization check boxes
             for name, model in self.column_models.items():
                 model.can_be_normalized = False
