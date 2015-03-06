@@ -410,13 +410,11 @@ def find_run_stop(**kwargs):
         The run stop object containing the `exit_status` enum, the `time` the
         run ended and the `reason` the run ended.
     """
-    query_dict = dict()
     try:
-        query_dict['run_start_id'] = kwargs.pop('run_start').id
+        kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
         pass
-    query_dict.update(kwargs)
-    run_stop = RunStop.objects(__raw__=query_dict).order_by('-time')
+    run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
     try:
         run_stop = run_stop[0]
     except IndexError:
@@ -439,13 +437,11 @@ def find_event_descriptor(**kwargs):
         List of metadatastore.document.Document.
     """
     event_descriptor_list = list()
-    query_dict = dict()
     try:
-        query_dict['run_start_id'] = kwargs.pop('run_start').id
+        kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
         pass
-    query_dict.update(kwargs)
-    event_descriptor_objects = EventDescriptor.objects(__raw__=query_dict)
+    event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
                                                               direction='out')
