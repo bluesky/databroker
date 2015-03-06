@@ -485,6 +485,7 @@ def find_event(**kwargs):
     run_start = None
     run_start_id = None
     results = None
+    descriptor_id = None
     try:
         run_start = kwargs.pop('run_start')
     except KeyError:
@@ -493,8 +494,14 @@ def find_event(**kwargs):
         run_start_id = kwargs.pop('run_start_id')
     except KeyError:
         pass
+    try:
+        descriptor = kwargs.pop('event_descriptor')
+    except KeyError:
+        pass
     if (run_start) and (run_start_id):
         raise ValueError('find_event either via run_start object or id')
+    if ((run_start) or (run_start_id)) and descriptor_id:
+        raise ValueError('find_event either via run_start or event_desc')
     if run_start:
         e_desc_ids = list()
         e_descs = find_event_descriptor(run_start=run_start)
@@ -502,11 +509,15 @@ def find_event(**kwargs):
         query_dict['descriptor_id'] = {'$in': e_desc_ids}
         query_dict.update(kwargs)
         results = Event.objects(__raw__=query_dict).order_by('-time')
-    if run_start_id:
+    elif run_start_id:
         e_desc_ids = list()
         e_descs = find_event_descriptor(run_start_id=ObjectId(run_start_id))
         e_desc_ids = [ObjectId(entry.id) for entry in e_descs]
         query_dict['descriptor_id'] = {'$in': e_desc_ids}
+        query_dict.update(kwargs)
+        results = Event.objects(__raw__=query_dict).order_by('-time')
+    elif descriptor:
+        query_dict['descriptor_id'] = descriptor.id
         query_dict.update(kwargs)
         results = Event.objects(__raw__=query_dict).order_by('-time')
     else:
