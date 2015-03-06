@@ -313,7 +313,7 @@ def __as_document(mongoengine_object):
 
 @_ensure_connection
 def find_run_start(limit=None, **kwargs):
-    """ Given search criteria, locate RunStart objects
+    """Given search criteria, locate RunStart Documents.
 
     Parameters
     ----------
@@ -379,7 +379,7 @@ def find_run_start(limit=None, **kwargs):
 
 @_ensure_connection
 def find_beamline_config(**kwargs):
-    """Return beamline config objects given a unique mongo _id
+    """Given search criteria, locate BeamlineConfig Documents.
 
     Parameters
     ----------
@@ -399,7 +399,7 @@ def find_beamline_config(**kwargs):
 
 @_ensure_connection
 def find_run_stop(**kwargs):
-    """Return a run_stop object given a run_start document
+    """Given search criteria, locate RunStop Documents.
 
     Parameters
     ----------
@@ -441,7 +441,7 @@ def find_run_stop(**kwargs):
 
 @_ensure_connection
 def find_event_descriptor(**kwargs):
-    """Return beamline config objects given a unique mongo id
+    """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
     ----------
@@ -468,7 +468,7 @@ def find_event_descriptor(**kwargs):
 
 @_ensure_connection
 def find_event(**kwargs):
-    """
+    """Given search criteria, locate Event Documents.
 
     Parameters
     -----------
@@ -541,9 +541,8 @@ def find_event(**kwargs):
 
 @_ensure_connection
 def find_last(num=1):
-    """Indexed on time.
-
-    Returns the last created header not modified!!
+    """Locate the last `num` RunStart Documents with their EventDescriptors
+    added
 
     Returns
     -------
