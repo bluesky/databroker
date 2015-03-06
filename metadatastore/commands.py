@@ -537,6 +537,8 @@ def find_event(limit=None, **kwargs):
         kwargs['descriptor_id'] = kwargs.pop('event_descriptor').id
     except KeyError:
         pass
+    if 'descriptor_id' in kwargs:
+        kwargs['descriptor_id'] = ObjectId(kwargs['descriptor_id'])
     events = Event.objects(__raw__=kwargs).order_by('-time')[:limit]
     return [_as_document(ev) for ev in events]
 
