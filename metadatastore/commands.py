@@ -413,10 +413,10 @@ def find_run_stop(**kwargs):
 
     Returns
     -------
-    run_stop : list
-        metadatastore.document.Document
-        The run stop object containing the `exit_status` enum, the `time` the
-        run ended and the `reason` the run ended.
+    run_stop : list of metadatastore.document.Document
+        The run stop objects containing the `exit_status` enum, the `time` the
+        run ended and the `reason` the run ended and a pointer to their run
+        headers
     """
     try:
         kwargs['run_start_id'] = ObjectId(kwargs.pop('run_start').id)
