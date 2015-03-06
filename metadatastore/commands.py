@@ -503,13 +503,13 @@ def find_event_descriptor(**kwargs):
 
 
 @_ensure_connection
-def find_event(**kwargs):
+def find_event(limit=None, **kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters
     -----------
-    limit : int
-        number of events returned
+    limit : int, optional
+        Maximum number of events returned. Defaults to None
     start_time : float, optional
         timestamp of the earliest time that an Event was created
     stop_time : float, optional
@@ -529,49 +529,12 @@ def find_event(**kwargs):
         List of metadatastore.document.Document
     """
     _format_time(kwargs)
-    query_dict = dict()
-    run_start = None
-    run_start_id = None
-    results = None
-    descriptor_id = None
     try:
-        run_start = kwargs.pop('run_start')
+        kwargs['descriptor_id'] = kwargs.pop('event_descriptor').id
     except KeyError:
         pass
-    try:
-        run_start_id = kwargs.pop('run_start_id')
-    except KeyError:
-        pass
-    try:
-        descriptor = kwargs.pop('event_descriptor')
-    except KeyError:
-        pass
-    if (run_start) and (run_start_id):
-        raise ValueError('find_event either via run_start object or id')
-    if ((run_start) or (run_start_id)) and descriptor_id:
-        raise ValueError('find_event either via run_start or event_desc')
-    if run_start:
-        e_desc_ids = list()
-        e_descs = find_event_descriptor(run_start=run_start)
-        e_desc_ids = [ObjectId(entry.id) for entry in e_descs]
-        query_dict['descriptor_id'] = {'$in': e_desc_ids}
-        query_dict.update(kwargs)
-        results = Event.objects(__raw__=query_dict).order_by('-time')
-    elif run_start_id:
-        e_desc_ids = list()
-        e_descs = find_event_descriptor(run_start_id=ObjectId(run_start_id))
-        e_desc_ids = [ObjectId(entry.id) for entry in e_descs]
-        query_dict['descriptor_id'] = {'$in': e_desc_ids}
-        query_dict.update(kwargs)
-        results = Event.objects(__raw__=query_dict).order_by('-time')
-    elif descriptor:
-        query_dict['descriptor_id'] = descriptor.id
-        query_dict.update(kwargs)
-        results = Event.objects(__raw__=query_dict).order_by('-time')
-    else:
-        query_dict.update(kwargs)
-        results = Event.objects(__raw__=query_dict).order_by('-time')
-    return [_as_document(ev) for ev in results]
+    events = Event.objects(__raw__=kwargs).order_by('-time')[:limit]
+    return [_as_document(ev) for ev in events]
 
 
 @_ensure_connection
