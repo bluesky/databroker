@@ -312,7 +312,7 @@ def __as_document(mongoengine_object):
 
 
 @_ensure_connection
-def find_run_start(limit=50, **kwargs):
+def find_run_start(limit=None, **kwargs):
     """ Given search criteria, locate RunStart objects
 
     Parameters
