@@ -13,7 +13,6 @@ import mongoengine.connection
 import uuid
 from bson import ObjectId
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -310,6 +309,22 @@ class EventDescriptorIsNoneError(ValueError):
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
 
+def __format_time(search_dict):
+    """Helper function to format the time arguments in a search dict
+
+    Expects 'start_time' and 'stop_time'
+
+    ..warning: Does in-place mutation of the search_dict
+    """
+    time_dict = {}
+    start_time = search_dict.pop('start_time', None)
+    stop_time = search_dict.pop('stop_time', None)
+    if start_time:
+        time_dict['$gte'] = start_time
+    if stop_time:
+        time_dict['$lte'] = stop_time
+    if time_dict:
+        search_dict['time'] = time_dict
 
 @_ensure_connection
 def find_run_start(limit=None, **kwargs):
@@ -360,15 +375,7 @@ def find_run_start(limit=None, **kwargs):
         kwargs['_id'] = ObjectId(kwargs['_id'])
     except KeyError:
         pass
-    time_dict = {}
-    start_time = kwargs.pop('start_time', None)
-    stop_time = kwargs.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = start_time
-    if stop_time:
-        time_dict['$lte'] = stop_time
-    if time_dict:
-        kwargs['time'] = time_dict
+    __format_time(kwargs)
     rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
     return [__as_document(rs) for rs in rs_objects]
 
@@ -393,6 +400,7 @@ def find_beamline_config(**kwargs):
     beamline_config : metadatastore.document.Document
         The beamline config object
     """
+    __format_time(kwargs)
     # ordered by _id because it is not guaranteed there will be time in cbonfig
     beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
     return [__as_document(bc) for bc in beamline_configs]
@@ -426,6 +434,7 @@ def find_run_stop(**kwargs):
         run ended and the `reason` the run ended and a pointer to their run
         headers
     """
+    __format_time(kwargs)
     try:
         # ensure that the id field is an ObjectId, otherwise mongo will
         # not be able to search on it
@@ -466,6 +475,7 @@ def find_event_descriptor(**kwargs):
         List of EventDescriptors formatted as
         metadatastore.document.Document
     """
+    __format_time(kwargs)
     event_descriptor_list = list()
     try:
         kwargs['run_start_id'] = kwargs.pop('run_start').id
@@ -505,6 +515,7 @@ def find_event(**kwargs):
     events : list
         List of metadatastore.document.Document
     """
+    __format_time(kwargs)
     query_dict = dict()
     run_start = None
     run_start_id = None
