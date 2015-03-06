@@ -482,9 +482,14 @@ def find_event_descriptor(**kwargs):
     event_descriptor : list
         List of EventDescriptors formatted as
         metadatastore.document.Document
+
     """
     _format_time(kwargs)
     event_descriptor_list = list()
+    try:
+        kwargs['_id'] = ObjectId(kwargs['_id'])
+    except KeyError:
+        pass
     try:
         kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
