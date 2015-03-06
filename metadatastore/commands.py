@@ -319,39 +319,42 @@ def __as_document(mongoengine_object):
 
 @_ensure_connection
 def find_run_start(limit=50, **kwargs):
-    """ Given search criteria, locate the RunStart object
+    """ Given search criteria, locate RunStart objects
 
     Parameters
     ----------
-    limit : int
-        Number of header objects to be returned
+    limit : int, optional
+        Maximum number of RunStart Documents to be returned.
     start_time : float, optional
-        timestamp of the earliest time to return run_start events
+        timestamp of the earliest time that a RunStart was created
     stop_time : float, optional
-        timestamp of the latest time to return run_start events
-    scan_id : int, optional
-        Scan identifier. Not unique
-    owner : str, optional
-        User name identifier associated with a scan
+        timestamp of the latest time that a RunStart was created
+    beamline_id : str, optional
+        String identifier for a specific beamline
     project : str, optional
-        ???
+        Project name
+    owner : str, optional
+        The username of the logged-in user when the scan was performed
+    scan_id : int, optional
+        Integer scan identifier
     group : str, optional
         ???
     sample : ???, optional
         ???
-    beamline_id : str, optional
-        String identifier for a specific beamline
-    unique_id : str, optional
+    uid : str, optional
         Hashed unique identifier
+    _id : str or ObjectId, optnal
+        The id of the RunStart mongo document
 
     Returns
     -------
-    rs_objects : metadatastore.document.Document
-        Combined documents: RunStart, BeamlineConfig, Sample and
-        EventDescriptors
+    rs_objects : list of metadatastore.document.Document
+        Combined (dereferenced) documents: RunStart, BeamlineConfig, Sample
+        Note: All documents that the RunStart Document points to are
+              dereferenced
 
-    Usage
-    ------
+    Examples
+    --------
     >>> find_run_start(scan_id=123)
     >>> find_run_start(owner='arkilic')
     >>> find_run_start(start_time=1421176750.514707, stop_time=time.time()})
