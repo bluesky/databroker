@@ -419,10 +419,14 @@ def find_run_stop(**kwargs):
         headers
     """
     try:
+        # ensure that the id field is an ObjectID, otherwise monogo will
+        # not be able to search on it
         kwargs['run_start_id'] = ObjectId(kwargs.pop('run_start').id)
     except KeyError:
         pass
+    # do the actual search and return a QuerySet object
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
+    # turn the QuerySet object into a list of Document object
     return [__as_document(rs) for rs in run_stop]
 
 
