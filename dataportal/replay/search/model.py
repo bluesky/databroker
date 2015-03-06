@@ -35,8 +35,7 @@ class WatchForHeadersModel(Atom):
             return
         else:
             self.search_info = "Run Found."
-        if (not self.header or self.header.ids['run_start_uid'] !=
-                header.ids['run_start_uid']):
+        if (not self.header or self.header.run_start_uid != header.run_start_uid):
             self.header = header
 
 
@@ -57,6 +56,10 @@ class DisplayHeaderModel(Atom):
 
     @observe('header')
     def header_changed(self, changed):
+        self.header_as_dict = {}
+        self.header_keys = []
+        if self.header is None:
+            return
         key_labels = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
         header_dict = dict(self.header.items())
         event_descriptors = header_dict.pop('event_descriptors', [])
@@ -71,10 +74,8 @@ class DisplayHeaderModel(Atom):
         header_keys = key_labels + data_keys
 
         # set the summary dictionary
-        self.header_as_dict = {}
         self.header_as_dict = header_dict
         # set the keys dictionary
-        self.header_keys = []
         self.header_keys = header_keys
 
     def _format_for_enaml(self, event_descriptors):
