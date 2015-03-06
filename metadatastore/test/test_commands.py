@@ -15,6 +15,7 @@ from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore.examples.sample_data import temperature_ramp
 
 blc = None
 
@@ -22,6 +23,7 @@ blc = None
 def setup():
     mds_setup()
     global blc
+    temperature_ramp.run()
     blc = mdsc.insert_beamline_config({}, ttime.time())
 
 
@@ -147,7 +149,7 @@ def _event_tester(descriptor, seq_num, data, time):
 
 def _end_run_tester(run_start, time):
     end_run = mdsc.insert_run_stop(run_start, time)
-    q_ret = mdsc.find_run_stop(_id=end_run.id)
+    q_ret, = mdsc.find_run_stop(_id=end_run.id)
     assert_equal(bson.ObjectId(q_ret.id), end_run.id)
     Document(end_run)
     ret = RunStop.objects.get(id=end_run.id)
