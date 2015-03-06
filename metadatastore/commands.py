@@ -141,7 +141,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
         custom = {}
 
     run_start = RunStart(time=time, scan_id=scan_id, owner=owner,
-                         time_as_datetime=__todatetime(time), uid=uid,
+                         time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
                          beamline_config=beamline_config
                          if beamline_config else None,
@@ -176,7 +176,7 @@ def insert_run_stop(run_start, time, exit_status='success',
     if uid is None:
         uid = str(uuid.uuid4())
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
-                       time_as_datetime=__todatetime(time), uid=uid,
+                       time_as_datetime=_todatetime(time), uid=uid,
                        exit_status=exit_status)
 
     run_stop.save(validate=True, write_concern={"w": 1})
@@ -236,9 +236,9 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
-                                       time_as_datetime=__todatetime(time))
+                                       time_as_datetime=_todatetime(time))
 
-    event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
+    event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
 
     event_descriptor.save(validate=True, write_concern={"w": 1})
@@ -265,7 +265,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-    m_data = __validate_data(data)
+    m_data = _validate_data(data)
 
     # mostly here to notify ophyd that an event descriptor needs to be created
     if event_descriptor is None:
@@ -277,12 +277,12 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
-    event = __replace_event_data_key_dots(event, direction='in')
+    event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
     return event
 
 
-def __validate_data(data):
+def _validate_data(data):
     m_data = dict()
     for k, v in six.iteritems(data):
         if isinstance(v, (list, tuple)):
@@ -306,10 +306,10 @@ class EventDescriptorIsNoneError(ValueError):
 # DATABASE RETRIEVAL ##########################################################
 
 # TODO: Update all query routine documentation
-def __as_document(mongoengine_object):
+def _as_document(mongoengine_object):
     return Document(mongoengine_object)
 
-def __format_time(search_dict):
+def _format_time(search_dict):
     """Helper function to format the time arguments in a search dict
 
     Expects 'start_time' and 'stop_time'
@@ -375,9 +375,9 @@ def find_run_start(limit=None, **kwargs):
         kwargs['_id'] = ObjectId(kwargs['_id'])
     except KeyError:
         pass
-    __format_time(kwargs)
+    _format_time(kwargs)
     rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
-    return [__as_document(rs) for rs in rs_objects]
+    return [_as_document(rs) for rs in rs_objects]
 
 
 @_ensure_connection
@@ -400,10 +400,10 @@ def find_beamline_config(**kwargs):
     beamline_config : metadatastore.document.Document
         The beamline config object
     """
-    __format_time(kwargs)
+    _format_time(kwargs)
     # ordered by _id because it is not guaranteed there will be time in cbonfig
     beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
-    return [__as_document(bc) for bc in beamline_configs]
+    return [_as_document(bc) for bc in beamline_configs]
 
 
 @_ensure_connection
@@ -434,7 +434,7 @@ def find_run_stop(**kwargs):
         run ended and the `reason` the run ended and a pointer to their run
         headers
     """
-    __format_time(kwargs)
+    _format_time(kwargs)
     try:
         # ensure that the id field is an ObjectId, otherwise mongo will
         # not be able to search on it
@@ -449,7 +449,7 @@ def find_run_stop(**kwargs):
     # do the actual search and return a QuerySet object
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
     # turn the QuerySet object into a list of Document object
-    return [__as_document(rs) for rs in run_stop]
+    return [_as_document(rs) for rs in run_stop]
 
 
 @_ensure_connection
@@ -475,7 +475,7 @@ def find_event_descriptor(**kwargs):
         List of EventDescriptors formatted as
         metadatastore.document.Document
     """
-    __format_time(kwargs)
+    _format_time(kwargs)
     event_descriptor_list = list()
     try:
         kwargs['run_start_id'] = kwargs.pop('run_start').id
@@ -483,10 +483,10 @@ def find_event_descriptor(**kwargs):
         pass
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
     for event_descriptor in event_descriptor_objects.order_by('-time'):
-        event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
-                                                              direction='out')
+        event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
+                                                             direction='out')
         event_descriptor_list.append(event_descriptor)
-    return [__as_document(evd) for evd in event_descriptor_list]
+    return [_as_document(evd) for evd in event_descriptor_list]
 
 
 @_ensure_connection
@@ -515,7 +515,7 @@ def find_event(**kwargs):
     events : list
         List of metadatastore.document.Document
     """
-    __format_time(kwargs)
+    _format_time(kwargs)
     query_dict = dict()
     run_start = None
     run_start_id = None
@@ -558,7 +558,7 @@ def find_event(**kwargs):
     else:
         query_dict.update(kwargs)
         results = Event.objects(__raw__=query_dict).order_by('-time')
-    return [__as_document(ev) for ev in results]
+    return [_as_document(ev) for ev in results]
 
 
 @_ensure_connection
@@ -573,17 +573,17 @@ def find_last(num=1):
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
     rs_objects = [rs for rs in RunStart.objects.order_by('-time')[:num]]
-    return [__as_document(rs) for rs in rs_objects]
+    return [_as_document(rs) for rs in rs_objects]
 
 
-def __todatetime(time_stamp):
+def _todatetime(time_stamp):
     if isinstance(time_stamp, float):
         return datetime.datetime.fromtimestamp(time_stamp)
     else:
         raise TypeError('Timestamp format is not correct!')
 
 
-def __replace_dict_keys(input_dict, src, dst):
+def _replace_dict_keys(input_dict, src, dst):
     """
     Helper function to replace forbidden chars in dictionary keys
 
@@ -609,7 +609,7 @@ def __replace_dict_keys(input_dict, src, dst):
             k, v in six.iteritems(input_dict)}
 
 
-def __src_dst(direction):
+def _src_dst(direction):
     """
     Helper function to turn in/out into src/dst pair
 
@@ -633,7 +633,7 @@ def __src_dst(direction):
     return src, dst
 
 
-def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
+def _replace_descriptor_data_key_dots(ev_desc, direction='in'):
     """Replace the '.' with [dot]
 
     Parameters
@@ -647,13 +647,13 @@ def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-    src, dst = __src_dst(direction)
-    ev_desc.data_keys = __replace_dict_keys(ev_desc.data_keys,
+    src, dst = _src_dst(direction)
+    ev_desc.data_keys = _replace_dict_keys(ev_desc.data_keys,
                                             src, dst)
     return ev_desc
 
 
-def __replace_event_data_key_dots(event, direction='in'):
+def _replace_event_data_key_dots(event, direction='in'):
     """Replace the '.' with [dot]
 
     Parameters
@@ -667,7 +667,7 @@ def __replace_event_data_key_dots(event, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-    src, dst = __src_dst(direction)
-    event.data = __replace_dict_keys(event.data,
+    src, dst = _src_dst(direction)
+    event.data = _replace_dict_keys(event.data,
                                      src, dst)
     return event

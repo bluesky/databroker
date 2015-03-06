@@ -56,7 +56,7 @@ def _ev_desc_tester(run_start, data_keys, time):
     ret = EventDescriptor.objects.get(run_start_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), ret.id)
     q_ret2 = mdsc.find_event_descriptor(_id=ev_desc.id)[0]
-    assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id) 
+    assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id)
     for name, val in zip(['run_start', 'time'], [run_start, time]):
         assert_equal(getattr(ret, name), val)
 
@@ -90,15 +90,15 @@ def test_ev_desc():
 
 def test_dict_key_replace_rt():
     test_d = {'a.b': 1, 'b': .5, 'c.d.e': None}
-    src_in, dst_in = mdsc.__src_dst('in')
-    test_d_in = mdsc.__replace_dict_keys(test_d, src_in, dst_in)
-    src_out, dst_out = mdsc.__src_dst('out')
-    test_d_out = mdsc.__replace_dict_keys(test_d_in, src_out, dst_out)
+    src_in, dst_in = mdsc._src_dst('in')
+    test_d_in = mdsc._replace_dict_keys(test_d, src_in, dst_in)
+    src_out, dst_out = mdsc._src_dst('out')
+    test_d_out = mdsc._replace_dict_keys(test_d_in, src_out, dst_out)
     assert_equal(test_d_out, test_d)
 
 
 def test_src_dst_fail():
-    assert_raises(ValueError, mdsc.__src_dst, 'aardvark')
+    assert_raises(ValueError, mdsc._src_dst, 'aardvark')
 
 
 def _run_start_tester(time, beamline_id, scan_id):
