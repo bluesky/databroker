@@ -82,6 +82,8 @@ class RunStop(DynamicDocument):
     time : float
         The date/time as found at the client side when an event is
         created.
+    uid : str
+        Globally unique id string provided to metadatastore
     reason : str, optional
         Long-form description of why the run was terminated.
     """
