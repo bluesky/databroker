@@ -419,7 +419,7 @@ def find_run_stop(**kwargs):
         run ended and the `reason` the run ended.
     """
     try:
-        kwargs['run_start_id'] = kwargs.pop('run_start').id
+        kwargs['run_start_id'] = ObjectId(kwargs.pop('run_start').id)
     except KeyError:
         pass
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
