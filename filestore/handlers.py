@@ -38,7 +38,11 @@ class AreaDetectorSPEHandler(HandlerBase):
                                           file_number)
                 spe_obj = PrincetonSPEFile(fname)
                 self._f_cache[file_number] = spe_obj
-            out_stack.append(self._f_cache[file_number][frame_no])
+            spe = self._f_cache[file_number]
+            if len(spe) > 1:
+                out_stack.append(spe.getData())
+            else:
+                out_stack.append(spe[frame_no])
         # return stacked and squeezed results
         return np.dstack(out_stack).squeeze()
 
