@@ -5,7 +5,7 @@ from collections import defaultdict, Iterable, deque
 from .. import sources
 from metadatastore.api import (Document, find_last, find_run_start,
                                find_event_descriptor, find_run_stop,
-                               fetch_events, find_event)
+                               find_event)
 from filestore.api import retrieve
 import os
 
@@ -82,13 +82,11 @@ class DataBroker(object):
         else:
             runs = [runs]
 
-        events_by_descriptor = []
+        events = []
         for run in runs:
-            run = copy.copy(run)
-            run.id = run.run_start_id
-            events_by_descriptor.extend(find_event(run))
-        events = [event for descriptor in events_by_descriptor
-                  for event in descriptor]
+            descriptors = find_event_descriptor(run_start_id=run.run_start_id)
+            for descriptor in descriptors:
+                events.extend(find_event(descriptor=descriptor))
         [fill_event(event) for event in events]
 
         if channels is not None:
@@ -198,8 +196,23 @@ def _build_header(run_start):
         The run_start document from metadatastore that has been sanitized into
         a safe dataportal.broker.Document
     """
-    run_start.event_descriptors = find_event_descriptor(run_start)
-    run_stop = find_run_stop(run_start)
+    run_start.event_descriptors = find_event_descriptor(run_start=run_start)
+    run_stops = find_run_stop(run_start=run_start)
+    try:
+        run_stop, = run_stops
+    except ValueError:
+        # TODO Refactor _build_header to return Header without RunStop,
+        # and warn here instead of raising.
+        num = len(run_stops)
+        if num == 0:
+            raise IntegrityError(
+                "A RunStop record could not be found for the "
+                "run with run_start_id {0}".format(run_start.id))
+        else:
+            raise IntegrityError(
+                "{0} RunStop records (ids {1}) were found for the "
+                "run with run_start_id {2}".format(
+                    num, [rs.id for rs in run_stops], run_start.id))
     # fix the time issue
     adds = {'start_time': (run_start, 'time'),
             'start_datetime': (run_start, 'time_as_datetime'),
@@ -227,3 +240,6 @@ def _build_header(run_start):
                                  "Please update the mappings".format(k))
             setattr(run_start, k, v)
     run_start._name = 'Header'
+
+class IntegrityError(Exception):
+    pass
