@@ -233,14 +233,13 @@ class DataMuxer(object):
         self._stale = True
         if event.descriptor.id not in self._known_descriptors:
             self._process_new_descriptor(event.descriptor)
-        for name, data_dict in event.data.items():
-            # Both scalar and nonscalar data will get stored in the DataFrame.
-            # This may be optimized later, but it might not actually help much.
-            self._data.append(
-                {name: data[0] for name, data in event.data.items()})
-            self._timestamps.append(
-                {name: data[1] for name, data in event.data.itmes()})
-            self._time.append(event.time)
+        # Both scalar and nonscalar data will get stored in the DataFrame.
+        # This may be optimized later, but it might not actually help much.
+        self._data.append(
+            {name: data[0] for name, data in event.data.items()})
+        self._timestamps.append(
+            {name: data[1] for name, data in event.data.items()})
+        self._time.append(event.time)
         return True
 
     def _process_new_descriptor(self, descriptor):

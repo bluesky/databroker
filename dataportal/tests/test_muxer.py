@@ -85,6 +85,10 @@ class CommonBinningTests(object):
         # There should be stats columns.
         self.assertTrue('max' in result[self.dense].columns)
 
+        # There should be one row per bin.
+        self.assertTrue(self.dm._dataframe.index.is_unique)
+        self.assertTrue(result.index.is_unique)
+
     def test_bin_on_dense(self):
         "Align a sparse column to a dense column"
 
@@ -118,6 +122,10 @@ class CommonBinningTests(object):
         self.assertFalse('count' in result1[self.dense].columns)
         # But the sparse column should.
         self.assertTrue('count' in result1[self.sparse].columns)
+
+        # There should be one row per bin.
+        self.assertTrue(result1.index.is_unique)
+        self.assertTrue(result2.index.is_unique)
 
 
 class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
