@@ -483,14 +483,28 @@ def find_event(**kwargs):
     """
     query_dict = dict()
     run_start = None
+    run_start_id = None
+    results = None
     try:
         run_start = kwargs.pop('run_start')
     except KeyError:
         pass
-    #TODO: Add event_descriptor based event search!!!!!
+    try:
+        run_start_id = kwargs.pop('run_start_id')
+    except KeyError:
+        pass
+    if (run_start) and (run_start_id):
+        raise ValueError('find_event either via run_start object or id')
     if run_start:
         e_desc_ids = list()
         e_descs = find_event_descriptor(run_start=run_start)
+        e_desc_ids = [ObjectId(entry.id) for entry in e_descs]
+        query_dict['descriptor_id'] = {'$in': e_desc_ids}
+        query_dict.update(kwargs)
+        results = Event.objects(__raw__=query_dict).order_by('-time')
+    if run_start_id:
+        e_desc_ids = list()
+        e_descs = find_event_descriptor(run_start_id=ObjectId(run_start_id))
         e_desc_ids = [ObjectId(entry.id) for entry in e_descs]
         query_dict['descriptor_id'] = {'$in': e_desc_ids}
         query_dict.update(kwargs)
