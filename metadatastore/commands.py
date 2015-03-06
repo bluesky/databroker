@@ -401,8 +401,15 @@ def find_run_stop(**kwargs):
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document
+    run_start : metadatastore.document.Document, optional
         The run start to get the corresponding run end for
+    exit_status : {'success', 'fail', 'abort'}, optional
+        provides information regarding the run success.
+    time : float, optional
+        The date/time as found at the client side when an event is
+        created.
+    reason : str, optional
+        Long-form description of why the run was terminated.
 
     Returns
     -------
