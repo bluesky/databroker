@@ -406,7 +406,8 @@ def find_run_stop(**kwargs):
 
     Returns
     -------
-    run_stop : metadatastore.document.Document
+    run_stop : list
+        metadatastore.document.Document
         The run stop object containing the `exit_status` enum, the `time` the
         run ended and the `reason` the run ended.
     """
@@ -415,11 +416,7 @@ def find_run_stop(**kwargs):
     except KeyError:
         pass
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
-    try:
-        run_stop = run_stop[0]
-    except IndexError:
-        return None
-    return __as_document(run_stop)
+    return [__as_document(rs) for rs in run_stop]
 
 
 @_ensure_connection
