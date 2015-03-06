@@ -440,11 +440,13 @@ def find_run_stop(**kwargs):
     """
     _format_time(kwargs)
     try:
-        # ensure that the id field is an ObjectId, otherwise mongo will
-        # not be able to search on it
-        kwargs['run_start_id'] = ObjectId(kwargs.pop('run_start').id)
+        kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
         pass
+    if 'run_start_id' in kwargs:
+        # ensure that the id field is an ObjectId, otherwise mongo will
+        # not be able to search on it
+        kwargs['run_start_id'] = ObjectId(kwargs['run_start_id'])
     try:
         # ensure that the run_stop '_id' is an ObjectId
         kwargs['_id'] = ObjectId(kwargs['_id'])
@@ -494,6 +496,10 @@ def find_event_descriptor(**kwargs):
         kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
         pass
+    if 'run_start_id' in kwargs:
+        # ensure that the id field is an ObjectId, otherwise mongo will
+        # not be able to search on it
+        kwargs['run_start_id'] = ObjectId(kwargs['run_start_id'])
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
