@@ -384,6 +384,7 @@ def find_beamline_config(**kwargs):
     kwargs: dict
         Any Mongo query on beamline config can be represented
         as a dict and submitted
+
     Returns
     -------
     beamline_config : metadatastore.document.Document
@@ -410,6 +411,8 @@ def find_run_stop(**kwargs):
         created.
     reason : str, optional
         Long-form description of why the run was terminated.
+    _id : str or ObjectID, optional
+        The mongo id of the run_stop Document that you are interested in
 
     Returns
     -------
@@ -419,9 +422,14 @@ def find_run_stop(**kwargs):
         headers
     """
     try:
-        # ensure that the id field is an ObjectID, otherwise monogo will
+        # ensure that the id field is an ObjectId, otherwise monogo will
         # not be able to search on it
         kwargs['run_start_id'] = ObjectId(kwargs.pop('run_start').id)
+    except KeyError:
+        pass
+    try:
+        # ensure that the run_stop '_id' is an ObjectId
+        kwargs['_id'] = ObjectId(kwargs['_id'])
     except KeyError:
         pass
     # do the actual search and return a QuerySet object
