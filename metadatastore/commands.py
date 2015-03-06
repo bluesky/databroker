@@ -307,12 +307,6 @@ class EventDescriptorIsNoneError(ValueError):
 # DATABASE RETRIEVAL ##########################################################
 
 # TODO: Update all query routine documentation
-def __add_event_descriptors(run_start_list):
-    for run_start in run_start_list:
-        setattr(run_start, 'event_descriptors',
-                find_event_descriptor(run_start=run_start))
-
-
 def __as_document(mongoengine_object):
     return Document(mongoengine_object)
 
@@ -374,7 +368,6 @@ def find_run_start(limit=50, **kwargs):
     if time_dict:
         kwargs['time'] = time_dict
     rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
-    __add_event_descriptors(rs_objects)
     return [__as_document(rs) for rs in rs_objects]
 
 
@@ -554,7 +547,6 @@ def find_last(num=1):
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
     rs_objects = [rs for rs in RunStart.objects.order_by('-time')[:num]]
-    __add_event_descriptors(rs_objects)
     return [__as_document(rs) for rs in rs_objects]
 
 
