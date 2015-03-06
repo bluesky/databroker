@@ -38,7 +38,6 @@ def _blc_tester(config_dict):
     q_ret = mdsc.find_beamline_config(_id=blc.id)[0]
     assert_equal(bson.ObjectId(q_ret.id), blc.id)
     doc = Document(blc)
-    repr(doc)
     BeamlineConfig.objects.get(id=blc.id)
     if config_dict is None:
         config_dict = dict()
@@ -224,13 +223,13 @@ def test_run_stop():
     rs = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline', scan_id=42,
                                 beamline_config=blc)
-    Document(rs)
-    print('rs:', rs)
     time = ttime.time()
     yield _run_stop_tester, rs, time
 
 
 def test_run_start_custom():
+    # Test that Run Start is a DynamicDocument that accepts
+    # arbitrary fields.
     cust = {'foo': 'bar', 'baz': 42,
             'aardvark': ['ants', 3.14]}
     rs = mdsc.insert_run_start(time=ttime.time(),
