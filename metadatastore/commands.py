@@ -358,6 +358,12 @@ def find_run_start(limit=None, **kwargs):
     ...                stop_time=time.time())
 
     """
+    try:
+        # ensure that the '_id' field is an ObjectId.  This works if '_id' is
+        # a string or is already an ObjectId.
+        kwargs['_id'] = ObjectId(kwargs['_id'])
+    except KeyError:
+        pass
     time_dict = {}
     start_time = kwargs.pop('start_time', None)
     stop_time = kwargs.pop('stop_time', None)
