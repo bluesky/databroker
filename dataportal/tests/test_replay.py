@@ -41,6 +41,6 @@ def test_replay_normal_startup():
 
 
 def test_replay_live_startup():
-    replay.create_and_show(replay.define_default_params())
-    app.timed_call(1000, app.stop)
+    replay.create_and_show(replay.define_live_params())
+    app.timed_call(4000, app.stop)
     app.start()
