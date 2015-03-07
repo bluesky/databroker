@@ -133,7 +133,7 @@ if __name__ == '__main__':
     # insert the run start
     run_start = insert_run_start(scan_id=scan_id, time=0.0, beamline_id='csx',
                                  beamline_config=b_config, custom=custom)
-    events = run(run_start=run_start, sleep=sleep_time)
+    events = run(run_start=run_start, sleep=sleep_time, make_run_stop=False)
     run_stop = insert_run_stop(run_start=run_start, time=events[-1].time+1,
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))
