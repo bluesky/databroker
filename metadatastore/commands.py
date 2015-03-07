@@ -148,6 +148,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
                          **custom)
 
     run_start.save(validate=True, write_concern={"w": 1})
+    logger.debug('Inserted RunStart with mongo id %s', run_start.id)
 
     return run_start
 
@@ -180,6 +181,8 @@ def insert_run_stop(run_start, time, exit_status='success',
                        exit_status=exit_status)
 
     run_stop.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted RunStop with mongo id %s referencing RunStart "
+                 " with id %s", run_stop.id, run_start.id)
 
     return run_stop
 
@@ -205,6 +208,8 @@ def insert_beamline_config(config_params, time, uid=None):
                                      time=time,
                                      uid=uid)
     beamline_config.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted BeamlineConfig with mongo id %s",
+                 beamline_config.id)
 
     return beamline_config
 
@@ -242,6 +247,8 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
                                                           direction='in')
 
     event_descriptor.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted EventDescriptor with mongo id %s referencing "
+                 "RunStart with id %s", event_descriptor.id, run_start.id)
 
     return event_descriptor
 
@@ -279,6 +286,8 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
 
     event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted Event with mongo id %s referencing "
+                 "EventDescriptor with id %s", event.id, event_descriptor.id)
     return event
 
 
