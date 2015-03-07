@@ -26,21 +26,22 @@ class AreaDetectorSPEHandler(HandlerBase):
 
     def __call__(self, point_number):
         # The file number is just the point_number
-
+        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
         out_stack = deque()
-        if point_number not in self._f_cache:
-            fname = self._template % (self._path,
-                                      self._filename,
-                                      point_number)
-            spe_obj = PrincetonSPEFile(fname)
-            self._f_cache[point_number] = spe_obj
+        for file_number in range(start, stop):
+            if file_number not in self._f_cache:
+                fname = self._template % (self._path,
+                                          self._filename,
+                                          file_number)
+                spe_obj = PrincetonSPEFile(fname)
+                self._f_cache[point_number] = spe_obj
 
-        spe = self._f_cache[point_number]
+            spe = self._f_cache[file_number]
 
-        if len(spe) > 1:
-            out_stack.append(spe.getData())
-        else:
-            out_stack.append(spe[0])
+            if len(spe) > 1:
+                out_stack.append(spe.getData())
+            else:
+                out_stack.append(spe[0])
 
         # return stacked and squeezed results
         return np.dstack(out_stack).squeeze()
