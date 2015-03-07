@@ -1,7 +1,7 @@
 from __future__ import division
 from metadatastore.api import insert_event, insert_event_descriptor
 import numpy as np
-from dataportal.examples.sample_data import common
+from metadatastore.examples.sample_data import common
 
 # "Magic numbers" for this simulation
 start, stop, step, points_per_step = 0, 3, 1, 7
