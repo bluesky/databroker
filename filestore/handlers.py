@@ -3,8 +3,8 @@ from __future__ import (absolute_import, division, print_function,
 from .retrieve import HandlerBase
 from .readers.spe import PrincetonSPEFile
 from collections import deque
-import six
-from six.moves import range
+# import six
+# from six.moves import range
 import logging
 import h5py
 import numpy as np
@@ -25,24 +25,23 @@ class AreaDetectorSPEHandler(HandlerBase):
         self._f_cache = dict()
 
     def __call__(self, point_number):
-        # hard code this due to AD constraints
-        frame_no = 0
-        # get the start/stop limits
-        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
-        # loop over them + cache results
+        # The file number is just the point_number
+
         out_stack = deque()
-        for file_number in range(start, stop):
-            if file_number not in self._f_cache:
-                fname = self._template % (self._path,
-                                          self._filename,
-                                          file_number)
-                spe_obj = PrincetonSPEFile(fname)
-                self._f_cache[file_number] = spe_obj
-            spe = self._f_cache[file_number]
-            if len(spe) > 1:
-                out_stack.append(spe.getData())
-            else:
-                out_stack.append(spe[frame_no])
+        if point_number not in self._f_cache:
+            fname = self._template % (self._path,
+                                      self._filename,
+                                      point_number)
+            spe_obj = PrincetonSPEFile(fname)
+            self._f_cache[point_number] = spe_obj
+
+        spe = self._f_cache[point_number]
+
+        if len(spe) > 1:
+            out_stack.append(spe.getData())
+        else:
+            out_stack.append(spe[0])
+
         # return stacked and squeezed results
         return np.dstack(out_stack).squeeze()
 
