@@ -532,9 +532,15 @@ def find_event(limit=None, **kwargs):
     events : list
         List of metadatastore.document.Document
     """
+    # Some user-friendly error messages for an easy mistake to make
+    if 'event_descriptor' in kwargs:
+        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
+    if 'event_descriptor_id' in kwargs:
+        raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
+
     _format_time(kwargs)
     try:
-        kwargs['descriptor_id'] = kwargs.pop('event_descriptor').id
+        kwargs['descriptor_id'] = kwargs.pop('descriptor').id
     except KeyError:
         pass
     if 'descriptor_id' in kwargs:
