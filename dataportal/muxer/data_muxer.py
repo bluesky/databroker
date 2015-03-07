@@ -470,6 +470,7 @@ class DataMuxer(object):
 
             # Short-circuit if we are done.
             if np.all(has_one_point[name]):
+                logger.debug("%s has exactly one data point per bin", name)
                 val_col_name += '_raw'
                 result[name][val_col_name] = val_col_series
                 continue
@@ -503,6 +504,7 @@ class DataMuxer(object):
 
             # Short-circuit if we are done.
             if np.all(~has_multiple_points[name]):
+                logger.debug("%s has at least one data point per bin", name)
                 result[name][val_col_name] = val_col_series
                 result[name]['count'] = count_series
                 continue
@@ -524,6 +526,7 @@ class DataMuxer(object):
 
             g = grouped[name]  # for brevity
             if col_info.ndim == 0:
+                logger.debug("The scalar column %s must be downsampled.", name)
                 # For scalars, pandas knows what to do.
                 downsampled = g.agg(downsample)
                 std_series = g.std()
@@ -532,6 +535,8 @@ class DataMuxer(object):
             else:
                 # For nonscalars, we are abusing groupby and must go to a
                 # a little more trouble to guarantee success.
+                logger.debug("The nonscalar column %s must be downsampled.",
+                             name)
                 if not callable(downsample):
                     # Do this lookup here so that strings can be passed
                     # in the call to resample.
