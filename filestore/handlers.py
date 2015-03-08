@@ -3,8 +3,8 @@ from __future__ import (absolute_import, division, print_function,
 from .retrieve import HandlerBase
 from .readers.spe import PrincetonSPEFile
 from collections import deque
-# import six
-# from six.moves import range
+import six
+from six.moves import range
 import logging
 import h5py
 import numpy as np
