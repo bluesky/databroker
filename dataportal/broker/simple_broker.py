@@ -60,13 +60,13 @@ class DataBroker(object):
         return result
 
     @classmethod
-    def fetch_events(cls, runs, ca_host=None, channels=None):
+    def fetch_events(cls, headers, ca_host=None, channels=None):
         """
         Get Events from given run(s).
 
         Parameters
         ----------
-        runs : one RunHeader or a list of them
+        headers : one RunHeader or a list of them
         ca_host : URL string
             the URL of your archiver's ArchiveDataServer.cgi. For example,
             'http://cr01arc01/cgi-bin/ArchiveDataServer.cgi'
@@ -81,15 +81,15 @@ class DataBroker(object):
         data : a flat list of Event objects
         """
         try:
-            runs.items()
+            headers.items()
         except AttributeError:
             pass
         else:
-            runs = [runs]
+            headers = [headers]
 
         events = []
-        for run in runs:
-            descriptors = find_event_descriptors(run_start_id=run.run_start_id)
+        for header in headers:
+            descriptors = find_event_descriptors(run_start_id=header.run_start_id)
             for descriptor in descriptors:
                 events.extend(find_events(descriptor=descriptor))
         [fill_event(event) for event in events]
@@ -182,13 +182,13 @@ class EventQueue(object):
         """Obtain a fresh list of the relevant Events."""
 
         # like fetch_events, but we don't fill in the data right away
-        events_by_descriptor = []
+        events = []
         for header in self.headers:
-            header = copy.copy(header)
-            header.id = header.run_start_id
-            events_by_descriptor.extend(find_events(header))
-        events = [event for descriptor in events_by_descriptor
-                  for event in descriptor]
+            descriptors = find_event_descriptors(run_start_id=header.run_start_id)
+            for descriptor in descriptors:
+                events.extend(find_events(descriptor=descriptor))
+        if not events:
+            return
 
         new_events = []
         for event in events:
