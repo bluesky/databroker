@@ -336,7 +336,7 @@ def _format_time(search_dict):
         search_dict['time'] = time_dict
 
 @_ensure_connection
-def find_run_start(limit=None, **kwargs):
+def find_run_starts(limit=None, **kwargs):
     """Given search criteria, locate RunStart Documents.
 
     Parameters
@@ -369,12 +369,12 @@ def find_run_start(limit=None, **kwargs):
 
     Examples
     --------
-    >>> find_run_start(scan_id=123)
-    >>> find_run_start(owner='arkilic')
-    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time()})
-    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time())
+    >>> find_run_starts(scan_id=123)
+    >>> find_run_starts(owner='arkilic')
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
 
-    >>> find_run_start(owner='arkilic', start_time=1421176750.514707,
+    >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
     ...                stop_time=time.time())
 
     """
@@ -390,7 +390,7 @@ def find_run_start(limit=None, **kwargs):
 
 
 @_ensure_connection
-def find_beamline_config(**kwargs):
+def find_beamline_configs(**kwargs):
     """Given search criteria, locate BeamlineConfig Documents.
 
     Parameters
@@ -416,7 +416,7 @@ def find_beamline_config(**kwargs):
 
 
 @_ensure_connection
-def find_run_stop(**kwargs):
+def find_run_stops(**kwargs):
     """Given search criteria, locate RunStop Documents.
 
     Parameters
@@ -468,7 +468,7 @@ def find_run_stop(**kwargs):
 
 
 @_ensure_connection
-def find_event_descriptor(**kwargs):
+def find_event_descriptors(**kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -518,7 +518,7 @@ def find_event_descriptor(**kwargs):
 
 
 @_ensure_connection
-def find_event(limit=None, **kwargs):
+def find_events(limit=None, **kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters

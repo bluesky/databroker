@@ -3,7 +3,7 @@ from __future__ import print_function
 from metadatastore.api import (insert_run_start, insert_beamline_config,
                                insert_event, insert_event_descriptor,
                                insert_run_stop)
-from metadatastore.api import find_last, find_event
+from metadatastore.api import find_last, find_events
 import time
 import numpy as np
 
@@ -59,6 +59,6 @@ try:
         print("find_last() is broken")
 except AttributeError as ae:
     print(ae)
-res_2 = find_event(run_start=rs)
+res_2 = find_events(run_start=rs)
 if not res_2:
-    print("find_event() is broken")
+    print("find_events() is broken")
