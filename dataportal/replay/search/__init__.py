@@ -6,11 +6,12 @@ logger = logging.getLogger(__name__)
 try:
     import enaml
 
-    from .model import GetLastModel, DisplayHeaderModel, WatchForHeadersModel
+    from .model import (GetLastModel, DisplayHeaderModel, WatchForHeadersModel,
+                        ScanIDSearchModel)
 
     with enaml.imports():
         from .view import (GetLastView, GetLastWindow, WatchForHeadersView,
-                           DisplayHeaderView, DisplayPVView)
+                           DisplayHeaderView, DisplayPVView, ScanIDSearchView)
 
 except ImportError:
     if six.PY3:

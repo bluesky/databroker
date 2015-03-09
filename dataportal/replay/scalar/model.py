@@ -237,6 +237,9 @@ class ScalarCollection(Atom):
     # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
 
+    # attribute used to transfer state between instances of
+    state = Dict()
+
     def __init__(self):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
@@ -245,6 +248,7 @@ class ScalarCollection(Atom):
             self._fig.set_tight_layout(True)
             self._ax = self._fig.add_subplot(111)
             self._conf = ScalarConfig(self._ax)
+
 
     def set_state(self, state_dict):
         try:

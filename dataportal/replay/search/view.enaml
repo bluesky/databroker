@@ -59,9 +59,38 @@ enamldef WatchForHeadersView(Container):
             text << watch_headers_model.search_info
 
 
+enamldef HeaderView(Container):
+    """
+
+    Enaml definition for the widget that displays a list of headers as radio
+    buttons
+
+    Attributes
+    ----------
+    search_model : dataportal.replay.search.model._BrokerSearch
+    """
+    attr search_model
+    Looper:
+        iterable << search_model.headers
+        RadioButton:
+            text = '{}: {}'.format(
+                loop_item.scan_id, loop_item.start_datetime)
+            clicked ::
+                get_last_model.header = loop_item
+    Label:
+        text << search_model.search_info
+
+
+
 enamldef GetLastView(Container):
-    """Enaml definition for the widget that displays the controls for
-    searching the dataportal for the last N runs
+    """
+
+    Enaml definition for the widget that allows the user to search the
+    dataportal for the last N runs
+
+    Attributes
+    ----------
+    get_last_model : dataportal.replay.search.model.GetLastModel
     """
     attr get_last_model
     Container:
@@ -78,14 +107,41 @@ enamldef GetLastView(Container):
         Label: search_info:
             text << get_last_model.search_info
         # GUI element that allows for different runs to be selected
-        Container: headers:
-            Looper:
-                iterable << get_last_model.headers
-                RadioButton:
-                    text = '{}: {}'.format(
-                        loop_item.scan_id, loop_item.start_datetime)
-                    clicked ::
-                        get_last_model.header = loop_item
+        HeaderView: headers:
+            search_model = get_last_model
+
+
+enamldef ScanIDSearchView(Container):
+    """
+
+    Enaml definition for the widget that displays the controls for
+    searching the dataportal for the last N runs
+
+    Attributes
+    ----------
+    scan_id_model : dataportal.replay.search.model.ScanIDSearchModel
+    """
+    attr scan_id_model
+    padding = Box(0, 0, 0, 0)
+    constraints = [vbox(scan_id_container, search_info, headers)]
+
+    # GUI element that selects the number of run headers to display
+    Container: scan_id_container:
+        padding = Box(0, 0, 0, 0)
+        constraints = [hbox(scan_id_label, scan_id),
+                       align('v_center', scan_id_label, scan_id)]
+        Label: scan_id_label:
+            text = "Scan id"
+        SpinBox: scan_id:
+            minimum = 1
+            value := scan_id_model.scan_id
+    # GUI element that provides search stats
+    Label: search_info:
+        text << scan_id_model.search_info
+    # GUI element that allows for different runs to be selected
+    HeaderView: headers:
+        search_model = scan_id_model
+
 
 enamldef DisplayHeaderView(Container):
     attr display_header_model

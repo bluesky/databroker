@@ -90,7 +90,6 @@ class DisplayHeaderModel(Atom):
             for data_key, data_key_dict in six.iteritems(dk):
                 while data_key in data_keys:
                     data_key += '_1'
-                print(data_key, data_key_dict)
                 name = data_key
                 src = data_key_dict['source']
                 loc = data_key_dict['external']
@@ -157,6 +156,10 @@ class GetLastModel(_BrokerSearch):
     """
     num_to_retrieve = Range(low=1)
 
+    def __init__(self):
+        super(GetLastModel, self).__init__()
+        self.header = None
+
     @observe('num_to_retrieve')
     @_catch_connection_issues
     def num_changed(self, changed):
@@ -167,7 +170,7 @@ class GetLastModel(_BrokerSearch):
         self.connection_is_active = True
 
 
-class ScanIDSearch(_BrokerSearch):
+class ScanIDSearchModel(_BrokerSearch):
     """
 
     Class that defines the model for a UI component that searches the
@@ -179,8 +182,16 @@ class ScanIDSearch(_BrokerSearch):
     """
     scan_id = Int()
 
+    def __init__(self):
+        super(ScanIDSearchModel, self).__init__()
+        self.header = None
+        self.search_info = "Searching by Scan ID"
+
     @observe('scan_id')
     @_catch_connection_issues
     def scan_id_changed(self, changed):
         self.headers = DataBroker.find_headers(scan_id=self.scan_id)
+        self.search_info = "Requested scan id: {}. Found: {}".format(
+            self.scan_id, len(self.headers))
+        self.connection_is_active = True
 
