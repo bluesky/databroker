@@ -249,6 +249,23 @@ class ScalarCollection(Atom):
             self._ax = self._fig.add_subplot(111)
             self._conf = ScalarConfig(self._ax)
 
+    def get_plotting_state(self):
+        """
+
+        Format a dictionary of the current state of what is visible on the
+        scalar plot
+
+        Returns
+        -------
+        dict
+            'x': currently selected x axis. only used if x_is_time is False
+            'x_is_time': boolean for the x axis being time (True)
+            'y': names of the currently plotting data sets
+
+        """
+        state = {'x': self.x, 'x_is_time': self.x_is_time,
+                 'y': [y for y in self.column_models.values() if y.is_plotting]}
+        return state
 
     def set_state(self, state_dict):
         try:
