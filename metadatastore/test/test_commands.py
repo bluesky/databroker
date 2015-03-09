@@ -72,7 +72,6 @@ def _ev_desc_tester(run_start, data_keys, time):
     mdsc.find_event_descriptors(run_start=run_start)
     mdsc.find_event_descriptors(run_start_id=run_start.id)
     mdsc.find_event_descriptors(run_start_id=str(run_start.id))
-    mdsc.find_event_descriptors(run_start_id=str(run_start.id))
     mdsc.find_event_descriptors(start_time=ttime.time())
     mdsc.find_event_descriptors(stop_time=ttime.time())
     mdsc.find_event_descriptors(start_time=ttime.time() - 1, stop_time=ttime.time())
