@@ -47,14 +47,14 @@ def setup():
     for owner in owners:
         for i in range(num_entries):
             logger.debug('{}: {} of {}'.format(owner, i+1, num_entries))
-            rs = insert_run_start(time=float(i), scan_id=i + 1,
+            rs = insert_run_start(time=ttime.time(), scan_id=i + 1,
                                   owner=owner, beamline_id='example',
                                   beamline_config=blc)
             # insert some events into mds
-            temperature_ramp.run(run_start=rs)
+            temperature_ramp.run(run_start=rs, make_run_stop=(i!=0))
             if i == 0:
                 # only need to do images once, it takes a while...
-                image_and_scalar.run(run_start=rs)
+                image_and_scalar.run(run_start=rs, make_run_stop=True)
 
 
 def teardown():

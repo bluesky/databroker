@@ -3,11 +3,16 @@ import six  # noqa
 import copy
 from collections import defaultdict, Iterable, deque
 from .. import sources
-from metadatastore.api import (Document, find_last, find_run_start,
-                               find_event_descriptor, find_run_stop,
-                               fetch_events, find_event)
+from metadatastore.api import (Document, find_last, find_run_starts,
+                               find_event_descriptors, find_run_stops,
+                               find_events)
+import warnings
 from filestore.api import retrieve
 import os
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class DataBroker(object):
@@ -34,7 +39,7 @@ class DataBroker(object):
             [_build_header(h) for h in result]
         elif isinstance(key, int):
             if key > -1:
-                result = find_run_start(scan_id=key)
+                result = find_run_starts(scan_id=key)
                 if len(result) == 0:
                     raise ValueError("No such run found.")
                 result = result[0]  # most recent match
@@ -82,13 +87,11 @@ class DataBroker(object):
         else:
             runs = [runs]
 
-        events_by_descriptor = []
+        events = []
         for run in runs:
-            run = copy.copy(run)
-            run.id = run.run_start_id
-            events_by_descriptor.extend(find_event(run))
-        events = [event for descriptor in events_by_descriptor
-                  for event in descriptor]
+            descriptors = find_event_descriptors(run_start_id=run.run_start_id)
+            for descriptor in descriptors:
+                events.extend(find_events(descriptor=descriptor))
         [fill_event(event) for event in events]
 
         if channels is not None:
@@ -100,20 +103,24 @@ class DataBroker(object):
         return events
 
     @classmethod
-    def find_headers(cls, **kwargs):
-        """
-        For now, pass through to metadatastore.api.analysis.find_header
+    def find_headers(cls, limit=50, **kwargs):
+        """Find and construct run header Documents which are all non-Event
+        documents.
 
         Parameters
         ----------
-        **kwargs
+        limit : int, optional
+            The maximum number of headers to find.
+            NOTE: Defaults to 50
+
+        **kwargs : super awesome magic dictionary of unknown origins
 
         Returns
         -------
         data : list
             Header objects
         """
-        run_start = find_run_start(**kwargs)
+        run_start = find_run_starts(**kwargs)
         for rs in run_start:
             _build_header(rs)
         return run_start  # these have been built out into headers
@@ -189,7 +196,7 @@ def fill_event(event):
             event.data[data_key][0] = retrieve(value)
 
 
-def _build_header(run_start):
+def _build_header(run_start, verify_integrity=True):
     """Transform a RunStart Document in place into a Header Document.
 
     Parameters
@@ -198,15 +205,34 @@ def _build_header(run_start):
         The run_start document from metadatastore that has been sanitized into
         a safe dataportal.broker.Document
     """
-    run_start.event_descriptors = find_event_descriptor(run_start)
-    run_stop = find_run_stop(run_start)
+    run_start.event_descriptors = find_event_descriptors(run_start=run_start)
+    run_stops = find_run_stops(run_start=run_start)
+    try:
+        run_stop, = run_stops
+    except ValueError:
+        num = len(run_stops)
+        run_stop = None
+        if num == 0:
+            error_msg = ("A RunStop record could not be found for the "
+                         "run with run_start_id {0}".format(run_start.id))
+            warnings.warn(error_msg)
+        else:
+            error_msg = (
+                "{0} RunStop records (ids {1}) were found for the run with "
+                "run_start_id {2}".format(num, [rs.id for rs in run_stops],
+                                          run_start.id))
+            if verify_integrity:
+                raise IntegrityError(error_msg)
+            else:
+                warnings.warn(error_msg)
+
     # fix the time issue
     adds = {'start_time': (run_start, 'time'),
             'start_datetime': (run_start, 'time_as_datetime'),
             'run_start_uid': (run_start, 'uid'),
             'run_start_id': (run_start, 'id')}
     deletes = [(run_start, '_name')]
-    if run_stop is not None:
+    if run_stop:
         adds['stop_time'] = (run_stop, 'time')
         adds['stop_datetime'] = (run_stop, 'time_as_datetime')
         adds['exit_reason'] = (run_stop, 'reason')
@@ -227,3 +253,6 @@ def _build_header(run_start):
                                  "Please update the mappings".format(k))
             setattr(run_start, k, v)
     run_start._name = 'Header'
+
+class IntegrityError(Exception):
+    pass
