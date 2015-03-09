@@ -335,6 +335,20 @@ def _format_time(search_dict):
     if time_dict:
         search_dict['time'] = time_dict
 
+
+def _normalize_object_id(kwargs, key):
+    "Ensure that an id is an ObjectId, not a string."
+    try:
+        kwargs[key] = ObjectId(kwargs[key])
+    except KeyError:
+        # This key wasn't used by the query; that's fine.
+        pass
+    except TypeError:
+        # This key was given a more complex query.
+        pass
+    # Database errors will still raise.
+
+
 @_ensure_connection
 def find_run_starts(limit=None, **kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -378,12 +392,7 @@ def find_run_starts(limit=None, **kwargs):
     ...                stop_time=time.time())
 
     """
-    try:
-        # ensure that the '_id' field is an ObjectId.  This works if '_id' is
-        # a string or is already an ObjectId.
-        kwargs['_id'] = ObjectId(kwargs['_id'])
-    except KeyError:
-        pass
+    _normalize_object_id(kwargs, '_id')
     _format_time(kwargs)
     rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
     return [_as_document(rs) for rs in rs_objects]
@@ -452,15 +461,8 @@ def find_run_stops(**kwargs):
         kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
         pass
-    if 'run_start_id' in kwargs:
-        # ensure that the id field is an ObjectId, otherwise mongo will
-        # not be able to search on it
-        kwargs['run_start_id'] = ObjectId(kwargs['run_start_id'])
-    try:
-        # ensure that the run_stop '_id' is an ObjectId
-        kwargs['_id'] = ObjectId(kwargs['_id'])
-    except KeyError:
-        pass
+    _normalize_object_id(kwargs, '_id')
+    _normalize_object_id(kwargs, 'run_start_id')
     # do the actual search and return a QuerySet object
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
     # turn the QuerySet object into a list of Document object
@@ -498,17 +500,11 @@ def find_event_descriptors(**kwargs):
     _format_time(kwargs)
     event_descriptor_list = list()
     try:
-        kwargs['_id'] = ObjectId(kwargs['_id'])
-    except KeyError:
-        pass
-    try:
         kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
         pass
-    if 'run_start_id' in kwargs:
-        # ensure that the id field is an ObjectId, otherwise mongo will
-        # not be able to search on it
-        kwargs['run_start_id'] = ObjectId(kwargs['run_start_id'])
+    _normalize_object_id(kwargs, '_id')
+    _normalize_object_id(kwargs, 'run_start_id')
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
@@ -552,8 +548,8 @@ def find_events(limit=None, **kwargs):
         kwargs['descriptor_id'] = kwargs.pop('descriptor').id
     except KeyError:
         pass
-    if 'descriptor_id' in kwargs:
-        kwargs['descriptor_id'] = ObjectId(kwargs['descriptor_id'])
+    _normalize_object_id(kwargs, '_id')
+    _normalize_object_id(kwargs, 'descriptor_id')
     events = Event.objects(__raw__=kwargs).order_by('-time')[:limit]
     return [_as_document(ev) for ev in events]
 
