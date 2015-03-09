@@ -11,6 +11,7 @@ from metadatastore import conf
 from mongoengine import connect
 import mongoengine.connection
 import uuid
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,8 @@ def format_data_keys(data_key_dict):
     """
     data_key_dict = {key_name: (
                      DataKey(**data_key_description) if
-                           not isinstance(data_key_description, DataKey) else
-                           data_key_description)
+                     not isinstance(data_key_description, DataKey) else
+                     data_key_description)
                      for key_name, data_key_description
                      in six.iteritems(data_key_dict)}
     return data_key_dict
@@ -140,13 +141,14 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
         custom = {}
 
     run_start = RunStart(time=time, scan_id=scan_id, owner=owner,
-                         time_as_datetime=__todatetime(time), uid=uid,
+                         time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
                          beamline_config=beamline_config
                          if beamline_config else None,
                          **custom)
 
     run_start.save(validate=True, write_concern={"w": 1})
+    logger.debug('Inserted RunStart with mongo id %s', run_start.id)
 
     return run_start
 
@@ -175,10 +177,12 @@ def insert_run_stop(run_start, time, exit_status='success',
     if uid is None:
         uid = str(uuid.uuid4())
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
-                       time_as_datetime=__todatetime(time), uid=uid,
+                       time_as_datetime=_todatetime(time), uid=uid,
                        exit_status=exit_status)
 
     run_stop.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted RunStop with mongo id %s referencing RunStart "
+                 " with id %s", run_stop.id, run_start.id)
 
     return run_stop
 
@@ -204,6 +208,8 @@ def insert_beamline_config(config_params, time, uid=None):
                                      time=time,
                                      uid=uid)
     beamline_config.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted BeamlineConfig with mongo id %s",
+                 beamline_config.id)
 
     return beamline_config
 
@@ -235,12 +241,14 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
-                                       time_as_datetime=__todatetime(time))
+                                       time_as_datetime=_todatetime(time))
 
-    event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
+    event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
 
     event_descriptor.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted EventDescriptor with mongo id %s referencing "
+                 "RunStart with id %s", event_descriptor.id, run_start.id)
 
     return event_descriptor
 
@@ -264,7 +272,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
         Unique sequence number for the event. Provides order of an event in
         the group of events
     """
-    m_data = __validate_data(data)
+    m_data = _validate_data(data)
 
     # mostly here to notify ophyd that an event descriptor needs to be created
     if event_descriptor is None:
@@ -273,17 +281,17 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     if uid is None:
         uid = str(uuid.uuid4())
 
-    # TODO: seq_no is not optional according to opyhd folks. To be discussed!!
-    # talk to @dchabot & @swilkins
     event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
-    event = __replace_event_data_key_dots(event, direction='in')
+    event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
+    logger.debug("Inserted Event with mongo id %s referencing "
+                 "EventDescriptor with id %s", event.id, event_descriptor.id)
     return event
 
 
-def __validate_data(data):
+def _validate_data(data):
     m_data = dict()
     for k, v in six.iteritems(data):
         if isinstance(v, (list, tuple)):
@@ -306,269 +314,253 @@ class EventDescriptorIsNoneError(ValueError):
 
 # DATABASE RETRIEVAL ##########################################################
 
-
-def __add_event_descriptors(run_start_list):
-    for run_start in run_start_list:
-        setattr(run_start, 'event_descriptors',
-                find_event_descriptor(run_start))
-
-
-def __as_document(mongoengine_object):
+# TODO: Update all query routine documentation
+def _as_document(mongoengine_object):
     return Document(mongoengine_object)
 
-@_ensure_connection
-def find_run_start(limit=50, **kwargs):
-    """ Given search criteria, locate the RunStart object
+def _format_time(search_dict):
+    """Helper function to format the time arguments in a search dict
 
-    Parameters
-    ----------
-    limit : int
-        Number of header objects to be returned
-    start_time : float, optional
-        timestamp of the earliest time to return run_start events
-    stop_time : float, optional
-        timestamp of the latest time to return run_start events
-    scan_id : int, optional
-        Scan identifier. Not unique
-    owner : str, optional
-        User name identifier associated with a scan
-    project : str, optional
-        ???
-    group : str, optional
-        ???
-    sample : ???, optional
-        ???
-    beamline_id : str, optional
-        String identifier for a specific beamline
-    unique_id : str, optional
-        Hashed unique identifier
+    Expects 'start_time' and 'stop_time'
 
-    Returns
-    -------
-    br_objects : metadatastore.document.Document
-        Combined documents: RunStart, BeamlineConfig, Sample and
-        EventDescriptors
-
-    Usage
-    ------
-    >>> find_run_start(scan_id=123)
-    >>> find_run_start(owner='arkilic')
-    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time()})
-    >>> find_run_start(start_time=1421176750.514707, stop_time=time.time())
-
-    >>> find_run_start(owner='arkilic', start_time=1421176750.514707,
-    ...                stop_time=time.time())
-
+    ..warning: Does in-place mutation of the search_dict
     """
-    # format time correctly
     time_dict = {}
-    start_time = kwargs.pop('start_time', None)
-    stop_time = kwargs.pop('stop_time', None)
+    start_time = search_dict.pop('start_time', None)
+    stop_time = search_dict.pop('stop_time', None)
     if start_time:
         time_dict['$gte'] = start_time
     if stop_time:
         time_dict['$lte'] = stop_time
     if time_dict:
-        kwargs['time'] = time_dict
-    # do the search
-    br_objects = RunStart.objects(__raw__=kwargs).order_by('-_id')[:limit]
-    # add the event descriptors
-    __add_event_descriptors(br_objects)
-    # transform the mongo objects into safe, whitebread python objects
-    return [__as_document(bre) for bre in br_objects]
+        search_dict['time'] = time_dict
 
 @_ensure_connection
-def find_beamline_config(_id):
-    """Return beamline config objects given a unique mongo _id
+def find_run_starts(limit=None, **kwargs):
+    """Given search criteria, locate RunStart Documents.
 
     Parameters
     ----------
-    _id: bson.ObjectId
+    limit : int, optional
+        Maximum number of RunStart Documents to be returned.
+    start_time : float, optional
+        timestamp of the earliest time that a RunStart was created
+    stop_time : float, optional
+        timestamp of the latest time that a RunStart was created
+    beamline_id : str, optional
+        String identifier for a specific beamline
+    project : str, optional
+        Project name
+    owner : str, optional
+        The username of the logged-in user when the scan was performed
+    scan_id : int, optional
+        Integer scan identifier
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    _id : str or ObjectId, optional
+        The unique id generated by mongo
+
+    Returns
+    -------
+    rs_objects : list of metadatastore.document.Document
+        Combined (dereferenced) documents: RunStart, BeamlineConfig, Sample
+        Note: All documents that the RunStart Document points to are
+              dereferenced
+
+    Examples
+    --------
+    >>> find_run_starts(scan_id=123)
+    >>> find_run_starts(owner='arkilic')
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
+
+    >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
+    ...                stop_time=time.time())
+
+    """
+    try:
+        # ensure that the '_id' field is an ObjectId.  This works if '_id' is
+        # a string or is already an ObjectId.
+        kwargs['_id'] = ObjectId(kwargs['_id'])
+    except KeyError:
+        pass
+    _format_time(kwargs)
+    rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
+    return [_as_document(rs) for rs in rs_objects]
+
+
+@_ensure_connection
+def find_beamline_configs(**kwargs):
+    """Given search criteria, locate BeamlineConfig Documents.
+
+    Parameters
+    ----------
+    start_time : float, optional
+        timestamp of the earliest time that a BeamlineConfig was created
+    stop_time : float, optional
+        timestamp of the latest time that a BeamlineConfig was created
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    _id : str or ObjectId, optional
+        The unique id generated by mongo
 
     Returns
     -------
     beamline_config : metadatastore.document.Document
         The beamline config object
     """
-    beamline_config = BeamlineConfig.objects(id=_id).order_by('-_id')
-    return __as_document(beamline_config)
+    _format_time(kwargs)
+    # ordered by _id because it is not guaranteed there will be time in cbonfig
+    beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
+    return [_as_document(bc) for bc in beamline_configs]
+
 
 @_ensure_connection
-def find_run_stop(run_start):
-    """Return a run_stop object given a run_start document
+def find_run_stops(**kwargs):
+    """Given search criteria, locate RunStop Documents.
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document
+    run_start : metadatastore.document.Document, optional
         The run start to get the corresponding run end for
+    run_start_id : str or ObjectId, optional
+        The unique id generated by mongo for the RunStart Document.
+        NOTE: If both `run_start` and `run_start_id` are provided,
+              `run_start.id` supersedes `run_start_id`
+    start_time : float, optional
+        timestamp of the earliest time that a RunStop was created
+    stop_time : float, optional
+        timestamp of the latest time that a RunStop was created
+    exit_status : {'success', 'fail', 'abort'}, optional
+        provides information regarding the run success.
+    reason : str, optional
+        Long-form description of why the run was terminated.
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    _id : str or ObjectId, optional
+        The unique id generated by mongo
 
     Returns
     -------
-    run_stop : metadatastore.document.Document
-        The run stop object containing the `exit_status` enum, the `time` the
-        run ended and the `reason` the run ended.
+    run_stop : list of metadatastore.document.Document
+        The run stop objects containing the `exit_status` enum, the `time` the
+        run ended and the `reason` the run ended and a pointer to their run
+        headers
     """
-    run_stop = RunStop.objects(run_start=run_start.id).order_by('-_id')
+    _format_time(kwargs)
     try:
-        run_stop = run_stop[0]
-    except IndexError:
-        return None
-    return __as_document(run_stop)
+        kwargs['run_start_id'] = kwargs.pop('run_start').id
+    except KeyError:
+        pass
+    if 'run_start_id' in kwargs:
+        # ensure that the id field is an ObjectId, otherwise mongo will
+        # not be able to search on it
+        kwargs['run_start_id'] = ObjectId(kwargs['run_start_id'])
+    try:
+        # ensure that the run_stop '_id' is an ObjectId
+        kwargs['_id'] = ObjectId(kwargs['_id'])
+    except KeyError:
+        pass
+    # do the actual search and return a QuerySet object
+    run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
+    # turn the QuerySet object into a list of Document object
+    return [_as_document(rs) for rs in run_stop]
+
 
 @_ensure_connection
-def find_event_descriptor(run_start):
-    """Return beamline config objects given a unique mongo id
+def find_event_descriptors(**kwargs):
+    """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
     ----------
-    run_start : bson.ObjectId
+    run_start : mongoengine.Document.Document, optional
+        RunStart object EventDescriptor points to
+    run_start_id : str or ObjectId, optional
+        The unique id generated by mongo for the RunStart Document.
+        NOTE: If both `run_start` and `run_start_id` are provided,
+              `run_start.id` supersedes `run_start_id`
+    start_time : float, optional
+        timestamp of the earliest time that an EventDescriptor was created
+    stop_time : float, optional
+        timestamp of the latest time that an EventDescriptor was created
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    _id : str or ObjectId, optional
+        The unique id generated by mongo
 
     Returns
     -------
     event_descriptor : list
-        List of metadatastore.document.Document.
+        List of EventDescriptors formatted as
+        metadatastore.document.Document
+
     """
+    _format_time(kwargs)
     event_descriptor_list = list()
-    for event_descriptor in EventDescriptor.objects(
-            run_start=run_start.id).order_by('-_id'):
-        event_descriptor = __replace_descriptor_data_key_dots(event_descriptor,
-                                                              direction='out')
+    try:
+        kwargs['_id'] = ObjectId(kwargs['_id'])
+    except KeyError:
+        pass
+    try:
+        kwargs['run_start_id'] = kwargs.pop('run_start').id
+    except KeyError:
+        pass
+    if 'run_start_id' in kwargs:
+        # ensure that the id field is an ObjectId, otherwise mongo will
+        # not be able to search on it
+        kwargs['run_start_id'] = ObjectId(kwargs['run_start_id'])
+    event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
+    for event_descriptor in event_descriptor_objects.order_by('-time'):
+        event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
+                                                             direction='out')
         event_descriptor_list.append(event_descriptor)
-    return [__as_document(evd) for evd in event_descriptor_list]
+    return [_as_document(evd) for evd in event_descriptor_list]
+
 
 @_ensure_connection
-def fetch_events(limit=1000, **kwargs):
-    """
+def find_events(limit=None, **kwargs):
+    """Given search criteria, locate Event Documents.
 
     Parameters
     -----------
-    limit : int
-        number of events returned
-    time : dict, optional
-        time of the event. dict keys must be start and stop
+    limit : int, optional
+        Maximum number of events returned. Defaults to None
+    start_time : float, optional
+        timestamp of the earliest time that an Event was created
+    stop_time : float, optional
+        timestamp of the latest time that an Event was created
     descriptor : mongoengine.Document, optional
         event descriptor object
+    descriptor_id : str or ObjectId
+        The unique id generated by mongo for the EventDescriptor
+        NOTE: If both `descriptor` and `descriptor_id` are provided,
+              `descriptor.id` supersedes `descriptor_id`
 
     Returns
     -------
     events : list
         List of metadatastore.document.Document
     """
-    search_dict = dict()
+    # Some user-friendly error messages for an easy mistake to make
+    if 'event_descriptor' in kwargs:
+        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
+    if 'event_descriptor_id' in kwargs:
+        raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
+
+    _format_time(kwargs)
     try:
-        time_dict = kwargs.pop('time')
-        if not isinstance(time_dict, dict):
-            raise ValueError('Wrong format. time must include '
-                             'start and stop keys for range. Must be a dict')
-        else:
-            if 'start' in time_dict and 'stop' in time_dict:
-                search_dict['time'] = {'$gte': time_dict['start'],
-                                       '$lte': time_dict['stop']}
-            else:
-                raise ValueError('time must include start '
-                                 'and stop keys for range search')
+        kwargs['descriptor_id'] = kwargs.pop('descriptor').id
     except KeyError:
         pass
+    if 'descriptor_id' in kwargs:
+        kwargs['descriptor_id'] = ObjectId(kwargs['descriptor_id'])
+    events = Event.objects(__raw__=kwargs).order_by('-time')[:limit]
+    return [_as_document(ev) for ev in events]
 
-    try:
-        desc = kwargs.pop('descriptor')
-        search_dict['descriptor_id'] = desc.id
-    except KeyError:
-        pass
-    result = Event.objects(__raw__=search_dict).order_by('-_id')[:limit]
-    return [__as_document(res) for res in result]
-
-@_ensure_connection
-def find_event(run_start):
-    """Returns a set of events given a RunStart object
-
-    Parameters
-    ---------
-    run_start: mongoengine.Document
-        RunStart object that events possibly fall under
-    limit: int
-        Number of headers to be returned
-
-    Returns
-    -------
-    events: list
-        Set of events encapsulated within a RunStart's scope.
-        metadatastore.document.Document
-    """
-    descriptors = EventDescriptor.objects(run_start=run_start.id)
-    descriptors = descriptors.order_by('-_id')
-    events = [find_event_given_descriptor(descriptor)
-              for descriptor in descriptors]
-    return events
-
-@_ensure_connection
-def find_event_given_descriptor(event_descriptor):
-    """Return all Event(s) associated with an EventDescriptor
-
-    Parameters
-    ----------
-    event_descriptor: metadatastore.database.EventDescriptor
-        EventDescriptor instance that a set of events point back to
-
-    Returns
-    -------
-    event_list : list
-        Nested list. top level is each event descriptor. next level is events
-        [[ev0, ev1, ...], [ev0, ev1, ...]]
-    """
-    event_list = list()
-    for event in Event.objects(
-            descriptor=event_descriptor.id).order_by('-_id'):
-        event = __replace_event_data_key_dots(event, direction='out')
-        event_list.append(event)
-
-    return [__as_document(ev) for ev in event_list]
-
-@_ensure_connection
-def find(data=True, limit=50, **kwargs):
-    """
-    Returns dictionary of objects
-    Headers keyed on unique scan_id in header_scan_id format
-    data flag is set to True by default since users
-    intuitively expect data back
-
-    Parameters
-    ---------
-
-    scan_id: int
-        Non-unique human friendly scan identifier
-    owner: str
-        Unix user credentials that created run_start
-    beamline_id: str
-        alias for beamline
-    time: dict
-        run_start create time.
-        Refer to design docs for timestamp vs. time convetions
-        Usage: time={'start': float, 'end': float}
-
-    Returns
-    -------
-    result: metadatastore.document.Document
-        Returns RunStart objects
-        One can access events for this given RunStart as:
-        run_start_object.events
-    """
-    raise NotImplementedError()
-    br_objects = find_run_start(limit, **kwargs)
-
-    if data:
-        result = list
-        if br_objects:
-            for br in br_objects:
-                br.events = find_event(br)
-                result.append(br)
-    return br_objects
 
 @_ensure_connection
 def find_last(num=1):
-    """Indexed on ObjectId NOT stop_time.
-
-    Returns the last created header not modified!!
+    """Locate the last `num` RunStart Documents
 
     Returns
     -------
@@ -577,19 +569,18 @@ def find_last(num=1):
         List of metadatastore.document.Document objects
         **NOTE**: DOES NOT RETURN THE EVENTS.
     """
-    br_objects = [br_obj for br_obj in RunStart.objects.order_by('-_id')[:num]]
-    __add_event_descriptors(br_objects)
-    return [__as_document(br) for br in br_objects]
+    rs_objects = [rs for rs in RunStart.objects.order_by('-time')[:num]]
+    return [_as_document(rs) for rs in rs_objects]
 
 
-def __todatetime(time_stamp):
+def _todatetime(time_stamp):
     if isinstance(time_stamp, float):
         return datetime.datetime.fromtimestamp(time_stamp)
     else:
         raise TypeError('Timestamp format is not correct!')
 
 
-def __replace_dict_keys(input_dict, src, dst):
+def _replace_dict_keys(input_dict, src, dst):
     """
     Helper function to replace forbidden chars in dictionary keys
 
@@ -615,7 +606,7 @@ def __replace_dict_keys(input_dict, src, dst):
             k, v in six.iteritems(input_dict)}
 
 
-def __src_dst(direction):
+def _src_dst(direction):
     """
     Helper function to turn in/out into src/dst pair
 
@@ -639,7 +630,7 @@ def __src_dst(direction):
     return src, dst
 
 
-def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
+def _replace_descriptor_data_key_dots(ev_desc, direction='in'):
     """Replace the '.' with [dot]
 
     Parameters
@@ -653,13 +644,13 @@ def __replace_descriptor_data_key_dots(ev_desc, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-    src, dst = __src_dst(direction)
-    ev_desc.data_keys = __replace_dict_keys(ev_desc.data_keys,
+    src, dst = _src_dst(direction)
+    ev_desc.data_keys = _replace_dict_keys(ev_desc.data_keys,
                                             src, dst)
     return ev_desc
 
 
-def __replace_event_data_key_dots(event, direction='in'):
+def _replace_event_data_key_dots(event, direction='in'):
     """Replace the '.' with [dot]
 
     Parameters
@@ -673,7 +664,7 @@ def __replace_event_data_key_dots(event, direction='in'):
     If 'out' -> replace [dot] with .
 
     """
-    src, dst = __src_dst(direction)
-    event.data = __replace_dict_keys(event.data,
+    src, dst = _src_dst(direction)
+    event.data = _replace_dict_keys(event.data,
                                      src, dst)
     return event
