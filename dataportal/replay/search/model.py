@@ -8,6 +8,7 @@ from metadatastore.api import Document
 import metadatastore
 from mongoengine.connection import ConnectionError
 from pymongo.errors import AutoReconnect
+from functools import wraps
 
 
 class WatchForHeadersModel(Atom):
@@ -99,20 +100,24 @@ class DisplayHeaderModel(Atom):
         return data_keys
 
 
-class GetLastModel(Atom):
-    """Class that defines the model for the 'get last N datasets view'
+class _BrokerSearch(Atom):
+    """ABC for broker searching with Atom classes
 
     Attributes
     ----------
-    num_to_retrieve : range, min=1
-    headers : list
-    selected : metadatastore.api.Document
+    headers : atom.List
+        The list of headers returned from the DataBroker
+    header : metadatastore.api.Document
+        The currently selected header
+    connection_is_active : atom.Bool
+        True: Connection to the DataBroker is active
+    search_info : atom.Str
+        Potentially informative string that gets displayed on the UI regarding
+        the most recently performed DataBroker search
     """
-    num_to_retrieve = Range(low=1)
     search_info = Str()
     headers = List()
     connection_is_active = Bool(False)
-    summary_visible = Bool(False)
     header = Typed(Document)
 
     def __init__(self):
@@ -120,10 +125,11 @@ class GetLastModel(Atom):
             self.header = None
 
 
-    @observe('num_to_retrieve')
-    def num_changed(self, changed):
+def _catch_connection_issues(func):
+    @wraps(func)
+    def inner(self, *args, **kwargs):
         try:
-            self.headers = DataBroker[-self.num_to_retrieve:]
+            func(self, *args, **kwargs)
         except ConnectionError:
             self.search_info = (
                 "Database {} not available at {} on port {}").format(
@@ -132,7 +138,6 @@ class GetLastModel(Atom):
                 metadatastore.conf.connection_config['port']
             )
             self.connection_is_active = False
-            return
         except AutoReconnect:
             self.search_info = (
                 "Connection to database [[{}]] on [[{}]] was lost".format(
@@ -140,8 +145,42 @@ class GetLastModel(Atom):
                     metadatastore.conf.connection_config['host']
                 )
             )
-            self.connection_is_active = False
-            return
+    return inner
+
+
+class GetLastModel(_BrokerSearch):
+    """Class that defines the model for the 'get last N datasets view'
+
+    Attributes
+    ----------
+    num_to_retrieve : range, min=1
+    """
+    num_to_retrieve = Range(low=1)
+
+    @observe('num_to_retrieve')
+    @_catch_connection_issues
+    def num_changed(self, changed):
+        self.headers = DataBroker[-self.num_to_retrieve:]
+
         self.search_info = "Requested: {}. Found: {}".format(
             self.num_to_retrieve, len(self.headers))
         self.connection_is_active = True
+
+
+class ScanIDSearch(_BrokerSearch):
+    """
+
+    Class that defines the model for a UI component that searches the
+    databroker for a specific scan
+
+    Attributes
+    ----------
+    scan_id : atom.Int
+    """
+    scan_id = Int()
+
+    @observe('scan_id')
+    @_catch_connection_issues
+    def scan_id_changed(self, changed):
+        self.headers = DataBroker.find_headers(scan_id=self.scan_id)
+
