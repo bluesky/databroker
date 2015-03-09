@@ -90,13 +90,12 @@ enamldef PlotView(Container):
         ]
         CheckBox: check:
             text = 'Toolbar Visible'
-            enabled = False
             checked := canvas.toolbar_visible
         CheckBox: fit:
             text = 'Fitting Visible'
         MPLCanvas: canvas:
             figure << scalar_collection._fig
-            toolbar_visible = True
+            toolbar_visible = False
 
 
 enamldef ScalarContainer(Window): window:
