@@ -561,13 +561,17 @@ def find_events(limit=None, **kwargs):
 @_ensure_connection
 def find_last(num=1):
     """Locate the last `num` RunStart Documents
+    
+    Parameters
+    ----------
+    num : integer, optional
+        number of RunStart documents to return, default 1
 
     Returns
     -------
     run_start: list
         Returns a list of the last ``num`` headers created.
-        List of metadatastore.document.Document objects
-        **NOTE**: DOES NOT RETURN THE EVENTS.
+        This does not return Events.
     """
     rs_objects = [rs for rs in RunStart.objects.order_by('-time')[:num]]
     return [_as_document(rs) for rs in rs_objects]
