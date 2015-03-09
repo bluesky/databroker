@@ -164,7 +164,7 @@ class EventQueue(object):
     queue = EventQueue(header)
     while True:
         queue.update()
-        new_events = queue.pop()
+        new_events = queue.get()
         # Do something with them, such as dm.append_events(new_events)
     """
 
@@ -200,7 +200,7 @@ class EventQueue(object):
         [fill_event(event) for event in new_events]
         self._queue.append(new_events)  # the entry can be an empty list
 
-    def pop(self):
+    def get(self):
         """
         Get a list of new Events.
 
