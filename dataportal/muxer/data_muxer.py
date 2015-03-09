@@ -233,16 +233,17 @@ class DataMuxer(object):
         self._stale = True
         if event.descriptor.id not in self._known_descriptors:
             self._process_new_descriptor(event.descriptor)
-        for name, data_dict in event.data.items():
-            # Both scalar and nonscalar data will get stored in the DataFrame.
-            # This may be optimized later, but it might not actually help much.
-            self._data.append({name: event.data[name][0]})
-            self._timestamps.append({name: event.data[name][1]})
-            self._time.append(event.time)
+        # Both scalar and nonscalar data will get stored in the DataFrame.
+        # This may be optimized later, but it might not actually help much.
+        self._data.append(
+            {name: data[0] for name, data in six.iteritems(event.data)})
+        self._timestamps.append(
+            {name: data[1] for name, data in six.iteritems(event.data)})
+        self._time.append(event.time)
         return True
 
     def _process_new_descriptor(self, descriptor):
-        for name, description in descriptor.data_keys.items():
+        for name, description in six.iteritems(descriptor.data_keys):
 
             # If we already have this source name, the unique source
             # identifiers must match. Ambiguous names are not allowed.
@@ -469,6 +470,7 @@ class DataMuxer(object):
 
             # Short-circuit if we are done.
             if np.all(has_one_point[name]):
+                logger.debug("%s has exactly one data point per bin", name)
                 val_col_name += '_raw'
                 result[name][val_col_name] = val_col_series
                 continue
@@ -502,6 +504,7 @@ class DataMuxer(object):
 
             # Short-circuit if we are done.
             if np.all(~has_multiple_points[name]):
+                logger.debug("%s has at least one data point per bin", name)
                 result[name][val_col_name] = val_col_series
                 result[name]['count'] = count_series
                 continue
@@ -523,6 +526,7 @@ class DataMuxer(object):
 
             g = grouped[name]  # for brevity
             if col_info.ndim == 0:
+                logger.debug("The scalar column %s must be downsampled.", name)
                 # For scalars, pandas knows what to do.
                 downsampled = g.agg(downsample)
                 std_series = g.std()
@@ -531,6 +535,8 @@ class DataMuxer(object):
             else:
                 # For nonscalars, we are abusing groupby and must go to a
                 # a little more trouble to guarantee success.
+                logger.debug("The nonscalar column %s must be downsampled.",
+                             name)
                 if not callable(downsample):
                     # Do this lookup here so that strings can be passed
                     # in the call to resample.
@@ -578,7 +584,7 @@ class DataMuxer(object):
     @property
     def col_info_by_ndim(self):
         result = {}
-        for name, col_spec in self.col_info.items():
+        for name, col_spec in six.iteritems(self.col_info):
             try:
                 result[col_spec.ndim]
             except KeyError:

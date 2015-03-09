@@ -15,6 +15,7 @@ from metadatastore.api import insert_run_start, insert_beamline_config
 import time as ttime
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false)
+from numpy.testing.utils import assert_array_equal
 
 def setup():
     fs_setup()
@@ -85,6 +86,10 @@ class CommonBinningTests(object):
         # There should be stats columns.
         self.assertTrue('max' in result[self.dense].columns)
 
+        # There should be one row per bin.
+        self.assertTrue(self.dm._dataframe.index.is_unique)
+        self.assertTrue(result.index.is_unique)
+
     def test_bin_on_dense(self):
         "Align a sparse column to a dense column"
 
@@ -119,6 +124,10 @@ class CommonBinningTests(object):
         # But the sparse column should.
         self.assertTrue('count' in result1[self.sparse].columns)
 
+        # There should be one row per bin.
+        self.assertTrue(result1.index.is_unique)
+        self.assertTrue(result2.index.is_unique)
+
 
 class TestBinningTwoScalarEvents(CommonBinningTests, unittest.TestCase):
 
@@ -144,3 +153,20 @@ class TestImageAndScalar(unittest.TestCase):
 
     def setUp(self):
         self.dm = DataMuxer.from_events(image_and_scalar.run())
+
+    def test_index_is_unique(self):
+        self.assertTrue(self.dm._dataframe.index.is_unique)
+
+    def test_bin_on_image(self):
+        binned = self.dm.bin_on('img', agg={'Tsam': 'mean'})
+        self.assertEqual(len(binned), len(self.dm['img']))
+
+    def test_image_shape(self):
+        datapoint = self.dm['img'].values[2]
+        self.assertEqual(datapoint.ndim, 2)
+
+        binned = self.dm.bin_on('img', agg={'Tsam': 'mean'})
+        binned_datapoint = binned['img']['val_raw'].values[2]
+        self.assertEqual(binned_datapoint.ndim, 2)
+
+        assert_array_equal(datapoint, binned_datapoint)
