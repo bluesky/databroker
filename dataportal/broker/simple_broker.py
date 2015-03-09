@@ -169,7 +169,8 @@ class EventQueue(object):
     """
 
     def __init__(self, headers):
-        if not isinstance(headers, Iterable):
+        if hasattr(headers, 'keys'):
+            # This is some kind of dict.
             headers = [headers]
         self.headers = headers
         self._known_ids = set()
@@ -206,6 +207,7 @@ class EventQueue(object):
         Each call returns a (maybe empty) list of Events that were
         discovered in the same call to update().
         """
+        # EventQueue is FIFO.
         return self._queue.popleft()
 
 
