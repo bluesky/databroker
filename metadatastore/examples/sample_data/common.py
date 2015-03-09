@@ -27,7 +27,8 @@ def apply_deadband(data, band):
     ----------
     data : ndarray
     band : float
-        tolerance, the width of the deadband
+        tolerance, the width of the deadband, must be greater than 0. Raises a
+        ValueError if band is less than 0
 
     Returns
     -------
@@ -65,7 +66,7 @@ def noisy(val, sigma=0.01):
     if np.isscalar(val):
         return val + sigma * np.random.randn()
     else:
-        return val + sigma * np.random.randn(val.shape)
+        return val + sigma * np.random.randn(len(val)).reshape(val.shape)
 
 
 def example(func):

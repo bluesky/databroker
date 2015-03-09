@@ -13,7 +13,6 @@ from nose.tools import assert_equal, assert_raises, raises
 
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
-from metadatastore.commands import EventDescriptorIsNoneError
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
@@ -102,9 +101,14 @@ def test_ev_desc():
     time = ttime.time()
     yield _ev_desc_tester, rs, data_keys, time
 
-@raises(EventDescriptorIsNoneError)
+@raises(mdsc.EventDescriptorIsNoneError)
 def test_ev_insert_fail():
     ev = mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
+
+@raises(ValueError)
+def test_proper_data_format():
+    data = {'key': [15,]}
+    mdsc._validate_data(data)
 
 
 def test_dict_key_replace_rt():
@@ -247,3 +251,8 @@ def test_run_start_custom():
 
     for k in cust:
         assert_equal(getattr(ret, k), cust[k])
+
+# smoketests
+
+def test_find_last_for_smoke():
+    mdsc.find_last()
