@@ -7,6 +7,31 @@ from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem,
                                ScrollArea)
 from enaml.layout.api import VSplitLayout, HSplitLayout, TabLayout
 
+
+def define_layout(init_params, watch_header, header_view, pv_view, muxer,
+                  scalar_plot_controls, scalar_plot, search):
+
+    if init_params['screen_size'] == 'small':
+        return HSplitLayout(
+            HSplitLayout(
+                VSplitLayout(
+                    TabLayout(search, watch_header,
+                              index=init_params['search_tab_index']),
+                    TabLayout(header_view, pv_view, muxer)),
+                scalar_plot_controls),
+            scalar_plot,)
+    else:
+        return HSplitLayout(
+            HSplitLayout(
+                VSplitLayout(
+                    TabLayout(search, watch_header,
+                              index=init_params['search_tab_index']),
+                    TabLayout(header_view, pv_view,),
+                    muxer),
+                scalar_plot_controls),
+            scalar_plot,)
+
+
 enamldef MainView(MainWindow): main_view:
     attr get_last_model
     attr muxer_model
@@ -16,17 +41,14 @@ enamldef MainView(MainWindow): main_view:
     attr init_params
     Container: container:
         DockArea: area:
-            layout = HSplitLayout(
-                HSplitLayout(
-                    VSplitLayout(
-                        TabLayout('search', 'watch_header',
-                                  index=init_params['search_tab_index']),
-                        TabLayout('header_view', 'pv_view',),
-                        'muxer'),
-                    'scalar plot controls'),
-                'scalar plot'
-            )
-            DockItem:
+            layout = define_layout(
+                init_params, watch_header=watch_header.name,
+                header_view=header_view.name, pv_view=pv_view.name,
+                muxer=muxer.name, search=search.name,
+                scalar_plot_controls=scalar_plot_controls.name,
+                scalar_plot=scalar_plot.name)
+
+            DockItem: search:
                 closable = False
                 name = 'search'
                 title = "Search"
@@ -34,7 +56,7 @@ enamldef MainView(MainWindow): main_view:
                     ScrollArea:
                         GetLastView:
                             get_last_model = main_view.get_last_model
-            DockItem:
+            DockItem: watch_header:
                 closable = False
                 name = 'watch_header'
                 title = "Most Recent Header"
@@ -42,7 +64,7 @@ enamldef MainView(MainWindow): main_view:
                     ScrollArea:
                         WatchForHeadersView:
                             watch_headers_model = main_view.watch_headers_model
-            DockItem:
+            DockItem: header_view:
                 closable = False
                 name = 'header_view'
                 title = "Run Summary"
@@ -50,7 +72,7 @@ enamldef MainView(MainWindow): main_view:
                     ScrollArea:
                         DisplayHeaderView:
                             display_header_model = main_view.display_header_model
-            DockItem:
+            DockItem: pv_view:
                 closable = False
                 name = 'pv_view'
                 title = "PV info "
@@ -58,7 +80,7 @@ enamldef MainView(MainWindow): main_view:
                     ScrollArea:
                         DisplayPVView:
                             display_header_model = main_view.display_header_model
-            DockItem:
+            DockItem: muxer:
                 closable = False
                 name = 'muxer'
                 title = 'Muxer'
@@ -66,17 +88,17 @@ enamldef MainView(MainWindow): main_view:
                     ScrollArea:
                         MuxerController:
                             muxer_model = main_view.muxer_model
-            DockItem:
+            DockItem:  scalar_plot_controls:
                 closable = False
-                name = 'scalar plot controls'
+                name = 'scalar_plot_controls'
                 title = 'Scalar Plot Controls'
                 Container:
                     ScrollArea:
                         PlotControls:
                             scalar_collection = main_view.scalar_collection
-            DockItem:
+            DockItem: scalar_plot:
                 closable = False
-                name = 'scalar plot'
+                name = 'scalar_plot'
                 title = "Scalar Plot"
                 PlotView:
                     pass

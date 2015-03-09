@@ -16,12 +16,14 @@ with enaml.imports():
     from dataportal.replay.replay_view import MainView
 
 
+
 def define_default_params():
     """Default replay view. No auto updating of anything
     """
     params_dict = {
         'search_tab_index': 0,
         'automatically_update_header': False,
+        'screen_size': 'normal',
     }
     return params_dict
 
@@ -33,9 +35,14 @@ def define_live_params():
         'search_tab_index': 1,
         'automatically_update_header': True,
         'muxer_auto_update': True,
+        'screen_size': 'normal'
     }
     return params_dict
 
+def define_small_screen_params():
+    params_dict = define_default_params()
+    params_dict['screen_size'] = 'small'
+    return params_dict
 
 def read_from_yaml(fname):
     """Read Replay parameters from a yaml config
@@ -66,7 +73,6 @@ def create_default_ui(init_params_dict):
     get_last_model.observe('header', display_header_model.new_run_header)
     display_header_model.observe('header', muxer_model.new_run_header)
 
-
     main_view = MainView(get_last_model=get_last_model, muxer_model=muxer_model,
                          scalar_collection=scalar_collection,
                          watch_headers_model=watch_headers_model,
@@ -78,6 +84,9 @@ def define_parser():
     parser = argparse.ArgumentParser(description='Launch a data viewer')
     parser.add_argument('--live', action="store_true",
                         help="Launch Replay configured for viewing live data")
+    parser.add_argument('--small-screen', action="store_true",
+                        help="Launch Replay configured for viewing data on a "
+                             "small screen. Tested as low as 1366x768")
     # parser.add_argument('--conf',
     #                     help="Launch Replay based on configuration from "
     #                          "specified file")
@@ -95,6 +104,8 @@ def main():
     params_dict = None
     if args.live:
         params_dict = define_live_params()
+    elif args.small_screen:
+        params_dict = define_small_screen_params()
     app = QtApplication()
     create_and_show(params_dict)
     app.start()
