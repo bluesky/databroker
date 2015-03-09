@@ -24,7 +24,7 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import (insert_run_start, insert_beamline_config,
-                               insert_run_stop)
+                               insert_run_stop, insert_event_descriptor)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
@@ -186,6 +186,25 @@ def test_lookup():
     assert_equal(scan_id, 3)
     # This should be the most *recent* Scan 3. There is ambiguity.
     assert_equal(owner, 'nedbrainard')
+
+
+def test_using_source():
+    rs1 = insert_run_start(time=100., scan_id=1,
+                           owner='nedbrainard', beamline_id='example',
+                           beamline_config=insert_beamline_config({}, time=0.))
+    rs2 = insert_run_start(time=200., scan_id=2,
+                           owner='nedbrainard', beamline_id='example',
+                           beamline_config=insert_beamline_config({}, time=0.))
+    data_keys = {'fork': {'source': '_', 'dtype': 'number'},
+                 'spoon': {'source': '_', 'dtype': 'number'}}
+    insert_event_descriptor(run_start=rs1, data_keys=data_keys, time=100.)
+    insert_event_descriptor(run_start=rs2, data_keys=data_keys, time=200.)
+    result1 = db.find_headers(using_source='fork')
+    result2 = db.find_headers(using_source='fork', start_time=150)
+    assert_equal(len(result1), 2)
+    assert_equal(len(result2), 1)
+    actual = result2[0].run_start_id
+    assert_equal(actual, str(rs2.id))
 
 
 def generate_ca_data(channels, start_time, end_time):
