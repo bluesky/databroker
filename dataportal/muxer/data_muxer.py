@@ -236,14 +236,14 @@ class DataMuxer(object):
         # Both scalar and nonscalar data will get stored in the DataFrame.
         # This may be optimized later, but it might not actually help much.
         self._data.append(
-            {name: data[0] for name, data in event.data.items()})
+            {name: data[0] for name, data in six.iteritems(event.data)})
         self._timestamps.append(
-            {name: data[1] for name, data in event.data.items()})
+            {name: data[1] for name, data in six.iteritems(event.data)})
         self._time.append(event.time)
         return True
 
     def _process_new_descriptor(self, descriptor):
-        for name, description in descriptor.data_keys.items():
+        for name, description in six.iteritems(descriptor.data_keys):
 
             # If we already have this source name, the unique source
             # identifiers must match. Ambiguous names are not allowed.
@@ -584,7 +584,7 @@ class DataMuxer(object):
     @property
     def col_info_by_ndim(self):
         result = {}
-        for name, col_spec in self.col_info.items():
+        for name, col_spec in six.iteritems(self.col_info):
             try:
                 result[col_spec.ndim]
             except KeyError:
