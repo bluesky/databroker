@@ -337,7 +337,10 @@ def _format_time(search_dict):
 
 
 def _normalize_object_id(kwargs, key):
-    "Ensure that an id is an ObjectId, not a string."
+    """Ensure that an id is an ObjectId, not a string.
+
+    ..warning: Does in-place mutation of the search_dict
+    """
     try:
         kwargs[key] = ObjectId(kwargs[key])
     except KeyError:
