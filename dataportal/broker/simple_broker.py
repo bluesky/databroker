@@ -60,13 +60,13 @@ class DataBroker(object):
         return result
 
     @classmethod
-    def fetch_events(cls, runs, ca_host=None, channels=None):
+    def fetch_events(cls, headers, ca_host=None, channels=None):
         """
         Get Events from given run(s).
 
         Parameters
         ----------
-        runs : one RunHeader or a list of them
+        headers : one RunHeader or a list of them
         ca_host : URL string
             the URL of your archiver's ArchiveDataServer.cgi. For example,
             'http://cr01arc01/cgi-bin/ArchiveDataServer.cgi'
@@ -81,15 +81,15 @@ class DataBroker(object):
         data : a flat list of Event objects
         """
         try:
-            runs.items()
+            headers.items()
         except AttributeError:
             pass
         else:
-            runs = [runs]
+            headers = [headers]
 
         events = []
-        for run in runs:
-            descriptors = find_event_descriptors(run_start_id=run.run_start_id)
+        for header in headers:
+            descriptors = find_event_descriptors(run_start_id=header.run_start_id)
             for descriptor in descriptors:
                 events.extend(find_events(descriptor=descriptor))
         [fill_event(event) for event in events]
@@ -148,6 +148,70 @@ def _get_archiver_data(ca_host, channels, start_time, end_time):
             event = Document(event)
             events.append(event)
     return events
+
+
+class EventQueue(object):
+    """
+    Get Events from Headers during data collection.
+
+    This is a simple single-process implementation.
+
+    Example
+    -------
+
+    from dataportal.broker import DataBroker, EventQueue
+    header = DataBroker[-1]  # for example, most recent header
+    queue = EventQueue(header)
+    while True:
+        queue.update()
+        new_events = queue.get()
+        # Do something with them, such as dm.append_events(new_events)
+    """
+
+    def __init__(self, headers):
+        if hasattr(headers, 'keys'):
+            # This is some kind of dict.
+            headers = [headers]
+        self.headers = headers
+        self._known_ids = set()
+        # This is nested, a deque of lists that are bundles of events
+        # discovered in the same update.
+        self._queue = deque()
+
+    def update(self):
+        """Obtain a fresh list of the relevant Events."""
+
+        # like fetch_events, but we don't fill in the data right away
+        events = []
+        for header in self.headers:
+            descriptors = find_event_descriptors(run_start_id=header.run_start_id)
+            for descriptor in descriptors:
+                events.extend(find_events(descriptor=descriptor))
+        if not events:
+            return
+
+        new_events = []
+        for event in events:
+            if event.id not in self._known_ids:
+                new_events.append(event)
+                self._known_ids.add(event.id)
+
+        # The major performance savings is here: only fill the new events.
+        [fill_event(event) for event in new_events]
+        self._queue.append(new_events)  # the entry can be an empty list
+
+    def get(self):
+        """
+        Get a list of new Events.
+
+        Each call returns a (maybe empty) list of Events that were
+        discovered in the same call to update().
+        """
+        # EventQueue is FIFO.
+        try:
+            return self._queue.popleft()
+        except IndexError:
+            return []
 
 
 class LocationError(ValueError):

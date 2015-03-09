@@ -13,7 +13,8 @@ import pandas as pd
 from .. import sources
 from ..sources import channelarchiver as ca
 from ..sources import switch
-from ..broker import DataBroker as db
+from ..broker import EventQueue, DataBroker as db
+from ..examples.sample_data import temperature_ramp, image_and_scalar
 
 from nose.tools import make_decorator
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -23,25 +24,24 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import insert_run_start, insert_beamline_config
-from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
-from ..examples.sample_data import temperature_ramp, image_and_scalar
+from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
-db_name = str(uuid.uuid4())
-conn = None
+
 blc = None
 
 
 def setup():
-    fs_setup()
     mds_setup()
+    fs_setup()
     blc = insert_beamline_config({}, ttime.time())
 
     switch(channelarchiver=False)
     start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
     simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
     ca.insert_data(simulated_ca_data)
+
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
     for owner in owners:
@@ -63,6 +63,10 @@ def teardown():
 
 
 def test_basic_usage():
+    for i in range(5):
+        insert_run_start(time=float(i), scan_id=i + 1,
+                         owner='nedbrainard', beamline_id='example',
+                         beamline_config=insert_beamline_config({}, time=0.))
     header_1 = db[-1]
     header_ned = db.find_headers(owner='nedbrainard')
     header_null = db.find_headers(owner='this owner does not exist')
@@ -71,7 +75,43 @@ def test_basic_usage():
     events_null = db.fetch_events(header_null)
 
 
+def test_event_queue():
+    scan_id = np.random.randint(1e12)  # unique enough for government work
+    rs = insert_run_start(time=0., scan_id=scan_id,
+                          owner='queue-tester', beamline_id='example',
+                          beamline_config=insert_beamline_config({}, time=0.))
+    header = db.find_headers(scan_id=scan_id)
+    queue = EventQueue(header)
+    # Queue should be empty until we create Events.
+    empty_bundle = queue.get()
+    assert_equal(len(empty_bundle), 0)
+    queue.update()
+    empty_bundle = queue.get()
+    assert_equal(len(empty_bundle), 0)
+    events = temperature_ramp.run(rs)
+    # This should add a bundle of Events to the queue.
+    queue.update()
+    first_bundle = queue.get()
+    assert_equal(len(first_bundle), len(events))
+    more_events = temperature_ramp.run(rs)
+    # Queue should be empty until we update.
+    empty_bundle = queue.get()
+    assert_equal(len(empty_bundle), 0)
+    queue.update()
+    second_bundle = queue.get()
+    assert_equal(len(second_bundle), len(more_events))
+    # Add Events from a different example into the same Header.
+    other_events = image_and_scalar.run(rs)
+    queue.update()
+    third_bundle = queue.get()
+    assert_equal(len(third_bundle), len(other_events))
+
+
 def test_indexing():
+    for i in range(5):
+        insert_run_start(time=float(i), scan_id=i + 1,
+                         owner='nedbrainard', beamline_id='example',
+                         beamline_config=insert_beamline_config({}, time=0.))
     header = db[-1]
     is_list = isinstance(header, list)
     assert_false(is_list)
@@ -131,6 +171,14 @@ def test_indexing():
 
 
 def test_lookup():
+    for i in range(5):
+        insert_run_start(time=float(i), scan_id=i + 1,
+                         owner='docbrown', beamline_id='example',
+                         beamline_config=insert_beamline_config({}, time=0.))
+    for i in range(5):
+        insert_run_start(time=float(i), scan_id=i + 1,
+                         owner='nedbrainard', beamline_id='example',
+                         beamline_config=insert_beamline_config({}, time=0.))
     header = db[3]
     scan_id = header.scan_id
     owner = header.owner
