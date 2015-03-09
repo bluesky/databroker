@@ -82,28 +82,28 @@ def test_event_queue():
                           beamline_config=insert_beamline_config({}, time=0.))
     header = db.find_headers(scan_id=scan_id)
     queue = EventQueue(header)
-    # Queue should be empty until we update.
-    f = lambda: queue.pop()
-    assert_raises(IndexError, f)
+    # Queue should be empty until we create Events.
+    empty_bundle = queue.get()
+    assert_equal(len(empty_bundle), 0)
     queue.update()
-    # This should add an empty list to the queue.
-    empty_bundle = queue.pop()
+    empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)
     events = temperature_ramp.run(rs)
     # This should add a bundle of Events to the queue.
     queue.update()
-    first_bundle = queue.pop()
+    first_bundle = queue.get()
     assert_equal(len(first_bundle), len(events))
     more_events = temperature_ramp.run(rs)
     # Queue should be empty until we update.
-    assert_raises(IndexError, f)
+    empty_bundle = queue.get()
+    assert_equal(len(empty_bundle), 0)
     queue.update()
-    second_bundle = queue.pop()
+    second_bundle = queue.get()
     assert_equal(len(second_bundle), len(more_events))
     # Add Events from a different example into the same Header.
     other_events = image_and_scalar.run(rs)
     queue.update()
-    third_bundle = queue.pop()
+    third_bundle = queue.get()
     assert_equal(len(third_bundle), len(other_events))
 
 
