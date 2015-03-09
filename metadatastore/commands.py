@@ -2,6 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 from functools import wraps
+from itertools import count
 from .odm_templates import (RunStart, BeamlineConfig, RunStop,
                             EventDescriptor, Event, DataKey, ALIAS)
 from .document import Document
@@ -353,13 +354,11 @@ def _normalize_object_id(kwargs, key):
 
 
 @_ensure_connection
-def find_run_starts(limit=None, **kwargs):
+def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
 
     Parameters
     ----------
-    limit : int, optional
-        Maximum number of RunStart Documents to be returned.
     start_time : float, optional
         timestamp of the earliest time that a RunStart was created
     stop_time : float, optional
@@ -379,10 +378,12 @@ def find_run_starts(limit=None, **kwargs):
 
     Returns
     -------
-    rs_objects : list of metadatastore.document.Document
-        Combined (dereferenced) documents: RunStart, BeamlineConfig, Sample
-        Note: All documents that the RunStart Document points to are
-              dereferenced
+    rs_objects : iterable of metadatastore.document.Document objects
+
+    Note
+    ----
+    All documents that the RunStart Document points to are dereferenced.
+    These include RunStop, BeamlineConfig, and Sample.
 
     Examples
     --------
@@ -397,8 +398,8 @@ def find_run_starts(limit=None, **kwargs):
     """
     _normalize_object_id(kwargs, '_id')
     _format_time(kwargs)
-    rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')[:limit]
-    return [_as_document(rs) for rs in rs_objects]
+    rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')
+    return (_as_document(rs) for rs in rs_objects)
 
 
 @_ensure_connection
@@ -418,13 +419,12 @@ def find_beamline_configs(**kwargs):
 
     Returns
     -------
-    beamline_config : metadatastore.document.Document
-        The beamline config object
+    beamline_configs : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
     # ordered by _id because it is not guaranteed there will be time in cbonfig
     beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
-    return [_as_document(bc) for bc in beamline_configs]
+    return (_as_document(bc) for bc in beamline_configs)
 
 
 @_ensure_connection
@@ -454,10 +454,7 @@ def find_run_stops(**kwargs):
 
     Returns
     -------
-    run_stop : list of metadatastore.document.Document
-        The run stop objects containing the `exit_status` enum, the `time` the
-        run ended and the `reason` the run ended and a pointer to their run
-        headers
+    run_stop : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
     try:
@@ -466,10 +463,8 @@ def find_run_stops(**kwargs):
         pass
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
-    # do the actual search and return a QuerySet object
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
-    # turn the QuerySet object into a list of Document object
-    return [_as_document(rs) for rs in run_stop]
+    return (_as_document(rs) for rs in run_stop)
 
 
 @_ensure_connection
@@ -495,10 +490,7 @@ def find_event_descriptors(**kwargs):
 
     Returns
     -------
-    event_descriptor : list
-        List of EventDescriptors formatted as
-        metadatastore.document.Document
-
+    event_descriptor : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
     event_descriptor_list = list()
@@ -512,18 +504,15 @@ def find_event_descriptors(**kwargs):
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
                                                              direction='out')
-        event_descriptor_list.append(event_descriptor)
-    return [_as_document(evd) for evd in event_descriptor_list]
+        yield _as_document(event_descriptor)
 
 
 @_ensure_connection
-def find_events(limit=None, **kwargs):
+def find_events(**kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters
     -----------
-    limit : int, optional
-        Maximum number of events returned. Defaults to None
     start_time : float, optional
         timestamp of the earliest time that an Event was created
     stop_time : float, optional
@@ -541,8 +530,7 @@ def find_events(limit=None, **kwargs):
 
     Returns
     -------
-    events : list
-        List of metadatastore.document.Document
+    events : iterable of metadatastore.document.Document objects
     """
     # Some user-friendly error messages for an easy mistake to make
     if 'event_descriptor' in kwargs:
@@ -557,8 +545,8 @@ def find_events(limit=None, **kwargs):
         pass
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'descriptor_id')
-    events = Event.objects(__raw__=kwargs).order_by('-time')[:limit]
-    return [_as_document(ev) for ev in events]
+    events = Event.objects(__raw__=kwargs).order_by('-time')
+    return (_as_document(ev) for ev in events)
 
 
 @_ensure_connection
@@ -572,12 +560,13 @@ def find_last(num=1):
 
     Returns
     -------
-    run_start: list
-        Returns a list of the last ``num`` headers created.
-        This does not return Events.
+    run_start: iterable of metadatastore.document.Document objects
     """
-    rs_objects = [rs for rs in RunStart.objects.order_by('-time')[:num]]
-    return [_as_document(rs) for rs in rs_objects]
+    c = count()
+    for rs in RunStart.objects.order_by('-time'):
+        if next(c) == num:
+            raise StopIteration
+        yield _as_document(rs)
 
 
 def _todatetime(time_stamp):
