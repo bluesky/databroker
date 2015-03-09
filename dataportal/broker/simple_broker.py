@@ -208,7 +208,10 @@ class EventQueue(object):
         discovered in the same call to update().
         """
         # EventQueue is FIFO.
-        return self._queue.popleft()
+        try:
+            return self._queue.popleft()
+        except IndexError:
+            return []
 
 
 class LocationError(ValueError):
