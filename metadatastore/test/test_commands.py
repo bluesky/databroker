@@ -35,7 +35,7 @@ def _blc_tester(config_dict):
     """Test BeamlineConfig Insert
     """
     blc = mdsc.insert_beamline_config(config_dict, ttime.time())
-    q_ret = mdsc.find_beamline_config(_id=blc.id)[0]
+    q_ret = mdsc.find_beamline_configs(_id=blc.id)[0]
     assert_equal(bson.ObjectId(q_ret.id), blc.id)
     doc = Document(blc)
     BeamlineConfig.objects.get(id=blc.id)
@@ -53,10 +53,10 @@ def test_blc_insert():
 def _ev_desc_tester(run_start, data_keys, time):
     ev_desc = mdsc.insert_event_descriptor(run_start,
                                            data_keys, time)
-    q_ret, = mdsc.find_event_descriptor(run_start=run_start)
+    q_ret, = mdsc.find_event_descriptors(run_start=run_start)
     ret = EventDescriptor.objects.get(run_start_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), ret.id)
-    q_ret2, = mdsc.find_event_descriptor(_id=ev_desc.id)
+    q_ret2, = mdsc.find_event_descriptors(_id=ev_desc.id)
     assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id)
 
     # Check contents of record we just inserted.
@@ -69,16 +69,16 @@ def _ev_desc_tester(run_start, data_keys, time):
                          data_keys[k][ik])
 
     # Exercise documented Parameters.
-    mdsc.find_event_descriptor(run_start=run_start)
-    mdsc.find_event_descriptor(run_start_id=run_start.id)
-    mdsc.find_event_descriptor(run_start_id=str(run_start.id))
-    mdsc.find_event_descriptor(run_start_id=str(run_start.id))
-    mdsc.find_event_descriptor(start_time=ttime.time())
-    mdsc.find_event_descriptor(stop_time=ttime.time())
-    mdsc.find_event_descriptor(start_time=ttime.time() - 1, stop_time=ttime.time())
-    mdsc.find_event_descriptor(uid='foo')
-    mdsc.find_event_descriptor(_id=ev_desc.id)
-    mdsc.find_event_descriptor(_id=str(ev_desc.id))
+    mdsc.find_event_descriptors(run_start=run_start)
+    mdsc.find_event_descriptors(run_start_id=run_start.id)
+    mdsc.find_event_descriptors(run_start_id=str(run_start.id))
+    mdsc.find_event_descriptors(run_start_id=str(run_start.id))
+    mdsc.find_event_descriptors(start_time=ttime.time())
+    mdsc.find_event_descriptors(stop_time=ttime.time())
+    mdsc.find_event_descriptors(start_time=ttime.time() - 1, stop_time=ttime.time())
+    mdsc.find_event_descriptors(uid='foo')
+    mdsc.find_event_descriptors(_id=ev_desc.id)
+    mdsc.find_event_descriptors(_id=str(ev_desc.id))
     return ev_desc
 
 
@@ -128,13 +128,13 @@ def _run_start_tester(time, beamline_id, scan_id):
 
     run_start = mdsc.insert_run_start(time, beamline_id, scan_id=scan_id,
                                       beamline_config=blc)
-    q_ret, = mdsc.find_run_start(_id=run_start.id)
+    q_ret, = mdsc.find_run_starts(_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
 
     # test enhancement by @ericdill b812d6
-    q_ret, = mdsc.find_run_start(_id=str(run_start.id))
+    q_ret, = mdsc.find_run_starts(_id=str(run_start.id))
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
-    q_ret, = mdsc.find_run_start(uid=run_start.uid)
+    q_ret, = mdsc.find_run_starts(uid=run_start.uid)
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
 
     # Check that Document creation does not error.
@@ -148,15 +148,15 @@ def _run_start_tester(time, beamline_id, scan_id):
         assert_equal(getattr(ret, name), val)
 
     # Exercise documented kwargs
-    mdsc.find_run_start(limit=5)
-    mdsc.find_run_start(start_time=ttime.time())
-    mdsc.find_run_start(stop_time=ttime.time())
-    mdsc.find_run_start(start_time=ttime.time() - 1, stop_time=ttime.time())
-    mdsc.find_run_start(beamline_id='csx')
-    mdsc.find_run_start(project='world-domination')
-    mdsc.find_run_start(owner='drdrake')
-    mdsc.find_run_start(scan_id=1)
-    mdsc.find_run_start(uid='foo')
+    mdsc.find_run_starts(limit=5)
+    mdsc.find_run_starts(start_time=ttime.time())
+    mdsc.find_run_starts(stop_time=ttime.time())
+    mdsc.find_run_starts(start_time=ttime.time() - 1, stop_time=ttime.time())
+    mdsc.find_run_starts(beamline_id='csx')
+    mdsc.find_run_starts(project='world-domination')
+    mdsc.find_run_starts(owner='drdrake')
+    mdsc.find_run_starts(scan_id=1)
+    mdsc.find_run_starts(uid='foo')
 
 
 def test_run_start():
@@ -193,21 +193,21 @@ def _run_stop_tester(run_start, time):
     run_stop = mdsc.insert_run_stop(run_start, time)
 
     # run_stop is a mongo document, so this .id is an ObjectId
-    q_ret, = mdsc.find_run_stop(_id=run_stop.id)
+    q_ret, = mdsc.find_run_stops(_id=run_stop.id)
     assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
     # tests bug fixed by @ericdill in c8befa
-    q_ret, = mdsc.find_run_stop(_id=str(run_stop.id))
+    q_ret, = mdsc.find_run_stops(_id=str(run_stop.id))
     assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
     # tests bug fixed by @ericdill 1a167a
-    q_ret, = mdsc.find_run_stop(run_start=run_start)
+    q_ret, = mdsc.find_run_stops(run_start=run_start)
     assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
-    q_ret, = mdsc.find_run_stop(run_start_id=run_start.id)
+    q_ret, = mdsc.find_run_stops(run_start_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
-    q_ret, = mdsc.find_run_stop(run_start_id=str(run_start.id))
+    q_ret, = mdsc.find_run_stops(run_start_id=str(run_start.id))
     assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
     # Check that Document conversion does not raise.
@@ -220,12 +220,12 @@ def _run_stop_tester(run_start, time):
         assert_equal(getattr(ret, name), val)
 
     # Exercise documented kwargs
-    mdsc.find_run_stop(start_time=ttime.time())
-    mdsc.find_run_stop(stop_time=ttime.time())
-    mdsc.find_run_stop(start_time=ttime.time() - 1, stop_time=ttime.time())
-    mdsc.find_run_stop(reason='whimsy')
-    mdsc.find_run_stop(exit_status='success')
-    mdsc.find_run_stop(uid='foo')
+    mdsc.find_run_stops(start_time=ttime.time())
+    mdsc.find_run_stops(stop_time=ttime.time())
+    mdsc.find_run_stops(start_time=ttime.time() - 1, stop_time=ttime.time())
+    mdsc.find_run_stops(reason='whimsy')
+    mdsc.find_run_stops(exit_status='success')
+    mdsc.find_run_stops(uid='foo')
 
 
 def test_run_stop():
