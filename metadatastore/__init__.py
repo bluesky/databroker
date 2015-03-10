@@ -1,4 +1,4 @@
 __author__ = 'arkilic'
 
 from . import conf, commands, odm_templates
-__version__ = 'v0.0.4'
+__version__ = 'v0.0.4.post0'
