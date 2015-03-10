@@ -67,36 +67,11 @@ def test_replay_startup():
         yield _replay_startup_tester, p
 
 
-# decorator that handles the creation and destruction of the qt app for each
-# replay functionality test
-@skip_if(not six.PY2)
-def _needs_qtapp(func):
-    @wraps
-    def inner(*args, **kwargs):
-        app = QtApplication()
-        func(app, *args, **kwargs)
-        app.destroy()
-    return inner
-
-
-def _replay_commandline_helper(execution_command):
-    os.system(execution_command)
-
-@skip_if(not six.PY2)
-@_needs_qtapp
-def test_replay_command_line_start(app):
-    exec_cmds = ['', '--live', '--small-screen']
-
-    for cmd in exec_cmds:
-        yield 'python {} {}'.format(replay.__file__, cmd)
-
-
 # this function tests that a live-view replay will correctly plot
 # 'point_det' versus 'Tsam' when they are assigned to 'plotx' and 'ploty',
 # respectively
 @skip_if(not six.PY2)
-@_needs_qtapp
-def test_replay_plotting1(app):
+def test_replay_plotting1():
     # insert a run header with one plotx and one ploty
     rs = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
@@ -106,6 +81,7 @@ def test_replay_plotting1(app):
     # plotting replay in live mode with plotx and ploty should have the
     # following state after a few seconds of execution:
     # replay.
+    app = QtApplication()
     ui = replay.create(replay.define_live_params())
     ui.show()
     app.timed_call(4000, app.stop)
@@ -119,13 +95,13 @@ def test_replay_plotting1(app):
     # the x axis should not be time
     assert not ui.scalar_collection.x_is_time
     ui.close()
+    app.destroy()
 
 
 # this function tests that a live-view replay will correctly plot
 # 'Tsam' versus time when plotx is incorrectly defined
 @skip_if(not six.PY2)
-@_needs_qtapp
-def test_replay_plotting2(app):
+def test_replay_plotting2():
     ploty = ['Tsam', 'point_det']
     plotx = 'this better fail!'
     # insert a run header with one plotx and one ploty
@@ -137,6 +113,7 @@ def test_replay_plotting2(app):
     # plotting replay in live mode with plotx and ploty should have the
     # following state after a few seconds of execution:
     # replay.
+    app = QtApplication()
     ui = replay.create(replay.define_live_params())
     ui.show()
     app.timed_call(4000, app.stop)
@@ -148,23 +125,23 @@ def test_replay_plotting2(app):
     # the x axis should not be time
     assert ui.scalar_collection.x_is_time
     ui.close()
+    app.destroy()
 
 
 # this function tests that a live-view replay will correctly plot
-# time on the x axis with all y values enabled for plotting if
+# time on the x axis with none of the y values enabled for plotting if
 # 'ploty' and 'plotx' are not found in the run header
 @skip_if(not six.PY2)
-@_needs_qtapp
-def test_replay_plotting3(app):
+def test_replay_plotting3():
     # insert a run header with one plotx and one ploty
     rs = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
         beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
     events = temperature_ramp.run(rs)
-    num_keys = len(events[0].data.keys())
     # plotting replay in live mode with plotx and ploty should have the
     # following state after a few seconds of execution:
     # replay.
+    app = QtApplication()
     ui = replay.create(replay.define_live_params())
     ui.show()
     app.timed_call(4000, app.stop)
@@ -172,7 +149,8 @@ def test_replay_plotting3(app):
     # there should only be 1 scalar model currently plotting
     assert len([scalar_model for scalar_model
                 in ui.scalar_collection.scalar_models.values()
-                if scalar_model.is_plotting]) == num_keys
+                if scalar_model.is_plotting]) == 0
     # the x axis should not be time
     assert ui.scalar_collection.x_is_time
     ui.close()
+    app.destroy()

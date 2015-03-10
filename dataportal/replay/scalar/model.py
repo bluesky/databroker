@@ -125,7 +125,10 @@ class ScalarModel(Atom):
         try:
             self.line_artist.axes.figure.canvas.draw()
         except AttributeError:
-            pass
+            # only raised when the figure has not been added to a canvas.
+            # Should really only happen once
+            logger.debug('ScalarModel._is_plotting_changed: Figure has not '
+                         'yet been added to canvas')
 
     @property
     def x(self):
