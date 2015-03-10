@@ -28,7 +28,7 @@ INSERT INTO {0}
 (run_id, N, blob)
 VALUES
 (?,
-1 + (SELECT MAX(N)
+1 + (SELECT COALESCE(MAX(N), 0)
      FROM {0}
      WHERE run_id=?),
 ?)""".format(TABLE_NAME)
