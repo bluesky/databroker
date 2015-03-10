@@ -80,7 +80,7 @@ class History(object):
         if num_back < 0:
             raise ValueError("num_back must be nonnegative")
 
-        res = self._conn.execute(SELECTION_QUERY, (rid, 1 + num_back))
+        res = self._conn.execute(SELECTION_QUERY, (key, 1 + num_back))
         blob, = res.fetchall()[-1]
         return json.loads(blob)
 
