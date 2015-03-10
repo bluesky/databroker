@@ -99,6 +99,7 @@ class History(object):
         """
         data_str = json.dumps(data)
         self._conn.execute(INSERTION_QUERY, (key, key, data_str))  # yes, twice
+        self._conn.commit()
 
     def trim(self, N=1):
         """
