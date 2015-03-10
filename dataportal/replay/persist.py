@@ -41,7 +41,6 @@ class History(object):
 
         num_back : int, optional
             Number back from the latest entry to retrieve.
-            Negative numbers are treated as 0
 
         Returns
         -------
@@ -49,7 +48,7 @@ class History(object):
             Data payload
         """
         if num_back < 0:
-            num_back = 0
+            raise ValueError("num_back must be nonnegative")
 
         res = self.conn.execute()
         return json.loads(res)
