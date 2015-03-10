@@ -8,9 +8,35 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
+import logging
 
 import sqlite3
 import json
+
+
+logger = logging.getLogger(__name__)
+
+
+TABLE_NAME = 'ReplayConfiguration_1_0'
+CREATION_QUERY = """
+CREATE TABLE {0} (
+        run_id CHAR(24),
+        N INT,
+        blob BLOB)""".format(TABLE_NAME)
+INSERTION_QUERY = """
+INSERT INTO {0}
+(run_id, N, blob)
+VALUES
+(?,
+1 + (SELECT MAX(N)
+     FROM {0}
+     WHERE run_id=?),
+?)""".format(TABLE_NAME)
+SELECTION_QUERY = """
+SELECT blob
+FROM {0}
+WHERE run_id=? ORDER BY N DESC LIMIT ?""".format(TABLE_NAME)
+SHOW_TABLES_QUERY = """SELECT name FROM sqlite_master WHERE type='table'"""
 
 
 class History(object):
@@ -25,7 +51,11 @@ class History(object):
     def __init__(self, fname):
         self._conn = sqlite3.connect(fname)
         if not self._has_tables():
+            logger.debug("Created a fresh replay configuration table in %s,",
+                         fname)
             self._create_tables()
+        else:
+            logger.debug("Found a replay configuration table in %s", fname)
 
     def get(self, key, num_back=0):
         """
@@ -50,8 +80,9 @@ class History(object):
         if num_back < 0:
             raise ValueError("num_back must be nonnegative")
 
-        res = self.conn.execute()
-        return json.loads(res)
+        res = self._conn.execute(SELECTION_QUERY, (rid, 1 + num_back))
+        blob, = res.fetchall()[-1]
+        return json.loads(blob)
 
     def put(self, key, data):
         """
@@ -67,7 +98,7 @@ class History(object):
             json can serialize.
         """
         data_str = json.dumps(data)
-        self.conn.execute('', key, data_str)
+        self._conn.execute(INSERTION_QUERY, (key, key, data_str))  # yes, twice
 
     def trim(self, N=1):
         """
@@ -79,18 +110,18 @@ class History(object):
         N : int, optional
             The number of entries to keep.  N < 1 is treated as 1
         """
-        if N < 1:
-            N = 1
-        self.conn.execute('', N)
+        raise NotImplementedError("TODO")
 
     def _create_tables(self):
         """
         Create the required tables for data storage
         """
-        pass
+        self._conn.execute(CREATION_QUERY)
 
     def _has_tables(self):
         """
         Determine of the opened file has the needed tables
         """
-        return True
+        res = self._conn.execute(SHOW_TABLES_QUERY)
+        tables = [t[0] for t in res.fetchall()]
+        return TABLE_NAME in tables
