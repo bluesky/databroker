@@ -5,16 +5,19 @@ if six.PY2:
     from enaml.qt.qt_application import QtApplication
     from dataportal.replay import replay
 
+from functools import wraps
 from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore import api as mdsapi
 from filestore.utils.testing import fs_setup, fs_teardown
 from dataportal.examples.sample_data import temperature_ramp, image_and_scalar
 from dataportal.broker import DataBroker as db
 import copy
 from ..testing.decorators import skip_if
+import time as ttime
+import os
 
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
-global app
 
 
 @skip_if(not six.PY2)
@@ -30,8 +33,6 @@ def setup():
     image_and_scalar.run()
     hdr_img_scalar = db[-1]
     ev_img_scalar = db.fetch_events(hdr_img_scalar)
-    global app
-    app = QtApplication()
 
 
 @skip_if(not six.PY2)
@@ -39,21 +40,139 @@ def teardown():
     fs_teardown()
     mds_teardown()
 
+
+# these next two functions simply smoketest the startup of replay with
+# different combinations of layout parameters. Whether or not anything
+# actually works correctly is dealt with in later tests
 @skip_if(not six.PY2)
 def _replay_startup_tester(params=None, wait_time=1000):
-    replay.create_and_show(params)
+    app = QtApplication()
+    ui = replay.create(params)
+    ui.show()
     app.timed_call(wait_time, app.stop)
     app.start()
+    ui.close()
+    app.destroy()
+
 
 @skip_if(not six.PY2)
 def test_replay_startup():
     normal = replay.define_default_params()
-    normal_small = copy.deepcopy(normal)
-    normal_small['screen_size'] = 'small'
+    small = replay.define_small_screen_params()
     live = replay.define_live_params()
     live_small = copy.deepcopy(live)
     live_small['screen_size'] = 'small'
-    params = [(normal, 1000), (normal_small, 1000), (live, 4000),
-              (live_small, 4000)]
+    params = [normal, small, live, live_small]
     for p in params:
-        yield _replay_startup_tester, p[0], p[1]
+        yield _replay_startup_tester, p
+
+
+# decorator that handles the creation and destruction of the qt app for each
+# replay functionality test
+@skip_if(not six.PY2)
+def _needs_qtapp(func):
+    @wraps
+    def inner(*args, **kwargs):
+        app = QtApplication()
+        func(app, *args, **kwargs)
+        app.destroy()
+    return inner
+
+
+def _replay_commandline_helper(execution_command):
+    os.system(execution_command)
+
+@skip_if(not six.PY2)
+@_needs_qtapp
+def test_replay_command_line_start(app):
+    exec_cmds = ['', '--live', '--small-screen']
+
+    for cmd in exec_cmds:
+        yield 'python {} {}'.format(replay.__file__, cmd)
+
+
+# this function tests that a live-view replay will correctly plot
+# 'point_det' versus 'Tsam' when they are assigned to 'plotx' and 'ploty',
+# respectively
+@skip_if(not six.PY2)
+@_needs_qtapp
+def test_replay_plotting1(app):
+    # insert a run header with one plotx and one ploty
+    rs = mdsapi.insert_run_start(
+        time=ttime.time(), beamline_id='replay testing', scan_id=1,
+        custom={'plotx': 'Tsam', 'ploty': ['point_det']},
+        beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+    temperature_ramp.run(rs)
+    # plotting replay in live mode with plotx and ploty should have the
+    # following state after a few seconds of execution:
+    # replay.
+    ui = replay.create(replay.define_live_params())
+    ui.show()
+    app.timed_call(4000, app.stop)
+    app.start()
+    # the x axis should be 'plotx'
+    assert ui.scalar_collection.x == 'Tsam'
+    # there should only be 1 scalar model currently plotting
+    assert len([scalar_model for scalar_model
+                in ui.scalar_collection.scalar_models.values()
+                if scalar_model.is_plotting]) == 1
+    # the x axis should not be time
+    assert not ui.scalar_collection.x_is_time
+    ui.close()
+
+
+# this function tests that a live-view replay will correctly plot
+# 'Tsam' versus time when plotx is incorrectly defined
+@skip_if(not six.PY2)
+@_needs_qtapp
+def test_replay_plotting2(app):
+    ploty = ['Tsam', 'point_det']
+    plotx = 'this better fail!'
+    # insert a run header with one plotx and one ploty
+    rs = mdsapi.insert_run_start(
+        time=ttime.time(), beamline_id='replay testing', scan_id=1,
+        custom={'plotx': plotx, 'ploty': ploty},
+        beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+    temperature_ramp.run(rs)
+    # plotting replay in live mode with plotx and ploty should have the
+    # following state after a few seconds of execution:
+    # replay.
+    ui = replay.create(replay.define_live_params())
+    ui.show()
+    app.timed_call(4000, app.stop)
+    app.start()
+    # there should only be 1 scalar model currently plotting
+    assert len([scalar_model for scalar_model
+                in ui.scalar_collection.scalar_models.values()
+                if scalar_model.is_plotting]) == len(ploty)
+    # the x axis should not be time
+    assert ui.scalar_collection.x_is_time
+    ui.close()
+
+
+# this function tests that a live-view replay will correctly plot
+# time on the x axis with all y values enabled for plotting if
+# 'ploty' and 'plotx' are not found in the run header
+@skip_if(not six.PY2)
+@_needs_qtapp
+def test_replay_plotting3(app):
+    # insert a run header with one plotx and one ploty
+    rs = mdsapi.insert_run_start(
+        time=ttime.time(), beamline_id='replay testing', scan_id=1,
+        beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+    events = temperature_ramp.run(rs)
+    num_keys = len(events[0].data.keys())
+    # plotting replay in live mode with plotx and ploty should have the
+    # following state after a few seconds of execution:
+    # replay.
+    ui = replay.create(replay.define_live_params())
+    ui.show()
+    app.timed_call(4000, app.stop)
+    app.start()
+    # there should only be 1 scalar model currently plotting
+    assert len([scalar_model for scalar_model
+                in ui.scalar_collection.scalar_models.values()
+                if scalar_model.is_plotting]) == num_keys
+    # the x axis should not be time
+    assert ui.scalar_collection.x_is_time
+    ui.close()

@@ -39,17 +39,11 @@ def define_live_params():
     }
     return params_dict
 
+
 def define_small_screen_params():
     params_dict = define_default_params()
     params_dict['screen_size'] = 'small'
     return params_dict
-
-def read_from_yaml(fname):
-    """Read Replay parameters from a yaml config
-    """
-    import yaml
-    with open(fname, 'r') as f:
-        return yaml.load(f)
 
 
 def create_default_ui(init_params_dict):
@@ -91,28 +85,29 @@ def define_parser():
     parser.add_argument('--small-screen', action="store_true",
                         help="Launch Replay configured for viewing data on a "
                              "small screen. Tested as low as 1366x768")
-    # parser.add_argument('--conf',
-    #                     help="Launch Replay based on configuration from "
-    #                          "specified file")
     return parser
 
-def create_and_show(params_dict=None):
+def create(params_dict=None):
     if params_dict is None:
         params_dict = define_default_params()
-    ui = create_default_ui(params_dict)
-    ui.show()
+    return create_default_ui(params_dict)
+
 
 def main():
     parser = define_parser()
     args = parser.parse_args()
     params_dict = None
+    print('args: {}'.format(args))
     if args.live:
         params_dict = define_live_params()
     elif args.small_screen:
         params_dict = define_small_screen_params()
-    app = QtApplication()
-    create_and_show(params_dict)
-    app.start()
+
+    ui = create(params_dict)
+    ui.show()
+
 
 if __name__ == "__main__":
+    app = QtApplication()
     main()
+    app.start()
