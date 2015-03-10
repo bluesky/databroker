@@ -65,6 +65,45 @@ def test_timestamps_as_data():
         assert_false('{}_timestamp'.format(name) in dm._dataframe)
 
 
+def run_colspec_programmatically(name, ndim, shape, upsample, downsample):
+    ColSpec(name, ndim, shape, upsample, downsample)
+
+def test_colspec():
+    defaults = {'name': 'some_col',
+                'ndim': 1,
+                'shape': (1, 2),
+                'upsample': None,
+                'downsample': None}
+    names = [1, 'name', '', 1.0, range(5), {'a': 5}, [1, 'name']]
+    ndims = range(0, 5)
+    shapes = [None, tuple([1]), (1, 2), (1, 2, 3)]
+    upsamples = ColSpec.upsampling_methods
+    downsamples = ColSpec.downsampling_methods
+    yield_dict = {'name': names, 'ndim': ndims, 'shape': shapes,
+                  'upsample': upsamples, 'downsample': downsamples}
+    for key, vals_list in yield_dict.items():
+        for val in vals_list:
+            yield_dict = defaults.copy()
+            yield_dict[key] = val
+            yield run_colspec_programmatically, yield_dict['name'], \
+                  yield_dict['ndim'], yield_dict['shape'], \
+                  yield_dict['upsample'], yield_dict['downsample']
+
+    # # things that will fail
+    # ndims = [names[1]] + names[3:]
+    # shapes = ndims
+    # upsamples = 'cat'
+    # downsamples = upsamples
+    #
+    # for key, vals_list in yield_dict.items():
+    #     for val in vals_list:
+    #         yield_dict = defaults.copy()
+    #         yield_dict[key] = val
+    #         yield run_colspec_programmatically, yield_dict['name'], \
+    #               yield_dict['ndim'], yield_dict['shape'], \
+    #               yield_dict['upsample'], yield_dict['downsample']
+
+
 
 class CommonBinningTests(object):
 

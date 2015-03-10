@@ -12,13 +12,18 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
+  # next 3 lines are needed to spawn a GUI
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 1920x1080x32"
+
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
   - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas scikit-image h5py matplotlib coverage
   # Dependencies not in official conda have been uploaded to binstar orgs.
-  - conda install -n testenv --yes -c soft-matter pims 
+  - conda install -n testenv --yes -c soft-matter pims
   - conda install -n testenv --yes -c nikea mongoengine
   - 'if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then conda install -n testenv --yes enaml; fi'
   - 'if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then conda install -n testenv --yes atom; fi'

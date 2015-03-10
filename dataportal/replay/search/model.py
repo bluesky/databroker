@@ -8,6 +8,7 @@ from metadatastore.api import Document
 import metadatastore
 from mongoengine.connection import ConnectionError
 from pymongo.errors import AutoReconnect
+from functools import wraps
 
 
 class WatchForHeadersModel(Atom):
@@ -35,8 +36,7 @@ class WatchForHeadersModel(Atom):
             return
         else:
             self.search_info = "Run Found."
-        if (not self.header or self.header.ids['run_start_uid'] !=
-                header.ids['run_start_uid']):
+        if (not self.header or self.header.run_start_uid != header.run_start_uid):
             self.header = header
 
 
@@ -48,8 +48,8 @@ class DisplayHeaderModel(Atom):
     selected : metadatastore.api.Document
     """
     header = Typed(Document)
-    selected_as_dict = Dict()
-    selected_keys = List()
+    header_as_dict = Dict()
+    header_keys = List()
 
     def new_run_header(self, changed):
         """Observer function for a new run header"""
@@ -57,23 +57,27 @@ class DisplayHeaderModel(Atom):
 
     @observe('header')
     def header_changed(self, changed):
-
+        self.header_as_dict = {}
+        self.header_keys = []
+        if self.header is None:
+            return
         key_labels = [['KEY NAME', 'DATA LOCATION', 'PV NAME']]
-        run_start_dict = dict(self.header.items())
-        event_descriptors = run_start_dict.pop('event_descriptors', [])
+        header_dict = dict(self.header.items())
+        event_descriptors = header_dict.pop('event_descriptors', [])
         data_keys = self._format_for_enaml(event_descriptors)
-        sample = run_start_dict.pop('sample', {})
-        beamline_config = run_start_dict.pop('beamline_config', {})
-
+        sample = header_dict.pop('sample', {})
+        beamline_config = header_dict.pop('beamline_config', {})
+        # unpack the 'ids' fields
+        ids = header_dict.pop('ids', {})
+        for id_name, id_val in ids.items():
+            header_dict[id_name] = id_val
         data_keys = sorted(data_keys, key=lambda x: x[0].lower())
-        run_start_keys = key_labels + data_keys
+        header_keys = key_labels + data_keys
 
         # set the summary dictionary
-        self.selected_as_dict = {}
-        self.selected_as_dict = run_start_dict
+        self.header_as_dict = header_dict
         # set the keys dictionary
-        self.selected_keys = []
-        self.selected_keys = run_start_keys
+        self.header_keys = header_keys
 
     def _format_for_enaml(self, event_descriptors):
         """
@@ -86,7 +90,6 @@ class DisplayHeaderModel(Atom):
             for data_key, data_key_dict in six.iteritems(dk):
                 while data_key in data_keys:
                     data_key += '_1'
-                print(data_key, data_key_dict)
                 name = data_key
                 src = data_key_dict['source']
                 loc = data_key_dict['external']
@@ -96,20 +99,24 @@ class DisplayHeaderModel(Atom):
         return data_keys
 
 
-class GetLastModel(Atom):
-    """Class that defines the model for the 'get last N datasets view'
+class _BrokerSearch(Atom):
+    """ABC for broker searching with Atom classes
 
     Attributes
     ----------
-    num_to_retrieve : range, min=1
-    headers : list
-    selected : metadatastore.api.Document
+    headers : atom.List
+        The list of headers returned from the DataBroker
+    header : metadatastore.api.Document
+        The currently selected header
+    connection_is_active : atom.Bool
+        True: Connection to the DataBroker is active
+    search_info : atom.Str
+        Potentially informative string that gets displayed on the UI regarding
+        the most recently performed DataBroker search
     """
-    num_to_retrieve = Range(low=1)
     search_info = Str()
     headers = List()
     connection_is_active = Bool(False)
-    summary_visible = Bool(False)
     header = Typed(Document)
 
     def __init__(self):
@@ -117,10 +124,11 @@ class GetLastModel(Atom):
             self.header = None
 
 
-    @observe('num_to_retrieve')
-    def num_changed(self, changed):
+def _catch_connection_issues(func):
+    @wraps(func)
+    def inner(self, *args, **kwargs):
         try:
-            self.headers = DataBroker[-self.num_to_retrieve:]
+            func(self, *args, **kwargs)
         except ConnectionError:
             self.search_info = (
                 "Database {} not available at {} on port {}").format(
@@ -129,7 +137,6 @@ class GetLastModel(Atom):
                 metadatastore.conf.connection_config['port']
             )
             self.connection_is_active = False
-            return
         except AutoReconnect:
             self.search_info = (
                 "Connection to database [[{}]] on [[{}]] was lost".format(
@@ -137,7 +144,54 @@ class GetLastModel(Atom):
                     metadatastore.conf.connection_config['host']
                 )
             )
-            self.connection_is_active = False
-            return
+    return inner
+
+
+class GetLastModel(_BrokerSearch):
+    """Class that defines the model for the 'get last N datasets view'
+
+    Attributes
+    ----------
+    num_to_retrieve : range, min=1
+    """
+    num_to_retrieve = Range(low=1)
+
+    def __init__(self):
+        super(GetLastModel, self).__init__()
+        self.header = None
+
+    @observe('num_to_retrieve')
+    @_catch_connection_issues
+    def num_changed(self, changed):
+        self.headers = DataBroker[-self.num_to_retrieve:]
+
         self.search_info = "Requested: {}. Found: {}".format(
             self.num_to_retrieve, len(self.headers))
+        self.connection_is_active = True
+
+
+class ScanIDSearchModel(_BrokerSearch):
+    """
+
+    Class that defines the model for a UI component that searches the
+    databroker for a specific scan
+
+    Attributes
+    ----------
+    scan_id : atom.Int
+    """
+    scan_id = Int(1)
+
+    def __init__(self):
+        super(ScanIDSearchModel, self).__init__()
+        self.header = None
+        self.search_info = "Searching by Scan ID"
+
+    @observe('scan_id')
+    @_catch_connection_issues
+    def scan_id_changed(self, changed):
+        self.headers = DataBroker.find_headers(scan_id=self.scan_id)
+        self.search_info = "Requested scan id: {}. Found: {}".format(
+            self.scan_id, len(self.headers))
+        self.connection_is_active = True
+

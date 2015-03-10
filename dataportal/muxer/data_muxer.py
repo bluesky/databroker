@@ -162,6 +162,9 @@ class DataMuxer(object):
     events : list
         list of Events (any object with the expected attributes will do)
     """
+    default_upsample = None
+    default_downsample = None
+
     def __init__(self):
         self.sources = {}
         self.col_info = {}
@@ -268,8 +271,12 @@ class DataMuxer(object):
                     # assume scalar.
                     shape = None
                     ndim = 0
+                upsample = self.default_upsample
+                if ndim > 0:
+                    upsample = None
 
-                col_info = ColSpec(name, ndim, shape, None, None)  # defaults
+                col_info = ColSpec(name, ndim, shape, upsample,
+                                   self.default_downsample)  # defaults
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
                 self.col_info[name] = col_info

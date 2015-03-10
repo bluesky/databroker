@@ -9,6 +9,7 @@ from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data.common import example, noisy
 import argparse
 import sys
+import metadatastore
 
 # This section sets up what the simulated images will look like.
 
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     from metadatastore.api import (insert_run_start, insert_run_stop,
                                    insert_beamline_config, find_last)
     b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
-                                      time=0)
+                                      time=ttime.time())
     try:
         last_start_event = find_last()[0]
         scan_id = int(last_start_event.scan_id)+1
@@ -131,9 +132,10 @@ if __name__ == '__main__':
     custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
               'moon': 'full'}
     # insert the run start
-    run_start = insert_run_start(scan_id=scan_id, time=0.0, beamline_id='csx',
-                                 beamline_config=b_config, custom=custom)
+    run_start = insert_run_start(scan_id=scan_id, time=ttime.time(),
+                                 beamline_id='csx', beamline_config=b_config,
+                                 custom=custom)
     events = run(run_start=run_start, sleep=sleep_time, make_run_stop=False)
-    run_stop = insert_run_stop(run_start=run_start, time=events[-1].time+1,
+    run_stop = insert_run_stop(run_start=run_start, time=ttime.time(),
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))

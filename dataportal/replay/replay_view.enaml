@@ -1,10 +1,37 @@
 from dataportal.replay.search import (GetLastView, WatchForHeadersView,
-                                      DisplayHeaderView)
+                                      DisplayHeaderView, DisplayPVView,
+                                      ScanIDSearchView)
 from dataportal.replay.muxer import MuxerController
 from dataportal.replay.scalar import PlotView, PlotControls
 
-from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem)
+from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem,
+                               ScrollArea)
 from enaml.layout.api import VSplitLayout, HSplitLayout, TabLayout
+
+
+def define_layout(init_params, watch_header, header_view, pv_view, muxer,
+                  scalar_plot_controls, scalar_plot, get_last, scan_id):
+
+    if init_params['screen_size'] == 'small':
+        return HSplitLayout(
+            HSplitLayout(
+                VSplitLayout(
+                    TabLayout(get_last, watch_header, scan_id,
+                              index=init_params['search_tab_index']),
+                    TabLayout(header_view, pv_view, muxer)),
+                scalar_plot_controls),
+            scalar_plot,)
+    else:
+        return HSplitLayout(
+            HSplitLayout(
+                VSplitLayout(
+                    TabLayout(get_last, watch_header, scan_id,
+                              index=init_params['search_tab_index']),
+                    TabLayout(header_view, pv_view,),
+                    muxer),
+                scalar_plot_controls),
+            scalar_plot,)
+
 
 enamldef MainView(MainWindow): main_view:
     attr get_last_model
@@ -12,45 +39,77 @@ enamldef MainView(MainWindow): main_view:
     attr scalar_collection
     attr watch_headers_model
     attr display_header_model
+    attr scan_id_model
     attr init_params
     Container: container:
         DockArea: area:
-            layout = HSplitLayout(
-                HSplitLayout(
-                    VSplitLayout(
-                        TabLayout('search', 'watch_header',
-                                  index=init_params['search_tab_index']),
-                        'header_view'),
-                    'muxer', 'scalar plot controls'),
-                'scalar plot'
-            )
-            DockItem:
-                name = 'search'
-                title = "Search"
-                GetLastView:
-                    get_last_model = main_view.get_last_model
-            DockItem:
+            layout = define_layout(
+                init_params, watch_header=watch_header.name,
+                header_view=header_view.name, pv_view=pv_view.name,
+                muxer=muxer.name, get_last=get_last.name,
+                scalar_plot_controls=scalar_plot_controls.name,
+                scalar_plot=scalar_plot.name, scan_id=scan_id.name)
+
+            DockItem: get_last:
+                closable = False
+                name = 'get_last'
+                title = "Last N Headers"
+                Container:
+                    ScrollArea:
+                        GetLastView:
+                            get_last_model = main_view.get_last_model
+            DockItem: watch_header:
+                closable = False
                 name = 'watch_header'
                 title = "Most Recent Header"
-                WatchForHeadersView:
-                    watch_headers_model = main_view.watch_headers_model
-            DockItem:
+                Container:
+                    ScrollArea:
+                        WatchForHeadersView:
+                            watch_headers_model = main_view.watch_headers_model
+            DockItem: scan_id:
+                closable = False
+                name = 'scan_id_search'
+                title = "Search by scan id"
+                Container:
+                    ScrollArea:
+                        ScanIDSearchView:
+                            scan_id_model = main_view.scan_id_model
+
+            DockItem: header_view:
+                closable = False
                 name = 'header_view'
                 title = "Run Summary"
-                DisplayHeaderView:
-                    display_header_model = main_view.display_header_model
-            DockItem:
+                Container:
+                    ScrollArea:
+                        DisplayHeaderView:
+                            display_header_model = main_view.display_header_model
+            DockItem: pv_view:
+                closable = False
+                name = 'pv_view'
+                title = "PV info "
+                Container:
+                    ScrollArea:
+                        DisplayPVView:
+                            display_header_model = main_view.display_header_model
+            DockItem: muxer:
+                closable = False
                 name = 'muxer'
                 title = 'Muxer'
-                MuxerController:
-                    muxer_model = main_view.muxer_model
-            DockItem:
-                name = 'scalar plot controls'
+                Container:
+                    ScrollArea:
+                        MuxerController:
+                            muxer_model = main_view.muxer_model
+            DockItem:  scalar_plot_controls:
+                closable = False
+                name = 'scalar_plot_controls'
                 title = 'Scalar Plot Controls'
-                PlotControls:
-                    scalar_collection = main_view.scalar_collection
-            DockItem:
-                name = 'scalar plot'
+                Container:
+                    ScrollArea:
+                        PlotControls:
+                            scalar_collection = main_view.scalar_collection
+            DockItem: scalar_plot:
+                closable = False
+                name = 'scalar_plot'
                 title = "Scalar Plot"
                 PlotView:
                     pass
