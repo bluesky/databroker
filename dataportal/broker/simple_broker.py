@@ -103,20 +103,20 @@ class DataBroker(object):
         return events
 
     @classmethod
-    def find_headers(cls, limit=50, **kwargs):
-        """Find and construct run header Documents which are all non-Event
-        documents.
+    def find_headers(cls, **kwargs):
+        """Given search criteria, find Headers describing runs.
+
+        This function returns a list of dictionary-like objects encapsulating
+        the metadata for a run -- start time, instruments uses, and so on.
+        In addition to the Parameters below, advanced users can specifiy
+        arbitrary queries that are passed through to mongodb.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of headers to find.
-            NOTE: Defaults to 50
-            Maximum number of RunStart Documents to be returned.
         start_time : float, optional
-            timestamp of the earliest time that a run header was created
+            timestamp of the earliest time that a RunStart was created
         stop_time : float, optional
-            timestamp of the latest time that a run header was created
+            timestamp of the latest time that a RunStart was created
         beamline_id : str, optional
             String identifier for a specific beamline
         project : str, optional
@@ -134,6 +134,10 @@ class DataBroker(object):
         -------
         data : list
             Header objects
+
+        Examples
+        --------
+        >>> find_headers(start_time=12345678)
         """
         run_start = find_run_starts(**kwargs)
         for rs in run_start:
@@ -268,6 +272,7 @@ def _build_header(run_start, verify_integrity=True):
                                  "Please update the mappings".format(k))
             setattr(run_start, k, v)
     run_start._name = 'Header'
+
 
 class IntegrityError(Exception):
     pass
