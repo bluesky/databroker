@@ -219,6 +219,7 @@ class MuxerModel(Atom):
             ploty = [y for y in ploty if y in self.column_models.keys()]
             plot_state['y'] = ploty
 
+        print('MuxerModel.init_state: {}'.format(plot_state))
         self.plot_state = plot_state
 
     def new_run_header(self, changed):

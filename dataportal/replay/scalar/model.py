@@ -225,6 +225,8 @@ class ScalarCollection(Atom):
     dataframe = Typed(pd.DataFrame)
     # name of the x axis
     x = Str()
+    # attribute needed to keep the x axis combo box selector in sync
+    x_index = Int()
 
     # name of the column to align against
     x_is_time = Bool(False)
@@ -267,25 +269,30 @@ class ScalarCollection(Atom):
                  'y': [y for y in self.column_models.values() if y.is_plotting]}
         return state
 
-    def set_state(self, state_dict):
+    def set_plot_state(self, changed):
+        """Function that should be used with the Atom observer pattern.
+
+        e.g., muxer_model.observe('plot_state', scalar_collection.set_plot_state)
+        """
+        state_dict = changed['value']
         try:
-            x = state_dict.pop('x')
+            self.x = state_dict.pop('x')
         except KeyError:
-            # x is not present in the state_dict
-            x = None
-        if x is not None:
-            self.x = x
+            self.x_is_time = True
+        else:
+            self.x_is_time = False
         try:
-            y = state_dict.get('y')
+            y = state_dict.pop('y')
         except KeyError:
-            # y is not present in the state_dict
-            y = None
-        if y is not None:
+            y = []
+        else:
             for name, model in self.scalar_models.items():
                 model.is_plotting = name in y
 
         for k, v in state_dict.items():
+            print('setting {} to self.{}'.format(v, k))
             setattr(self, k, v)
+        self.get_new_data_and_plot()
 
     def clear_scalar_models(self):
         self._ax.cla()
@@ -350,35 +357,17 @@ class ScalarCollection(Atom):
 
     @observe('x')
     def update_x(self, changed):
+        try:
+            self.x_index = self.scalar_models.keys().index(self.x)
+        except ValueError:
+            self.x_index = 0
         self._conf.xlabel = self.x
         if not self.x:
             return
         self.get_new_data_and_plot()
 
-    def set_state(self):
-        plotx = getattr(self.header, 'plotx', None)
-        ploty = getattr(self.header, 'ploty', None)
-
-        if plotx:
-            self.x = plotx
-
-        for name, model in self.scalar_models.items():
-            is_plt = bool(ploty is None or name in ploty)
-            self.scalar_models[name].is_plotting = is_plt
-
-        if ploty:
-            self.x_is_time = False
-
-    def get_new_data_and_plot(self, y_names=None):
-        """
-        Get the data from the data muxer for column `data_name` sampled
-        at the time_stamps of `VariableModel.x`
-
-        Parameters
-        ----------
-        data_name : list, optional
-            List of the names of columns in the data muxer. If None, get all
-            data from the data muxer
+    def get_new_data_and_plot(self):
+        """Helper function to shunt plotting with x as time or as a data column.
         """
         if self.dataframe is None:
             return
@@ -388,6 +377,7 @@ class ScalarCollection(Atom):
             self.plot_by_x()
 
     def plot_by_time(self):
+        self._conf.xlabel = 'time'
         data_dict = {model_name: (model.index, model.data)
                      for model_name, model in self.column_models.items()}
         self._plot(data_dict)
@@ -395,6 +385,7 @@ class ScalarCollection(Atom):
     def plot_by_x(self):
         if not self.x:
             return
+        self._conf.xlabel = self.x
         x_data = self.column_models[six.text_type(self.x)].data
         data_dict = {model_name: (x_data, model.data)
                      for model_name, model in self.column_models.items()}

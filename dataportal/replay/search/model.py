@@ -180,7 +180,7 @@ class ScanIDSearchModel(_BrokerSearch):
     ----------
     scan_id : atom.Int
     """
-    scan_id = Int()
+    scan_id = Int(1)
 
     def __init__(self):
         super(ScanIDSearchModel, self).__init__()

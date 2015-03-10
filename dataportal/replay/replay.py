@@ -67,13 +67,13 @@ def create_default_ui(init_params_dict):
 
     # set up observers
 
-
     muxer_model.observe('dataframe', scalar_collection.new_dataframe)
     # muxer_model.new_data_callbacks.append(scalar_collection.notify_new_data)
+    muxer_model.observe('plot_state', scalar_collection.set_plot_state)
 
     watch_headers_model.observe('header', display_header_model.new_run_header)
-    # get_last_model.observe('header', display_header_model.new_run_header)
-    scan_id_model.observe('header', display_header_model.new_run_header)
+    get_last_model.observe('header', display_header_model.new_run_header)
+    # scan_id_model.observe('header', display_header_model.new_run_header)
     display_header_model.observe('header', muxer_model.new_run_header)
 
     main_view = MainView(get_last_model=get_last_model, muxer_model=muxer_model,

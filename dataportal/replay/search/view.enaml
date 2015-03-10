@@ -96,7 +96,6 @@ enamldef GetLastView(Container):
     Container:
         padding = Box(0, 0, 0, 0)
         constraints = [vbox(num_runs, search_info, headers)]
-
         # GUI element that selects the number of run headers to display
         SpinBox: num_runs:
             prefix = "Display "
