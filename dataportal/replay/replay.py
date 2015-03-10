@@ -94,6 +94,7 @@ def create(params_dict=None):
 
 
 def main():
+    app = QtApplication()
     parser = define_parser()
     args = parser.parse_args()
     params_dict = None
@@ -103,11 +104,11 @@ def main():
     elif args.small_screen:
         params_dict = define_small_screen_params()
 
-    ui = create(params_dict)
-    ui.show()
+    # create and show the GUI
+    create(params_dict).show()
+
+    app.start()
 
 
 if __name__ == "__main__":
-    app = QtApplication()
     main()
-    app.start()

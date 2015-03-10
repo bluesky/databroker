@@ -19,6 +19,47 @@ import os
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
 
+import subprocess, threading
+
+class Command(object):
+    """Thanks SO! http://stackoverflow.com/a/4825933
+
+    Example
+    -------
+    >>> command = Command("echo 'Process started'; sleep 2; echo 'Process finished'")
+    >>> command.run(timeout=3)
+        Thread started
+        Process started
+        Process finished
+        Thread finished
+        0
+    >>> command.run(timeout=1)
+        Thread started
+        Process started
+        Terminating process
+        Thread finished
+        -15
+    """
+    def __init__(self, cmd):
+        self.cmd = cmd
+        self.process = None
+
+    def run(self, timeout):
+        def target():
+            print('Thread started')
+            self.process = subprocess.Popen(self.cmd, shell=True)
+            self.process.communicate()
+            print('Thread finished')
+
+        thread = threading.Thread(target=target)
+        thread.start()
+
+        thread.join(timeout)
+        if thread.is_alive():
+            print('Terminating process')
+            self.process.terminate()
+            thread.join()
+        print(self.process.returncode)
 
 @skip_if(not six.PY2)
 def setup():
@@ -65,6 +106,19 @@ def test_replay_startup():
     params = [normal, small, live, live_small]
     for p in params:
         yield _replay_startup_tester, p
+
+# make sure that you can run dataportal/replay/replay.py
+@skip_if(not six.PY2)
+def test_replay_cmd_line():
+    command = Command('python {}'.format(replay.__file__))
+    command.run(timeout=1)
+
+
+# make sure that you can run replay via the 'replay' command
+@skip_if(not six.PY2)
+def test_replay_cmd_line():
+    command = Command('replay')
+    command.run(timeout=1)
 
 
 # this function tests that a live-view replay will correctly plot
