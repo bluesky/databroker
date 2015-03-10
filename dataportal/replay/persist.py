@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 TABLE_NAME = 'ReplayConfiguration_1_0'
 CREATION_QUERY = """
 CREATE TABLE {0} (
-        run_id CHAR(24),
+        run_id CHAR(36),
         N INT,
         blob BLOB)""".format(TABLE_NAME)
 INSERTION_QUERY = """
