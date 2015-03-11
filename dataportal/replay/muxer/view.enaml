@@ -6,7 +6,9 @@ from enaml.widgets.api import (Container, PushButton, Label, GroupBox, Form,
 from enaml.core.api import Looper, Include
 from .model import ColumnModel
 from ..core import TimerButton, generate_grid
+import logging
 
+logger = logging.getLogger(__name__)
 
 enamldef NormalizeCheckBox(CheckBox):
     attr column_model
@@ -78,7 +80,7 @@ enamldef MuxerController(Container):
                 text = "Perform Binning"
                 clicked ::
                     muxer_model.perform_binning()
-                    print('rebin clicked')
+                    logger.debug('rebin clicked')
             ComboBox:
                 items << muxer_model.binning_options
                 selected_item >> muxer_model.binning_column

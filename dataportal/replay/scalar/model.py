@@ -52,25 +52,25 @@ class ScalarConfig(Atom):
     @observe('title')
     def title_changed(self, changed):
         self._ax.set_title(self.title)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('{}: {}'.format(changed['name'], changed['value']))
         self.replot()
 
     @observe('xlabel')
     def xlabel_changed(self, changed):
         self._ax.set_xlabel(self.xlabel)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('{}: {}'.format(changed['name'], changed['value']))
         self.replot()
 
     @observe('ylabel')
     def ylabel_changed(self, changed):
         self._ax.set_ylabel(self.ylabel)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('{}: {}'.format(changed['name'], changed['value']))
         self.replot()
 
     @observe('grid')
     def grid_changed(self, changed):
         self._ax.grid(self.grid)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('{}: {}'.format(changed['name'], changed['value']))
         self.replot()
 
     def replot(self):
@@ -272,7 +272,7 @@ class ScalarCollection(Atom):
             dataframe_id = ''
         with self.suppress_notifications():
             self.dataframe_id = dataframe_id
-        print('dataframe id in scalar model: {}'.format(self.dataframe_id))
+        logger.debug('dataframe id in scalar model: {}'.format(self.dataframe_id))
         try:
             state = self.history.get(self.dataframe_id)
         except IndexError:
@@ -294,10 +294,9 @@ class ScalarCollection(Atom):
     @observe('x', 'x_is_time', 'y')
     def save_plotting_state(self, changed):
         plotting_state = {'x': self.x, 'y': self.y, 'x_is_time': self.x_is_time}
-        print('writing plotting state for id: [{}] ... {}'.format(
+        logger.debug('writing plotting state for id: [{}] ... {}'.format(
             self.dataframe_id, plotting_state))
         replay.core.save_state(self.history, self.dataframe_id, plotting_state)
-        print(changed)
 
     def get_plotting_state(self):
         """

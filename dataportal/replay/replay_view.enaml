@@ -7,6 +7,9 @@ from dataportal.replay.scalar import PlotView, PlotControls
 from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem,
                                ScrollArea)
 from enaml.layout.api import VSplitLayout, HSplitLayout, TabLayout
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def define_layout(init_params, watch_header, header_view, pv_view, muxer,

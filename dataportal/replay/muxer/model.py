@@ -10,6 +10,11 @@ from dataportal.muxer.data_muxer import ColSpec
 from metadatastore.api import Document
 from pandas import DataFrame
 import time as ttime
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 
 def get_events(run_header):
     return DataBroker.fetch_events(run_header)
@@ -42,7 +47,7 @@ class ColumnModel(Atom):
 
     @observe('upsample', 'downsample')
     def sampling_changed(self, changed):
-        print('Old data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
+        logger.debug('Old data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
         # upsample = self.upsample
         # if upsample == 'None':
         #     upsample = None
@@ -53,7 +58,7 @@ class ColumnModel(Atom):
         # or downsample
         self.data_muxer.col_info[self.name] = ColSpec(
             self.name, self.dim, self.shape, self.upsample, self.downsample)
-        print('New data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
+        logger.debug('New data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
 
     def __repr__(self):
         return ('ColumnModel(name={}, data_muxer={}, dim={}, upsample={}, '
@@ -196,7 +201,7 @@ class MuxerModel(Atom):
 
     @observe('header')
     def _run_header_changed(self, changed):
-        print('Run header has been changed, creating a new data_muxer')
+        logger.debug('Run header has been changed, creating a new data_muxer')
         self.info = 'Run {}'.format(self.header.scan_id)
         with self.suppress_notifications():
             self.data_muxer = None
@@ -214,10 +219,9 @@ class MuxerModel(Atom):
         """Hit the dataportal to first see if there is new data and, if so,
         grab it
         """
-        print('getting new data from the data broker')
+        logger.debug('getting new data from the data broker')
         self.event_queue.update()
         events = self.event_queue.get()
-#        events = get_events(self.header)
         if self.data_muxer is None:
             # this will automatically trigger the key updating
             data_muxer = DataMuxer()
@@ -255,7 +259,7 @@ class MuxerModel(Atom):
         old_norm_col = changed.get('oldvalue', None)
         if old_norm_col is None or old_norm_col == '':
             return
-        print('old norm col: {}'.format(old_norm_col))
+        logger.debug('old norm col: {}'.format(old_norm_col))
         if old_norm_col == 'None':
             for name, model in self.column_models.items():
                 model.can_be_normalized = True
@@ -280,11 +284,11 @@ class MuxerModel(Atom):
     @observe('data_muxer')
     def _new_muxer(self, changed):
         # data_muxer object has been changed. Remake the columns
-        print('new data muxer received')
+        logger.debug('new data muxer received')
         self._verify_column_info()
 
     def perform_binning(self):
-        print('\n\n\nbinning column: {}'.format(self.binning_column))
+        logger.debug('\n\n\nbinning column: {}'.format(self.binning_column))
         if not (self.binning_column is None or self.binning_column == 'None'):
             # rebin the data
             dataframe = self.data_muxer.bin_on(self.binning_column)
@@ -297,8 +301,7 @@ class MuxerModel(Atom):
         self.dataframe = dataframe
 
     def _normalize_all(self, dataframe):
-        print('data frame before normalizing all')
-        print(dataframe)
+        logger.debug('data frame before normalizing all')
         norm_cols = [col_name for col_name, col_model
                      in self.column_models.items()
                      if col_model.is_being_normalized]
@@ -306,8 +309,7 @@ class MuxerModel(Atom):
             if col[0] in norm_cols:
                 dataframe[col] /= dataframe[(self.norm_column, 'val')]
 
-        print('data frame after normalizing all')
-        print(dataframe)
+        logger.debug('data frame after normalizing all')
 
 
     def normalize(self, column_name, should_be_normalized):
@@ -321,10 +323,9 @@ class MuxerModel(Atom):
             unnormalized (False)
         """
         if self.dataframe is None:
-            print('Data must be binned before it can be normalized')
+            logger.debug('Data must be binned before it can be normalized')
             return
-        print('data frame before normalization')
-        print(self.dataframe)
+        logger.debug('data frame before normalization')
 
         to_be_normalized = None
         for col in self.dataframe.columns:
@@ -336,12 +337,11 @@ class MuxerModel(Atom):
             self.dataframe[col] /= self.dataframe[(self.norm_column, 'val')]
         else:
             self.dataframe[col] *= self.dataframe[(self.norm_column, 'val')]
-        print('data frame after normalization')
-        print(self.dataframe)
+        logger.debug('data frame after normalization')
         # self.dataframe = combined
 
     def _verify_column_info(self):
-        print('verifying column information')
+        logger.debug('verifying column information')
         updated_cols = []
         for col_name, col_model in self.column_models.items():
             muxer_col_info = self.data_muxer.col_info.get(col_name, None)
@@ -370,7 +370,7 @@ class MuxerModel(Atom):
         self._update_column_sortings()
 
     def _update_column_sortings(self):
-        print('updating column sortings')
+        logger.debug('updating column sortings')
         mapping = {0: set(), 1: set(), 2: set(), 3: set()}
         for col_name, col_model in self.column_models.items():
             mapping[col_model.dim].add(col_model)

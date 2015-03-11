@@ -16,6 +16,9 @@ from enaml.stdlib.fields import FloatField
 from .model import ScalarCollection, ScalarConfig
 import random
 import six
+import logging
+
+logger = logging.getLogger(__name__)
 
 enamldef ButtonSet(GroupBox):
     attr model_name

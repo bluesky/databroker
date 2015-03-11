@@ -9,6 +9,9 @@ from enaml.core.api import (Looper, Conditional, Include)
 from enaml.stdlib.fields import IntField
 from enaml.layout.api import (vbox, hbox, spacer, Box, factory, align)
 from ..core import TimerButton, generate_grid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 enamldef DisplaySummary(Container):

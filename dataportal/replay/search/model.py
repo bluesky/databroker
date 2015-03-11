@@ -11,6 +11,10 @@ from pymongo.errors import AutoReconnect
 from functools import wraps
 from dataportal import replay
 from ..persist import History
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class WatchForHeadersModel(Atom):
@@ -43,11 +47,12 @@ class WatchForHeadersModel(Atom):
         if state:
             self.__setstate__(state)
 
-    @observe( 'update_rate', 'header', 'search_info')
+    @observe('update_rate', 'header', 'search_info')
     def save_state(self, changed):
-        print('history in WatchForHeadersModel.save_state: {}'.format(self.history))
-        replay.core.save_state(self.history, 'WatchForHeadersModel', self.__getstate__())
-        print(changed)
+        logger.debug('history in WatchForHeadersModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'WatchForHeadersModel',
+                               self.__getstate__())
 
     def check_header(self):
         try:

@@ -1,7 +1,7 @@
 import enaml
 from enaml.qt.qt_application import QtApplication
 import numpy as np
-from dataportal.muxer.api import DataMuxer
+from dataportal import replay
 from dataportal.replay.search import (GetLastModel, WatchForHeadersModel,
                                       DisplayHeaderModel, ScanIDSearchModel)
 from dataportal.replay.muxer import MuxerModel
@@ -10,9 +10,11 @@ import sys
 from persist import History
 import argparse
 import os
+import logging
 with enaml.imports():
     from dataportal.replay.replay_view import MainView
 
+logger = logging.getLogger(__name__)
 
 REPLAY_CONF_DIR = os.path.join(os.path.expanduser('~'), '.config', 'replay')
 try:
@@ -24,6 +26,13 @@ except OSError:
 STATE_DB = os.path.join(REPLAY_CONF_DIR, 'state.db')
 history = History(STATE_DB)
 REPLAY_HISTORY_KEYS = ['x', 'y_list', 'x_is_time']
+
+
+logging_map = {'debug': logging.DEBUG,
+               'info': logging.INFO,
+               'warning': logging.WARNING,
+               'error': logging.ERROR,
+               'critical': logging.CRITICAL}
 
 
 def define_default_params():
@@ -94,7 +103,11 @@ def define_parser():
                         help="Launch Replay configured for viewing live data")
     parser.add_argument('--small-screen', action="store_true",
                         help="Launch Replay configured for viewing data on a "
-                             "small screen. Tested as low as 1366x768")
+                        "small screen. Tested as low as 1366x768")
+    parser.add_argument('--log', action="store", dest='log_level',
+                        type=str, help="Set the replay logging level. Known "
+                                       "options are 'debug', 'info', 'warning', "
+                                       "'error', 'critical")
     return parser
 
 def create(params_dict=None):
@@ -108,11 +121,16 @@ def main():
     parser = define_parser()
     args = parser.parse_args()
     params_dict = None
-    print('args: {}'.format(args))
+    logger.info('args: {}'.format(args))
     if args.live:
         params_dict = define_live_params()
     elif args.small_screen:
         params_dict = define_small_screen_params()
+    if args.log_level:
+        # use warning level logging as the default
+        loglevel = logging_map.get(args.log_level.lower(), logging.WARNING)
+        replay.logger.setLevel(loglevel)
+        replay.handler.setLevel(loglevel)
 
     # create and show the GUI
     create(params_dict).show()
