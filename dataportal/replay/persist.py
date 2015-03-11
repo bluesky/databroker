@@ -9,7 +9,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 import logging
-
+import hashlib
 import sqlite3
 import json
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 TABLE_NAME = 'ReplayConfiguration_1_0'
 CREATION_QUERY = """
 CREATE TABLE {0} (
-        run_id CHAR(36),
+        run_id CHAR(40),
         N INT,
         blob BLOB)""".format(TABLE_NAME)
 INSERTION_QUERY = """
@@ -80,6 +80,7 @@ class History(object):
         if num_back < 0:
             raise ValueError("num_back must be nonnegative")
 
+        key = hashlib.sha1(str(key).encode('utf-8')).hexdigest()
         res = self._conn.execute(SELECTION_QUERY, (key, 1 + num_back))
         blob, = res.fetchall()[-1]
         return json.loads(blob)
@@ -97,6 +98,7 @@ class History(object):
             The data to be stored.  Can be any object that
             json can serialize.
         """
+        key = hashlib.sha1(str(key).encode('utf-8')).hexdigest()
         data_str = json.dumps(data)
         self._conn.execute(INSERTION_QUERY, (key, key, data_str))  # yes, twice
         self._conn.commit()
