@@ -143,7 +143,6 @@ class _BrokerSearch(Atom):
     """
     search_info = Str()
     headers = List()
-    connection_is_active = Bool(False)
     header = Typed(Document)
 
     def __init__(self):
@@ -163,7 +162,6 @@ def _catch_connection_issues(func):
                 metadatastore.conf.connection_config['host'],
                 metadatastore.conf.connection_config['port']
             )
-            self.connection_is_active = False
         except AutoReconnect:
             self.search_info = (
                 "Connection to database [[{}]] on [[{}]] was lost".format(
