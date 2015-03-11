@@ -39,7 +39,7 @@ class WatchForHeadersModel(Atom):
             # no entries for 'WatchForHeadersModel' yet
             state = {}
         else:
-            state.pop('history')
+            state.pop('history', None)
         if state:
             self.__setstate__(state)
 

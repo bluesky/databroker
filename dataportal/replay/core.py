@@ -3,6 +3,7 @@ from enaml.widgets.api import PushButton, Timer
 from atom.api import Typed, observe, Event
 from enaml.core.declarative import d_
 from enaml.layout.api import (grid, align)
+import json
 
 class ProgrammaticButton(PushButton):
     clicked = d_(Event(bool), writable=True)
@@ -39,8 +40,41 @@ def generate_grid(container, num_cols):
 
 non_stateful_attrs = ['history']
 
-def save_state(history, history_key, state):
-    state = {k: v for k, v in state.items() if k not in non_stateful_attrs}
+def save_state(history, history_key, state, sanitize=False, blacklist=True):
+    """Helper function that saves the state of atom objects
+
+    When discussing state and 'Atom' objects, there are two built-in
+    helper functions: __getstate__ and __setstate. __getstate__ returns
+    a dictionary keyed on the names of all 'members' of the atom object,
+    where 'members' are the strongly-typed Attributes defined at the
+    class level
+
+    Note:
+
+    Parameters
+    ----------
+    history : dataportal.replay.persist.History
+        An instance of the History object which wraps a sql db
+    history_key : str
+        The primary key used to set and retrieve state
+    state : dict
+        Dictionary of state that should be saved to the db
+    sanitize : bool, optional
+        defaults to False
+        True: verify that all values in the state dictionary can be serialized
+              to JSON
+    blacklist : bool, optional
+        defaults to True
+        True: remove keys from the state dictionary that appear in the
+            `non_stateful_attrs` module-level list
+    """
+    if blacklist:
+        # remove keys that are not helpful for
+        state = {k: v for k, v in state.items() if k not in non_stateful_attrs}
+    if sanitize:
+        # remove objects that cannot be serialized
+        state = json.dumps(state, skipkeys=True)
+    # save to db
     history.put(history_key, state)
 
 
