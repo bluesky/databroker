@@ -156,6 +156,7 @@ class MuxerModel(Atom):
     data_muxer = Typed(DataMuxer)
     dataframe = Typed(DataFrame)
     header = Typed(Document)
+    header_id = Str()
     info = Str()
 
     new_data_callbacks = List()
@@ -189,6 +190,7 @@ class MuxerModel(Atom):
             self.volume_columns = []
             self.data_muxer = None
             self.header = None
+            self.header_id = ''
             self.info = 'No run header received yet'
             self.new_data_callbacks = []
 
@@ -201,7 +203,7 @@ class MuxerModel(Atom):
         self.event_queue = EventQueue(self.header)
         self.get_new_data()
         self.dataframe = self.data_muxer._dataframe
-        self.init_state()
+        self.header_id = self.header.run_start_id
 
     def new_run_header(self, changed):
         """Observer function for the `header` attribute of the SearchModels

@@ -59,7 +59,7 @@ def create_default_ui(init_params_dict):
     scan_id_model = ScanIDSearchModel()
     get_last_model = GetLastModel()
     muxer_model = MuxerModel()
-    scalar_collection = ScalarCollection()
+    scalar_collection = ScalarCollection(history=history)
     display_header_model = DisplayHeaderModel()
     watch_headers_model = WatchForHeadersModel(history=history)
     watch_headers_model.auto_update = init_params_dict['automatically_update_header']
@@ -72,6 +72,7 @@ def create_default_ui(init_params_dict):
     muxer_model.observe('dataframe', scalar_collection.new_dataframe)
     muxer_model.new_data_callbacks.append(scalar_collection.new_data)
     # muxer_model.observe('plot_state', scalar_collection.set_plot_state)
+    muxer_model.observe('header_id', scalar_collection.dataframe_id_changed)
 
     watch_headers_model.observe('header', display_header_model.new_run_header)
     get_last_model.observe('header', display_header_model.new_run_header)

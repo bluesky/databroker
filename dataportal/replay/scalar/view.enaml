@@ -33,7 +33,10 @@ enamldef ButtonSet(GroupBox):
                 checkable = True
                 checked := scalar_collection.scalar_models[loop_item].is_plotting
                 clicked ::
+                    models = scalar_collection.scalar_models
+                    scalar_collection.y = [name for name, model in models.items() if model.is_plotting]
                     scalar_collection.get_new_data_and_plot()
+
 
 
 enamldef PlotControls(Container):

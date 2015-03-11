@@ -9,11 +9,12 @@ from ...muxer.data_muxer import DataMuxer
 from datetime import datetime
 import logging
 import numpy as np
-
 from metadatastore.api import Document
 import pandas as pd
+from ..persist import History
+from dataportal import replay
 
-__author__ = 'edill'
+
 logger = logging.getLogger(__name__)
 
 nodata_str = "data_muxer is None"
@@ -228,6 +229,8 @@ class ScalarCollection(Atom):
     dataframe = Typed(pd.DataFrame)
     # name of the x axis
     x = Str()
+    # names of the currently plotting things on the y-axis
+    y = List()
     # attribute needed to keep the x axis combo box selector in sync
     x_index = Int()
 
@@ -242,10 +245,17 @@ class ScalarCollection(Atom):
     # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
 
-    # attribute used to transfer state between instances of
+    # attribute used to transfer state between resets to the dataframe
     state = Dict()
 
-    def __init__(self):
+    dataframe_id = Str()
+
+    history = Typed(History)
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             # plotting initialization
@@ -253,6 +263,41 @@ class ScalarCollection(Atom):
             self._fig.set_tight_layout(True)
             self._ax = self._fig.add_subplot(111)
             self._conf = ScalarConfig(self._ax)
+            self.dataframe_id = ''
+
+    @observe('dataframe_id')
+    def dataframe_id_changed(self, changed):
+        dataframe_id = changed['value']
+        if dataframe_id is None or dataframe_id == 'None' or dataframe_id == '':
+            dataframe_id = ''
+        with self.suppress_notifications():
+            self.dataframe_id = dataframe_id
+        print('dataframe id in scalar model: {}'.format(self.dataframe_id))
+        try:
+            state = self.history.get(self.dataframe_id)
+        except IndexError:
+            # there are no entries in the db for 'state'
+            state = []
+        if state:
+            self.__setstate__(state)
+            # update the plot with the data sets that were plotting last time
+            y = state.get('y', None)
+            if y:
+                for name, model in self.scalar_models.items():
+                    model.is_plotting = name in y
+                self.get_new_data_and_plot()
+            x = state.get('x', None)
+            if x:
+                self.x_index = self.scalar_models.keys().index(self.x)
+
+
+    @observe('x', 'x_is_time', 'y')
+    def save_plotting_state(self, changed):
+        plotting_state = {'x': self.x, 'y': self.y, 'x_is_time': self.x_is_time}
+        print('writing plotting state for id: [{}] ... {}'.format(
+            self.dataframe_id, plotting_state))
+        replay.core.save_state(self.history, self.dataframe_id, plotting_state)
+        print(changed)
 
     def get_plotting_state(self):
         """
@@ -272,12 +317,12 @@ class ScalarCollection(Atom):
                  'y': [y for y in self.column_models.values() if y.is_plotting]}
         return state
 
-    def set_plot_state(self, changed):
+    def set_plot_state(self, state_dict):
         """Function that should be used with the Atom observer pattern.
 
         e.g., muxer_model.observe('plot_state', scalar_collection.set_plot_state)
         """
-        state_dict = changed['value']
+        # state_dict = changed['value']
         try:
             self.x = state_dict.pop('x')
         except KeyError:
@@ -318,7 +363,7 @@ class ScalarCollection(Atom):
         old_x = self.x
         old_x_is_time = self.x_is_time
 
-        scalar_cols= [col for col in self.dataframe.columns
+        scalar_cols = [col for col in self.dataframe.columns
                      if self.dataframe[col].dropna().values[0].shape == tuple()]
         # figure out if the dataframe has one or more levels of labels
         # for now these need to be handled differently
