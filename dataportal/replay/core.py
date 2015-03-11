@@ -35,3 +35,14 @@ def generate_grid(container, num_cols):
     return [grid(*rows, row_spacing=0, column_spacing=0, row_align='v_center',
                  column_align='h_center'),
             align('width', *widgets)]
+
+
+non_stateful_attrs = ['history']
+
+def save_state(history, history_key, state):
+    for key, val in state.items():
+        if key in non_stateful_attrs:
+            state[key] = None
+    history.put(history_key, state)
+
+
