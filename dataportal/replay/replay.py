@@ -1,20 +1,29 @@
-
 import enaml
 from enaml.qt.qt_application import QtApplication
 import numpy as np
-
 from dataportal.muxer.api import DataMuxer
 from dataportal.replay.search import (GetLastModel, WatchForHeadersModel,
                                       DisplayHeaderModel, ScanIDSearchModel)
 from dataportal.replay.muxer import MuxerModel
 from dataportal.replay.scalar import ScalarCollection
 import sys
-
+from persist import History
 import argparse
-
+import os
 with enaml.imports():
     from dataportal.replay.replay_view import MainView
 
+
+REPLAY_CONF_DIR = os.path.join(os.path.expanduser('~'), '.config', 'replay')
+try:
+    os.mkdir(REPLAY_CONF_DIR)
+except OSError:
+    # path already exists
+    pass
+
+STATE_DB = os.path.join(REPLAY_CONF_DIR, 'state.db')
+history = History(STATE_DB)
+REPLAY_HISTORY_KEYS = ['x', 'y_list', 'x_is_time']
 
 
 def define_default_params():
