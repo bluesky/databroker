@@ -4,6 +4,7 @@ from atom.api import Typed, observe, Event
 from enaml.core.declarative import d_
 from enaml.layout.api import (grid, align)
 import json
+from metadatastore.api import Document
 
 class ProgrammaticButton(PushButton):
     clicked = d_(Event(bool), writable=True)
@@ -39,6 +40,7 @@ def generate_grid(container, num_cols):
 
 
 non_stateful_attrs = ['history']
+non_stateful_types = [Document]
 
 def save_state(history, history_key, state, sanitize=False, blacklist=True):
     """Helper function that saves the state of atom objects
@@ -70,7 +72,8 @@ def save_state(history, history_key, state, sanitize=False, blacklist=True):
     """
     if blacklist:
         # remove keys that are not helpful for
-        state = {k: v for k, v in state.items() if k not in non_stateful_attrs}
+        state = {k: v for k, v in state.items() if k not in non_stateful_attrs
+                 or isinstance(v, tuple(non_stateful_types))}
     if sanitize:
         # remove objects that cannot be serialized
         state = json.dumps(state, skipkeys=True)
