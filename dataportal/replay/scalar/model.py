@@ -317,31 +317,6 @@ class ScalarCollection(Atom):
                  'y': [y for y in self.column_models.values() if y.is_plotting]}
         return state
 
-    def set_plot_state(self, state_dict):
-        """Function that should be used with the Atom observer pattern.
-
-        e.g., muxer_model.observe('plot_state', scalar_collection.set_plot_state)
-        """
-        # state_dict = changed['value']
-        try:
-            self.x = state_dict.pop('x')
-        except KeyError:
-            self.x_is_time = True
-        else:
-            self.x_is_time = False
-        try:
-            y = state_dict.pop('y')
-        except KeyError:
-            y = []
-        else:
-            for name, model in self.scalar_models.items():
-                model.is_plotting = name in y
-
-        for k, v in state_dict.items():
-            print('setting {} to self.{}'.format(v, k))
-            setattr(self, k, v)
-        self.get_new_data_and_plot()
-
     def clear_scalar_models(self):
         self._ax.cla()
         self.data_cols = []
