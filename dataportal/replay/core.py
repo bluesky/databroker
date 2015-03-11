@@ -42,6 +42,7 @@ def generate_grid(container, num_cols):
 non_stateful_attrs = ['history']
 non_stateful_types = [Document]
 
+
 def save_state(history, history_key, state, sanitize=False, blacklist=True):
     """Helper function that saves the state of atom objects
 

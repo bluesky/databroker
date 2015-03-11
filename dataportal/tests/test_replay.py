@@ -208,3 +208,4 @@ def test_replay_plotting3():
     assert ui.scalar_collection.x_is_time
     ui.close()
     app.destroy()
+

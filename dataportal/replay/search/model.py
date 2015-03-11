@@ -43,7 +43,6 @@ class WatchForHeadersModel(Atom):
         if state:
             self.__setstate__(state)
 
-
     @observe( 'update_rate', 'header', 'search_info')
     def save_state(self, changed):
         print('history in WatchForHeadersModel.save_state: {}'.format(self.history))
