@@ -71,7 +71,7 @@ def create_default_ui(init_params_dict):
 
     muxer_model.observe('dataframe', scalar_collection.new_dataframe)
     muxer_model.new_data_callbacks.append(scalar_collection.new_data)
-    muxer_model.observe('plot_state', scalar_collection.set_plot_state)
+    # muxer_model.observe('plot_state', scalar_collection.set_plot_state)
 
     watch_headers_model.observe('header', display_header_model.new_run_header)
     get_last_model.observe('header', display_header_model.new_run_header)

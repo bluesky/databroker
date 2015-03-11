@@ -203,27 +203,6 @@ class MuxerModel(Atom):
         self.dataframe = self.data_muxer._dataframe
         self.init_state()
 
-    def init_state(self):
-        # set up the state for the muxer
-        plot_state = {}
-        try:
-            plotx = getattr(self.header, 'plotx')
-        except AttributeError:
-            plotx = None
-        if plotx is not None and plotx in self.column_models.keys():
-            self.binning_column = plotx
-            plot_state['x'] = plotx
-        try:
-            ploty = getattr(self.header, 'ploty')
-        except AttributeError:
-            ploty = None
-        else:
-            ploty = [y for y in ploty if y in self.column_models.keys()]
-            plot_state['y'] = ploty
-
-        print('MuxerModel.init_state: {}'.format(plot_state))
-        self.plot_state = plot_state
-
     def new_run_header(self, changed):
         """Observer function for the `header` attribute of the SearchModels
         """
