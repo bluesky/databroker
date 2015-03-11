@@ -128,7 +128,7 @@ def test_replay_cmd_line():
 @skip_if(not six.PY2)
 # these now raise because we got rid of plotx and ploty for now
 @raises(AssertionError)
-def test_replay_plotting1():
+def test_replay_plotx_ploty():
     # insert a run header with one plotx and one ploty
     rs = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
@@ -167,10 +167,10 @@ def test_replay_plotting1():
 @skip_if(not six.PY2)
 # these now raise because we got rid of plotx and ploty for now
 @raises(AssertionError)
-def test_replay_plotting2():
+def test_replay_plotx_2ploty():
     ploty = ['Tsam', 'point_det']
     plotx = 'this better fail!'
-    # insert a run header with one plotx and one ploty
+    # insert a run header with one plotx and two plotys
     rs = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
         custom={'plotx': plotx, 'ploty': ploty},
@@ -204,7 +204,7 @@ def test_replay_plotting2():
 # time on the x axis with none of the y values enabled for plotting if
 # 'ploty' and 'plotx' are not found in the run header
 @skip_if(not six.PY2)
-def test_replay_plotting3():
+def test_replay_plotting():
     # insert a run header with no plotx or ploty
     rs = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
