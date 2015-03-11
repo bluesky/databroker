@@ -9,6 +9,8 @@ import metadatastore
 from mongoengine.connection import ConnectionError
 from pymongo.errors import AutoReconnect
 from functools import wraps
+from dataportal import replay
+from ..persist import History
 
 
 class WatchForHeadersModel(Atom):
@@ -26,6 +28,25 @@ class WatchForHeadersModel(Atom):
     update_rate = Int(1000)
     header = Typed(Document)
     search_info = Str("No search performed")
+    history = Typed(History)
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        super(WatchForHeadersModel, self).__init__()
+        try:
+            state = self.history.get('WatchForHeadersModel')
+        except IndexError:
+            # no entries yet:
+            state = None
+        print('WatchForHeadersModel state loaded from disk: {}'.format(state))
+        if state:
+            self.__setstate__(state)
+
+    @observe('auto_update', 'update_rate', 'header', 'search_info')
+    def save_state(self, changed):
+        replay.core.save_state(self.history, 'WatchForHeadersModel', self.__getstate__())
+        print(changed)
 
     def check_header(self):
         try:
