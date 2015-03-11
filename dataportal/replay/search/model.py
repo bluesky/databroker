@@ -126,6 +126,25 @@ class DisplayHeaderModel(Atom):
         return data_keys
 
 
+def _catch_connection_issues(func):
+    @wraps(func)
+    def inner(self, *args, **kwargs):
+        try:
+            func(self, *args, **kwargs)
+        except ConnectionError:
+            self.search_info = (
+                "Database {} not available at {} on port {}").format(
+                    metadatastore.conf.connection_config['database'],
+                    metadatastore.conf.connection_config['host'],
+                    metadatastore.conf.connection_config['port'])
+        except AutoReconnect:
+            self.search_info = (
+                "Connection to database [[{}]] on [[{}]] was lost".format(
+                    metadatastore.conf.connection_config['database'],
+                    metadatastore.conf.connection_config['host']))
+    return inner
+
+
 class _BrokerSearch(Atom):
     """ABC for broker searching with Atom classes
 
@@ -148,28 +167,6 @@ class _BrokerSearch(Atom):
     def __init__(self):
         with self.suppress_notifications():
             self.header = None
-
-
-def _catch_connection_issues(func):
-    @wraps(func)
-    def inner(self, *args, **kwargs):
-        try:
-            func(self, *args, **kwargs)
-        except ConnectionError:
-            self.search_info = (
-                "Database {} not available at {} on port {}").format(
-                metadatastore.conf.connection_config['database'],
-                metadatastore.conf.connection_config['host'],
-                metadatastore.conf.connection_config['port']
-            )
-        except AutoReconnect:
-            self.search_info = (
-                "Connection to database [[{}]] on [[{}]] was lost".format(
-                    metadatastore.conf.connection_config['database'],
-                    metadatastore.conf.connection_config['host']
-                )
-            )
-    return inner
 
 
 class GetLastModel(_BrokerSearch):
