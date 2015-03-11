@@ -79,7 +79,7 @@ enamldef HeaderView(Container):
             text = '{}: {}'.format(
                 loop_item.scan_id, loop_item.start_datetime)
             clicked ::
-                get_last_model.header = loop_item
+                search_model.header = loop_item
     Label:
         text << search_model.search_info
 

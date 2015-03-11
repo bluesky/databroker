@@ -65,10 +65,10 @@ def define_small_screen_params():
 
 
 def create_default_ui(init_params_dict):
-    scan_id_model = ScanIDSearchModel()
-    get_last_model = GetLastModel()
+    scan_id_model = ScanIDSearchModel(history)
+    get_last_model = GetLastModel(history)
     muxer_model = MuxerModel()
-    scalar_collection = ScalarCollection(history=history)
+    scalar_collection = ScalarCollection(history)
     display_header_model = DisplayHeaderModel()
     watch_headers_model = WatchForHeadersModel(history)
 
@@ -86,7 +86,7 @@ def create_default_ui(init_params_dict):
 
     watch_headers_model.observe('header', display_header_model.new_run_header)
     get_last_model.observe('header', display_header_model.new_run_header)
-    # scan_id_model.observe('header', display_header_model.new_run_header)
+    scan_id_model.observe('header', display_header_model.new_run_header)
     display_header_model.observe('header', muxer_model.new_run_header)
 
     main_view = MainView(get_last_model=get_last_model, muxer_model=muxer_model,

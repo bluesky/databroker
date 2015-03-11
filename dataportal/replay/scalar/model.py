@@ -252,7 +252,8 @@ class ScalarCollection(Atom):
 
     history = Typed(History)
 
-    def __init__(self, **kwargs):
+    def __init__(self, history, **kwargs):
+        self.history = history
         for k, v in kwargs.items():
             setattr(self, k, v)
 

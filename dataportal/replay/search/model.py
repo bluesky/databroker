@@ -163,6 +163,7 @@ class _BrokerSearch(Atom):
     search_info = Str()
     headers = List()
     header = Typed(Document)
+    history = Typed(History)
 
     def __init__(self):
         with self.suppress_notifications():
@@ -178,9 +179,26 @@ class GetLastModel(_BrokerSearch):
     """
     num_to_retrieve = Range(low=1)
 
-    def __init__(self):
+    def __init__(self, history):
         super(GetLastModel, self).__init__()
         self.header = None
+        self.history = history
+        try:
+            state = history.get('GetLastModel')
+        except IndexError:
+            # no entries for 'WatchForHeadersModel' yet
+            state = {}
+        else:
+            state.pop('history', None)
+        if state:
+            self.__setstate__(state)
+
+    @observe('num_to_retrieve')
+    def save_state(self, changed):
+        logger.debug('history in WatchForHeadersModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'GetLastModel',
+            {'num_to_retrieve': self.num_to_retrieve})
 
     @observe('num_to_retrieve')
     @_catch_connection_issues
@@ -189,7 +207,6 @@ class GetLastModel(_BrokerSearch):
 
         self.search_info = "Requested: {}. Found: {}".format(
             self.num_to_retrieve, len(self.headers))
-        self.connection_is_active = True
 
 
 class ScanIDSearchModel(_BrokerSearch):
@@ -204,10 +221,20 @@ class ScanIDSearchModel(_BrokerSearch):
     """
     scan_id = Int(1)
 
-    def __init__(self):
+    def __init__(self, history):
         super(ScanIDSearchModel, self).__init__()
         self.header = None
         self.search_info = "Searching by Scan ID"
+        self.history = history
+        try:
+            state = history.get('ScanIDSearchModel')
+        except IndexError:
+            # no entries for 'WatchForHeadersModel' yet
+            state = {}
+        else:
+            state.pop('history', None)
+        if state:
+            self.__setstate__(state)
 
     @observe('scan_id')
     @_catch_connection_issues
@@ -215,5 +242,10 @@ class ScanIDSearchModel(_BrokerSearch):
         self.headers = DataBroker.find_headers(scan_id=self.scan_id)
         self.search_info = "Requested scan id: {}. Found: {}".format(
             self.scan_id, len(self.headers))
-        self.connection_is_active = True
 
+    @observe('scan_id')
+    def save_state(self, changed):
+        logger.debug('history in ScanIDSearchModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'ScanIDSearchModel',
+            {'scan_id': self.scan_id})
