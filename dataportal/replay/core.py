@@ -73,8 +73,8 @@ def save_state(history, history_key, state, sanitize=False, blacklist=True):
     """
     if blacklist:
         # remove keys that are not helpful for
-        state = {k: v for k, v in state.items() if k not in non_stateful_attrs
-                 or isinstance(v, tuple(non_stateful_types))}
+        state = {k: v for k, v in state.items() if not (k in non_stateful_attrs
+                 or isinstance(v, tuple(non_stateful_types)))}
     if sanitize:
         # remove objects that cannot be serialized
         state = json.dumps(state, skipkeys=True)
