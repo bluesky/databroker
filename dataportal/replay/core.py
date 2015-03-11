@@ -40,9 +40,7 @@ def generate_grid(container, num_cols):
 non_stateful_attrs = ['history']
 
 def save_state(history, history_key, state):
-    for key, val in state.items():
-        if key in non_stateful_attrs:
-            state[key] = None
+    state = {k: v for k, v in state.items() if k not in non_stateful_attrs}
     history.put(history_key, state)
 
 
