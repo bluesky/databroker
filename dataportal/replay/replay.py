@@ -61,7 +61,8 @@ def create_default_ui(init_params_dict):
     muxer_model = MuxerModel()
     scalar_collection = ScalarCollection(history=history)
     display_header_model = DisplayHeaderModel()
-    watch_headers_model = WatchForHeadersModel(history=history)
+    watch_headers_model = WatchForHeadersModel(history)
+
     watch_headers_model.auto_update = init_params_dict['automatically_update_header']
 
     if 'muxer_auto_update' in init_params_dict:

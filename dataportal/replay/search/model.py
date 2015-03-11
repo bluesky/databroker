@@ -30,21 +30,23 @@ class WatchForHeadersModel(Atom):
     search_info = Str("No search performed")
     history = Typed(History)
 
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+    def __init__(self, history, **kwargs):
         super(WatchForHeadersModel, self).__init__()
+        self.history = history
         try:
-            state = self.history.get('WatchForHeadersModel')
+            state = history.get('WatchForHeadersModel')
         except IndexError:
-            # no entries yet:
-            state = None
-        print('WatchForHeadersModel state loaded from disk: {}'.format(state))
+            # no entries for 'WatchForHeadersModel' yet
+            state = {}
+        else:
+            state.pop('history')
         if state:
             self.__setstate__(state)
 
-    @observe('auto_update', 'update_rate', 'header', 'search_info')
+
+    @observe( 'update_rate', 'header', 'search_info')
     def save_state(self, changed):
+        print('history in WatchForHeadersModel.save_state: {}'.format(self.history))
         replay.core.save_state(self.history, 'WatchForHeadersModel', self.__getstate__())
         print(changed)
 
