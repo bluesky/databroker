@@ -6,6 +6,7 @@ if six.PY2:
     from dataportal.replay import replay
 
 from functools import wraps
+from nose.tools import raises
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore import api as mdsapi
 from filestore.utils.testing import fs_setup, fs_teardown
@@ -125,6 +126,8 @@ def test_replay_cmd_line():
 # 'point_det' versus 'Tsam' when they are assigned to 'plotx' and 'ploty',
 # respectively
 @skip_if(not six.PY2)
+# these now raise because we got rid of plotx and ploty for now
+@raises(AssertionError)
 def test_replay_plotting1():
     # insert a run header with one plotx and one ploty
     rs = mdsapi.insert_run_start(
@@ -140,14 +143,21 @@ def test_replay_plotting1():
     ui.show()
     app.timed_call(4000, app.stop)
     app.start()
-    # the x axis should be 'plotx'
-    assert ui.scalar_collection.x == 'Tsam'
-    # there should only be 1 scalar model currently plotting
-    assert len([scalar_model for scalar_model
-                in ui.scalar_collection.scalar_models.values()
-                if scalar_model.is_plotting]) == 1
-    # the x axis should not be time
-    assert not ui.scalar_collection.x_is_time
+    try:
+        # the x axis should be 'plotx'
+        assert ui.scalar_collection.x == 'Tsam'
+        # there should only be 1 scalar model currently plotting
+        assert len([scalar_model for scalar_model
+                    in ui.scalar_collection.scalar_models.values()
+                    if scalar_model.is_plotting]) == 1
+        # the x axis should not be time
+        assert not ui.scalar_collection.x_is_time
+    except AssertionError:
+        # gotta destroy the app or it will cause cascading errors
+        ui.close()
+        app.destroy()
+        raise
+
     ui.close()
     app.destroy()
 
@@ -155,6 +165,8 @@ def test_replay_plotting1():
 # this function tests that a live-view replay will correctly plot
 # 'Tsam' versus time when plotx is incorrectly defined
 @skip_if(not six.PY2)
+# these now raise because we got rid of plotx and ploty for now
+@raises(AssertionError)
 def test_replay_plotting2():
     ploty = ['Tsam', 'point_det']
     plotx = 'this better fail!'
@@ -172,12 +184,18 @@ def test_replay_plotting2():
     ui.show()
     app.timed_call(4000, app.stop)
     app.start()
-    # there should only be 1 scalar model currently plotting
-    assert len([scalar_model for scalar_model
-                in ui.scalar_collection.scalar_models.values()
-                if scalar_model.is_plotting]) == len(ploty)
-    # the x axis should not be time
-    assert ui.scalar_collection.x_is_time
+    try:
+        # there should only be 1 scalar model currently plotting
+        assert len([scalar_model for scalar_model
+                    in ui.scalar_collection.scalar_models.values()
+                    if scalar_model.is_plotting]) == len(ploty)
+        # the x axis should not be time
+        assert ui.scalar_collection.x_is_time
+    except AssertionError:
+        # gotta destroy the app or it will cause cascading errors
+        ui.close()
+        app.destroy()
+        raise
     ui.close()
     app.destroy()
 
@@ -186,6 +204,8 @@ def test_replay_plotting2():
 # time on the x axis with none of the y values enabled for plotting if
 # 'ploty' and 'plotx' are not found in the run header
 @skip_if(not six.PY2)
+# these now raise because we got rid of plotx and ploty for now
+@raises(AssertionError)
 def test_replay_plotting3():
     # insert a run header with one plotx and one ploty
     rs = mdsapi.insert_run_start(
@@ -200,12 +220,18 @@ def test_replay_plotting3():
     ui.show()
     app.timed_call(4000, app.stop)
     app.start()
-    # there should only be 1 scalar model currently plotting
-    assert len([scalar_model for scalar_model
-                in ui.scalar_collection.scalar_models.values()
-                if scalar_model.is_plotting]) == 0
-    # the x axis should not be time
-    assert ui.scalar_collection.x_is_time
+    try:
+        # there should only be 1 scalar model currently plotting
+        assert len([scalar_model for scalar_model
+                    in ui.scalar_collection.scalar_models.values()
+                    if scalar_model.is_plotting]) == 0
+        # the x axis should not be time
+        assert ui.scalar_collection.x_is_time
+    except AssertionError:
+        # gotta destroy the app or it will cause cascading errors
+        ui.close()
+        app.destroy()
+        raise
     ui.close()
     app.destroy()
 
