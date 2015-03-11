@@ -235,7 +235,7 @@ class ScalarCollection(Atom):
     x_index = Int()
 
     # name of the column to align against
-    x_is_time = Bool(False)
+    x_is_time = Bool(True)
     # name of all columns that the data muxer knows about
     data_cols = List()
 
