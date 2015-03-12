@@ -1,11 +1,15 @@
 from __future__ import print_function
+import sys
 import six  # noqa
 import copy
+from StringIO import StringIO
 from collections import defaultdict, Iterable, deque
 from .. import sources
+from ..utils.console import color_print
 from metadatastore.api import (Document, find_last, find_run_starts,
                                find_event_descriptors, find_run_stops,
                                find_events)
+from metadatastore.document import DottableMutableMapping
 import warnings
 from filestore.api import retrieve
 import os
@@ -36,21 +40,21 @@ class DataBroker(object):
                                  "the result could become too large.")
             start = -key.start
             result = find_last(start)[stop::key.step]
-            [_build_header(h) for h in result]
+            result = [Header.from_run_start(h) for h in result]
         elif isinstance(key, int):
             if key > -1:
                 result = find_run_starts(scan_id=key)
                 if len(result) == 0:
                     raise ValueError("No such run found.")
                 result = result[0]  # most recent match
-                _build_header(result)
+                result = Header.from_run_start(result)
             else:
                 result = find_last(-key)
                 if len(result) < -key:
                     raise IndexError(
                         "There are only {0} runs.".format(len(result)))
                 result = result[-1]
-                _build_header(result)
+                result = Header.from_run_start(result)
         elif isinstance(key, Iterable):
             return [cls.__getitem__(k) for k in key]
         else:
@@ -89,7 +93,8 @@ class DataBroker(object):
 
         events = []
         for header in headers:
-            descriptors = find_event_descriptors(run_start_id=header.run_start_id)
+            descriptors = find_event_descriptors(
+                    run_start_uid=header.run_start_uid)
             for descriptor in descriptors:
                 events.extend(find_events(descriptor=descriptor))
         [fill_event(event) for event in events]
@@ -140,9 +145,10 @@ class DataBroker(object):
         >>> find_headers(start_time=12345678)
         """
         run_start = find_run_starts(**kwargs)
+        result = []
         for rs in run_start:
-            _build_header(rs)
-        return run_start  # these have been built out into headers
+            result.append(Header.from_run_start(rs))
+        return result
 
 
 def _get_archiver_data(ca_host, channels, start_time, end_time):
@@ -279,63 +285,115 @@ def fill_event(event):
             event.data[data_key][0] = retrieve(value)
 
 
-def _build_header(run_start, verify_integrity=True):
-    """Transform a RunStart Document in place into a Header Document.
+class Header(DottableMutableMapping):
+    """A dictionary-like object summarizing metadata for a run."""
 
-    Parameters
-    ----------
-    run_start : dataportal.broker.Document
-        The run_start document from metadatastore that has been sanitized into
-        a safe dataportal.broker.Document
-    """
-    run_start.event_descriptors = find_event_descriptors(run_start=run_start)
-    run_stops = find_run_stops(run_start=run_start)
-    try:
-        run_stop, = run_stops
-    except ValueError:
-        num = len(run_stops)
-        run_stop = None
-        if num == 0:
-            error_msg = ("A RunStop record could not be found for the "
-                         "run with run_start_id {0}".format(run_start.id))
-            warnings.warn(error_msg)
-        else:
-            error_msg = (
-                "{0} RunStop records (ids {1}) were found for the run with "
-                "run_start_id {2}".format(num, [rs.id for rs in run_stops],
-                                          run_start.id))
-            if verify_integrity:
-                raise IntegrityError(error_msg)
-            else:
+    @classmethod
+    def from_run_start(cls, run_start):
+        """
+        Build a Header from a RunStart Document.
+
+        Parameters
+        ----------
+        run_start : metadatastore.Document
+
+        Returns
+        -------
+        header : dataportal.broker.Header
+        """
+        header = Header()
+        header.event_descriptors = find_event_descriptors(run_start=run_start)
+        run_stops = find_run_stops(run_start_uid=run_start.uid)
+        try:
+            run_stop, = run_stops
+        except ValueError:
+            num = len(run_stops)
+            run_stop = None
+            if num == 0:
+                error_msg = ("A RunStop record could not be found for the "
+                            "run with run_start_uid {0}".format(run_start.uid))
                 warnings.warn(error_msg)
+            else:
+                error_msg = (
+                    "{0} RunStop records (uids {1}) were found for the run with "
+                    "run_start_uid {2}".format(num, [rs.uid for rs in run_stops],
+                                            run_start.uid))
+                if verify_integrity:
+                    raise IntegrityError(error_msg)
+                else:
+                    warnings.warn(error_msg)
 
-    # fix the time issue
-    adds = {'start_time': (run_start, 'time'),
-            'start_datetime': (run_start, 'time_as_datetime'),
-            'run_start_uid': (run_start, 'uid'),
-            'run_start_id': (run_start, 'id')}
-    deletes = [(run_start, '_name')]
-    if run_stop:
-        adds['stop_time'] = (run_stop, 'time')
-        adds['stop_datetime'] = (run_stop, 'time_as_datetime')
-        adds['exit_reason'] = (run_stop, 'reason')
-        adds['run_stop_uid'] = (run_stop, 'uid')
-        adds['run_stop_id'] = (run_stop, 'id')
-        deletes.append((run_stop, '_name'))
-        deletes.append((run_stop, 'run_start'))
-    for new_var_name, src_tuple in adds.items():
-        setattr(run_start, new_var_name, getattr(*src_tuple))
-        delattr(*src_tuple)
-    for to_delete in deletes:
-        delattr(*to_delete)
-    if run_stop is not None:
-        # dump the remaining values from the RunStop object into the header
-        for k, v in run_stop.items():
-            if k in run_start:
-                raise ValueError("The run header already has a key named {}. "
-                                 "Please update the mappings".format(k))
-            setattr(run_start, k, v)
-    run_start._name = 'Header'
+        # Map keys from RunStart and RunStop onto Header.
+        attrs = {'start_time': 'time',
+                'start_datetime': 'time_as_datetime',
+                'scan_id': 'scan_id',
+                'beamline_id': 'beamline_id',
+                'owner': 'owner',
+                'group': 'group',
+                'project': 'project',
+                'run_start_uid': 'uid'}
+        for new_key, old_key in attrs.items():
+            header[new_key] = run_start[old_key]
+        if run_stop is not None:
+            attrs = {'stop_time': 'time',
+                    'stop_datetime': 'time_as_datetime',
+                    'exit_reason': 'reason',
+                    'exit_status': 'exit_status',
+                    'run_stop_uid': 'uid'}
+            for new_key, old_key in attrs.items():
+                header[new_key] = run_stop[old_key]
+        run_start._name = 'Header'
+        return header
+
+    def __repr__(self):
+        return "<Header run_start_uid='{0}'>".format(self.run_start_uid)
+
+    def __str__(self):
+        s = Stream()
+        s.write("<Header>")
+        s.write("Owner: {0}".format(self.owner))
+        if self.group is not None:
+            s.write("Group: {0}".format(self.group))
+        if self.project is not None:
+            s.write("Project: {0}".format(self.project))
+        s.write("Project: {0}".format(self.project))
+        s.write("Beamline ID: {0}".format(self.beamline_id), 'lightgray')
+        s.write("Scan ID: {0} ".format(self.scan_id), 'green')
+        s.write("Start Time: {0}".format(self.start_datetime), 'green')
+        s.write("Stop Time: {0}".format(self.get('stop_datetime', 'Unknown')))
+        s.write("Exit Status: {0}".format(self.get('exit_status', 'Unknown')))
+        s.write("Exit Reason: {0}".format(self.get('exit_reason', 'Unknown')))
+        for descriptor in self.event_descriptors:
+            s.write("..Event Descriptor ", newline=False)
+            s.write("(uid='{0}')".format(descriptor.uid), 'lightgrey')
+            for data_key, data_key_dict in descriptor.data_keys.items():
+                s.write("....", newline=False)
+                s.write("{0}".format(data_key), 'green', newline=False)
+                s.write(': {0}'.format(data_key_dict['source']),
+                        color='lightgrey')
+        s.write("..run_start_uid='{0}'".format(self.run_start_uid),
+                'lightgrey')
+        if hasattr(self, 'run_stop_uid'):
+            s.write("..run_stop_uid='{0}'".format(self.run_stop_uid),
+                    'lightgrey')
+        return s.readout()
+
+
+class Stream(object):
+
+    def __init__(self):
+        self._stringio = StringIO()
+        self._stringio.isatty = sys.stdout.isatty
+
+    def write(self, msg, color='default', newline=True):
+        if newline:
+            msg += '\n'
+        color_print(msg, color, file=self._stringio)
+        self._stringio.flush()
+
+    def readout(self):
+        self._stringio.seek(0)
+        return self._stringio.read()
 
 
 class IntegrityError(Exception):
