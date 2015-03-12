@@ -47,7 +47,7 @@ class WatchForHeadersModel(Atom):
         if state:
             self.__setstate__(state)
 
-    @observe('update_rate', 'header', 'search_info')
+    @observe('update_rate')
     def save_state(self, changed):
         logger.debug('history in WatchForHeadersModel.save_state: '
                      '{}'.format(self.history))
@@ -194,19 +194,16 @@ class GetLastModel(_BrokerSearch):
             self.__setstate__(state)
 
     @observe('num_to_retrieve')
-    def save_state(self, changed):
-        logger.debug('history in WatchForHeadersModel.save_state: '
-                     '{}'.format(self.history))
-        replay.core.save_state(self.history, 'GetLastModel',
-            {'num_to_retrieve': self.num_to_retrieve})
-
-    @observe('num_to_retrieve')
     @_catch_connection_issues
     def num_changed(self, changed):
         self.headers = DataBroker[-self.num_to_retrieve:]
 
         self.search_info = "Requested: {}. Found: {}".format(
             self.num_to_retrieve, len(self.headers))
+        logger.debug('history in WatchForHeadersModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'GetLastModel',
+            {'num_to_retrieve': self.num_to_retrieve})
 
 
 class ScanIDSearchModel(_BrokerSearch):

@@ -16,6 +16,10 @@ import copy
 from ..testing.decorators import skip_if
 import time as ttime
 import os
+import random
+import tempfile
+import uuid
+from dataportal.replay.persist import History
 
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
@@ -82,154 +86,207 @@ def teardown():
     fs_teardown()
     mds_teardown()
 
+#
+# # these next two functions simply smoketest the startup of replay with
+# # different combinations of layout parameters. Whether or not anything
+# # actually works correctly is dealt with in later tests
+# @skip_if(not six.PY2)
+# def _replay_startup_tester(params=None, wait_time=1000):
+#     app = QtApplication()
+#     ui = replay.create(params)
+#     ui.show()
+#     app.timed_call(wait_time, app.stop)
+#     app.start()
+#     ui.close()
+#     app.destroy()
+#
+#
+# @skip_if(not six.PY2)
+# def test_replay_startup():
+#     normal = replay.define_default_params()
+#     small = replay.define_small_screen_params()
+#     live = replay.define_live_params()
+#     live_small = copy.deepcopy(live)
+#     live_small['screen_size'] = 'small'
+#     params = [normal, small, live, live_small]
+#     for p in params:
+#         yield _replay_startup_tester, p
+#
+# # make sure that you can run dataportal/replay/replay.py
+# @skip_if(not six.PY2)
+# def test_replay_cmd_line():
+#     command = Command('python {}'.format(replay.__file__))
+#     command.run(timeout=1)
+#
+#
+# # make sure that you can run replay via the 'replay' command
+# @skip_if(not six.PY2)
+# def test_replay_cmd_line():
+#     command = Command('replay')
+#     command.run(timeout=1)
+#
+#
+# # this function tests that a live-view replay will correctly plot
+# # 'point_det' versus 'Tsam' when they are assigned to 'plotx' and 'ploty',
+# # respectively
+# @skip_if(not six.PY2)
+# # these now raise because we got rid of plotx and ploty for now
+# @raises(AssertionError)
+# def test_replay_plotx_ploty():
+#     # insert a run header with one plotx and one ploty
+#     rs = mdsapi.insert_run_start(
+#         time=ttime.time(), beamline_id='replay testing', scan_id=1,
+#         custom={'plotx': 'Tsam', 'ploty': ['point_det']},
+#         beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+#     temperature_ramp.run(rs)
+#     # plotting replay in live mode with plotx and ploty should have the
+#     # following state after a few seconds of execution:
+#     # replay.
+#     app = QtApplication()
+#     ui = replay.create(replay.define_live_params())
+#     ui.show()
+#     app.timed_call(4000, app.stop)
+#     app.start()
+#     try:
+#         # the x axis should be 'plotx'
+#         assert ui.scalar_collection.x == 'Tsam'
+#         # there should only be 1 scalar model currently plotting
+#         assert len([scalar_model for scalar_model
+#                     in ui.scalar_collection.scalar_models.values()
+#                     if scalar_model.is_plotting]) == 1
+#         # the x axis should not be time
+#         assert not ui.scalar_collection.x_is_time
+#     except AssertionError:
+#         # gotta destroy the app or it will cause cascading errors
+#         ui.close()
+#         app.destroy()
+#         raise
+#
+#     ui.close()
+#     app.destroy()
+#
+#
+# # this function tests that a live-view replay will correctly plot
+# # 'Tsam' versus time when plotx is incorrectly defined
+# @skip_if(not six.PY2)
+# # these now raise because we got rid of plotx and ploty for now
+# @raises(AssertionError)
+# def test_replay_plotx_2ploty():
+#     ploty = ['Tsam', 'point_det']
+#     plotx = 'this better fail!'
+#     # insert a run header with one plotx and two plotys
+#     rs = mdsapi.insert_run_start(
+#         time=ttime.time(), beamline_id='replay testing', scan_id=1,
+#         custom={'plotx': plotx, 'ploty': ploty},
+#         beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+#     temperature_ramp.run(rs)
+#     # plotting replay in live mode with plotx and ploty should have the
+#     # following state after a few seconds of execution:
+#     # replay.
+#     app = QtApplication()
+#     ui = replay.create(replay.define_live_params())
+#     ui.show()
+#     app.timed_call(4000, app.stop)
+#     app.start()
+#     try:
+#         # there should only be 1 scalar model currently plotting
+#         assert len([scalar_model for scalar_model
+#                     in ui.scalar_collection.scalar_models.values()
+#                     if scalar_model.is_plotting]) == len(ploty)
+#         # the x axis should not be time
+#         assert ui.scalar_collection.x_is_time
+#     except AssertionError:
+#         # gotta destroy the app or it will cause cascading errors
+#         ui.close()
+#         app.destroy()
+#         raise
+#     ui.close()
+#     app.destroy()
+#
+#
+# # this function tests that a live-view replay will correctly plot
+# # time on the x axis with none of the y values enabled for plotting if
+# # 'ploty' and 'plotx' are not found in the run header
+# @skip_if(not six.PY2)
+# def test_replay_plotting():
+#     # insert a run header with no plotx or ploty
+#     rs = mdsapi.insert_run_start(
+#         time=ttime.time(), beamline_id='replay testing', scan_id=1,
+#         beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+#     events = temperature_ramp.run(rs)
+#     # plotting replay in live mode with plotx and ploty should have the
+#     # following state after a few seconds of execution:
+#     # replay.
+#     app = QtApplication()
+#     ui = replay.create(replay.define_live_params())
+#     ui.show()
+#     app.timed_call(4000, app.stop)
+#     app.start()
+#     try:
+#         # there should only be 1 scalar model currently plotting
+#         assert len([scalar_model for scalar_model
+#                     in ui.scalar_collection.scalar_models.values()
+#                     if scalar_model.is_plotting]) == 0
+#         # the x axis should not be time
+#         assert ui.scalar_collection.x_is_time
+#     except AssertionError:
+#         # gotta destroy the app or it will cause cascading errors
+#         ui.close()
+#         app.destroy()
+#         raise
+#     ui.close()
+#     app.destroy()
 
-# these next two functions simply smoketest the startup of replay with
-# different combinations of layout parameters. Whether or not anything
-# actually works correctly is dealt with in later tests
+
+# testing if replay is persisting state through closing correctly
 @skip_if(not six.PY2)
-def _replay_startup_tester(params=None, wait_time=1000):
-    app = QtApplication()
-    ui = replay.create(params)
-    ui.show()
-    app.timed_call(wait_time, app.stop)
-    app.start()
-    ui.close()
-    app.destroy()
-
-
-@skip_if(not six.PY2)
-def test_replay_startup():
-    normal = replay.define_default_params()
-    small = replay.define_small_screen_params()
-    live = replay.define_live_params()
-    live_small = copy.deepcopy(live)
-    live_small['screen_size'] = 'small'
-    params = [normal, small, live, live_small]
-    for p in params:
-        yield _replay_startup_tester, p
-
-# make sure that you can run dataportal/replay/replay.py
-@skip_if(not six.PY2)
-def test_replay_cmd_line():
-    command = Command('python {}'.format(replay.__file__))
-    command.run(timeout=1)
-
-
-# make sure that you can run replay via the 'replay' command
-@skip_if(not six.PY2)
-def test_replay_cmd_line():
-    command = Command('replay')
-    command.run(timeout=1)
-
-
-# this function tests that a live-view replay will correctly plot
-# 'point_det' versus 'Tsam' when they are assigned to 'plotx' and 'ploty',
-# respectively
-@skip_if(not six.PY2)
-# these now raise because we got rid of plotx and ploty for now
-@raises(AssertionError)
-def test_replay_plotx_ploty():
-    # insert a run header with one plotx and one ploty
-    rs = mdsapi.insert_run_start(
+def test_replay_persistence():
+    rs1 = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
-        custom={'plotx': 'Tsam', 'ploty': ['point_det']},
         beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
-    temperature_ramp.run(rs)
-    # plotting replay in live mode with plotx and ploty should have the
-    # following state after a few seconds of execution:
-    # replay.
+    events1 = temperature_ramp.run(rs1)
+    rs2 = mdsapi.insert_run_start(
+        time=ttime.time(), beamline_id='replay testing', scan_id=2,
+        beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
+    events2 = temperature_ramp.run(rs2)
+    dbfile = os.path.join(tempfile.gettempdir(), str(uuid.uuid1()) + '.db')
+
+    h = History(dbfile)
+
+    # set up some state for the first run start
+    scan_id1 = random.randint(50000, 10000000)
+    hdr_update_rate1 = random.randint(50000, 10000000)
+    num_to_retrieve1 = random.randint(10, 20)
+    # store some state
+    h.put(six.text_type(rs1.id), {'x': 'Tsam', 'y': ['Tsam', 'point_det'],
+                                  'x_is_time': False})
+    h.put('WatchForHeadersModel', {'update_rate', hdr_update_rate1})
+    h.put('ScanIDSearchModel', {'update_rate', scan_id1})
+    h.put('GetLastModel', {'num_to_retrieve', num_to_retrieve1})
+    # store some more state
+    h.put(six.text_type(rs2.id), {'y': ['Tsam', 'point_det'],
+                                  'x_is_time': True})
+
+    # open up replay
     app = QtApplication()
     ui = replay.create(replay.define_live_params())
     ui.show()
-    app.timed_call(4000, app.stop)
+    ui.muxer_model.header = db.find_headers(run_start_id=rs1.id)
+    # start it so that it will stop in 1 second
+    app.timed_call(1000, app.stop)
     app.start()
-    try:
-        # the x axis should be 'plotx'
-        assert ui.scalar_collection.x == 'Tsam'
-        # there should only be 1 scalar model currently plotting
-        assert len([scalar_model for scalar_model
-                    in ui.scalar_collection.scalar_models.values()
-                    if scalar_model.is_plotting]) == 1
-        # the x axis should not be time
-        assert not ui.scalar_collection.x_is_time
-    except AssertionError:
-        # gotta destroy the app or it will cause cascading errors
-        ui.close()
-        app.destroy()
-        raise
-
     ui.close()
+
+    assert ui.scalar_collection.x == 'Tsam'
+    assert ui.scalar_collection.x_is_time == False
+    y_matches = True
+    for y in ui.scalar_collection.y:
+        if y not in ['Tsam', 'point_det']:
+            y_matches = False
+    assert y_matches
+    assert ui.watch_headers_model.update_rate == hdr_update_rate1
+    assert ui.scan_id_model.scan_id == scan_id1
+    assert ui.get_last_model.num_to_retrieve == num_to_retrieve1
     app.destroy()
 
-
-# this function tests that a live-view replay will correctly plot
-# 'Tsam' versus time when plotx is incorrectly defined
-@skip_if(not six.PY2)
-# these now raise because we got rid of plotx and ploty for now
-@raises(AssertionError)
-def test_replay_plotx_2ploty():
-    ploty = ['Tsam', 'point_det']
-    plotx = 'this better fail!'
-    # insert a run header with one plotx and two plotys
-    rs = mdsapi.insert_run_start(
-        time=ttime.time(), beamline_id='replay testing', scan_id=1,
-        custom={'plotx': plotx, 'ploty': ploty},
-        beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
-    temperature_ramp.run(rs)
-    # plotting replay in live mode with plotx and ploty should have the
-    # following state after a few seconds of execution:
-    # replay.
-    app = QtApplication()
-    ui = replay.create(replay.define_live_params())
-    ui.show()
-    app.timed_call(4000, app.stop)
-    app.start()
-    try:
-        # there should only be 1 scalar model currently plotting
-        assert len([scalar_model for scalar_model
-                    in ui.scalar_collection.scalar_models.values()
-                    if scalar_model.is_plotting]) == len(ploty)
-        # the x axis should not be time
-        assert ui.scalar_collection.x_is_time
-    except AssertionError:
-        # gotta destroy the app or it will cause cascading errors
-        ui.close()
-        app.destroy()
-        raise
-    ui.close()
-    app.destroy()
-
-
-# this function tests that a live-view replay will correctly plot
-# time on the x axis with none of the y values enabled for plotting if
-# 'ploty' and 'plotx' are not found in the run header
-@skip_if(not six.PY2)
-def test_replay_plotting():
-    # insert a run header with no plotx or ploty
-    rs = mdsapi.insert_run_start(
-        time=ttime.time(), beamline_id='replay testing', scan_id=1,
-        beamline_config=mdsapi.insert_beamline_config({}, ttime.time()))
-    events = temperature_ramp.run(rs)
-    # plotting replay in live mode with plotx and ploty should have the
-    # following state after a few seconds of execution:
-    # replay.
-    app = QtApplication()
-    ui = replay.create(replay.define_live_params())
-    ui.show()
-    app.timed_call(4000, app.stop)
-    app.start()
-    try:
-        # there should only be 1 scalar model currently plotting
-        assert len([scalar_model for scalar_model
-                    in ui.scalar_collection.scalar_models.values()
-                    if scalar_model.is_plotting]) == 0
-        # the x axis should not be time
-        assert ui.scalar_collection.x_is_time
-    except AssertionError:
-        # gotta destroy the app or it will cause cascading errors
-        ui.close()
-        app.destroy()
-        raise
-    ui.close()
-    app.destroy()
-
+    # try the second bit of state

@@ -4,6 +4,7 @@ import numpy as np
 from dataportal import replay
 from dataportal.replay.search import (GetLastModel, WatchForHeadersModel,
                                       DisplayHeaderModel, ScanIDSearchModel)
+from dataportal.broker import DataBroker as db
 from dataportal.replay.muxer import MuxerModel
 from dataportal.replay.scalar import ScalarCollection
 import sys
@@ -26,13 +27,6 @@ except OSError:
 STATE_DB = os.path.join(REPLAY_CONF_DIR, 'state.db')
 history = History(STATE_DB)
 REPLAY_HISTORY_KEYS = ['x', 'y_list', 'x_is_time']
-
-
-logging_map = {'debug': logging.DEBUG,
-               'info': logging.INFO,
-               'warning': logging.WARNING,
-               'error': logging.ERROR,
-               'critical': logging.CRITICAL}
 
 
 def define_default_params():
@@ -95,6 +89,7 @@ def create_default_ui(init_params_dict):
                          display_header_model=display_header_model,
                          init_params=init_params_dict,
                          scan_id_model=scan_id_model)
+
     return main_view
 
 def define_parser():
@@ -108,6 +103,12 @@ def define_parser():
                         type=str, help="Set the replay logging level. Known "
                                        "options are 'debug', 'info', 'warning', "
                                        "'error', 'critical")
+    parser.add_argument('--verbose', action="store_true",
+                        help="Print extra information to the console. Sets the "
+                             "logging level to 'info'")
+    parser.add_argument('--debug', action="store_true",
+                        help="Print way too much information to the console."
+                             "Sets the logging level to'debug'")
     return parser
 
 def create(params_dict=None):
@@ -126,14 +127,20 @@ def main():
         params_dict = define_live_params()
     elif args.small_screen:
         params_dict = define_small_screen_params()
-    if args.log_level:
-        # use warning level logging as the default
-        loglevel = logging_map.get(args.log_level.lower(), logging.WARNING)
-        replay.logger.setLevel(loglevel)
-        replay.handler.setLevel(loglevel)
+    loglevel = logging.WARNING
+    if args.verbose:
+        loglevel = logging.INFO
+    elif args.debug:
+        loglevel = logging.INFO
+
+    replay.logger.setLevel(loglevel)
+    replay.handler.setLevel(loglevel)
 
     # create and show the GUI
-    create(params_dict).show()
+    ui = create(params_dict)
+    ui.show()
+
+    ui.muxer_model.header = db[-1]
 
     app.start()
 
