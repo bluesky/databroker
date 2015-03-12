@@ -23,23 +23,23 @@ def watermark():
     for package_name in packages:
         try:
             package = importlib.import_module(package_name)
+            version = package.__version__
         except ImportError:
             result[package_name] = None
-        else:
-            try:
-                version = package.__version__
-            except AttributeError as err:
-                version = "FAILED TO DETECT: {0}".format(err)
+        except Exception as err:
+            version = "FAILED TO DETECT: {0}".format(err)
         result[package_name] = version
 
     # enaml provides its version differently
     try:
         import enaml
-    except ImportError:
-        result['enaml'] = None
-    else:
         from enaml.version import version_info
-        result['enaml'] = _make_version_string(version_info)
+        version = _make_version_string(version_info)
+    except ImportError:
+        version = None
+    except Exception as err:
+        version = "FAILED TO DETECT: {0}".format(err)
+    result['enaml'] = version
 
     # ...as does Python
     version_info = sys.version_info
