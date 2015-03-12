@@ -5,11 +5,11 @@ from collections import deque
 from atom.api import (Atom, Typed, List, Range, Dict, observe, Str, Enum, Int,
                       Bool, ReadOnly, Tuple, Float)
 from dataportal.muxer.api import DataMuxer
-from dataportal.broker import DataBroker
+from dataportal.broker import DataBroker, EventQueue
 from dataportal.muxer.data_muxer import ColSpec
 from metadatastore.api import Document
 from pandas import DataFrame
-
+import time as ttime
 
 def get_events(run_header):
     return DataBroker.fetch_events(run_header)
@@ -152,6 +152,7 @@ class MuxerModel(Atom):
     image_columns_visible = Bool(False)
     volume_columns_visible = Bool(False)
 
+    event_queue = Typed(EventQueue)
     data_muxer = Typed(DataMuxer)
     dataframe = Typed(DataFrame)
     header = Typed(Document)
@@ -197,6 +198,7 @@ class MuxerModel(Atom):
         self.info = 'Run {}'.format(self.header.scan_id)
         with self.suppress_notifications():
             self.data_muxer = None
+        self.event_queue = EventQueue(self.header)
         self.get_new_data()
         self.dataframe = self.data_muxer._dataframe
         self.init_state()
@@ -232,7 +234,9 @@ class MuxerModel(Atom):
         grab it
         """
         print('getting new data from the data broker')
-        events = get_events(self.header)
+        self.event_queue.update()
+        events = self.event_queue.get()
+#        events = get_events(self.header)
         if self.data_muxer is None:
             # this will automatically trigger the key updating
             data_muxer = DataMuxer()
@@ -242,12 +246,16 @@ class MuxerModel(Atom):
             self.data_muxer = data_muxer
         else:
             self.data_muxer.append_events(events)
-            for data_cb in self.new_data_callbacks:
-                data_cb()
+            self.dataframe = self.data_muxer._dataframe
             # update the column information
             self._verify_column_info()
-            for data_cb in self.new_data_callbacks:
-                data_cb()
+            try:
+                for data_cb in self.new_data_callbacks:
+                    data_cb()
+            except IndexError:
+                ttime.sleep(1)
+                self.get_new_data()
+
 
     @observe('binning_column')
     def _binning_column_changed(self, changed):

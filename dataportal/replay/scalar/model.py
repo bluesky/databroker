@@ -308,13 +308,18 @@ class ScalarCollection(Atom):
 
     @observe('dataframe')
     def dataframe_changed(self, changed):
-        self.clear_scalar_models()
-        if self.dataframe is None:
-            return
+        if self.dataframe is not None:
+            self.new_data()
+
+    def new_data(self):
+        old_plotting_values = [col_name for col_name, col_model in
+                               self.scalar_models.items()
+                               if col_model.is_plotting]
+        old_x = self.x
+        old_x_is_time = self.x_is_time
 
         scalar_cols= [col for col in self.dataframe.columns
                      if self.dataframe[col].dropna().values[0].shape == tuple()]
-
         # figure out if the dataframe has one or more levels of labels
         # for now these need to be handled differently
         if isinstance(self.dataframe.columns[0], six.string_types):
@@ -325,31 +330,55 @@ class ScalarCollection(Atom):
             # self._do_nested_magic(scalar_cols)
             # but for now treat them the same...
             self._do_magic(scalar_cols)
+        for scalar_name, scalar_model in self.scalar_models.items():
+            scalar_model.is_plotting = scalar_name in old_plotting_values
+        if old_x in self.scalar_models.keys():
+            self.x = old_x
+            self.x_is_time = old_x_is_time
+        else:
+            self.x = self.scalar_models.keys()[0]
+            self.x_is_time = True
+        self.get_new_data_and_plot()
 
     def _do_magic(self, scalar_cols):
         # create new scalar models
         scalar_models = {}
         column_models = {}
+        for col_name, col_model in self.column_models.items():
+            if col_model.column_address in scalar_cols:
+                column_models[col_name] = self.column_models.pop(col_name)
+                scalar_models[col_name] = self.scalar_models.pop(col_name)
+        self.clear_scalar_models()
         for col_name in scalar_cols:
+        #    if col_name in self.column_models or col_name in self.scalar_models:
+        #        col_model = self.column_models[col_name]
+        #        col_model.dataframe = self.dataframe
+        #        self.scalar_models[col_name].set_data(col_model.index, col_model.data)
+        #        continue
             # create a new line artist and scalar model
             column_model = ColumnModel(dataframe=self.dataframe,
                                        column_address=col_name)
+            column_models[column_model.name] = column_model
             line_artist, = self._ax.plot([], [], label=column_model.name, marker='D')
             scalar_model = ScalarModel(line_artist=line_artist,
                                        is_plotting=False,
                                        name=column_model.name)
             scalar_models[scalar_model.name] = scalar_model
-            column_models[column_model.name] = column_model
         # throw an empty list at data cols before using list comprehension to
         # set the new values. This is one method to trigger the Atom magic,
         # though I'm sure there is a better way to do it
-        self.column_models = {}
+
+        # determine if the column_models and scalar_models need to be updated
+        #new_column_models = [col_name for col_name in column_models.keys()
+        #                     if col_name not in self.column_models]
+        #new_scalar_models = [scalar_name for scalar_name in scalar_models.keys()
+        #                     if scalar_name not in self.scalar_models]
+        #if len(new_column_models) > 0:
         self.column_models = column_models
-        self.scalar_models = {}
+        #if len(new_scalar_models) > 0:
         self.scalar_models = scalar_models
         self.data_cols = []
         self.data_cols = list({name.split('-')[0] for name in scalar_models.keys()})
-        pass
 
     def _do_nested_magic(self, scalar_cols):
         pass
