@@ -17,8 +17,8 @@ from distutils.core import setup
 
 MAJOR = 0
 MINOR = 0
-MICRO = 4
-ISRELEASED = False
+MICRO = 5
+ISRELEASED = True
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 QUALIFIER = ''
