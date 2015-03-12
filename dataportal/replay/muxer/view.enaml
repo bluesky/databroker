@@ -87,6 +87,7 @@ enamldef MuxerController(Container):
                 text = "Normalize data by"
                 align = 'right'
             ComboBox:
+                enabled = False
                 items << muxer_model.norm_options
                 selected_item >> muxer_model.norm_column
                 index << muxer_model.norm_index
@@ -119,7 +120,7 @@ enamldef MuxerController(Container):
 def gen_objects(column_models):
     objs = [Label(text='PV alias'), Label(text='Upsample'),
             Label(text='Downsample'), Label(text='Normalize?')]
-    for col in column_models:
+    for col in sorted(column_models, key=lambda model: model.name):
         objs.append(Label(text=col.name))
         objs.append(UpsampleComboBox(column_model=col))
         objs.append(DownsampleComboBox(column_model=col))
