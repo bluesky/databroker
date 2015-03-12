@@ -42,31 +42,11 @@ def _normalize(in_val):
     return in_val
 
 
-class Document(MutableMapping):
-    """
-    Copy the data out of a mongoengine.Document, including nested Documents,
-    but do not copy any of the mongo-specific methods or attributes.
-    """
-    def __init__(self, mongo_document):
-        """
-        Parameters
-        ----------
-        mongo_document : mongoengine.Document
-        """
+class DottableMutableMapping(MutableMapping):
+    """A dictionary where d.key is the same as d['key']"""
+
+    def __init__(self):
         self._fields = set()
-        self._name = mongo_document.__class__.__name__
-        fields = set(chain(mongo_document._fields.keys(),
-                           mongo_document._data.keys()))
-
-        for field in fields:
-            attr = getattr(mongo_document, field)
-
-            attr = _normalize(attr)
-
-            setattr(self, field, attr)
-            # For debugging, add a human-friendly time_as_datetime attribute.
-            if hasattr(self, 'time'):
-                self.time_as_datetime = datetime.fromtimestamp(self.time)
 
     def __setattr__(self, k, v):
         self.__dict__[k] = v
@@ -81,9 +61,6 @@ class Document(MutableMapping):
             self._fields.remove(k)
         assert k not in self._fields
 
-    def __repr__(self):
-        return "<{0} Document>".format(self._name)
-
     def __iter__(self):
         return iter(self._fields)
 
@@ -95,7 +72,6 @@ class Document(MutableMapping):
 
     def __delitem__(self, key):
         delattr(self, key)
-        assert key not in self._fields
 
     def __setitem__(self, key, val):
         setattr(self, key, val)
@@ -105,3 +81,33 @@ class Document(MutableMapping):
 
     def __contains__(self, key):
         return key in self._fields
+
+
+class Document(DottableMutableMapping):
+    """
+    Copy the data out of a mongoengine.Document, including nested Documents,
+    but do not copy any of the mongo-specific methods or attributes.
+    """
+    def __init__(self, mongo_document):
+        """
+        Parameters
+        ----------
+        mongo_document : mongoengine.Document
+        """
+        super(Document, self).__init__()
+        self._name = mongo_document.__class__.__name__
+        fields = set(chain(mongo_document._fields.keys(),
+                           mongo_document._data.keys()))
+
+        for field in fields:
+            attr = getattr(mongo_document, field)
+
+            attr = _normalize(attr)
+
+            setattr(self, field, attr)
+            # For debugging, add a human-friendly time_as_datetime attribute.
+            if hasattr(self, 'time'):
+                self.time_as_datetime = datetime.fromtimestamp(self.time)
+
+    def __repr__(self):
+        return "<{0} Document>".format(self._name)
