@@ -282,7 +282,7 @@ class ScalarCollection(Atom):
         except IndexError:
             # there are no entries in the db for 'state'
             logger.debug('no state found for dataframe id: {}'.format(self.dataframe_id))
-            state = []
+            state = {}
         if self.use_ram_state:
             # the state has already been correctly configured
             return

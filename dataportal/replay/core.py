@@ -77,7 +77,7 @@ def save_state(history, history_key, state, sanitize=False, blacklist=True):
                  or isinstance(v, tuple(non_stateful_types)))}
     if sanitize:
         # remove objects that cannot be serialized
-        state = json.dumps(state, skipkeys=True)
+        json.loads(json.dumps(state, skipkeys=True))
     # save to db
     history.put(history_key, state)
 
