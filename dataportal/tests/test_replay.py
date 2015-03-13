@@ -262,8 +262,8 @@ def test_replay_persistence():
     hdr_update_rate1 = random.randint(50000, 10000000)
     num_to_retrieve1 = random.randint(10, 20)
     # store some state
-    state = {'x': 'Tsam', 'y': ['Tsam', 'point_det'], 'x_is_time': False}
-    h.put(six.text_type(rs1.id), state)
+    state1 = {'x': 'Tsam', 'y': ['Tsam', 'point_det'], 'x_is_time': True}
+    h.put(six.text_type(rs1.id), state1)
     returned_state = h.get(six.text_type(rs1.id))
     h.put('WatchForHeadersModel', {'update_rate': hdr_update_rate1})
     h.put('ScanIDSearchModel', {'scan_id': scan_id1})
@@ -276,27 +276,28 @@ def test_replay_persistence():
     app = QtApplication()
     ui = replay.create(replay.define_live_params())
     ui.show()
-    hdr = db.find_headers(_id=rs1.id)[0]
-    ui.muxer_model.header = hdr
+    hdr1 = db.find_headers(_id=rs1.id)[0]
+    ui.muxer_model.header = hdr1
     # start replay so that it will stop in 4 seconds
     app.timed_call(4000, app.stop)
     app.start()
-    ui.close()
 
     try:
         # check that the observer between the muxer model and the scalar collection
         # is working properly
         assert six.text_type(ui.scalar_collection.dataframe_id) == six.text_type(rs1.id)
         # check that the scalar collection is correctly loading plotting state
-        assert ui.scalar_collection.x == 'Tsam'
+        assert ui.scalar_collection.x == state1['x']
         # check that the scalar collection is correctly loading plotting state
-        assert ui.scalar_collection.x_is_time == False
+        assert ui.scalar_collection.x_is_time == state1['x_is_time']
         y_matches = True
         for y in ui.scalar_collection.y:
-            if y not in ['Tsam', 'point_det']:
+            if y not in state1['y']:
                 y_matches = False
-        # check that the scalar collection is correctly loading plotting state
+        # make sure that the datasets that should be plotted are plotting
         assert y_matches
+        # make sure that no extra datasets are plotting
+        assert len(ui.scalar_collection.y) == len(state1['y'])
         # check state in the "live" mode
         assert ui.watch_headers_model.update_rate == hdr_update_rate1
         # check state loading in the search by scan_id model
@@ -306,9 +307,129 @@ def test_replay_persistence():
     except AssertionError:
         # make sure the app gets destroyed, even if there is an AssertionError
         # as this will cause problems later
+        ui.close()
         app.destroy()
         raise
 
+    # store some state for the 2nd header that differs from the first
+    state2 = {'x': 'point_det', 'y': ['Tsam'], 'x_is_time': False}
+    h.put(six.text_type(rs2.id), state2)
+    hdr2 = db.find_headers(_id=rs2.id)[0]
+    ui.muxer_model.header = hdr2
+
+
+    # make sure that the things that are display are the things that we think
+    # should be displayed. This requires starting/stopping replay
+    app.timed_call(4000, app.stop)
+    app.start()
+    try:
+        # check that the observer between the muxer model and the scalar collection
+        # is working properly
+        assert six.text_type(ui.scalar_collection.dataframe_id) == six.text_type(rs2.id)
+        # check that the scalar collection is correctly loading plotting state
+        assert ui.scalar_collection.x == state2['x']
+        # check that the scalar collection is correctly loading plotting state
+        assert ui.scalar_collection.x_is_time == state2['x_is_time']
+        # check that the scalar collection is correctly loading plotting state
+        for y in ui.scalar_collection.y:
+            if y not in state2['y']:
+                y_matches = False
+        # make sure that the datasets that should be plotted are plotting
+        assert y_matches
+        # make sure that no extra datasets are plotting
+        assert len(ui.scalar_collection.y) == len(state2['y'])
+    except AssertionError:
+        # make sure the app gets destroyed, even if there is an AssertionError
+        # as this will cause problems later
+        ui.close()
+        app.destroy()
+        raise
+
+    def use_ram_state():
+        # now set the plot state to be 'ram'
+        ui.scalar_collection.use_ram_state = True
+    app.timed_call(500, use_ram_state)
+    app.timed_call(1000, app.stop)
+    app.start()
+    # make sure that it updated the disk state correctly and that no unexpected
+    # updates happened
+    assert ui.scalar_collection.use_disk_state == False
+    assert ui.scalar_collection.use_ram_state == True
+
+    # change the header back to the first header
+    ui.muxer_model.header = hdr1
+    # start/stop replay again
+    app.timed_call(1000, app.stop)
+    app.start()
+
+    # make sure that the updates triggered correctly. It should now match the
+    # state from the second run header
+    try:
+        # check that the observer between the muxer model and the scalar collection
+        # is working properly
+        assert six.text_type(ui.scalar_collection.dataframe_id) == six.text_type(rs1.id)
+        # check that the scalar collection is correctly loading plotting state
+        assert ui.scalar_collection.x == state2['x']
+        # check that the scalar collection is correctly loading plotting state
+        assert ui.scalar_collection.x_is_time == state2['x_is_time']
+        # check that the scalar collection is correctly loading plotting state
+        for y in ui.scalar_collection.y:
+            if y not in state2['y']:
+                y_matches = False
+        # make sure that the datasets that should be plotted are plotting
+        assert y_matches
+        # make sure that no extra datasets are plotting
+        assert len(ui.scalar_collection.y) == len(state2['y'])
+    except AssertionError:
+        # make sure the app gets destroyed, even if there is an AssertionError
+        # as this will cause problems later
+        ui.close()
+        app.destroy()
+        raise
+
+    def use_disk_state():
+        # now set the plot state to be 'ram'
+        ui.scalar_collection.use_disk_state = True
+    ui.scalar_collection.use_disk_state = True
+    # make sure that the switch took place
+    app.timed_call(500, use_disk_state)
+    app.timed_call(1000, app.stop)
+    app.start()
+    # make sure that it updated the disk state correctly and that no unexpected
+    # updates happened
+    assert ui.scalar_collection.use_disk_state == True
+    assert ui.scalar_collection.use_ram_state == False
+
+    # the original state for run header 2 is now the state for run header 2.
+    # Let's change the state for run header 2 on disk and switch back.
+    h.put(six.text_type(rs2.id), state1)
+    ui.muxer_model.header = hdr2
+    app.timed_call(1000, app.stop)
+    app.start()    # make sure that the things that are display are the things that we think
+    # should be displayed. This requires starting/stopping replay
+    try:
+        # check that the observer between the muxer model and the scalar collection
+        # is working properly
+        assert six.text_type(ui.scalar_collection.dataframe_id) == six.text_type(rs2.id)
+        # check that the scalar collection is correctly loading plotting state
+        assert ui.scalar_collection.x == state1['x']
+        # check that the scalar collection is correctly loading plotting state
+        assert ui.scalar_collection.x_is_time == state1['x_is_time']
+        # check that the scalar collection is correctly loading plotting state
+        for y in ui.scalar_collection.y:
+            if y not in state1['y']:
+                y_matches = False
+        # make sure that the datasets that should be plotted are plotting
+        assert y_matches
+        # make sure that no extra datasets are plotting
+        assert len(ui.scalar_collection.y) == len(state1['y'])
+    except AssertionError:
+        # make sure the app gets destroyed, even if there is an AssertionError
+        # as this will cause problems later
+        ui.close()
+        app.destroy()
+        raise
+
+    ui.close()
     app.destroy()
 
-    # try the second bit of state
