@@ -19,9 +19,8 @@ import os
 import random
 import tempfile
 import uuid
-from dataportal.replay.persist import History
 import subprocess, threading
-from dataportal.replay import replay
+from dataportal.replay.persist import History
 
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
@@ -68,7 +67,7 @@ class Command(object):
             thread.join()
         print(self.process.returncode)
 
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def setup():
     mds_setup()
     fs_setup()
@@ -83,7 +82,7 @@ def setup():
     ev_img_scalar = db.fetch_events(hdr_img_scalar)
 
 
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def teardown():
     fs_teardown()
     mds_teardown()
@@ -92,7 +91,7 @@ def teardown():
 # these next two functions simply smoketest the startup of replay with
 # different combinations of layout parameters. Whether or not anything
 # actually works correctly is dealt with in later tests
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def _replay_startup_tester(params=None, wait_time=1000):
     app = QtApplication()
     ui = replay.create(params)
@@ -103,7 +102,7 @@ def _replay_startup_tester(params=None, wait_time=1000):
     app.destroy()
 
 
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def test_replay_startup():
     normal = replay.define_default_params()
     small = replay.define_small_screen_params()
@@ -115,14 +114,14 @@ def test_replay_startup():
         yield _replay_startup_tester, p
 
 # make sure that you can run dataportal/replay/replay.py
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def test_replay_cmd_line():
     command = Command('python {}'.format(replay.__file__))
     command.run(timeout=1)
 
 
 # make sure that you can run replay via the 'replay' command
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def test_replay_cmd_line():
     command = Command('replay')
     command.run(timeout=1)
@@ -131,7 +130,7 @@ def test_replay_cmd_line():
 # this function tests that a live-view replay will correctly plot
 # 'point_det' versus 'Tsam' when they are assigned to 'plotx' and 'ploty',
 # respectively
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 # these now raise because we got rid of plotx and ploty for now
 @raises(AssertionError)
 def test_replay_plotx_ploty():
@@ -170,7 +169,7 @@ def test_replay_plotx_ploty():
 
 # this function tests that a live-view replay will correctly plot
 # 'Tsam' versus time when plotx is incorrectly defined
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 # these now raise because we got rid of plotx and ploty for now
 @raises(AssertionError)
 def test_replay_plotx_2ploty():
@@ -209,7 +208,7 @@ def test_replay_plotx_2ploty():
 # this function tests that a live-view replay will correctly plot
 # time on the x axis with none of the y values enabled for plotting if
 # 'ploty' and 'plotx' are not found in the run header
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def test_replay_plotting():
     # insert a run header with no plotx or ploty
     rs = mdsapi.insert_run_start(
@@ -241,7 +240,7 @@ def test_replay_plotting():
 
 
 # testing if replay is persisting state through closing correctly
-@skip_if(not six.PY2)
+@skip_if(six.PY3)
 def test_replay_persistence():
     rs1 = mdsapi.insert_run_start(
         time=ttime.time(), beamline_id='replay testing', scan_id=1,
