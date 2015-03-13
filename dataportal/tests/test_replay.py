@@ -84,7 +84,6 @@ def setup():
 
 @skip_if(six.PY3)
 def teardown():
-    ttime.sleep(1)  # Give time for Application to close.
     fs_teardown()
     mds_teardown()
 

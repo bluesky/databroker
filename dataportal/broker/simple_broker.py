@@ -2,7 +2,7 @@ from __future__ import print_function
 import sys
 import six  # noqa
 import copy
-from StringIO import StringIO
+from six import StringIO
 from collections import defaultdict, Iterable, deque
 from .. import sources
 from ..utils.console import color_print
