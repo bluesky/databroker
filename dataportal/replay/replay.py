@@ -131,7 +131,7 @@ def main():
     if args.verbose:
         loglevel = logging.INFO
     elif args.debug:
-        loglevel = logging.INFO
+        loglevel = logging.DEBUG
 
     replay.logger.setLevel(loglevel)
     replay.handler.setLevel(loglevel)

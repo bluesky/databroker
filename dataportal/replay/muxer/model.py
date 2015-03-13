@@ -207,7 +207,10 @@ class MuxerModel(Atom):
             self.data_muxer = None
         self.event_queue = EventQueue(self.header)
         self.get_new_data()
+        # change the dataframe first
         self.dataframe = self.data_muxer._dataframe
+        # then change the id
+        # (The scalar_model depends on this order being dataframe then id)
         self.header_id = self.header.run_start_id
 
     def new_run_header(self, changed):

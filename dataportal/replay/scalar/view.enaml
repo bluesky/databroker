@@ -69,6 +69,15 @@ enamldef PlotControls(Container):
                     checked := scalar_collection.x_is_time
                     clicked ::
                         scalar_collection.get_new_data_and_plot()
+        GroupBox: persistence:
+            padding = Box(0, 0, 0, 0)
+            title = "Plot configuration"
+            RadioButton: old:
+                text = "Load plot details from disk"
+                checked := scalar_collection.use_disk_state
+            RadioButton: new:
+                text = "Keep plot details from previous headers"
+                checked := scalar_collection.use_ram_state
         GroupBox: measured:
             padding = Box(0, 0, 0, 0)
             title = "Data"

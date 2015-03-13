@@ -244,13 +244,14 @@ class ScalarCollection(Atom):
     _ax = Typed(Axes)
     # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
-
-    # attribute used to transfer state between resets to the dataframe
-    state = Dict()
-
+    # some id that replay uses as a key for plotting state
     dataframe_id = Str()
-
+    # the sql database that keeps track of headers from run-to-run
     history = Typed(History)
+    # tell replay to use the state from the last selected header
+    use_ram_state = Bool(False)
+    # tell replay to use the state from the last time this header was viewed
+    use_disk_state = Bool(True)
 
     def __init__(self, history, **kwargs):
         self.history = history
@@ -282,9 +283,12 @@ class ScalarCollection(Atom):
             # there are no entries in the db for 'state'
             logger.debug('no state found for dataframe id: {}'.format(self.dataframe_id))
             state = []
-        if state:
-            self.__setstate__(state)
+        if self.use_ram_state:
+            # the state has already been correctly configured
+            return
+        elif self.use_disk_state and state:
             # update the plot with the data sets that were plotting last time
+            self.__setstate__(state)
             y = state.get('y', None)
             if y:
                 for name, model in self.scalar_models.items():
