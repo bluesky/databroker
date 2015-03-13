@@ -93,7 +93,7 @@ class DataBroker(object):
         events = []
         for header in headers:
             descriptors = find_event_descriptors(
-                    run_start_uid=header.run_start_uid)
+                    run_start_id=header.run_start_id)
             for descriptor in descriptors:
                 events.extend(find_events(descriptor=descriptor))
         [fill_event(event) for event in events]
@@ -208,7 +208,8 @@ class EventQueue(object):
         # like fetch_events, but we don't fill in the data right away
         events = []
         for header in self.headers:
-            descriptors = find_event_descriptors(run_start_id=header.run_start_id)
+            descriptors = find_event_descriptors(
+                    run_start_id=header.run_start_id)
             for descriptor in descriptors:
                 events.extend(find_events(descriptor=descriptor))
         if not events:
@@ -330,6 +331,7 @@ class Header(Document):
                 'owner': 'owner',
                 'group': 'group',
                 'project': 'project',
+                'run_start_id': 'id',
                 'run_start_uid': 'uid'}
         for new_key, old_key in attrs.items():
             header[new_key] = run_start[old_key]
@@ -338,6 +340,7 @@ class Header(Document):
                     'stop_datetime': 'time_as_datetime',
                     'exit_reason': 'reason',
                     'exit_status': 'exit_status',
+                    'run_stop_id': 'id',
                     'run_stop_uid': 'uid'}
             for new_key, old_key in attrs.items():
                 header[new_key] = run_stop[old_key]
