@@ -375,10 +375,10 @@ class Header(Document):
                 s.write("{0}".format(data_key), 'green', newline=False)
                 s.write(': {0}'.format(data_key_dict['source']),
                         color='lightgrey')
-        s.write("..run_start_uid='{0}'".format(self.run_start_uid),
+        s.write("run_start_uid='{0}'".format(self.run_start_uid),
                 'lightgrey')
         if hasattr(self, 'run_stop_uid'):
-            s.write("..run_stop_uid='{0}'".format(self.run_stop_uid),
+            s.write("run_stop_uid='{0}'".format(self.run_stop_uid),
                     'lightgrey')
         return s.readout()
 
