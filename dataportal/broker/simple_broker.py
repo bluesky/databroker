@@ -289,7 +289,7 @@ class Header(Document):
     """A dictionary-like object summarizing metadata for a run."""
 
     @classmethod
-    def from_run_start(cls, run_start):
+    def from_run_start(cls, run_start, verify_integrity=True):
         """
         Build a Header from a RunStart Document.
 
@@ -303,7 +303,7 @@ class Header(Document):
         """
         header = Header()
         header.event_descriptors = find_event_descriptors(run_start=run_start)
-        run_stops = find_run_stops(run_start_uid=run_start.uid)
+        run_stops = find_run_stops(run_start_id=run_start.id)
         try:
             run_stop, = run_stops
         except ValueError:
