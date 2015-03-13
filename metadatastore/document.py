@@ -43,7 +43,9 @@ def _normalize(in_val):
 
 
 class Document(MutableMapping):
-    """A dictionary where d.key is the same as d['key']"""
+    """A dictionary where d.key is the same as d['key']
+    and attributes/keys beginning with '_' are skipped
+    in iteration."""
 
     def __init__(self):
         self._fields = set()
@@ -103,9 +105,9 @@ class Document(MutableMapping):
 
             attr = _normalize(attr)
 
-            setattr(document, field, attr)
+            document[field] = attr
             # For debugging, add a human-friendly time_as_datetime attribute.
-            if hasattr(document, 'time'):
+            if 'time' in document:
                 document.time_as_datetime = datetime.fromtimestamp(
                         document.time)
         return document
