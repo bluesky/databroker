@@ -9,7 +9,6 @@ from ..utils.console import color_print
 from metadatastore.api import (Document, find_last, find_run_starts,
                                find_event_descriptors, find_run_stops,
                                find_events)
-from metadatastore.document import DottableMutableMapping
 import warnings
 from filestore.api import retrieve
 import os
@@ -285,7 +284,7 @@ def fill_event(event):
             event.data[data_key][0] = retrieve(value)
 
 
-class Header(DottableMutableMapping):
+class Header(Document):
     """A dictionary-like object summarizing metadata for a run."""
 
     @classmethod
@@ -346,7 +345,9 @@ class Header(DottableMutableMapping):
         return header
 
     def __repr__(self):
-        return "<Header run_start_uid='{0}'>".format(self.run_start_uid)
+        # Even with a scan_id of 6+ digits, this fits under 80 chars.
+        return "<Header scan_id={0} run_start_uid='{1}'>".format(
+                self.scan_id, self.run_start_uid)
 
     def __str__(self):
         s = Stream()
