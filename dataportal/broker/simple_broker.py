@@ -324,25 +324,25 @@ class Header(Document):
                     warnings.warn(error_msg)
 
         # Map keys from RunStart and RunStop onto Header.
-        attrs = {'start_time': 'time',
-                'start_datetime': 'time_as_datetime',
-                'scan_id': 'scan_id',
-                'beamline_id': 'beamline_id',
-                'owner': 'owner',
-                'group': 'group',
-                'project': 'project',
-                'run_start_id': 'id',
-                'run_start_uid': 'uid'}
-        for new_key, old_key in attrs.items():
+        run_start_renames = {'start_time': 'time',
+                             'start_datetime': 'time_as_datetime',
+                             'scan_id': 'scan_id',
+                             'beamline_id': 'beamline_id',
+                             'owner': 'owner',
+                             'group': 'group',
+                             'project': 'project',
+                             'run_start_id': 'id',
+                             'run_start_uid': 'uid'}
+        for new_key, old_key in run_start_renames.items():
             header[new_key] = run_start[old_key]
         if run_stop is not None:
-            attrs = {'stop_time': 'time',
-                    'stop_datetime': 'time_as_datetime',
-                    'exit_reason': 'reason',
-                    'exit_status': 'exit_status',
-                    'run_stop_id': 'id',
-                    'run_stop_uid': 'uid'}
-            for new_key, old_key in attrs.items():
+            run_stop_renames = {'stop_time': 'time',
+                                'stop_datetime': 'time_as_datetime',
+                                'exit_reason': 'reason',
+                                'exit_status': 'exit_status',
+                                'run_stop_id': 'id',
+                                'run_stop_uid': 'uid'}
+            for new_key, old_key in run_stop_renames.items():
                 header[new_key] = run_stop[old_key]
         run_start._name = 'Header'
         return header
