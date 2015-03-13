@@ -275,9 +275,12 @@ class ScalarCollection(Atom):
             self.dataframe_id = dataframe_id
         logger.debug('dataframe id in scalar model: {}'.format(self.dataframe_id))
         try:
-            state = self.history.get(self.dataframe_id)
+            logger.debug('getting state for dataframe id: {}'.format(self.dataframe_id))
+            state = self.history.get(six.text_type(self.dataframe_id))
+            logger.debug('state retrieved for dataframe id: {}\nstate: {}'.format(self.dataframe_id, state))
         except IndexError:
             # there are no entries in the db for 'state'
+            logger.debug('no state found for dataframe id: {}'.format(self.dataframe_id))
             state = []
         if state:
             self.__setstate__(state)
