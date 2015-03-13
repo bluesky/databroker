@@ -317,7 +317,7 @@ class EventDescriptorIsNoneError(ValueError):
 
 # TODO: Update all query routine documentation
 def _as_document(mongoengine_object):
-    return Document(mongoengine_object)
+    return Document.from_mongo(mongoengine_object)
 
 def _format_time(search_dict):
     """Helper function to format the time arguments in a search dict

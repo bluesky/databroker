@@ -32,7 +32,7 @@ def _normalize(in_val):
 
     """
     if isinstance(in_val, BaseDocument):
-        return Document(in_val)
+        return Document.from_mongo(in_val)
     elif isinstance(in_val, BaseDict):
         return {_normalize(k): _normalize(v) for k, v in six.iteritems(in_val)}
     elif isinstance(in_val, BaseList):
@@ -42,7 +42,7 @@ def _normalize(in_val):
     return in_val
 
 
-class DottableMutableMapping(MutableMapping):
+class Document(MutableMapping):
     """A dictionary where d.key is the same as d['key']"""
 
     def __init__(self):
@@ -82,20 +82,19 @@ class DottableMutableMapping(MutableMapping):
     def __contains__(self, key):
         return key in self._fields
 
-
-class Document(DottableMutableMapping):
-    """
-    Copy the data out of a mongoengine.Document, including nested Documents,
-    but do not copy any of the mongo-specific methods or attributes.
-    """
-    def __init__(self, mongo_document):
+    @classmethod
+    def from_mongo(cls, mongo_document):
         """
+        Copy the data out of a mongoengine.Document, including nested
+        Documents, but do not copy any of the mongo-specific methods or
+        attributes.
+
         Parameters
         ----------
         mongo_document : mongoengine.Document
         """
-        super(Document, self).__init__()
-        self._name = mongo_document.__class__.__name__
+        document = Document()
+        document._name = mongo_document.__class__.__name__
         fields = set(chain(mongo_document._fields.keys(),
                            mongo_document._data.keys()))
 
@@ -104,10 +103,12 @@ class Document(DottableMutableMapping):
 
             attr = _normalize(attr)
 
-            setattr(self, field, attr)
+            setattr(document, field, attr)
             # For debugging, add a human-friendly time_as_datetime attribute.
-            if hasattr(self, 'time'):
-                self.time_as_datetime = datetime.fromtimestamp(self.time)
+            if hasattr(document, 'time'):
+                document.time_as_datetime = datetime.fromtimestamp(
+                        document.time)
+        return document
 
     def __repr__(self):
         return "<{0} Document>".format(self._name)
