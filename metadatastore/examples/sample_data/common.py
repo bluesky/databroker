@@ -71,7 +71,7 @@ def noisy(val, sigma=0.01):
 
 def example(func):
     @wraps(func)
-    def mock_run_start(run_start=None, sleep=0):
+    def mock_run_start(run_start=None, sleep=0, make_run_stop=True):
         if run_start is None:
             blc = insert_beamline_config({}, time=0.)
             run_start = insert_run_start(time=0., scan_id=1, beamline_id='csx',
@@ -81,7 +81,8 @@ def example(func):
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
         time = max([event.time for event in events])
-        insert_run_stop(run_start, time=time, exit_status='success')
-        events = [Document(e) for e in events]
+        if make_run_stop:
+            insert_run_stop(run_start, time=time, exit_status='success')
+        events = [Document.from_mongo(e) for e in events]
         return events
     return mock_run_start
