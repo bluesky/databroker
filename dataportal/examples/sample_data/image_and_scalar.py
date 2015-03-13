@@ -6,10 +6,15 @@ from metadatastore.api import insert_event, insert_event_descriptor
 from filestore.file_writers import save_ndarray
 from dataportal.broker.simple_broker import fill_event
 from dataportal.examples.sample_data import frame_generators
-from dataportal.examples.sample_data.common import example, noisy
+from dataportal.examples.sample_data import common
 import argparse
 import sys
 import metadatastore
+
+
+# These are imported from MDS and cannot be imported as things.
+noisy = common.noisy
+example = common.example
 
 # This section sets up what the simulated images will look like.
 
