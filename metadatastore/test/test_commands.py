@@ -37,7 +37,7 @@ def _blc_tester(config_dict):
     blc = mdsc.insert_beamline_config(config_dict, ttime.time())
     q_ret = mdsc.find_beamline_configs(_id=blc.id)[0]
     assert_equal(bson.ObjectId(q_ret.id), blc.id)
-    doc = Document(blc)
+    doc = Document.from_mongo(blc)
     BeamlineConfig.objects.get(id=blc.id)
     if config_dict is None:
         config_dict = dict()
@@ -86,7 +86,7 @@ def test_ev_desc():
                                 beamline_id='sample_beamline',
                                 scan_id=42,
                                 beamline_config=blc)
-    Document(rs)
+    Document.from_mongo(rs)
     data_keys = {'some_value': {'source': 'PV:pv1',
                                 'shape': [1, 2],
                                 'dtype': 'array'},
@@ -137,7 +137,7 @@ def _run_start_tester(time, beamline_id, scan_id):
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
 
     # Check that Document creation does not error.
-    Document(run_start)
+    Document.from_mongo(run_start)
 
     # Check contents of record we just inserted.
     ret = RunStart.objects.get(id=run_start.id)
@@ -168,7 +168,7 @@ def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
     run_start = mdsc.insert_run_start(time, beamline_id,
                                       beamline_config=beamline_cfg,
                                       scan_id=scan_id)
-    Document(run_start)
+    Document.from_mongo(run_start)
     ret = RunStart.objects.get(id=run_start.id)
 
     for name, val in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
@@ -210,7 +210,7 @@ def _run_stop_tester(run_start, time):
     assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
     # Check that Document conversion does not raise.
-    Document(run_stop)
+    Document.from_mongo(run_stop)
 
     # Check the contents of the record we just inserted.
     ret = RunStop.objects.get(id=run_stop.id)
@@ -245,7 +245,7 @@ def test_run_start_custom():
                                 scan_id=42,
                                 beamline_config=blc,
                                 custom=cust)
-    Document(rs)
+    Document.from_mongo(rs)
     ret = RunStart.objects.get(id=rs.id)
 
     for k in cust:

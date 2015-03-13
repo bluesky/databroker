@@ -32,7 +32,7 @@ def _normalize(in_val):
 
     """
     if isinstance(in_val, BaseDocument):
-        return Document(in_val)
+        return Document.from_mongo(in_val)
     elif isinstance(in_val, BaseDict):
         return {_normalize(k): _normalize(v) for k, v in six.iteritems(in_val)}
     elif isinstance(in_val, BaseList):
@@ -43,30 +43,12 @@ def _normalize(in_val):
 
 
 class Document(MutableMapping):
-    """
-    Copy the data out of a mongoengine.Document, including nested Documents,
-    but do not copy any of the mongo-specific methods or attributes.
-    """
-    def __init__(self, mongo_document):
-        """
-        Parameters
-        ----------
-        mongo_document : mongoengine.Document
-        """
+    """A dictionary where d.key is the same as d['key']
+    and attributes/keys beginning with '_' are skipped
+    in iteration."""
+
+    def __init__(self):
         self._fields = set()
-        self._name = mongo_document.__class__.__name__
-        fields = set(chain(mongo_document._fields.keys(),
-                           mongo_document._data.keys()))
-
-        for field in fields:
-            attr = getattr(mongo_document, field)
-
-            attr = _normalize(attr)
-
-            setattr(self, field, attr)
-            # For debugging, add a human-friendly time_as_datetime attribute.
-            if hasattr(self, 'time'):
-                self.time_as_datetime = datetime.fromtimestamp(self.time)
 
     def __setattr__(self, k, v):
         self.__dict__[k] = v
@@ -81,9 +63,6 @@ class Document(MutableMapping):
             self._fields.remove(k)
         assert k not in self._fields
 
-    def __repr__(self):
-        return "<{0} Document>".format(self._name)
-
     def __iter__(self):
         return iter(self._fields)
 
@@ -95,7 +74,6 @@ class Document(MutableMapping):
 
     def __delitem__(self, key):
         delattr(self, key)
-        assert key not in self._fields
 
     def __setitem__(self, key, val):
         setattr(self, key, val)
@@ -105,3 +83,34 @@ class Document(MutableMapping):
 
     def __contains__(self, key):
         return key in self._fields
+
+    @classmethod
+    def from_mongo(cls, mongo_document):
+        """
+        Copy the data out of a mongoengine.Document, including nested
+        Documents, but do not copy any of the mongo-specific methods or
+        attributes.
+
+        Parameters
+        ----------
+        mongo_document : mongoengine.Document
+        """
+        document = Document()
+        document._name = mongo_document.__class__.__name__
+        fields = set(chain(mongo_document._fields.keys(),
+                           mongo_document._data.keys()))
+
+        for field in fields:
+            attr = getattr(mongo_document, field)
+
+            attr = _normalize(attr)
+
+            document[field] = attr
+            # For debugging, add a human-friendly time_as_datetime attribute.
+            if 'time' in document:
+                document.time_as_datetime = datetime.fromtimestamp(
+                        document.time)
+        return document
+
+    def __repr__(self):
+        return "<{0} Document>".format(self._name)
