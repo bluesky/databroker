@@ -1,14 +1,14 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from .retrieve import HandlerBase
-from .readers.spe import PrincetonSPEFile
-from collections import deque
 import six
-from six.moves import range
+
 import logging
 import h5py
 import numpy as np
 import os.path
+
+from .retrieve import HandlerBase
+from .readers.spe import PrincetonSPEFile
 
 logger = logging.getLogger(__name__)
 
