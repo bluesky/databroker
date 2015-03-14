@@ -109,7 +109,10 @@ def save_ndarray(data, base_path=None):
         each day in this path.
     """
     if base_path is None:
-        base_path = op.join(op.expanduser('~'), '.fs_cache',
+        xdg_data = os.getenv('XDG_DATA_HOME')
+        if not xdg_data:
+            xdg_data = op.join(op.expanduser('~'), '.local', 'share')
+        base_path = op.join(xdg_data, 'fs_cache',
                             str(datetime.date.today()))
     _make_sure_path_exists(base_path)
     fpath = op.join(base_path, str(uuid.uuid4()) + '.npy')
