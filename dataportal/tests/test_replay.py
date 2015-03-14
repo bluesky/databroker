@@ -92,9 +92,10 @@ def teardown():
 # different combinations of layout parameters. Whether or not anything
 # actually works correctly is dealt with in later tests
 @skip_if(six.PY3)
-def _replay_startup_tester(params=None, wait_time=1000):
+def _replay_startup_tester(params, title, wait_time=1000):
     app = QtApplication()
     ui = replay.create(params)
+    ui.title = title
     ui.show()
     app.timed_call(wait_time, app.stop)
     app.start()
@@ -109,9 +110,12 @@ def test_replay_startup():
     live = replay.define_live_params()
     live_small = copy.deepcopy(live)
     live_small['screen_size'] = 'small'
-    params = [normal, small, live, live_small]
+    params = [(normal, 'testing normal startup'),
+              (small, 'testing small startup'),
+              (live, 'testing live startup'),
+              (live_small, 'testing small live startup')]
     for p in params:
-        yield _replay_startup_tester, p
+        yield _replay_startup_tester, p[0], p[1]
 
 # make sure that you can run dataportal/replay/replay.py
 @skip_if(six.PY3)
@@ -145,6 +149,7 @@ def test_replay_plotx_ploty():
     # replay.
     app = QtApplication()
     ui = replay.create(replay.define_live_params())
+    ui.title = 'testing replay with plotx and one value of ploty'
     ui.show()
     app.timed_call(4000, app.stop)
     app.start()
@@ -186,6 +191,7 @@ def test_replay_plotx_2ploty():
     # replay.
     app = QtApplication()
     ui = replay.create(replay.define_live_params())
+    ui.title = 'testing replay with plotx and two values of ploty'
     ui.show()
     app.timed_call(4000, app.stop)
     app.start()
@@ -220,6 +226,7 @@ def test_replay_plotting():
     # replay.
     app = QtApplication()
     ui = replay.create(replay.define_live_params())
+    ui.title = 'testing replay with no plotx and no ploty'
     ui.show()
     app.timed_call(4000, app.stop)
     app.start()
@@ -275,6 +282,8 @@ def test_replay_persistence():
     # open up replay
     app = QtApplication()
     ui = replay.create(replay.define_live_params())
+    ui.title = ('Testing replay by manually triggering various models. '
+                'Sit back and enjoy the show!')
     ui.show()
     hdr1 = db.find_headers(_id=rs1.id)[0]
     ui.muxer_model.header = hdr1
