@@ -12,21 +12,37 @@ from persist import History
 import argparse
 import os
 import logging
+import six
+import errno
 with enaml.imports():
     from dataportal.replay.replay_view import MainView
 
 logger = logging.getLogger(__name__)
 
-REPLAY_CONF_DIR = os.path.join(os.path.expanduser('~'), '.config', 'replay')
-try:
-    os.mkdir(REPLAY_CONF_DIR)
-except OSError:
-    # path already exists
-    pass
+REPLAY_CONF_DIR = os.getenv('XDG_DATA_HOME')
+if not REPLAY_CONF_DIR:
+    REPLAY_CONF_DIR = os.path.join(os.path.expanduser('~'), '.local', 'share')
+
+
+if six.PY2:
+    # http://stackoverflow.com/a/5032238/380231
+    def _make_sure_path_exists(path):
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+else:
+    # technically, this won't work with py3.1, but no one uses that
+    def _make_sure_path_exists(path):
+        return os.makedirs(path, exist_ok=True)
+
+
+_make_sure_path_exists(REPLAY_CONF_DIR)
+
 
 STATE_DB = os.path.join(REPLAY_CONF_DIR, 'state.db')
 history = History(STATE_DB)
-REPLAY_HISTORY_KEYS = ['x', 'y_list', 'x_is_time']
 
 
 def define_default_params():
@@ -140,7 +156,11 @@ def main():
     ui = create(params_dict)
     ui.show()
 
-    ui.muxer_model.header = db[-1]
+    # show the most recent run by default
+    try:
+        ui.muxer_model.header = db[-1]
+    except IndexError:
+        pass
 
     app.start()
 

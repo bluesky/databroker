@@ -64,8 +64,7 @@ def save_state(history, history_key, state, sanitize=False, blacklist=True):
         Dictionary of state that should be saved to the db
     sanitize : bool, optional
         defaults to False
-        True: verify that all values in the state dictionary can be serialized
-              to JSON
+        True: Strips values from `state` that cannot be serialized
     blacklist : bool, optional
         defaults to True
         True: remove keys from the state dictionary that appear in the

@@ -47,7 +47,7 @@ class ColumnModel(Atom):
 
     @observe('upsample', 'downsample')
     def sampling_changed(self, changed):
-        logger.debug('Old data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
+        logger.debug('Old data_muxer col_info: %s', self.data_muxer.col_info[self.name])
         # upsample = self.upsample
         # if upsample == 'None':
         #     upsample = None
@@ -58,7 +58,7 @@ class ColumnModel(Atom):
         # or downsample
         self.data_muxer.col_info[self.name] = ColSpec(
             self.name, self.dim, self.shape, self.upsample, self.downsample)
-        logger.debug('New data_muxer col_info: {}'.format(self.data_muxer.col_info[self.name]))
+        logger.debug('New data_muxer col_info: %s', self.data_muxer.col_info[self.name])
 
     def __repr__(self):
         return ('ColumnModel(name={}, data_muxer={}, dim={}, upsample={}, '
@@ -262,7 +262,7 @@ class MuxerModel(Atom):
         old_norm_col = changed.get('oldvalue', None)
         if old_norm_col is None or old_norm_col == '':
             return
-        logger.debug('old norm col: {}'.format(old_norm_col))
+        logger.debug('old norm col: %s', old_norm_col)
         if old_norm_col == 'None':
             for name, model in self.column_models.items():
                 model.can_be_normalized = True
@@ -291,7 +291,7 @@ class MuxerModel(Atom):
         self._verify_column_info()
 
     def perform_binning(self):
-        logger.debug('\n\n\nbinning column: {}'.format(self.binning_column))
+        logger.debug('binning column: %s', self.binning_column)
         if not (self.binning_column is None or self.binning_column == 'None'):
             # rebin the data
             dataframe = self.data_muxer.bin_on(self.binning_column)
