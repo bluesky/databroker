@@ -38,11 +38,11 @@ class AreaDetectorSPEHandler(HandlerBase):
 
         spe = self._f_cache[point_number]
         data = spe.getData()
-        # if we fix up old entries in CSX FS db we can do va
-        # if data.shape[0] != self._fpp:
-        #     raise IntegrityError(
-        #               "expected {} frames, found {} frames".format(
-        #                      self._fpp, data.shape[0]))
+
+        if data.shape[0] != self._fpp:
+            raise IntegrityError(
+                      "expected {} frames, found {} frames".format(
+                             self._fpp, data.shape[0]))
         return data.squeeze()
 
 
