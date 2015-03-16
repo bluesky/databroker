@@ -83,4 +83,5 @@ setup(
         "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 2.7",
     ],
+    requires=['h5py', 'numpy', 'mongoengine', 'jsonschema']
 )
