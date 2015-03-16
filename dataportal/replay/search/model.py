@@ -9,6 +9,12 @@ import metadatastore
 from mongoengine.connection import ConnectionError
 from pymongo.errors import AutoReconnect
 from functools import wraps
+from dataportal import replay
+from ..persist import History
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class WatchForHeadersModel(Atom):
@@ -26,6 +32,27 @@ class WatchForHeadersModel(Atom):
     update_rate = Int(1000)
     header = Typed(Document)
     search_info = Str("No search performed")
+    history = Typed(History)
+
+    def __init__(self, history, **kwargs):
+        super(WatchForHeadersModel, self).__init__()
+        self.history = history
+        try:
+            state = history.get('WatchForHeadersModel')
+        except IndexError:
+            # no entries for 'WatchForHeadersModel' yet
+            state = {}
+        else:
+            state.pop('history', None)
+        if state:
+            self.__setstate__(state)
+
+    @observe('update_rate')
+    def save_state(self, changed):
+        logger.debug('history in WatchForHeadersModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'WatchForHeadersModel',
+                               self.__getstate__())
 
     def check_header(self):
         try:
@@ -99,6 +126,25 @@ class DisplayHeaderModel(Atom):
         return data_keys
 
 
+def _catch_connection_issues(func):
+    @wraps(func)
+    def inner(self, *args, **kwargs):
+        try:
+            func(self, *args, **kwargs)
+        except ConnectionError:
+            self.search_info = (
+                "Database {} not available at {} on port {}").format(
+                    metadatastore.conf.connection_config['database'],
+                    metadatastore.conf.connection_config['host'],
+                    metadatastore.conf.connection_config['port'])
+        except AutoReconnect:
+            self.search_info = (
+                "Connection to database [[{}]] on [[{}]] was lost".format(
+                    metadatastore.conf.connection_config['database'],
+                    metadatastore.conf.connection_config['host']))
+    return inner
+
+
 class _BrokerSearch(Atom):
     """ABC for broker searching with Atom classes
 
@@ -116,35 +162,12 @@ class _BrokerSearch(Atom):
     """
     search_info = Str()
     headers = List()
-    connection_is_active = Bool(False)
     header = Typed(Document)
+    history = Typed(History)
 
     def __init__(self):
         with self.suppress_notifications():
             self.header = None
-
-
-def _catch_connection_issues(func):
-    @wraps(func)
-    def inner(self, *args, **kwargs):
-        try:
-            func(self, *args, **kwargs)
-        except ConnectionError:
-            self.search_info = (
-                "Database {} not available at {} on port {}").format(
-                metadatastore.conf.connection_config['database'],
-                metadatastore.conf.connection_config['host'],
-                metadatastore.conf.connection_config['port']
-            )
-            self.connection_is_active = False
-        except AutoReconnect:
-            self.search_info = (
-                "Connection to database [[{}]] on [[{}]] was lost".format(
-                    metadatastore.conf.connection_config['database'],
-                    metadatastore.conf.connection_config['host']
-                )
-            )
-    return inner
 
 
 class GetLastModel(_BrokerSearch):
@@ -156,9 +179,19 @@ class GetLastModel(_BrokerSearch):
     """
     num_to_retrieve = Range(low=1)
 
-    def __init__(self):
+    def __init__(self, history):
         super(GetLastModel, self).__init__()
         self.header = None
+        self.history = history
+        try:
+            state = history.get('GetLastModel')
+        except IndexError:
+            # no entries for 'WatchForHeadersModel' yet
+            state = {}
+        else:
+            state.pop('history', None)
+        if state:
+            self.__setstate__(state)
 
     @observe('num_to_retrieve')
     @_catch_connection_issues
@@ -167,7 +200,10 @@ class GetLastModel(_BrokerSearch):
 
         self.search_info = "Requested: {}. Found: {}".format(
             self.num_to_retrieve, len(self.headers))
-        self.connection_is_active = True
+        logger.debug('history in WatchForHeadersModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'GetLastModel',
+            {'num_to_retrieve': self.num_to_retrieve})
 
 
 class ScanIDSearchModel(_BrokerSearch):
@@ -182,10 +218,20 @@ class ScanIDSearchModel(_BrokerSearch):
     """
     scan_id = Int(1)
 
-    def __init__(self):
+    def __init__(self, history):
         super(ScanIDSearchModel, self).__init__()
         self.header = None
         self.search_info = "Searching by Scan ID"
+        self.history = history
+        try:
+            state = history.get('ScanIDSearchModel')
+        except IndexError:
+            # no entries for 'WatchForHeadersModel' yet
+            state = {}
+        else:
+            state.pop('history', None)
+        if state:
+            self.__setstate__(state)
 
     @observe('scan_id')
     @_catch_connection_issues
@@ -193,5 +239,10 @@ class ScanIDSearchModel(_BrokerSearch):
         self.headers = DataBroker.find_headers(scan_id=self.scan_id)
         self.search_info = "Requested scan id: {}. Found: {}".format(
             self.scan_id, len(self.headers))
-        self.connection_is_active = True
 
+    @observe('scan_id')
+    def save_state(self, changed):
+        logger.debug('history in ScanIDSearchModel.save_state: '
+                     '{}'.format(self.history))
+        replay.core.save_state(self.history, 'ScanIDSearchModel',
+            {'scan_id': self.scan_id})

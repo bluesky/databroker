@@ -9,11 +9,12 @@ from ...muxer.data_muxer import DataMuxer
 from datetime import datetime
 import logging
 import numpy as np
-
 from metadatastore.api import Document
 import pandas as pd
+from ..persist import History
+from dataportal import replay
 
-__author__ = 'edill'
+
 logger = logging.getLogger(__name__)
 
 nodata_str = "data_muxer is None"
@@ -51,25 +52,25 @@ class ScalarConfig(Atom):
     @observe('title')
     def title_changed(self, changed):
         self._ax.set_title(self.title)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('%s: %s', changed['name'], changed['value'])
         self.replot()
 
     @observe('xlabel')
     def xlabel_changed(self, changed):
         self._ax.set_xlabel(self.xlabel)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('%s: %s', changed['name'], changed['value'])
         self.replot()
 
     @observe('ylabel')
     def ylabel_changed(self, changed):
         self._ax.set_ylabel(self.ylabel)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('%s: %s', changed['name'], changed['value'])
         self.replot()
 
     @observe('grid')
     def grid_changed(self, changed):
         self._ax.grid(self.grid)
-        print('{}: {}'.format(changed['name'], changed['value']))
+        logger.debug('%s: %s', changed['name'], changed['value'])
         self.replot()
 
     def replot(self):
@@ -228,11 +229,13 @@ class ScalarCollection(Atom):
     dataframe = Typed(pd.DataFrame)
     # name of the x axis
     x = Str()
+    # names of the currently plotting things on the y-axis
+    y = List()
     # attribute needed to keep the x axis combo box selector in sync
     x_index = Int()
 
     # name of the column to align against
-    x_is_time = Bool(False)
+    x_is_time = Bool(True)
     # name of all columns that the data muxer knows about
     data_cols = List()
 
@@ -241,11 +244,20 @@ class ScalarCollection(Atom):
     _ax = Typed(Axes)
     # configuration properties for the 1-D plot
     _conf = Typed(ScalarConfig)
+    # some id that replay uses as a key for plotting state
+    dataframe_id = Str()
+    # the sql database that keeps track of headers from run-to-run
+    history = Typed(History)
+    # tell replay to use the state from the last selected header
+    use_ram_state = Bool(False)
+    # tell replay to use the state from the last time this header was viewed
+    use_disk_state = Bool(True)
 
-    # attribute used to transfer state between instances of
-    state = Dict()
+    def __init__(self, history, **kwargs):
+        self.history = history
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-    def __init__(self):
         with self.suppress_notifications():
             super(ScalarCollection, self).__init__()
             # plotting initialization
@@ -253,49 +265,46 @@ class ScalarCollection(Atom):
             self._fig.set_tight_layout(True)
             self._ax = self._fig.add_subplot(111)
             self._conf = ScalarConfig(self._ax)
+            self.dataframe_id = ''
 
-    def get_plotting_state(self):
-        """
-
-        Format a dictionary of the current state of what is visible on the
-        scalar plot
-
-        Returns
-        -------
-        dict
-            'x': currently selected x axis. only used if x_is_time is False
-            'x_is_time': boolean for the x axis being time (True)
-            'y': names of the currently plotting data sets
-
-        """
-        state = {'x': self.x, 'x_is_time': self.x_is_time,
-                 'y': [y for y in self.column_models.values() if y.is_plotting]}
-        return state
-
-    def set_plot_state(self, changed):
-        """Function that should be used with the Atom observer pattern.
-
-        e.g., muxer_model.observe('plot_state', scalar_collection.set_plot_state)
-        """
-        state_dict = changed['value']
+    @observe('dataframe_id')
+    def dataframe_id_changed(self, changed):
+        dataframe_id = changed['value']
+        if dataframe_id is None or dataframe_id == 'None' or dataframe_id == '':
+            dataframe_id = ''
+        with self.suppress_notifications():
+            self.dataframe_id = dataframe_id
+        logger.debug('dataframe id in scalar model: %s', self.dataframe_id)
         try:
-            self.x = state_dict.pop('x')
-        except KeyError:
-            self.x_is_time = True
-        else:
-            self.x_is_time = False
-        try:
-            y = state_dict.pop('y')
-        except KeyError:
-            y = []
-        else:
-            for name, model in self.scalar_models.items():
-                model.is_plotting = name in y
+            logger.debug('getting state for dataframe id: %s', self.dataframe_id)
+            state = self.history.get(six.text_type(self.dataframe_id))
+            logger.debug('state retrieved for dataframe id: %s\nstate: %s', self.dataframe_id, state)
+        except IndexError:
+            # there are no entries in the db for 'state'
+            logger.debug('no state found for dataframe id: %s', self.dataframe_id)
+            state = {}
+        if self.use_ram_state:
+            # the state has already been correctly configured
+            return
+        elif self.use_disk_state and state:
+            # update the plot with the data sets that were plotting last time
+            self.__setstate__(state)
+            y = state.get('y', None)
+            if y:
+                for name, model in self.scalar_models.items():
+                    model.is_plotting = name in y
+                self.get_new_data_and_plot()
+            x = state.get('x', None)
+            if x:
+                self.x_index = self.scalar_models.keys().index(self.x)
 
-        for k, v in state_dict.items():
-            print('setting {} to self.{}'.format(v, k))
-            setattr(self, k, v)
-        self.get_new_data_and_plot()
+
+    @observe('x', 'x_is_time', 'y')
+    def save_plotting_state(self, changed):
+        plotting_state = {'x': self.x, 'y': self.y, 'x_is_time': self.x_is_time}
+        logger.debug('writing plotting state for id: [%s] ... %s',
+            self.dataframe_id, plotting_state)
+        replay.core.save_state(self.history, self.dataframe_id, plotting_state)
 
     def clear_scalar_models(self):
         self._ax.cla()
@@ -318,7 +327,7 @@ class ScalarCollection(Atom):
         old_x = self.x
         old_x_is_time = self.x_is_time
 
-        scalar_cols= [col for col in self.dataframe.columns
+        scalar_cols = [col for col in self.dataframe.columns
                      if self.dataframe[col].dropna().values[0].shape == tuple()]
         # figure out if the dataframe has one or more levels of labels
         # for now these need to be handled differently

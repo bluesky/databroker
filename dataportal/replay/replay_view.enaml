@@ -7,6 +7,9 @@ from dataportal.replay.scalar import PlotView, PlotControls
 from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem,
                                ScrollArea)
 from enaml.layout.api import VSplitLayout, HSplitLayout, TabLayout
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def define_layout(init_params, watch_header, header_view, pv_view, muxer,
@@ -15,10 +18,9 @@ def define_layout(init_params, watch_header, header_view, pv_view, muxer,
     if init_params['screen_size'] == 'small':
         return HSplitLayout(
             HSplitLayout(
-                VSplitLayout(
-                    TabLayout(get_last, watch_header, scan_id,
-                              index=init_params['search_tab_index']),
-                    TabLayout(header_view, pv_view, muxer)),
+                TabLayout(get_last, watch_header, scan_id, header_view,
+                          pv_view, muxer,
+                          index=init_params['search_tab_index']),
                 scalar_plot_controls),
             scalar_plot,)
     else:

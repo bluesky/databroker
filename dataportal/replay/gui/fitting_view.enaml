@@ -142,7 +142,7 @@ enamldef MultiFitController(Container): mfc:
             text = "Fit"
             clicked ::
                 multi_fit_controller.fit()
-                print('btn_fit clicked')
+                logger.debug('btn_fit clicked')
         ScrollArea: scroll:
             Container:
                 Looper:
@@ -154,7 +154,7 @@ enamldef MultiFitController(Container): mfc:
             clicked ::
                 multi_fit_controller.add_model()
                 mfc.fit_controllers = listify(multi_fit_controller.models)
-                print fit_controllers
+                logger.debug(fit_controllers)
 
 # MAIN WINDOWS -- DEBUGGING/DEMO ONLT
 

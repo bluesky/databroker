@@ -15,15 +15,16 @@ from ..sources import channelarchiver as ca
 from ..sources import switch
 from ..broker import EventQueue, DataBroker as db
 from ..examples.sample_data import temperature_ramp, image_and_scalar
-
+import dataportal
 from nose.tools import make_decorator
 from nose.tools import (assert_equal, assert_raises, assert_true,
-                        assert_false)
+                        assert_false, raises)
 
 
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
                                          Event, RunStart, RunStop)
-from metadatastore.api import insert_run_start, insert_beamline_config
+from metadatastore.api import (insert_run_start, insert_beamline_config,
+                               insert_run_stop)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
@@ -192,3 +193,19 @@ def generate_ca_data(channels, start_time, end_time):
     timestamps = list(timestamps.dt.to_pydatetime())  # list of datetime objects
     values = list(np.arange(len(timestamps)))
     return {channel: (timestamps, values) for channel in channels}
+
+
+@raises(dataportal.broker.simple_broker.IntegrityError)
+def test_bad_header():
+    # Exercise the code path that results in a 'badly formatted header'
+    # in this case it works by inserting three run stops
+    # one comes from the temperature_ramp.run() command
+    # then two more come from stop1 and stop2
+    start = insert_run_start(time=ttime.time(), scan_id=8985, owner='docbrown',
+                          beamline_id='example',
+                          beamline_config=insert_beamline_config({}, time=0.))
+    ev = temperature_ramp.run(start)
+    stop1 = insert_run_stop(start, time=ttime.time())
+    stop2 = insert_run_stop(start, time=ttime.time())
+
+    hdr = db[-1]
