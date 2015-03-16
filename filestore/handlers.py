@@ -1,14 +1,60 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from .retrieve import HandlerBase
-
 import six
+
 import logging
 import h5py
 import numpy as np
 import os.path
 
+from .retrieve import HandlerBase
+from .readers.spe import PrincetonSPEFile
+
 logger = logging.getLogger(__name__)
+
+
+class IntegrityError(Exception):
+    pass
+
+
+class AreaDetectorSPEHandler(HandlerBase):
+    specs = {'AD_SPE'} | HandlerBase.specs
+
+    def __init__(self, fpath, template, filename,
+                 frame_per_point=1):
+        self._path = fpath
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
+        self._f_cache = dict()
+
+    def __call__(self, point_number):
+        if point_number not in self._f_cache:
+            fname = self._template % (self._path,
+                                      self._filename,
+                                      point_number)
+            spe_obj = PrincetonSPEFile(fname)
+            self._f_cache[point_number] = spe_obj
+
+        spe = self._f_cache[point_number]
+        data = spe.getData()
+
+        if data.shape[0] != self._fpp:
+            raise IntegrityError(
+                      "expected {} frames, found {} frames".format(
+                             self._fpp, data.shape[0]))
+        return data.squeeze()
+
+
+class DummyAreaDetectorHandler(HandlerBase):
+    def __init__(self, fpath, frame_per_point=1, **kwargs):
+
+        self._fpp = frame_per_point
+
+    def __call__(self, **kwargs):
+        out_stack = np.ones((self._fpp, 10, 10)) * np.nan
+        # return stacked and squeezed results
+        return out_stack.squeeze()
 
 
 class _HDF5HandlerBase(HandlerBase):
@@ -21,6 +67,7 @@ class _HDF5HandlerBase(HandlerBase):
     def close(self):
         super(_HDF5HandlerBase, self).close()
         self._file.close()
+        self._file = None
 
 
 class HDF5DatasetSliceHandler(_HDF5HandlerBase):
@@ -114,6 +161,12 @@ class _HdfMapsHandlerBase(_HDF5HandlerBase):
 
 
 class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
+    """
+    Handler which selects energy spectrum from
+    a MAPS XRF data product.
+    """
+    specs = {'MAPS_SPECTRUM'} | _HdfMapsHandlerBase.specs
+
     def __call__(self, x, y):
         """
         Return the spectrum at the x, y position
@@ -136,6 +189,12 @@ class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
 
 
 class HDFMapsEnergyHandler(_HdfMapsHandlerBase):
+    """
+    Handler which select fixed-energy slices from
+    a MAPS XRF data file.
+    """
+    specs = {'MAPS_PLANE'} | _HdfMapsHandlerBase.specs
+
     def __call__(self, e_index):
         """
         Return the raster plane at a fixed energy

@@ -1,0 +1,24 @@
+{
+    "properties": {
+        "frame_per_point": {
+            "type": "integer",
+            "description": "number of frames per data point"
+        },
+        "template": {
+            "type": "string",
+            "description": "Template to generate a file name, using old-style formatting.  must take (%s, %s, %d) which are filepath, filename, and filenumber"
+        },
+        "filename": {
+            "type": "string",
+            "description": "filename part of the template."
+        }
+
+    },
+    "required": [
+        "template",
+        "filename"
+    ],
+    "description": "Output from AreaDector talking to a Princeton camera",
+    "type": "object",
+    "additionalProperties": false
+}

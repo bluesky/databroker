@@ -2,10 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 import mongoengine.connection
-from .odm_templates import Resource, ResourceAttributes, Datum, ALIAS
+from .odm_templates import Resource, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
 from functools import wraps
+
+from .odm_templates import known_spec
+from jsonschema import validate as js_validate
 
 
 def _ensure_connection(func):
@@ -23,7 +26,6 @@ def db_disconnect():
     mongoengine.connection.disconnect(ALIAS)
     Datum._collection = None
     Resource._collection = None
-    ResourceAttributes._collection = None
 
 
 def db_connect(database, host, port):
@@ -50,6 +52,11 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
     """
     if resource_path is None:
         resource_path = ''
+    if resource_kwargs is None:
+        resource_kwargs = {}
+    if spec in known_spec:
+        js_validate(resource_kwargs, known_spec[spec]['resource'])
+
     resource_object = Resource(spec=spec, resource_path=resource_path,
                                resource_kwargs=resource_kwargs)
 
@@ -59,46 +66,13 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
 
 
 @_ensure_connection
-def insert_resourse_attributes(resource, shape, dtype, **kwargs):
-    """
-
-    This is to be considered provisional.  The API may change drastically
-    in the near future.
-
-
-    kwargs
-    ------
-
-
-    """
-
-    resource_attributes = ResourceAttributes(resource=resource.id, shape=shape,
-                                           dtype=dtype)
-    for k in ['total_bytes', 'hashed_data', 'last_access',
-              'datetime_last_access', 'in_use',
-              'custom_attributes']:
-        v = kwargs.pop(k, None)
-        if v:
-            setattr(resource_attributes, v)
-
-    if kwargs:
-        raise AttributeError(kwargs.keys() +
-                             '  field(s) are not among attribute keys. '
-                             ' Use resource_kwargs attributes'
-                             ' dict for saving it')
-    resource_attributes.save(validate=True, write_concern={"w": 1})
-
-    return resource_attributes
-
-
-@_ensure_connection
 def insert_datum(resource, datum_id, datum_kwargs=None):
     """
 
     Parameters
     ----------
 
-    resource : Resource on Resource.id
+    resource : Resource or Resource.id
         Resource object
 
     datum_id : str
@@ -111,31 +85,20 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
         resource.
 
     """
-
+    try:
+        spec = resource.spec
+    except AttributeError:
+        resource = Resource.objects.get(id=resource)
+        spec = resource.spec
+    if datum_kwargs is None:
+        datum_kwargs = {}
+    if spec in known_spec:
+        js_validate(datum_kwargs, known_spec[spec]['datum'])
     datum = Datum(resource=resource, datum_id=datum_id,
                   datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
 
     return datum
-
-
-@_ensure_connection
-def find_resource_attributes(resource):
-    """Return resource_attributes entry given a resource object
-
-
-    This is to be considered provisional.  The API may change drastically
-    in the near future.
-
-
-    Parameters
-    ----------
-    resource: filestore.database.resource.Resource
-        Resource object
-
-    """
-
-    return ResourceAttributes.objects(resource=resource.id)
 
 
 @_ensure_connection

@@ -1,0 +1,12 @@
+{
+    "properties": {
+        "frame_per_point": {
+            "type": "integer",
+            "description": "number of frames per data point"
+        }
+    },
+    "type": "object",
+    "description": "File output from the hdf5 plugin to AreaDectector.  This plugin dumps all frames sequentially in time into a single hard-coded dataset in the hdf5 file.",
+    "additionalProperties": false
+
+}

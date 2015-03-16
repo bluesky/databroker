@@ -12,11 +12,12 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
+  - conda config --add channels soft-matter
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py pims jsonschema
   - source activate testenv
   - pip install coveralls mongoengine
   - python setup.py install

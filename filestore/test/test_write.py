@@ -45,13 +45,11 @@ import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
 import filestore.handlers as fs_read
-from filestore.odm_templates import Resource, Datum
+from filestore.api import (db_disconnect, db_connect)
 
-import mongoengine
-from mongoengine.context_managers import switch_db
 import uuid
 from numpy.testing import assert_array_equal
-from nose.tools import make_decorator
+
 from nose.tools import assert_raises, assert_equal
 import tempfile
 import shutil
@@ -64,36 +62,28 @@ BASE_PATH = None
 db_name = str(uuid.uuid4())
 dummy_db_name = str(uuid.uuid4())
 
+db_name = str(uuid.uuid4())
+conn = None
+
 
 def setup():
-    # need to make 'default' connection to point to no-where, just to be safe
-    # we need this so that we can re-map documents to a temp database
-    mongoengine.connect(dummy_db_name, 'fs')
-    # connect to the db we are actually going to use
-    mongoengine.connect(db_name, alias='test_db')
+    global conn
+    db_disconnect()
+    db_connect(db_name, 'localhost', 27017)
+
     global BASE_PATH
     BASE_PATH = tempfile.mkdtemp()
 
 
 def teardown():
-    conn = mongoengine.connection.get_connection('test_db')
-    conn.drop_database(db_name)
-    conn.drop_database(dummy_db_name)
-    # TODO clean up files created, lost at least one in the home directory
+    db_disconnect()
+    # if we know about a connection, drop the database
+    if conn:
+        conn.drop_database(db_name)
     if CLEAN_FILES:
         shutil.rmtree(BASE_PATH)
 
 
-def context_decorator(func):
-    def inner(*args, **kwargs):
-        with switch_db(Resource, 'test_db'), \
-          switch_db(Datum, 'test_db'):
-            func(*args, **kwargs)
-
-    return make_decorator(func)(inner)
-
-
-@context_decorator
 def _npsave_helper(dd, base_path):
     eid = fs_write.save_ndarray(dd, base_path)
     with fsr.handler_context({'npy': fs_read.NpyHandler}):
@@ -101,7 +91,7 @@ def _npsave_helper(dd, base_path):
 
     assert_array_equal(dd, ret)
 
-@context_decorator
+
 def test_np_save():
     shape = (7, 5)
     dd = np.arange(np.prod(shape)).reshape(*shape)
@@ -111,7 +101,6 @@ def test_np_save():
         yield _npsave_helper, d, bp
 
 
-@context_decorator
 def test_file_exist_fail():
 
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
@@ -120,7 +109,6 @@ def test_file_exist_fail():
     assert_raises(IOError, fs_write.NpyWriter, test_path)
 
 
-@context_decorator
 def test_multi_write_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
@@ -128,21 +116,18 @@ def test_multi_write_fail():
     assert_raises(RuntimeError, test_w.add_data, 6)
 
 
-@context_decorator
 def test_event_custom_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
     assert_raises(ValueError, test_w.add_data, 6, None, {'aardvark': 3.14})
 
 
-@context_decorator
 def test_file_custom_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     assert_raises(ValueError, fs_write.NpyWriter,
                   test_path, {'aardvark': 3.14})
 
 
-@context_decorator
 def test_sneaky_write_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
@@ -151,7 +136,6 @@ def test_sneaky_write_fail():
     assert_raises(IOError, test_w.add_data, 5)
 
 
-@context_decorator
 def test_give_uid():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     uid = str(uuid.uuid4())
@@ -160,7 +144,6 @@ def test_give_uid():
     assert_equal(uid, eid)
 
 
-@context_decorator
 def test_custom():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     dd = np.random.rand(500, 500)

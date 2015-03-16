@@ -32,11 +32,11 @@ def teardown():
 
 
 def _insert_syn_data(f_type, shape, count):
-    fb = insert_resource(f_type, '', {'shape': shape})
+    fb = insert_resource(f_type, None, {'shape': shape})
     ret = []
     for k in range(count):
         r_id = str(uuid.uuid4())
-        insert_datum(fb, r_id, {'n': k + 1})
+        insert_datum(str(fb.id), r_id, {'n': k + 1})
         ret.append(r_id)
     return ret
 
