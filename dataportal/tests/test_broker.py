@@ -188,7 +188,7 @@ def test_lookup():
     assert_equal(owner, 'nedbrainard')
 
 
-def test_using_source():
+def test_data_key():
     rs1 = insert_run_start(time=100., scan_id=1,
                            owner='nedbrainard', beamline_id='example',
                            beamline_config=insert_beamline_config({}, time=0.))
@@ -199,8 +199,8 @@ def test_using_source():
                  'spoon': {'source': '_', 'dtype': 'number'}}
     insert_event_descriptor(run_start=rs1, data_keys=data_keys, time=100.)
     insert_event_descriptor(run_start=rs2, data_keys=data_keys, time=200.)
-    result1 = db.find_headers(using_source='fork')
-    result2 = db.find_headers(using_source='fork', start_time=150)
+    result1 = db.find_headers(data_key='fork')
+    result2 = db.find_headers(data_key='fork', start_time=150)
     assert_equal(len(result1), 2)
     assert_equal(len(result2), 1)
     actual = result2[0].run_start_id
