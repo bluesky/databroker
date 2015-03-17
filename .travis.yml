@@ -28,6 +28,7 @@ install:
   - 'if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then conda install -n testenv --yes enaml; fi'
   - 'if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then conda install -n testenv --yes atom; fi'
   - source activate testenv
+  - 'pip install coveralls'
   - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
   - 'pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore'
   - 'pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver'
