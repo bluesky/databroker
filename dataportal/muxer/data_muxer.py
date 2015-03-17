@@ -258,6 +258,12 @@ class DataMuxer(object):
                                          name, self.sources[name],
                                          descriptor.id,
                                          description['source']))
+                if name == 'time':
+                    # We can argue later about how best to handle this corner
+                    # case, but anything is better than silently mislabeling
+                    # data.
+                    raise ValueError("The name 'time' is reserved and cannot "
+                                     "be used as an alias.")
 
             # If it is a new name, determine a ColSpec.
             else:
@@ -286,8 +292,8 @@ class DataMuxer(object):
     def _dataframe(self):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
-            index = pd.Float64Index(list(self._time))
             self._df = pd.DataFrame(list(self._data), index)
+            self._df['time'] = list(self._time)
             if self._timestamps_as_data:
                 # Only build this if we need it.
                 # TODO: We shouldn't have to build
@@ -298,7 +304,6 @@ class DataMuxer(object):
                 col_name = _timestamp_col_name(source_name)
                 self._df[col_name] = timestamps[source_name]
                 logger.debug("Including %s timestamps as data", source_name)
-            self._df.index.name = 'epoch_time'
             self._stale = False
         return self._df
 
@@ -360,8 +365,8 @@ class DataMuxer(object):
                                  interpolation=interpolation, agg=agg,
                                  col_names=col_names)
 
-    def bin_by_edges(self, bin_edges, anchor=None, time_labels=None,
-                     interpolation=None, agg=None, col_names=None):
+    def bin_by_edges(self, bin_edges, interpolation=None, agg=None,
+                     col_names=None):
         """
         Return data resampled into bins with the specified edges.
 
@@ -561,8 +566,7 @@ class DataMuxer(object):
             result[name]['min'] = min_series
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
-        # Label the bins with time points.
-        result.index = time_labels
+        result.index.name = 'bin number'
         return result
 
     def __getitem__(self, source_name):
