@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 
 import logging
+from PIL import Image
 import h5py
 import numpy as np
 import os.path
@@ -44,6 +45,26 @@ class AreaDetectorSPEHandler(HandlerBase):
                       "expected {} frames, found {} frames".format(
                              self._fpp, data.shape[0]))
         return data.squeeze()
+
+
+class AreaDetectorTiffHandler(HandlerBase):
+    specs = {'AD_TIFF'} | HandlerBase.specs
+
+    def __init__(self, fpath, template, filename, frame_per_point=1):
+        self._path = fpath
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
+        self._f_cache = dict()
+
+    def __call__(self, point_number):
+        if point_number not in self._f_cache:
+            fname = self._template % (self._path,
+                                      self._filename,
+                                      point_number)
+            data = np.asarray(Image.open(fname))
+            self._f_cache[point_number] = data
+        return self._f_cache[point_number]
 
 
 class DummyAreaDetectorHandler(HandlerBase):
