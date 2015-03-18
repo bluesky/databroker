@@ -27,10 +27,6 @@ try:
 except (IndexError, TypeError):
     scan_id = 1
 
-
-# cast to string
-scan_id = str(scan_id)
-
 custom = {'plotx': 'linear_motor', 'ploty': 'scalar_detector'}
 # Create a BeginRunEvent that serves as entry point for a run
 rs = insert_run_start(scan_id=scan_id, beamline_id='csx', time=time.time(),
@@ -59,6 +55,6 @@ try:
         print("find_last() is broken")
 except AttributeError as ae:
     print(ae)
-res_2 = find_events(run_start=rs)
+res_2 = find_events(descriptor=e_desc)
 if not res_2:
     print("find_events() is broken")
