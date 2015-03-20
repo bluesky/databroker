@@ -35,7 +35,7 @@ def _blc_tester(config_dict):
     """Test BeamlineConfig Insert
     """
     blc = mdsc.insert_beamline_config(config_dict, ttime.time())
-    q_ret = mdsc.find_beamline_configs(_id=blc.id)[0]
+    q_ret, = mdsc.find_beamline_configs(_id=blc.id)
     assert_equal(bson.ObjectId(q_ret.id), blc.id)
     doc = Document.from_mongo(blc)
     BeamlineConfig.objects.get(id=blc.id)
