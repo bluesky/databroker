@@ -127,8 +127,8 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
     scan_id : int, optional
         Unique scan identifier visible to the user and data analysis
     custom: dict, optional
-        Additional parameters that data acquisition code/user wants to
-        append to a given header. Name/value pairs
+        Any additional information that data acquisition code/user wants
+        to append to the Header at the start of the run.
 
     Returns
     -------
@@ -156,7 +156,7 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
 
 @_ensure_connection
 def insert_run_stop(run_start, time, exit_status='success',
-                    reason=None, uid=None):
+                    reason=None, uid=None, custom=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -169,6 +169,9 @@ def insert_run_stop(run_start, time, exit_status='success',
         created.
     reason : str, optional
         provides information regarding the run success. 20 characters max
+    custom : dict, optional
+        Any additional information that data acquisition code/user wants
+        to append to the Header at the end of the run.
 
     Returns
     -------
@@ -177,9 +180,11 @@ def insert_run_stop(run_start, time, exit_status='success',
     """
     if uid is None:
         uid = str(uuid.uuid4())
+    if custom is None:
+        custom = {}
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
                        time_as_datetime=_todatetime(time), uid=uid,
-                       exit_status=exit_status)
+                       exit_status=exit_status, **custom)
 
     run_stop.save(validate=True, write_concern={"w": 1})
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
@@ -216,7 +221,8 @@ def insert_beamline_config(config_params, time, uid=None):
 
 
 @_ensure_connection
-def insert_event_descriptor(run_start, data_keys, time, uid=None):
+def insert_event_descriptor(run_start, data_keys, time, uid=None,
+                            custom=None):
     """ Create an event_descriptor in metadatastore database backend
 
     Parameters
@@ -229,6 +235,9 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
     time : timestamp
         The date/time as found at the client side when an event
         descriptor is created.
+    custom : dict, optional
+        Any additional information that data acquisition code/user wants
+        to append to the EventDescriptor.
 
     Returns
     -------
@@ -238,11 +247,14 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None):
     """
     if uid is None:
         uid = str(uuid.uuid4())
+    if custom is None:
+        custom = {}
     data_keys = format_data_keys(data_keys)
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
-                                       time_as_datetime=_todatetime(time))
+                                       time_as_datetime=_todatetime(time),
+                                       **custom)
 
     event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
                                                           direction='in')
