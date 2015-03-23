@@ -108,8 +108,8 @@ def format_events(event_dict):
 
 @_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
-                     owner=None, custom=None):
-    """ Provide a head for a sequence of events. Entry point for an
+                     owner=None, group=None, project=None, custom=None):
+    """Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
     Parameters
@@ -119,15 +119,19 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
         created.
     scan_id : int
         Unique scan identifier visible to the user and data analysis
-    beamline_id: str
+    beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    beamline_config: metadatastore.odm_temples.BeamlineConfig
+    beamline_config : metadatastore.odm_temples.BeamlineConfig
         Foreign key to beamline config corresponding to a given run
     uid : str, optional
         Globally unique id string provided to metadatastore
-    owner: str, optional
-        Specifies the unix user credentials of the user creating the entry
+    owner : str, optional
+        A username associated with the entry
+    group : str, optional
+        A group (e.g., UNIX group) associated with the entry
+    project : str, optional
+        Any project name to help users locate the data
     custom: dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run.
@@ -142,12 +146,18 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
         uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
+    if owner is None:
+        owner = ''
+    if group is None:
+        group = ''
+    if project is None:
+        project = ''
 
-    run_start = RunStart(time=time, scan_id=scan_id, owner=owner,
+    run_start = RunStart(time=time, scan_id=scan_id,
                          time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
-                         beamline_config=beamline_config
-                         if beamline_config else None,
+                         beamline_config=beamline_config,
+                         owner=owner, group=group, project=project,
                          **custom)
 
     run_start.save(validate=True, write_concern={"w": 1})
