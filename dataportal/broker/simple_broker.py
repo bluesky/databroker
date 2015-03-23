@@ -39,29 +39,32 @@ class DataBroker(object):
                 raise ValueError("Cannot slice infinitely into the past; "
                                  "the result could become too large.")
             start = -key.start
-            result = find_last(start)[stop::key.step]
-            result = [Header.from_run_start(h) for h in result]
+            result = list(find_last(start))[stop::key.step]
+            header = [Header.from_run_start(h) for h in result]
         elif isinstance(key, int):
             if key > -1:
-                result = find_run_starts(scan_id=key)
-                if len(result) == 0:
+                gen = find_run_starts(scan_id=key)
+                try:
+                    result = next(gen)  # most recent match
+                except StopIteration:
                     raise ValueError("No such run found.")
-                result = result[0]  # most recent match
-                result = Header.from_run_start(result)
+                header = Header.from_run_start(result)
             else:
-                result = find_last(-key)
-                if len(result) < -key:
-                    raise IndexError(
-                        "There are only {0} runs.".format(len(result)))
-                result = result[-1]
-                result = Header.from_run_start(result)
+                gen = find_last(-key)
+                for i in range(-key):
+                    try:
+                        result = next(gen)
+                    except StopIteration:
+                        raise IndexError(
+                            "There are only {0} runs.".format(i))
+                header = Header.from_run_start(result)
         elif isinstance(key, Iterable):
             return [cls.__getitem__(k) for k in key]
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
                              "or a list like [1, 7, 13].")
-        return result
+        return header
 
     @classmethod
     def fetch_events(cls, headers, ca_host=None, channels=None):
@@ -96,7 +99,7 @@ class DataBroker(object):
             descriptors = find_event_descriptors(
                     run_start_id=header.run_start_id)
             for descriptor in descriptors:
-                events.extend(find_events(descriptor=descriptor))
+                events.extend(list(find_events(descriptor=descriptor)))
         [fill_event(event) for event in events]
 
         if channels is not None:
@@ -228,7 +231,7 @@ class EventQueue(object):
             descriptors = find_event_descriptors(
                     run_start_id=header.run_start_id)
             for descriptor in descriptors:
-                events.extend(find_events(descriptor=descriptor))
+                events.extend(list(find_events(descriptor=descriptor)))
         if not events:
             return
 
@@ -319,8 +322,8 @@ class Header(Document):
         header : dataportal.broker.Header
         """
         header = Header()
-        header.event_descriptors = find_event_descriptors(run_start=run_start)
-        run_stops = find_run_stops(run_start_id=run_start.id)
+        header.event_descriptors = list(find_event_descriptors(run_start=run_start))
+        run_stops = list(find_run_stops(run_start_id=run_start.id))
         try:
             run_stop, = run_stops
         except ValueError:
@@ -334,7 +337,7 @@ class Header(Document):
                 error_msg = (
                     "{0} RunStop records (uids {1}) were found for the run with "
                     "run_start_uid {2}".format(num, [rs.uid for rs in run_stops],
-                                            run_start.uid))
+                                               run_start.uid))
                 if verify_integrity:
                     raise IntegrityError(error_msg)
                 else:
