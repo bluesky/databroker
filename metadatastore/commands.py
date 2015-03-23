@@ -108,7 +108,7 @@ def format_events(event_dict):
 
 @_ensure_connection
 def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
-                     scan_id=None, custom=None, uid=None):
+                     scan_id=None, uid=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
