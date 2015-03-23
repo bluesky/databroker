@@ -107,8 +107,8 @@ def format_events(event_dict):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, beamline_config, owner=None,
-                     uid=None, custom=None):
+def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
+                     owner=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -124,10 +124,10 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, owner=None,
         beamline code for multiple beamline systems
     beamline_config: metadatastore.odm_temples.BeamlineConfig
         Foreign key to beamline config corresponding to a given run
-    owner: str, optional
-        Specifies the unix user credentials of the user creating the entry
     uid : str, optional
         Globally unique id string provided to metadatastore
+    owner: str, optional
+        Specifies the unix user credentials of the user creating the entry
     custom: dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run.
@@ -157,8 +157,8 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, owner=None,
 
 
 @_ensure_connection
-def insert_run_stop(run_start, time, exit_status='success',
-                    reason=None, uid=None, custom=None):
+def insert_run_stop(run_start, time, uid=None, exit_status='success',
+                    reason=None, custom=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -169,12 +169,12 @@ def insert_run_stop(run_start, time, exit_status='success',
     time : timestamp
         The date/time as found at the client side when an event is
         created.
-    exit_status : {'success', 'abort', 'fail'}
-        indicating reason run stopped
-    reason : str, optional
-        more detailed exit status (stack trace, user remark, etc.)
     uid : str, optional
         Globally unique id string provided to metadatastore
+    exit_status : {'success', 'abort', 'fail'}, optional
+        indicating reason run stopped, 'success' by default
+    reason : str, optional
+        more detailed exit status (stack trace, user remark, etc.)
     custom : dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the end of the run.
