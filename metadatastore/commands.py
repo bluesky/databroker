@@ -107,8 +107,8 @@ def format_events(event_dict):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
-                     scan_id=None, uid=None, custom=None):
+def insert_run_start(time, scan_id, beamline_id, beamline_config, owner=None,
+                     uid=None, custom=None):
     """ Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -117,15 +117,15 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
     time : float
         The date/time as found at the client side when an event is
         created.
+    scan_id : int
+        Unique scan identifier visible to the user and data analysis
     beamline_id: str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    beamline_config: metadatastore.odm_temples.BeamlineConfig, optional
+    beamline_config: metadatastore.odm_temples.BeamlineConfig
         Foreign key to beamline config corresponding to a given run
     owner: str, optional
         Specifies the unix user credentials of the user creating the entry
-    scan_id : int, optional
-        Unique scan identifier visible to the user and data analysis
     uid : str, optional
         Globally unique id string provided to metadatastore
     custom: dict, optional
@@ -169,6 +169,7 @@ def insert_run_stop(run_start, time, exit_status='success',
     time : timestamp
         The date/time as found at the client side when an event is
         created.
+    exit_status : {'success', 'abort', 'fail'}
     reason : str, optional
         provides information regarding the run success. 20 characters max
     uid : str, optional
