@@ -78,7 +78,9 @@ class RunStop(DynamicDocument):
     run_start : bson.ObjectId
         Foreign key to corresponding RunStart
     exit_status : {'success', 'fail', 'abort'}
-        provides information regarding the run success.
+        indicating reason run stopped
+    reason : str
+        more detailed exit status (stack trace, user remark, etc.)
     time : float
         The date/time as found at the client side when an event is
         created.
