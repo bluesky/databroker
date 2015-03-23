@@ -126,6 +126,8 @@ def insert_run_start(time, beamline_id, beamline_config=None, owner=None,
         Specifies the unix user credentials of the user creating the entry
     scan_id : int, optional
         Unique scan identifier visible to the user and data analysis
+    uid : str, optional
+        Globally unique id string provided to metadatastore
     custom: dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run.
@@ -169,6 +171,8 @@ def insert_run_stop(run_start, time, exit_status='success',
         created.
     reason : str, optional
         provides information regarding the run success. 20 characters max
+    uid : str, optional
+        Globally unique id string provided to metadatastore
     custom : dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the end of the run.
@@ -202,6 +206,11 @@ def insert_beamline_config(config_params, time, uid=None):
     config_params : dict, optional
         Name/value pairs that indicate beamline configuration
         parameters during capturing of data
+    time : timestamp
+        The date/time as found at the client side when the
+        beamline configuration is created.
+    uid : str, optional
+        Globally unique id string provided to metadatastore
 
     Returns
     -------
@@ -235,6 +244,8 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     time : timestamp
         The date/time as found at the client side when an event
         descriptor is created.
+    uid : str, optional
+        Globally unique id string provided to metadatastore
     custom : dict, optional
         Any additional information that data acquisition code/user wants
         to append to the EventDescriptor.
@@ -284,6 +295,8 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     seq_num : int
         Unique sequence number for the event. Provides order of an event in
         the group of events
+    uid : str, optional
+        Globally unique id string provided to metadatastore
     """
     m_data = _validate_data(data)
 
