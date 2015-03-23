@@ -203,7 +203,7 @@ def insert_beamline_config(config_params, time, uid=None):
 
     Parameters
     ----------
-    config_params : dict, optional
+    config_params : dict
         Name/value pairs that indicate beamline configuration
         parameters during capturing of data
     time : timestamp
