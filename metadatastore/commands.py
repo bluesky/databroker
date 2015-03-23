@@ -170,8 +170,9 @@ def insert_run_stop(run_start, time, exit_status='success',
         The date/time as found at the client side when an event is
         created.
     exit_status : {'success', 'abort', 'fail'}
+        indicating reason run stopped
     reason : str, optional
-        provides information regarding the run success. 20 characters max
+        more detailed exit status (stack trace, user remark, etc.)
     uid : str, optional
         Globally unique id string provided to metadatastore
     custom : dict, optional
