@@ -125,7 +125,8 @@ def test_src_dst_fail():
 
 def _run_start_tester(time, beamline_id, scan_id):
 
-    run_start = mdsc.insert_run_start(time, beamline_id, scan_id=scan_id,
+    run_start = mdsc.insert_run_start(time, beamline_id=beamline_id,
+                                      scan_id=scan_id,
                                       beamline_config=blc)
     q_ret, = mdsc.find_run_starts(_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
@@ -165,7 +166,7 @@ def test_run_start():
 
 
 def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
-    run_start = mdsc.insert_run_start(time, beamline_id,
+    run_start = mdsc.insert_run_start(time, beamline_id=beamline_id,
                                       beamline_config=beamline_cfg,
                                       scan_id=scan_id)
     Document.from_mongo(run_start)
