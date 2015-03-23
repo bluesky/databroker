@@ -166,7 +166,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
     ----------
     run_start : metadatastore.odm_temples.RunStart
         Foreign key to corresponding RunStart
-    time : timestamp
+    time : float
         The date/time as found at the client side when an event is
         created.
     uid : str, optional
@@ -208,7 +208,7 @@ def insert_beamline_config(config_params, time, uid=None):
     config_params : dict
         Name/value pairs that indicate beamline configuration
         parameters during capturing of data
-    time : timestamp
+    time : float
         The date/time as found at the client side when the
         beamline configuration is created.
     uid : str, optional
@@ -243,7 +243,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain
-    time : timestamp
+    time : float
         The date/time as found at the client side when an event
         descriptor is created.
     uid : str, optional
@@ -288,7 +288,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     event_descriptor : metadatastore.odm_templates.EventDescriptor
         EventDescriptor object that specific event entry is going
         to point(foreign key)
-    time : timestamp
+    time : float
         The date/time as found at the client side when an event is
         created.
     data : dict
