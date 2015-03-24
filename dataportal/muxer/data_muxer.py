@@ -381,7 +381,7 @@ class DataMuxer(object):
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
         col = self._dataframe.sort()[source_name]
-        centers = col.dropna().index.values
+        centers = self._dataframe['time'].reindex_like(col.dropna())
 
         # [2, 4, 6] -> [-inf, 3, 5, inf]
         bin_edges = np.mean([centers[1:], centers[:-1]], 0)
