@@ -389,11 +389,11 @@ class DataMuxer(object):
         # [-inf, 3, 5, inf] -> [(-inf, 3), (3, 5), (5, inf)]
         bin_edges = [-np.inf] + list(np.repeat(bin_edges, 2)) + [np.inf]
         bin_edges = np.reshape(bin_edges, (-1, 2))
-        return self.bin_by_edges(bin_edges, time_labels=centers,
+        return self.bin_by_edges(bin_edges, bin_anchors=centers,
                                  interpolation=interpolation, agg=agg,
                                  col_names=col_names)
 
-    def bin_by_edges(self, bin_edges, interpolation=None, agg=None,
+    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None,
                      col_names=None):
         """
         Return data resampled into bins with the specified edges.
@@ -402,11 +402,6 @@ class DataMuxer(object):
         ----------
         bin_edges : list
             list of two-element items like [(t1, t2), (t3, t4), ...]
-        anchor : {'left', 'center', 'right'}, optional
-            By default, bins are labeled by their centers, but they can
-            alternatively be labled by their left or right edge.
-        time_labels : ndarray, optional
-            Time points used to label each bin. Overrides anchor above.
         interpolation : dict
             Override the default interpolation (upsampling) behavior of any
             data source by passing a dictionary of source names mapped onto
@@ -447,26 +442,17 @@ class DataMuxer(object):
         binning[binning % 2 == 0] = np.nan
         binning //= 2  # Make bin number sequential, not odds only.
         bin_count = pd.Series(binning).nunique()  # not including NaN
-        if anchor is None and time_labels is None:
-            anchor = 'center'
-        if time_labels is not None:
-            if len(time_labels) != bin_count:
-                raise ValueError("The number of time_labels ({0}) must equal "
-                                 "the number of bins ({1}).".format(
-                                     len(time_labels), bin_count))
-        elif isinstance(anchor, six.string_types):
-            if anchor == 'left':
-                time_labels = edges_as_pairs[:, 0]
-            elif anchor == 'center':
-                time_labels = np.mean(edges_as_pairs, axis=1)
-            elif anchor == 'right':
-                time_labels = edges_as_pairs[:, 1]
-            else:
-                raise ValueError("anchor must be 'left', 'center', 'right', "
-                                 "or None")
-        return self.resample(time_labels, binning, interpolation, agg, col_names=col_names)
+        if bin_anchors is None:
+            bin_anchors = np.mean(edges_as_pairs, axis=1)  # bin centers
+        else:
+            if len(bin_anchors) != len(bin_edges):
+                raise ValueError("There are {0} bin_anchors but {1} pairs of "
+                                 "bin_edges. These must match.".format(
+                                     len(bin_anchors), len(bin_edges)))
+        return self.resample(bin_anchors, binning, interpolation, agg,
+                             col_names=col_names)
 
-    def resample(self, time_labels, binning, interpolation=None, agg=None,
+    def resample(self, bin_anchors, binning, interpolation=None, agg=None,
                  verify_integrity=True, col_names=None):
         result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
         # How many (non-null) data points in each bin?
@@ -478,9 +464,9 @@ class DataMuxer(object):
         # Get the first (maybe the only) point in each bin.
         first_point = grouped.first()
         if col_names is None:
-            col_names = self._dataframe.columns
+            col_names = list(self.sources) + list(self._timestamps_as_data)
         for name in col_names:
-            result[name] = pd.DataFrame(index=np.arange(len(time_labels)))
+            result[name] = pd.DataFrame(index=np.arange(len(bin_anchors)))
             # Resolve (and if necessary validate) sampling rules.
             col_info = self.col_info[name]
             try:
@@ -522,19 +508,14 @@ class DataMuxer(object):
             # leave some bins empty. Do not raise an error.
             if np.any(has_no_points[name]) and ((upsample is not None)
                                                 and (upsample != 'None')):
-                # Extra validation: In general time_labels can be objects, but
-                # if we need to upsample they must at least be numeric.
-                if not np.issubdtype(np.asarray(time_labels).dtype, np.number):
-                    raise ValueError("time_labels will be used for upsampling "
-                                     "and must therefore be numeric.")
                 dense_col = self._dataframe[name].dropna()
                 x, y = dense_col.index.values, dense_col.values
                 interpolator = interp1d(x, y, kind=upsample)
                 # Outside the limits of the data, the interpolator will fail.
                 # Leave any such entires empty.
-                is_safe = (time_labels > np.min(x)) & (time_labels < np.max(x))
-                safe_times = time_labels[is_safe]
-                safe_bins = np.arange(len(time_labels))[is_safe]
+                is_safe = (bin_anchors > np.min(x)) & (bin_anchors < np.max(x))
+                safe_times = bin_anchors[is_safe]
+                safe_bins = np.arange(len(bin_anchors))[is_safe]
                 interpolated_points = pd.Series(interpolator(safe_times),
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
