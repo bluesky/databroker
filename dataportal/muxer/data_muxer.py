@@ -308,6 +308,33 @@ class DataMuxer(object):
             self._stale = False
         return self._df
 
+    def to_sparse_dataframe(self, include_all_timestamps=False):
+        """Obtain all measurements in a DataFrame, one row per Event time.
+
+        Parameters
+        ----------
+        include_all_timestamps : bool
+            The result will always contain a 'time' column but, by default,
+            not timestamps for individual data sources like 'motor_timestamp'. 
+            Set this to True to export timestamp columns for each data column
+
+        Returns
+        -------
+        df : pandas.DataFrame
+        """
+        if include_all_timestamps:
+            # Store current state; reinstate it at the end.
+            timestamps_as_data = self._timestamps_as_data
+            for source in df.sources:
+                self.include_timestamp_data(source)
+
+        result = self._dataframe
+
+        if include_all_timestamps:
+            self._timestamps_as_data = timestamps_as_data
+
+        return result
+
     def include_timestamp_data(self, source_name):
         """Add the exact timing of a data source as a data column."""
         # self._timestamps_as_data is a set of sources who timestamps
