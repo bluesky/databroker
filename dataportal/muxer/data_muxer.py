@@ -574,7 +574,7 @@ class DataMuxer(object):
             result[name]['min'] = min_series
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
-        result.index.name = 'bin number'
+        result.index.name = 'bin'
         return result
 
     def __getitem__(self, source_name):
