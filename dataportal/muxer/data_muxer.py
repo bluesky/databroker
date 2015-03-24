@@ -293,7 +293,7 @@ class DataMuxer(object):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
             self._df = pd.DataFrame(list(self._data), index)
-            self._df['time'] = list(self._time)
+            self._df['time'] = pd.to_datetime(list(self._time), unit='s')
             if self._timestamps_as_data:
                 # Only build this if we need it.
                 # TODO: We shouldn't have to build
@@ -302,7 +302,8 @@ class DataMuxer(object):
                 timestamps = pd.DataFrame(list(self._timestamps), index)
             for source_name in self._timestamps_as_data:
                 col_name = _timestamp_col_name(source_name)
-                self._df[col_name] = timestamps[source_name]
+                self._df[col_name] = pd.to_datetime(timestamps[source_name],
+                                                    unit='s')
                 logger.debug("Including %s timestamps as data", source_name)
             self._stale = False
         return self._df
