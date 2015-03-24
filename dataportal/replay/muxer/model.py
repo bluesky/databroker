@@ -208,7 +208,7 @@ class MuxerModel(Atom):
         self.event_queue = EventQueue(self.header)
         self.get_new_data()
         # change the dataframe first
-        self.dataframe = self.data_muxer._dataframe
+        self.dataframe = self.data_muxer.to_sparse_dataframe()
         # then change the id
         # (The scalar_model depends on this order being dataframe then id)
         self.header_id = self.header.run_start_id
@@ -234,7 +234,7 @@ class MuxerModel(Atom):
             self.data_muxer = data_muxer
         else:
             self.data_muxer.append_events(events)
-            self.dataframe = self.data_muxer._dataframe
+            self.dataframe = self.data_muxer.to_sparse_dataframe()
             # update the column information
             self._verify_column_info()
             try:
@@ -298,7 +298,7 @@ class MuxerModel(Atom):
             # normalize the new dataframe
             self._normalize_all(dataframe)
         else:
-            dataframe = self.data_muxer._dataframe
+            dataframe = self.data_muxer.to_sparse_dataframe()
         # trigger the magic message passing cascade by assigning a new
         # dataframe to the instance data_frame attribute
         self.dataframe = dataframe

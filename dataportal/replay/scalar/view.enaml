@@ -59,14 +59,14 @@ enamldef PlotControls(Container):
                 editable = True
                 index << scalar_collection.x_index
                 selected_item >> scalar_collection.x
-                enabled << not scalar_collection.x_is_time
+                enabled << not scalar_collection.x_is_index
             Label:
                 text = "X axis options"
             Form:
                 row_spacing = 0
                 CheckBox: btn_time:
-                    text = 'Plot againt time'
-                    checked := scalar_collection.x_is_time
+                    text = 'Plot againt index'
+                    checked := scalar_collection.x_is_index
                     clicked ::
                         scalar_collection.get_new_data_and_plot()
         GroupBox: persistence:

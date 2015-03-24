@@ -235,7 +235,7 @@ class ScalarCollection(Atom):
     x_index = Int()
 
     # name of the column to align against
-    x_is_time = Bool(True)
+    x_is_index = Bool(True)
     # name of all columns that the data muxer knows about
     data_cols = List()
 
@@ -299,9 +299,9 @@ class ScalarCollection(Atom):
                 self.x_index = self.scalar_models.keys().index(self.x)
 
 
-    @observe('x', 'x_is_time', 'y')
+    @observe('x', 'x_is_index', 'y')
     def save_plotting_state(self, changed):
-        plotting_state = {'x': self.x, 'y': self.y, 'x_is_time': self.x_is_time}
+        plotting_state = {'x': self.x, 'y': self.y, 'x_is_index': self.x_is_index}
         logger.debug('writing plotting state for id: [%s] ... %s',
             self.dataframe_id, plotting_state)
         replay.core.save_state(self.history, self.dataframe_id, plotting_state)
@@ -325,7 +325,7 @@ class ScalarCollection(Atom):
                                self.scalar_models.items()
                                if col_model.is_plotting]
         old_x = self.x
-        old_x_is_time = self.x_is_time
+        old_x_is_index = self.x_is_index
 
         scalar_cols = [col for col in self.dataframe.columns
                      if self.dataframe[col].dropna().values[0].shape == tuple()]
@@ -343,10 +343,10 @@ class ScalarCollection(Atom):
             scalar_model.is_plotting = scalar_name in old_plotting_values
         if old_x in self.scalar_models.keys():
             self.x = old_x
-            self.x_is_time = old_x_is_time
+            self.x_is_index = old_x_is_index
         else:
             self.x = self.scalar_models.keys()[0]
-            self.x_is_time = True
+            self.x_is_index = True
         self.get_new_data_and_plot()
 
     def _do_magic(self, scalar_cols):
@@ -408,17 +408,17 @@ class ScalarCollection(Atom):
         self.get_new_data_and_plot()
 
     def get_new_data_and_plot(self):
-        """Helper function to shunt plotting with x as time or as a data column.
+        """Helper function to shunt plotting with the index or a column as x.
         """
         if self.dataframe is None:
             return
-        if self.x_is_time:
-            self.plot_by_time()
+        if self.x_is_index:
+            self.plot_by_index()
         else:
             self.plot_by_x()
 
-    def plot_by_time(self):
-        self._conf.xlabel = 'time'
+    def plot_by_index(self):
+        self._conf.xlabel = 'index (sequential counting numbers)'
         data_dict = {model_name: (model.index, model.data)
                      for model_name, model in self.column_models.items()}
         self._plot(data_dict)
