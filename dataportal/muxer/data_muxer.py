@@ -292,14 +292,14 @@ class DataMuxer(object):
     def _dataframe(self):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
-            self._df = pd.DataFrame(list(self._data), index)
+            self._df = pd.DataFrame(list(self._data))
             self._df['time'] = pd.to_datetime(list(self._time), unit='s')
             if self._timestamps_as_data:
                 # Only build this if we need it.
                 # TODO: We shouldn't have to build
                 # the whole thing, but there is already a lot of trickiness
                 # here so we'll worry about optimization later.
-                timestamps = pd.DataFrame(list(self._timestamps), index)
+                timestamps = pd.DataFrame(list(self._timestamps))
             for source_name in self._timestamps_as_data:
                 col_name = _timestamp_col_name(source_name)
                 self._df[col_name] = pd.to_datetime(timestamps[source_name],
