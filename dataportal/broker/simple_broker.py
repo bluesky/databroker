@@ -62,13 +62,12 @@ class DataBroker(object):
                 header = Header.from_run_start(result)
         elif isinstance(key, six.string_types):
             # Interpret key as a uid (or the few several characters of one).
-            if len(key) == 36:
-                # key is a complete uid
-                query = dict(uid=key)
-            else:
-                # key is a truncated uid; use regex
-                query = dict(uid={'$regex': '{0}.*'.format(key)})
-            results = list(find_run_starts(**query))
+            # First try searching as if we have the full uid.
+            results = list(find_run_starts(uid=key))
+            if len(results) == 0:
+                # No dice? Try searching as if we have a partial uid.
+                gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+                results = list(gen)
             if len(results) < 1:
                 raise ValueError("No such run found.")
             if len(results) > 1:
