@@ -24,7 +24,7 @@ class DataBroker(object):
     @classmethod
     def __getitem__(cls, key):
         if isinstance(key, slice):
-            # Slice on recent runs.
+            # Interpret key as a slice into previous scans.
             if key.start is not None and key.start > -1:
                 raise ValueError("Slices must be negative. The most recent "
                                  "run is referred to as -1.")
@@ -43,6 +43,7 @@ class DataBroker(object):
             header = [Header.from_run_start(h) for h in result]
         elif isinstance(key, int):
             if key > -1:
+                # Interpret key as a scan_id.
                 gen = find_run_starts(scan_id=key)
                 try:
                     result = next(gen)  # most recent match
@@ -50,6 +51,7 @@ class DataBroker(object):
                     raise ValueError("No such run found.")
                 header = Header.from_run_start(result)
             else:
+                # Interpret key as the Nth last scan.
                 gen = find_last(-key)
                 for i in range(-key):
                     try:
@@ -58,12 +60,30 @@ class DataBroker(object):
                         raise IndexError(
                             "There are only {0} runs.".format(i))
                 header = Header.from_run_start(result)
+        elif isinstance(key, six.string_types):
+            # Interpret key as a uid (or the few several characters of one).
+            # First try searching as if we have the full uid.
+            results = list(find_run_starts(uid=key))
+            if len(results) == 0:
+                # No dice? Try searching as if we have a partial uid.
+                gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+                results = list(gen)
+            if len(results) < 1:
+                raise ValueError("No such run found.")
+            if len(results) > 1:
+                raise ValueError("That partial uid matches multiple runs. "
+                                 "Provide more characters.")
+            result, = results
+            header = Header.from_run_start(result)
         elif isinstance(key, Iterable):
+            # Interpret key as a list of several keys. If it is a string
+            # we will never get this far.
             return [cls.__getitem__(k) for k in key]
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
-                             "or a list like [1, 7, 13].")
+                             "a list like [1, 7, 13], or a (partial) uid "
+                             "like ['a23jslk'].")
         return header
 
     @classmethod
@@ -422,3 +442,5 @@ class Stream(object):
 
 class IntegrityError(Exception):
     pass
+
+

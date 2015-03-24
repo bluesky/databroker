@@ -171,7 +171,7 @@ def test_indexing():
     assert_equal(scan_ids, [3, 1, 2])
 
 
-def test_lookup():
+def test_scan_id_lookup():
     for i in range(5):
         insert_run_start(time=float(i), scan_id=i + 1,
                          owner='docbrown', beamline_id='example',
@@ -187,6 +187,26 @@ def test_lookup():
     # This should be the most *recent* Scan 3. There is ambiguity.
     assert_equal(owner, 'nedbrainard')
 
+def test_uid_lookup():
+    uid = str(uuid.uuid4())
+    uid2 = uid[0] + str(uuid.uuid4())[1:]  # same first character as uid
+    rs1 = insert_run_start(time=100., scan_id=1, uid=uid,
+                           owner='drstrangelove', beamline_id='example',
+                           beamline_config=insert_beamline_config({}, time=0.))
+    rs2 = insert_run_start(time=100., scan_id=1, uid=uid2,
+                           owner='drstrangelove', beamline_id='example',
+                           beamline_config=insert_beamline_config({}, time=0.))
+    # using full uid
+    actual_uid = db[uid].run_start_uid
+    assert_equal(actual_uid, uid)
+
+    # using first 6 chars
+    actual_uid = db[uid[:6]].run_start_uid
+    assert_equal(actual_uid, uid)
+
+    # using first char (will error)
+    f = lambda: db[uid[0]]
+    assert_raises(ValueError, f)
 
 def test_data_key():
     rs1 = insert_run_start(time=100., scan_id=1,
