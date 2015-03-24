@@ -239,9 +239,9 @@ class DataMuxer(object):
         # Both scalar and nonscalar data will get stored in the DataFrame.
         # This may be optimized later, but it might not actually help much.
         self._data.append(
-            {name: data[0] for name, data in six.iteritems(event.data)})
+            {name: data for name, data in six.iteritems(event.data)})
         self._timestamps.append(
-            {name: data[1] for name, data in six.iteritems(event.data)})
+            {name: ts for name, ts in six.iteritems(event.timestamps)})
         self._time.append(event.time)
         return True
 
