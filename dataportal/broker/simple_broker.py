@@ -319,10 +319,10 @@ def fill_event(event):
     Populate events with externally stored data.
     """
     is_external = _inspect_descriptor(event.descriptor)
-    for data_key, (value, timestamp) in event.data.items():
+    for data_key, value in six.iteritems(event.data):
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key][0] = retrieve(value)
+            event.data[data_key] = retrieve(value)
 
 
 class Header(Document):
