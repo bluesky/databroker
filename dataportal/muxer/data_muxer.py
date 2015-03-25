@@ -292,8 +292,8 @@ class DataMuxer(object):
     def _dataframe(self):
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
-            self._df = pd.DataFrame(list(self._data))
-            self._df['time'] = list(self._time)
+            df = pd.DataFrame(list(self._data))
+            df['time'] = list(self._time)
             if self._timestamps_as_data:
                 # Only build this if we need it.
                 # TODO: We shouldn't have to build
@@ -302,8 +302,9 @@ class DataMuxer(object):
                 timestamps = pd.DataFrame(list(self._timestamps))
             for source_name in self._timestamps_as_data:
                 col_name = _timestamp_col_name(source_name)
-                self._df[col_name] = timestamps[source_name]
+                df[col_name] = timestamps[source_name]
                 logger.debug("Including %s timestamps as data", source_name)
+            self._df = df.sort('time')
             self._stale = False
         return self._df
 
@@ -380,7 +381,7 @@ class DataMuxer(object):
         ----------
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
-        col = self._dataframe.sort()[source_name]
+        col = self._dataframe[source_name]
         centers = self._dataframe['time'].reindex_like(col.dropna())
 
         # [2, 4, 6] -> [-inf, 3, 5, inf]
@@ -427,7 +428,7 @@ class DataMuxer(object):
         ----------
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
-        time = np.array(self._time)
+        time = self._dataframe['time'].values
         # Get edges into 1D array[L, R, L, R, ...]
         edges_as_pairs = np.reshape(bin_edges, (-1, 2))
         all_edges = np.ravel(edges_as_pairs)
@@ -508,13 +509,14 @@ class DataMuxer(object):
             if np.any(has_no_points[name]) and ((upsample is not None)
                                                 and (upsample != 'None')):
                 dense_col = self._dataframe[name].dropna()
-                x, y = dense_col.index.values, dense_col.values
+                y = dense_col.values
+                x = self._dataframe['time'].reindex_like(dense_col).values
                 interpolator = interp1d(x, y, kind=upsample)
                 # Outside the limits of the data, the interpolator will fail.
                 # Leave any such entires empty.
                 is_safe = (bin_anchors > np.min(x)) & (bin_anchors < np.max(x))
                 safe_times = bin_anchors[is_safe]
-                safe_bins = np.arange(len(bin_anchors))[is_safe]
+                safe_bins = bin_anchors[is_safe].index
                 interpolated_points = pd.Series(interpolator(safe_times),
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
@@ -578,11 +580,14 @@ class DataMuxer(object):
         return result
 
     def __getitem__(self, source_name):
-        if source_name not in self.col_info.keys():
+        if source_name not in self.col_info.keys() + ['time']:
             raise KeyError("No data from a source called '{0}' has been "
                            "added.".format(source_name))
-        # TODO Dispatch a query to the broker?
-        return self._dataframe[source_name].dropna()
+        # Unlike output from binning functions, this is indexed
+        # on time.
+        result = self._dataframe[source_name].dropna()
+        result.index = self._dataframe['time'].reindex_like(result).index
+        return result
 
     def __getattr__(self, attr):
         # Developer beware: if any properties raise an AttributeError,

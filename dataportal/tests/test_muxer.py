@@ -145,15 +145,8 @@ class CommonBinningTests(object):
 
         # If there is an interpolation rule, there should be no missing values
         # except (perhaps) at the edges outside the domain of the sparse col.
-        first = self.dm[self.sparse].first_valid_index()
-        last = self.dm[self.sparse].last_valid_index()
-        expected_len = 2 + len(self.dm[self.dense].loc[first:last])
-        # print('result1 columns: {}'.format(result1[self.sparse].columns))
-        # print('result2 columns: {}'.format(result2[self.sparse].columns))
-        res1 = result1[self.sparse][result1[self.sparse].columns[0]]
-        res2 = result2[self.sparse][result2[self.sparse].columns[0]]
-        self.assertLess(res1.count(), expected_len)
-        self.assertEqual(res2.count(), expected_len)
+        first, last = result1[self.sparse].dropna().index[[0, -1]]
+        self.assertTrue(result2.loc[first:last, self.sparse].notnull().all().all())
 
         # There should not be stats columns.
         self.assertFalse('max' in result1[self.dense].columns)
