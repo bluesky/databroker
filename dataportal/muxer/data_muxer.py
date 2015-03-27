@@ -168,6 +168,7 @@ class DataMuxer(object):
     def __init__(self):
         self.sources = {}
         self.col_info = {}
+        self.col_info['time'] = ColSpec('time', 0, [], 'linear', 'mean')
 
         self._data = deque()
         self._time = deque()
@@ -177,6 +178,8 @@ class DataMuxer(object):
         self._known_events = set()
         self._known_descriptors = set()
         self._stale = True
+
+        self.plan = Planner(self)
 
     @classmethod
     def from_tuples(cls, event_tuples, sources=None):
@@ -381,6 +384,13 @@ class DataMuxer(object):
         ----------
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
+        centers, bin_edges = self._bin_on(source_name)
+        return self.bin_by_edges(bin_edges, bin_anchors=centers,
+                                 interpolation=interpolation, agg=agg,
+                                 col_names=col_names)
+
+    def _bin_on(self, source_name):
+        "Compute bin edges spaced around centers defined by source_name points."
         col = self._dataframe[source_name]
         centers = self._dataframe['time'].reindex_like(col.dropna())
 
@@ -389,9 +399,7 @@ class DataMuxer(object):
         # [-inf, 3, 5, inf] -> [(-inf, 3), (3, 5), (5, inf)]
         bin_edges = [-np.inf] + list(np.repeat(bin_edges, 2)) + [np.inf]
         bin_edges = np.reshape(bin_edges, (-1, 2))
-        return self.bin_by_edges(bin_edges, bin_anchors=centers,
-                                 interpolation=interpolation, agg=agg,
-                                 col_names=col_names)
+        return centers, bin_edges
 
     def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None,
                      col_names=None):
@@ -428,6 +436,12 @@ class DataMuxer(object):
         ----------
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
         """
+        bin_anchors, binning = self._bin_by_edges(bin_anchors, bin_edges)
+        return self.resample(bin_anchors, binning, interpolation, agg,
+                             col_names=col_names)
+
+    def _bin_by_edges(self, bin_anchors, bin_edges):
+        "Compute bin assignment and, if needed, bin_anchors."
         time = self._dataframe['time'].values
         # Get edges into 1D array[L, R, L, R, ...]
         edges_as_pairs = np.reshape(bin_edges, (-1, 2))
@@ -441,7 +455,6 @@ class DataMuxer(object):
         # Mark them
         binning[binning % 2 == 0] = np.nan
         binning //= 2  # Make bin number sequential, not odds only.
-        bin_count = pd.Series(binning).nunique()  # not including NaN
         if bin_anchors is None:
             bin_anchors = np.mean(edges_as_pairs, axis=1)  # bin centers
         else:
@@ -449,65 +462,40 @@ class DataMuxer(object):
                 raise ValueError("There are {0} bin_anchors but {1} pairs of "
                                  "bin_edges. These must match.".format(
                                      len(bin_anchors), len(bin_edges)))
-        return self.resample(bin_anchors, binning, interpolation, agg,
-                             col_names=col_names)
+        return bin_anchors, binning
 
     def resample(self, bin_anchors, binning, interpolation=None, agg=None,
                  verify_integrity=True, col_names=None):
-        result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
-        # How many (non-null) data points in each bin?
-        grouped = self._dataframe.groupby(binning)
-        counts = grouped.count()
-        has_one_point = counts == 1
-        has_no_points = counts == 0
-        has_multiple_points = ~(has_one_point | has_no_points)
-        # Get the first (maybe the only) point in each bin.
-        first_point = grouped.first()
         if col_names is None:
-            col_names = list(self.sources) + list(self._timestamps_as_data)
+            col_names = list(self.sources) + list(self._timestamps_as_data) + ['time']
+        plan = Planner(self)
+        rules = plan.determine_rules(col_names, interpolation, agg)
+        grouped = self._dataframe.groupby(binning)
+        first_point = grouped.first()
+        counts = grouped.count()
+        distribution = plan.determine_distribution(counts)
+        result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
         for name in col_names:
+            upsample = rules['upsample'][name]
+            downsample = rules['downsample'][name]
+            upsampling_possible = distribution['upsampling_possible'][name]
+            downsampling_needed = distribution['downsampling_needed'][name]
             result[name] = pd.DataFrame(index=np.arange(len(bin_anchors)))
-            # Resolve (and if necessary validate) sampling rules.
-            col_info = self.col_info[name]
-            try:
-                upsample = interpolation[name]
-            except (TypeError, KeyError):
-                upsample = col_info.upsample
-            else:
-                upsample = _validate_upsample(upsample)
-            if not (upsample is None or upsample == 'None') and (col_info.ndim > 0):
-                raise NotImplementedError(
-                    "Only scalar data can be upsampled. "
-                    "The {0}-dimensional source {1} was given the upsampling "
-                    "rule {2}.".format(col_info.ndim, name, upsample))
-            try:
-                downsample = agg[name]
-            except (TypeError, KeyError):
-                downsample = col_info.downsample
-            else:
-                downsample = _validate_downsample(downsample)
-
-            # init the name and series for the column that holds information
-            # pertaining to the measured data
-            val_col_name = 'val'
-            # Start by using the first point in a bin. (If there are actually
-            # multiple points, we will either overwrite or raise below.)
-            val_col_series = pd.Series(data=first_point[name])
+            # Put the first (maybe only) value into a Series.
+            # We will overwrite as needed below.
+            result[name]['val'] = pd.Series(data=first_point[name])
 
             # Short-circuit if we are done.
-            if np.all(has_one_point[name]):
+            if not (upsampling_possible or downsampling_needed):
                 logger.debug("%s has exactly one data point per bin", name)
-                val_col_name += '_raw'
-                result[name][val_col_name] = val_col_series
                 continue
 
-            count_series = counts[name]
+            result[name]['count'] = counts[name]
 
             # If any bin has no data, use the upsampling rule to interpolate
             # at the center of the empty bins. If there is no rule, simply
             # leave some bins empty. Do not raise an error.
-            if np.any(has_no_points[name]) and ((upsample is not None)
-                                                and (upsample != 'None')):
+            if upsampling_possible and (upsample is not None):
                 dense_col = self._dataframe[name].dropna()
                 y = dense_col.values
                 x = self._dataframe['time'].reindex_like(dense_col).values
@@ -520,34 +508,27 @@ class DataMuxer(object):
                 interpolated_points = pd.Series(interpolator(safe_times),
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
-                             len(safe_bins), has_no_points[name].sum(), name)
-                val_col_name += '_{}'.format(upsample)
-                val_col_series.fillna(interpolated_points, inplace=True)
+                             len(safe_bins), (counts[name] == 0).sum(), name)
+                result[name]['val'].fillna(interpolated_points, inplace=True)
 
             # Short-circuit if we are done.
-            if np.all(~has_multiple_points[name]):
-                logger.debug("%s has at least one data point per bin", name)
-                result[name][val_col_name] = val_col_series
-                result[name]['count'] = count_series
+            if not downsampling_needed:
+                logger.debug("%s has at most one data point per bin", name)
                 continue
-
-            # append the downsample method to the value column name,
-            # but keep it short
-            val_col_name += '_{}'.format(six.text_type(downsample))
 
             # Multi-valued bins must be downsampled (reduced). If there is no
             # rule for downsampling, we have no recourse: we must raise.
-            if (downsample is None) or (downsample == 'None'):
+            if (downsample is None):
                 raise BinningError("The specified binning puts multiple "
                                    "'{0}' measurements in at least one bin, "
                                    "and there is no rule for downsampling "
                                    "(i.e., reducing) it.".format(name))
             if verify_integrity and callable(downsample):
-                downsample = _build_verified_downsample(downsample,
-                                                       col_info.shape)
+                downsample = _build_verified_downsample(
+                    downsample, self.col_info[name].shape)
 
             g = grouped[name]  # for brevity
-            if col_info.ndim == 0:
+            if self.col_info[name].ndim == 0:
                 logger.debug("The scalar column %s must be downsampled.", name)
                 # For scalars, pandas knows what to do.
                 downsampled = g.agg(downsample)
@@ -568,9 +549,9 @@ class DataMuxer(object):
                 max_series = g.apply(lambda x: np.max(np.asarray(x.dropna()), 0))
                 min_series = g.apply(lambda x: np.min(np.asarray(x.dropna()), 0))
 
-            val_col_series.where(~has_multiple_points[name], downsampled, inplace=True)
-            result[name][val_col_name] = val_col_series
-            result[name]['count'] = count_series
+            # This (counts[name] > 1) is redundant, but there is no clean way to
+            # pass it here without refactoring. Not a huge cost.
+            result[name]['val'].where(~(counts[name] > 1), downsampled, inplace=True)
             result[name]['std'] = std_series
             result[name]['max'] = max_series
             result[name]['min'] = min_series
@@ -586,7 +567,7 @@ class DataMuxer(object):
         # Unlike output from binning functions, this is indexed
         # on time.
         result = self._dataframe[source_name].dropna()
-        result.index = self._dataframe['time'].reindex_like(result).index
+        result.index = self._dataframe['time'].reindex_like(result)
         return result
 
     def __getattr__(self, attr):
@@ -662,3 +643,80 @@ def _build_verified_downsample(downsample, expected_shape):
 
 def _timestamp_col_name(source_name):
     return '{0}_timestamp'.format(source_name)
+
+class Planner(object):
+    def __init__(self, dm):
+        self.dm = dm
+
+    def determine_rules(self, col_names=None, interpolation=None, agg=None):
+        "Resolve (and if necessary validate) sampling rules."
+        if col_names is None:
+            col_names = list(self.dm.sources) + list(self.dm._timestamps_as_data) + ['time']
+        rules = dict(upsample={}, downsample={})
+        for name in col_names:
+            col_info = self.dm.col_info[name]
+            try:
+                upsample = interpolation[name]
+            except (TypeError, KeyError):
+                upsample = col_info.upsample
+            else:
+                upsample = _validate_upsample(upsample)
+            upsample = _normalize_string_none(upsample)
+            if not upsample is None and (col_info.ndim > 0):
+                raise NotImplementedError(
+                    "Only scalar data can be upsampled. "
+                    "The {0}-dimensional source {1} was given the upsampling "
+                    "rule {2}.".format(col_info.ndim, name, upsample))
+            try:
+                downsample = agg[name]
+            except (TypeError, KeyError):
+                downsample = col_info.downsample
+            else:
+                downsample = _validate_downsample(downsample)
+            downsample = _normalize_string_none(downsample)
+            rules['upsample'][name] = upsample
+            rules['downsample'][name] = downsample
+        return rules
+
+    def determine_distribution(self, counts):
+        has_no_points = counts == 0
+        has_multiple_points = counts > 1
+        upsampling_possible = has_no_points.any()
+        downsampling_needed = has_multiple_points.any()
+        result = {}
+        result['upsampling_possible'] = upsampling_possible.to_dict()
+        result['downsampling_needed'] = downsampling_needed.to_dict()
+        return result
+
+    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None, col_names=None):
+        "Explain operation of DataMuxer.bin_by_edges with these parameters."
+        bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
+        # TODO Cache the grouping for reuse by resample.
+        grouped = self.dm._dataframe.groupby(binning)
+        counts = grouped.count()
+        df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
+        df2 = pd.DataFrame.from_dict(self.determine_rules(col_names, interpolation, agg))
+        return pd.concat([df1, df2], axis=1)
+
+    def bin_on(self, source_name, interpolation=None, agg=None, col_names=None):
+        "Explain operation of DataMuxer.bin_on with these parameters."
+        centers, bin_edges = self.dm._bin_on(source_name)
+        bin_anchors, binning = self.dm._bin_by_edges(centers, bin_edges)
+        # TODO Cache the grouping for reuse by resample.
+        grouped = self.dm._dataframe.groupby(binning)
+        counts = grouped.count()
+        df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
+        df2 = pd.DataFrame.from_dict(self.determine_rules(col_names, interpolation, agg))
+        return pd.concat([df1, df2], axis=1)
+
+
+def _normalize_string_none(val):
+    "Replay passes 'None' to mean None."
+    try:
+        lowercase_val = val.lower()
+    except AttributeError:
+        return val
+    if lowercase_val == 'none':
+        return None
+    else:
+        return val

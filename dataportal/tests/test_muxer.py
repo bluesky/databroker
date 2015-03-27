@@ -198,7 +198,7 @@ class TestImageAndScalar(unittest.TestCase):
         self.assertEqual(datapoint.ndim, 2)
 
         binned = self.dm.bin_on('img', agg={'Tsam': 'mean'})
-        binned_datapoint = binned['img']['val_raw'].values[2]
+        binned_datapoint = binned['img']['val'].values[2]
         self.assertEqual(binned_datapoint.ndim, 2)
 
         assert_array_equal(datapoint, binned_datapoint)
