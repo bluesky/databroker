@@ -62,7 +62,7 @@ class _HDF5HandlerBase(HandlerBase):
     def open(self):
         if self._file:
             return
-        self._file = h5py.File(self._filename)
+        self._file = h5py.File(self._filename, 'r')
 
     def close(self):
         super(_HDF5HandlerBase, self).close()
