@@ -3,6 +3,7 @@ import uuid
 from functools import wraps
 from metadatastore.api import (insert_run_start, insert_beamline_config,
                                insert_run_stop, Document)
+from metadatastore.commands import reorganize_event
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -83,6 +84,9 @@ def example(func):
         time = max([event.time for event in events])
         if make_run_stop:
             insert_run_stop(run_start, time=time, exit_status='success')
-        events = [Document.from_mongo(e) for e in events]
+        raw_events = [Document.from_mongo(e) for e in events]
+        # Events are represented differently than they are stored.
+        # See reorganize_event docstring.
+        events = [reorganize_event(e) for e in raw_events]
         return events
     return mock_run_start
