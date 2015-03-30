@@ -651,24 +651,21 @@ class Planner(object):
         rules = dict(upsample={}, downsample={})
         for name in use_cols:
             col_info = self.dm.col_info[name]
-            try:
-                upsample = interpolation[name]
-            except (TypeError, KeyError):
-                upsample = col_info.upsample
+            if interpolation is None:
+                interpolation = dict()
             else:
-                upsample = _validate_upsample(upsample)
+                upsample = _validate_upsample(
+                    interpolation.get(name, col_info.upsample))
             upsample = _normalize_string_none(upsample)
             if not upsample is None and (col_info.ndim > 0):
                 raise NotImplementedError(
                     "Only scalar data can be upsampled. "
                     "The {0}-dimensional source {1} was given the upsampling "
                     "rule {2}.".format(col_info.ndim, name, upsample))
-            try:
-                downsample = agg[name]
-            except (TypeError, KeyError):
-                downsample = col_info.downsample
+            if agg is None:
+                agg = dict()
             else:
-                downsample = _validate_downsample(downsample)
+                downsample = _validate_downsample(agg.get(name, col_info.downsample))
             downsample = _normalize_string_none(downsample)
             rules['upsample'][name] = upsample
             rules['downsample'][name] = downsample
