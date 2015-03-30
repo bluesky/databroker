@@ -353,7 +353,7 @@ class DataMuxer(object):
         # Do not force a rebuilt (i.e., self._stale). Just remove it here.
         del self._df[_timestamp_col_name(source_name)]
 
-    def bin_on(self, source_name, interpolation=None, agg=None, col_names=None):
+    def bin_on(self, source_name, interpolation=None, agg=None, use_cols=None):
         """
         Return data resampled to align with the data from a particular source.
 
@@ -375,6 +375,8 @@ class DataMuxer(object):
             source by passing a dictionary of source names mapped onto any
             callable that reduces multiple data points (of whatever dimension)
             to a single data point.
+        use_cols : list, optional
+            List of columns to include in binning; use all columns by default.
 
         Returns
         -------
@@ -387,7 +389,7 @@ class DataMuxer(object):
         centers, bin_edges = self._bin_on(source_name)
         return self.bin_by_edges(bin_edges, bin_anchors=centers,
                                  interpolation=interpolation, agg=agg,
-                                 col_names=col_names)
+                                 use_cols=use_cols)
 
     def _bin_on(self, source_name):
         "Compute bin edges spaced around centers defined by source_name points."
@@ -402,7 +404,7 @@ class DataMuxer(object):
         return centers, bin_edges
 
     def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None,
-                     col_names=None):
+                     use_cols=None):
         """
         Return data resampled into bins with the specified edges.
 
@@ -425,8 +427,8 @@ class DataMuxer(object):
             source by passing a dictionary of source names mapped onto any
             callable that reduces multiple data points (of whatever dimension)
             to a single data point.
-        col_names : list, optional
-            List of columns to bin by
+        use_cols : list, optional
+            List of columns to include in binning; use all columns by default.
 
         Returns
         -------
@@ -438,7 +440,7 @@ class DataMuxer(object):
         """
         bin_anchors, binning = self._bin_by_edges(bin_anchors, bin_edges)
         return self.resample(bin_anchors, binning, interpolation, agg,
-                             col_names=col_names)
+                             use_cols=use_cols)
 
     def _bin_by_edges(self, bin_anchors, bin_edges):
         "Compute bin assignment and, if needed, bin_anchors."
@@ -465,17 +467,17 @@ class DataMuxer(object):
         return bin_anchors, binning
 
     def resample(self, bin_anchors, binning, interpolation=None, agg=None,
-                 verify_integrity=True, col_names=None):
-        if col_names is None:
-            col_names = list(self.sources) + list(self._timestamps_as_data) + ['time']
+                 verify_integrity=True, use_cols=None):
+        if use_cols is None:
+            use_cols = list(self.sources) + list(self._timestamps_as_data) + ['time']
         plan = Planner(self)
-        rules = plan.determine_rules(col_names, interpolation, agg)
+        rules = plan.determine_rules(interpolation, agg, use_cols)
         grouped = self._dataframe.groupby(binning)
         first_point = grouped.first()
         counts = grouped.count()
         distribution = plan.determine_distribution(counts)
         result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
-        for name in col_names:
+        for name in use_cols:
             upsample = rules['upsample'][name]
             downsample = rules['downsample'][name]
             upsampling_possible = distribution['upsampling_possible'][name]
@@ -648,12 +650,12 @@ class Planner(object):
     def __init__(self, dm):
         self.dm = dm
 
-    def determine_rules(self, col_names=None, interpolation=None, agg=None):
+    def determine_rules(self, interpolation=None, agg=None, use_cols=None):
         "Resolve (and if necessary validate) sampling rules."
-        if col_names is None:
-            col_names = list(self.dm.sources) + list(self.dm._timestamps_as_data) + ['time']
+        if use_cols is None:
+            use_cols = list(self.dm.sources) + list(self.dm._timestamps_as_data) + ['time']
         rules = dict(upsample={}, downsample={})
-        for name in col_names:
+        for name in use_cols:
             col_info = self.dm.col_info[name]
             try:
                 upsample = interpolation[name]
@@ -688,17 +690,17 @@ class Planner(object):
         result['downsampling_needed'] = downsampling_needed.to_dict()
         return result
 
-    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None, col_names=None):
+    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None, use_cols=None):
         "Explain operation of DataMuxer.bin_by_edges with these parameters."
         bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
         # TODO Cache the grouping for reuse by resample.
         grouped = self.dm._dataframe.groupby(binning)
         counts = grouped.count()
         df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
-        df2 = pd.DataFrame.from_dict(self.determine_rules(col_names, interpolation, agg))
+        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg, use_cols))
         return pd.concat([df1, df2], axis=1)
 
-    def bin_on(self, source_name, interpolation=None, agg=None, col_names=None):
+    def bin_on(self, source_name, interpolation=None, agg=None, use_cols=None):
         "Explain operation of DataMuxer.bin_on with these parameters."
         centers, bin_edges = self.dm._bin_on(source_name)
         bin_anchors, binning = self.dm._bin_by_edges(centers, bin_edges)
@@ -706,7 +708,7 @@ class Planner(object):
         grouped = self.dm._dataframe.groupby(binning)
         counts = grouped.count()
         df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
-        df2 = pd.DataFrame.from_dict(self.determine_rules(col_names, interpolation, agg))
+        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg, use_cols))
         return pd.concat([df1, df2], axis=1)
 
 
