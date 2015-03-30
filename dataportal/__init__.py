@@ -8,3 +8,4 @@ __version__ = 'v0.0.5.post0'
 
 from .broker import DataBroker
 from .muxer import DataMuxer
+from .scans import StepScan
