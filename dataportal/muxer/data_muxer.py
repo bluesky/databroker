@@ -561,7 +561,7 @@ class DataMuxer(object):
         return result
 
     def __getitem__(self, source_name):
-        if source_name not in self.col_info.keys() + ['time']:
+        if source_name not in list(self.col_info.keys()) + ['time']:
             raise KeyError("No data from a source called '{0}' has been "
                            "added.".format(source_name))
         # Unlike output from binning functions, this is indexed
