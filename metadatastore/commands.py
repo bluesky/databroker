@@ -379,7 +379,7 @@ def _format_time(search_dict):
 def _normalize_human_friendly_time(val):
     "Parse '2015', '2015-03', '2015-03-30', and '2015-03-30 18:00:00'."
     tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
-    if isinstance(val, six.string_types):
+    if isinstance(val, six.string_types) or isinstance(val, datetime.datetime):
         return pd.to_datetime(val).tz_localize(tz).value/1e9
     else:
         return val
