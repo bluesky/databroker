@@ -646,26 +646,26 @@ class Planner(object):
 
     def determine_rules(self, interpolation=None, agg=None, use_cols=None):
         "Resolve (and if necessary validate) sampling rules."
+        if agg is None:
+            agg = dict()
+        if interpolation is None:
+            interpolation = dict()
         if use_cols is None:
-            use_cols = list(self.dm.sources) + list(self.dm._timestamps_as_data) + ['time']
+            use_cols = (list(self.dm.sources) +
+                        list(self.dm._timestamps_as_data) + ['time'])
         rules = dict(upsample={}, downsample={})
         for name in use_cols:
             col_info = self.dm.col_info[name]
-            if interpolation is None:
-                interpolation = dict()
-            else:
-                upsample = _validate_upsample(
-                    interpolation.get(name, col_info.upsample))
+            upsample = _validate_upsample(
+                interpolation.get(name, col_info.upsample))
             upsample = _normalize_string_none(upsample)
             if not upsample is None and (col_info.ndim > 0):
                 raise NotImplementedError(
                     "Only scalar data can be upsampled. "
                     "The {0}-dimensional source {1} was given the upsampling "
                     "rule {2}.".format(col_info.ndim, name, upsample))
-            if agg is None:
-                agg = dict()
-            else:
-                downsample = _validate_downsample(agg.get(name, col_info.downsample))
+            downsample = _validate_downsample(
+                agg.get(name, col_info.downsample))
             downsample = _normalize_string_none(downsample)
             rules['upsample'][name] = upsample
             rules['downsample'][name] = downsample
@@ -681,17 +681,20 @@ class Planner(object):
         result['downsampling_needed'] = downsampling_needed.to_dict()
         return result
 
-    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None, agg=None, use_cols=None):
+    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None,
+                     agg=None, use_cols=None):
         "Explain operation of DataMuxer.bin_by_edges with these parameters."
         bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
         # TODO Cache the grouping for reuse by resample.
         grouped = self.dm._dataframe.groupby(binning)
         counts = grouped.count()
         df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
-        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg, use_cols))
+        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg,
+            use_cols))
         return pd.concat([df1, df2], axis=1)
 
-    def bin_on(self, source_name, interpolation=None, agg=None, use_cols=None):
+    def bin_on(self, source_name, interpolation=None, agg=None,
+               use_cols=None):
         "Explain operation of DataMuxer.bin_on with these parameters."
         centers, bin_edges = self.dm._bin_on(source_name)
         bin_anchors, binning = self.dm._bin_by_edges(centers, bin_edges)
@@ -699,7 +702,8 @@ class Planner(object):
         grouped = self.dm._dataframe.groupby(binning)
         counts = grouped.count()
         df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
-        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg, use_cols))
+        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg,
+            use_cols))
         return pd.concat([df1, df2], axis=1)
 
 
