@@ -307,7 +307,7 @@ class DataMuxer(object):
                 col_name = _timestamp_col_name(source_name)
                 df[col_name] = timestamps[source_name]
                 logger.debug("Including %s timestamps as data", source_name)
-            self._df = df.sort('time')
+            self._df = df.sort('time').reset_index(drop=True)
             self._stale = False
         return self._df
 
