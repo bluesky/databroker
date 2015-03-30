@@ -150,6 +150,9 @@ def _run_start_tester(time, beamline_id, scan_id):
     # Exercise documented kwargs
     mdsc.find_run_starts(limit=5)
     mdsc.find_run_starts(start_time=ttime.time())
+    mdsc.find_run_starts(start_time='2015')
+    mdsc.find_run_starts(start_time='2015-03-30')
+    mdsc.find_run_starts(start_time='2015-03-30 03:00:00')
     mdsc.find_run_starts(stop_time=ttime.time())
     mdsc.find_run_starts(start_time=ttime.time() - 1, stop_time=ttime.time())
     mdsc.find_run_starts(beamline_id='csx')
