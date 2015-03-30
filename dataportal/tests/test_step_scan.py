@@ -1,5 +1,5 @@
-from nose.tools import assert_equal
-from dataportal.examples.sample_data import step_scan
+from nose.tools import assert_equal, assert_raises
+from dataportal.examples.sample_data import step_scan, temperature_ramp
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from dataportal import StepScan
 
@@ -27,3 +27,8 @@ def test_step_scan():
 def test_no_results():
     df = StepScan.find_headers(owner='no one')
     assert_equal(len(df), 0)
+
+def test_raises_on_async_input():
+    temperature_ramp.run()
+    f = lambda: StepScan[-2:]
+    assert_raises(ValueError, f)
