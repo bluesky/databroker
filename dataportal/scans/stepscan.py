@@ -1,5 +1,6 @@
 from ..broker import DataBroker
 from ..muxer import DataMuxer
+from pandas import DataFrame
 
 
 class StepScan(object):
@@ -61,6 +62,8 @@ def _step_scan_df(headers):
         pass
     else:
         headers = [headers]
+    if len(headers) == 0:
+        return DataFrame()  # no reults
     data_keys = headers[0].event_descriptors[0].data_keys.keys()
     for header in headers:
         if len(header.event_descriptors) != 1:
