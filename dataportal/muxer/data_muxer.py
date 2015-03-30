@@ -326,15 +326,9 @@ class DataMuxer(object):
         df : pandas.DataFrame
         """
         if include_all_timestamps:
-            # Store current state; reinstate it at the end.
-            timestamps_as_data = self._timestamps_as_data
-            for source in df.sources:
-                self.include_timestamp_data(source)
+            raise NotImplementedError("TODO")
 
         result = self._dataframe
-
-        if include_all_timestamps:
-            self._timestamps_as_data = timestamps_as_data
 
         return result
 
