@@ -1,7 +1,6 @@
 from __future__ import print_function
 import sys
 import six  # noqa
-import copy
 from six import StringIO
 from collections import defaultdict, Iterable, deque
 from .. import sources
@@ -87,25 +86,22 @@ class DataBroker(object):
         return header
 
     @classmethod
-    def fetch_events(cls, headers, ca_host=None, channels=None):
+    def fetch_events(cls, headers, fill=True):
         """
         Get Events from given run(s).
 
         Parameters
         ----------
-        headers : one RunHeader or a list of them
-        ca_host : URL string
-            the URL of your archiver's ArchiveDataServer.cgi. For example,
-            'http://cr01arc01/cgi-bin/ArchiveDataServer.cgi'
-        channels : list, optional
-            All queries will return applicable data from the N most popular
-            channels. If data from additional channels is needed, their full
-            identifiers (not human-readable names) must be given here as a list
-            of strings.
+        headers : RunHeader or iterable of RunHeader
+            The headers to fetch the events for
 
-        Returns
+        fill : bool, optional
+            If non-scalar data should be filled in, Defaults to True
+
+        Yields
         -------
-        data : a flat list of Event objects
+        event : Event
+            The event, optionally with non-scalar data filled in
         """
         try:
             headers.items()
@@ -114,21 +110,14 @@ class DataBroker(object):
         else:
             headers = [headers]
 
-        events = []
         for header in headers:
             descriptors = find_event_descriptors(
                     run_start_id=header.run_start_id)
             for descriptor in descriptors:
-                events.extend(list(find_events(descriptor=descriptor)))
-        [fill_event(event) for event in events]
-
-        if channels is not None:
-            if ca_host is None:
-                ca_host = _get_local_ca_host()
-            all_times = [event.time for event in events]
-            archiver_data = _get_archiver_data(ca_host, channels,
-                                               min(all_times), max(all_times))
-        return events
+                for event in find_events(descriptor=descriptor):
+                    if fill:
+                        fill_event(event)
+                    yield event
 
     @classmethod
     def find_headers(cls, **kwargs):
@@ -442,5 +431,3 @@ class Stream(object):
 
 class IntegrityError(Exception):
     pass
-
-
