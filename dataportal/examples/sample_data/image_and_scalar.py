@@ -4,9 +4,9 @@ import time as ttime
 import numpy as np
 from metadatastore.api import insert_event, insert_event_descriptor
 from filestore.file_writers import save_ndarray
-from dataportal.broker.simple_broker import fill_event
 from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data import common
+from dataportal.examples.sample_data.common_nonscalar import nonscalar_example
 import argparse
 import sys
 import metadatastore
@@ -37,6 +37,7 @@ def scale_fluc(scale, count):
 
 # And this section is the actual example.
 
+@nonscalar_example
 @example
 def run(run_start=None, sleep=0):
     frame_generator = frame_generators.brownian(img_size, step_scale=.5,
@@ -98,7 +99,6 @@ def run(run_start=None, sleep=0):
 
         event = insert_event(event_descriptor=e_desc1, seq_num=idx1,
                              time=noisy(i), data=data1, uid=str(uuid.uuid4()))
-        fill_event(event)
         events.append(event)
         for idx2, i2 in enumerate(range(num2)):
             time = noisy(i/num2)
