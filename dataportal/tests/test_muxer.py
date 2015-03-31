@@ -114,6 +114,7 @@ class CommonBinningTests(object):
         bad_binning = lambda: self.dm.bin_on(self.sparse)
         self.assertRaises(BinningError, bad_binning)
 
+        self.dm.plan.bin_on(self.sparse, agg={self.dense: self.agg})
         result = self.dm.bin_on(self.sparse,
                                 agg={self.dense: self.agg})
         # With downsampling, the result should have as many entires as the
@@ -138,6 +139,7 @@ class CommonBinningTests(object):
         result1 = self.dm.bin_on(self.dense)
         actual_len1 = len(result1)
         self.assertEqual(actual_len1, expected_len)
+        self.dm.plan.bin_on(self.dense, interpolation={self.sparse: self.interp})
         result2 = self.dm.bin_on(self.dense,
                                  interpolation={self.sparse: self.interp})
         actual_len2 = len(result2)
@@ -145,15 +147,8 @@ class CommonBinningTests(object):
 
         # If there is an interpolation rule, there should be no missing values
         # except (perhaps) at the edges outside the domain of the sparse col.
-        first = self.dm[self.sparse].first_valid_index()
-        last = self.dm[self.sparse].last_valid_index()
-        expected_len = 2 + len(self.dm[self.dense].loc[first:last])
-        # print('result1 columns: {}'.format(result1[self.sparse].columns))
-        # print('result2 columns: {}'.format(result2[self.sparse].columns))
-        res1 = result1[self.sparse][result1[self.sparse].columns[0]]
-        res2 = result2[self.sparse][result2[self.sparse].columns[0]]
-        self.assertLess(res1.count(), expected_len)
-        self.assertEqual(res2.count(), expected_len)
+        first, last = result1[self.sparse].dropna().index[[0, -1]]
+        self.assertTrue(result2.loc[first:last, self.sparse].notnull().all().all())
 
         # There should not be stats columns.
         self.assertFalse('max' in result1[self.dense].columns)
@@ -197,6 +192,7 @@ class TestImageAndScalar(unittest.TestCase):
         self.assertTrue(self.dm._dataframe.index.is_unique)
 
     def test_bin_on_image(self):
+        self.dm.plan.bin_on('img', agg={'Tsam': 'mean'})
         binned = self.dm.bin_on('img', agg={'Tsam': 'mean'})
         self.assertEqual(len(binned), len(self.dm['img']))
 
@@ -204,8 +200,9 @@ class TestImageAndScalar(unittest.TestCase):
         datapoint = self.dm['img'].values[2]
         self.assertEqual(datapoint.ndim, 2)
 
+        self.dm.plan.bin_on('img', agg={'Tsam': 'mean'})
         binned = self.dm.bin_on('img', agg={'Tsam': 'mean'})
-        binned_datapoint = binned['img']['val_raw'].values[2]
+        binned_datapoint = binned['img']['val'].values[2]
         self.assertEqual(binned_datapoint.ndim, 2)
 
         assert_array_equal(datapoint, binned_datapoint)

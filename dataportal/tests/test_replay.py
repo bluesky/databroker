@@ -160,8 +160,8 @@ def test_replay_plotx_ploty():
         assert len([scalar_model for scalar_model
                     in ui.scalar_collection.scalar_models.values()
                     if scalar_model.is_plotting]) == 1
-        # the x axis should not be time
-        assert not ui.scalar_collection.x_is_time
+        # the x axis should not be the index
+        assert not ui.scalar_collection.x_is_index
     except AssertionError:
         # gotta destroy the app or it will cause cascading errors
         ui.close()
@@ -200,8 +200,8 @@ def test_replay_plotx_2ploty():
         assert len([scalar_model for scalar_model
                     in ui.scalar_collection.scalar_models.values()
                     if scalar_model.is_plotting]) == len(ploty)
-        # the x axis should not be time
-        assert ui.scalar_collection.x_is_time
+        # the x axis should not be the index
+        assert ui.scalar_collection.x_is_index
     except AssertionError:
         # gotta destroy the app or it will cause cascading errors
         ui.close()
@@ -212,7 +212,7 @@ def test_replay_plotx_2ploty():
 
 
 # this function tests that a live-view replay will correctly plot
-# time on the x axis with none of the y values enabled for plotting if
+# the index on the x axis with none of the y values enabled for plotting if
 # 'ploty' and 'plotx' are not found in the run header
 @skip_if(six.PY3)
 def test_replay_plotting():
@@ -235,8 +235,8 @@ def test_replay_plotting():
         assert len([scalar_model for scalar_model
                     in ui.scalar_collection.scalar_models.values()
                     if scalar_model.is_plotting]) == 0
-        # the x axis should not be time
-        assert ui.scalar_collection.x_is_time
+        # the x axis should not be the index
+        assert ui.scalar_collection.x_is_index
     except AssertionError:
         # gotta destroy the app or it will cause cascading errors
         ui.close()
@@ -269,7 +269,7 @@ def test_replay_persistence():
     hdr_update_rate1 = random.randint(50000, 10000000)
     num_to_retrieve1 = random.randint(10, 20)
     # store some state
-    state1 = {'x': 'Tsam', 'y': ['Tsam', 'point_det'], 'x_is_time': True}
+    state1 = {'x': 'Tsam', 'y': ['Tsam', 'point_det'], 'x_is_index': True}
     h.put(six.text_type(rs1.id), state1)
     returned_state = h.get(six.text_type(rs1.id))
     h.put('WatchForHeadersModel', {'update_rate': hdr_update_rate1})
@@ -277,7 +277,7 @@ def test_replay_persistence():
     h.put('GetLastModel', {'num_to_retrieve': num_to_retrieve1})
     # store some more state
     h.put(six.text_type(rs2.id), {'y': ['Tsam', 'point_det'],
-                                  'x_is_time': True})
+                                  'x_is_index': True})
 
     # open up replay
     app = QtApplication()
@@ -298,7 +298,7 @@ def test_replay_persistence():
         # check that the scalar collection is correctly loading plotting state
         assert ui.scalar_collection.x == state1['x']
         # check that the scalar collection is correctly loading plotting state
-        assert ui.scalar_collection.x_is_time == state1['x_is_time']
+        assert ui.scalar_collection.x_is_index == state1['x_is_index']
         y_matches = True
         for y in ui.scalar_collection.y:
             if y not in state1['y']:
@@ -321,7 +321,7 @@ def test_replay_persistence():
         raise
 
     # store some state for the 2nd header that differs from the first
-    state2 = {'x': 'point_det', 'y': ['Tsam'], 'x_is_time': False}
+    state2 = {'x': 'point_det', 'y': ['Tsam'], 'x_is_index': False}
     h.put(six.text_type(rs2.id), state2)
     hdr2 = db.find_headers(_id=rs2.id)[0]
     ui.muxer_model.header = hdr2
@@ -338,7 +338,7 @@ def test_replay_persistence():
         # check that the scalar collection is correctly loading plotting state
         assert ui.scalar_collection.x == state2['x']
         # check that the scalar collection is correctly loading plotting state
-        assert ui.scalar_collection.x_is_time == state2['x_is_time']
+        assert ui.scalar_collection.x_is_index == state2['x_is_index']
         # check that the scalar collection is correctly loading plotting state
         for y in ui.scalar_collection.y:
             if y not in state2['y']:
@@ -380,7 +380,7 @@ def test_replay_persistence():
         # check that the scalar collection is correctly loading plotting state
         assert ui.scalar_collection.x == state2['x']
         # check that the scalar collection is correctly loading plotting state
-        assert ui.scalar_collection.x_is_time == state2['x_is_time']
+        assert ui.scalar_collection.x_is_index == state2['x_is_index']
         # check that the scalar collection is correctly loading plotting state
         for y in ui.scalar_collection.y:
             if y not in state2['y']:
@@ -423,7 +423,7 @@ def test_replay_persistence():
         # check that the scalar collection is correctly loading plotting state
         assert ui.scalar_collection.x == state1['x']
         # check that the scalar collection is correctly loading plotting state
-        assert ui.scalar_collection.x_is_time == state1['x_is_time']
+        assert ui.scalar_collection.x_is_index == state1['x_is_index']
         # check that the scalar collection is correctly loading plotting state
         for y in ui.scalar_collection.y:
             if y not in state1['y']:
