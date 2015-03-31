@@ -9,9 +9,6 @@ class _StepScanClass(object):
     # scans.StepScan instead.
     "Use the DataBroker interface to obtain step scan data as a DataFrame."
 
-    def __init__(self):
-        pass
-
     def __getitem__(self, val):
         headers = DataBroker[val]
         return _step_scan_df(headers)
@@ -47,8 +44,8 @@ class _StepScanClass(object):
 
         Returns
         -------
-        data : list
-            Header objects
+        df : pandas.DataFrame
+            a tabular representation of the data
 
         Examples
         --------
