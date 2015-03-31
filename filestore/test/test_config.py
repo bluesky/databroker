@@ -33,5 +33,8 @@ class test_read_connection_config_file(object):
         fconf.connection_config = self._old_conf
 
     def test_read_config_file(self):
-        fconf.read_connection_config(self._fname)
+        fconf.connection_config = fconf.load_configuration('filestore', 'FS',
+                                     ['host', 'database', 'port'],
+                                     fname=self._fname)
+
         assert_equal(self.demo_conf, fconf.connection_config)
