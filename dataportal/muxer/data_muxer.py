@@ -389,9 +389,7 @@ class DataMuxer(object):
         if include_all_timestamps:
             raise NotImplementedError("TODO")
 
-        result = self._dataframe
-
-        return result
+        return self._dataframe.copy()
 
     def include_timestamp_data(self, source_name):
         """Add the exact timing of a data source as a data column."""
@@ -701,6 +699,7 @@ def _build_verified_downsample(downsample, expected_shape):
 
 def _timestamp_col_name(source_name):
     return '{0}_timestamp'.format(source_name)
+
 
 def _normalize_string_none(val):
     "Replay passes 'None' to mean None."
