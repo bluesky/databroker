@@ -50,11 +50,12 @@ def load_configuration(name, prefix, fields):
 
     for field in fields:
         var_name = prefix + '_' + field.upper().replace(' ', '_')
-        try:
-            config[field] = os.environ.get(var_name, config[field])
-        except KeyError:
-            raise KeyError("The configuration field {0} was not found in any "
-                           "file or environmental variable.")
+        config[field] = os.environ.get(var_name, config.get(field, None))
+
+    missing = [k for k, v in config.items() if v is None]
+    if missing:
+        raise KeyError("The configuration field(s) {0} were not found in any "
+                           "file or environmental variable.".format(missing))
     return config
 
 connection_config = load_configuration('metadatastore', 'MDS',

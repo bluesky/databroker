@@ -14,8 +14,9 @@ before_install:
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
   - export MDS_HOST=localhost
-  - export MDS_PORT=27017
   - export MDS_DATABASE=test
+  - mkdir -p /home/travis/.config/metadatastore
+  - echo 'port: 27017' >> /home/travis/.config/metadatastore/connection.yml
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
