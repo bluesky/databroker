@@ -63,10 +63,18 @@ def _step_scan_df(headers):
     else:
         headers = [headers]
     if len(headers) == 0:
-        return DataFrame()  # no reults
+        return DataFrame()  # no results
+    empty_error = (
+        "The header {0} seems to have no event descriptors. "
+        "Perhaps it was just created? If this is for an ongoing "
+        "scan, please wait a moment.")
+    if not headers[0].event_descriptors:
+        raise ValueError(empty_error.format(repr(headers[0])))
     data_keys = headers[0].event_descriptors[0].data_keys.keys()
-    for header in headers:
-        if len(header.event_descriptors) != 1:
+    for header in headers[1:]:
+        if len(header.event_descriptors) == 0:
+            raise ValueError(empty_error.format(repr(header)))
+        if len(header.event_descriptors) > 1:
             raise ValueError("The header {0} has asynchronous Events; "
                              "it cannot be automatically treated as a "
                              "step scan.".format(repr(header)))
