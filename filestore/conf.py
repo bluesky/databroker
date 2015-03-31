@@ -58,10 +58,6 @@ def load_configuration(name, prefix, fields, fname=None):
         var_name = prefix + '_' + field.upper().replace(' ', '_')
 
         config[field] = os.environ.get(var_name, config.get(field, None))
-    missing = [k for k, v in config.items() if v is None]
-    if missing:
-        raise KeyError("The configuration field(s) {0} were not found in any "
-                           "file or environmental variable.".format(missing))
 
     if fname is not None:
         if os.path.isfile(fname):
@@ -69,6 +65,11 @@ def load_configuration(name, prefix, fields, fname=None):
                 config.update(yaml.load(f))
             logger.debug("Using db connection specified in config file. \n%r",
                          config)
+
+    missing = [k for k, v in config.items() if v is None]
+    if missing:
+        raise KeyError("The configuration field(s) {0} were not found in any "
+                           "file or environmental variable.".format(missing))
 
     return config
 
