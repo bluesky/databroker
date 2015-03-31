@@ -23,10 +23,18 @@ class _StepScanClass(object):
 
         Parameters
         ----------
-        start_time : float, optional
-            timestamp of the earliest time that a RunStart was created
-        stop_time : float, optional
-            timestamp of the latest time that a RunStart was created
+        start_time : time-like, optional
+            Include Headers for runs started after this time. Valid
+            "time-like" representations are:
+                - float timestamps (seconds since 1970), such as time.time()
+                - '2015'
+                - '2015-01'
+                - '2015-01-30'
+                - '2015-03-30 03:00:00'
+                - Python datetime objects, such as datetime.datetime.now()
+        stop_time: time-like, optional
+            Include Headers for runs started before this time. See
+            `start_time` above for examples.
         beamline_id : str, optional
             String identifier for a specific beamline
         project : str, optional
