@@ -18,7 +18,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class DataBroker(object):
+class _DataBrokerClass(object):
+    # A singleton is instantiated in broker/__init__.py.
+    # You probably do not want to instantiate this; use
+    # broker.DataBroker instead.
 
     @classmethod
     def __getitem__(cls, key):
