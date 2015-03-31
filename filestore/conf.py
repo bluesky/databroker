@@ -11,7 +11,7 @@ def load_configuration(name, prefix, fields, fname=None):
     """
     Load configuration data form a cascading series of locations.
 
-    The precedence order is (in the order they are consulted):
+    The precedence order is (highest priority last):
 
     1. CONDA_ENV/etc/{name}.yaml (if CONDA_ETC_ env is defined)
     2. /etc/{name}.yaml
