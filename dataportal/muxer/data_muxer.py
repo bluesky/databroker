@@ -162,6 +162,62 @@ class DataMuxer(object):
     events : list
         list of Events (any object with the expected attributes will do)
     """
+    class Planner(object):
+        def __init__(self, dm):
+            self.dm = dm
+
+        def determine_rules(self, interpolation=None, agg=None, use_cols=None):
+            "Resolve (and if necessary validate) sampling rules."
+            if agg is None:
+                agg = dict()
+            if interpolation is None:
+                interpolation = dict()
+            if use_cols is None:
+                use_cols = self.dm.columns
+            rules = dict(upsample={}, downsample={})
+            for name in use_cols:
+                col_info = self.dm.col_info[name]
+                upsample = _validate_upsample(
+                    interpolation.get(name, col_info.upsample))
+                upsample = _normalize_string_none(upsample)
+                if not upsample is None and (col_info.ndim > 0):
+                    raise NotImplementedError(
+                        "Only scalar data can be upsampled. "
+                        "The {0}-dimensional source {1} was given the upsampling "
+                        "rule {2}.".format(col_info.ndim, name, upsample))
+                downsample = _validate_downsample(
+                    agg.get(name, col_info.downsample))
+                downsample = _normalize_string_none(downsample)
+                rules['upsample'][name] = upsample
+                rules['downsample'][name] = downsample
+            return rules
+
+        def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None,
+                        agg=None, use_cols=None):
+            "Explain operation of DataMuxer.bin_by_edges with these parameters"
+            bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
+            # TODO Cache the grouping for reuse by resample.
+            grouped = self.dm._dataframe.groupby(binning)
+            counts = grouped.count()
+            df1 = pd.DataFrame.from_dict(compute_distribution(counts))
+            df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation,
+                agg, use_cols))
+            return pd.concat([df1, df2], axis=1)
+
+        def bin_on(self, source_name, interpolation=None, agg=None,
+                use_cols=None):
+            "Explain operation of DataMuxer.bin_on with these parameters"
+            centers, bin_edges = self.dm._bin_on(source_name)
+            bin_anchors, binning = self.dm._bin_by_edges(centers, bin_edges)
+            # TODO Cache the grouping for reuse by resample.
+            grouped = self.dm._dataframe.groupby(binning)
+            counts = grouped.count()
+            df1 = pd.DataFrame.from_dict(compute_distribution(counts))
+            df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation,
+                agg, use_cols))
+            return pd.concat([df1, df2], axis=1)
+
+
     default_upsample = None
     default_downsample = None
 
@@ -179,7 +235,8 @@ class DataMuxer(object):
         self._known_descriptors = set()
         self._stale = True
 
-        self.plan = Planner(self)
+        self.plan = self.Planner(self)
+
 
     @property
     def columns(self):
@@ -467,13 +524,13 @@ class DataMuxer(object):
     def resample(self, bin_anchors, binning, interpolation=None, agg=None,
                  verify_integrity=True, use_cols=None):
         if use_cols is None:
-            use_cols = list(self.sources) + list(self._timestamps_as_data) + ['time']
-        plan = Planner(self)
+            use_cols = self.columns
+        plan = self.Planner(self)
         rules = plan.determine_rules(interpolation, agg, use_cols)
         grouped = self._dataframe.groupby(binning)
         first_point = grouped.first()
         counts = grouped.count()
-        distribution = plan.determine_distribution(counts)
+        distribution = compute_distribution(counts)
         index = np.arange(len(bin_anchors))
         result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
         for name in use_cols:
@@ -645,72 +702,6 @@ def _build_verified_downsample(downsample, expected_shape):
 def _timestamp_col_name(source_name):
     return '{0}_timestamp'.format(source_name)
 
-class Planner(object):
-    def __init__(self, dm):
-        self.dm = dm
-
-    def determine_rules(self, interpolation=None, agg=None, use_cols=None):
-        "Resolve (and if necessary validate) sampling rules."
-        if agg is None:
-            agg = dict()
-        if interpolation is None:
-            interpolation = dict()
-        if use_cols is None:
-            use_cols = self.dm.columns
-        rules = dict(upsample={}, downsample={})
-        for name in use_cols:
-            col_info = self.dm.col_info[name]
-            upsample = _validate_upsample(
-                interpolation.get(name, col_info.upsample))
-            upsample = _normalize_string_none(upsample)
-            if not upsample is None and (col_info.ndim > 0):
-                raise NotImplementedError(
-                    "Only scalar data can be upsampled. "
-                    "The {0}-dimensional source {1} was given the upsampling "
-                    "rule {2}.".format(col_info.ndim, name, upsample))
-            downsample = _validate_downsample(
-                agg.get(name, col_info.downsample))
-            downsample = _normalize_string_none(downsample)
-            rules['upsample'][name] = upsample
-            rules['downsample'][name] = downsample
-        return rules
-
-    def determine_distribution(self, counts):
-        has_no_points = counts == 0
-        has_multiple_points = counts > 1
-        upsampling_possible = has_no_points.any()
-        downsampling_needed = has_multiple_points.any()
-        result = {}
-        result['upsampling_possible'] = upsampling_possible.to_dict()
-        result['downsampling_needed'] = downsampling_needed.to_dict()
-        return result
-
-    def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None,
-                     agg=None, use_cols=None):
-        "Explain operation of DataMuxer.bin_by_edges with these parameters."
-        bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
-        # TODO Cache the grouping for reuse by resample.
-        grouped = self.dm._dataframe.groupby(binning)
-        counts = grouped.count()
-        df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
-        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg,
-            use_cols))
-        return pd.concat([df1, df2], axis=1)
-
-    def bin_on(self, source_name, interpolation=None, agg=None,
-               use_cols=None):
-        "Explain operation of DataMuxer.bin_on with these parameters."
-        centers, bin_edges = self.dm._bin_on(source_name)
-        bin_anchors, binning = self.dm._bin_by_edges(centers, bin_edges)
-        # TODO Cache the grouping for reuse by resample.
-        grouped = self.dm._dataframe.groupby(binning)
-        counts = grouped.count()
-        df1 = pd.DataFrame.from_dict(self.determine_distribution(counts))
-        df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation, agg,
-            use_cols))
-        return pd.concat([df1, df2], axis=1)
-
-
 def _normalize_string_none(val):
     "Replay passes 'None' to mean None."
     try:
@@ -721,3 +712,14 @@ def _normalize_string_none(val):
         return None
     else:
         return val
+
+
+def compute_distribution(counts):
+    has_no_points = counts == 0
+    has_multiple_points = counts > 1
+    upsampling_possible = has_no_points.any()
+    downsampling_needed = has_multiple_points.any()
+    result = {}
+    result['upsampling_possible'] = upsampling_possible.to_dict()
+    result['downsampling_needed'] = downsampling_needed.to_dict()
+    return result
