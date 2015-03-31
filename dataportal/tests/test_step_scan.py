@@ -15,13 +15,14 @@ def teardown():
 
 def test_step_scan():
     # use __getitem__
+    columns = ['Tsam', 'point_det', 'time']
     df = StepScan[-1]
-    assert_equal(list(df.columns), ['Tsam', 'time'])
+    assert_equal(set(df.columns), set(columns))
     assert_equal(len(df), 3)
 
     # use find_headers
     df = StepScan.find_headers(data_key='Tsam')
-    assert_equal(list(df.columns), ['Tsam', 'time'])
+    assert_equal(set(df.columns), set(columns))
     assert_equal(len(df), 3)
 
 def test_no_results():

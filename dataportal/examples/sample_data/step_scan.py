@@ -17,9 +17,10 @@ def run(run_start=None, sleep=0):
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
 
     # Create Event Descriptors
-    data_keys = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
+    data_keys = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
+                 'point_det': dict(source='PV:ES:point_det', dtype='number')}
     ev_desc = insert_event_descriptor(run_start=run_start,
-                                       data_keys=data_keys, time=0.)
+                                      data_keys=data_keys, time=0.)
 
     # Create Events.
     events = []
@@ -27,7 +28,8 @@ def run(run_start=None, sleep=0):
     # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time)
-        data = {'Tsam': (temp, time)}
+        point_det = np.random.randn()
+        data = {'Tsam': (temp, time), 'point_det': (point_det, time)}
         event = insert_event(event_descriptor=ev_desc, time=time,
                              data=data, seq_num=i)
         events.append(event)
