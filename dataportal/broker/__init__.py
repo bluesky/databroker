@@ -1,5 +1,5 @@
-from .simple_broker import DataBroker, EventQueue, Header
+from .simple_broker import _DataBrokerClass, EventQueue, Header
 from .handler_registration import register_builtin_handlers
 
-DataBroker = DataBroker()  # singleton
+DataBroker = _DataBrokerClass()  # singleton
 register_builtin_handlers()

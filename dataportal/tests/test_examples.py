@@ -1,11 +1,11 @@
 from nose.tools import assert_true
 from ..examples.sample_data import (temperature_ramp, multisource_event,
-                                    image_and_scalar)
+                                    image_and_scalar, step_scan)
 from metadatastore.api import Document
 from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
 
-examples = [temperature_ramp, multisource_event, image_and_scalar]
+examples = [temperature_ramp, multisource_event, image_and_scalar, step_scan]
 
 def setup():
     fs_setup()
