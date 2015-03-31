@@ -1,3 +1,3 @@
-from stepscan import StepScan
+from stepscan import _StepScanClass
 
-StepScan = StepScan()  # a singleton
+StepScan = _StepScanClass()  # a singleton

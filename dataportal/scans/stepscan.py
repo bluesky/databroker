@@ -3,7 +3,10 @@ from ..muxer import DataMuxer
 from pandas import DataFrame
 
 
-class StepScan(object):
+class _StepScanClass(object):
+    # A singleton is instantiated in scans/__init__.py.
+    # You probably do not want to instantiate this; use
+    # scans.StepScan instead.
     "Use the DataBroker interface to obtain step scan data as a DataFrame."
 
     def __init__(self):
