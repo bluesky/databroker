@@ -465,6 +465,9 @@ class DataMuxer(object):
         ----------
         bin_edges : list
             list of two-element items like [(t1, t2), (t3, t4), ...]
+        bin_anchors : list
+            These are time points where interpolated values will be evaluated.
+            Bin centers are usually a good choice.
         interpolation : dict
             Override the default interpolation (upsampling) behavior of any
             data source by passing a dictionary of source names mapped onto
