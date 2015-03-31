@@ -181,6 +181,10 @@ class DataMuxer(object):
 
         self.plan = Planner(self)
 
+    @property
+    def columns(self):
+        return list(self.sources) + list(self._timestamps_as_data) + ['time']
+
     @classmethod
     def from_tuples(cls, event_tuples, sources=None):
         """
@@ -652,8 +656,7 @@ class Planner(object):
         if interpolation is None:
             interpolation = dict()
         if use_cols is None:
-            use_cols = (list(self.dm.sources) +
-                        list(self.dm._timestamps_as_data) + ['time'])
+            use_cols = self.dm.columns
         rules = dict(upsample={}, downsample={})
         for name in use_cols:
             col_info = self.dm.col_info[name]
