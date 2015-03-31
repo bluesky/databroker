@@ -16,7 +16,7 @@ before_install:
   - export MDS_HOST=localhost
   - export MDS_DATABASE=test
   - mkdir -p /home/travis/.config/metadatastore
-  - echo 'port: 27017' >> /home/travis/.config/metadatastore/connection.yml
+  - echo 'port: 27017' > /home/travis/.config/metadatastore/connection.yml
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
