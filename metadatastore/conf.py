@@ -32,7 +32,7 @@ def load_configuration(name, prefix, fields):
     conf : dict
         Dictionary keyed on ``fields`` with the values extracted
     """
-    filenames = [os.path.join('etc', name + '.yml'),
+    filenames = [os.path.join('/etc', name + '.yml'),
                  os.path.join(os.path.expanduser('~'), '.config',
                               name, 'connection.yml'),
                 ]
