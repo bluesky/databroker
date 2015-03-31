@@ -3,18 +3,31 @@ import yaml
 import logging
 
 logger = logging.getLogger(__name__)
-filename = os.path.join(os.path.expanduser('~'), '.config', 'metadatastore',
-                        'connection.yml')
-if os.path.isfile(filename):
-    with open(filename) as f:
-        connection_config = yaml.load(f)
-    logger.debug("Using db connection specified in config file. \n%r",
-                 connection_config)
-else:
-    connection_config = {
-        'database': 'test',
-        'host': "localhost",
-        'port': 27017,
-        }
-    logger.debug("Using default db connection. \n%r",
-                 connection_config)
+
+def load_configuration(name, prefix, fields):
+    filenames = [os.path.join('etc', name + '.yml'),
+                 os.path.join(os.path.expanduser('~'), '.config',
+                              name, 'connection.yml'),
+                ]
+    if 'CONDA_ETC_' in os.environ:
+        filenames.insert(0, os.path.join(os.environ['CONDA_ETC_'], name + '.yml'))
+
+    config = {}
+    for filename in filenames:
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                config.update(yaml.load(f))
+            logger.debug("Using db connection specified in config file. \n%r",
+                         config)
+
+    for field in fields:
+        var_name = prefix + '_' + field.upper().replace(' ', '_')
+        try:
+            config[field] = os.environ.get(var_name, config[field])
+        except KeyError:
+            raise KeyError("The configuration field {0} was not found in any "
+                           "file or environmental variable.")
+    return config
+
+connection_config = load_configuration('metadatastore', 'MDS',
+    ['host', 'database', 'port', 'timezone'])

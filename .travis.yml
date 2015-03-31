@@ -13,6 +13,9 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
+  - export MDS_HOST=localhost
+  - export MDS_PORT=27017
+  - export MDS_DATABASE=test
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
