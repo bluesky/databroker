@@ -388,7 +388,7 @@ class DataMuxer(object):
     def _bin_on(self, source_name):
         "Compute bin edges spaced around centers defined by source_name points."
         col = self._dataframe[source_name]
-        centers = self._dataframe['time'].reindex_like(col.dropna())
+        centers = self._dataframe['time'].reindex_like(col.dropna()).values
 
         # [2, 4, 6] -> [-inf, 3, 5, inf]
         bin_edges = np.mean([centers[1:], centers[:-1]], 0)
@@ -470,13 +470,14 @@ class DataMuxer(object):
         first_point = grouped.first()
         counts = grouped.count()
         distribution = plan.determine_distribution(counts)
+        index = np.arange(len(bin_anchors))
         result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
         for name in use_cols:
             upsample = rules['upsample'][name]
             downsample = rules['downsample'][name]
             upsampling_possible = distribution['upsampling_possible'][name]
             downsampling_needed = distribution['downsampling_needed'][name]
-            result[name] = pd.DataFrame(index=np.arange(len(bin_anchors)))
+            result[name] = pd.DataFrame(index=index)
             # Put the first (maybe only) value into a Series.
             # We will overwrite as needed below.
             result[name]['val'] = pd.Series(data=first_point[name])
@@ -500,7 +501,7 @@ class DataMuxer(object):
                 # Leave any such entires empty.
                 is_safe = (bin_anchors > np.min(x)) & (bin_anchors < np.max(x))
                 safe_times = bin_anchors[is_safe]
-                safe_bins = bin_anchors[is_safe].index
+                safe_bins = index[is_safe]
                 interpolated_points = pd.Series(interpolator(safe_times),
                                                 index=safe_bins)
                 logger.debug("Interpolating to fill %d of %d empty bins in %s",
