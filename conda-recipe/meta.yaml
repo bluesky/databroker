@@ -23,6 +23,7 @@ requirements:
     - mongoengine
     - six
     - pyyaml
+    - pandas
 
 test:
   # Python imports
