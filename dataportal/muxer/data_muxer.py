@@ -166,30 +166,39 @@ class DataMuxer(object):
         def __init__(self, dm):
             self.dm = dm
 
-        def determine_rules(self, interpolation=None, agg=None, use_cols=None):
-            "Resolve (and if necessary validate) sampling rules."
-            if agg is None:
-                agg = dict()
+        def determine_upsample(self, interpolation=None, use_cols=None):
+            "Resolve (and if necessary validate) upsampling rules."
             if interpolation is None:
                 interpolation = dict()
             if use_cols is None:
                 use_cols = self.dm.columns
-            rules = dict(upsample={}, downsample={})
+            rules = dict()
             for name in use_cols:
                 col_info = self.dm.col_info[name]
-                upsample = _validate_upsample(
+                rule = _validate_upsample(
                     interpolation.get(name, col_info.upsample))
-                upsample = _normalize_string_none(upsample)
-                if not upsample is None and (col_info.ndim > 0):
+                rule = _normalize_string_none(rule)
+                if (rule is not None) and (col_info.ndim > 0):
                     raise NotImplementedError(
                         "Only scalar data can be upsampled. "
-                        "The {0}-dimensional source {1} was given the upsampling "
-                        "rule {2}.".format(col_info.ndim, name, upsample))
-                downsample = _validate_downsample(
-                    agg.get(name, col_info.downsample))
-                downsample = _normalize_string_none(downsample)
-                rules['upsample'][name] = upsample
-                rules['downsample'][name] = downsample
+                        "The {0}-dimensional source {1} was given the "
+                        "upsampling rule {2}.".format(
+                            col_info.ndim, name, rule))
+                rules[name] = rule
+            return rules
+
+        def determine_downsample(self, agg=None, use_cols=None):
+            "Resolve (and if necessary validate) sampling rules."
+            if agg is None:
+                agg = dict()
+            if use_cols is None:
+                use_cols = self.dm.columns
+            rules = dict()
+            for name in use_cols:
+                col_info = self.dm.col_info[name]
+                rule = _validate_downsample(agg.get(name, col_info.downsample))
+                rule = _normalize_string_none(rule)
+                rules[name] = rule
             return rules
 
         def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None,
@@ -232,14 +241,14 @@ class DataMuxer(object):
             ----------
             http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
             """
-        bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
+            bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
             # TODO Cache the grouping for reuse by resample.
             grouped = self.dm._dataframe.groupby(binning)
             counts = grouped.count()
-            df1 = pd.DataFrame.from_dict(compute_distribution(counts))
-            df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation,
-                agg, use_cols))
-            return pd.concat([df1, df2], axis=1)
+            df = pd.DataFrame.from_dict(_is_resampling_applicable(counts))
+            df['upsample'] = self.determine_upsample(interpolation, use_cols)
+            df['downsample'] = self.determine_downsample(agg, use_cols)
+            return df
 
         def bin_on(self, source_name, interpolation=None, agg=None,
                    use_cols=None):
@@ -282,10 +291,10 @@ class DataMuxer(object):
             # TODO Cache the grouping for reuse by resample.
             grouped = self.dm._dataframe.groupby(binning)
             counts = grouped.count()
-            df1 = pd.DataFrame.from_dict(compute_distribution(counts))
-            df2 = pd.DataFrame.from_dict(self.determine_rules(interpolation,
-                agg, use_cols))
-            return pd.concat([df1, df2], axis=1)
+            df = pd.DataFrame.from_dict(_is_resampling_applicable(counts))
+            df['upsample'] = self.determine_upsample(interpolation, use_cols)
+            df['downsample'] = self.determine_downsample(agg, use_cols)
+            return df
 
 
     default_upsample = None
@@ -652,18 +661,19 @@ class DataMuxer(object):
         if use_cols is None:
             use_cols = self.columns
         plan = self.Planner(self)
-        rules = plan.determine_rules(interpolation, agg, use_cols)
+        upsampling_rules = plan.determine_upsample(interpolation, use_cols)
+        downsampling_rules = plan.determine_downsample(agg, use_cols)
         grouped = self._dataframe.groupby(binning)
         first_point = grouped.first()
         counts = grouped.count()
-        distribution = compute_distribution(counts)
+        resampling_requirements = _is_resampling_applicable(counts)
         index = np.arange(len(bin_anchors))
         result = {}  # dict of DataFrames, to become one MultiIndexed DataFrame
         for name in use_cols:
-            upsample = rules['upsample'][name]
-            downsample = rules['downsample'][name]
-            upsampling_possible = distribution['upsampling_possible'][name]
-            downsampling_needed = distribution['downsampling_needed'][name]
+            upsample = upsampling_rules[name]
+            downsample = downsampling_rules[name]
+            upsampling_possible = resampling_requirements['upsampling_possible'][name]
+            downsampling_needed = resampling_requirements['downsampling_needed'][name]
             result[name] = pd.DataFrame(index=index)
             # Put the first (maybe only) value into a Series.
             # We will overwrite as needed below.
@@ -841,7 +851,7 @@ def _normalize_string_none(val):
         return val
 
 
-def compute_distribution(counts):
+def _is_resampling_applicable(counts):
     has_no_points = counts == 0
     has_multiple_points = counts > 1
     upsampling_possible = has_no_points.any()
