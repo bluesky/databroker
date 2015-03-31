@@ -193,9 +193,46 @@ class DataMuxer(object):
             return rules
 
         def bin_by_edges(self, bin_edges, bin_anchors, interpolation=None,
-                        agg=None, use_cols=None):
-            "Explain operation of DataMuxer.bin_by_edges with these parameters"
-            bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
+                         agg=None, use_cols=None):
+            """Explain operation of DataMuxer.bin_by_edges
+
+            Parameters
+            ----------
+            bin_edges : list
+                list of two-element items like [(t1, t2), (t3, t4), ...]
+            bin_anchors : list
+                These are time points where interpolated values will be
+                evaluated. Bin centers are usually a good choice.
+            interpolation : dict, optional
+                Override the default interpolation (upsampling) behavior of any
+                data source by passing a dictionary of source names mapped onto
+                one of the following interpolation methods.
+
+                {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+                'cubic'}
+
+                None means that each time bin must have at least one value.
+                See scipy.interpolator for more on the other methods.
+            agg : dict, optional
+                Override the default reduction (downsampling) behavior of any
+                data source by passing a dictionary of source names mapped onto
+                any callable that reduces multiple data points (of whatever
+                dimension) to a single data point.
+            use_cols : list, optional
+                List of columns to include in binning; use all columns by
+                default.
+
+            Returns
+            -------
+            df : pandas.DataFrame
+                table giving upsample and downsample rules for each data column
+                and indicating whether those rules are applicable
+
+            References
+            ----------
+            http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+            """
+        bin_anchors, binning = self.dm._bin_by_edges(bin_anchors, bin_edges)
             # TODO Cache the grouping for reuse by resample.
             grouped = self.dm._dataframe.groupby(binning)
             counts = grouped.count()
@@ -205,8 +242,41 @@ class DataMuxer(object):
             return pd.concat([df1, df2], axis=1)
 
         def bin_on(self, source_name, interpolation=None, agg=None,
-                use_cols=None):
-            "Explain operation of DataMuxer.bin_on with these parameters"
+                   use_cols=None):
+            """Explain operation of DataMuxer.bin_on.
+
+            Parameters
+            ----------
+            source_name : string
+            interpolation : dict, optional
+                Override the default interpolation (upsampling) behavior of any
+                data source by passing a dictionary of source names mapped onto
+                one of the following interpolation methods.
+
+                {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+                'cubic'}
+
+                None means that each time bin must have at least one value.
+                See scipy.interpolator for more on the other methods.
+            agg : dict, optional
+                Override the default reduction (downsampling) behavior of any
+                data source by passing a dictionary of source names mapped onto
+                any callable that reduces multiple data points (of whatever
+                dimension) to a single data point.
+            use_cols : list, optional
+                List of columns to include in binning; use all columns by
+                default.
+
+            Returns
+            -------
+            df : pandas.DataFrame
+                table giving upsample and downsample rules for each data column
+                and indicating whether those rules are applicable
+
+            References
+            ----------
+            http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+            """
             centers, bin_edges = self.dm._bin_on(source_name)
             bin_anchors, binning = self.dm._bin_by_edges(centers, bin_edges)
             # TODO Cache the grouping for reuse by resample.
@@ -240,6 +310,7 @@ class DataMuxer(object):
 
     @property
     def columns(self):
+        "The columns of DataFrames returned by methods that return DataFrames."
         return list(self.sources) + list(self._timestamps_as_data) + ['time']
 
     @classmethod
@@ -310,6 +381,7 @@ class DataMuxer(object):
         return True
 
     def _process_new_descriptor(self, descriptor):
+        "Build a ColSpec and update state."
         for name, description in six.iteritems(descriptor.data_keys):
 
             # If we already have this source name, the unique source
@@ -354,6 +426,7 @@ class DataMuxer(object):
 
     @property
     def _dataframe(self):
+        "See also to_sparse_dataframe, the public version of this."
         # Rebuild the DataFrame if more data has been added.
         if self._stale:
             df = pd.DataFrame(list(self._data))
@@ -392,7 +465,13 @@ class DataMuxer(object):
         return self._dataframe.copy()
 
     def include_timestamp_data(self, source_name):
-        """Add the exact timing of a data source as a data column."""
+        """Add the exact timing of a data source as a data column.
+
+        Parameters
+        ----------
+        source_name : string
+            one of the source names in DataMuxer.sources
+        """
         # self._timestamps_as_data is a set of sources who timestamps
         # should be treated as data in the _dataframe method above.
         self._timestamps_as_data.add(source_name)
@@ -401,7 +480,13 @@ class DataMuxer(object):
         self._stale = True
 
     def remove_timestamp_data(self, source_name):
-        """Remove the exact timing of a data source from the data columns."""
+        """Remove the exact timing of a data source from the data columns.
+
+        Parameters
+        ----------
+        source_name : string
+            one of the source names in DataMuxer.sources
+        """
         self._timestamps_as_data.remove(source_name)
         # Do not force a rebuilt (i.e., self._stale). Just remove it here.
         del self._df[_timestamp_col_name(source_name)]
@@ -413,7 +498,7 @@ class DataMuxer(object):
         Parameters
         ----------
         source_name : string
-        interpolation : dict
+        interpolation : dict, optional
             Override the default interpolation (upsampling) behavior of any
             data source by passing a dictionary of source names mapped onto
             one of the following interpolation methods.
@@ -423,7 +508,7 @@ class DataMuxer(object):
 
             None means that each time bin must have at least one value.
             See scipy.interpolator for more on the other methods.
-        agg : dict
+        agg : dict, optional
             Override the default reduction (downsampling) behavior of any data
             source by passing a dictionary of source names mapped onto any
             callable that reduces multiple data points (of whatever dimension)
@@ -468,7 +553,7 @@ class DataMuxer(object):
         bin_anchors : list
             These are time points where interpolated values will be evaluated.
             Bin centers are usually a good choice.
-        interpolation : dict
+        interpolation : dict, optional
             Override the default interpolation (upsampling) behavior of any
             data source by passing a dictionary of source names mapped onto
             one of the following interpolation methods.
@@ -478,7 +563,7 @@ class DataMuxer(object):
 
             None means that each time bin must have at least one value.
             See scipy.interpolator for more on the other methods.
-        agg : dict
+        agg : dict, optional
             Override the default reduction (downsampling) behavior of any data
             source by passing a dictionary of source names mapped onto any
             callable that reduces multiple data points (of whatever dimension)
@@ -524,6 +609,46 @@ class DataMuxer(object):
 
     def resample(self, bin_anchors, binning, interpolation=None, agg=None,
                  verify_integrity=True, use_cols=None):
+        """
+        Return data resampled into bins with the specified edges.
+
+        Parameters
+        ----------
+        bin_anchors : list
+            These are time points where interpolated values will be evaluated.
+            Bin centers are usually a good choice.
+        bin_anchors : list
+            Bin assignment. Example: [1, 1, 2, 2, 3, 3] puts six data points
+            into three bins with two points each.
+        interpolation : dict, optional
+            Override the default interpolation (upsampling) behavior of any
+            data source by passing a dictionary of source names mapped onto
+            one of the following interpolation methods.
+
+            {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
+             'cubic'}
+
+            None means that each time bin must have at least one value.
+            See scipy.interpolator for more on the other methods.
+        agg : dict, optional
+            Override the default reduction (downsampling) behavior of any data
+            source by passing a dictionary of source names mapped onto any
+            callable that reduces multiple data points (of whatever dimension)
+            to a single data point.
+        verify_integrity : bool, optional
+            For a cost in performance, verify that the downsampling function
+            produces data of the expected shape. True by default.
+        use_cols : list, optional
+            List of columns to include in binning; use all columns by default.
+
+        Returns
+        -------
+        resampled_df : pandas.DataFrame
+
+        References
+        ----------
+        http://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html
+        """
         if use_cols is None:
             use_cols = self.columns
         plan = self.Planner(self)
