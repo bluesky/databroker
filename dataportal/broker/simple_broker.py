@@ -102,7 +102,7 @@ class _DataBrokerClass(object):
             If non-scalar data should be filled in, Defaults to True
 
         Yields
-        -------
+        ------
         event : Event
             The event, optionally with non-scalar data filled in
         """
