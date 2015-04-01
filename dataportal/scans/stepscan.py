@@ -57,7 +57,9 @@ class _StepScanClass(object):
 
         Examples
         --------
-        >>> find_headers(start_time=12345678)
+        >>> find_headers(start_time='2015-03-05', stop_time='2015-03-10')
+        >>> find_headers(data_key='motor1')
+        >>> find_headers(data_key='motor1', start_time='2015-03-05')
         """
         headers = DataBroker.find_headers(**kwargs)
         return _step_scan_df(headers)
