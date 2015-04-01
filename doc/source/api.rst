@@ -1,12 +1,13 @@
 .. _api_ref:
 
-.. currentmodule:: dataportal
 
 API reference
 =============
 
-Looking Up Scans
-----------------
+.. currentmodule:: dataportal.broker
+
+Data Broker
+-----------
 
 .. autosummary::
    :toctree: generated/
@@ -25,3 +26,40 @@ syntax                          meaning
 ``DataBroker[[108, 109, 110]]`` scans with scan ID 108, 109, 110
 ``DataBroker['acsf3rf']``       scan with unique ID (uid) beginning with ``acsf3rf``
 =============================== ==========================================================
+
+.. currentmodule:: dataportal.broker
+
+.. autosummary::
+   :toctree: generated/
+
+   DataBroker.fetch_events
+   Header
+   EventQueue
+   LocationError
+   IntegrityError
+
+Data Muxer
+----------
+
+.. currentmodule:: dataportal.muxer
+
+.. autosummary::
+   :toctree: generated/
+
+   DataMuxer
+   ColSpec
+   dataframe_to_dict
+   BinningError
+   BadDownsamplerError
+
+Scans
+-----
+
+.. currentmodule:: dataportal.scans
+
+.. autosummary::
+   :toctree: generated/
+
+   StepScan.find_headers
+
+StepScan also supports the same slicing interface as ``DataBroker`` above.
