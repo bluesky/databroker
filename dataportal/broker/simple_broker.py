@@ -167,7 +167,9 @@ class _DataBrokerClass(object):
 
         Examples
         --------
-        >>> find_headers(start_time=12345678)
+        >>> find_headers(start_time='2015-03-05', stop_time='2015-03-10')
+        >>> find_headers(data_key='motor1')
+        >>> find_headers(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
         run_start = find_run_starts(**kwargs)
