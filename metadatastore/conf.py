@@ -11,10 +11,19 @@ def load_configuration(name, prefix, fields):
 
     The precedence order is (highest priority last):
 
-    1. CONDA_ENV/etc/{name}.yaml (if CONDA_ETC_ env is defined)
-    2. /etc/{name}.yml
-    3. ~/.config/{name}/connection.yml
-    4. reading {PREFIX}_{FIELD} environmental variables
+    1. The conda environment
+       - CONDA_ENV/etc/{name}.yaml (if CONDA_ETC_env is defined)
+    2. At the system level
+       - /etc/{name}.yml
+    3. In the user's home directory
+       - ~/.config/{name}/connection.yml
+    4. Environmental variables
+       - {PREFIX}_{FIELD}
+
+    where
+        {name} is metadatastore
+        {PREFIX} is MDS
+        {FIELD} is one of {host, database, port, timezone}
 
     Parameters
     ----------
@@ -32,13 +41,13 @@ def load_configuration(name, prefix, fields):
     conf : dict
         Dictionary keyed on ``fields`` with the values extracted
     """
-    filenames = [os.path.join('/etc', name + '.yml'),
-                 os.path.join(os.path.expanduser('~'), '.config',
-                              name, 'connection.yml'),
-                ]
+    filenames = [
+        os.path.join('/etc', name + '.yml'),
+        os.path.join(os.path.expanduser('~'), '.config', name, 'connection.yml')
+    ]
     if 'CONDA_ETC_' in os.environ:
-        filenames.insert(0, os.path.join(os.environ['CONDA_ETC_'],
-                                         name + '.yml'))
+        filenames.insert(0, os.path.join(
+            os.environ['CONDA_ETC_'], name + '.yml'))
 
     config = {}
     for filename in filenames:
@@ -58,5 +67,5 @@ def load_configuration(name, prefix, fields):
                        "file or environmental variable.".format(missing))
     return config
 
-connection_config = load_configuration('metadatastore', 'MDS',
-                                       ['host', 'database', 'port', 'timezone'])
+connection_config = load_configuration(
+    'metadatastore', 'MDS', ['host', 'database', 'port', 'timezone'])
