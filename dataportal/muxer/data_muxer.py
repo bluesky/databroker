@@ -323,24 +323,6 @@ class DataMuxer(object):
         return list(self.sources) + list(self._timestamps_as_data) + ['time']
 
     @classmethod
-    def from_tuples(cls, event_tuples, sources=None):
-        """
-        Parameters
-        ----------
-        event_tuples : list of (time, data_dict) tuples
-            formatted like
-            [(<time>: {<data_key>: <value>, <data_key>: <value>, ...}), ...]
-        metatdata : dict
-            mapping data keys to source names
-
-            This information is used to look up resampling behavior.
-        """
-        raise NotImplementedError()
-        for event in event_tuples:
-            # TODO Make this look like an event object.
-            pass
-
-    @classmethod
     def from_events(cls, events):
         """
         Parameters
