@@ -225,13 +225,13 @@ class EventQueue(object):
     Example
     -------
 
-    from dataportal.broker import DataBroker, EventQueue
-    header = DataBroker[-1]  # for example, most recent header
-    queue = EventQueue(header)
-    while True:
-        queue.update()
-        new_events = queue.get()
-        # Do something with them, such as dm.append_events(new_events)
+    >>> from dataportal.broker import DataBroker, EventQueue
+    >>> header = DataBroker[-1]  # for example, most recent header
+    >>> queue = EventQueue(header)
+    >>> while True:
+    ...    queue.update()
+    ...    new_events = queue.get()
+    ...    # Do something with them, such as dm.append_events(new_events)
     """
 
     def __init__(self, headers):
