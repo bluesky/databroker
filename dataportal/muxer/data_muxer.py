@@ -325,21 +325,24 @@ class DataMuxer(object):
     @classmethod
     def from_events(cls, events):
         """
+        Create a DataMuxer from a list of Events.
+
         Parameters
         ----------
         events : list
-            list of Events (any object with the expected attributes will do)
+            list of Events (any objects with the expected attributes will do)
         """
         instance = cls()
         instance.append_events(events)
         return instance
 
     def append_events(self, events):
-        """Add an event to the DataMuxer.
+        """Add a list of events to the DataMuxer.
 
         Parameters
         ----------
-        event : metadatastore.api.Document or any object with correct attributes
+        events : list
+            list of Events (any objects with the expected attributes will do)
         """
         for event in events:
             self.append_event(event)
@@ -349,7 +352,8 @@ class DataMuxer(object):
 
         Parameters
         ----------
-        event : metadatastore.api.Document or any object with correct attributes
+        event : Event
+            Event Document or any object with the expected attributes
 
         Returns
         -------
@@ -764,6 +768,8 @@ class DataMuxer(object):
 
     @property
     def col_info_by_ndim(self):
+        """Dictionary mapping dimensionality (ndim) onto a list of ColSpecs"""
+
         result = {}
         for name, col_spec in six.iteritems(self.col_info):
             try:
