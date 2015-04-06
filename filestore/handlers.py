@@ -3,9 +3,11 @@ from __future__ import (absolute_import, division, print_function,
 import six
 
 import logging
+import tifffile
 import h5py
 import numpy as np
 import os.path
+import pims
 
 from .retrieve import HandlerBase
 from .readers.spe import PrincetonSPEFile
@@ -44,6 +46,25 @@ class AreaDetectorSPEHandler(HandlerBase):
                       "expected {} frames, found {} frames".format(
                              self._fpp, data.shape[0]))
         return data.squeeze()
+
+
+class AreaDetectorTiffHandler(HandlerBase):
+    specs = {'AD_TIFF'} | HandlerBase.specs
+
+    def __init__(self, fpath, template, filename, frame_per_point=1):
+        self._path = fpath
+        self._fpp = frame_per_point
+        self._template = template.replace('_%6.6d', '*')
+        self._filename = self._template % (self._path,
+                                           filename)
+        self._image_sequence = pims.ImageSequence(self._filename)
+
+    def __call__(self, point_number):
+        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
+        if stop > len(self._image_sequence):
+            raise IntegrityError("Seeking Frame {0} out of {1} frames.".format(
+                stop, len(self._image_sequence)))
+        return np.asarray(list(self._image_sequence[start:stop])).squeeze()
 
 
 class DummyAreaDetectorHandler(HandlerBase):
