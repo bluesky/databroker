@@ -25,6 +25,7 @@ requirements:
     - numpy
     - six
     - pims
+    - tifffile
     - pyyaml
     - setuptools
     - jsonschema
