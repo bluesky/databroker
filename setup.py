@@ -1,5 +1,3 @@
-__author__ = 'arkilic'
-
 import sys
 import warnings
 
@@ -15,9 +13,9 @@ from distutils.core import setup, Extension
 import os
 
 MAJOR = 0
-MINOR = 1
+MINOR = 5
 MICRO = 0
-ISRELEASED = False
+ISRELEASED = True
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 QUALIFIER = ''
