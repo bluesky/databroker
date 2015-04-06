@@ -12,7 +12,7 @@ try:
 except ImportError:
     pass
 else:
-   del qt
+    del qt
 
 # generally useful imports
 from .broker import DataBroker
