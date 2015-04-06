@@ -15,7 +15,7 @@ import os
 MAJOR = 0
 MINOR = 5
 MICRO = 0
-ISRELEASED = True
+ISRELEASED = False
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 QUALIFIER = ''
