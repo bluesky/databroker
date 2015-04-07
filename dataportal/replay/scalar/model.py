@@ -252,6 +252,8 @@ class ScalarCollection(Atom):
     use_disk_state = Bool(True)
 
     autolim_axes = Bool(True)
+    xlim = Coerced(tuple)
+    ylim = Coerced(tuple)
 
     def __init__(self, history, **kwargs):
         self.history = history
@@ -299,9 +301,11 @@ class ScalarCollection(Atom):
                 self.x_index = self.scalar_models.keys().index(self.x)
 
 
-    @observe('x', 'x_is_index', 'y')
+    @observe('x', 'x_is_index', 'y', 'autolim_axes', 'xlim', 'ylim')
     def save_plotting_state(self, changed):
-        plotting_state = {'x': self.x, 'y': self.y, 'x_is_index': self.x_is_index}
+        plotting_state = {'x': self.x, 'y': self.y, 'x_is_index': self.x_is_index,
+                          'xlim': self.xlim, 'ylim': self.ylim,
+                          'autolim_axes': self.autolim_axes}
         logger.debug('writing plotting state for id: [%s] ... %s',
             self.dataframe_id, plotting_state)
         replay.core.save_state(self.history, self.dataframe_id, plotting_state)
@@ -396,6 +400,16 @@ class ScalarCollection(Atom):
     def update_col_names(self, changed):
         pass
 
+    @observe('xlim', 'ylim')
+    def _lims_changed(self, changed):
+        print(changed)
+
+    @observe('autolim_axes')
+    def _autolim_changed(self, changed):
+        self.xlim = self._ax.get_xlim()
+        self.ylim = self._ax.get_ylim()
+        self.reformat_view()
+
     @observe('x')
     def update_x(self, changed):
         try:
@@ -458,11 +472,16 @@ class ScalarCollection(Atom):
             if self.autolim_axes:
                 self._ax.relim(visible_only=True)
                 self._ax.autoscale_view(tight=True)
+            else:
+                self._ax.set_xlim(self.xlim)
+                self._ax.set_ylim(self.ylim)
             self._ax.grid(self._conf.grid)
             self._ax.set_ylabel(self._conf.ylabel)
             self._ax.set_xlabel(self._conf.xlabel)
             self._ax.set_title(self._conf.title)
             self._fig.canvas.draw()
+            self.xlim = self._ax.get_xlim()
+            self.ylim = self._ax.get_ylim()
         except AttributeError:
             # should only happen once
             pass
