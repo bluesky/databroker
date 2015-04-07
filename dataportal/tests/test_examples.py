@@ -4,6 +4,9 @@ from ..examples.sample_data import (temperature_ramp, multisource_event,
 from metadatastore.api import Document
 from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
+import six
+from ..testing.utils import Command
+
 
 examples = [temperature_ramp, multisource_event, image_and_scalar, step_scan]
 

@@ -14,58 +14,17 @@ from dataportal.examples.sample_data import temperature_ramp, image_and_scalar
 from dataportal.broker import DataBroker as db
 import copy
 from ..testing.decorators import skip_if
+from ..testing.utils import Command
 import time as ttime
 import os
 import random
 import tempfile
 import uuid
-import subprocess, threading
 from dataportal.replay.persist import History
 
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
 
-
-
-class Command(object):
-    """Thanks SO! http://stackoverflow.com/a/4825933
-
-    Example
-    -------
-    >>> command = Command("echo 'Process started'; sleep 2; echo 'Process finished'")
-    >>> command.run(timeout=3)
-        Thread started
-        Process started
-        Process finished
-        Thread finished
-        0
-    >>> command.run(timeout=1)
-        Thread started
-        Process started
-        Terminating process
-        Thread finished
-        -15
-    """
-    def __init__(self, cmd):
-        self.cmd = cmd
-        self.process = None
-
-    def run(self, timeout):
-        def target():
-            print('Thread started')
-            self.process = subprocess.Popen(self.cmd, shell=True)
-            self.process.communicate()
-            print('Thread finished')
-
-        thread = threading.Thread(target=target)
-        thread.start()
-
-        thread.join(timeout)
-        if thread.is_alive():
-            print('Terminating process')
-            self.process.terminate()
-            thread.join()
-        print(self.process.returncode)
 
 @skip_if(six.PY3)
 def setup():
