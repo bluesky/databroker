@@ -1,0 +1,83 @@
+Dataportal v0.6.0
+-----------------
+
+Enhancements
+============
+
+- A new ``StepScan`` interface acts like ``DataBroker``
+  but immediately returns tabular data as a DataFrame in one step.
+  (:issue:`136`)
+- Look up scans by the name of a detector or motor used.
+  For example, to get all scans that measured 'Tsam', use
+  ``DataBroker.find_headers(data_key='Tsam')``. (:issue:`88`, :issue:`107`)
+- Look up scans using the first few characters of its unique ID,
+  like ``DataBroker['aow23oif']``. To be clear this is the
+  ophyd-provided uid, not the mongo _id. (:issue:`130`, :issue:`131`)
+- Replay remembers settings when flipping between scans, and it
+  retains these settings between sessions. (:issue:`114`)
+- ``DataMuxer.to_sparse_dataframe`` returns all data with one Event
+  per row. (:issue:`134`)
+- ``DataMuxer.plan.bin_on`` and ``DataMuxer.plan.bin_by_edges``
+  explain the planned operation of ``DataMuxer.bin_on`` and
+  ``DataMuxer.bin_by_edges`` for a given data set and given arguments.
+  (:issue:`134`)
+
+API Changes
+===========
+
+- The Event documents are reorganized to be more intuitive
+  and require less typing. Formerly, ``event.data`` returned
+  a dictionary of ``(value, timestamp)`` tuples. ::
+  
+     event.data = {'motor1': (value, timestamp),
+                   'motor2': (value, timestamp)}
+  
+  Now, ``event.data`` is dictionary of the data ::
+  
+     event.data = {'motor1': value, 'motor2': value}
+
+  and ``event.timestamp`` is a dictionary of the timestamps. ::
+  
+     event.timestamps = {'motor1': timestamp, 'motor2': timestamp}
+
+  (:issue:`129`, :issue:`132`)
+- All functions that return Documents, including Headers,
+  Events, and everything stored in metadatastore and filestore,
+  now return Python generators, iterable objects that load
+  data one element at a time. To convert these to normal Python
+  lists, simply use ``list(gen)``. (:issue:`127`)
+- The output of ``DataMuxer.bin_*`` functions is indexed by
+  bin number (0, 1, 2...). The Event time is given as a column.
+- Metadatastore and filestore require configuration settings.
+  They look in the following locations, in increasing order of
+  precedence. Use #3 or #4 to customize your own metadatastore
+  and filestore.
+
+  1. :file:`CONDA_ENV/etc/{name}.yaml` (if ``CONDA_ETC_`` env is defined)
+  2. :file:`/etc/{name}.yaml`
+  3. :file:`~/.config/{name}/connection.yml`
+  4. reading environmental variables formatted like ``MDS_DATABASE`` or ``FS_DATABASE``
+
+  .. highlight::`bash`
+
+  For example, in :file:`~/.config/metadatastore/connection.yaml` ::
+
+     host: localhost
+     port: 27017
+     database: my_metadatastore
+     timezone: US/Eastern
+
+  .. highlight::`python`
+
+  and likewise with filestore/connection.yaml.
+  (Filestore does not need a timezone field, however.)
+  If no configuration can be found, they will raise an error on
+  import. We avoid defaults so that experimental data cannot be
+  accidentally saved to an unsafe destination.
+- Metadatastore configuration also requires a ``timezone`` field,
+  which is uses to interpret human-friendly datetimes.
+
+Bug Fixes
+=========
+
+- All DataMuxer output is sorted by Event time. (:issue:`134`)

@@ -102,7 +102,7 @@ class _DataBrokerClass(object):
             If non-scalar data should be filled in, Defaults to True
 
         Yields
-        -------
+        ------
         event : Event
             The event, optionally with non-scalar data filled in
         """
@@ -167,7 +167,9 @@ class _DataBrokerClass(object):
 
         Examples
         --------
-        >>> find_headers(start_time=12345678)
+        >>> find_headers(start_time='2015-03-05', stop_time='2015-03-10')
+        >>> find_headers(data_key='motor1')
+        >>> find_headers(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
         run_start = find_run_starts(**kwargs)
@@ -223,13 +225,13 @@ class EventQueue(object):
     Example
     -------
 
-    from dataportal.broker import DataBroker, EventQueue
-    header = DataBroker[-1]  # for example, most recent header
-    queue = EventQueue(header)
-    while True:
-        queue.update()
-        new_events = queue.get()
-        # Do something with them, such as dm.append_events(new_events)
+    >>> from dataportal.broker import DataBroker, EventQueue
+    >>> header = DataBroker[-1]  # for example, most recent header
+    >>> queue = EventQueue(header)
+    >>> while True:
+    ...    queue.update()
+    ...    new_events = queue.get()
+    ...    # Do something with them, such as dm.append_events(new_events)
     """
 
     def __init__(self, headers):

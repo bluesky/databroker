@@ -92,3 +92,6 @@ __enamlcache__/
 
 # PyBuilder
 target/
+
+# sphinx docs
+generated/
