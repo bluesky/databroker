@@ -65,7 +65,7 @@ enamldef PlotControls(Container):
             Form:
                 row_spacing = 0
                 CheckBox: btn_time:
-                    text = 'Plot againt index'
+                    text = 'Plot against index'
                     checked := scalar_collection.x_is_index
                     clicked ::
                         scalar_collection.get_new_data_and_plot()
