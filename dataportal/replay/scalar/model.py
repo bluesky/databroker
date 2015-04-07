@@ -74,8 +74,6 @@ class ScalarConfig(Atom):
         self.replot()
 
     def replot(self):
-        self._ax.relim(visible_only=True)
-        self._ax.autoscale_view(tight=True)
         if self._ax.figure.canvas is not None:
             self._ax.figure.canvas.draw()
 
@@ -252,6 +250,8 @@ class ScalarCollection(Atom):
     use_ram_state = Bool(False)
     # tell replay to use the state from the last time this header was viewed
     use_disk_state = Bool(True)
+
+    autolim_axes = Bool(True)
 
     def __init__(self, history, **kwargs):
         self.history = history
@@ -455,8 +455,9 @@ class ScalarCollection(Atom):
                 self._ax.legend(arts, labs).draggable()
             else:
                 self._ax.legend(legend_pairs)
-            self._ax.relim(visible_only=True)
-            self._ax.autoscale_view(tight=True)
+            if self.autolim_axes:
+                self._ax.relim(visible_only=True)
+                self._ax.autoscale_view(tight=True)
             self._ax.grid(self._conf.grid)
             self._ax.set_ylabel(self._conf.ylabel)
             self._ax.set_xlabel(self._conf.xlabel)
