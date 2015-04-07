@@ -26,7 +26,11 @@ def run_example_programmatically(example):
     assert_true(isinstance(events[0], Document))
 
 
+def run_example_cmdline(example):
+    command = Command('python {}'.format(example.__file__))
+    command.run(timeout=1)
+
 def test_examples_programmatically():
     for example in examples:
         yield run_example_programmatically, example
-
+        yield run_example_cmdline, example
