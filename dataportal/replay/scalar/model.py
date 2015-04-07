@@ -400,10 +400,6 @@ class ScalarCollection(Atom):
     def update_col_names(self, changed):
         pass
 
-    @observe('xlim', 'ylim')
-    def _lims_changed(self, changed):
-        print(changed)
-
     @observe('autolim_axes')
     def _autolim_changed(self, changed):
         self.xlim = self._ax.get_xlim()
