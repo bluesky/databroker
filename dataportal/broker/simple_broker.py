@@ -375,8 +375,11 @@ class Header(Document):
                              'project': 'project',
                              'run_start_id': 'id',
                              'run_start_uid': 'uid'}
-        for new_key, old_key in run_start_renames.items():
-            header[new_key] = run_start[old_key]
+
+        for k in run_start:
+            new_key = run_start_renames.get(k, k)
+            header[new_key] = run_start[k]
+
         if run_stop is not None:
             run_stop_renames = {'stop_time': 'time',
                                 'stop_datetime': 'time_as_datetime',
@@ -384,8 +387,10 @@ class Header(Document):
                                 'exit_status': 'exit_status',
                                 'run_stop_id': 'id',
                                 'run_stop_uid': 'uid'}
-            for new_key, old_key in run_stop_renames.items():
-                header[new_key] = run_stop[old_key]
+            for k in run_stop:
+                new_key = run_stop_renames.get(k, k)
+                header[new_key] = run_stop[k]
+
         run_start._name = 'Header'
         return header
 
