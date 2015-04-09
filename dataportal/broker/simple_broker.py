@@ -376,8 +376,10 @@ class Header(Document):
                              'run_start_id': 'id',
                              'run_start_uid': 'uid'}
 
+        run_start_renames_back = {v: k for k, v
+                                  in run_start_renames.items()}
         for k in run_start:
-            new_key = run_start_renames.get(k, k)
+            new_key = run_start_renames_back.get(k, k)
             header[new_key] = run_start[k]
 
         if run_stop is not None:
@@ -387,8 +389,10 @@ class Header(Document):
                                 'exit_status': 'exit_status',
                                 'run_stop_id': 'id',
                                 'run_stop_uid': 'uid'}
+            run_stop_renames_back = {v: k for k, v
+                                     in run_stop_renames.items()}
             for k in run_stop:
-                new_key = run_stop_renames.get(k, k)
+                new_key = run_stop_renames_back.get(k, k)
                 header[new_key] = run_stop[k]
 
         run_start._name = 'Header'
