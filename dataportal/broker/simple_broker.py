@@ -375,8 +375,13 @@ class Header(Document):
                              'project': 'project',
                              'run_start_id': 'id',
                              'run_start_uid': 'uid'}
-        for new_key, old_key in run_start_renames.items():
-            header[new_key] = run_start[old_key]
+
+        run_start_renames_back = {v: k for k, v
+                                  in run_start_renames.items()}
+        for k in run_start:
+            new_key = run_start_renames_back.get(k, k)
+            header[new_key] = run_start[k]
+
         if run_stop is not None:
             run_stop_renames = {'stop_time': 'time',
                                 'stop_datetime': 'time_as_datetime',
@@ -384,8 +389,12 @@ class Header(Document):
                                 'exit_status': 'exit_status',
                                 'run_stop_id': 'id',
                                 'run_stop_uid': 'uid'}
-            for new_key, old_key in run_stop_renames.items():
-                header[new_key] = run_stop[old_key]
+            run_stop_renames_back = {v: k for k, v
+                                     in run_stop_renames.items()}
+            for k in run_stop:
+                new_key = run_stop_renames_back.get(k, k)
+                header[new_key] = run_stop[k]
+
         run_start._name = 'Header'
         return header
 
@@ -395,14 +404,17 @@ class Header(Document):
                 self.scan_id, self.run_start_uid)
 
     def __str__(self):
+        special_keys = set(('owner', 'group', 'project', 'beamline_id',
+                            'scan_id', 'start_datetime', 'stop_datetime',
+                            'exit_status', 'exit_reason', 'run_start_uid',
+                            'run_stop_uid', ))
         s = Stream()
         s.write("<Header>")
         s.write("Owner: {0}".format(self.owner))
-        if self.group is not None:
+        if self.group:
             s.write("Group: {0}".format(self.group))
-        if self.project is not None:
+        if self.project:
             s.write("Project: {0}".format(self.project))
-        s.write("Project: {0}".format(self.project))
         s.write("Beamline ID: {0}".format(self.beamline_id), 'lightgray')
         s.write("Scan ID: {0} ".format(self.scan_id), 'green')
         s.write("Start Time: {0}".format(self.start_datetime), 'green')
@@ -422,6 +434,11 @@ class Header(Document):
         if hasattr(self, 'run_stop_uid'):
             s.write("run_stop_uid='{0}'".format(self.run_stop_uid),
                     'lightgrey')
+        for k in sorted(self.keys()):
+            if k in special_keys:
+                continue
+            s.write("{0}: {1}".format(k, self[k]))
+
         return s.readout()
 
 
