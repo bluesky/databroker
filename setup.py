@@ -17,11 +17,11 @@ from distutils.core import setup
 
 MAJOR = 0
 MINOR = 0
-MICRO = 6
+MICRO = 7
 ISRELEASED = False
 SNAPSHOT = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
-QUALIFIER = ''
+QUALIFIER = 'rc1'
 
 FULLVERSION = VERSION
 print(FULLVERSION)
