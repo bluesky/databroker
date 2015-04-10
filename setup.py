@@ -76,6 +76,4 @@ setup(
             'replay = replay.replay:main']},
     package_data={'': ['*.enaml']},
     include_package_data=True,
-    requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
-              'pims', 'six'],
 )
