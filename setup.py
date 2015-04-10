@@ -68,12 +68,12 @@ setup(
               'dataportal.broker', 'dataportal.muxer',
               'dataportal.sources', 'dataportal.sources.dummy_sources',
               'dataportal.utils', 'dataportal.scans',
-              'dataportal.replay', 'dataportal.replay.muxer',
-              'dataportal.replay.scalar', 'dataportal.replay.search',
+              'replay', 'replay.muxer',
+              'replay.scalar', 'replay.search',
               ],
     entry_points={
         'console_scripts': [
-            'replay = dataportal.replay.replay:main']},
+            'replay = replay.replay:main']},
     package_data={'': ['*.enaml']},
     include_package_data=True,
     requires=['skxray', 'pandas', 'matplotlib', 'enaml', 'bubblegum',
