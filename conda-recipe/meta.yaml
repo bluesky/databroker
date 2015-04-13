@@ -26,6 +26,9 @@ requirements:
     - pandas
 
 test:
+  requires:
+    - nslsii_dev_configuration
+
   # Python imports
   imports:
     - metadatastore
@@ -35,3 +38,7 @@ test:
     - metadatastore.odm_templates
     - metadatastore.document
     - metadatastore.utils
+
+about:
+  home: https://github.com/NSLS-II/metadatastore
+  license: BSD
