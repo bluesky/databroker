@@ -103,18 +103,16 @@ enamldef PlotView(Container):
     Container:
         constraints = [
             vbox(
-                hbox(check, spacer, fit),
+                hbox(autolim, spacer),
                 vbox(canvas),
             ),
         ]
-        CheckBox: check:
-            text = 'Toolbar Visible'
-            checked := canvas.toolbar_visible
-        CheckBox: fit:
-            text = 'Fitting Visible'
+        CheckBox: autolim:
+            text = "Autoscale limits"
+            checked := scalar_collection.autolim_axes
         MPLCanvas: canvas:
             figure << scalar_collection._fig
-            toolbar_visible = False
+            toolbar_visible = True
 
 
 enamldef ScalarContainer(Window): window:
