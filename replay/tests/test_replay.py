@@ -3,7 +3,7 @@ if six.PY2:
     # hide enaml imports from python 3
     import enaml
     from enaml.qt.qt_application import QtApplication
-    from dataportal.replay import replay
+    from replay import replay
 
 from functools import wraps
 from nose.tools import raises
@@ -13,14 +13,14 @@ from filestore.utils.testing import fs_setup, fs_teardown
 from dataportal.examples.sample_data import temperature_ramp, image_and_scalar
 from dataportal.broker import DataBroker as db
 import copy
-from ..testing.decorators import skip_if
-from ..testing.utils import Command
+from dataportal.testing.decorators import skip_if
+from dataportal.testing.utils import Command
 import time as ttime
 import os
 import random
 import tempfile
 import uuid
-from dataportal.replay.persist import History
+from replay.persist import History
 
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
@@ -76,7 +76,7 @@ def test_replay_startup():
     for p in params:
         yield _replay_startup_tester, p[0], p[1]
 
-# make sure that you can run dataportal/replay/replay.py
+# make sure that you can run replay/replay.py
 @skip_if(six.PY3)
 def test_replay_cmd_line():
     command = Command('python {}'.format(replay.__file__))

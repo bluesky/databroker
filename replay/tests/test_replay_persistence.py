@@ -1,5 +1,5 @@
 from nose.tools import assert_equal
-from dataportal.replay.persist import History
+from replay.persist import History
 
 from nose.tools import assert_raises
 OBJ_ID_LEN = 36

@@ -1,12 +1,12 @@
 import enaml
 from enaml.qt.qt_application import QtApplication
 import numpy as np
-from dataportal import replay
-from dataportal.replay.search import (GetLastModel, WatchForHeadersModel,
-                                      DisplayHeaderModel, ScanIDSearchModel)
+import replay
+from .search import (GetLastModel, WatchForHeadersModel, DisplayHeaderModel,
+                     ScanIDSearchModel)
 from dataportal.broker import DataBroker as db
-from dataportal.replay.muxer import MuxerModel
-from dataportal.replay.scalar import ScalarCollection
+from .muxer import MuxerModel
+from .scalar import ScalarCollection
 import sys
 from persist import History
 import argparse
@@ -15,7 +15,7 @@ import logging
 import six
 import errno
 with enaml.imports():
-    from dataportal.replay.replay_view import MainView
+    from .replay_view import MainView
 
 logger = logging.getLogger(__name__)
 

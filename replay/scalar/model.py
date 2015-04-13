@@ -5,14 +5,14 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 import six
-from ...muxer.data_muxer import DataMuxer
+from dataportal.muxer.data_muxer import DataMuxer
 from datetime import datetime
 import logging
 import numpy as np
 from metadatastore.api import Document
 import pandas as pd
-from ..persist import History
-from dataportal import replay
+from replay.persist import History
+import replay
 
 
 logger = logging.getLogger(__name__)

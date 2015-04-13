@@ -56,7 +56,7 @@ def save_state(history, history_key, state, sanitize=False, blacklist=True):
 
     Parameters
     ----------
-    history : dataportal.replay.persist.History
+    history : replay.persist.History
         An instance of the History object which wraps a sql db
     history_key : str
         The primary key used to set and retrieve state

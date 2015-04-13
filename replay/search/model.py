@@ -9,7 +9,7 @@ import metadatastore
 from mongoengine.connection import ConnectionError
 from pymongo.errors import AutoReconnect
 from functools import wraps
-from dataportal import replay
+import replay
 from ..persist import History
 import logging
 
