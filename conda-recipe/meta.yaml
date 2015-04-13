@@ -24,13 +24,25 @@ requirements:
     - h5py
     - numpy
     - six
+    - pyyaml
+    - jsonschema
     - pims
     - tifffile
-    - pyyaml
-    - setuptools
-    - jsonschema
 
 test:
+  requires:
+    - nslsii_dev_configuration
   imports:
+    - filestore
     - filestore.api
-    - filestore.spec
+    - filestore.commands
+    - filestore.conf
+    - filestore.file_writers
+    - filestore.handlers
+    - filestore.odm_templates
+    - filestore.retrieve
+    - filestore.utils
+
+about:
+  home: https://github.com/NSLS-II/filestore
+  license: BSD
