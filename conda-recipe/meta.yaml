@@ -53,3 +53,8 @@ test:
     - 'dataportal.replay.muxer'  [py2k]
     - 'dataportal.replay.scalar' [py2k]
     - 'dataportal.replay.search' [py2k]
+
+
+about:
+  home: https://github.com/NSLS-II/dataportal
+  license: BSD
