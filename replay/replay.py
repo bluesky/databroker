@@ -1,23 +1,39 @@
-import enaml
+from __future__ import (absolute_import, unicode_literals, division,
+                        print_function)
+import six
+import logging
+logger = logging.getLogger(__name__)
+from . import py3_errmsg
+
+try:
+    import enaml
+except ImportError:
+    if six.PY3:
+        logger.exception(py3_errmsg)
+    else:
+        raise
+
 from enaml.qt.qt_application import QtApplication
+
 import numpy as np
+import sys
+import argparse
+import os
+import six
+import errno
+
+# replay imports
 import replay
 from .search import (GetLastModel, WatchForHeadersModel, DisplayHeaderModel,
                      ScanIDSearchModel)
 from dataportal.broker import DataBroker as db
 from .muxer import MuxerModel
 from .scalar import ScalarCollection
-import sys
-from persist import History
-import argparse
-import os
-import logging
-import six
-import errno
+from .persist import History
+
 with enaml.imports():
     from .replay_view import MainView
 
-logger = logging.getLogger(__name__)
 
 REPLAY_CONF_DIR = os.getenv('XDG_DATA_HOME')
 if not REPLAY_CONF_DIR:
