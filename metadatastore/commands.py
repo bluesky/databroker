@@ -11,7 +11,11 @@ import logging
 from metadatastore import conf
 from mongoengine import connect
 import mongoengine.connection
-import pandas as pd  # just for parsing human-friendly datetimes
+
+#import pandas as pd  # just for parsing human-friendly datetimes
+import datetime
+import pytz
+
 import uuid
 from bson import ObjectId
 
@@ -378,11 +382,49 @@ def _format_time(search_dict):
 
 def _normalize_human_friendly_time(val):
     "Parse '2015', '2015-03', '2015-03-30', and '2015-03-30 18:00:00'."
+
     tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
-    if isinstance(val, six.string_types) or isinstance(val, datetime.datetime):
-        return pd.to_datetime(val).tz_localize(tz).value/1e9
+
+    if isinstance(val, six.string_types):
+        # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but doesn't get TZ?
+        formats = ['%Y-%m-%d %H:%M:%S',
+                   '%Y-%m-%d %H:%M',
+                   '%Y-%m-%d %H',
+                   '%Y-%m-%d',
+                   '%Y-%m',
+                   '%Y']
+        zone = pytz.timezone(tz)
+        epoch = datetime.datetime(1970,1,1)
+        ts = None
+        verr = None
+
+        for f in formats:
+            try:
+                ts = datetime.datetime.strptime(val, f)
+                break
+            except ValueError:
+                pass
+
+        try:
+            if isinstance(ts, datetime.datetime):
+                # both are tz unaware, no tz localization needed
+                val = ts
+            else:
+                raise ValueError('unexpected return type: '+ repr(ts))
+
+        except NameError:
+            raise ValueError('failed to parse time: '+ repr(val))
+
+    elif isinstance(val, datetime.datetime):
+        if val.tzinfo is not None:
+            # val has a tz, we need to localize
+            val = 
+
+#        return pd.to_datetime(val).tz_localize(tz).value/1e9
     else:
         return val
+
+    return (val - epoch).total_seconds()
 
 
 def _normalize_object_id(kwargs, key):
