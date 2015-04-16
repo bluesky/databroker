@@ -12,7 +12,6 @@ from metadatastore import conf
 from mongoengine import connect
 import mongoengine.connection
 
-#import pandas as pd  # just for parsing human-friendly datetimes
 import datetime
 import pytz
 
@@ -381,48 +380,56 @@ def _format_time(search_dict):
 
 
 def _normalize_human_friendly_time(val):
-    "Parse '2015', '2015-03', '2015-03-30', and '2015-03-30 18:00:00'."
+    """Given a string ('2015', '2015-03', '2015-03-30', and
+    '2015-03-30 18:00:00'), datetime (datetime.datetime.now()), with
+    or without tzinfo), or timestamp (time.time()), return a timestamp
+    (seconds since jan 1 1970 UTC).  Non string/datetime.datetime
+    values are returned unaltered.
+    """
 
     tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
+    zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
+    epoch = pytz.UTC.localize(datetime.datetime(1970,1,1))
+    check = True
 
     if isinstance(val, six.string_types):
         # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but doesn't get TZ?
         formats = ['%Y-%m-%d %H:%M:%S',
-                   '%Y-%m-%d %H:%M',
-                   '%Y-%m-%d %H',
+                   '%Y-%m-%d %H:%M',  # not as doc'd, but matches previous pandas behavior
+                   '%Y-%m-%d %H',  # not as doc'd, but matches previous pandas behavior
                    '%Y-%m-%d',
                    '%Y-%m',
                    '%Y']
-        zone = pytz.timezone(tz)
-        epoch = datetime.datetime(1970,1,1)
-        ts = None
-        verr = None
 
-        for f in formats:
+        # Could cleanup input a bit? remove leading/trailing [ :,-]?
+        # Yes, leading/trailing whitespace to match pandas behavior...
+        # Actually, pandas doesn't ignore trailing space, it assumes
+        # the *current* month/day if they're missing and there's
+        # trailing space, or the month is a single, non zero-padded digit.?!
+        val = val.strip()
+
+        for fmt in formats:
             try:
-                ts = datetime.datetime.strptime(val, f)
+                ts = datetime.datetime.strptime(val, fmt)
                 break
             except ValueError:
                 pass
 
         try:
             if isinstance(ts, datetime.datetime):
-                # both are tz unaware, no tz localization needed
                 val = ts
+                check = False
             else:
-                raise ValueError('unexpected return type: '+ repr(ts))
+                raise TypeError('expected datetime.datetime, got: '+ repr(ts))
 
         except NameError:
             raise ValueError('failed to parse time: '+ repr(val))
 
-    elif isinstance(val, datetime.datetime):
-        if val.tzinfo is not None:
-            # val has a tz, we need to localize
-            val = 
-
-#        return pd.to_datetime(val).tz_localize(tz).value/1e9
-    else:
+    if check and not isinstance(val, datetime.datetime):
         return val
+
+    if val.tzinfo is None:
+        val = zone.localize(val)
 
     return (val - epoch).total_seconds()
 
