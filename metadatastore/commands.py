@@ -389,14 +389,16 @@ def _normalize_human_friendly_time(val):
 
     tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
     zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
-    epoch = pytz.UTC.localize(datetime.datetime(1970,1,1))
+    epoch = pytz.UTC.localize(datetime.datetime(1970, 1, 1))
     check = True
 
     if isinstance(val, six.string_types):
-        # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but doesn't get TZ?
+        # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but
+        # doesn't get TZ?
+
         formats = ['%Y-%m-%d %H:%M:%S',
-                   '%Y-%m-%d %H:%M',  # not as doc'd, but matches previous pandas behavior
-                   '%Y-%m-%d %H',  # not as doc'd, but matches previous pandas behavior
+                   '%Y-%m-%d %H:%M',  # these 2 are not as doc'd, but
+                   '%Y-%m-%d %H',     # match previous pandas behavior
                    '%Y-%m-%d',
                    '%Y-%m',
                    '%Y']
@@ -420,10 +422,10 @@ def _normalize_human_friendly_time(val):
                 val = ts
                 check = False
             else:
-                raise TypeError('expected datetime.datetime, got: '+ repr(ts))
+                raise TypeError('expected datetime.datetime, got: ' + repr(ts))
 
         except NameError:
-            raise ValueError('failed to parse time: '+ repr(val))
+            raise ValueError('failed to parse time: ' + repr(val))
 
     if check and not isinstance(val, datetime.datetime):
         return val

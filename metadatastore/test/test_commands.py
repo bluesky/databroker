@@ -273,16 +273,17 @@ def _normalize_human_friendly_time_tester(val, should_succeed, etype):
     else:
         assert_raises(etype, mdsc._normalize_human_friendly_time, val)
 
+
 def test_normalize_human_friendly_time():
     # should get tz from conf?  but no other tests get conf stuff...
     zone = pytz.timezone('US/Eastern')
 
     good_test_values = [('2014', 1388552400.0),
-                        ('2014 ', 1388552400.0),  # pandas assumes current month+day
+                        ('2014 ', 1388552400.0),
                         ('2014-02', 1391230800.0),
                         ('2014-02 ', 1391230800.0),
-                        ('2014-2', 1391230800.0),  # pandas assumes current day
-                        ('2014-2 ', 1391230800.0),  # pandas assumes current day
+                        ('2014-2', 1391230800.0),
+                        ('2014-2 ', 1391230800.0),
                         ('2014-2-10', 1392008400.0),
                         ('2014-2-10 ', 1392008400.0),
                         ('2014-02-10', 1392008400.0),
