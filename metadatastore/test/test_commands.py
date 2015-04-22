@@ -293,12 +293,38 @@ def test_normalize_human_friendly_time():
                         ('2014-02-10 10:1 ', 1392044460.0),
                         ('2014-02-10 10:1:00', 1392044460.0),
                         ('2014-02-10 10:01:00', 1392044460.0),
+
+                        # dst transistion tests
+                        ('2015-03-08 01:59:59', 1425797999.0),  # is_dst==False
+                        # at 2am, spring forward to 3am.
+                        # [02:00:00 - 02:59:59] does not exist
+                        ('2015-03-08 03:00:00', 1425798000.0),  # is_dst==True
+
+                        ('2015-11-01 00:59:59', 1446353999.0),  # is_dst==True
+                        # at 2am, fall back to 1am
+                        # [01:00:00-01:59:59] is ambiguous without is_dst
+                        ('2015-11-01 02:00:00', 1446361200.0),  # is_dst==False
+
+                        # other
                         ttime.time(),
                         datetime.datetime.now(),
                         zone.localize(datetime.datetime.now()),
                         ]
     for val in good_test_values:
         yield _normalize_human_friendly_time_tester, val, True, None
+
+
+    bad_test_values = ['2015-03-08 02:00:00',
+                       '2015-03-08 02:59:59']
+    for val in bad_test_values:
+        yield _normalize_human_friendly_time_tester, val, False, pytz.NonExistentTimeError
+
+
+    bad_test_values = ['2015-11-01 01:00:00',
+                       '2015-11-01 01:59:59']
+    for val in bad_test_values:
+        yield _normalize_human_friendly_time_tester, val, False, pytz.AmbiguousTimeError
+
 
     bad_test_values = ['2015-04-15 03:',
                        str(ttime.time()),

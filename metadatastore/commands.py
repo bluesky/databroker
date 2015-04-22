@@ -445,7 +445,9 @@ def _normalize_human_friendly_time(val):
         return val
 
     if val.tzinfo is None:
-        val = zone.localize(val)
+        # is_dst=None raises NonExistent and Ambiguous TimeErrors
+        # when appropriate, same as pandas
+        val = zone.localize(val, is_dst=None)
 
     return (val - epoch).total_seconds()
 
