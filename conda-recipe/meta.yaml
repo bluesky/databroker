@@ -29,7 +29,7 @@ requirements:
     - matplotlib
     - pyyaml
     - enaml [py2k]
-    - bubblegum [py2k]
+    - xray-vision [py2k]
     - scikit-xray [py2k]
     - pims [py2k]
     - metadatastore
