@@ -1,5 +1,8 @@
 [run]
-source=dataportal
+source = 
+    dataportal
+    replay
+
 [report]
 omit =
     */python?.?/*

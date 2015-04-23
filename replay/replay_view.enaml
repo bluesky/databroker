@@ -1,8 +1,7 @@
-from dataportal.replay.search import (GetLastView, WatchForHeadersView,
-                                      DisplayHeaderView, DisplayPVView,
-                                      ScanIDSearchView)
-from dataportal.replay.muxer import MuxerController
-from dataportal.replay.scalar import PlotView, PlotControls
+from .search import (GetLastView, WatchForHeadersView, DisplayHeaderView,
+                     DisplayPVView, ScanIDSearchView)
+from .muxer import MuxerController
+from .scalar import PlotView, PlotControls
 
 from enaml.widgets.api import (MainWindow, Container, DockArea, DockItem,
                                ScrollArea)

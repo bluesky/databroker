@@ -14,7 +14,7 @@ build:
   string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
   entry_points:
-    - replay = dataportal.replay.replay:main
+    - replay = replay.replay:main
 
 requirements:
   build:
@@ -49,11 +49,10 @@ test:
     - 'dataportal.sources'
     - 'dataportal.sources.dummy_sources'
     - 'dataportal.utils'
-    - 'dataportal.replay'
-    - 'dataportal.replay.muxer'  [py2k]
-    - 'dataportal.replay.scalar' [py2k]
-    - 'dataportal.replay.search' [py2k]
-
+    - 'replay'
+    - 'replay.muxer'  [py2k]
+    - 'replay.scalar' [py2k]
+    - 'replay.search' [py2k]
 
 about:
   home: https://github.com/NSLS-II/dataportal

@@ -70,7 +70,7 @@ enamldef HeaderView(Container):
 
     Attributes
     ----------
-    search_model : dataportal.replay.search.model._BrokerSearch
+    search_model : replay.search.model._BrokerSearch
     """
     attr search_model
     Looper:
@@ -93,7 +93,7 @@ enamldef GetLastView(Container):
 
     Attributes
     ----------
-    get_last_model : dataportal.replay.search.model.GetLastModel
+    get_last_model : replay.search.model.GetLastModel
     """
     attr get_last_model
     Container:
@@ -121,7 +121,7 @@ enamldef ScanIDSearchView(Container):
 
     Attributes
     ----------
-    scan_id_model : dataportal.replay.search.model.ScanIDSearchModel
+    scan_id_model : replay.search.model.ScanIDSearchModel
     """
     attr scan_id_model
     padding = Box(0, 0, 0, 0)
