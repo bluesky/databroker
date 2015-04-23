@@ -129,7 +129,7 @@ if __name__ == '__main__':
     b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
                                       time=ttime.time())
     try:
-        last_start_event = find_last().next()
+        last_start_event = next(find_last())
         scan_id = int(last_start_event.scan_id)+1
     except IndexError:
         scan_id = 1
