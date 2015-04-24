@@ -689,7 +689,6 @@ def find_event_descriptors(**kwargs):
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
                                                              direction='out')
-        print("EVENT DESCIRPTOR", event_descriptor.id)
         yield _as_document(event_descriptor)
 
 
