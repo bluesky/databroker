@@ -3,12 +3,13 @@ import mongoengine
 from mongoengine.base.datastructures import BaseDict, BaseList
 from mongoengine.base.document import BaseDocument
 from bson.objectid import ObjectId
+from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
 from collections import MutableMapping
 
 
-def _normalize(in_val):
+def _normalize(in_val, cache):
     """
     Helper function for cleaning up the mongoegine documents to be safe.
 
@@ -25,6 +26,10 @@ def _normalize(in_val):
     in_val : object
         Object to be sanitized
 
+    cache : dict-like
+        Cache of already seen objects in the DB so that we do not
+        have to de-reference and build them again.
+
     Returns
     -------
     ret : object
@@ -32,11 +37,12 @@ def _normalize(in_val):
 
     """
     if isinstance(in_val, BaseDocument):
-        return Document.from_mongo(in_val)
+        return Document.from_mongo(in_val, cache)
     elif isinstance(in_val, BaseDict):
-        return {_normalize(k): _normalize(v) for k, v in six.iteritems(in_val)}
+        return {_normalize(k, cache): _normalize(v, cache)
+                for k, v in six.iteritems(in_val)}
     elif isinstance(in_val, BaseList):
-        return [_normalize(v) for v in in_val]
+        return [_normalize(v, cache) for v in in_val]
     elif isinstance(in_val, ObjectId):
         return str(in_val)
     return in_val
@@ -85,7 +91,7 @@ class Document(MutableMapping):
         return key in self._fields
 
     @classmethod
-    def from_mongo(cls, mongo_document):
+    def from_mongo(cls, mongo_document, cache=None):
         """
         Copy the data out of a mongoengine.Document, including nested
         Documents, but do not copy any of the mongo-specific methods or
@@ -94,7 +100,15 @@ class Document(MutableMapping):
         Parameters
         ----------
         mongo_document : mongoengine.Document
+
+
+        cache : dict-like, optional
+            Cache of already seen objects in the DB so that we do not
+            have to de-reference and build them again.
+
         """
+        if cache is None:
+            cache = dict()
         document = Document()
         document._name = mongo_document.__class__.__name__
         fields = set(chain(mongo_document._fields.keys(),
@@ -102,8 +116,21 @@ class Document(MutableMapping):
 
         for field in fields:
             attr = getattr(mongo_document, field)
-
-            attr = _normalize(attr)
+            if isinstance(attr, DBRef):
+                oid = attr.id
+                try:
+                    attr = cache[oid]
+                except KeyError:
+                    # do de-reference
+                    mongo_document.select_related()
+                    # grab the attribute again
+                    attr = getattr(mongo_document, field)
+                    # normalize it
+                    attr = _normalize(attr, cache)
+                    # and stash for later use
+                    cache[oid] = attr
+            else:
+                attr = _normalize(attr, cache)
 
             document[field] = attr
             # For debugging, add a human-friendly time_as_datetime attribute.
