@@ -133,10 +133,10 @@ class Document(MutableMapping):
                 attr = _normalize(attr, cache)
 
             document[field] = attr
-            # For debugging, add a human-friendly time_as_datetime attribute.
-            if 'time' in document:
-                document.time_as_datetime = datetime.fromtimestamp(
-                        document.time)
+        # For debugging, add a human-friendly time_as_datetime attribute.
+        if 'time' in document:
+            document.time_as_datetime = datetime.fromtimestamp(
+                    document.time)
         return document
 
     def __repr__(self):
