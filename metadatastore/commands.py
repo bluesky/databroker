@@ -843,6 +843,6 @@ def reorganize_event(event_document):
     event_document
     """
     doc = event_document  # for brevity
-    pairs  = [((k, v[0]), (k, v[1])) for k, v in six.iteritems(doc.data)]
+    pairs = [((k, v[0]), (k, v[1])) for k, v in six.iteritems(doc.data)]
     doc.data, doc.timestamps = [dict(tuples) for tuples in zip(*pairs)]
     return doc
