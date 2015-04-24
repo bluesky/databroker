@@ -9,7 +9,7 @@ from .document import Document
 import datetime
 import logging
 from metadatastore import conf
-from mongoengine import connect
+from mongoengine import connect,  ReferenceField
 import mongoengine.connection
 
 import datetime
@@ -367,6 +367,18 @@ class _AsDocument(object):
 
     def __call__(self, mongoengine_object):
         return Document.from_mongo(mongoengine_object, self._cache)
+
+
+class _AsDocumentRaw(object):
+    """
+    A caching layer to avoid creating reference objects for _every_
+    """
+    def __init__(self):
+        self._cache = dict()
+
+    def __call__(self, name, input_dict, dref_fields):
+
+        return Document.from_dict(name, input_dict, dref_fields, self._cache)
 
 
 def _format_time(search_dict):
@@ -728,9 +740,17 @@ def find_events(**kwargs):
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'descriptor_id')
     events = Event.objects(__raw__=kwargs).order_by('-time')
-    events = events.no_dereference()
-    _as_document = _AsDocument()
-    return (reorganize_event(_as_document(ev)) for ev in events)
+    events = events.as_pymongo()
+    dref_dict = dict()
+    name = Event.__name__
+    for n, f in Event._fields.items():
+        if isinstance(f, ReferenceField):
+            lookup_name = f.db_field
+            dref_dict[lookup_name] = f
+
+    _as_document = _AsDocumentRaw()
+    return (reorganize_event(_as_document(name, ev, dref_dict))
+            for ev in events)
 
 
 @_ensure_connection
