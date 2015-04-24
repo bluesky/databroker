@@ -55,6 +55,7 @@ def _ev_desc_tester(run_start, data_keys, time):
                                            data_keys, time)
     q_ret, = mdsc.find_event_descriptors(run_start=run_start)
     ret = EventDescriptor.objects.get(run_start_id=run_start.id)
+    ret.select_related()
     assert_equal(bson.ObjectId(q_ret.id), ret.id)
     q_ret2, = mdsc.find_event_descriptors(_id=ev_desc.id)
     assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id)
@@ -104,8 +105,8 @@ def test_ev_desc():
 
 @raises(mdsc.EventDescriptorIsNoneError)
 def test_ev_insert_fail():
-
     mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
+
 
 @raises(ValueError)
 def test_proper_data_format():
