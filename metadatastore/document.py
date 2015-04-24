@@ -139,5 +139,63 @@ class Document(MutableMapping):
                     document.time)
         return document
 
+    @classmethod
+    def from_dict(cls, name, input_dict, dref_fields=None, cache=None):
+        """Document from dictionary
+
+        Turn a dictionary into a MDS Document, de-referencing
+        ObjectId fields as required
+
+        Parameters
+        ----------
+        name : str
+            The class name to assign to the result object
+
+        input_dict : dict
+            Raw pymongo document
+
+        dref_fields : dict, optional
+            Dictionary keyed on field name mapping to the ReferenceField object
+            to use to de-reference the field.
+
+        cache : dict
+            Cache dictionary
+
+        Returns
+        -------
+        doc : Document
+            The result as a mds Document
+        """
+        if cache is None:
+            cache = {}
+        if dref_fields is None:
+            dref_fields = {}
+
+        document = Document()
+        document._name = name
+        for k, v in six.iteritems(input_dict):
+            if k == '_id':
+                continue
+            if isinstance(v, ObjectId):
+                ref_klass = dref_fields[k]
+                new_key = ref_klass.name
+                try:
+                    document[new_key] = cache[v]
+                except KeyError:
+
+                    ref_obj = ref_klass.document_type_obj
+
+                    ref_doc = cls.from_mongo(ref_obj.objects.get(id=v))
+
+                    cache[v] = ref_doc
+                    document[new_key] = ref_doc
+            else:
+                document[k] = v
+        # For debugging, add a human-friendly time_as_datetime attribute.
+        if 'time' in document:
+            document.time_as_datetime = datetime.fromtimestamp(
+                    document.time)
+        return document
+
     def __repr__(self):
         return "<{0} Document>".format(self._name)
