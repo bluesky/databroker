@@ -3,18 +3,16 @@ from __future__ import (absolute_import, division, print_function,
 
 import bson
 import six
-import uuid
 import time as ttime
 import datetime
 import pytz
 from ..api import Document as Document
 
-from nose.tools import make_decorator
 from nose.tools import assert_equal, assert_raises, raises
 
 
 from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
-                                         Event, RunStart, RunStop)
+                                         RunStart, RunStop)
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
@@ -57,6 +55,7 @@ def _ev_desc_tester(run_start, data_keys, time):
                                            data_keys, time)
     q_ret, = mdsc.find_event_descriptors(run_start=run_start)
     ret = EventDescriptor.objects.get(run_start_id=run_start.id)
+    ret.select_related()
     assert_equal(bson.ObjectId(q_ret.id), ret.id)
     q_ret2, = mdsc.find_event_descriptors(_id=ev_desc.id)
     assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id)
@@ -76,7 +75,8 @@ def _ev_desc_tester(run_start, data_keys, time):
     mdsc.find_event_descriptors(run_start_id=str(run_start.id))
     mdsc.find_event_descriptors(start_time=ttime.time())
     mdsc.find_event_descriptors(stop_time=ttime.time())
-    mdsc.find_event_descriptors(start_time=ttime.time() - 1, stop_time=ttime.time())
+    mdsc.find_event_descriptors(start_time=ttime.time() - 1,
+                                stop_time=ttime.time())
     mdsc.find_event_descriptors(uid='foo')
     mdsc.find_event_descriptors(_id=ev_desc.id)
     mdsc.find_event_descriptors(_id=str(ev_desc.id))
@@ -102,13 +102,15 @@ def test_ev_desc():
     time = ttime.time()
     yield _ev_desc_tester, rs, data_keys, time
 
+
 @raises(mdsc.EventDescriptorIsNoneError)
 def test_ev_insert_fail():
-    ev = mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
+    mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
+
 
 @raises(ValueError)
 def test_proper_data_format():
-    data = {'key': [15,]}
+    data = {'key': [15, ]}
     mdsc._validate_data(data)
 
 

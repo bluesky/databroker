@@ -9,7 +9,7 @@ from .document import Document
 import datetime
 import logging
 from metadatastore import conf
-from mongoengine import connect
+from mongoengine import connect,  ReferenceField
 import mongoengine.connection
 
 import datetime
@@ -358,8 +358,28 @@ class EventDescriptorIsNoneError(ValueError):
 # DATABASE RETRIEVAL ##########################################################
 
 # TODO: Update all query routine documentation
-def _as_document(mongoengine_object):
-    return Document.from_mongo(mongoengine_object)
+class _AsDocument(object):
+    """
+    A caching layer to avoid creating reference objects for _every_
+    """
+    def __init__(self):
+        self._cache = dict()
+
+    def __call__(self, mongoengine_object):
+        return Document.from_mongo(mongoengine_object, self._cache)
+
+
+class _AsDocumentRaw(object):
+    """
+    A caching layer to avoid creating reference objects for _every_
+    """
+    def __init__(self):
+        self._cache = dict()
+
+    def __call__(self, name, input_dict, dref_fields):
+
+        return Document.from_dict(name, input_dict, dref_fields, self._cache)
+
 
 def _format_time(search_dict):
     """Helper function to format the time arguments in a search dict
@@ -527,7 +547,10 @@ def find_run_starts(**kwargs):
     """
     _normalize_object_id(kwargs, '_id')
     _format_time(kwargs)
+    _as_document = _AsDocument()
+
     rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')
+    rs_objects = rs_objects.no_dereference()
     return (_as_document(rs) for rs in rs_objects)
 
 
@@ -558,9 +581,11 @@ def find_beamline_configs(**kwargs):
     -------
     beamline_configs : iterable of metadatastore.document.Document objects
     """
+    _as_document = _AsDocument()
     _format_time(kwargs)
     # ordered by _id because it is not guaranteed there will be time in cbonfig
     beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
+    beamline_configs = beamline_configs.no_dereference()
     return (_as_document(bc) for bc in beamline_configs)
 
 
@@ -602,6 +627,7 @@ def find_run_stops(**kwargs):
     run_stop : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
+
     try:
         kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
@@ -609,6 +635,10 @@ def find_run_stops(**kwargs):
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
     run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
+    run_stop = run_stop.no_dereference()
+
+    _as_document = _AsDocument()
+
     return (_as_document(rs) for rs in run_stop)
 
 
@@ -646,7 +676,7 @@ def find_event_descriptors(**kwargs):
     event_descriptor : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
-    event_descriptor_list = list()
+    _as_document = _AsDocument()
     try:
         kwargs['run_start_id'] = kwargs.pop('run_start').id
     except KeyError:
@@ -654,6 +684,8 @@ def find_event_descriptors(**kwargs):
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
+
+    event_descriptor_objects = event_descriptor_objects.no_dereference()
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
                                                              direction='out')
@@ -707,7 +739,17 @@ def find_events(**kwargs):
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'descriptor_id')
     events = Event.objects(__raw__=kwargs).order_by('-time')
-    return (reorganize_event(_as_document(ev)) for ev in events)
+    events = events.as_pymongo()
+    dref_dict = dict()
+    name = Event.__name__
+    for n, f in Event._fields.items():
+        if isinstance(f, ReferenceField):
+            lookup_name = f.db_field
+            dref_dict[lookup_name] = f
+
+    _as_document = _AsDocumentRaw()
+    return (reorganize_event(_as_document(name, ev, dref_dict))
+            for ev in events)
 
 
 @_ensure_connection
@@ -724,6 +766,7 @@ def find_last(num=1):
     run_start: iterable of metadatastore.document.Document objects
     """
     c = count()
+    _as_document = _AsDocument()
     for rs in RunStart.objects.order_by('-time'):
         if next(c) == num:
             raise StopIteration
@@ -843,6 +886,6 @@ def reorganize_event(event_document):
     event_document
     """
     doc = event_document  # for brevity
-    pairs  = [((k, v[0]), (k, v[1])) for k, v in six.iteritems(doc.data)]
+    pairs = [((k, v[0]), (k, v[1])) for k, v in six.iteritems(doc.data)]
     doc.data, doc.timestamps = [dict(tuples) for tuples in zip(*pairs)]
     return doc
