@@ -259,9 +259,9 @@ class EventQueue(object):
 
         new_events = []
         for event in events:
-            if event.id not in self._known_ids:
+            if event.uid not in self._known_ids:
                 new_events.append(event)
-                self._known_ids.add(event.id)
+                self._known_ids.add(event.uid)
 
         # The major performance savings is here: only fill the new events.
         [fill_event(event) for event in new_events]
