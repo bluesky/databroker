@@ -4,6 +4,7 @@ if six.PY2:
     import enaml
     from enaml.qt.qt_application import QtApplication
     from replay import replay
+    from replay.persist import History
 
 from functools import wraps
 from nose.tools import raises
@@ -20,7 +21,7 @@ import os
 import random
 import tempfile
 import uuid
-from replay.persist import History
+
 
 global hdr_temp_ramp, ev_temp_ramp
 global hdr_img_scalar, ev_img_scalar
@@ -400,4 +401,3 @@ def test_replay_persistence():
 
     ui.close()
     app.destroy()
-
