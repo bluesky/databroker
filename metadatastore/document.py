@@ -7,7 +7,7 @@ from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
 from collections import MutableMapping
-
+import prettytable
 
 def _normalize(in_val, cache):
     """
@@ -195,8 +195,48 @@ class Document(MutableMapping):
         # For debugging, add a human-friendly time_as_datetime attribute.
         if 'time' in document:
             document.time_as_datetime = datetime.fromtimestamp(
-                    document.time)
+                document.time)
         return document
 
-    def __repr__(self):
-        return "<{0} Document>".format(self._name)
+    # def __repr__(self):
+    #     return "<{0} Document>".format(self._name)
+
+    def _str_helper(self, name, indent=0, max_indent=1):
+        if indent > max_indent:
+            return ''
+        mapping = {0: '-', 1: '=', 2: '~'}
+        ret = "\n%s\n%s" % (name, mapping[indent]*len(name))
+
+        documents = []
+        for name, value in sorted(self.items()):
+            if isinstance(value, Document):
+                documents.append((name, value))
+            elif name == 'event_descriptors':
+                for val in value:
+                    documents.append((name, val))
+            elif name == 'data_keys':
+                for data_name, data_document in six.iteritems(value):
+                    ret += "\n%s" % data_document._str_helper(data_name, indent+1, max_indent=2)
+                    # ret += '\n%s\n%s' % (data_name,
+                    #                      mapping[indent]*len(data_name))
+                    # for k, v, in six.iteritems(data_document):
+                    #     ret += "\n\t%-9s: %-40s" % (k, v)
+                    # pass
+            else:
+                ret += "\n%-15s: %-40s" % (name[:15], value)
+        for name, value in documents:
+            ret += "\n%s" % (value._str_helper(value._name, indent+1))
+            # ret += "\n"
+        ret = ret.split('\n')
+        ret = ["%s%s" % ('  '*indent, line) for line in ret]
+        ret = "\n".join(ret)
+        return ret
+
+    def __str__(self):
+        return self._str_helper(self._name)
+
+    __repr__ = __str__
+
+if __name__ == "__main__":
+    from dataportal import DataBroker as db
+    print(db[-1])
