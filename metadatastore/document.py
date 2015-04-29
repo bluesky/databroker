@@ -175,6 +175,7 @@ class Document(MutableMapping):
         document._name = name
         for k, v in six.iteritems(input_dict):
             if k == '_id':
+                document['id'] = str(v)
                 continue
             if isinstance(v, ObjectId):
                 ref_klass = dref_fields[k]
