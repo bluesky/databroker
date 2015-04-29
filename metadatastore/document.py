@@ -7,7 +7,7 @@ from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
 from collections import MutableMapping
-import prettytable
+from prettytable import PrettyTable
 
 def _normalize(in_val, cache):
     """
@@ -215,13 +215,7 @@ class Document(MutableMapping):
                 for val in value:
                     documents.append((name, val))
             elif name == 'data_keys':
-                for data_name, data_document in six.iteritems(value):
-                    ret += "\n%s" % data_document._str_helper(data_name, indent+1, max_indent=2)
-                    # ret += '\n%s\n%s' % (data_name,
-                    #                      mapping[indent]*len(data_name))
-                    # for k, v, in six.iteritems(data_document):
-                    #     ret += "\n\t%-9s: %-40s" % (k, v)
-                    # pass
+                ret += "\n%s" % _prettytable(value).__str__()
             else:
                 ret += "\n%-15s: %-40s" % (name[:15], value)
         for name, value in documents:
@@ -236,6 +230,20 @@ class Document(MutableMapping):
         return self._str_helper(self._name)
 
     __repr__ = __str__
+
+
+def _prettytable(data_keys_dict):
+    fields = data_keys_dict.values()[0]._fields
+    table = PrettyTable(["key name"] + list(fields))
+    table.align['key name'] = 'l'
+    table.padding_width = 1
+    for data_key, key_dict in sorted(data_keys_dict.items()):
+        row = [data_key]
+        for k, v in sorted(key_dict.items()):
+            row.append(v)
+        table.add_row(row)
+    return table
+
 
 if __name__ == "__main__":
     from dataportal import DataBroker as db

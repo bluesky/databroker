@@ -70,7 +70,7 @@ setup(
     author='Arkilic',
     author_email=None,
     license="BSD (3-clause)",
-    url = "https://github.com/NSLS-II/metadatastore",
+    url="https://github.com/NSLS-II/metadatastore",
     packages=['metadatastore', 'metadatastore.test', 'metadatastore.utils',
               'metadatastore.examples', 'metadatastore.examples.sample_data'],
     long_description=read('README.md'),
