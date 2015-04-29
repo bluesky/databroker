@@ -2,6 +2,7 @@ from __future__ import print_function, division
 import numpy as np
 from skxray import core
 
+
 def brownian(im_shape, step_scale=1, decay=30,
              I_fluc_function=None, step_fluc_function=None):
     """
@@ -55,8 +56,6 @@ def brownian(im_shape, step_scale=1, decay=30,
     if step_fluc_function is None:
         step_fluc_function = lambda step, count: None
 
-    scale_func = step_fluc_function
-
     if im_shape.ndim != 1 and len(im_shape) != 2:
         raise ValueError("image shape must be 2 dimensional "
                          "you passed in {}".format(im_shape))
@@ -70,8 +69,8 @@ def brownian(im_shape, step_scale=1, decay=30,
         # clip it
         cur_position = np.array([np.clip(v, 0, mx) for
                                  v, mx in zip(cur_position, im_shape)])
-        R = core.pixel_to_radius(im_shape,
-                                 cur_position).reshape(im_shape)
+        R = core.radial_grid(cur_position,
+                                 im_shape)
         I = I_func(count)
         im = np.exp((-R**2 / decay)) * I
         count += 1
