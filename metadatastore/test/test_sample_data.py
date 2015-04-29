@@ -1,7 +1,14 @@
 from metadatastore.examples.sample_data.common import apply_deadband, noisy
 from metadatastore.examples.sample_data import temperature_ramp
+from metadatastore.utils.testing import mds_setup, mds_teardown
 import numpy as np
 from nose.tools import raises
+
+def setup():
+    mds_setup()
+
+def teardown():
+    mds_teardown()
 
 @raises(ValueError)
 def test_bad_deadbands():
