@@ -12,12 +12,24 @@ from numpy.testing.utils import assert_array_equal
 def test_watermark():
     watermark()
 
-def test_pims():
+def test_pims_images():
     header = db[-1]
     images = Images(header, 'img')
-    images[:5]
+    images[:5]  # smoke test
+    assert_equal(images.pixel_type, np.float64)
+    assert_array_equal(images.frame_shape, images[0].shape)
+    assert_equal(len(images), image_and_scalar.num1)
+
+def test_pims_subtracted_images():
+    header = db[-1]
+    images = Images(header, 'img')
     s_images = SubtractedImages(header, 'img', 'img')
-    assert_equal(len(images), len(s_images))
+    s_images[:5]  # smoke test
+    assert_equal(s_images.pixel_type, np.float64)
+    assert_array_equal(s_images.frame_shape, s_images[0].shape)
+    assert_equal(len(s_images), image_and_scalar.num1)
+
+    # We are subtracting an image from itself, so the result should be zero.
     expected = np.zeros(s_images.frame_shape)
     assert_array_equal(s_images[0], expected)
 
