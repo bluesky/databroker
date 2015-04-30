@@ -3,7 +3,7 @@ from filestore.api import db_connect, db_disconnect
 
 
 conn = None
-db_name = str(uuid.uuid4())
+db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
 
 
 def fs_setup():
