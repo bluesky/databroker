@@ -198,10 +198,34 @@ class Document(MutableMapping):
                 document.time)
         return document
 
-    # def __repr__(self):
-    #     return "<{0} Document>".format(self._name)
+    def __repr__(self):
+        return "<{0} Document>".format(self._name)
 
-    def _str_helper(self, name, indent=0, max_indent=1):
+    def _str_helper(self, name=None, indent=0, max_indent=1):
+        """Recursive document walker and formatter
+
+        Parameters
+        ----------
+        name : str, optional
+            Document header name. Defaults to ``self._name``
+        indent : int, optional
+            The indentation level. Defaults to starting at 0 and adding one tab
+            per recursion level
+        max_indent : int, optional
+            The maximum number of document levels to recurse into.  For printing
+            a header,
+
+        Note
+        ----
+        max_indent should be set to 1 for printing a header. If it is not
+        set to 1, then the return value for _str_helper will be:
+
+        Header
+          - Event Descriptor
+            - Run Start
+
+        ...which is dumb.
+        """
         if indent > max_indent:
             return ''
         mapping = {0: '-', 1: '=', 2: '~'}
