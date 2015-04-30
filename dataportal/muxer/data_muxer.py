@@ -360,9 +360,9 @@ class DataMuxer(object):
         is_new : bool
             True if event was added, False is it has already been added
         """
-        if event.id in self._known_events:
+        if event.uid in self._known_events:
             return False
-        self._known_events.add(event.id)
+        self._known_events.add(event.uid)
         self._stale = True
         if event.descriptor.id not in self._known_descriptors:
             self._process_new_descriptor(event.descriptor)
@@ -447,7 +447,7 @@ class DataMuxer(object):
         ----------
         include_all_timestamps : bool
             The result will always contain a 'time' column but, by default,
-            not timestamps for individual data sources like 'motor_timestamp'. 
+            not timestamps for individual data sources like 'motor_timestamp'.
             Set this to True to export timestamp columns for each data column
 
         Returns
