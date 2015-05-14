@@ -150,21 +150,6 @@ def _run_start_tester(time, beamline_id, scan_id):
                          [time, beamline_id, scan_id]):
         assert_equal(getattr(ret, name), val)
 
-    # Exercise documented kwargs
-    mdsc.find_run_starts(limit=5)
-    mdsc.find_run_starts(start_time=ttime.time())
-    mdsc.find_run_starts(start_time='2015')
-    mdsc.find_run_starts(start_time='2015-03-30')
-    mdsc.find_run_starts(start_time='2015-03-30 03:00:00')
-    mdsc.find_run_starts(start_time=datetime.datetime.now())
-    mdsc.find_run_starts(stop_time=ttime.time())
-    mdsc.find_run_starts(start_time=ttime.time() - 1, stop_time=ttime.time())
-    mdsc.find_run_starts(beamline_id='csx')
-    mdsc.find_run_starts(project='world-domination')
-    mdsc.find_run_starts(owner='drdrake')
-    mdsc.find_run_starts(scan_id=1)
-    mdsc.find_run_starts(uid='foo')
-
 
 def test_run_start():
     time = ttime.time()
@@ -242,6 +227,25 @@ def test_run_stop_insertion():
                    'uid': run_stop_uid}
     for attr, known_value in comparisons.items():
         assert_equal(known_value, getattr(run_stop, attr))
+
+
+def test_find_run_start_for_smoke():
+    """ Exercise documented kwargs
+    """
+    mdsc.find_run_starts(limit=5)
+    mdsc.find_run_starts(start_time=ttime.time())
+    mdsc.find_run_starts(start_time='2015')
+    mdsc.find_run_starts(start_time='2015-03-30')
+    mdsc.find_run_starts(start_time='2015-03-30 03:00:00')
+    mdsc.find_run_starts(start_time=datetime.datetime.now())
+    mdsc.find_run_starts(stop_time=ttime.time())
+    mdsc.find_run_starts(start_time=ttime.time() - 1, stop_time=ttime.time())
+    mdsc.find_run_starts(beamline_id='csx')
+    mdsc.find_run_starts(project='world-domination')
+    mdsc.find_run_starts(owner='drdrake')
+    mdsc.find_run_starts(scan_id=1)
+    mdsc.find_run_starts(uid='foo')
+
 
 def test_run_stops_for_smoke():
     """ Exercise documented kwargs
