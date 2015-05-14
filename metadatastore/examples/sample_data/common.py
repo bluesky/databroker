@@ -76,18 +76,18 @@ def example(func):
         if run_start_uid is None:
             blc_uid = insert_beamline_config({}, time=0.)
             run_start_uid = insert_run_start(time=0., scan_id=1,
-                                             beamline_id='csx',
+                                             beamline_id='example',
                                              uid=str(uuid.uuid4()),
                                              beamline_config=blc_uid)
+            print('run_start_uid = %s' % run_start_uid)
+        # these events are already the sanitized version, not raw mongo objects
         events = func(run_start_uid, sleep)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
         time = max([event['time'] for event in events])
         if make_run_stop:
-            insert_run_stop(run_start_uid, time=time, exit_status='success')
-        raw_events = [Document.from_dict('Event', e) for e in events]
-        # Events are represented differently than they are stored.
-        # See reorganize_event docstring.
-        events = [reorganize_event(e) for e in raw_events]
+            run_stop_uid = insert_run_stop(run_start_uid, time=time,
+                                           exit_status='success')
+            print('run_stop_uid = %s' % run_stop_uid)
         return events
     return mock_run_start
