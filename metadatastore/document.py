@@ -115,6 +115,10 @@ class Document(MutableMapping):
                            mongo_document._data.keys()))
 
         for field in fields:
+            if field == 'id':
+                # we are no longer supporting mongo id's making it out of
+                # metadatastore
+                continue
             attr = getattr(mongo_document, field)
             if isinstance(attr, DBRef):
                 oid = attr.id
