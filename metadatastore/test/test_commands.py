@@ -200,52 +200,58 @@ def _event_tester(descriptor, seq_num, data, time):
     pass
 
 
-def _run_stop_tester(run_start, time):
-    run_stop = mdsc.insert_run_stop(run_start.uid, time)
+@raises(KeyError)
+def check_for_id(document):
+    """Make sure that our documents do not have an id field
 
-    # run_stop is a mongo document, so this .id is an ObjectId
-    q_ret, = mdsc.find_run_stops(_id=run_stop.id)
-    assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
+    Parameters
+    ----------
+    document : metadatastore.document.Document
+        A sanitized mongoengine document
+    """
+    document['id']
 
-    # tests bug fixed by @ericdill in c8befa
-    q_ret, = mdsc.find_run_stops(_id=str(run_stop.id))
-    assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
 
-    # tests bug fixed by @ericdill 1a167a
-    q_ret, = mdsc.find_run_stops(run_start=run_start)
-    assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
+def test_run_stop_insertion():
+    """Test, uh, the insertion of run stop documents
+    """
+    run_start_uid = mdsc.insert_run_start(
+        time=ttime.time(), beamline_id='sample_beamline', scan_id=42,
+        beamline_config=blc_uid)
+    time = ttime.time()
+    exit_status = 'success'
+    reason = 'uh, because this is testing and it better be a success?'
+    # insert the document
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid, time,
+                                        exit_status=exit_status,
+                                        reason=reason)
 
-    q_ret, = mdsc.find_run_stops(run_start_id=run_start.id)
-    assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
+    # get the sanitized run_stop document from metadatastore
+    run_stop, = mdsc.find_run_stops(uid=run_stop_uid)
 
-    q_ret, = mdsc.find_run_stops(run_start_id=str(run_start.id))
-    assert_equal(bson.ObjectId(q_ret.id), run_stop.id)
+    # make sure it does not have an 'id' field
+    check_for_id(run_stop)
+    # make sure the run stop is pointing to the correct run start
+    referenced_run_start = run_stop.run_start
+    assert_equal(referenced_run_start.uid, run_start_uid)
 
-    # Check that Document conversion does not raise.
-    Document.from_mongo(run_stop)
+    # check the remaining fields
+    comparisons = {'time': time,
+                   'exit_status': exit_status,
+                   'reason': reason,
+                   'uid': run_stop_uid}
+    for attr, known_value in comparisons.items():
+        assert_equal(known_value, getattr(run_stop, attr))
 
-    # Check the contents of the record we just inserted.
-    ret = RunStop.objects.get(id=run_stop.id)
-    for name, val in zip(['id', 'time', 'run_start'],
-                         [run_stop.id, time, run_start]):
-        assert_equal(getattr(ret, name), val)
-
-    # Exercise documented kwargs
+def test_run_stops_for_smoke():
+    """ Exercise documented kwargs
+    """
     mdsc.find_run_stops(start_time=ttime.time())
     mdsc.find_run_stops(stop_time=ttime.time())
     mdsc.find_run_stops(start_time=ttime.time() - 1, stop_time=ttime.time())
     mdsc.find_run_stops(reason='whimsy')
     mdsc.find_run_stops(exit_status='success')
     mdsc.find_run_stops(uid='foo')
-
-
-def test_run_stop():
-    run_start = mdsc.insert_run_start(
-        time=ttime.time(), beamline_id='sample_beamline', scan_id=42,
-        beamline_config=blc_uid)
-    time = ttime.time()
-    yield _run_stop_tester, run_start, time
-
 
 def test_run_start_custom():
     # Test that Run Start is a DynamicDocument that accepts
