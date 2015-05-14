@@ -126,8 +126,8 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    beamline_config : metadatastore.odm_temples.BeamlineConfig
-        Foreign key to beamline config corresponding to a given run
+    beamline_config : str
+        uid of beamline config corresponding to a given run
     uid : str, optional
         Globally unique id string provided to metadatastore
     owner : str, optional
@@ -157,6 +157,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     if project is None:
         project = ''
 
+    beamline_config = BeamlineConfig.objects(uid=beamline_config).first()
     run_start = RunStart(time=time, scan_id=scan_id,
                          time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
@@ -167,7 +168,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     run_start.save(validate=True, write_concern={"w": 1})
     logger.debug('Inserted RunStart with uid %s', run_start.uid)
 
-    return run_start
+    return uid
 
 
 @_ensure_connection
@@ -178,8 +179,8 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
 
     Parameters
     ----------
-    run_start : metadatastore.odm_temples.RunStart
-        Foreign key to corresponding RunStart
+    run_start : str
+        uid of RunStart object to associate with this record
     time : float
         The date/time as found at the client side when an event is
         created.
@@ -202,6 +203,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
+    run_start = RunStart.objects(uid=run_start).first()
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
                        time_as_datetime=_todatetime(time), uid=uid,
                        exit_status=exit_status, **custom)
@@ -210,7 +212,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
                  " with uid %s", run_stop.uid, run_start.uid)
 
-    return run_stop
+    return uid
 
 
 @_ensure_connection
@@ -242,7 +244,7 @@ def insert_beamline_config(config_params, time, uid=None):
     logger.debug("Inserted BeamlineConfig with uid %s",
                  beamline_config.uid)
 
-    return beamline_config
+    return uid
 
 
 @_ensure_connection
@@ -252,8 +254,8 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
     Parameters
     ----------
-    run_start: metadatastore.odm_templates.RunStart
-        RunStart object created prior to a RunStart
+    run_start : str
+        uid of RunStart object to associate with this record
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain
@@ -277,6 +279,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
+    run_start = RunStart.objects(uid=run_start).first()
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
@@ -290,7 +293,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     logger.debug("Inserted EventDescriptor with uid %s referencing "
                  "RunStart with uid %s", event_descriptor.uid, run_start.uid)
 
-    return event_descriptor
+    return uid
 
 
 @_ensure_connection
@@ -299,9 +302,8 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
 
     Parameters
     ----------
-    event_descriptor : metadatastore.odm_templates.EventDescriptor
-        EventDescriptor object that specific event entry is going
-        to point(foreign key)
+    event_descriptor : str
+        uid of EventDescriptor object to associate with this record
     time : float
         The date/time as found at the client side when an event is
         created.
@@ -316,13 +318,15 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     """
     m_data = _validate_data(data)
 
-    # mostly here to notify ophyd that an event descriptor needs to be created
+    # Allow caller to beg forgiveness rather than ask permission w.r.t
+    # EventDescriptor creation.
     if event_descriptor is None:
         raise EventDescriptorIsNoneError()
 
     if uid is None:
         uid = str(uuid.uuid4())
 
+    event_descriptor = EventDescriptor.objects(uid=event_descriptor).first()
     event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
@@ -331,7 +335,7 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     logger.debug("Inserted Event with uid %s referencing "
                  "EventDescriptor with uid %s", event.uid,
                  event_descriptor.uid)
-    return event
+    return uid
 
 
 def _validate_data(data):
