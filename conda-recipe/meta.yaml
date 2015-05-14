@@ -23,6 +23,7 @@ requirements:
     - mongoengine
     - six
     - pyyaml
+    - prettytable
 
 test:
   requires:

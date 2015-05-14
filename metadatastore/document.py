@@ -7,7 +7,7 @@ from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
 from collections import MutableMapping
-
+from prettytable import PrettyTable
 
 def _normalize(in_val, cache):
     """
@@ -195,8 +195,80 @@ class Document(MutableMapping):
         # For debugging, add a human-friendly time_as_datetime attribute.
         if 'time' in document:
             document.time_as_datetime = datetime.fromtimestamp(
-                    document.time)
+                document.time)
         return document
 
     def __repr__(self):
         return "<{0} Document>".format(self._name)
+
+    def _str_helper(self, name=None, indent=0, max_indent=1):
+        """Recursive document walker and formatter
+
+        Parameters
+        ----------
+        name : str, optional
+            Document header name. Defaults to ``self._name``
+        indent : int, optional
+            The indentation level. Defaults to starting at 0 and adding one tab
+            per recursion level
+        max_indent : int, optional
+            The maximum number of document levels to recurse into.  For printing
+            a header,
+
+        Note
+        ----
+        max_indent should be set to 1 for printing a header. If it is not
+        set to 1, then the return value for _str_helper will be:
+
+        Header
+          - Event Descriptor
+            - Run Start
+
+        ...which is dumb.
+        """
+        if indent > max_indent:
+            return ''
+        mapping = {0: '-', 1: '=', 2: '~'}
+        ret = "\n%s\n%s" % (name, mapping[indent]*len(name))
+
+        documents = []
+        for name, value in sorted(self.items()):
+            if isinstance(value, Document):
+                documents.append((name, value))
+            elif name == 'event_descriptors':
+                for val in value:
+                    documents.append((name, val))
+            elif name == 'data_keys':
+                ret += "\n%s" % _prettytable(value).__str__()
+            else:
+                ret += "\n%-16s: %-40s" % (name[:16], value)
+        for name, value in documents:
+            ret += "\n%s" % (value._str_helper(value._name, indent+1))
+            # ret += "\n"
+        ret = ret.split('\n')
+        ret = ["%s%s" % ('  '*indent, line) for line in ret]
+        ret = "\n".join(ret)
+        return ret
+
+    def __str__(self):
+        return self._str_helper(self._name)
+
+    __repr__ = __str__
+
+
+def _prettytable(data_keys_dict):
+    fields = data_keys_dict.values()[0]._fields
+    table = PrettyTable(["key name"] + list(fields))
+    table.align['key name'] = 'l'
+    table.padding_width = 1
+    for data_key, key_dict in sorted(data_keys_dict.items()):
+        row = [data_key]
+        for k, v in sorted(key_dict.items()):
+            row.append(v)
+        table.add_row(row)
+    return table
+
+
+if __name__ == "__main__":
+    from dataportal import DataBroker as db
+    print(db[-1])
