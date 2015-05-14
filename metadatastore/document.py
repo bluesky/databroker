@@ -241,7 +241,7 @@ class Document(MutableMapping):
             elif name == 'data_keys':
                 ret += "\n%s" % _prettytable(value).__str__()
             else:
-                ret += "\n%-15s: %-40s" % (name[:15], value)
+                ret += "\n%-16s: %-40s" % (name[:16], value)
         for name, value in documents:
             ret += "\n%s" % (value._str_helper(value._name, indent+1))
             # ret += "\n"

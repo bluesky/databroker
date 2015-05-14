@@ -22,7 +22,7 @@ data_keys = {'linear_motor': {'source': 'PV:pv1',
              }
 
 try:
-    last_hdr = find_last()[0]
+    last_hdr = next(find_last())
     scan_id = int(last_hdr.scan_id)+1
 except (IndexError, TypeError):
     scan_id = 1
@@ -49,7 +49,7 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
     e = insert_event(event_descriptor=e_desc, seq_num=idx,
                      time=time.time(),
                      data=data)
-last_run = find_last()[0]
+last_run = next(find_last())
 try:
     if str(last_run.id) != str(rs.id):
         print("find_last() is broken")
