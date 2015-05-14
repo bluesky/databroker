@@ -22,7 +22,7 @@ blc_uid = None
 
 def setup():
     mds_setup()
-    global blc
+    global blc_uid
     temperature_ramp.run()
     blc_uid = mdsc.insert_beamline_config({}, ttime.time())
 
@@ -240,11 +240,11 @@ def _run_stop_tester(run_start, time):
 
 
 def test_run_stop():
-    rs = mdsc.insert_run_start(time=ttime.time(),
-                                beamline_id='sample_beamline', scan_id=42,
-                                beamline_config=blc_uid)
+    run_start = mdsc.insert_run_start(
+        time=ttime.time(), beamline_id='sample_beamline', scan_id=42,
+        beamline_config=blc_uid)
     time = ttime.time()
-    yield _run_stop_tester, rs, time
+    yield _run_stop_tester, run_start, time
 
 
 def test_run_start_custom():
@@ -257,12 +257,11 @@ def test_run_start_custom():
                                 scan_id=42,
                                 beamline_config=blc_uid,
                                 custom=cust)
-    rs = find_run_starts(uid=rs)[0]
-    Document.from_mongo(rs)
-    ret = RunStart.objects.get(id=rs.id)
+    rs, = mdsc.find_run_starts(uid=rs)
+    run_start_mongo = RunStart.objects.get(id=rs.id)
 
     for k in cust:
-        assert_equal(getattr(ret, k), cust[k])
+        assert_equal(getattr(run_start_mongo, k), cust[k])
 
 
 def _normalize_human_friendly_time_tester(val, should_succeed, etype):
