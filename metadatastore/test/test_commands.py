@@ -173,15 +173,18 @@ def test_run_start():
 
 
 def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
-    run_start = mdsc.insert_run_start(time, beamline_id=beamline_id,
-                                      beamline_config=beamline_cfg.uid,
-                                      scan_id=scan_id)
-    Document.from_mongo(run_start)
-    ret = RunStart.objects.get(id=run_start.id)
+    run_start_uid = mdsc.insert_run_start(
+        time, beamline_id=beamline_id, beamline_config=beamline_cfg.uid,
+        scan_id=scan_id)
 
-    for name, val in zip(['time', 'beamline_id', 'scan_id', 'beamline_config'],
-                         [time, beamline_id, scan_id, beamline_cfg]):
-        assert_equal(getattr(ret, name), val)
+    run_start, = mdsc.find_run_starts(uid=run_start_uid)
+    run_start_mongo = RunStart.objects.get(id=run_start.id)
+
+    for name, val in zip(['time', 'beamline_id', 'scan_id'],
+                         [time, beamline_id, scan_id]):
+        assert_equal(getattr(run_start_mongo, name), val)
+
+    assert_equal(str(beamline_cfg), str(run_start.beamline_config))
 
 
 def test_run_start2():
