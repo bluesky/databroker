@@ -72,19 +72,20 @@ def noisy(val, sigma=0.01):
 
 def example(func):
     @wraps(func)
-    def mock_run_start(run_start=None, sleep=0, make_run_stop=True):
-        if run_start is None:
-            blc = insert_beamline_config({}, time=0.)
-            run_start = insert_run_start(time=0., scan_id=1, beamline_id='csx',
-                                         uid=str(uuid.uuid4()),
-                                         beamline_config=blc)
-        events = func(run_start, sleep)
+    def mock_run_start(run_start_uid=None, sleep=0, make_run_stop=True):
+        if run_start_uid is None:
+            blc_uid = insert_beamline_config({}, time=0.)
+            run_start_uid = insert_run_start(time=0., scan_id=1,
+                                             beamline_id='csx',
+                                             uid=str(uuid.uuid4()),
+                                             beamline_config=blc_uid)
+        events = func(run_start_uid, sleep)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
-        time = max([event.time for event in events])
+        time = max([event['time'] for event in events])
         if make_run_stop:
-            insert_run_stop(run_start, time=time, exit_status='success')
-        raw_events = [Document.from_mongo(e) for e in events]
+            insert_run_stop(run_start_uid, time=time, exit_status='success')
+        raw_events = [Document.from_dict('Event', e) for e in events]
         # Events are represented differently than they are stored.
         # See reorganize_event docstring.
         events = [reorganize_event(e) for e in raw_events]

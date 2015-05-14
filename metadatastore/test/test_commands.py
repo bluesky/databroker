@@ -17,14 +17,14 @@ import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 
-blc = None
+blc_uid = None
 
 
 def setup():
     mds_setup()
     global blc
     temperature_ramp.run()
-    blc = mdsc.insert_beamline_config({}, ttime.time())
+    blc_uid = mdsc.insert_beamline_config({}, ttime.time())
 
 
 def teardown():
@@ -34,11 +34,9 @@ def teardown():
 def _blc_tester(config_dict):
     """Test BeamlineConfig Insert
     """
-    blc = mdsc.insert_beamline_config(config_dict, ttime.time())
-    q_ret, = mdsc.find_beamline_configs(_id=blc.id)
-    assert_equal(bson.ObjectId(q_ret.id), blc.id)
-    doc = Document.from_mongo(blc)
-    BeamlineConfig.objects.get(id=blc.id)
+    blc_uid = mdsc.insert_beamline_config(config_dict, ttime.time())
+    blc, = mdsc.find_beamline_configs(uid=blc_uid)
+    assert_equal(blc.uid, blc_uid)
     if config_dict is None:
         config_dict = dict()
     assert_equal(config_dict, blc.config_params)
@@ -51,7 +49,7 @@ def test_blc_insert():
 
 
 def _ev_desc_tester(run_start, data_keys, time):
-    ev_desc = mdsc.insert_event_descriptor(run_start,
+    ev_desc = mdsc.insert_event_descriptor(run_start_uid,
                                            data_keys, time)
     q_ret, = mdsc.find_event_descriptors(run_start=run_start)
     ret = EventDescriptor.objects.get(run_start_id=run_start.id)
@@ -84,11 +82,11 @@ def _ev_desc_tester(run_start, data_keys, time):
 
 
 def test_ev_desc():
-    rs = mdsc.insert_run_start(time=ttime.time(),
+    rs_uid = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline',
                                 scan_id=42,
-                                beamline_config=blc)
-    Document.from_mongo(rs)
+                                beamline_config=blc_uid)
+    rs = mdsc.find_run_start(uid=rs_uid)
     data_keys = {'some_value': {'source': 'PV:pv1',
                                 'shape': [1, 2],
                                 'dtype': 'array'},
@@ -129,9 +127,10 @@ def test_src_dst_fail():
 
 def _run_start_tester(time, beamline_id, scan_id):
 
-    run_start = mdsc.insert_run_start(time, beamline_id=beamline_id,
+    run_start_uid = mdsc.insert_run_start(time, beamline_id=beamline_id,
                                       scan_id=scan_id,
-                                      beamline_config=blc)
+                                      beamline_config=blc_uid)
+    run_start = find_run_starts(uid=run_start_uid)[0]
     q_ret, = mdsc.find_run_starts(_id=run_start.id)
     assert_equal(bson.ObjectId(q_ret.id), run_start.id)
 
@@ -175,7 +174,7 @@ def test_run_start():
 
 def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
     run_start = mdsc.insert_run_start(time, beamline_id=beamline_id,
-                                      beamline_config=beamline_cfg,
+                                      beamline_config=beamline_cfg.uid,
                                       scan_id=scan_id)
     Document.from_mongo(run_start)
     ret = RunStart.objects.get(id=run_start.id)
@@ -186,7 +185,8 @@ def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
 
 
 def test_run_start2():
-    bcfg = mdsc.insert_beamline_config({'cfg1': 1}, ttime.time())
+    bcfg_uid = mdsc.insert_beamline_config({'cfg1': 1}, ttime.time())
+    bcfg, = mdsc.find_beamline_configs(uid=bcfg_uid)
     time = ttime.time()
     beamline_id = 'sample_beamline'
     scan_id = 42
@@ -198,7 +198,7 @@ def _event_tester(descriptor, seq_num, data, time):
 
 
 def _run_stop_tester(run_start, time):
-    run_stop = mdsc.insert_run_stop(run_start, time)
+    run_stop = mdsc.insert_run_stop(run_start.uid, time)
 
     # run_stop is a mongo document, so this .id is an ObjectId
     q_ret, = mdsc.find_run_stops(_id=run_stop.id)
@@ -239,7 +239,7 @@ def _run_stop_tester(run_start, time):
 def test_run_stop():
     rs = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline', scan_id=42,
-                                beamline_config=blc)
+                                beamline_config=blc_uid)
     time = ttime.time()
     yield _run_stop_tester, rs, time
 
@@ -252,8 +252,9 @@ def test_run_start_custom():
     rs = mdsc.insert_run_start(time=ttime.time(),
                                 beamline_id='sample_beamline',
                                 scan_id=42,
-                                beamline_config=blc,
+                                beamline_config=blc_uid,
                                 custom=cust)
+    rs = find_run_starts(uid=rs)[0]
     Document.from_mongo(rs)
     ret = RunStart.objects.get(id=rs.id)
 
