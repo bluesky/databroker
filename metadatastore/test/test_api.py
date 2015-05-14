@@ -17,3 +17,8 @@ from ..api import EventDescriptorIsNoneError
 from ..api import format_events
 from ..api import format_data_keys
 from ..api import Document
+
+
+if __name__ == "__main__":
+    import nose
+    nose.runmodule(argv=['-s', '--with-doctest'], exit=False)

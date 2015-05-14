@@ -1,204 +1,42 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import bson
-import six
 import time as ttime
 import datetime
+
 import pytz
-from ..api import Document as Document
-
 from nose.tools import assert_equal, assert_raises, raises
-
-
-from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
-                                         RunStart, RunStop)
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 
+
+# some useful globals
 blc_uid = None
+run_start_uid = None
+document_insertion_time = None
 
 
-def setup():
-    mds_setup()
-    global blc_uid
-    temperature_ramp.run()
-    blc_uid = mdsc.insert_beamline_config({}, ttime.time())
-
+#### Nose setup/teardown methods ###############################################
 
 def teardown():
     mds_teardown()
+def setup():
+    mds_setup()
+    global blc_uid, run_start_uid, document_insertion_time
+    document_insertion_time = ttime.time()
+    temperature_ramp.run()
+    blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time)
+    run_start_uid = mdsc.insert_run_start(scan_id=02032013,
+                                          beamline_id='testbed',
+                                          beamline_config=blc_uid,
+                                          owner='tester',
+                                          group='awesome-devs',
+                                          project='Nikea',
+                                          time=document_insertion_time)
 
 
-def _blc_tester(config_dict):
-    """Test BeamlineConfig Insert
-    """
-    blc_uid = mdsc.insert_beamline_config(config_dict, ttime.time())
-    blc, = mdsc.find_beamline_configs(uid=blc_uid)
-    assert_equal(blc.uid, blc_uid)
-    if config_dict is None:
-        config_dict = dict()
-    assert_equal(config_dict, blc.config_params)
-    return blc
-
-
-def test_blc_insert():
-    for cfd in [None, {}, {'foo': 'bar', 'baz': 5, 'biz': .05}]:
-        yield _blc_tester, cfd
-
-
-def _ev_desc_tester(run_start, data_keys, time):
-    ev_desc = mdsc.insert_event_descriptor(run_start_uid,
-                                           data_keys, time)
-    q_ret, = mdsc.find_event_descriptors(run_start=run_start)
-    ret = EventDescriptor.objects.get(run_start_id=run_start.id)
-    ret.select_related()
-    assert_equal(bson.ObjectId(q_ret.id), ret.id)
-    q_ret2, = mdsc.find_event_descriptors(_id=ev_desc.id)
-    assert_equal(bson.ObjectId(q_ret2.id), ev_desc.id)
-
-    # Check contents of record we just inserted.
-    for name, val in zip(['run_start', 'time'], [run_start, time]):
-        assert_equal(getattr(ret, name), val)
-
-    for k in data_keys:
-        for ik in data_keys[k]:
-            assert_equal(getattr(ret.data_keys[k], ik),
-                         data_keys[k][ik])
-
-    # Exercise documented Parameters.
-    mdsc.find_event_descriptors(run_start=run_start)
-    mdsc.find_event_descriptors(run_start_id=run_start.id)
-    mdsc.find_event_descriptors(run_start_id=str(run_start.id))
-    mdsc.find_event_descriptors(start_time=ttime.time())
-    mdsc.find_event_descriptors(stop_time=ttime.time())
-    mdsc.find_event_descriptors(start_time=ttime.time() - 1,
-                                stop_time=ttime.time())
-    mdsc.find_event_descriptors(uid='foo')
-    mdsc.find_event_descriptors(_id=ev_desc.id)
-    mdsc.find_event_descriptors(_id=str(ev_desc.id))
-    return ev_desc
-
-
-def test_ev_desc():
-    rs_uid = mdsc.insert_run_start(time=ttime.time(),
-                                beamline_id='sample_beamline',
-                                scan_id=42,
-                                beamline_config=blc_uid)
-    rs = mdsc.find_run_start(uid=rs_uid)
-    data_keys = {'some_value': {'source': 'PV:pv1',
-                                'shape': [1, 2],
-                                'dtype': 'array'},
-                 'some_other_val': {'source': 'PV:pv2',
-                                    'shape': [],
-                                    'dtype': 'number'},
-                 'data_key3': {'source': 'PV:pv1',
-                               'shape': [],
-                               'dtype': 'number',
-                               'external': 'FS:foobar'}}
-    time = ttime.time()
-    yield _ev_desc_tester, rs, data_keys, time
-
-
-@raises(mdsc.EventDescriptorIsNoneError)
-def test_ev_insert_fail():
-    mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
-
-
-@raises(ValueError)
-def test_proper_data_format():
-    data = {'key': [15, ]}
-    mdsc._validate_data(data)
-
-
-def test_dict_key_replace_rt():
-    test_d = {'a.b': 1, 'b': .5, 'c.d.e': None}
-    src_in, dst_in = mdsc._src_dst('in')
-    test_d_in = mdsc._replace_dict_keys(test_d, src_in, dst_in)
-    src_out, dst_out = mdsc._src_dst('out')
-    test_d_out = mdsc._replace_dict_keys(test_d_in, src_out, dst_out)
-    assert_equal(test_d_out, test_d)
-
-
-def test_src_dst_fail():
-    assert_raises(ValueError, mdsc._src_dst, 'aardvark')
-
-
-def _run_start_tester(time, beamline_id, scan_id):
-
-    run_start_uid = mdsc.insert_run_start(time, beamline_id=beamline_id,
-                                      scan_id=scan_id,
-                                      beamline_config=blc_uid)
-    run_start = find_run_starts(uid=run_start_uid)[0]
-    q_ret, = mdsc.find_run_starts(_id=run_start.id)
-    assert_equal(bson.ObjectId(q_ret.id), run_start.id)
-
-    # test enhancement by @ericdill b812d6
-    q_ret, = mdsc.find_run_starts(_id=str(run_start.id))
-    assert_equal(bson.ObjectId(q_ret.id), run_start.id)
-    q_ret, = mdsc.find_run_starts(uid=run_start.uid)
-    assert_equal(bson.ObjectId(q_ret.id), run_start.id)
-
-    # Check that Document creation does not error.
-    Document.from_mongo(run_start)
-
-    # Check contents of record we just inserted.
-    ret = RunStart.objects.get(id=run_start.id)
-
-    for name, val in zip(['time', 'beamline_id', 'scan_id'],
-                         [time, beamline_id, scan_id]):
-        assert_equal(getattr(ret, name), val)
-
-
-def test_run_start():
-    time = ttime.time()
-    beamline_id = 'sample_beamline'
-    yield _run_start_tester, time, beamline_id, 42
-
-
-def _run_start_with_cfg_tester(beamline_cfg, time, beamline_id, scan_id):
-    run_start_uid = mdsc.insert_run_start(
-        time, beamline_id=beamline_id, beamline_config=beamline_cfg.uid,
-        scan_id=scan_id)
-
-    run_start, = mdsc.find_run_starts(uid=run_start_uid)
-    run_start_mongo = RunStart.objects.get(id=run_start.id)
-
-    for name, val in zip(['time', 'beamline_id', 'scan_id'],
-                         [time, beamline_id, scan_id]):
-        assert_equal(getattr(run_start_mongo, name), val)
-
-    assert_equal(str(beamline_cfg), str(run_start.beamline_config))
-
-
-def test_run_start2():
-    bcfg_uid = mdsc.insert_beamline_config({'cfg1': 1}, ttime.time())
-    bcfg, = mdsc.find_beamline_configs(uid=bcfg_uid)
-    time = ttime.time()
-    beamline_id = 'sample_beamline'
-    scan_id = 42
-    yield _run_start_with_cfg_tester, bcfg, time, beamline_id, scan_id
-
-
-def test_run_start_custom():
-    # Test that Run Start is a DynamicDocument that accepts
-    # arbitrary fields.
-    cust = {'foo': 'bar', 'baz': 42,
-            'aardvark': ['ants', 3.14]}
-    rs = mdsc.insert_run_start(time=ttime.time(),
-                                beamline_id='sample_beamline',
-                                scan_id=42,
-                                beamline_config=blc_uid,
-                                custom=cust)
-    rs, = mdsc.find_run_starts(uid=rs)
-    run_start_mongo = RunStart.objects.get(id=rs.id)
-
-    for k in cust:
-        assert_equal(getattr(run_start_mongo, k), cust[k])
-
-def _event_tester(descriptor, seq_num, data, time):
-    pass
+#### Testing metadatastore insertion functionality #############################
 
 
 @raises(KeyError)
@@ -211,6 +49,86 @@ def check_for_id(document):
         A sanitized mongoengine document
     """
     document['id']
+
+
+def _blc_tester(config_dict):
+    """Test BeamlineConfig Insert
+    """
+    blc_uid = mdsc.insert_beamline_config(config_dict, ttime.time())
+    blc_mds, = mdsc.find_beamline_configs(uid=blc_uid)
+    # make sure the beamline config document has no id
+    check_for_id(blc_mds)
+    assert_equal(blc_mds.uid, blc_uid)
+    if config_dict is None:
+        config_dict = dict()
+    assert_equal(config_dict, blc_mds.config_params)
+    return blc_mds
+
+
+def test_beamline_config_insertion():
+    for cfd in [None, {}, {'foo': 'bar', 'baz': 5, 'biz': .05}]:
+        yield _blc_tester, cfd
+
+
+def test_event_descriptor_insertion():
+    # format some data keys for insertion
+    data_keys = {'some_value': {'source': 'PV:pv1',
+                                'shape': [1, 2],
+                                'dtype': 'array'},
+                 'some_other_val': {'source': 'PV:pv2',
+                                    'shape': [],
+                                    'dtype': 'number'},
+                 'data_key3': {'source': 'PV:pv1',
+                               'shape': [],
+                               'dtype': 'number',
+                               'external': 'FS:foobar'}}
+    time = ttime.time()
+    # test insert
+    ev_desc_uid = mdsc.insert_event_descriptor(run_start_uid, data_keys, time)
+    ev_desc_mds, = mdsc.find_event_descriptors(uid=ev_desc_uid)
+    # make sure the sanitized event descriptor has no uid
+    check_for_id(ev_desc_mds)
+
+    # make sure the event descriptor is pointing to the correct run start
+    referenced_run_start = ev_desc_mds.run_start
+    assert_equal(referenced_run_start.uid, run_start_uid)
+    assert_equal(ev_desc_mds['time'], time)
+
+    for k in data_keys:
+        for ik in data_keys[k]:
+            assert_equal(getattr(ev_desc_mds.data_keys[k], ik),
+                         data_keys[k][ik])
+
+
+@raises(mdsc.EventDescriptorIsNoneError)
+def test_ev_insert_fail():
+    """Make sure metadatastore correctly barfs if an event is inserted
+    with no event descriptor
+    """
+    mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
+
+
+def test_insert_run_start():
+    time = ttime.time()
+    beamline_id = 'sample_beamline'
+    scan_id = 42
+    custom = {'foo': 'bar', 'baz': 42,
+            'aardvark': ['ants', 3.14]}
+    run_start_uid = mdsc.insert_run_start(
+        time, beamline_id=beamline_id, beamline_config=blc_uid,
+        scan_id=scan_id, custom=custom)
+
+    run_start_mds, = mdsc.find_run_starts(uid=run_start_uid)
+
+    names = ['time', 'beamline_id', 'scan_id'] + list(custom.keys())
+    values = [time, beamline_id, scan_id] + list(custom.values())
+
+    for name, val in zip(names, values):
+        assert_equal(getattr(run_start_mds, name), val)
+
+    assert_equal(blc_uid, run_start_mds.beamline_config.uid)
+    # make sure the metadatstore document raises properly
+    check_for_id(run_start_mds)
 
 
 def test_run_stop_insertion():
@@ -245,6 +163,34 @@ def test_run_stop_insertion():
         assert_equal(known_value, getattr(run_stop, attr))
 
 
+#### Testing misc metadatastore functionality ##################################
+
+
+@raises(ValueError)
+def test_proper_data_format():
+    """Make sure metadatastore correctly barfs if the values of the data
+    dictionary are not formatted as a twople of (value, timestamp)
+    """
+    data = {'key': [15, ]}
+    mdsc._validate_data(data)
+
+
+def test_dict_key_replace_rt():
+    """Ensure metadatastore deals with dots in potential data keys correctly
+    """
+    test_d = {'a.b': 1, 'b': .5, 'c.d.e': None}
+    src_in, dst_in = mdsc._src_dst('in')
+    test_d_in = mdsc._replace_dict_keys(test_d, src_in, dst_in)
+    src_out, dst_out = mdsc._src_dst('out')
+    test_d_out = mdsc._replace_dict_keys(test_d_in, src_out, dst_out)
+    assert_equal(test_d_out, test_d)
+
+
+def test_src_dst_fail():
+    assert_raises(ValueError, mdsc._src_dst, 'aardvark')
+
+
+#### Testing metadatastore find functionality ##################################
 def _find_helper(func, kw):
     func(**kw)
 
@@ -252,6 +198,7 @@ def _find_helper(func, kw):
 def test_find_funcs_for_smoke():
     """ Exercise documented kwargs in the find_* functions
     """
+    rs, = mdsc.find_run_starts(uid=run_start_uid)
     test_dict = {
         mdsc.find_run_starts: [
             {'limit': 5},
@@ -266,7 +213,7 @@ def test_find_funcs_for_smoke():
             {'project': 'world-domination'},
             {'owner': 'drdrake'},
             {'scan_id': 1},
-            {'uid': 'foo'}],
+            {'uid': run_start_uid}],
         mdsc.find_run_stops: [
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
@@ -274,10 +221,25 @@ def test_find_funcs_for_smoke():
             {'reason': 'whimsy'},
             {'exit_status': 'success'},
             {'uid': 'foo'}],
+        mdsc.find_event_descriptors: [
+            {'run_start': rs},
+            {'run_start_uid': rs.uid},
+            {'start_time': ttime.time()},
+            {'stop_time': ttime.time()},
+            {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
+            {'uid': 'foo'}]
     }
     for func, list_o_dicts in test_dict.items():
         for dct in list_o_dicts:
             yield _find_helper, func, dct
+
+
+#todo this one...
+def test_find_funcs_for_accuracy():
+    pass
+
+
+#### Test metadatastore time formatting ########################################
 
 
 def _normalize_human_friendly_time_tester(val, should_succeed, etype):
@@ -358,4 +320,9 @@ def test_normalize_human_friendly_time():
 # smoketests
 
 def test_find_last_for_smoke():
-    mdsc.find_last()
+    last, = mdsc.find_last()
+
+
+if __name__ == "__main__":
+    import nose
+    nose.runmodule(argv=['-s', '--with-doctest'], exit=False)
