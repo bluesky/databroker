@@ -19,15 +19,18 @@ document_insertion_time = None
 
 #### Nose setup/teardown methods ###############################################
 
+
 def teardown():
     mds_teardown()
+
+
 def setup():
     mds_setup()
     global blc_uid, run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
     temperature_ramp.run()
     blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time)
-    run_start_uid = mdsc.insert_run_start(scan_id=02032013,
+    run_start_uid = mdsc.insert_run_start(scan_id=030213,
                                           beamline_id='testbed',
                                           beamline_config=blc_uid,
                                           owner='tester',
