@@ -199,7 +199,7 @@ class Document(MutableMapping):
         return document
 
     def __repr__(self):
-        return "<{0} Document>".format(self._name)
+        return "<{0} Document. uid={1}>".format(self._name, self.uid)
 
     def _str_helper(self, name=None, indent=0, max_indent=1):
         """Recursive document walker and formatter
@@ -252,8 +252,6 @@ class Document(MutableMapping):
 
     def __str__(self):
         return self._str_helper(self._name)
-
-    __repr__ = __str__
 
 
 def _prettytable(data_keys_dict):
