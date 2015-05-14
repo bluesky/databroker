@@ -181,6 +181,22 @@ def test_run_start2():
     yield _run_start_with_cfg_tester, bcfg, time, beamline_id, scan_id
 
 
+def test_run_start_custom():
+    # Test that Run Start is a DynamicDocument that accepts
+    # arbitrary fields.
+    cust = {'foo': 'bar', 'baz': 42,
+            'aardvark': ['ants', 3.14]}
+    rs = mdsc.insert_run_start(time=ttime.time(),
+                                beamline_id='sample_beamline',
+                                scan_id=42,
+                                beamline_config=blc_uid,
+                                custom=cust)
+    rs, = mdsc.find_run_starts(uid=rs)
+    run_start_mongo = RunStart.objects.get(id=rs.id)
+
+    for k in cust:
+        assert_equal(getattr(run_start_mongo, k), cust[k])
+
 def _event_tester(descriptor, seq_num, data, time):
     pass
 
@@ -229,49 +245,39 @@ def test_run_stop_insertion():
         assert_equal(known_value, getattr(run_stop, attr))
 
 
-def test_find_run_start_for_smoke():
-    """ Exercise documented kwargs
+def _find_helper(func, kw):
+    func(**kw)
+
+
+def test_find_funcs_for_smoke():
+    """ Exercise documented kwargs in the find_* functions
     """
-    mdsc.find_run_starts(limit=5)
-    mdsc.find_run_starts(start_time=ttime.time())
-    mdsc.find_run_starts(start_time='2015')
-    mdsc.find_run_starts(start_time='2015-03-30')
-    mdsc.find_run_starts(start_time='2015-03-30 03:00:00')
-    mdsc.find_run_starts(start_time=datetime.datetime.now())
-    mdsc.find_run_starts(stop_time=ttime.time())
-    mdsc.find_run_starts(start_time=ttime.time() - 1, stop_time=ttime.time())
-    mdsc.find_run_starts(beamline_id='csx')
-    mdsc.find_run_starts(project='world-domination')
-    mdsc.find_run_starts(owner='drdrake')
-    mdsc.find_run_starts(scan_id=1)
-    mdsc.find_run_starts(uid='foo')
-
-
-def test_run_stops_for_smoke():
-    """ Exercise documented kwargs
-    """
-    mdsc.find_run_stops(start_time=ttime.time())
-    mdsc.find_run_stops(stop_time=ttime.time())
-    mdsc.find_run_stops(start_time=ttime.time() - 1, stop_time=ttime.time())
-    mdsc.find_run_stops(reason='whimsy')
-    mdsc.find_run_stops(exit_status='success')
-    mdsc.find_run_stops(uid='foo')
-
-def test_run_start_custom():
-    # Test that Run Start is a DynamicDocument that accepts
-    # arbitrary fields.
-    cust = {'foo': 'bar', 'baz': 42,
-            'aardvark': ['ants', 3.14]}
-    rs = mdsc.insert_run_start(time=ttime.time(),
-                                beamline_id='sample_beamline',
-                                scan_id=42,
-                                beamline_config=blc_uid,
-                                custom=cust)
-    rs, = mdsc.find_run_starts(uid=rs)
-    run_start_mongo = RunStart.objects.get(id=rs.id)
-
-    for k in cust:
-        assert_equal(getattr(run_start_mongo, k), cust[k])
+    test_dict = {
+        mdsc.find_run_starts: [
+            {'limit': 5},
+            {'start_time': ttime.time()},
+            {'start_time': '2015'},
+            {'start_time': '2015-03-30'},
+            {'start_time': '2015-03-30 03:00:00'},
+            {'start_time': datetime.datetime.now()},
+            {'stop_time': ttime.time()},
+            {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
+            {'beamline_id': 'csx'},
+            {'project': 'world-domination'},
+            {'owner': 'drdrake'},
+            {'scan_id': 1},
+            {'uid': 'foo'}],
+        mdsc.find_run_stops: [
+            {'start_time': ttime.time()},
+            {'stop_time': ttime.time()},
+            {'start_time': ttime.time()-1, 'stop_time': ttime.time()},
+            {'reason': 'whimsy'},
+            {'exit_status': 'success'},
+            {'uid': 'foo'}],
+    }
+    for func, list_o_dicts in test_dict.items():
+        for dct in list_o_dicts:
+            yield _find_helper, func, dct
 
 
 def _normalize_human_friendly_time_tester(val, should_succeed, etype):
