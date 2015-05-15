@@ -49,7 +49,7 @@ class Images(FramesSequence):
 
     def get_frame(self, i):
         img = retrieve(self._datum_uids[i])
-        return Frame(self.process_func(img), frame_no=i)
+        return Frame(img, frame_no=i)
 
 
 class SubtractedImages(FramesSequence):
