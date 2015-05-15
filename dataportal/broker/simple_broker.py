@@ -3,7 +3,6 @@ import sys
 import six  # noqa
 from six import StringIO
 from collections import defaultdict, Iterable, deque
-from .. import sources
 from ..utils.console import color_print
 from metadatastore.api import (Document, find_last, find_run_starts,
                                find_event_descriptors, find_run_stops,
@@ -190,30 +189,6 @@ class _DataBrokerClass(object):
         for rs in run_start:
             result.append(Header.from_run_start(rs))
         return result
-
-
-def _get_archiver_data(ca_host, channels, start_time, end_time):
-    archiver = sources.channelarchiver.Archiver(ca_host)
-    archiver_result = archiver.get(channels, start_time, end_time,
-                                   interpolation='raw')  # never interpolate
-    # Put archiver data into Documents, minimicking a MDS event stream.
-    events = list()
-    for ch_name, ch_data in zip(channels, archiver_result):
-        # Build a Event Descriptor.
-        descriptor = dict()
-        descriptor.time = start_time
-        descriptor['data_keys'] = {ch_name: dict(source=ch_name,
-                                   shape=[], dtype='number')}
-        descriptor = Document(descriptor)
-        for time, value in zip(ch_data.times, ch_data, values):
-            # Build an Event.
-            event = dict()
-            event['descriptor'] = descriptor
-            event['time'] = time
-            event['data'] = {ch_name: (value, time)}
-            event = Document(event)
-            events.append(event)
-    return events
 
 
 class EventQueue(object):

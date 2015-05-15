@@ -15,6 +15,6 @@ else:
     del qt
 
 # generally useful imports
-from .broker import DataBroker, Images
+from .broker import DataBroker, Images, SubtractedImages
 from .muxer import DataMuxer
 from .scans import StepScan
