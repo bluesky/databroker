@@ -2,7 +2,7 @@ import sys
 import logging
 from .sources import *
 
-__all__ = ['DataBroker', 'DataMuxer', 'StepScan', 'Images']
+__all__ = ['DataBroker', 'DataMuxer', 'StepScan', 'Images', 'SubtractedImages']
 logger = logging.getLogger(__name__)
 __version__ = 'v0.0.6.post0'
 
