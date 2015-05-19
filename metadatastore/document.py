@@ -203,7 +203,11 @@ class Document(MutableMapping):
         return document
 
     def __repr__(self):
-        return "<{0} Document. uid={1}>".format(self._name, self.uid)
+        try:
+            infostr = '. %s' % self.uid
+        except AttributeError:
+            infostr = ''
+        return "<%s Document%s>" % (self._name, infostr)
 
     def _str_helper(self, name=None, indent=0, max_indent=1):
         """Recursive document walker and formatter
