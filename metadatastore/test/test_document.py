@@ -40,7 +40,7 @@ def setup():
     document_insertion_time = ttime.time()
     temperature_ramp.run()
     blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time)
-    run_start_uid = mdsc.insert_run_start(scan_id=030213,
+    run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                           beamline_id='testbed',
                                           beamline_config=blc_uid,
                                           owner='tester',
