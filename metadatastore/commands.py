@@ -498,6 +498,23 @@ def _normalize_object_id(kwargs, key):
     # Database errors will still raise.
 
 
+def _get_mongo_document_id(document=None, document_uid=None,
+                           document_cls=None):
+    """Helper function to get the mongo id of the run start document
+    """
+    if document:
+        if document_uid and document.uid != document_uid:
+            raise ValueError(
+                "If you insist on specifying both the document and the "
+                "uid kwargs, please ensure that they are actually "
+                "the same value...\ndocument.uid={}\n*_uid={}"
+                "".format(document, document_uid))
+        document_uid = document.uid
+
+    if document_uid:
+        document = document_cls.objects(__raw__={'uid': document_uid})[0]
+        return document.id
+
 @_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -630,18 +647,10 @@ def find_run_stops(run_start=None, run_start_uid=None, **kwargs):
     run_stop : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
-    if run_start and run_start_uid and run_start.uid != run_start_uid:
-        raise ValueError(
-            "If you insist on specifying both the run_start and the "
-            "run_start_uid kwargs, please ensure that they are actually "
-            "the same value...\nrun_start.uid={}\nrun_start_uid={}"
-            "".format(run_start, run_start_uid))
-    elif run_start:
-        run_start_uid = run_start.uid
-
-    if run_start_uid:
-        run_start = RunStart.objects(__raw__={'uid': run_start_uid})[0]
-        kwargs['run_start_id'] = run_start.id
+    # get the actual mongo document
+    run_start_id = _get_mongo_document_id(run_start, run_start_uid, RunStart)
+    if run_start_id:
+        kwargs['run_start_id'] = run_start_id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
@@ -687,18 +696,10 @@ def find_event_descriptors(run_start=None, run_start_uid=None, **kwargs):
     """
     _format_time(kwargs)
     _as_document = _AsDocument()
-    if run_start:
-        if run_start_uid and run_start.uid != run_start_uid:
-            raise ValueError(
-                "If you insist on specifying both the run_start and the "
-                "run_start_uid kwargs, please ensure that they are actually "
-                "the same value...\nrun_start.uid={}\nrun_start_uid={}"
-                "".format(run_start, run_start_uid))
-        run_start_uid = run_start.uid
-
-    if run_start_uid:
-        run_start = RunStart.objects(__raw__={'uid': run_start_uid})[0]
-        kwargs['run_start_id'] = run_start.id
+    # get the actual mongo document
+    run_start_id = _get_mongo_document_id(run_start, run_start_uid, RunStart)
+    if run_start_id:
+        kwargs['run_start_id'] = run_start_id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
@@ -750,18 +751,11 @@ def find_events(descriptor=None, descriptor_uid=None, **kwargs):
         raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
 
     _format_time(kwargs)
-    if descriptor:
-        if descriptor_uid and descriptor.uid != descriptor_uid:
-            raise ValueError(
-                "If you insist on specifying both the descriptor and the "
-                "descriptor_uid kwargs, please ensure that they are actually "
-                "the same value...\nrun_start.uid={}\nrun_start_uid={}"
-                "".format(descriptor, descriptor_uid))
-        descriptor_uid = descriptor.uid
-
-    if descriptor_uid:
-        descriptor = EventDescriptor.objects(__raw__={'uid': descriptor_uid})[0]
-        kwargs['descriptor_id'] = descriptor.id
+    # get the actual mongo document
+    descriptor_id = _get_mongo_document_id(descriptor, descriptor_uid,
+                                           EventDescriptor)
+    if descriptor_id:
+        kwargs['descriptor_id'] = descriptor_id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'descriptor_id')

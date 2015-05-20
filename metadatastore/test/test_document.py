@@ -26,6 +26,7 @@ blc_uid = None
 run_start_uid = None
 document_insertion_time = None
 descriptor_uid = None
+run_stop_uid = None
 
 #### Nose setup/teardown methods ###############################################
 
@@ -35,7 +36,7 @@ def teardown():
 
 def setup():
     mds_setup()
-    global blc_uid, run_start_uid, document_insertion_time, run_start
+    global blc_uid, run_start_uid, document_insertion_time, run_stop_uid
     global descriptor_uid
     document_insertion_time = ttime.time()
     temperature_ramp.run()
@@ -47,14 +48,17 @@ def setup():
                                           group='awesome-devs',
                                           project='Nikea',
                                           time=document_insertion_time)
+    run_stop_uid = mdsc.insert_run_stop(run_start=run_start_uid,
+                                        time=ttime.time())
 
 
 def test_document_funcs_for_smoke():
     global run_start_uid, descriptor_uid
     # todo this next line will break once NSLS-II/metadatastore#142 is merged
-    run_start, = find_run_starts(uid=run_start_uid.uid)
+    run_start, = find_run_starts(uid=run_start_uid)
     descriptors = [desc for desc in find_event_descriptors(uid=descriptor_uid)]
-    documents = [run_start]
+    run_stop, = find_run_stops(uid=run_stop_uid)
+    documents = [run_start, run_stop]
     documents.extend(descriptors)
     attrs = ['__repr__', '__str__', ]
     for doc, attr in product(documents, attrs):

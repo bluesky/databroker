@@ -1,5 +1,6 @@
 from __future__ import division
-from metadatastore.api import insert_event, insert_event_descriptor, find_events
+from metadatastore.api import (insert_event, insert_event_descriptor,
+                               find_events, insert_run_stop)
 import numpy as np
 from metadatastore.examples.sample_data import common
 
@@ -52,6 +53,8 @@ def run(run_start_uid=None, sleep=0):
         event_uid = insert_event(**event_dict)
         event, = find_events(uid=event_uid)
         events.append(event)
+
+    #todo insert run stop if run_start_uid is not None
 
     return events
 
