@@ -276,8 +276,3 @@ def _prettytable(data_keys_dict):
             row.append(v)
         table.add_row(row)
     return table
-
-
-if __name__ == "__main__":
-    from dataportal import DataBroker as db
-    print(db[-1])

@@ -40,6 +40,7 @@ def _ensure_connection(func):
 
 
 def db_disconnect():
+    """Helper function to deal with stateful connections to mongoengine"""
     mongoengine.connection.disconnect(ALIAS)
     for collection in [RunStart, BeamlineConfig, RunStop, EventDescriptor,
                        Event, DataKey]:
@@ -47,6 +48,7 @@ def db_disconnect():
 
 
 def db_connect(database, host, port):
+    """Helper function to deal with stateful connections to mongoengine"""
     return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
@@ -507,7 +509,17 @@ def _normalize_object_id(kwargs, key):
 
 def _get_mongo_document_id(document=None, document_uid=None,
                            document_cls=None):
-    """Helper function to get the mongo id of the run start document
+    """Helper function to get the mongo id of the mongo document of type
+    ``document_cls``
+
+    Parameters
+    ----------
+    document : mds.odm_templates.Document subclass
+    document_uid : str
+        The externally supplied unique identifier of the mongo document
+    document_cls : object
+        One of the class objects from the metadatastore.odm_templates module
+        {RunStart, RunStop, Event, EventDescriptor, etc...}
     """
     if document:
         if document_uid and document.uid != document_uid:
