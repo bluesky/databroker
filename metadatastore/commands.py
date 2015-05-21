@@ -21,6 +21,13 @@ from bson import ObjectId
 logger = logging.getLogger(__name__)
 
 
+__all__ = ['insert_beamline_config', 'insert_run_start', 'insert_event',
+           'insert_run_stop', 'insert_event_descriptor', 'find_run_stops',
+           'find_beamline_configs', 'find_event_descriptors', 'find_last',
+           'find_events', 'find_run_starts', 'db_connect', 'db_disconnect',
+           'format_data_keys', 'format_events', 'reorganize_event']
+
+
 def _ensure_connection(func):
     @wraps(func)
     def inner(*args, **kwargs):

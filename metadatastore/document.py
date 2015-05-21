@@ -9,6 +9,9 @@ from itertools import chain
 from collections import MutableMapping
 from prettytable import PrettyTable
 
+__all__ = ['Document']
+
+
 def _normalize(in_val, cache):
     """
     Helper function for cleaning up the mongoegine documents to be safe.

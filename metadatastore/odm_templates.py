@@ -10,6 +10,10 @@ from getpass import getuser
 ALIAS = 'mds'
 
 
+__all__ = ['BeamlineConfig', 'RunStart', 'RunStop', 'DataKey',
+           'EventDescriptor', 'Event']
+
+
 class BeamlineConfig(DynamicDocument):
     """
     Attributes
