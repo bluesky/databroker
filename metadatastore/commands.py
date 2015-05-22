@@ -673,9 +673,11 @@ def find_run_stops(run_start=None, run_start_uid=None, **kwargs):
     """
     _format_time(kwargs)
     # get the actual mongo document
-    run_start_id = _get_mongo_document(run_start, run_start_uid, RunStart).id
-    if run_start_id:
-        kwargs['run_start_id'] = run_start_id
+    run_start = _get_mongo_document(document=run_start,
+                                    document_uid=run_start_uid,
+                                    document_cls=RunStart)
+    if run_start:
+        kwargs['run_start_id'] = run_start.id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
@@ -722,9 +724,11 @@ def find_event_descriptors(run_start=None, run_start_uid=None, **kwargs):
     _format_time(kwargs)
     _as_document = _AsDocument()
     # get the actual mongo document
-    run_start_id = _get_mongo_document(run_start, run_start_uid, RunStart).id
-    if run_start_id:
-        kwargs['run_start_id'] = run_start_id
+    run_start = _get_mongo_document(document=run_start,
+                                    document_uid=run_start_uid,
+                                    document_cls=RunStart)
+    if run_start:
+        kwargs['run_start_id'] = run_start.id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
@@ -777,10 +781,11 @@ def find_events(descriptor=None, descriptor_uid=None, **kwargs):
 
     _format_time(kwargs)
     # get the actual mongo document
-    descriptor_id = _get_mongo_document(descriptor, descriptor_uid,
-                                        EventDescriptor).id
-    if descriptor_id:
-        kwargs['descriptor_id'] = descriptor_id
+    descriptor = _get_mongo_document(document=descriptor,
+                                     document_uid=descriptor_uid,
+                                     document_cls=EventDescriptor)
+    if descriptor:
+        kwargs['descriptor_id'] = descriptor.id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'descriptor_id')
