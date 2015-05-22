@@ -27,8 +27,6 @@ def run(run_start_uid=None, sleep=0):
                                            data_keys=data_keys1, time=0.)
     ev_desc2_uid = insert_event_descriptor(run_start=run_start_uid,
                                            data_keys=data_keys2, time=0.)
-    print('event descriptor 1 uid = %s' % ev_desc1_uid)
-    print('event descriptor 2 uid = %s' % ev_desc2_uid)
 
     # Create Events.
     events = []
