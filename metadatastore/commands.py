@@ -166,7 +166,11 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     if project is None:
         project = ''
 
-    beamline_config = BeamlineConfig.objects(uid=beamline_config).first()
+    # .get() is slower than .first() which is slower than [0].
+    # __raw__=dict() is faster than kwargs
+    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
+    beamline_config = BeamlineConfig.objects(
+        __raw__={'uid': beamline_config})[0]
     run_start = RunStart(time=time, scan_id=scan_id,
                          time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
@@ -212,7 +216,10 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
-    run_start = RunStart.objects(uid=run_start).first()
+    # .get() is slower than .first() which is slower than [0].
+    # __raw__=dict() is faster than kwargs
+    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
+    run_start = RunStart.objects(__raw__={'uid': run_start})[0]
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
                        time_as_datetime=_todatetime(time), uid=uid,
                        exit_status=exit_status, **custom)
@@ -288,7 +295,10 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
-    run_start = RunStart.objects(uid=run_start).first()
+    # .get() is slower than .first() which is slower than [0].
+    # __raw__=dict() is faster than kwargs
+    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
+    run_start = RunStart.objects(__raw__={'uid': run_start})[0]
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
@@ -335,7 +345,8 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     if uid is None:
         uid = str(uuid.uuid4())
 
-    event_descriptor = EventDescriptor.objects(uid=event_descriptor).first()
+    event_descriptor = EventDescriptor.objects(
+        __raw__={'uid': event_descriptor})[0]
     event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
