@@ -35,7 +35,7 @@ def run(run_start_uid=None, sleep=0):
     for i in range(num_exposures):
         time = float(i + 0.01 * rs.randn())
         data = {'point_det': (point_det_data[i], time)}
-        event_dict = dict(event_descriptor=ev_desc1_uid, seq_num=i,
+        event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data)
         event_uid = insert_event(**event_dict)
         # grab the actual event from metadatastore
@@ -46,7 +46,7 @@ def run(run_start_uid=None, sleep=0):
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time)
         data = {'Tsam': (temp, time)}
-        event_dict = dict(event_descriptor=ev_desc2_uid, time=time,
+        event_dict = dict(descriptor=ev_desc2_uid, time=time,
                           data=data, seq_num=i)
         event_uid = insert_event(**event_dict)
         event, = find_events(uid=event_uid)

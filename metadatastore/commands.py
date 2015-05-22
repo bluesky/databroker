@@ -309,12 +309,12 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
 
 @_ensure_connection
-def insert_event(event_descriptor, time, data, seq_num, uid=None):
+def insert_event(descriptor, time, data, seq_num, uid=None):
     """Create an event in metadatastore database backend
 
     Parameters
     ----------
-    event_descriptor : str
+    descriptor : str
         uid of EventDescriptor object to associate with this record
     time : float
         The date/time as found at the client side when an event is
@@ -332,22 +332,22 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
 
     # Allow caller to beg forgiveness rather than ask permission w.r.t
     # EventDescriptor creation.
-    if event_descriptor is None:
+    if descriptor is None:
         raise EventDescriptorIsNoneError()
 
     if uid is None:
         uid = str(uuid.uuid4())
 
-    event_descriptor = _get_mongo_document(document_uid=event_descriptor,
-                                           document_cls=EventDescriptor)
-    event = Event(descriptor_id=event_descriptor, uid=uid,
+    descriptor = _get_mongo_document(document_uid=descriptor,
+                                     document_cls=EventDescriptor)
+    event = Event(descriptor_id=descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
     event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
     logger.debug("Inserted Event with uid %s referencing "
                  "EventDescriptor with uid %s", event.uid,
-                 event_descriptor.uid)
+                 descriptor.uid)
     return uid
 
 

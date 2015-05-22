@@ -41,7 +41,7 @@ def run(run_start=None, sleep=0):
     for i in range(num_exposures):
         time = float(i + 0.01 * rs.randn())
         data = {'point_det': (point_det_data[i], time)}
-        event_uid = insert_event(event_descriptor=ev_desc1_uid, seq_num=i, time=time,
+        event_uid = insert_event(descriptor=ev_desc1_uid, seq_num=i, time=time,
                              data=data, uid=str(uuid.uuid4()))
         event, = mdsc.find_events(uid=event_uid)
         events.append(event)
@@ -51,7 +51,7 @@ def run(run_start=None, sleep=0):
         time = float(time)
         data = {'Tsam': (temp, time),
                 'Troom': (temp + 10, time)}
-        event_uid = insert_event(event_descriptor=ev_desc2_uid, time=time,
+        event_uid = insert_event(descriptor=ev_desc2_uid, time=time,
                              data=data, seq_num=i, uid=str(uuid.uuid4()))
         event, = mdsc.find_events(uid=event_uid)
         events.append(event)
