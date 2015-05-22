@@ -166,11 +166,8 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     if project is None:
         project = ''
 
-    # .get() is slower than .first() which is slower than [0].
-    # __raw__=dict() is faster than kwargs
-    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
-    beamline_config = BeamlineConfig.objects(
-        __raw__={'uid': beamline_config})[0]
+    beamline_config = _get_mongo_document(document_uid=beamline_config,
+                                          document_cls=BeamlineConfig)
     run_start = RunStart(time=time, scan_id=scan_id,
                          time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
@@ -216,10 +213,8 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
-    # .get() is slower than .first() which is slower than [0].
-    # __raw__=dict() is faster than kwargs
-    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
-    run_start = RunStart.objects(__raw__={'uid': run_start})[0]
+    run_start = _get_mongo_document(document_uid=run_start,
+                                    document_cls=RunStart)
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
                        time_as_datetime=_todatetime(time), uid=uid,
                        exit_status=exit_status, **custom)
@@ -295,10 +290,8 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
-    # .get() is slower than .first() which is slower than [0].
-    # __raw__=dict() is faster than kwargs
-    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
-    run_start = RunStart.objects(__raw__={'uid': run_start})[0]
+    run_start = _get_mongo_document(document_uid=run_start,
+                                    document_cls=RunStart)
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
@@ -345,8 +338,8 @@ def insert_event(event_descriptor, time, data, seq_num, uid=None):
     if uid is None:
         uid = str(uuid.uuid4())
 
-    event_descriptor = EventDescriptor.objects(
-        __raw__={'uid': event_descriptor})[0]
+    event_descriptor = _get_mongo_document(document_uid=event_descriptor,
+                                           document_cls=EventDescriptor)
     event = Event(descriptor_id=event_descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
@@ -518,8 +511,7 @@ def _normalize_object_id(kwargs, key):
     # Database errors will still raise.
 
 
-def _get_mongo_document_id(document=None, document_uid=None,
-                           document_cls=None):
+def _get_mongo_document(document=None, document_uid=None, document_cls=None):
     """Helper function to get the mongo id of the mongo document of type
     ``document_cls``
 
@@ -542,8 +534,11 @@ def _get_mongo_document_id(document=None, document_uid=None,
         document_uid = document.uid
 
     if document_uid:
+        # .get() is slower than .first() which is slower than [0].
+        # __raw__=dict() is faster than kwargs
+        # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
         document = document_cls.objects(__raw__={'uid': document_uid})[0]
-        return document.id
+        return document
 
 @_ensure_connection
 def find_run_starts(**kwargs):
@@ -678,7 +673,7 @@ def find_run_stops(run_start=None, run_start_uid=None, **kwargs):
     """
     _format_time(kwargs)
     # get the actual mongo document
-    run_start_id = _get_mongo_document_id(run_start, run_start_uid, RunStart)
+    run_start_id = _get_mongo_document(run_start, run_start_uid, RunStart).id
     if run_start_id:
         kwargs['run_start_id'] = run_start_id
 
@@ -727,7 +722,7 @@ def find_event_descriptors(run_start=None, run_start_uid=None, **kwargs):
     _format_time(kwargs)
     _as_document = _AsDocument()
     # get the actual mongo document
-    run_start_id = _get_mongo_document_id(run_start, run_start_uid, RunStart)
+    run_start_id = _get_mongo_document(run_start, run_start_uid, RunStart).id
     if run_start_id:
         kwargs['run_start_id'] = run_start_id
 
@@ -782,8 +777,8 @@ def find_events(descriptor=None, descriptor_uid=None, **kwargs):
 
     _format_time(kwargs)
     # get the actual mongo document
-    descriptor_id = _get_mongo_document_id(descriptor, descriptor_uid,
-                                           EventDescriptor)
+    descriptor_id = _get_mongo_document(descriptor, descriptor_uid,
+                                        EventDescriptor).id
     if descriptor_id:
         kwargs['descriptor_id'] = descriptor_id
 
