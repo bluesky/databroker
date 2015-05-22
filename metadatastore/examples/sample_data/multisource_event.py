@@ -27,11 +27,11 @@ def run(run_start=None, sleep=0):
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                   'Troom': dict(source='PV:ES:Troom', dtype='number')}
     ev_desc1_uid = insert_event_descriptor(run_start=run_start,
-                                       data_keys=data_keys1, time=0.,
-                                       uid=str(uuid.uuid4()))
+                                           data_keys=data_keys1, time=0.,
+                                           uid=str(uuid.uuid4()))
     ev_desc2_uid = insert_event_descriptor(run_start=run_start,
-                                       data_keys=data_keys2, time=0.,
-                                       uid=str(uuid.uuid4()))
+                                           data_keys=data_keys2, time=0.,
+                                           uid=str(uuid.uuid4()))
     print('event descriptor 1 uid = %s' % ev_desc1_uid)
     print('event descriptor 2 uid = %s' % ev_desc2_uid)
     # Create Events.
@@ -42,7 +42,7 @@ def run(run_start=None, sleep=0):
         time = float(i + 0.01 * rs.randn())
         data = {'point_det': (point_det_data[i], time)}
         event_uid = insert_event(descriptor=ev_desc1_uid, seq_num=i, time=time,
-                             data=data, uid=str(uuid.uuid4()))
+                                 data=data, uid=str(uuid.uuid4()))
         event, = mdsc.find_events(uid=event_uid)
         events.append(event)
 
@@ -52,7 +52,7 @@ def run(run_start=None, sleep=0):
         data = {'Tsam': (temp, time),
                 'Troom': (temp + 10, time)}
         event_uid = insert_event(descriptor=ev_desc2_uid, time=time,
-                             data=data, seq_num=i, uid=str(uuid.uuid4()))
+                                 data=data, seq_num=i, uid=str(uuid.uuid4()))
         event, = mdsc.find_events(uid=event_uid)
         events.append(event)
     return events
