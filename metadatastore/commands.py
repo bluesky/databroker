@@ -299,7 +299,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
                                        **custom)
 
     event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
-                                                          direction='in')
+                                                         direction='in')
 
     event_descriptor.save(validate=True, write_concern={"w": 1})
     logger.debug("Inserted EventDescriptor with uid %s referencing "
@@ -418,12 +418,12 @@ def _format_time(search_dict):
 
 # human friendly timestamp formats we'll parse
 _TS_FORMATS = [
-        '%Y-%m-%d %H:%M:%S',
-        '%Y-%m-%d %H:%M',  # these 2 are not as originally doc'd,
-        '%Y-%m-%d %H',     # but match previous pandas behavior
-        '%Y-%m-%d',
-        '%Y-%m',
-        '%Y']
+    '%Y-%m-%d %H:%M:%S',
+    '%Y-%m-%d %H:%M',  # these 2 are not as originally doc'd,
+    '%Y-%m-%d %H',     # but match previous pandas behavior
+    '%Y-%m-%d',
+    '%Y-%m',
+    '%Y']
 
 # build a tab indented, '-' bulleted list of supported formats
 # to append to the parsing function docstring below
@@ -539,6 +539,7 @@ def _get_mongo_document(document=None, document_uid=None, document_cls=None):
         # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
         document = document_cls.objects(__raw__={'uid': document_uid})[0]
         return document
+
 
 @_ensure_connection
 def find_run_starts(**kwargs):
@@ -899,7 +900,7 @@ def _replace_descriptor_data_key_dots(ev_desc, direction='in'):
     """
     src, dst = _src_dst(direction)
     ev_desc.data_keys = _replace_dict_keys(ev_desc.data_keys,
-                                            src, dst)
+                                           src, dst)
     return ev_desc
 
 
@@ -921,7 +922,7 @@ def _replace_event_data_key_dots(event, direction='in'):
     """
     src, dst = _src_dst(direction)
     event.data = _replace_dict_keys(event.data,
-                                     src, dst)
+                                    src, dst)
     return event
 
 
