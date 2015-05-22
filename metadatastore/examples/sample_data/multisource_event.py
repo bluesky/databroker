@@ -61,7 +61,7 @@ def run(run_start=None, sleep=0):
 if __name__ == '__main__':
     import metadatastore.api as mdsc
     blc_uid = mdsc.insert_beamline_config({}, time=0.)
-    run_start_uid = mdsc.insert_run_start(scan_id=02032013,
+    run_start_uid = mdsc.insert_run_start(scan_id=2032013,
                                           beamline_id='testbed',
                                           beamline_config=blc_uid,
                                           owner='tester',
