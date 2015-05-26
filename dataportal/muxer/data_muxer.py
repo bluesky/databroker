@@ -296,7 +296,6 @@ class DataMuxer(object):
             df['downsample'] = self.determine_downsample(agg, use_cols)
             return df
 
-
     default_upsample = None
     default_downsample = None
 
@@ -315,7 +314,6 @@ class DataMuxer(object):
         self._stale = True
 
         self.plan = self.Planner(self)
-
 
     @property
     def columns(self):
@@ -364,7 +362,7 @@ class DataMuxer(object):
             return False
         self._known_events.add(event.uid)
         self._stale = True
-        if event.descriptor.id not in self._known_descriptors:
+        if event.descriptor.uid not in self._known_descriptors:
             self._process_new_descriptor(event.descriptor)
         # Both scalar and nonscalar data will get stored in the DataFrame.
         # This may be optimized later, but it might not actually help much.
@@ -387,7 +385,7 @@ class DataMuxer(object):
                                      "'{0}' refers to {1} but in Event "
                                      "Descriptor {2} it refers to {3}.".format(
                                          name, self.sources[name],
-                                         descriptor.id,
+                                         descriptor.uid,
                                          description['source']))
                 if name == 'time':
                     # We can argue later about how best to handle this corner
@@ -417,7 +415,7 @@ class DataMuxer(object):
                 # TODO Look up source-specific default in a config file
                 # or some other source of reference data.
                 self.col_info[name] = col_info
-        self._known_descriptors.add(descriptor.id)
+        self._known_descriptors.add(descriptor.uid)
 
     @property
     def _dataframe(self):

@@ -9,26 +9,26 @@
    from dataportal.examples.sample_data import temperature_ramp
    from metadatastore.api import insert_run_start, insert_beamline_config
 
-   rs = insert_run_start(time=0., scan_id=1, uid='a5fbde',
+   rs_uid = insert_run_start(time=0., scan_id=1, uid='a5fbde',
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start=rs)
-   rs = insert_run_start(time=1., scan_id=2,
+   temperature_ramp.run(run_start_uid=rs)
+   rs_uid = insert_run_start(time=1., scan_id=2,
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start=rs)
-   rs = insert_run_start(time=2., scan_id=3,
+   temperature_ramp.run(run_start_uid=rs)
+   rs_uid = insert_run_start(time=2., scan_id=3,
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start=rs)
-   rs = insert_run_start(time=3., scan_id=4,
+   temperature_ramp.run(run_start_uid=rs)
+   rs_uid = insert_run_start(time=3., scan_id=4,
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start=rs)
-   rs = insert_run_start(time=4., scan_id=5,
+   temperature_ramp.run(run_start_uid=rs)
+   rs_uid = insert_run_start(time=4., scan_id=5,
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start=rs)
+   temperature_ramp.run(run_start_uid=rs)
 
 *****************
 DataBroker Basics
@@ -94,7 +94,7 @@ type ``DataBroker[-N]``.
 .. ipython:: python
 
    from dataportal.broker import DataBroker
-  
+
    header = DataBroker[-1]
 
 What we get is a Header, a dictionary-like (for C programmers, struct-like)
@@ -104,7 +104,7 @@ object with all the information pertaining to a run.
 
    header
 
-We can view its complete contents with ``print`` or, equivalently, 
+We can view its complete contents with ``print`` or, equivalently,
 ``str(header)``.
 
 .. ipython:: python
@@ -174,7 +174,7 @@ the temperature and intesity sensors never happened to take a simultaneous
 measurement. Doing so, we would be implicitly *binning* those measurements
 in time.
 
-Therefore, plotting one dependent variable against another usually requires 
+Therefore, plotting one dependent variable against another usually requires
 binning to effectively "align" the measurements against each other in time.
 This is the problem that DataMuxer is designed to solve. On the simplest level,
 it takes the stream of events and creates the table of data you probably
@@ -264,7 +264,7 @@ indexing from the end of a list.
 .. ipython:: python
 
    header = DataBroker[-1]  # most recent scan
-   header.scan_id 
+   header.scan_id
    header = DataBroker[-2]  # next to last scan
    header.scan_id
    headers = DataBroker[-5:]  # all of the last five scans

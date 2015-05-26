@@ -2,7 +2,7 @@ from __future__ import division
 import uuid
 import time as ttime
 import numpy as np
-from metadatastore.api import insert_event, insert_event_descriptor
+from metadatastore.api import insert_event, insert_event_descriptor, find_events
 from filestore.file_writers import save_ndarray
 from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data import common
@@ -39,7 +39,7 @@ def scale_fluc(scale, count):
 
 @nonscalar_example
 @example
-def run(run_start=None, sleep=0):
+def run(run_start_uid=None, sleep=0):
     frame_generator = frame_generators.brownian(img_size, step_scale=.5,
                                                 I_fluc_function=I_func_gaus,
                                                 step_fluc_function=scale_fluc)
@@ -61,12 +61,12 @@ def run(run_start=None, sleep=0):
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
 
     # save the first event descriptor
-    e_desc1 = insert_event_descriptor(
-        run_start=run_start, data_keys=data_keys1, time=0.,
+    descriptor1_uid = insert_event_descriptor(
+        run_start=run_start_uid, data_keys=data_keys1, time=0.,
         uid=str(uuid.uuid4()))
 
-    e_desc2 = insert_event_descriptor(
-        run_start=run_start, data_keys=data_keys2, time=0.,
+    descriptor2_uid = insert_event_descriptor(
+        run_start=run_start_uid, data_keys=data_keys2, time=0.,
         uid=str(uuid.uuid4()))
 
     # number of motor positions to fake
@@ -97,14 +97,18 @@ def run(run_start=None, sleep=0):
                  'img_y_max': (img_y_max, noisy(i))
                  }
 
-        event = insert_event(event_descriptor=e_desc1, seq_num=idx1,
-                             time=noisy(i), data=data1, uid=str(uuid.uuid4()))
+        event_uid = insert_event(descriptor=descriptor1_uid, seq_num=idx1,
+                                 time=noisy(i), data=data1,
+                                 uid=str(uuid.uuid4()))
+        event, = find_events(uid=event_uid)
         events.append(event)
         for idx2, i2 in enumerate(range(num2)):
             time = noisy(i/num2)
             data2 = {'Tsam': (idx1 + np.random.randn()/100, time)}
-            event = insert_event(event_descriptor=e_desc2, seq_num=idx2+idx1,
-                                 time=time, data=data2, uid=str(uuid.uuid4()))
+            event_uid = insert_event(descriptor=descriptor2_uid,
+                                     seq_num=idx2+idx1, time=time, data=data2,
+                                     uid=str(uuid.uuid4()))
+            event, = find_events(uid=event_uid)
             events.append(event)
         ttime.sleep(sleep)
 
@@ -137,10 +141,10 @@ if __name__ == '__main__':
     custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
               'moon': 'full'}
     # insert the run start
-    run_start = insert_run_start(scan_id=scan_id, time=ttime.time(),
-                                 beamline_id='csx', beamline_config=b_config,
-                                 custom=custom)
-    events = run(run_start=run_start, sleep=sleep_time, make_run_stop=False)
-    run_stop = insert_run_stop(run_start=run_start, time=ttime.time(),
+    run_start_uid = insert_run_start(scan_id=scan_id, time=ttime.time(),
+                                     beamline_id='csx',
+                                     beamline_config=b_config, custom=custom)
+    events = run(run_start=run_start_uid, sleep=sleep_time, make_run_stop=False)
+    run_stop = insert_run_stop(run_start=run_start_uid, time=ttime.time(),
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))

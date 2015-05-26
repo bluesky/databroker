@@ -17,14 +17,16 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false)
 from numpy.testing.utils import assert_array_equal
 
+
 def setup():
     fs_setup()
     mds_setup()
 
-    blc = insert_beamline_config({}, ttime.time())
-    rs = insert_run_start(time=0.0, scan_id=1, owner='test', beamline_id='test',
-                          beamline_config=blc)
-    temperature_ramp.run(run_start=rs)
+    blc_uid = insert_beamline_config({}, ttime.time())
+    rs_uid = insert_run_start(time=0.0, scan_id=1, owner='test',
+                              beamline_id='test', beamline_config=blc_uid)
+    temperature_ramp.run(run_start_uid=rs_uid)
+
 
 def teardown():
     fs_teardown()
