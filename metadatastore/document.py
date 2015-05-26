@@ -7,7 +7,9 @@ from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
 from collections import MutableMapping
+import collections
 from prettytable import PrettyTable
+import humanize
 
 __all__ = ['Document']
 
@@ -212,7 +214,7 @@ class Document(MutableMapping):
             infostr = ''
         return "<%s Document%s>" % (self._name, infostr)
 
-    def _str_helper(self, name=None, indent=0, max_indent=1):
+    def _str_helper(self, name=None, indent=0):
         """Recursive document walker and formatter
 
         Parameters
@@ -222,23 +224,7 @@ class Document(MutableMapping):
         indent : int, optional
             The indentation level. Defaults to starting at 0 and adding one tab
             per recursion level
-        max_indent : int, optional
-            The maximum number of document levels to recurse into.  For printing
-            a header,
-
-        Note
-        ----
-        max_indent should be set to 1 for printing a header. If it is not
-        set to 1, then the return value for _str_helper will be:
-
-        Header
-          - Event Descriptor
-            - Run Start
-
-        ...which is dumb.
         """
-        if indent > max_indent:
-            return ''
         mapping = {0: '-', 1: '=', 2: '~'}
         ret = "\n%s\n%s" % (name, mapping[indent]*len(name))
 
@@ -264,6 +250,9 @@ class Document(MutableMapping):
     def __str__(self):
         return self._str_helper(self._name)
 
+    def _repr_html_(self):
+        return html_table_repr(self)
+
 
 def _prettytable(data_keys_dict):
     fields = data_keys_dict.values()[0]._fields
@@ -276,3 +265,30 @@ def _prettytable(data_keys_dict):
             row.append(v)
         table.add_row(row)
     return table
+
+
+def html_table_repr(obj):
+    """Organize nested dict-like and list-like objects into HTML tables."""
+    if hasattr(obj, 'items'):
+        output = "<table>"
+        for key, value in sorted(obj.items()):
+            output += "<tr>"
+            output += "<td>{key}</td>".format(key=key)
+            output += ("<td>" + html_table_repr(value) + "</td>")
+            output += "</tr>"
+        output += "</table>"
+    elif (isinstance(obj, collections.Iterable) and 
+          not isinstance(obj, six.string_types)):
+        output = "<table style='border: none;'>"
+        for value in sorted(obj):
+            output += "<tr style='border: none;' >"
+            output += "<td style='border: none;'>" + html_table_repr(value) 
+            output += "</td></tr>"
+        output += "</table>"
+    elif isinstance(obj, datetime):
+        # '1969-12-31 19:00:00' -> '1969-12-31 19:00:00 (45 years ago)'
+        human_time = humanize.naturaltime(datetime.now() - obj)
+        return str(obj) + '  ({0})'.format(human_time)
+    else:
+        return str(obj)
+    return output

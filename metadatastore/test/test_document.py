@@ -60,9 +60,9 @@ def test_document_funcs_for_smoke():
     run_stop, = find_run_stops(uid=run_stop_uid)
     documents = [run_start, run_stop]
     documents.extend(descriptors)
-    attrs = ['__repr__', '__str__', ]
+    attrs = ['__repr__', '__str__', '_repr_html_', ]
     for doc, attr in product(documents, attrs):
-        getattr(doc, attr)
+        getattr(doc, attr)()
 
 
 # todo def test_from_mongo():
