@@ -135,8 +135,11 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    beamline_config : str
-        uid of beamline config corresponding to a given run
+    beamline_config : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore beamline config document
+        if str:
+            uid of beamline config corresponding to a given run
     uid : str, optional
         Globally unique id string provided to metadatastore
     owner : str, optional
@@ -166,8 +169,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
     if project is None:
         project = ''
 
-    beamline_config = _get_mongo_document(document_uid=beamline_config,
-                                          document_cls=BeamlineConfig)
+    beamline_config = _get_mongo_document(beamline_config, BeamlineConfig)
     run_start = RunStart(time=time, scan_id=scan_id,
                          time_as_datetime=_todatetime(time), uid=uid,
                          beamline_id=beamline_id,
@@ -189,8 +191,11 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
 
     Parameters
     ----------
-    run_start : str
-        uid of RunStart object to associate with this record
+    run_start : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore RunStart document
+        if str:
+            uid of RunStart object to associate with this record
     time : float
         The date/time as found at the client side when an event is
         created.
@@ -213,8 +218,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
-    run_start = _get_mongo_document(document_uid=run_start,
-                                    document_cls=RunStart)
+    run_start = _get_mongo_document(run_start, RunStart)
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
                        time_as_datetime=_todatetime(time), uid=uid,
                        exit_status=exit_status, **custom)
@@ -265,8 +269,11 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
     Parameters
     ----------
-    run_start : str
-        uid of RunStart object to associate with this record
+    run_start : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore RunStart document
+        if str:
+            uid of RunStart object to associate with this record
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain
@@ -290,8 +297,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
-    run_start = _get_mongo_document(document_uid=run_start,
-                                    document_cls=RunStart)
+    run_start = _get_mongo_document(run_start, RunStart)
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
@@ -314,8 +320,11 @@ def insert_event(descriptor, time, data, seq_num, uid=None):
 
     Parameters
     ----------
-    descriptor : str
-        uid of EventDescriptor object to associate with this record
+    descriptor : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore EventDescriptor document
+        if str:
+            uid of EventDescriptor object to associate with this record
     time : float
         The date/time as found at the client side when an event is
         created.
@@ -338,8 +347,7 @@ def insert_event(descriptor, time, data, seq_num, uid=None):
     if uid is None:
         uid = str(uuid.uuid4())
 
-    descriptor = _get_mongo_document(document_uid=descriptor,
-                                     document_cls=EventDescriptor)
+    descriptor = _get_mongo_document(descriptor, EventDescriptor)
     event = Event(descriptor_id=descriptor, uid=uid,
                   data=m_data, time=time, seq_num=seq_num)
 
@@ -511,34 +519,25 @@ def _normalize_object_id(kwargs, key):
     # Database errors will still raise.
 
 
-def _get_mongo_document(document=None, document_uid=None, document_cls=None):
+def _get_mongo_document(document, document_cls):
     """Helper function to get the mongo id of the mongo document of type
     ``document_cls``
 
     Parameters
     ----------
-    document : mds.odm_templates.Document subclass
-    document_uid : str
-        The externally supplied unique identifier of the mongo document
+    document : mds.odm_templates.Document or str
+        if str: The externally supplied unique identifier of the mongo document
     document_cls : object
         One of the class objects from the metadatastore.odm_templates module
         {RunStart, RunStop, Event, EventDescriptor, etc...}
     """
-    if document:
-        if document_uid and document.uid != document_uid:
-            raise ValueError(
-                "If you insist on specifying both the document and the "
-                "uid kwargs, please ensure that they are actually "
-                "the same value...\ndocument.uid={}\n*_uid={}"
-                "".format(document, document_uid))
-        document_uid = document.uid
-
-    if document_uid:
-        # .get() is slower than .first() which is slower than [0].
-        # __raw__=dict() is faster than kwargs
-        # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
-        document = document_cls.objects(__raw__={'uid': document_uid})[0]
-        return document
+    if isinstance(document, Document):
+        document = document.uid
+    # .get() is slower than .first() which is slower than [0].
+    # __raw__=dict() is faster than kwargs
+    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
+    mongo_document = document_cls.objects(__raw__={'uid': document})[0]
+    return mongo_document
 
 
 @_ensure_connection
@@ -594,10 +593,10 @@ def find_run_starts(**kwargs):
     """
     _normalize_object_id(kwargs, '_id')
     _format_time(kwargs)
-    _as_document = _AsDocument()
 
     rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')
     rs_objects = rs_objects.no_dereference()
+    _as_document = _AsDocument()
     return (_as_document(rs) for rs in rs_objects)
 
 
@@ -628,25 +627,23 @@ def find_beamline_configs(**kwargs):
     -------
     beamline_configs : iterable of metadatastore.document.Document objects
     """
-    _as_document = _AsDocument()
     _format_time(kwargs)
     # ordered by _id because it is not guaranteed there will be time in cbonfig
     beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
     beamline_configs = beamline_configs.no_dereference()
+    _as_document = _AsDocument()
     return (_as_document(bc) for bc in beamline_configs)
 
 
 @_ensure_connection
-def find_run_stops(run_start=None, run_start_uid=None, **kwargs):
+def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document, optional
-        The run start to get the corresponding run end for
-    run_start_uid : str
-        Globally unique id string provided to metadatastore for the
-        RunStart Document.
+    run_start : metadatastore.document.Document or str, optional
+        The metadatastore run start document or the metadatastore uid to get
+        the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
         was created. Valid options are:
@@ -674,10 +671,8 @@ def find_run_stops(run_start=None, run_start_uid=None, **kwargs):
     """
     _format_time(kwargs)
     # get the actual mongo document
-    run_start = _get_mongo_document(document=run_start,
-                                    document_uid=run_start_uid,
-                                    document_cls=RunStart)
     if run_start:
+        run_start = _get_mongo_document(run_start, RunStart)
         kwargs['run_start_id'] = run_start.id
 
     _normalize_object_id(kwargs, '_id')
@@ -691,13 +686,14 @@ def find_run_stops(run_start=None, run_start_uid=None, **kwargs):
 
 
 @_ensure_connection
-def find_event_descriptors(run_start=None, run_start_uid=None, **kwargs):
+def find_event_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
     ----------
-    run_start : mongoengine.Document.Document, optional
-        RunStart object EventDescriptor points to
+    run_start : metadatastore.document.Document or uid, optional
+        The metadatastore run start document or the metadatastore uid to get
+        the corresponding run end for
     run_start_uid : str
         Globally unique id string provided to metadatastore for the
         RunStart Document.
@@ -725,10 +721,8 @@ def find_event_descriptors(run_start=None, run_start_uid=None, **kwargs):
     _format_time(kwargs)
     _as_document = _AsDocument()
     # get the actual mongo document
-    run_start = _get_mongo_document(document=run_start,
-                                    document_uid=run_start_uid,
-                                    document_cls=RunStart)
     if run_start:
+        run_start = _get_mongo_document(run_start, RunStart)
         kwargs['run_start_id'] = run_start.id
 
     _normalize_object_id(kwargs, '_id')
@@ -743,7 +737,7 @@ def find_event_descriptors(run_start=None, run_start_uid=None, **kwargs):
 
 
 @_ensure_connection
-def find_events(descriptor=None, descriptor_uid=None, **kwargs):
+def find_events(descriptor=None, **kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters
@@ -760,11 +754,13 @@ def find_events(descriptor=None, descriptor_uid=None, **kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
-    descriptor : mongoengine.Document, optional
-        event descriptor object
-    descriptor_uid : str, optional
-        Globally unique id string provided to metadatastore for the
-        EventDescriptor Document.
+    descriptor : metadatastore.document.Document or uid, optional
+        if Document:
+            The metadatastore run start document or the metadatastore uid to get
+            the corresponding run end for
+        if uid:
+            Globally unique id string provided to metadatastore for the
+            EventDescriptor Document.
     uid : str, optional
         Globally unique id string provided to metadatastore
     _id : str or ObjectId, optional
@@ -782,14 +778,11 @@ def find_events(descriptor=None, descriptor_uid=None, **kwargs):
 
     _format_time(kwargs)
     # get the actual mongo document
-    descriptor = _get_mongo_document(document=descriptor,
-                                     document_uid=descriptor_uid,
-                                     document_cls=EventDescriptor)
     if descriptor:
+        descriptor = _get_mongo_document(descriptor, EventDescriptor)
         kwargs['descriptor_id'] = descriptor.id
 
     _normalize_object_id(kwargs, '_id')
-    _normalize_object_id(kwargs, 'descriptor_id')
     events = Event.objects(__raw__=kwargs).order_by('-time')
     events = events.as_pymongo()
     dref_dict = dict()
