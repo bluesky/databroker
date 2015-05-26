@@ -344,7 +344,9 @@ class Header(Document):
         header : dataportal.broker.Header
         """
         header = Header()
-        header.event_descriptors = list(find_event_descriptors(run_start=run_start))
+        header._name = "Header"
+        header.event_descriptors = list(
+            find_event_descriptors(run_start=run_start))
         run_stops = list(find_run_stops(run_start_id=run_start.id))
         try:
             run_stop, = run_stops
@@ -353,13 +355,13 @@ class Header(Document):
             run_stop = None
             if num == 0:
                 error_msg = ("A RunStop record could not be found for the "
-                            "run with run_start_uid {0}".format(run_start.uid))
+                             "run with run_start_uid {0}".format(run_start.uid))
                 warnings.warn(error_msg)
             else:
                 error_msg = (
-                    "{0} RunStop records (uids {1}) were found for the run with "
-                    "run_start_uid {2}".format(num, [rs.uid for rs in run_stops],
-                                               run_start.uid))
+                    "{0} RunStop records (uids {1}) were found for the run "
+                    "with run_start_uid {2}".format(
+                        num, [rs.uid for rs in run_stops], run_start.uid))
                 if verify_integrity:
                     raise IntegrityError(error_msg)
                 else:
@@ -401,9 +403,10 @@ class Header(Document):
     def __repr__(self):
         # Even with a scan_id of 6+ digits, this fits under 80 chars.
         return "<Header scan_id={0} run_start_uid='{1}'>".format(
-                self.scan_id, self.run_start_uid)
+            self.scan_id, self.run_start_uid)
 
-    def __str__(self):
+    @property
+    def summary(self):
         special_keys = set(('owner', 'group', 'project', 'beamline_id',
                             'scan_id', 'start_datetime', 'stop_datetime',
                             'exit_status', 'exit_reason', 'run_start_uid',
