@@ -27,10 +27,10 @@ def run(run_start=None, sleep=0):
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                   'Troom': dict(source='PV:ES:Troom', dtype='number')}
     ev_desc1_uid = insert_event_descriptor(run_start=run_start,
-                                           data_keys=data_keys1, time=0.,
+                                           data_keys=data_keys1, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
     ev_desc2_uid = insert_event_descriptor(run_start=run_start,
-                                           data_keys=data_keys2, time=0.,
+                                           data_keys=data_keys2, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
     print('event descriptor 1 uid = %s' % ev_desc1_uid)
     print('event descriptor 2 uid = %s' % ev_desc2_uid)
@@ -38,8 +38,9 @@ def run(run_start=None, sleep=0):
     events = []
 
     # Point Detector Events
+    base_time = common.get_time()
     for i in range(num_exposures):
-        time = float(i + 0.01 * rs.randn())
+        time = float(i + 0.5 * rs.randn()) + base_time
         data = {'point_det': (point_det_data[i], time)}
         event_uid = insert_event(descriptor=ev_desc1_uid, seq_num=i, time=time,
                                  data=data, uid=str(uuid.uuid4()))
@@ -48,7 +49,7 @@ def run(run_start=None, sleep=0):
 
     # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
-        time = float(time)
+        time = float(time) + base_time
         data = {'Tsam': (temp, time),
                 'Troom': (temp + 10, time)}
         event_uid = insert_event(descriptor=ev_desc2_uid, time=time,
