@@ -337,7 +337,7 @@ class Header(Document):
 
         Parameters
         ----------
-        run_start : metadatastore.Document
+        run_start : metadatastore.document.Document
 
         Returns
         -------
@@ -347,7 +347,7 @@ class Header(Document):
         header._name = "Header"
         header.event_descriptors = list(
             find_event_descriptors(run_start=run_start))
-        run_stops = list(find_run_stops(run_start_id=run_start.id))
+        run_stops = list(find_run_stops(run_start=run_start))
         try:
             run_stop, = run_stops
         except ValueError:
