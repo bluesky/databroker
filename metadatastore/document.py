@@ -7,7 +7,9 @@ from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
 from collections import MutableMapping
+import collections
 from prettytable import PrettyTable
+import humanize
 
 __all__ = ['Document']
 
@@ -264,6 +266,9 @@ class Document(MutableMapping):
     def __str__(self):
         return self._str_helper(self._name)
 
+    def _repr_html_(self):
+        return html_table_repr(self)
+
 
 def _prettytable(data_keys_dict):
     fields = data_keys_dict.values()[0]._fields
@@ -276,3 +281,30 @@ def _prettytable(data_keys_dict):
             row.append(v)
         table.add_row(row)
     return table
+
+
+def html_table_repr(obj):
+    """Organize nested dict-like and list-like objects into HTML tables."""
+    if hasattr(obj, 'items'):
+        output = "<table>"
+        for key, value in sorted(obj.items()):
+            output += "<tr>"
+            output += "<td>{key}</td>".format(key=key)
+            output += ("<td>" + html_table_repr(value) + "</td>")
+            output += "</tr>"
+        output += "</table>"
+    elif (isinstance(obj, collections.Iterable) and 
+          not isinstance(obj, six.string_types)):
+        output = "<table style='border: none;'>"
+        for value in sorted(obj):
+            output += "<tr style='border: none;' >"
+            output += "<td style='border: none;'>" + html_table_repr(value) 
+            output += "</td></tr>"
+        output += "</table>"
+    elif isinstance(obj, datetime):
+        # '1969-12-31 19:00:00' -> '1969-12-31 19:00:00 (45 years ago)'
+        human_time = humanize.naturaltime(datetime.now() - obj)
+        return str(obj) + '  ({0})'.format(human_time)
+    else:
+        return str(obj)
+    return output
