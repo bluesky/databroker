@@ -16,8 +16,9 @@ def teardown():
     mds_teardown()
 
 
-def _test_retrieve_data(evt):
-    data = retrieve(evt['data']['xrf_spectrum'][0])
+def _test_retrieve_data(event):
+    uid = event['data']['xrf_spectrum']
+    data = retrieve(uid)
     assert_equal(data.size, 20)
     assert_not_equal(np.sum(data), 0)
 

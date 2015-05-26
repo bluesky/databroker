@@ -114,7 +114,7 @@ class _DataBrokerClass(object):
 
         for header in headers:
             descriptors = find_event_descriptors(
-                    run_start_id=header.run_start_id)
+                run_start=header.run_start_uid)
             for descriptor in descriptors:
                 for event in find_events(descriptor=descriptor):
                     if fill:
@@ -174,15 +174,22 @@ class _DataBrokerClass(object):
         run_start = find_run_starts(**kwargs)
         if data_key is not None:
             node_name = 'data_keys.{0}'.format(data_key)
-            query = {node_name: {'$exists': True},
-                     'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
-            descriptors = find_event_descriptors(**query)
+
+            query = {node_name: {'$exists': True}}
+            descriptors = []
+            for rs in run_start:
+                descriptor = find_event_descriptors(run_start=rs, **query)
+                for d in descriptor:
+                    descriptors.append(d)
+            # query = {node_name: {'$exists': True},
+            #          'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
+            # descriptors = find_event_descriptors(**query)
             result = []
-            known_ids = deque()
+            known_uids = deque()
             for descriptor in descriptors:
-                if descriptor.run_start.id not in known_ids:
+                if descriptor.run_start.uid not in known_uids:
                     rs = descriptor.run_start
-                    known_ids.append(rs.id)
+                    known_uids.append(rs.uid)
                     result.append(rs)
             run_start = result
         result = []
@@ -214,7 +221,7 @@ class EventQueue(object):
             # This is some kind of dict.
             headers = [headers]
         self.headers = headers
-        self._known_ids = set()
+        self._known_uids = set()
         # This is nested, a deque of lists that are bundles of events
         # discovered in the same update.
         self._queue = deque()
@@ -225,8 +232,7 @@ class EventQueue(object):
         # like fetch_events, but we don't fill in the data right away
         events = []
         for header in self.headers:
-            descriptors = find_event_descriptors(
-                    run_start_id=header.run_start_id)
+            descriptors = find_event_descriptors(run_start=header.run_start_uid)
             for descriptor in descriptors:
                 events.extend(list(find_events(descriptor=descriptor)))
         if not events:
@@ -234,9 +240,9 @@ class EventQueue(object):
 
         new_events = []
         for event in events:
-            if event.uid not in self._known_ids:
+            if event.uid not in self._known_uids:
                 new_events.append(event)
-                self._known_ids.add(event.uid)
+                self._known_uids.add(event.uid)
 
         # The major performance savings is here: only fill the new events.
         [fill_event(event) for event in new_events]
@@ -312,7 +318,7 @@ class Header(Document):
 
         Parameters
         ----------
-        run_start : metadatastore.Document
+        run_start : metadatastore.document.Document
 
         Returns
         -------
@@ -322,7 +328,7 @@ class Header(Document):
         header._name = "Header"
         header.event_descriptors = list(
             find_event_descriptors(run_start=run_start))
-        run_stops = list(find_run_stops(run_start_id=run_start.id))
+        run_stops = list(find_run_stops(run_start=run_start))
         try:
             run_stop, = run_stops
         except ValueError:

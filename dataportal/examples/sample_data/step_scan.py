@@ -1,5 +1,5 @@
 from __future__ import division
-from metadatastore.api import insert_event, insert_event_descriptor
+from metadatastore.api import insert_event, insert_event_descriptor, find_events
 import numpy as np
 from metadatastore.examples.sample_data import common
 
@@ -30,8 +30,9 @@ def run(run_start=None, sleep=0):
         time = float(time)
         point_det = np.random.randn()
         data = {'Tsam': (temp, time), 'point_det': (point_det, time)}
-        event = insert_event(event_descriptor=ev_desc, time=time,
-                             data=data, seq_num=i)
+        event_uid = insert_event(descriptor=ev_desc, time=time, data=data,
+                                 seq_num=i)
+        event, = find_events(uid=event_uid)
         events.append(event)
 
     return events
