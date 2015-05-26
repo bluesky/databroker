@@ -10,6 +10,10 @@ from getpass import getuser
 ALIAS = 'mds'
 
 
+__all__ = ['BeamlineConfig', 'RunStart', 'RunStop', 'DataKey',
+           'EventDescriptor', 'Event']
+
+
 class BeamlineConfig(DynamicDocument):
     """
     Attributes
@@ -23,7 +27,7 @@ class BeamlineConfig(DynamicDocument):
     config_params = DictField(required=False, unique=False)
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
-    meta = {'indexes': ['-_id'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-_id', '-uid'], 'db_alias': ALIAS}
 
 
 class RunStart(DynamicDocument):
@@ -97,7 +101,7 @@ class RunStop(DynamicDocument):
                               choices=('success', 'abort', 'fail'))
     reason = StringField(required=False)
     uid = StringField(required=True, unique=True)
-    meta = {'indexes': ['-_id', '-time', '-exit_status', '-run_start'],
+    meta = {'indexes': ['-_id', '-time', '-exit_status', '-run_start', '-uid'],
             'db_alias': ALIAS}
 
 
@@ -145,7 +149,7 @@ class EventDescriptor(DynamicDocument):
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
-    meta = {'indexes': ['-run_start', '-time'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-run_start', '-time', '-uid'], 'db_alias': ALIAS}
 
 
 class Event(Document):
@@ -180,4 +184,4 @@ class Event(Document):
     # TODO validate on this better
     data = DictField(required=True)
     time = FloatField(required=True)
-    meta = {'indexes': ['-descriptor', '-_id'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-descriptor', '-_id', '-uid'], 'db_alias': ALIAS}

@@ -9,6 +9,9 @@ from itertools import chain
 from collections import MutableMapping
 from prettytable import PrettyTable
 
+__all__ = ['Document']
+
+
 def _normalize(in_val, cache):
     """
     Helper function for cleaning up the mongoegine documents to be safe.
@@ -115,6 +118,10 @@ class Document(MutableMapping):
                            mongo_document._data.keys()))
 
         for field in fields:
+            if field == 'id':
+                # we are no longer supporting mongo id's making it out of
+                # metadatastore
+                continue
             attr = getattr(mongo_document, field)
             if isinstance(attr, DBRef):
                 oid = attr.id
@@ -199,7 +206,11 @@ class Document(MutableMapping):
         return document
 
     def __repr__(self):
-        return "<{0} Document. uid={1}>".format(self._name, self.uid)
+        try:
+            infostr = '. %s' % self.uid
+        except AttributeError:
+            infostr = ''
+        return "<%s Document%s>" % (self._name, infostr)
 
     def _str_helper(self, name=None, indent=0, max_indent=1):
         """Recursive document walker and formatter
@@ -265,8 +276,3 @@ def _prettytable(data_keys_dict):
             row.append(v)
         table.add_row(row)
     return table
-
-
-if __name__ == "__main__":
-    from dataportal import DataBroker as db
-    print(db[-1])

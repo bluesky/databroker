@@ -35,3 +35,7 @@ def test_sleepy_ramp():
     for failing_time in failing_times:
         yield _failing_sleepy_ramp_helper, failing_time
 
+
+if __name__ == "__main__":
+    import nose
+    nose.runmodule(argv=['-s', '--with-doctest'], exit=False)
