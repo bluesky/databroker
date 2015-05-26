@@ -280,7 +280,12 @@ def html_table_repr(obj):
     elif (isinstance(obj, collections.Iterable) and 
           not isinstance(obj, six.string_types)):
         output = "<table style='border: none;'>"
-        for value in sorted(obj):
+        # Sort list if possible.
+        try:
+            obj = sorted(obj)
+        except TypeError:
+            pass
+        for value in obj:
             output += "<tr style='border: none;' >"
             output += "<td style='border: none;'>" + html_table_repr(value) 
             output += "</td></tr>"
