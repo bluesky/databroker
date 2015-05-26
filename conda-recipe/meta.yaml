@@ -36,6 +36,7 @@ requirements:
     - filestore
     - channelarchiver
     - six
+    - humanize
 
 test:
   imports:

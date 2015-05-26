@@ -70,6 +70,15 @@ def test_basic_usage():
                          owner='nedbrainard', beamline_id='example',
                          beamline_config=insert_beamline_config({}, time=0.))
     header_1 = db[-1]
+    # Exercise reprs.
+    header_1._repr_html_()
+    repr(header_1)
+    str(header_1)
+    headers = db[-3:]
+    headers._repr_html_()
+    repr(headers)
+    str(headers)
+
     header_ned = db.find_headers(owner='nedbrainard')
     header_null = db.find_headers(owner='this owner does not exist')
     events_1 = db.fetch_events(header_1)

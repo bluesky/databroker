@@ -42,6 +42,7 @@ install:
   - source activate testenv
   - 'pip install coveralls'
   - 'pip install prettytable'
+  - 'pip install humanize'
   - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
   - 'pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore'
   - 'pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver'
