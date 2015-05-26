@@ -1,5 +1,7 @@
 from __future__ import print_function
 import sys
+import humanize
+import datetime
 import six  # noqa
 from six import StringIO
 from collections import defaultdict, Iterable, deque
@@ -12,6 +14,7 @@ import warnings
 from filestore.api import retrieve
 import os
 import logging
+import uuid
 
 
 logger = logging.getLogger(__name__)
@@ -41,7 +44,7 @@ class _DataBrokerClass(object):
                                  "the result could become too large.")
             start = -key.start
             result = list(find_last(start))[stop::key.step]
-            header = [Header.from_run_start(h) for h in result]
+            header = Headers([Header.from_run_start(h) for h in result])
         elif isinstance(key, int):
             if key > -1:
                 # Interpret key as a scan_id.
@@ -79,7 +82,7 @@ class _DataBrokerClass(object):
         elif isinstance(key, Iterable):
             # Interpret key as a list of several keys. If it is a string
             # we will never get this far.
-            return [cls.__getitem__(k) for k in key]
+            return Headers([cls.__getitem__(k) for k in key])
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
@@ -195,7 +198,7 @@ class _DataBrokerClass(object):
         result = []
         for rs in run_start:
             result.append(Header.from_run_start(rs))
-        return result
+        return Headers(result)
 
 
 class EventQueue(object):
@@ -328,7 +331,7 @@ class Header(Document):
         header._name = "Header"
         header.event_descriptors = list(
             find_event_descriptors(run_start=run_start))
-        run_stops = list(find_run_stops(run_start=run_start))
+        run_stops = list(find_run_stops(run_start=run_start.uid))
         try:
             run_stop, = run_stops
         except ValueError:
@@ -377,8 +380,15 @@ class Header(Document):
             for k in run_stop:
                 new_key = run_stop_renames_back.get(k, k)
                 header[new_key] = run_stop[k]
+            del header['run_start']
 
         run_start._name = 'Header'
+
+        # Strip unuseful recursion. We don't mess with underlying Documents,
+        # but the header is a special case, and the repr should reflect
+        # its structure accurately.
+        for ev_desc in header.event_descriptors:
+            ev_desc.run_start = ev_desc.run_start.uid
         return header
 
     def __repr__(self):
@@ -445,3 +455,40 @@ class Stream(object):
 
 class IntegrityError(Exception):
     pass
+
+
+class Headers(list):
+    """Put a nice HTML repr on list"""
+    # See http://getbootstrap.com/javascript/#collapse-example-accordion
+
+    def _repr_html_(self):
+        repr_uid = uuid.uuid4()
+        prefix = """
+<div class="panel-group" id="accordian-{repr_uid}" role="tablist" aria-multiselectable="true">""".format(repr_uid=repr_uid)
+        element = """
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="heading-{uid}" style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" data-parent="#accordion-{repr_uid}" href="#collapse-{uid}" aria-expanded="false" aria-controls="collapse-{uid}">
+          Header: Scan {header.scan_id} &nbsp; <span style="color: #AAAAAA;">{human_time}</span>
+        </a>
+      </h4>
+    </div>
+    <div id="collapse-{uid}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading-{uid}">
+      <div class="panel-body">
+        {html_header}
+      </div>
+    </div>
+  </div>
+        """
+        suffix = """
+</div>"""
+        content = ''.join([element.format(header=header,
+                                          uid=header.run_start_uid,
+                                          html_header=header._repr_html_(),
+                                          repr_uid=repr_uid,
+                                          human_time=humanize.naturaltime(
+                                              datetime.datetime.now() -
+                                              header.start_datetime))
+                           for header in self])
+        return prefix + content + suffix
