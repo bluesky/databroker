@@ -17,6 +17,7 @@ from filestore.handlers import AreaDetectorHDF5Handler
 from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from filestore.handlers import HDFMapsEnergyHandler as HDFE
+from filestore.handlers import NpyFrameWise
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
@@ -59,6 +60,26 @@ class _with_file(object):
     def _make_data(self):
         # sub-classes need to override this to put data into the test file
         pass
+
+
+class test_np_FW(_with_file):
+    def _make_data(self):
+        N = 15
+        filename = self.filename
+        data = np.ones((N, 9, 8)) * np.arange(N).reshape(N, 1, 1)
+        np.save(filename, data)
+        # Insert the data records.
+        resource_id = insert_resource('npy_FRAMEWISE', filename + '.npy', {})
+        self.datum_ids = [str(uuid.uuid4()) for i in range(N)]
+        for i, datum_id in enumerate(self.datum_ids):
+            insert_datum(resource_id, datum_id, dict(frame_no=i))
+
+    def test_retrival(self):
+        with fsr.handler_context({'npy_FRAMEWISE': NpyFrameWise}):
+            for i, datum_id in enumerate(self.datum_ids):
+                data = retrieve(datum_id)
+                known_data = i * np.ones((9, 8))
+                assert_array_equal(data, known_data)
 
 
 class test_AD_hdf5_files(_with_file):
@@ -179,3 +200,7 @@ def test_ADDummy():
         hand = DummyAreaDetectorHandler(None, frame_per_point=n_pts, aadvark=5)
         for kw in [{}, {'a': 1}]:
             yield _dummy_helper, n_pts, hand, kw
+
+
+def test_npyfw_fail():
+    assert_raises(IOError, NpyFrameWise, 'aarvark_rises')

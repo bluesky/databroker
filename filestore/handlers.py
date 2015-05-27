@@ -256,3 +256,17 @@ class NpyHandler(HandlerBase):
 
     def __call__(self):
         return np.load(self._fpath, self._mmap_mode)
+
+
+class NpyFrameWise(HandlerBase):
+    specs = {'npy_FRAMEWISE'} | HandlerBase.specs
+
+    def __init__(self, filename, mmap_mode=None):
+        self._mmap_mode = mmap_mode
+        if not os.path.exists(filename):
+            raise IOError("the requested file {fpath} does not exst")
+        self._fpath = filename
+        self._data = np.load(self._fpath, self._mmap_mode)
+
+    def __call__(self, frame_no):
+        return self._data[frame_no]
