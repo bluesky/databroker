@@ -225,10 +225,22 @@ class Document(MutableMapping):
             The indentation level. Defaults to starting at 0 and adding one tab
             per recursion level
         """
-        mapping = {0: '-', 1: '=', 2: '~'}
+        headings = [
+            # characters recommended as headers by ReST docs
+            '=', '-', '`', ':', '.', "'", '"', '~', '^', '_', '*', '+', '#',
+            # all other valid header characters according to ReST docs
+            '!', '$', '%', '&', '(', ')', ',', '/', ';', '<', '>', '?', '@',
+            '[', '\\', ']', '{', '|', '}'
+        ]
+
+        mapping = collections.OrderedDict(
+            {idx: char for idx, char in enumerate(headings)})
         ret = "\n%s\n%s" % (name, mapping[indent]*len(name))
 
         documents = []
+        dicts = []
+        name_width = 16
+        value_width = 40
         for name, value in sorted(self.items()):
             if isinstance(value, Document):
                 documents.append((name, value))
@@ -236,9 +248,14 @@ class Document(MutableMapping):
                 for val in value:
                     documents.append((name, val))
             elif name == 'data_keys':
-                ret += "\n%s" % _prettytable(value).__str__()
+                ret += "\n%s" % _format_data_keys_dict(value).__str__()
+            elif isinstance(value, dict):
+                # format dicts reasonably
+                ret += "\n%-{}s:".format(name_width, value_width) % (name)
+                ret += _format_dict(value, name_width, value_width, name, tabs=1)
             else:
-                ret += "\n%-16s: %-40s" % (name[:16], value)
+                ret += ("\n%-{}s: %-{}s".format(name_width, value_width) %
+                        (name[:16], value))
         for name, value in documents:
             ret += "\n%s" % (value._str_helper(value._name, indent+1))
             # ret += "\n"
@@ -254,12 +271,23 @@ class Document(MutableMapping):
         return html_table_repr(self)
 
 
-def _prettytable(data_keys_dict):
+def _format_dict(value, name_width, value_width, name, tabs=0):
+    ret = ''
+    for k, v in six.iteritems(value):
+        if isinstance(v, dict):
+            ret += _format_dict(v, name_width, value_width, k, tabs=tabs+1)
+        else:
+            ret += ("\n%s%-{}s: %-{}s".format(
+                name_width, value_width) % ('  '*tabs, k[:16], v))
+    return ret
+
+
+def _format_data_keys_dict(data_keys_dict):
     fields = reduce(set.union,
                     (set(v) for v in six.itervalues(data_keys_dict)))
     fields = sorted(list(fields))
-    table = PrettyTable(["key name"] + list(fields))
-    table.align['key name'] = 'l'
+    table = PrettyTable(["data keys"] + list(fields))
+    table.align["data keys"] = 'l'
     table.padding_width = 1
     for data_key, key_dict in sorted(data_keys_dict.items()):
         row = [data_key]

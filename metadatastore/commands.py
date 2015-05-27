@@ -692,11 +692,12 @@ def find_event_descriptors(run_start=None, **kwargs):
     Parameters
     ----------
     run_start : metadatastore.document.Document or uid, optional
-        The metadatastore run start document or the metadatastore uid to get
-        the corresponding run end for
-    run_start_uid : str
-        Globally unique id string provided to metadatastore for the
-        RunStart Document.
+        if ``Document``:
+            The metadatastore run start document or the metadatastore uid to get
+            the corresponding run end for
+        if ``str``:
+            Globally unique id string provided to metadatastore for the
+            RunStart Document.
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
         was created. Valid options are:
