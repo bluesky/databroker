@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 from bson.dbref import DBRef
 from datetime import datetime
 from itertools import chain
-from collections import MutableMapping
+from collections import MutableMapping, Mapping
 import collections
 from prettytable import PrettyTable
 import humanize
@@ -238,7 +238,6 @@ class Document(MutableMapping):
         ret = "\n%s\n%s" % (name, mapping[indent]*len(name))
 
         documents = []
-        dicts = []
         name_width = 16
         value_width = 40
         for name, value in sorted(self.items()):
@@ -249,7 +248,7 @@ class Document(MutableMapping):
                     documents.append((name, val))
             elif name == 'data_keys':
                 ret += "\n%s" % _format_data_keys_dict(value).__str__()
-            elif isinstance(value, dict):
+            elif isinstance(value, Mapping):
                 # format dicts reasonably
                 ret += "\n%-{}s:".format(name_width, value_width) % (name)
                 ret += _format_dict(value, name_width, value_width, name, tabs=1)
@@ -274,7 +273,7 @@ class Document(MutableMapping):
 def _format_dict(value, name_width, value_width, name, tabs=0):
     ret = ''
     for k, v in six.iteritems(value):
-        if isinstance(v, dict):
+        if isinstance(v, Mapping):
             ret += _format_dict(v, name_width, value_width, k, tabs=tabs+1)
         else:
             ret += ("\n%s%-{}s: %-{}s".format(
@@ -307,7 +306,7 @@ def html_table_repr(obj):
             output += ("<td>" + html_table_repr(value) + "</td>")
             output += "</tr>"
         output += "</table>"
-    elif (isinstance(obj, collections.Iterable) and 
+    elif (isinstance(obj, collections.Iterable) and
           not isinstance(obj, six.string_types)):
         output = "<table style='border: none;'>"
         # Sort list if possible.
@@ -317,7 +316,7 @@ def html_table_repr(obj):
             pass
         for value in obj:
             output += "<tr style='border: none;' >"
-            output += "<td style='border: none;'>" + html_table_repr(value) 
+            output += "<td style='border: none;'>" + html_table_repr(value)
             output += "</td></tr>"
         output += "</table>"
     elif isinstance(obj, datetime):
