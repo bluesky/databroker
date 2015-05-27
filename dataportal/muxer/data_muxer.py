@@ -485,16 +485,6 @@ class DataMuxer(object):
         else:
             return data  # no-op
 
-    def earliest_time(self):
-        """Return the time of the first Event in this Muxer.
-
-        Returns
-        -------
-        time : float
-            UNIX time (seconds since 1970)
-        """
-        return self._dataframe['time'].min()
-
     def include_timestamp_data(self, source_name):
         """Add the exact timing of a data source as a data column.
 
