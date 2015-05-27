@@ -10,7 +10,7 @@ from collections import MutableMapping
 import collections
 from prettytable import PrettyTable
 import humanize
-
+from six.moves import reduce
 __all__ = ['Document']
 
 
@@ -255,14 +255,16 @@ class Document(MutableMapping):
 
 
 def _prettytable(data_keys_dict):
-    fields = list(data_keys_dict.values())[0]._fields
+    fields = reduce(set.union,
+                    (set(v) for v in six.itervalues(data_keys_dict)))
+    fields = sorted(list(fields))
     table = PrettyTable(["key name"] + list(fields))
     table.align['key name'] = 'l'
     table.padding_width = 1
     for data_key, key_dict in sorted(data_keys_dict.items()):
         row = [data_key]
-        for k, v in sorted(key_dict.items()):
-            row.append(v)
+        for fld in fields:
+            row.append(key_dict.get(fld, ''))
         table.add_row(row)
     return table
 
