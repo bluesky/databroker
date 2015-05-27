@@ -4,8 +4,11 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 from contextlib import contextmanager
+import boltons.cacheutils
 
 logger = logging.getLogger(__name__)
+
+_HANDLER_CACHE = boltons.cacheutils.LRU()
 
 
 class HandlerBase(object):
@@ -190,9 +193,15 @@ def get_spec_handler(resource, handle_registry=None):
     if handle_registry is None:
         handle_registry = _h_registry
     spec = resource.spec
+    handler = handle_registry[spec]
+    key = (str(resource.id), handler.__name__)
+    if key in _HANDLER_CACHE:
+        return _HANDLER_CACHE[key]
     kwargs = resource.resource_kwargs
     rpath = resource.resource_path
-    return handle_registry[spec](rpath, **kwargs)
+    ret = handler(rpath, **kwargs)
+    _HANDLER_CACHE[key] = ret
+    return ret
 
 
 def get_data(datum, handle_registry=None):

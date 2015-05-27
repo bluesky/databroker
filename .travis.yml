@@ -24,7 +24,7 @@ install:
   - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py pims jsonschema
   - conda install -n testenv --yes -c soft-matter tifffile
   - source activate testenv
-  - pip install coveralls mongoengine
+  - pip install coveralls mongoengine boltons
   - python setup.py install
   - pip install coveralls
 
