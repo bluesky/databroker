@@ -11,6 +11,9 @@ import collections
 from prettytable import PrettyTable
 import humanize
 from six.moves import reduce
+import numpy as np
+
+
 __all__ = ['Document']
 
 
@@ -306,8 +309,9 @@ def html_table_repr(obj):
             output += ("<td>" + html_table_repr(value) + "</td>")
             output += "</tr>"
         output += "</table>"
-    elif (isinstance(obj, collections.Iterable) and
-          not isinstance(obj, six.string_types)):
+    elif (isinstance(obj, collections.Iterable) and 
+          not isinstance(obj, six.string_types) and
+          not isinstance(obj, np.ndarray)):
         output = "<table style='border: none;'>"
         # Sort list if possible.
         try:

@@ -1,4 +1,5 @@
 import numpy as np
+import time as ttime
 import uuid
 from functools import wraps
 from metadatastore.api import (insert_run_start, insert_beamline_config,
@@ -70,12 +71,16 @@ def noisy(val, sigma=0.01):
         return val + sigma * np.random.randn(len(val)).reshape(val.shape)
 
 
+def get_time():
+    return ttime.time()
+
+
 def example(func):
     @wraps(func)
     def mock_run_start(run_start_uid=None, sleep=0, make_run_stop=True):
         if run_start_uid is None:
-            blc_uid = insert_beamline_config({}, time=0.)
-            run_start_uid = insert_run_start(time=0., scan_id=1,
+            blc_uid = insert_beamline_config({}, time=get_time())
+            run_start_uid = insert_run_start(time=get_time(), scan_id=1,
                                              beamline_id='example',
                                              uid=str(uuid.uuid4()),
                                              beamline_config=blc_uid)
@@ -85,7 +90,7 @@ def example(func):
         # simulated and not necessarily based on the current time.
         time = max([event['time'] for event in events])
         if make_run_stop:
-            run_stop_uid = insert_run_stop(run_start_uid, time=time,
+            run_stop_uid = insert_run_stop(run_start_uid, time=get_time(),
                                            exit_status='success')
             run_stop, = find_run_stops(uid=run_stop_uid)
         return events
