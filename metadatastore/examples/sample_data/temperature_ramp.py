@@ -5,9 +5,9 @@ import numpy as np
 from metadatastore.examples.sample_data import common
 
 # "Magic numbers" for this simulation
-start, stop, step, points_per_step = 0, 3, 1, 7
+start, stop, step, points_per_step = 0, 6, 1, 7
 deadband_size = 0.9
-num_exposures = 23
+num_exposures = 17
 
 @common.example
 def run(run_start_uid=None, sleep=0):
@@ -18,7 +18,7 @@ def run(run_start_uid=None, sleep=0):
     ramp = common.stepped_ramp(start, stop, step, points_per_step)
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
     rs = np.random.RandomState(5)
-    point_det_data = rs.randn(num_exposures)
+    point_det_data = rs.randn(num_exposures) + np.arange(num_exposures)
 
     # Create Event Descriptors
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
@@ -34,7 +34,7 @@ def run(run_start_uid=None, sleep=0):
     # Point Detector Events
     base_time = common.get_time()
     for i in range(num_exposures):
-        time = float(i + 0.5 * rs.randn()) + base_time
+        time = float(2 * i + 0.5 * rs.randn()) + base_time
         data = {'point_det': (point_det_data[i], time)}
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data)
