@@ -478,12 +478,9 @@ class DataMuxer(object):
     def _maybe_convert_times(self, data):
         if self.convert_times:
             if self.reference_time is None:
-                # times
                 return pd.to_datetime(data, unit='s')
-            else:
-                return pd.to_datetime(data, unit='s') - self.reference_time
-        else:
-            return data  # no-op
+            return pd.to_datetime(data, unit='s') - self.reference_time
+        return data  # no-op
 
     def include_timestamp_data(self, source_name):
         """Add the exact timing of a data source as a data column.
