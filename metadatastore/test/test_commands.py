@@ -108,7 +108,8 @@ def test_ev_insert_fail():
     """Make sure metadatastore correctly barfs if an event is inserted
     with no event descriptor
     """
-    mdsc.insert_event(None, ttime.time(), data={'key': [0, 0]}, seq_num=0)
+    mdsc.insert_event(None, ttime.time(), data={'key': 0},
+                      timestamps={'key': 0}, seq_num=0)
 
 
 def test_insert_run_start():
@@ -167,15 +168,6 @@ def test_run_stop_insertion():
 
 
 #### Testing misc metadatastore functionality ##################################
-
-
-@raises(ValueError)
-def test_proper_data_format():
-    """Make sure metadatastore correctly barfs if the values of the data
-    dictionary are not formatted as a twople of (value, timestamp)
-    """
-    data = {'key': [15, ]}
-    mdsc._validate_data(data)
 
 
 def test_dict_key_replace_rt():

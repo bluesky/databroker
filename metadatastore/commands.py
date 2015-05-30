@@ -315,7 +315,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
 
 @_ensure_connection
-def insert_event(descriptor, time, data, seq_num, uid=None):
+def insert_event(descriptor, time, data, timestamps, seq_num, uid=None):
     """Create an event in metadatastore database backend
 
     Parameters
@@ -329,15 +329,19 @@ def insert_event(descriptor, time, data, seq_num, uid=None):
         The date/time as found at the client side when an event is
         created.
     data : dict
-        Dictionary that contains the name value fields for the data associated
-        with an event
+        Dictionary of measured values (or external references)
+    timestamps : dict
+        Dictionary of measured timestamps for each values, having the
+        same keys as `data` above
     seq_num : int
         Unique sequence number for the event. Provides order of an event in
         the group of events
     uid : str, optional
         Globally unique id string provided to metadatastore
     """
-    m_data = _validate_data(data)
+    if set(data.keys()) != set(timestamps.keys()):
+        raise ValueError("The fields in 'data' and 'timestamps' must match.")
+    val_ts_tuple = _transform_data(data, timestamps)
 
     # Allow caller to beg forgiveness rather than ask permission w.r.t
     # EventDescriptor creation.
@@ -349,7 +353,7 @@ def insert_event(descriptor, time, data, seq_num, uid=None):
 
     descriptor = _get_mongo_document(descriptor, EventDescriptor)
     event = Event(descriptor_id=descriptor, uid=uid,
-                  data=m_data, time=time, seq_num=seq_num)
+                  data=val_ts_tuple, time=time, seq_num=seq_num)
 
     event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
@@ -359,17 +363,15 @@ def insert_event(descriptor, time, data, seq_num, uid=None):
     return uid
 
 
-def _validate_data(data):
-    m_data = dict()
-    for k, v in six.iteritems(data):
-        if isinstance(v, (list, tuple)):
-            if len(v) == 2:
-                m_data[k] = list(v)
-            else:
-                raise ValueError('List must contain value and timestamp')
-        else:
-            raise TypeError('Data fields must be lists!')
-    return m_data
+def _transform_data(data, timestamps):
+    """
+    Transform from Document spec:
+        {'data': {'key': <value>},
+         'timestamps': {'key': <timestamp>}}
+    to storage format:
+        {'data': {<key>: (<value>, <timestamp>)}.
+    """
+    return {k: (data[k], timestamps[k]) for k in data}
 
 
 class EventDescriptorIsNoneError(ValueError):

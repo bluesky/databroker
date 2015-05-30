@@ -35,9 +35,10 @@ def run(run_start_uid=None, sleep=0):
     base_time = common.get_time()
     for i in range(num_exposures):
         time = float(2 * i + 0.5 * rs.randn()) + base_time
-        data = {'point_det': (point_det_data[i], time)}
+        data = {'point_det': point_det_data[i]}
+        timestamps = {'point_det': time}
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
-                          time=time, data=data)
+                          time=time, data=data, timestamps=timestamps)
         event_uid = insert_event(**event_dict)
         # grab the actual event from metadatastore
         event, = find_events(uid=event_uid)
@@ -46,9 +47,10 @@ def run(run_start_uid=None, sleep=0):
     # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time) + base_time 
-        data = {'Tsam': (temp, time)}
+        data = {'Tsam': temp}
+        timestamps = {'Tsam': time}
         event_dict = dict(descriptor=ev_desc2_uid, time=time,
-                          data=data, seq_num=i)
+                          data=data, timestamps=timestamps, seq_num=i)
         event_uid = insert_event(**event_dict)
         event, = find_events(uid=event_uid)
         events.append(event)
