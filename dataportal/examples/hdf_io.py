@@ -158,13 +158,15 @@ def hdf_data_io():
         spectrum_uid = get_data(v_pos, h_pos)
 
         # Put in actual ndarray data, as broker would do.
-        data1 = {'xrf_spectrum': (spectrum_uid, noisy(i)),
-                 'v_pos': (v_pos, noisy(i)),
-                 'h_pos': (h_pos, noisy(i))}
+        data1 = {'xrf_spectrum': spectrum_uid,
+                 'v_pos': v_pos,
+                 'h_pos': h_pos}
+        timestamps1 = {k: noisy(i) for k in data1}
 
         event_uid = insert_event(descriptor=descriptor_uid, seq_num=i,
                                  time=noisy(i), data=data1,
-                                 uid=str(uuid.uuid4()))
+                                 uid=str(uuid.uuid4()),
+                                 timestamps=timestamps1)
         event, = find_events(uid=event_uid)
         # test on retrieve data for all data sets
         events.append(event)
