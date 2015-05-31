@@ -88,26 +88,30 @@ def run(run_start_uid=None, sleep=0):
         fsid_y = save_ndarray(img_sum_y)
 
         # Put in actual ndarray data, as broker would do.
-        data1 = {'linear_motor': (i, noisy(i)),
-                 'total_img_sum': (img_sum, noisy(i)),
-                 'img': (fsid_img, noisy(i)),
-                 'img_sum_x': (fsid_x, noisy(i)),
-                 'img_sum_y': (fsid_y, noisy(i)),
-                 'img_x_max': (img_x_max, noisy(i)),
-                 'img_y_max': (img_y_max, noisy(i))
+        data1 = {'linear_motor': i,
+                 'total_img_sum': img_sum,
+                 'img': fsid_img,
+                 'img_sum_x': fsid_x,
+                 'img_sum_y': fsid_y,
+                 'img_x_max': img_x_max,
+                 'img_y_max': img_y_max
                  }
+        timestamps1 = {k: noisy(i) for k in data1}
 
         event_uid = insert_event(descriptor=descriptor1_uid, seq_num=idx1,
                                  time=noisy(i), data=data1,
+                                 timestamps=timestamps1,
                                  uid=str(uuid.uuid4()))
         event, = find_events(uid=event_uid)
         events.append(event)
         for idx2, i2 in enumerate(range(num2)):
             time = noisy(i/num2)
-            data2 = {'Tsam': (idx1 + np.random.randn()/100, time)}
+            data2 = {'Tsam': idx1 + np.random.randn()}
+            timestamps2 = {'Tsam': time}
             event_uid = insert_event(descriptor=descriptor2_uid,
                                      seq_num=idx2+idx1, time=time, data=data2,
-                                     uid=str(uuid.uuid4()))
+                                     uid=str(uuid.uuid4()),
+                                     timestamps=timestamps2)
             event, = find_events(uid=event_uid)
             events.append(event)
         ttime.sleep(sleep)

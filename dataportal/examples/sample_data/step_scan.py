@@ -29,9 +29,10 @@ def run(run_start=None, sleep=0):
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time)
         point_det = np.random.randn()
-        data = {'Tsam': (temp, time), 'point_det': (point_det, time)}
+        data = {'Tsam': temp, 'point_det': point_det}
+        timestamps = {'Tsam': time, 'point_det': time}
         event_uid = insert_event(descriptor=ev_desc, time=time, data=data,
-                                 seq_num=i)
+                                 seq_num=i, timestamps=timestamps)
         event, = find_events(uid=event_uid)
         events.append(event)
 
