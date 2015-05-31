@@ -75,8 +75,7 @@ class ColSpec(namedtuple(
         Dimensionality of the data stored in the column
     shape : tuple or None
         like ndarray.shape, where 0 or None are scalar
-    upsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
-                'cubic'}
+    upsample : {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic', 'ffill', 'bfill'}
         None means that each time bin must have at least one value.
         The names refer to kinds of scipy.interpolator. See documentation
         link below.
@@ -91,12 +90,13 @@ class ColSpec(namedtuple(
     """
     # These reflect the 'method' argument of pandas.DataFrame.fillna
     upsampling_methods = {'None', 'linear', 'nearest', 'zero', 'slinear',
-                          'quadratic', 'cubic'}
+                          'quadratic', 'cubic', 'ffill', 'bfill'}
     downsampling_methods = {'None', 'last', 'first', 'median', 'mean', 'sum',
                             'min', 'max'}
     _downsample_mapping = {'last': lambda x: x[-1],
                            'first': lambda x: x[0],
-                           'median': lambda x: np.median(x, 0),  # new in np 1.9
+                           # new in np 1.9
+                           'median': lambda x: np.median(x, 0),
                            'mean': lambda x: np.mean(x, 0),
                            'sum': lambda x: np.sum(x, 0),
                            'min': lambda x: np.min(x, 0),
@@ -218,7 +218,7 @@ class DataMuxer(object):
                 one of the following interpolation methods.
 
                 {None, 'linear', 'nearest', 'zero', 'slinear', 'quadratic',
-                'cubic'}
+                'cubic', 'ffill', 'bfill'}
 
                 None means that each time bin must have at least one value.
                 See scipy.interpolator for more on the other methods.
@@ -674,20 +674,26 @@ class DataMuxer(object):
             # at the center of the empty bins. If there is no rule, simply
             # leave some bins empty. Do not raise an error.
             if upsampling_possible and (upsample is not None):
-                dense_col = self._dataframe[name].dropna()
-                y = dense_col.values
-                x = self._dataframe['time'].reindex_like(dense_col).values
-                interpolator = interp1d(x, y, kind=upsample)
-                # Outside the limits of the data, the interpolator will fail.
-                # Leave any such entires empty.
-                is_safe = (bin_anchors > np.min(x)) & (bin_anchors < np.max(x))
-                safe_times = bin_anchors[is_safe]
-                safe_bins = index[is_safe]
-                interpolated_points = pd.Series(interpolator(safe_times),
-                                                index=safe_bins)
-                logger.debug("Interpolating to fill %d of %d empty bins in %s",
-                             len(safe_bins), (counts[name] == 0).sum(), name)
-                result[name]['val'].fillna(interpolated_points, inplace=True)
+                if upsample in ('ffill', 'bfill'):
+                    result[name]['val'].fillna(method=upsample, inplace=True)
+                else:
+                    dense_col = self._dataframe[name].dropna()
+                    y = dense_col.values
+                    x = self._dataframe['time'].reindex_like(dense_col).values
+                    interpolator = interp1d(x, y, kind=upsample)
+                    # Outside the limits of the data, the interpolator will
+                    # fail.  Leave any such entires empty.
+                    is_safe = ((bin_anchors > np.min(x)) &
+                               (bin_anchors < np.max(x)))
+                    safe_times = bin_anchors[is_safe]
+                    safe_bins = index[is_safe]
+                    interp_points = pd.Series(interpolator(safe_times),
+                                              index=safe_bins)
+                    logger.debug("Interpolating to fill %d of %d "
+                                 "empty bins in %s",
+                                 len(safe_bins), (counts[name] == 0).sum(),
+                                 name)
+                    result[name]['val'].fillna(interp_points, inplace=True)
 
             # Short-circuit if we are done.
             if not downsampling_needed:
