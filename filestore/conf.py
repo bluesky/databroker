@@ -13,8 +13,8 @@ def load_configuration(name, prefix, fields, fname=None):
 
     The precedence order is (highest priority last):
 
-    1. CONDA_ENV/etc/{name}.yaml (if CONDA_ETC_ env is defined)
-    2. /etc/{name}.yaml
+    1. CONDA_ENV/etc/{name}.yml (if CONDA_ETC_ env is defined)
+    2. /etc/{name}.yml
     3. ~/.config/{name}/connection.yml
     4. reading {PREFIX}_{FIELD} environmental variables
     5. reading from fname (if it exists)
