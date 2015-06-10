@@ -43,7 +43,7 @@ class NpyWriter(HandlerBase):
             resource_kwargs = dict()
         for k in resource_kwargs.keys():
             if k != 'mmap_mode':
-                raise ValueError("The only valid resource_kwargs key is 'mmaped_mode' "
+                raise ValueError("The only valid resource_kwargs key is 'mmap_mode' "
                                  "you passed in {}".format(k))
         self._f_custom = dict(resource_kwargs)
 
@@ -91,7 +91,7 @@ class NpyWriter(HandlerBase):
         return evl.datum_id
 
 
-def save_ndarray(data, base_path=None):
+def save_ndarray(data, base_path=None, filename=None):
     """
     Helper method to mindlessly save a numpy array to disk.
 
@@ -107,12 +107,18 @@ def save_ndarray(data, base_path=None):
         The base-path to use for saving files.  If not given
         default to `~/.fs_cache`.  Will add a sub-directory for
         each day in this path.
+
+    filename : str, optional
+        The name of the file to save to disk.  Defaults to a uuid4 if none is
+        given
     """
     if base_path is None:
         base_path = op.join(op.expanduser('~'), '.fs_cache',
                             str(datetime.date.today()))
+    if filename is None:
+        filename = str(uuid.uuid4())
     _make_sure_path_exists(base_path)
-    fpath = op.join(base_path, str(uuid.uuid4()) + '.npy')
+    fpath = op.join(base_path, filename + '.npy')
     with NpyWriter(fpath) as fout:
         eid = fout.add_data(data)
 
