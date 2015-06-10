@@ -43,7 +43,7 @@ class NpyWriter(HandlerBase):
             resource_kwargs = dict()
         for k in resource_kwargs.keys():
             if k != 'mmap_mode':
-                raise ValueError("The only valid resource_kwargs key is 'mmaped_mode' "
+                raise ValueError("The only valid resource_kwargs key is 'mmap_mode' "
                                  "you passed in {}".format(k))
         self._f_custom = dict(resource_kwargs)
 
