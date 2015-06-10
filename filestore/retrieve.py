@@ -217,9 +217,9 @@ def get_data(datum, handle_registry=None):
     datum : Datum
         Document identifying the data resource
 
-    get_handler_method : callable
-        A function which takes a fid and returns a handler.  This should
-        eventually be optional(?) and default to hitting the mongodb.
+    handle_registry : HandleRegistry or dict, optional
+        Mapping between spec <-> handler classes, if None, use
+        module-level registry
 
     Returns
     -------
