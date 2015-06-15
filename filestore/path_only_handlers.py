@@ -16,7 +16,7 @@ class AreaDetectorTiffHandlerPath(HandlerBase):
     def __init__(self, fpath, template, filename, frame_per_point=1):
         self._path = fpath
         self._fpp = frame_per_point
-        self._template = template.replace('_%6.6d', '*')
+        self._template = template.replace('_%6.6d', '_{frm:06d}')
         self._filename = self._template % (self._path, filename)
 
     def __call__(self, point_number):
@@ -24,4 +24,6 @@ class AreaDetectorTiffHandlerPath(HandlerBase):
         if stop > len(self._image_sequence):
             raise IntegrityError("Seeking Frame {0} out of {1} frames.".format(
                 stop, len(self._image_sequence)))
-        return list(self._image_sequence[start:stop])
+        slc = slice(start, stop)
+        return list(self._filename.format(frm=frm)
+                    for frm in range(*slc.indices(stop + 1)))
