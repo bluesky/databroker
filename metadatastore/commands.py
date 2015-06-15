@@ -63,8 +63,8 @@ def format_data_keys(data_key_dict):
     data_key_dict : dict
         The format that ophyd is sending to metadatastore
         {'data_key1': {
-            'source': source_value,
             'dtype': dtype_value,
+            'source': source_value,
             'shape': shape_value},
          'data_key2': {...}
         }

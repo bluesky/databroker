@@ -21,8 +21,8 @@ document_insertion_time = None
 
 
 def teardown():
+    pass
     mds_teardown()
-
 
 def setup():
     mds_setup()
