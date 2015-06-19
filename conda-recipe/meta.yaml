@@ -13,13 +13,9 @@ build:
   # and NumPy versions
   string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
-  entry_points:
-    - replay = replay.replay:main
-
 requirements:
   build:
     - python
-    - enaml [py2k]
     - numpy
     - six
 
@@ -28,10 +24,8 @@ requirements:
     - pandas
     - matplotlib
     - pyyaml
-    - enaml [py2k]
-    - xray-vision [py2k]
-    - scikit-xray [py2k]
-    - pims [py2k]
+    - scikit-xray
+    - pims
     - metadatastore
     - filestore
     - channelarchiver
@@ -50,10 +44,6 @@ test:
     - 'dataportal.sources'
     - 'dataportal.sources.dummy_sources'
     - 'dataportal.utils'
-    - 'replay'
-    - 'replay.muxer'  [py2k]
-    - 'replay.scalar' [py2k]
-    - 'replay.search' [py2k]
 
 about:
   home: https://github.com/NSLS-II/dataportal

@@ -9,12 +9,6 @@
 #
 # See https://nose.readthedocs.org/ for a detailed description of
 # these options.
-try:
-    import enaml.qt
-    del enaml
-except ImportError:
-    pass
-
 import nose
 from dataportal.testing.noseclasses import KnownFailure
 
