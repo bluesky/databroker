@@ -24,8 +24,8 @@ requirements:
     - pandas
     - matplotlib
     - pyyaml
-    - scikit-xray [py2k]
-    - pims [py2k]
+    - scikit-xray
+    - pims
     - metadatastore
     - filestore
     - channelarchiver
