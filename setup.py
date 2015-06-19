@@ -69,6 +69,4 @@ setup(
               'dataportal.sources', 'dataportal.sources.dummy_sources',
               'dataportal.utils', 'dataportal.scans',
               ],
-    package_data={'': ['*.enaml']},
-    include_package_data=True,
 )

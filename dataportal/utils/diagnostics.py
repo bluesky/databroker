@@ -18,7 +18,7 @@ def watermark():
     """
     packages = ['six', 'numpy', 'scipy', 'matplotlib', 'pandas', 'pims',
                 'pyyaml', 'metadatastore', 'filestore',
-                'channelarchiver', 'bubblegum']
+                'channelarchiver', 'xray_vision']
     result = OrderedDict()
     for package_name in packages:
         try:
@@ -29,17 +29,6 @@ def watermark():
         except Exception as err:
             version = "FAILED TO DETECT: {0}".format(err)
         result[package_name] = version
-
-    # enaml provides its version differently
-    try:
-        import enaml
-        from enaml.version import version_info
-        version = _make_version_string(version_info)
-    except ImportError:
-        version = None
-    except Exception as err:
-        version = "FAILED TO DETECT: {0}".format(err)
-    result['enaml'] = version
 
     # ...as does Python
     version_info = sys.version_info
