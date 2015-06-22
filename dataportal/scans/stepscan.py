@@ -8,10 +8,10 @@ class _StepScanClass(object):
     # You probably do not want to instantiate this; use
     # scans.StepScan instead.
     "Use the DataBroker interface to obtain step scan data as a DataFrame."
-
+    fill_events = True
     def __getitem__(self, val):
         headers = DataBroker[val]
-        return _step_scan_df(headers)
+        return _step_scan_df(headers, self.fill_events)
 
     def find_headers(cls, **kwargs):
         """Given search criteria, find Headers describing runs.
@@ -62,10 +62,10 @@ class _StepScanClass(object):
         >>> find_headers(data_key='motor1', start_time='2015-03-05')
         """
         headers = DataBroker.find_headers(**kwargs)
-        return _step_scan_df(headers)
+        return _step_scan_df(headers, cls.fill_events)
 
 
-def _step_scan_df(headers):
+def _step_scan_df(headers, fill_events):
     try:
         headers.items()
     except AttributeError:
@@ -94,6 +94,6 @@ def _step_scan_df(headers):
                              "must have the same data keys to be part "
                              "of the same StepScan.".format(
                                  repr(header), repr(headers[0])))
-    events = DataBroker.fetch_events(headers)
+    events = DataBroker.fetch_events(headers, fill=fill_events)
     dm = DataMuxer.from_events(events)
     return dm.to_sparse_dataframe()
