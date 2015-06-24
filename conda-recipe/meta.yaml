@@ -4,6 +4,8 @@ package:
 
 source:
   git_url: ../
+  patches:
+    - config.patch
 
 build:
   number: 1
@@ -28,6 +30,7 @@ requirements:
     - jsonschema
     - pims
     - tifffile
+    - boltons
 
 test:
   requires:
