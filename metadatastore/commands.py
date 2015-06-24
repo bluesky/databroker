@@ -345,7 +345,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
     (not stored, but exchanged) timestamps is optional. If not included,
     data is expected to include (value, timestamp) tuples.
     """
-    if set(data.keys()) != set(timestamps.keys()):
+    if timestamps is not None and set(data.keys()) != set(timestamps.keys()):
         raise ValueError("The fields in 'data' and 'timestamps' must match.")
     if timestamps is not None:
         # new Document exchange format
