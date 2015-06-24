@@ -321,7 +321,7 @@ class DataMuxer(object):
         return list(self.sources) + list(self._timestamps_as_data) + ['time']
 
     @classmethod
-    def from_events(cls, events, verbose=True):
+    def from_events(cls, events, verbose=False):
         """
         Create a DataMuxer from a list of Events.
 
@@ -335,7 +335,7 @@ class DataMuxer(object):
         instance.append_events(events, verbose)
         return instance
 
-    def append_events(self, events, verbose=True):
+    def append_events(self, events, verbose=False):
         """Add a list of events to the DataMuxer.
 
         Parameters
