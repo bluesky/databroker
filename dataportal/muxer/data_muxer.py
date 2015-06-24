@@ -314,11 +314,26 @@ class DataMuxer(object):
         self._stale = True
 
         self.plan = self.Planner(self)
+        self.convert_times = True
+        self._reference_time = None
+
+    @property
+    def reference_time(self):
+        return self._reference_time
+
+    @reference_time.setter
+    def reference_time(self, val):
+        self._reference_time = pd.Timestamp(val, unit='s')
 
     @property
     def columns(self):
         "The columns of DataFrames returned by methods that return DataFrames."
-        return list(self.sources) + list(self._timestamps_as_data) + ['time']
+        return set(self.sources) | self._time_columns
+
+    @property
+    def _time_columns(self):
+        ts_names = [name + '_timestamp' for name in self._timestamps_as_data]
+        return {'time'} | set(ts_names)
 
     @classmethod
     def from_events(cls, events):
@@ -455,7 +470,17 @@ class DataMuxer(object):
         if include_all_timestamps:
             raise NotImplementedError("TODO")
 
-        return self._dataframe.copy()
+        result = self._dataframe.copy()
+        for col_name in self._time_columns:
+            result[col_name] = self._maybe_convert_times(result[col_name])
+        return result
+
+    def _maybe_convert_times(self, data):
+        if self.convert_times:
+            if self.reference_time is None:
+                return pd.to_datetime(data, unit='s')
+            return pd.to_datetime(data, unit='s') - self.reference_time
+        return data  # no-op
 
     def include_timestamp_data(self, source_name):
         """Add the exact timing of a data source as a data column.
@@ -742,6 +767,21 @@ class DataMuxer(object):
 
         result = pd.concat(result, axis=1)  # one MultiIndexed DataFrame
         result.index.name = 'bin'
+
+        # Convert time timestamp or timedelta, depending on the state of
+        # self.convert_times and self.reference_time.
+        for col_name in self._time_columns:
+            if isinstance(result[col_name], pd.DataFrame):
+                subcols = result[col_name].columns
+                for subcol in subcols & {'max', 'min', 'val'}:
+                    result[(col_name, subcol)] = self._maybe_convert_times(
+                            result[(col_name, subcol)])
+                for subcol in subcols & {'std'}:
+                    result[(col_name, subcol)] = pd.to_timedelta(
+                            result[(col_name, subcol)], unit='s')
+            else:
+                result[col_name] = self._maybe_convert_times(
+                        result[col_name])
         return result
 
     def __getitem__(self, source_name):
