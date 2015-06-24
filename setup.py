@@ -18,7 +18,7 @@ def read(fname):
 
 setup(
     name='filestore',
-    version='0.1.0',
+    version='0.1.0.post0',
     license="BSD (3-clause)",
     url="https://github.com/NSLS-II/filestore",
     packages=['filestore', 'filestore.utils', 'filestore.readers'],
