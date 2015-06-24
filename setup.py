@@ -14,7 +14,7 @@ def read(fname):
 
 setup(
     name='metadatastore',
-    version='0.1.0',
+    version='0.1.0.post0',
     license="BSD (3-clause)",
     url="https://github.com/NSLS-II/metadatastore",
     packages=['metadatastore', 'metadatastore.test', 'metadatastore.utils',
