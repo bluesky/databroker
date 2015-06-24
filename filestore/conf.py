@@ -38,10 +38,11 @@ def load_configuration(name, prefix, fields, fname=None):
     conf : dict
         Dictionary keyed on ``fields`` with the values extracted
     """
-    filenames = [os.path.join('/etc', name + '.yml'),
-                 os.path.join(os.path.expanduser('~'), '.config',
-                              name, 'connection.yml'),
-                ]
+    filenames = [
+        os.path.join('/etc', name + '.yml'),
+        os.path.join(os.path.expanduser('~'), '.config',
+                     name, 'connection.yml'),
+        ]
     if 'CONDA_ETC_' in os.environ:
         filenames.insert(0, os.path.join(os.environ['CONDA_ETC_'],
                                          name + '.yml'))
