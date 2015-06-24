@@ -4,6 +4,8 @@ package:
 
 source:
   git_url: ../
+  patches:
+    - config.patch
 
 build:
   number: 0
@@ -25,6 +27,8 @@ requirements:
     - pyyaml
     - prettytable
     - humanize
+    - numpy
+    - pytz
 
 test:
   requires:
