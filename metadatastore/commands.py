@@ -315,7 +315,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
 
 @_ensure_connection
-def insert_event(descriptor, time, data, timestamps, seq_num, uid=None):
+def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
     """Create an event in metadatastore database backend
 
     Parameters
@@ -328,20 +328,31 @@ def insert_event(descriptor, time, data, timestamps, seq_num, uid=None):
     time : float
         The date/time as found at the client side when an event is
         created.
+    seq_num : int
+        Unique sequence number for the event. Provides order of an event in
+        the group of events
     data : dict
         Dictionary of measured values (or external references)
     timestamps : dict
         Dictionary of measured timestamps for each values, having the
         same keys as `data` above
-    seq_num : int
-        Unique sequence number for the event. Provides order of an event in
-        the group of events
     uid : str, optional
         Globally unique id string provided to metadatastore
+
+    Note
+    ----
+    In the immediate aftermath of a change to how Documents are exchanged
+    (not stored, but exchanged) timestamps is optional. If not included,
+    data is expected to include (value, timestamp) tuples.
     """
     if set(data.keys()) != set(timestamps.keys()):
         raise ValueError("The fields in 'data' and 'timestamps' must match.")
-    val_ts_tuple = _transform_data(data, timestamps)
+    if timestamps is not None:
+        # new Document exchange format
+        val_ts_tuple = _transform_data(data, timestamps)
+    else:
+        # old Document exchange format
+        val_ts_tuple = data
 
     # Allow caller to beg forgiveness rather than ask permission w.r.t
     # EventDescriptor creation.
