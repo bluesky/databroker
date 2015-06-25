@@ -4,7 +4,7 @@ from .sources import *
 
 __all__ = ['DataBroker', 'DataMuxer', 'StepScan', 'Images', 'SubtractedImages']
 logger = logging.getLogger(__name__)
-__version__ = 'v0.0.6.post0'
+__version__ = '0.1.0'
 
 
 # generally useful imports

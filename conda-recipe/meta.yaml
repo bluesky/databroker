@@ -33,6 +33,8 @@ requirements:
     - humanize
 
 test:
+  requires:
+    - nslsii_dev_configuration
   imports:
     - 'dataportal'
     - 'dataportal.api'
