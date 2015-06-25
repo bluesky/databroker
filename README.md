@@ -22,8 +22,7 @@ where
 
  - `metadatastore` can be any valid string 
  - `127.0.0.1` can be any IP/DNS name
- - `US/Eastern` can be any [of these timezone strings] (https://www.vmware
- .com/support/developer/vc-sdk/visdk400pubs/ReferenceGuide/timezone.html)
+ - `US/Eastern` can be any [of these timezone strings] (https://www.vmware.com/support/developer/vc-sdk/visdk400pubs/ReferenceGuide/timezone.html)
 
 This configuration information can live in up to four different places, as 
 defined in the docstring of the `load_configuration` function in
