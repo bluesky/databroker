@@ -13,7 +13,7 @@ except ImportError:
 
 setup(
     name='dataportal',
-    version='0.1.0',
+    version='0.1.0.post0',
     author='Brookhaven National Laboratory',
     packages=['dataportal', 'dataportal.api', 'dataportal.testing',
               'dataportal.examples',
