@@ -148,7 +148,8 @@ if __name__ == '__main__':
     run_start_uid = insert_run_start(scan_id=scan_id, time=ttime.time(),
                                      beamline_id='csx',
                                      beamline_config=b_config, custom=custom)
-    events = run(run_start=run_start_uid, sleep=sleep_time, make_run_stop=False)
+    events = run(run_start_uid=run_start_uid, sleep=sleep_time,
+                 make_run_stop=False)
     run_stop = insert_run_stop(run_start=run_start_uid, time=ttime.time(),
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))
