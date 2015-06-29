@@ -26,8 +26,8 @@ requirements:
     - pyyaml
     - scikit-xray
     - pims
-    - metadatastore
-    - filestore
+    - metadatastore >=0.1.0
+    - filestore >=0.1.0
     - channelarchiver
     - six
     - humanize
