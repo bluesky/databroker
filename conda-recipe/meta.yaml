@@ -20,7 +20,7 @@ requirements:
 
   run:
     - python
-    - mongoengine
+    - mongoengine ==0.8.7
     - h5py
     - numpy
     - six
