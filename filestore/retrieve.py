@@ -237,16 +237,21 @@ def get_data(eid, handle_registry=None):
         The data in ndarray form.
     """
 
-    if eid not in _DATUM_CACHE:
-        d_objs = Datum.objects.as_pymongo()
-        edoc = d_objs.get(datum_id=eid)
-        res = edoc['resource']
+    try:
+        datum = _DATUM_CACHE[eid]
+    except KeyError:
         keys = ['datum_kwargs', 'resource']
+        d_objs = Datum.objects.as_pymongo()
+        # find the current document
+        edoc = d_objs.get(datum_id=eid)
+        # save it for later
+        datum = {k: edoc[k] for k in keys}
+        # pull all datum which share this resource
+        res = edoc['resource']
         for dd in d_objs(resource=res):
             d_id = dd['datum_id']
             if d_id not in _DATUM_CACHE:
                 _DATUM_CACHE[d_id] = {k: dd[k] for k in keys}
 
-    datum = _DATUM_CACHE[eid]
     handler = get_spec_handler(datum['resource'], handle_registry)
     return handler(**datum['datum_kwargs'])
