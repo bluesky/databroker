@@ -116,5 +116,4 @@ def retrieve(eid):
     data : ndarray
         The requested data as a numpy array
     """
-    edoc = Datum.objects.get(datum_id=eid)
-    return _get_data(edoc)
+    return _get_data(eid)
