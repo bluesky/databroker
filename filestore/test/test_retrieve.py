@@ -39,48 +39,39 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 
-
-from filestore.odm_templates import Resource, Datum
-
 import filestore.retrieve as fsr
+import filestore.commands as fsc
+from filestore.utils.testing import fs_setup, fs_teardown
 import numpy as np
 from nose.tools import assert_true, assert_raises, assert_false
 
-from .t_utils import SynHandlerMod, SynHandlerEcho
+from filestore.test.t_utils import SynHandlerMod, SynHandlerEcho
 import uuid
 
 logger = logging.getLogger(__name__)
 
 
-mock_base = Resource(spec='syn-mod',
-                     resource_path='',
-                     resource_kwargs={'shape': (5, 7)})
+def setup():
+    fs_setup()
 
-mock_event = {n: Datum(resource=mock_base,
-                               datum_id=n,
-                               datum_kwargs={'n': n})
-                               for n in range(1, 3)}
+
+def teardown():
+    fs_teardown()
 
 
 def test_get_handler_global():
 
+    mock_base = dict(spec='syn-mod',
+                     resource_path='',
+                     resource_kwargs={'shape': (5, 7)})
+
+    res = fsc.insert_resource(**mock_base)
+
     with fsr.handler_context({'syn-mod': SynHandlerMod}):
 
-        datum = mock_base
-        handle = fsr.get_spec_handler(datum)
+        handle = fsr.get_spec_handler(res.id)
 
         assert_true(isinstance(handle, SynHandlerMod))
-
-
-def _help_test_data(event_doc):
-    data = fsr.get_data(event_doc, {'syn-mod': SynHandlerMod})
-
-    assert_true(np.all(data < event_doc.datum_id))
-
-
-def test_get_data():
-    for v in mock_event.values():
-        yield _help_test_data, v
 
 
 def test_context():

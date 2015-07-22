@@ -5,10 +5,18 @@ import six
 import logging
 from contextlib import contextmanager
 import boltons.cacheutils
+from .odm_templates import Resource, Datum
 
 logger = logging.getLogger(__name__)
 
+
+def _resource_on_miss(k):
+    res_objects = Resource.objects.as_pymongo()
+    return res_objects.get(id=k)
+
+_DATUM_CACHE = boltons.cacheutils.LRU(max_size=100000)
 _HANDLER_CACHE = boltons.cacheutils.LRU()
+_RESOURCE_CACHE = boltons.cacheutils.LRU(on_miss=_resource_on_miss)
 
 
 class HandlerBase(object):
@@ -174,8 +182,8 @@ def get_spec_handler(resource, handle_registry=None):
 
     Parameters
     ----------
-    resource : Resource
-        Resource document.
+    resource : ObjectId
+        ObjectId of a resource document
 
     handle_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
@@ -192,19 +200,21 @@ def get_spec_handler(resource, handle_registry=None):
 
     if handle_registry is None:
         handle_registry = _h_registry
-    spec = resource.spec
+    resource = _RESOURCE_CACHE[resource]
+
+    spec = resource['spec']
     handler = handle_registry[spec]
-    key = (str(resource.id), handler.__name__)
+    key = (str(resource['_id']), handler.__name__)
     if key in _HANDLER_CACHE:
         return _HANDLER_CACHE[key]
-    kwargs = resource.resource_kwargs
-    rpath = resource.resource_path
+    kwargs = resource['resource_kwargs']
+    rpath = resource['resource_path']
     ret = handler(rpath, **kwargs)
     _HANDLER_CACHE[key] = ret
     return ret
 
 
-def get_data(datum, handle_registry=None):
+def get_data(eid, handle_registry=None):
     """
     Given a document from the events collection, get the externally
     stored data.
@@ -214,8 +224,8 @@ def get_data(datum, handle_registry=None):
 
     Parameters
     ----------
-    datum : Datum
-        Document identifying the data resource
+    eid : str
+        The resource ID (as stored in MDS)
 
     handle_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
@@ -227,6 +237,26 @@ def get_data(datum, handle_registry=None):
         The data in ndarray form.
     """
 
-    kwargs = datum.datum_kwargs
-    handler = get_spec_handler(datum.resource, handle_registry)
-    return handler(**kwargs)
+    try:
+        datum = _DATUM_CACHE[eid]
+    except KeyError:
+        keys = ['datum_kwargs', 'resource']
+        d_objs = Datum.objects.as_pymongo()
+        # find the current document
+        edoc = d_objs.get(datum_id=eid)
+        # save it for later
+        datum = {k: edoc[k] for k in keys}
+        # pull all datum which share this resource
+        res = edoc['resource']
+        count = 0
+        for dd in d_objs(resource=res):
+            count += 1
+            d_id = dd['datum_id']
+            if d_id not in _DATUM_CACHE:
+                _DATUM_CACHE[d_id] = {k: dd[k] for k in keys}
+        if count > _DATUM_CACHE.max_size:
+            logger.warn("More datum in a resource than your "
+                        "datum cache can hold.")
+
+    handler = get_spec_handler(datum['resource'], handle_registry)
+    return handler(**datum['datum_kwargs'])
