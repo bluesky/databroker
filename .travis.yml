@@ -39,6 +39,7 @@ install:
   - conda install -n testenv --yes -c nikea mongoengine
   - source activate testenv
   - 'pip install coveralls'
+  - pip install codecov
   - 'pip install prettytable'
   - 'pip install humanize'
   - 'pip install boltons'
@@ -54,3 +55,4 @@ script:
 
 after_success:
   coveralls
+  codecov
