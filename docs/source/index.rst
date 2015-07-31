@@ -9,6 +9,7 @@
    public_api/index
    known_spec
    internal_api/index
+   FEP/index
 
 
 File Store is an interface to stored data. Here's how it works.
