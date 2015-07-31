@@ -1,8 +1,8 @@
-.. _MEP-index:
+.. _FEP-index:
 
-################################
-Matplotlib Enhancement Proposals
-################################
+###############################
+FileStore Enhancement Proposals
+###############################
 
 .. htmlonly::
 
