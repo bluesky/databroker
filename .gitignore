@@ -95,3 +95,9 @@ target/
 
 # sphinx docs
 generated/
+
+# ctags
+.tags*
+
+# spyder ide
+.spyderworkspace*
