@@ -139,6 +139,49 @@ New python API ::
 
        """
 
+   def insert_resource(spec, resource_root, resource_path, resource_kwargs=None):
+       """
+       Parameters
+       ----------
+
+       spec : str
+           spec used to determine what handler to use to open this
+           resource.
+
+       resource_path, resource_root : str or None
+           Url to the physical location of this resource
+
+       resource_kwargs : dict, optional
+           resource_kwargs name/value pairs of additional kwargs to be
+           passed to the handler to open this resource.
+
+       """
+
+   def retrieve(eid, root_preference=None)
+       """
+       Given a resource identifier return the data.
+
+       The root_preference allows control over which copy
+       of the data is used if there is more than one available.
+
+       Parameters
+       ----------
+       eid : str
+           The resource ID (as stored in MDS)
+
+       root_preference : list, optional
+           A list of preferred root locations to pull data from in
+	   descending order.
+
+	   If None, fall back to configurable default.
+
+       Returns
+       -------
+       data : ndarray
+           The requested data as a numpy array
+       """
+
+
 New DB schema::
 
 
@@ -162,12 +205,45 @@ New DB schema::
         """
 
         spec = StringField(required=True, unique=False)
-	root = StringField(required=True, unique=False)
         path = StringField(required=True, unique=False)
         kwargs = DictField(required=False)
         uid = StringField(required=True, unique=True)
 
         meta = {'indexes': ['-_id', 'resource_root'], 'db_alias': ALIAS}
+
+
+    class ResourceRoots(DynamicDocument):
+        """
+	Many to one mapping between Resource documents and chroot paths.
+
+	The idea is that the absolute path of a file contains two
+	parts, the root, which is set by details of how the file
+	system is mounted, and the relative path which is set by some
+	sort of semantics.  For example in the path ::
+
+	    /mnt/DATA/2015/05/06/my_data.h5
+
+	``/mnt/DATA/`` is the root and ``2015/05/06/my_data.h5`` is
+	the relative path.
+
+	In the case of a URL this would be ::
+
+	  http://data.nsls-ii.bnl.gov/xf11id/2015/05/06/my_data.h5
+
+	the root would be ``http://data.nsls-ii.bnl.gov/`` and the
+	relative path would be ``xf11id/2015/05/06/my_data.h5``
+
+	Parameters
+	----------
+	root : str
+	    The chroot of the resource.
+
+	resource_uid : str
+	    The uid of the resource this is associated with
+
+	"""
+       	root = StringField(required=True, unique=False)
+	resource_uid = StringField(required=True, unique=False)
 
 
     class File(Document):
