@@ -38,11 +38,20 @@ This module is for decorators related to testing.
 Much of this code is inspired by the code in matplotlib.  Exact copies
 are noted.
 """
-from skxray.testing.noseclasses import (KnownFailureTest,
-                                       KnownFailureDidNotFailTest)
-
 import nose
 from nose.tools import make_decorator
+
+
+# This code is copied from numpy
+class KnownFailureTest(Exception):
+    '''Raise this exception to mark a test as a known failing test.'''
+    pass
+
+
+# copied from matplotlib
+class KnownFailureDidNotFailTest(Exception):
+    '''Raise this exception to mark a test should have failed but did not.'''
+    pass
 
 
 def known_fail_if(cond):

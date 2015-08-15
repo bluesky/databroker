@@ -24,7 +24,6 @@ requirements:
     - pandas
     - matplotlib
     - pyyaml
-    - scikit-xray
     - pims
     - metadatastore >=0.1.0
     - filestore >=0.1.0
