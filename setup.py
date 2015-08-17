@@ -1,5 +1,6 @@
 import sys
 import warnings
+import versioneer
 
 
 try:
@@ -13,7 +14,8 @@ except ImportError:
 
 setup(
     name='dataportal',
-    version='0.1.0.post0',
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     author='Brookhaven National Laboratory',
     packages=['dataportal', 'dataportal.api', 'dataportal.testing',
               'dataportal.examples',
