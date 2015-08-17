@@ -6,6 +6,7 @@ except ImportError:
     except ImportError:
         from distutils.core import setup
 
+import versioneer
 import os
 
 
@@ -14,7 +15,8 @@ def read(fname):
 
 setup(
     name='metadatastore',
-    version='0.1.0.post0',
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     license="BSD (3-clause)",
     url="https://github.com/NSLS-II/metadatastore",
     packages=['metadatastore', 'metadatastore.test', 'metadatastore.utils',
