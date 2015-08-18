@@ -3,6 +3,9 @@ source=metadataStore
 [report]
 omit =
     metadataStore/test/*
+    # ignore _version.py and versioneer.py
+    .*version.*
+    *_version.py
 
 exclude_lines =
     def set_default
