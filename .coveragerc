@@ -11,6 +11,7 @@ omit =
     dataportal/__init__.py
     dataportal/tests/*
     dataportal/testing/*
+    *versioneer*
 
 exclude_lines =
     if __name__ == '__main__':
