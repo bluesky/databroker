@@ -1,0 +1,7 @@
+# metadatastore configuration
+# installed by xpd_configuration
+# DO NOT EDIT
+host: localhost
+database: datastore2
+port: 27017
+timezone: US/Eastern
