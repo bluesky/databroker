@@ -42,15 +42,16 @@ class RunStartHandler(tornado.web.RequestHandler):
     def get(self):
         """Query run_start documents"""
         query = utils._unpack_params(self)
-        doc = yield db.run_start.find_one(query)
-        utils._stringify_oid_fields(doc)
-        print(query, doc)
-        self.write(doc)
+        start = query.pop('range_floor')
+        stop = query.pop('range_ceil')
+        print(query)
+        cursor =  db.run_start.find(query)[start:stop]
+        while (yield cursor.fetch_next):
+            doc = cursor.next_object()
+            utils._stringify_oid_fields(doc)
+            self.write(doc)
+        self.finish()
 
-        #utils.Indexable(crsr)
-        #TODO: Run the query
-        #TODO: Slice the cursor
-        #TODO: Given request range, return documents as Json
 
 
     @tornado.web.asynchronous
@@ -60,10 +61,10 @@ class RunStartHandler(tornado.web.RequestHandler):
         # placeholder dummy!
         db = self.settings['db']
         data = json.loads(self.request.body)
+        #TODO: Add validation once database is implemented
         result = yield db.messages.insert({'msg': data})#async insert
 
 
-db = db_connect(database='cache', host='127.0.0.1', port=27017)
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([

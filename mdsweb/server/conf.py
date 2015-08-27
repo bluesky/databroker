@@ -1,7 +1,7 @@
 import os
 import yaml
 import logging
-__author__ = ['arkilic', 'edill']
+__author__ = 'edill'
 
 logger = logging.getLogger(__name__)
 

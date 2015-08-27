@@ -1,9 +1,7 @@
 __author__ = 'arkilic'
 import requests
 import simplejson
-
 #The client lives in the service for now. I will move it to separate repo once ready for alpha release
-
 
 data_dump = simplejson.dumps({'key':"arman"})
 r = requests.post("http://127.0.0.1:7777/run_start", data=data_dump)
@@ -32,7 +30,7 @@ def find_run_starts(**kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that a RunStart was created. See
         docs for `start_time` for examples.
-    beamline_id : str, optional
+    `beamline_id : str, optional
         String identifier for a specific beamline
     project : str, optional
         Project name
@@ -69,11 +67,19 @@ def find_run_starts(**kwargs):
     # 2. Generate the iterator for querying
     # 3. When next() is called, return the next set of documents
     # 4. If out of range, kill generator
-
-
-    print(kwargs)
-    r = requests.get("http://127.0.0.1:7777/run_start", params=simplejson.dumps(kwargs))
-
+    range_floor = 0
+    range_ceil = 50
+    query = kwargs
+    while(True):
+        query['range_floor'] = range_floor
+        query['range_ceil'] = range_ceil
+        r = requests.get("http://127.0.0.1:7777/run_start", params=simplejson.dumps(query))
+        if r:
+            yield r.content
+            range_ceil += 50
+            range_floor += 50
+        else:
+            break
 
 def find_run_stops():
     pass
@@ -117,4 +123,5 @@ def db_connect():
 def db_disconnect():
     pass
 
-find_run_starts()
+print(next(find_run_starts(owner='xf23id1')))
+

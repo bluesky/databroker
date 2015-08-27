@@ -56,8 +56,6 @@ def _stringify_oid_fields(document):
             document[k] = str(v)
 
 
-
-
 class Indexable(object):
     def __init__(self,it):
         self.it = iter(it)
