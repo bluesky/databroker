@@ -63,7 +63,8 @@ class RunStartHandler(tornado.web.RequestHandler):
         result = yield db.run_start.insert(data)#async insert
         self.finish()
 
-    class BeamlineConfigHandler(tornado.web.RequestHandler):
+
+class BeamlineConfigHandler(tornado.web.RequestHandler):
     """Handler for run_start insert and query operations"""
     @tornado.web.asynchronous
     @gen.coroutine
@@ -94,6 +95,6 @@ class RunStartHandler(tornado.web.RequestHandler):
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
-    (r'/run_start', RunStartHandler)], db=db)
+    (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler)], db=db)
 application.listen(7777)
 tornado.ioloop.IOLoop.instance().start()
