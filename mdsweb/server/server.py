@@ -43,7 +43,10 @@ class RunStartHandler(tornado.web.RequestHandler):
         """Query run_start documents"""
         query = utils._unpack_params(self)
         doc = yield db.run_start.find_one(query)
+        utils._stringify_oid_fields(doc)
         print(query, doc)
+
+
         #utils.Indexable(crsr)
         #TODO: Run the query
         #TODO: Slice the cursor
@@ -58,8 +61,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = json.loads(self.request.body)
         result = yield db.messages.insert({'msg': data})#async insert
-        utils.dumps(result)
-        print(result)
 
 
 db = db_connect(database='cache', host='127.0.0.1', port=27017)
