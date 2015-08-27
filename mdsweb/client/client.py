@@ -114,7 +114,21 @@ def find_beamline_configs(**kwargs):
     beamline_configs : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
-
+    range_floor = 0
+    range_ceil = 50
+    query = kwargs
+    while(True):
+        query['range_floor'] = range_floor
+        query['range_ceil'] = range_ceil
+        r = requests.get("http://127.0.0.1:7777/run_start", params=simplejson.dumps(query))
+        content = simplejson.loads(r.content)
+        if not content:
+            StopIteration()
+            break
+        else:
+            yield content
+            range_ceil += 50
+            range_floor += 50
 
 def find_event_descriptors():
     pass

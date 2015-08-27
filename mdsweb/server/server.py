@@ -47,7 +47,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        for d in docs: #something with to_list is odd. cannot do single line for here.
+        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
             utils._stringify_oid_fields(d)
         self.write(json.dumps(docs))
         self.finish()
@@ -60,8 +60,37 @@ class RunStartHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = json.loads(self.request.body)
         #TODO: Add validation once database is implemented
-        result = yield db.messages.insert({'msg': data})#async insert
+        result = yield db.run_start.insert(data)#async insert
         self.finish()
+
+    class BeamlineConfigHandler(tornado.web.RequestHandler):
+    """Handler for run_start insert and query operations"""
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def get(self):
+        # TODO: Add sort by time!
+        """Query run_start documents"""
+        query = utils._unpack_params(self)
+        start = query.pop('range_floor')
+        stop = query.pop('range_ceil')
+        cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
+            utils._stringify_oid_fields(d)
+        self.write(json.dumps(docs))
+        self.finish()
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def post(self):
+        """Insert a run_start document"""
+        # placeholder dummy!
+        db = self.settings['db']
+        data = json.loads(self.request.body)
+        #TODO: Add validation once database is implemented
+        result = yield db.beamline_config.insert(data)#async insert
+        self.finish()
+
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
