@@ -4,6 +4,7 @@ import tornado.web
 import simplejson as json
 import itertools
 import six
+import datetime
 from bson.objectid import ObjectId
 from bson.json_util import dumps
 __author__ = 'arkilic'
@@ -50,6 +51,8 @@ def _stringify_oid_fields(document):
     """
     for k, v in six.iteritems(document):
         if type(v) is ObjectId:
+            document[k] = str(v)
+        elif type(v) is datetime.datetime:
             document[k] = str(v)
 
 

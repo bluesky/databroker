@@ -45,7 +45,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         doc = yield db.run_start.find_one(query)
         utils._stringify_oid_fields(doc)
         print(query, doc)
-
+        self.write(doc)
 
         #utils.Indexable(crsr)
         #TODO: Run the query
