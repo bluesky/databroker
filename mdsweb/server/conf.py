@@ -1,7 +1,7 @@
-__author__ = 'arkilic'
 import os
 import yaml
 import logging
+__author__ = ['arkilic', 'edill']
 
 logger = logging.getLogger(__name__)
 
@@ -60,4 +60,4 @@ def load_configuration(name, prefix, fields):
     return config
 
 connection_config = load_configuration('metadatastore', 'MDS',
-                                       ['host', 'database', 'port', 'timezone'])
+                                       ['host', 'server', 'port', 'timezone'])
