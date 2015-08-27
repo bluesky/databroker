@@ -6,7 +6,7 @@ from tornado import gen
 import simplejson as json
 import pymongo
 import motor
-from mdsweb.server import utils
+from metadataservice.server import utils
 
 __author__ = 'arkilic'
 
