@@ -93,8 +93,37 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         self.finish()
 
 
+class RunStopHandler(tornado.web.RequestHandler):
+    """Handler for run_start insert and query operations"""
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def get(self):
+        # TODO: Add sort by time!
+        """Query run_start documents"""
+        query = utils._unpack_params(self)
+        start = query.pop('range_floor')
+        stop = query.pop('range_ceil')
+        cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
+            utils._stringify_oid_fields(d)
+        self.write(json.dumps(docs))
+        self.finish()
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def post(self):
+        """Insert a run_start document"""
+        # placeholder dummy!
+        db = self.settings['db']
+        data = json.loads(self.request.body)
+        #TODO: Add validation once database is implemented
+        result = yield db.run_stop.insert(data)#async insert
+        self.finish()
+
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
-    (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler)], db=db)
+    (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler),
+    (r'/run_stop', RunStopHandler)], db=db)
 application.listen(7777)
 tornado.ioloop.IOLoop.instance().start()
