@@ -4,7 +4,7 @@ import tornado.ioloop
 import tornado.web
 from tornado import gen
 import simplejson as json
-import six
+import pymongo
 import motor
 from mdsweb.server import utils
 
@@ -31,8 +31,8 @@ def db_connect(database ,host, port):
         Async server object
     """
     client = motor.MotorClient()
-    db = client[database]
-    return db
+    database = client[database]
+    return database
 
 
 class RunStartHandler(tornado.web.RequestHandler):
@@ -40,17 +40,16 @@ class RunStartHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
+        # TODO: Add sort by time!
         """Query run_start documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.run_start.find(query)[start:stop]
-        results = list()
-        while (yield cursor.fetch_next):
-            doc = cursor.next_object()
-            utils._stringify_oid_fields(doc)
-            results.append(doc)
-        self.write(json.dumps(results))
+        cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        for d in docs: #something with to_list is odd. cannot do single line for here.
+            utils._stringify_oid_fields(d)
+        self.write(json.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous

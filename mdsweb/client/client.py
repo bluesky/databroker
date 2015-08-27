@@ -87,8 +87,8 @@ def find_events():
 def find_last():
     pass
 
-def find_beamline_configs(**kwarg):
-        """Given search criteria, locate BeamlineConfig Documents.
+def find_beamline_configs(**kwargs):
+    """Given search criteria, locate BeamlineConfig Documents.
 
     Parameters
     ----------
@@ -113,7 +113,7 @@ def find_beamline_configs(**kwarg):
     -------
     beamline_configs : iterable of metadatastore.document.Document objects
     """
-
+    _format_time(kwargs)
 
 
 def find_event_descriptors():
