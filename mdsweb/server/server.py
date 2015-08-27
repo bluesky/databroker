@@ -44,15 +44,14 @@ class RunStartHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        print(query)
-        cursor =  db.run_start.find(query)[start:stop]
+        cursor = db.run_start.find(query)[start:stop]
+        results = list()
         while (yield cursor.fetch_next):
             doc = cursor.next_object()
             utils._stringify_oid_fields(doc)
-            self.write(doc)
+            results.append(doc)
+        self.write(json.dumps(results))
         self.finish()
-
-
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -63,8 +62,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = json.loads(self.request.body)
         #TODO: Add validation once database is implemented
         result = yield db.messages.insert({'msg': data})#async insert
-
-
+        self.finish()
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
