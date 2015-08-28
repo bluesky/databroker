@@ -88,7 +88,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a beamline_config document"""
         db = self.settings['db']
-        data = json.loads(self.request.body)
+        data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
         self.finish()
@@ -113,7 +113,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert an event_descriptor document"""
         db = self.settings['db']
-        data = json.loads(self.request.body)
+        data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.event_descriptor.insert(data)#async insert
         self.finish()
@@ -140,7 +140,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         """Insert a run_start document"""
         # placeholder dummy!
         db = self.settings['db']
-        data = json.loads(self.request.body)
+        data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_stop.insert(data)#async insert
         self.finish()
@@ -167,7 +167,7 @@ class EventHandler(tornado.web.RequestHandler):
         """Insert a run_start document"""
         # placeholder dummy!
         db = self.settings['db']
-        data = json.loads(self.request.body)
+        data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         bulk = db.event.initialize_ordered_bulk_op()
         for _ in data:
