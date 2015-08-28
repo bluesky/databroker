@@ -10,6 +10,9 @@ from metadataservice.server import utils
 
 __author__ = 'arkilic'
 
+# READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
+
+
 def db_connect(database ,host, port):
     """Helper function to deal with stateful connections to motor. Connection established lazily.
     Asycnc so do not treat like mongonengine connection pool.
