@@ -1,5 +1,7 @@
-__author__ = 'arkilic'
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 from metadataservice.client.client import *
+__author__ = 'arkilic'
 
 # data_dump = simplejson.dumps({'key':"arman"})
 # r = requests.post("http://127.0.0.1:7777/run_start", data=data_dump)
@@ -8,6 +10,7 @@ from metadataservice.client.client import *
 # else:
 #     print("Tanked", r.status_code, r.text)
 
+conf.connection_config['host'] = 'localhost'
 
 for i in find_run_starts(owner='xf231'):
     print(i)

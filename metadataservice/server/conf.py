@@ -1,7 +1,6 @@
 import os
 import yaml
 import logging
-__author__ = 'edill'
 
 logger = logging.getLogger(__name__)
 

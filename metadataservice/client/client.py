@@ -1,5 +1,8 @@
 import requests
 import simplejson
+import datetime
+from functools import wraps
+from metadataservice.client import conf
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 # The client lives in the service for now. I will move it to separate repo once ready for alpha release
@@ -8,6 +11,25 @@ import simplejson
 # TODO: Explore performance differences between requests and twisted... Requests is the easy option out based on my exp.
 
 
+def server_connect(host, port, protocol='http'):
+    # Do not gasp yet! I copied w/e mongoengine did for global connections
+    global _server_path
+    _server_path = protocol + '://' + host + ':' + str(port)
+    return _server_path
+
+def _ensure_connection(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        # TODO: Fix configuration
+        protocol = conf.connection_config['protocol']
+        host = conf.connection_config['host']
+        port = conf.connection_config['port']
+        server_connect(host=host, port=port, protocol=protocol)
+        return func(*args, **kwargs)
+    return inner
+
+
+@_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
     As we describe in design document, time here is strictly the time
@@ -67,7 +89,7 @@ def find_run_starts(**kwargs):
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        r = requests.get("http://127.0.0.1:7777/run_start", params=simplejson.dumps(query))
+        r = requests.get(_server_path + "/run_start", params=simplejson.dumps(query))
         content = simplejson.loads(r.content)
         if not content:
             StopIteration()
@@ -78,6 +100,7 @@ def find_run_starts(**kwargs):
             range_floor += 50
 
 
+@_ensure_connection
 def find_run_stops(**kwargs):
     """Given search criteria, locate RunStop Documents.
 
@@ -131,14 +154,17 @@ def find_run_stops(**kwargs):
             range_floor += 50
 
 
+@_ensure_connection
 def find_events():
     pass
 
 
+@_ensure_connection
 def find_last():
     pass
 
 
+@_ensure_connection
 def find_beamline_configs(**kwargs):
     """Given search criteria, locate BeamlineConfig Documents.
 
@@ -184,26 +210,40 @@ def find_beamline_configs(**kwargs):
             range_ceil += 50
             range_floor += 50
 
+
+@_ensure_connection
 def find_event_descriptors():
     pass
 
+@_ensure_connection
 def insert_event():
     pass
 
+
+@_ensure_connection
 def insert_event_descriptor():
     pass
 
+
+@_ensure_connection
 def insert_run_start():
     pass
 
+
+@_ensure_connection
 def insert_run_stop():
     pass
 
+
+@_ensure_connection
 def insert_beamline_config():
     pass
 
+
+@_ensure_connection
 def format_events():
     pass
+
 
 def format_data_keys():
     pass
@@ -286,12 +326,11 @@ def _normalize_human_friendly_time(val):
     return (val - epoch).total_seconds()
 
 
-
 # human friendly timestamp formats we'll parse
 _TS_FORMATS = [
     '%Y-%m-%d %H:%M:%S',
     '%Y-%m-%d %H:%M',  # these 2 are not as originally doc'd,
-    '%Y-%m-%d %H',     # but match previous pandas behavior
+    '%Y-%m-%d %H',  # but match previous pandas behavior
     '%Y-%m-%d',
     '%Y-%m',
     '%Y']
@@ -303,4 +342,6 @@ _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 # fill in the placeholder we left in the previous docstring
 _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-    )
+)
+
+
