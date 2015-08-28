@@ -73,7 +73,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         # TODO: Add sort by time!
-        """Query run_start documents"""
+        """Query beamline_config documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
@@ -87,12 +87,40 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        """Insert a run_start document"""
+        """Insert a beamline_config document"""
         # placeholder dummy!
         db = self.settings['db']
         data = json.loads(self.request.body)
         #TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
+        self.finish()
+
+class EventDescriptorHandler(tornado.web.RequestHandler):
+    """Handler for run_start insert and query operations"""
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def get(self):
+        # TODO: Add sort by time!
+        """Query event_descriptor documents"""
+        query = utils._unpack_params(self)
+        start = query.pop('range_floor')
+        stop = query.pop('range_ceil')
+        cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
+            utils._stringify_oid_fields(d)
+        self.write(json.dumps(docs))
+        self.finish()
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def post(self):
+        """Insert an event_descriptor document"""
+        # placeholder dummy!
+        db = self.settings['db']
+        data = json.loads(self.request.body)
+        #TODO: Add validation once database is implemented
+        result = yield db.event_descriptor.insert(data)#async insert
         self.finish()
 
 
