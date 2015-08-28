@@ -3,8 +3,9 @@ import simplejson
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 # The client lives in the service for now. I will move it to separate repo once ready for alpha release
-# TODO: Add context decorator that handles which server to connect. Unlike mongo, this is easy and clean
-# TODO: Find a way to handle auth.
+# TODO: Add context decorator that handles which server to connect. Unlike mongoengine, this is easy and clean
+# TODO: Find a way to handle auth with each request.
+# TODO: Explore performance differences between requests and twisted... Requests is the easy option out based on my exp.
 
 
 def find_run_starts(**kwargs):
@@ -58,12 +59,12 @@ def find_run_starts(**kwargs):
     >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
     >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
     ...                stop_time=time.time())
-
     """
+    _format_time(kwargs)
     range_floor = 0
     range_ceil = 50
     query = kwargs
-    while(True):
+    while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get("http://127.0.0.1:7777/run_start", params=simplejson.dumps(query))
@@ -112,10 +113,11 @@ def find_run_stops(**kwargs):
         We need lists to be able to JSON encode multiple dicts. We can return an iterator of
          iterator?
     """
+    _format_time(kwargs)
     range_floor = 0
     range_ceil = 50
     query = kwargs
-    while(True):
+    while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get("http://127.0.0.1:7777/run_stop", params=simplejson.dumps(query))
@@ -128,11 +130,14 @@ def find_run_stops(**kwargs):
             range_ceil += 50
             range_floor += 50
 
+
 def find_events():
     pass
 
+
 def find_last():
     pass
+
 
 def find_beamline_configs(**kwargs):
     """Given search criteria, locate BeamlineConfig Documents.
@@ -158,13 +163,15 @@ def find_beamline_configs(**kwargs):
 
     Returns
     -------
-    beamline_configs : iterable of metadatastore.document.Document objects
+    content : iterable of list of json documents
+        We need lists to be able to JSON encode multiple dicts. We can return an iterator of
+         iterator?
     """
     _format_time(kwargs)
     range_floor = 0
     range_ceil = 50
     query = kwargs
-    while(True):
+    while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get("http://127.0.0.1:7777/run_start", params=simplejson.dumps(query))
