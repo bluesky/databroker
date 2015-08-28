@@ -316,12 +316,40 @@ def find_event_descriptors(**kwargs):
 
 @_ensure_connection
 def insert_event():
-    pass
-
+    pass    
 
 @_ensure_connection
-def insert_event_descriptor():
-    pass
+def insert_event_descriptor(**kwargs):
+    """ Create an event_descriptor in metadatastore server backend
+
+    Parameters
+    ----------
+    run_start : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore RunStart document
+        if str:
+            uid of RunStart object to associate with this record
+    data_keys : dict
+        Provides information about keys of the data dictionary in
+        an event will contain
+    time : float
+        The date/time as found at the client side when an event
+        descriptor is created.
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    custom : dict, optional
+        Any additional information that data acquisition code/user wants
+        to append to the EventDescriptor.
+
+    Returns
+    -------
+    ev_desc : EventDescriptor
+        The document added to the collection.
+
+    """
+    payload = json_util.dumps(kwargs)
+    r = requests.post(_server_path + '/run_stop', data=payload)
+    return r.status_code
 
 
 @_ensure_connection
@@ -372,14 +400,66 @@ def insert_run_start(time, scan_id, uid, custom={}):
     payload = json_util.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
     return r.status_code
-@_ensure_connection
-def insert_run_stop():
-    pass
 
 
 @_ensure_connection
-def insert_beamline_config():
-    pass
+def insert_run_stop(**kwargs):
+    """ Provide an end to a sequence of events. Exit point for an
+    experiment's run.
+
+    Parameters
+    ----------
+    run_start : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore RunStart document
+        if str:
+            uid of RunStart object to associate with this record
+    time : float
+        The date/time as found at the client side when an event is
+        created.
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    exit_status : {'success', 'abort', 'fail'}, optional
+        indicating reason run stopped, 'success' by default
+    reason : str, optional
+        more detailed exit status (stack trace, user remark, etc.)
+    custom : dict, optional
+        Any additional information that data acquisition code/user wants
+        to append to the Header at the end of the run.
+
+    Returns
+    -------
+    run_stop : mongoengine.Document
+        Inserted mongoengine object
+    """
+    payload = json_util.dumps(kwargs)
+    r = requests.post(_server_path + '/run_stop', data=payload)
+    return r.status_code
+
+
+@_ensure_connection
+def insert_beamline_config(**kwargs):
+    """ Create a beamline_config  in metadatastore server backend
+
+    Parameters
+    ----------
+    config_params : dict
+        Name/value pairs that indicate beamline configuration
+        parameters during capturing of data
+    time : float
+        The date/time as found at the client side when the
+        beamline configuration is created.
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+
+    Returns
+    -------
+    blc : BeamlineConfig
+        The document added to the collection
+    """
+    payload = json_util.dumps(kwargs)
+    r = requests.post(_server_path + '/beamline_config', data=payload)
+    return r.status_code
 
 
 @_ensure_connection

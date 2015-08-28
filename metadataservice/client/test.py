@@ -23,4 +23,4 @@ rs = find_run_starts(owner='xf23id1')
 next(rs)
 print('done')
 
-insert_run_start(time=1252, scan_id=0, uid='a', custom={'arman':1})
+insert_beamline_config(time=1252, scan_id=0, uid='r', custom={'arman':1})
