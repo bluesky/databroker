@@ -325,10 +325,52 @@ def insert_event_descriptor():
 
 
 @_ensure_connection
-def insert_run_start():
-    pass
+# def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
+#                      owner=None, group=None, project=None, custom=None):
+def insert_run_start(time, scan_id, uid, custom={}):
+    """Provide a head for a sequence of events. Entry point for an
+    experiment's run.
 
+    Parameters
+    ----------
+    time : float
+        The date/time as found at the client side when an event is
+        created.
+    scan_id : int
+        Unique scan identifier visible to the user and data analysis
+    beamline_id : str
+        Beamline String identifier. Not unique, just an indicator of
+        beamline code for multiple beamline systems
+    beamline_config : metadatastore.documents.Document or str
+        if Document:
+            The metadatastore beamline config document
+        if str:
+            uid of beamline config corresponding to a given run
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+    owner : str, optional
+        A username associated with the entry
+    group : str, optional
+        A group (e.g., UNIX group) associated with the entry
+    project : str, optional
+        Any project name to help users locate the data
+    custom: dict, optional
+        Any additional information that data acquisition code/user wants
+        to append to the Header at the start of the run.
 
+    """
+    # TODO: See what @tacaswell's pr has done for this...
+    # 1. Get all related documents
+    # 2. Get their uids?
+    # 3. Convert to dict
+    # 4. validate
+    # 5. json encode
+    # 6. across the wire
+    
+    data = {'time': time, 'scan_id': scan_id, 'uid': uid}
+    data.update(custom)
+    r = requests.get(_server_path + '/run_start', data=simplejson.dumps(data))
+    return r.status_code
 @_ensure_connection
 def insert_run_stop():
     pass

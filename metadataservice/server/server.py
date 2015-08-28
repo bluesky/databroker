@@ -60,9 +60,10 @@ class RunStartHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a run_start document"""
         db = self.settings['db']
-        data = json.loads(self.request.body)
+        print(json_util.loads(self.request.body))
+#         data = json_util.loads()
         #TODO: Add validation once database is implemented
-        result = yield db.run_start.insert(data)#async insert
+#         result = yield db.run_start.insert(data)#async insert
         self.finish()
 
 
@@ -182,7 +183,5 @@ application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler),
     (r'/run_stop', RunStopHandler), (r'/event_descriptor',EventDescriptorHandler),
     (r'/event',EventHandler)], db=db)
-print("Starting up server...")
 application.listen(7770)
-print("Server Started on port 7770")
 tornado.ioloop.IOLoop.instance().start()
