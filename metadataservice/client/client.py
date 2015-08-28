@@ -8,11 +8,12 @@ from metadataservice.client import conf
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 # The client lives in the service for now. I will move it to separate repo once ready for alpha release
 
-# TODO: Find a way to handle auth with each request.
+# TODO: Find a way to handle auth with each request. Policy decision, tell me what to do people
 
 
 def server_connect(host, port, protocol='http'):
     # Do not gasp yet! I copied w/e mongoengine did for global connections
+    # Tbh, works pretty neatly and it is quite intuitive
     global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
     return _server_path
@@ -21,7 +22,7 @@ def server_connect(host, port, protocol='http'):
 def _ensure_connection(func):
     @wraps(func)
     def inner(*args, **kwargs):
-        # TODO: Fix load_configuration
+        # TODO: Fix load_configuration()
         protocol = conf.connection_config['protocol']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
@@ -155,7 +156,7 @@ def find_run_stops(**kwargs):
 
 
 @_ensure_connection
-def find_events():
+def find_events(**kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters
@@ -190,6 +191,22 @@ def find_events():
         We need lists to be able to JSON encode multiple dicts. We can return an iterator of
          iterator?
     """
+    _format_time(kwargs)
+    range_floor = 0
+    range_ceil = 1000
+    query = kwargs
+    while True:
+        query['range_floor'] = range_floor
+        query['range_ceil'] = range_ceil
+        r = requests.get(_server_path + "/event", params=simplejson.dumps(query))
+        content = json_util.loads(r.text)
+        if not content:
+            StopIteration()
+            break
+        else:
+            yield content
+            range_ceil += 1000
+            range_floor += 1000
 
 
 @_ensure_connection

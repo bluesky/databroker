@@ -59,7 +59,6 @@ class RunStartHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self):
         """Insert a run_start document"""
-        # placeholder dummy!
         db = self.settings['db']
         data = json.loads(self.request.body)
         #TODO: Add validation once database is implemented
@@ -79,8 +78,6 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
-            utils._stringify_oid_fields(d)
         self.write(json_util.dumps(docs))
         self.finish()
 
@@ -107,8 +104,6 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
-            utils._stringify_oid_fields(d)
         self.write(json_util.dumps(docs))
         self.finish()
 
@@ -116,7 +111,6 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self):
         """Insert an event_descriptor document"""
-        # placeholder dummy!
         db = self.settings['db']
         data = json.loads(self.request.body)
         #TODO: Add validation once database is implemented
@@ -136,8 +130,6 @@ class RunStopHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        # for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
-        #     utils._stringify_oid_fields(d)
         self.write(json_util.dumps(docs))
         self.finish()
 
@@ -152,9 +144,29 @@ class RunStopHandler(tornado.web.RequestHandler):
         result = yield db.run_stop.insert(data)#async insert
         self.finish()
 
+
+class EventHandler(tornado.web.RequestHandler):
+    """Handler for run_start insert and query operations"""
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def get(self):
+        # TODO: Add sort by time!
+        """Query event documents"""
+        query = utils._unpack_params(self)
+        start = query.pop('range_floor')
+        stop = query.pop('range_ceil')
+        cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        self.write(json_util.dumps(docs))
+        self.finish()
+
+
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler),
-    (r'/run_stop', RunStopHandler), (r'/event_descriptor',EventDescriptorHandler)], db=db)
-application.listen(7779)
+    (r'/run_stop', RunStopHandler), (r'/event_descriptor',EventDescriptorHandler),
+    (r'/event',EventHandler)], db=db)
+print("Starting up server...")
+application.listen(7770)
+print("Server Started on port 7770")
 tornado.ioloop.IOLoop.instance().start()

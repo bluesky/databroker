@@ -16,3 +16,7 @@ conf.connection_config['host'] = 'localhost'
 rs = find_run_starts(owner='xf23id1')
 for r in rs:
     print(r)
+print('done')
+
+ev = find_events()
+# print(next(ev))
