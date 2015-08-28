@@ -159,7 +159,23 @@ class EventHandler(tornado.web.RequestHandler):
         docs = yield cursor.to_list(None)
         self.write(json_util.dumps(docs))
         self.finish()
-
+    
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def post(self):
+        """Insert a run_start document"""
+        # placeholder dummy!
+        db = self.settings['db']
+        data = json.loads(self.request.body)
+        #TODO: Add validation once database is implemented
+        bulk = db.event.initialize_ordered_bulk_op()
+        for _ in data:
+            bulk.insert(_)
+        try:
+            yield bulk.execute() #add timeout etc.!
+        except pymongo.errors.BulkWriteError as err:
+            print(err)
+        self.finish()
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
