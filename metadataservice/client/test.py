@@ -2,25 +2,23 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from metadataservice.client.client import *
 
-__author__ = 'arkilic'
+from bson import json_util
 
 
 
-data_dump = json_util.dumps({'arman': 'val'})
-r = requests.post("http://127.0.0.1:7770/run_start", data=data_dump)
+data =[ {'uid': 'c5ae4c83-89dd-46ed-bb61-09faabaf9a07', 'project': '', 'group': '', 'owner': 'xf23id1' , 'beamline_id': 'xf23id', 'time': 1435547475.537353, 'time_as_datetime': datetime.datetime(2015, 6, 28, 23, 11, 15, 537000), 'scan_id': 11271, 'sample': {}}]
+
+d=json_util.dumps(data)
+print(d)
+r = requests.post("http://127.0.0.1:7770/run_start",data = d) 
 if r.status_code == 200:
     print("Success")
 else:
     print("Tanked", r.status_code, r.text)
- 
+  
 # conf.connection_config['host'] = 'localhost'
 # 
-# rs = find_run_starts(owner='xf23id1')
-# for r in rs:
-#     print(r)
-# print('done')
-# 
-# 
-# # status = insert_run_start(1235353.6353, scan_id=0, 
-# #                           uid='agad353agad3531', custom={'trial': 1})
-# # print(status)
+conf.connection_config['port'] = 7770
+rs = find_run_starts(owner='xf23id1')
+next(rs)
+print('done')

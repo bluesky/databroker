@@ -7,6 +7,8 @@ import simplejson as json
 from bson import json_util
 import pymongo
 import motor
+import tornado.escape
+
 from metadataservice.server import utils
 
 __author__ = 'arkilic'
@@ -60,10 +62,10 @@ class RunStartHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a run_start document"""
         db = self.settings['db']
-        print(json_util.loads(self.request.body))
-#         data = json_util.loads()
+        data = json_util.loads(self.request.body.decode("utf-8"))
+        print(data[0])
         #TODO: Add validation once database is implemented
-#         result = yield db.run_start.insert(data)#async insert
+        result = yield db.run_start.insert(data[0])#async insert
         self.finish()
 
 
@@ -86,7 +88,6 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self):
         """Insert a beamline_config document"""
-        # placeholder dummy!
         db = self.settings['db']
         data = json.loads(self.request.body)
         #TODO: Add validation once database is implemented
