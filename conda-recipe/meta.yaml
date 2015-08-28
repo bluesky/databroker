@@ -4,8 +4,6 @@ package:
 
 source:
   git_url: ../
-  patches:
-    - setup_py.patch
 build:
   number: 0
 
@@ -30,21 +28,22 @@ requirements:
     - channelarchiver
     - six
     - humanize
+    - scikit-image
 
 test:
   requires:
     - nslsii_dev_configuration
   imports:
-    - 'dataportal'
-    - 'dataportal.api'
-    - 'dataportal.testing'
-    - 'dataportal.examples'
-    - 'dataportal.examples.sample_data'
-    - 'dataportal.broker'
-    - 'dataportal.muxer'
-    - 'dataportal.sources'
-    - 'dataportal.sources.dummy_sources'
-    - 'dataportal.utils'
+    - dataportal
+    - dataportal.api
+    - dataportal.testing
+    - dataportal.examples
+    - dataportal.examples.sample_data
+    - dataportal.broker
+    - dataportal.muxer
+    - dataportal.sources
+    - dataportal.sources.dummy_sources
+    - dataportal.utils
 
 about:
   home: https://github.com/NSLS-II/dataportal
