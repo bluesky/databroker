@@ -78,8 +78,22 @@ def find_run_starts(**kwargs):
             range_ceil += 50
             range_floor += 50
 
-def find_run_stops():
-    pass
+def find_run_stops(**kwargs):
+    range_floor = 0
+    range_ceil = 50
+    query = kwargs
+    while(True):
+        query['range_floor'] = range_floor
+        query['range_ceil'] = range_ceil
+        r = requests.get("http://127.0.0.1:7777/run_stop", params=simplejson.dumps(query))
+        content = simplejson.loads(r.content)
+        if not content:
+            StopIteration()
+            break
+        else:
+            yield content
+            range_ceil += 50
+            range_floor += 50
 
 def find_events():
     pass
