@@ -63,9 +63,8 @@ class RunStartHandler(tornado.web.RequestHandler):
         """Insert a run_start document"""
         db = self.settings['db']
         data = json_util.loads(self.request.body.decode("utf-8"))
-        print(data[0])
         #TODO: Add validation once database is implemented
-        result = yield db.run_start.insert(data[0])#async insert
+        result = yield db.run_start.insert(data)#async insert
         self.finish()
 
 

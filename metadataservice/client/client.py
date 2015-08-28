@@ -369,7 +369,8 @@ def insert_run_start(time, scan_id, uid, custom={}):
     
     data = {'time': time, 'scan_id': scan_id, 'uid': uid}
     data.update(custom)
-    r = requests.get(_server_path + '/run_start', data=simplejson.dumps(data))
+    payload = json_util.dumps(data)
+    r = requests.post(_server_path + '/run_start', data=payload)
     return r.status_code
 @_ensure_connection
 def insert_run_stop():
