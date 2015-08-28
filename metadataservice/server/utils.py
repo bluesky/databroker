@@ -6,7 +6,6 @@ import itertools
 import six
 import datetime
 from bson.objectid import ObjectId
-from bson.json_util import dumps
 __author__ = 'arkilic'
 
 
@@ -54,22 +53,3 @@ def _stringify_oid_fields(document):
             document[k] = str(v)
         elif type(v) is datetime.datetime:
             document[k] = str(v)
-
-
-class Indexable(object):
-    def __init__(self,it):
-        self.it = iter(it)
-        self.already_computed=[]
-    def __iter__(self):
-        for elt in self.it:
-            self.already_computed.append(elt)
-            yield elt
-    def __getitem__(self,index):
-        try:
-            max_idx=index.stop
-        except AttributeError:
-            max_idx=index
-        n=max_idx-len(self.already_computed)+1
-        if n>0:
-            self.already_computed.extend(itertools.islice(self.it,n))
-        return self.already_computed[index]

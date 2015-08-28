@@ -4,6 +4,7 @@ import tornado.ioloop
 import tornado.web
 from tornado import gen
 import simplejson as json
+from bson import json_util
 import pymongo
 import motor
 from metadataservice.server import utils
@@ -12,6 +13,7 @@ __author__ = 'arkilic'
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 
+# TODO: Write your own json encoder/decoder that handles ObjectId and datetime.datetime neatly!!!!
 
 def db_connect(database ,host, port):
     """Helper function to deal with stateful connections to motor. Connection established lazily.
@@ -50,9 +52,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
-            utils._stringify_oid_fields(d)
-        self.write(json.dumps(docs))
+        self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -81,7 +81,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         docs = yield cursor.to_list(None)
         for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
             utils._stringify_oid_fields(d)
-        self.write(json.dumps(docs))
+        self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -109,7 +109,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         docs = yield cursor.to_list(None)
         for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
             utils._stringify_oid_fields(d)
-        self.write(json.dumps(docs))
+        self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -136,9 +136,9 @@ class RunStopHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
-            utils._stringify_oid_fields(d)
-        self.write(json.dumps(docs))
+        # for d in docs: #something with to_list is odd. cannot do single line for loop. will investigate
+        #     utils._stringify_oid_fields(d)
+        self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -155,6 +155,6 @@ class RunStopHandler(tornado.web.RequestHandler):
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler),
-    (r'/run_stop', RunStopHandler)], db=db)
-application.listen(7777)
+    (r'/run_stop', RunStopHandler), (r'/event_descriptor',EventDescriptorHandler)], db=db)
+application.listen(7779)
 tornado.ioloop.IOLoop.instance().start()

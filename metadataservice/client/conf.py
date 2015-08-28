@@ -63,5 +63,5 @@ def load_configuration(name, prefix, fields):
 # connection_config = load_configuration('metadatastore', 'MDS',
 #                                        ['host', 'server', 'port', 'timezone'])
 
-connection_config = {'host': '127.0.0.1', 'port': 7777, 'protocol': 'http'}
+connection_config = {'host': '127.0.0.1', 'port': 7779, 'protocol': 'http'}
 

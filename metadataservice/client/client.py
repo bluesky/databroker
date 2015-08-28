@@ -2,13 +2,13 @@ import requests
 import simplejson
 import datetime
 from functools import wraps
+from bson import json_util
 from metadataservice.client import conf
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 # The client lives in the service for now. I will move it to separate repo once ready for alpha release
-# TODO: Add context decorator that handles which server to connect. Unlike mongoengine, this is easy and clean
+
 # TODO: Find a way to handle auth with each request.
-# TODO: Explore performance differences between requests and twisted... Requests is the easy option out based on my exp.
 
 
 def server_connect(host, port, protocol='http'):
@@ -91,7 +91,7 @@ def find_run_starts(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start", params=simplejson.dumps(query))
-        content = simplejson.loads(r.content)
+        content = json_util.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -144,7 +144,7 @@ def find_run_stops(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_stop", params=simplejson.dumps(query))
-        content = simplejson.loads(r.content)
+        content = json_util.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -234,7 +234,7 @@ def find_beamline_configs(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/beamline_config", params=simplejson.dumps(query))
-        content = simplejson.loads(r.content)
+        content = json_util.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -287,7 +287,7 @@ def find_event_descriptors(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + '/event_descriptor', params=simplejson.dumps(query))
-        content = simplejson.loads(r.content)
+        content = json_util.loads(r.text)
         if not content:
             StopIteration()
             break

@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from metadataservice.client.client import *
+
 __author__ = 'arkilic'
 
 # data_dump = simplejson.dumps({'key':"arman"})
@@ -12,8 +13,6 @@ __author__ = 'arkilic'
 
 conf.connection_config['host'] = 'localhost'
 
-for i in find_run_starts(owner='xf231'):
-    print(i)
-
-for j in find_run_stops(uid="15972b46-721f-4e21-bd28-b25b77de343c"):
-    print(j)
+rs = find_run_starts(owner='xf23id1')
+for r in rs:
+    print(r)
