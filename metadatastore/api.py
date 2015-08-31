@@ -5,7 +5,7 @@ from .commands import (find_events, find_event_descriptors,
 # Data insertion
 from .commands import (insert_event, insert_event_descriptor, insert_run_start,
                        insert_beamline_config, insert_run_stop,
-                       EventDescriptorIsNoneError, format_events,
+                       EventDescriptorIsNoneError,
                        format_data_keys, db_connect, db_disconnect)
 
 # safe metadatastore objects
