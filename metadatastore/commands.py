@@ -535,33 +535,44 @@ def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
                  descriptor.uid)
     return uid
 
+BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
+'timestamps do not match:\n data: {}\ntimestamps:{}"""
+
+
 @_ensure_connection
-def bulk_insert_events(event_descriptor, events, validate=True):
+def bulk_insert_events(event_descriptor, events, validate=False):
     """Bulk insert many events
 
     Parameters
     ----------
     event_descriptor : str
-        The event descriptor that these events are associated with
+        The event descriptor uid that these events are associated with
 
     events : iterable
        iterable of dicts matching the bs.Event schema
 
     """
-    descriptor = _get_mongo_document(event_descriptor, EventDescriptor)
+
+    descriptor = event_desc_given_uid(event_descriptor)
+    desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
+
     def event_factory():
         for ev in events:
+            # check keys, this could be expensive
             if validate:
                 if ev['data'].keys() != ev['timestamps'].keys():
-                    raise ValueError("Event documents are malformed, the "
-                        "keys on 'data' and 'timestamps' do not match:\n"
-                        "data: {}\ntimestamps:{}".format(
-                            ev['data'].keys(), ev['timestamps'].keys()))
+                    raise ValueError(
+                        BAD_KEYS_FMT.format(ev['data'].keys(),
+                                            ev['timestamps'].keys()))
 
+            # transform the data to the storage format
             val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
-            ev_out = Event(descriptor_id=descriptor, uid=ev['uid'],
+            # create the mongoengine object, do this by hand if it goes
+            # faster
+            ev_out = Event(descriptor_id=desc_oid, uid=ev['uid'],
                            data=val_ts_tuple, time=ev['time'],
                            seq_num=ev['seq_num'])
+            # if validating, use ME to validate
             if validate:
                 ev_out.validate()
             yield ev_out
