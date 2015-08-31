@@ -1,22 +1,30 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import six
 from functools import wraps
 from itertools import count
-from .odm_templates import (RunStart, BeamlineConfig, RunStop,
-                            EventDescriptor, Event, DataKey, ALIAS)
-from .document import Document
+import uuid
 import datetime
 import logging
-from metadatastore import conf
+
+import boltons.cacheutils
+import pytz
+
+import bson
+from bson import ObjectId
+
 from mongoengine import connect,  ReferenceField
 import mongoengine.connection
 
-import datetime
-import pytz
+from . import conf
+from .odm_templates import (RunStart, BeamlineConfig, RunStop,
+                            EventDescriptor, Event, DataKey, ALIAS)
+# new version of Document
+from . import doc
+# old version of document
+from .document import Document
 
-import uuid
-from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +33,19 @@ __all__ = ['insert_beamline_config', 'insert_run_start', 'insert_event',
            'insert_run_stop', 'insert_event_descriptor', 'find_run_stops',
            'find_beamline_configs', 'find_event_descriptors', 'find_last',
            'find_events', 'find_run_starts', 'db_connect', 'db_disconnect',
-           'format_data_keys', 'format_events', 'reorganize_event']
+           'reorganize_event']
+
+# process local caches of 'header' documents these are storing object indexed
+# on Objected because that is what the reference fields in mongo are
+# implemented as.   Should move to uids asap
+_RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+_RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+_EVENTDESC_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+
+# never drop these
+_RUNSTART_UID_to_OID_MAP = dict()
+_RUNSTOP_UID_to_OID_MAP = dict()
+_EVENTDESC_UID_to_OID_MAP = dict()
 
 
 def _ensure_connection(func):
@@ -37,6 +57,157 @@ def _ensure_connection(func):
         db_connect(database=database, host=host, port=port)
         return func(*args, **kwargs)
     return inner
+
+
+def _cache_runstart(rs):
+    # TODO actually do this de-reference
+    rs.pop('beamline_configs_id', None)
+    oid = rs.pop('_id')
+    rs = doc.Document('RunStart', rs)
+
+    # populate both caches
+    _RUNSTART_CACHE_OID[oid] = rs
+    _RUNSTART_UID_to_OID_MAP[rs['uid']] = oid
+    return rs
+
+
+def _cache_runstop(runstop):
+    oid = runstop.pop('_id')
+    # do the run-start de-reference
+    start_oid = runstop.pop('run_start_id')
+    runstop['run_start'] = _runstart_given_oid(start_oid)
+    runstop = doc.Document('RunStop', runstop)
+
+    # update the two caches
+    _RUNSTOP_CACHE_OID[oid] = runstop
+    _RUNSTOP_UID_to_OID_MAP[runstop['uid']] = oid
+
+
+def _cache_eventdescriptor(ev_desc):
+    oid = ev_desc.pop('_id')
+    # do the runstart referencing
+    start_oid = ev_desc.pop('run_start_id')
+    ev_desc['run_start'] = _runstart_given_oid(start_oid)
+
+    ev_desc = doc.Document('EventDescriptor', ev_desc)
+
+    # update both caches
+    _EVENTDESC_CACHE_OID[oid] = ev_desc
+    _EVENTDESC_UID_to_OID_MAP[ev_desc['uid']] = oid
+
+
+@_ensure_connection
+def _runstart_given_oid(oid):
+    try:
+        return _RUNSTART_CACHE_OID[oid]
+    except KeyError:
+        pass
+    rs = RunStart.objects.as_pymongo().get(id=oid)
+    return _cache_runstart(rs)
+
+
+@_ensure_connection
+def runstart_given_uid(uid):
+    try:
+        oid = _RUNSTART_UID_to_OID_MAP[uid]
+        return _RUNSTART_CACHE_OID[oid]
+    except KeyError:
+        pass
+    rs = RunStart.objects.as_pymongo().get(uid=uid)
+    return _cache_runstart(rs)
+
+
+@_ensure_connection
+def _runstop_given_oid(oid):
+    try:
+        return _RUNSTOP_CACHE_OID[oid]
+    except KeyError:
+        pass
+    # get the raw runstop
+    runstop = RunStop.objects.as_pymongo().get(id=oid)
+    # pop off the oid
+    return _cache_runstop(runstop)
+
+
+@_ensure_connection
+def runstop_given_uid(uid):
+    try:
+        oid = _RUNSTOP_UID_to_OID_MAP[uid]
+        return _RUNSTOP_CACHE_OID[oid]
+    except KeyError:
+        pass
+    # get the raw runstop
+    runstop = RunStop.objects.as_pymongo().get(uid=uid)
+    return _cache_runstop(runstop)
+
+
+@_ensure_connection
+def _event_desc_given_oid(oid):
+    try:
+        return _EVENTDESC_CACHE_OID[oid]
+    except KeyError:
+        pass
+
+    ev_desc = EventDescriptor.objects.as_pymongo.get(id=oid)
+    return _cache_eventdescriptor(ev_desc)
+
+
+@_ensure_connection
+def event_desc_given_uid(uid):
+    try:
+        oid = _EVENTDESC_UID_to_OID_MAP[uid]
+        return _EVENTDESC_CACHE_OID[oid]
+    except KeyError:
+        pass
+
+    ev_desc = EventDescriptor.objects.as_pymongo.get(uid=uid)
+    return _cache_eventdescriptor(ev_desc)
+
+
+def get_runstart(input_id):
+    """Get a single runstart document given a uid or oid
+
+    Parameters
+    ----------
+    input_id : str or ObjectId
+        Unique identified for the runstart to find.  ObjectId
+        search will be deprecated in the future.
+
+    Returns
+    -------
+    rs : doc.Document
+        Dottable dictionary of RunStart document
+    """
+    if isinstance(input_id, bson.ObjectId):
+        return _runstart_given_oid(input_id)
+    elif isinstance(input_id, six.string_types):
+        return runstart_given_uid(input_id)
+    else:
+        raise TypeError("Input must be ObjectId or str")
+
+
+def get_runstop(input_id):
+    pass
+
+
+def get_runstop_by_runstart(runstart_id):
+    pass
+
+
+def get_eventdescriptor(input_id):
+    pass
+
+
+def get_eventdescriptor_by_runstart(runstart_id):
+    pass
+
+
+def fetch_events_generator(descritptor_id):
+    pass
+
+
+def fetch_events_table(descritptor_id):
+    pass
 
 
 def db_disconnect():
@@ -85,36 +256,6 @@ def format_data_keys(data_key_dict):
                      for key_name, data_key_description
                      in six.iteritems(data_key_dict)}
     return data_key_dict
-
-
-def format_events(event_dict):
-    """Helper function for ophyd to format its data dictionary in whatever
-    flavor of the week metadatastore's spec says. This insulates ophyd from
-    changes to the mds spec
-
-    Currently formats the dictionary as {key: [value, timestamp]}
-
-    Parameters
-    ----------
-    event_dict : dict
-        The format that ophyd is sending to metadatastore
-        {'data_key1': {
-            'timestamp': timestamp_value, # should be a float value!
-            'value': data_value
-         'data_key2': {...}
-        }
-
-    Returns
-    -------
-    formatted_dict : dict
-        The event dict formatted according to the current metadatastore spec.
-        The current metadatastore spec is:
-        {'data_key1': [data_value, timestamp_value],
-         'data_key2': [...],
-        }
-    """
-    return {key: [data_dict['value'], data_dict['timestamp']]
-            for key, data_dict in six.iteritems(event_dict)}
 
 
 # database INSERTION ###################################################
