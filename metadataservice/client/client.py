@@ -1,6 +1,7 @@
 import requests
 import simplejson
 import datetime
+import pytz
 from functools import wraps
 from bson import json_util
 from metadataservice.client import conf
@@ -97,7 +98,8 @@ def find_run_starts(**kwargs):
             StopIteration()
             break
         else:
-            yield content
+            for c in content:
+                yield c
             range_ceil += 50
             range_floor += 50
 
@@ -150,7 +152,8 @@ def find_run_stops(**kwargs):
             StopIteration()
             break
         else:
-            yield content
+            for c in content:
+                yield c
             range_ceil += 50
             range_floor += 50
 
@@ -204,7 +207,8 @@ def find_events(**kwargs):
             StopIteration()
             break
         else:
-            yield content
+            for c in content:
+                yield c
             range_ceil += 1000
             range_floor += 1000
 
@@ -352,7 +356,7 @@ def insert_event_descriptor(**kwargs):
     return r.status_code
 
 
-@_ensure_connection
+# @_ensure_connection
 # def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
 #                      owner=None, group=None, project=None, custom=None):
 def insert_run_start(time, scan_id, uid, custom={}):

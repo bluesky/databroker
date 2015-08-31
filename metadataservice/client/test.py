@@ -20,7 +20,9 @@ conf.connection_config['host'] = 'localhost'
  
 conf.connection_config['port'] = 7770
 rs = find_run_starts(owner='xf23id1')
-next(rs)
+# next(rs)
 print('done')
+for r in rs:
+    print(r)
 
-insert_beamline_config(time=1252, scan_id=0, uid='r', custom={'arman':1})
+# insert_beamline_config(time=1252, scan_id=0, uid='r', custom={'arman':1})
