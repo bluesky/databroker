@@ -323,7 +323,8 @@ def insert_event():
     pass    
 
 @_ensure_connection
-def insert_event_descriptor(**kwargs):
+def insert_event_descriptor(run_start, data_keys, time, uid=None,
+                            custom=None):
     """ Create an event_descriptor in metadatastore server backend
 
     Parameters
@@ -351,15 +352,14 @@ def insert_event_descriptor(**kwargs):
         The document added to the collection.
 
     """
-    payload = json_util.dumps(kwargs)
+    payload = json_util.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
     return r.status_code
 
 
 # @_ensure_connection
-# def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
-#                      owner=None, group=None, project=None, custom=None):
-def insert_run_start(time, scan_id, uid, custom={}):
+def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
+                    owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -390,24 +390,18 @@ def insert_run_start(time, scan_id, uid, custom={}):
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run.
 
-    """
-    # TODO: See what @tacaswell's pr has done for this...
-    # 1. Get all related documents
-    # 2. Get their uids?
-    # 3. Convert to dict
-    # 4. validate
-    # 5. json encode
-    # 6. across the wire
-    
-    data = {'time': time, 'scan_id': scan_id, 'uid': uid}
-    data.update(custom)
+    """    
+    data = locals()
+    if custom:
+        data.update(custom)
     payload = json_util.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
     return r.status_code
 
 
 @_ensure_connection
-def insert_run_stop(**kwargs):
+def insert_run_stop(run_start, time, uid=None, exit_status='success',
+                    reason=None, custom=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -436,13 +430,14 @@ def insert_run_stop(**kwargs):
     run_stop : mongoengine.Document
         Inserted mongoengine object
     """
-    payload = json_util.dumps(kwargs)
+    
+    payload = json_util.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
     return r.status_code
 
 
 @_ensure_connection
-def insert_beamline_config(**kwargs):
+def insert_beamline_config(config_params, time, uid=None):
     """ Create a beamline_config  in metadatastore server backend
 
     Parameters
@@ -461,7 +456,7 @@ def insert_beamline_config(**kwargs):
     blc : BeamlineConfig
         The document added to the collection
     """
-    payload = json_util.dumps(kwargs)
+    payload = json_util.dumps(locals())
     r = requests.post(_server_path + '/beamline_config', data=payload)
     return r.status_code
 
