@@ -322,8 +322,6 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
         Inserted mongoengine object
 
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
     if owner is None:
@@ -348,7 +346,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
 
 
 @_ensure_connection
-def insert_run_stop(run_start, time, uid=None, exit_status='success',
+def insert_run_stop(run_start, time, uid, exit_status='success',
                     reason=None, custom=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
@@ -378,8 +376,6 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
     run_stop : mongoengine.Document
         Inserted mongoengine object
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
     run_start = _get_mongo_document(run_start, RunStart)
@@ -395,7 +391,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
 
 
 @_ensure_connection
-def insert_beamline_config(config_params, time, uid=None):
+def insert_beamline_config(config_params, time, uid):
     """ Create a beamline_config  in metadatastore database backend
 
     Parameters
@@ -414,8 +410,6 @@ def insert_beamline_config(config_params, time, uid=None):
     blc : BeamlineConfig
         The document added to the collection
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     beamline_config = BeamlineConfig(config_params=config_params,
                                      time=time,
                                      uid=uid)
@@ -427,7 +421,7 @@ def insert_beamline_config(config_params, time, uid=None):
 
 
 @_ensure_connection
-def insert_event_descriptor(run_start, data_keys, time, uid=None,
+def insert_event_descriptor(run_start, data_keys, time, uid,
                             custom=None):
     """ Create an event_descriptor in metadatastore database backend
 
@@ -456,8 +450,6 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
         The document added to the collection.
 
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
@@ -478,7 +470,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
 
 @_ensure_connection
-def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
+def insert_event(descriptor, time, seq_num, data, timestamps=None, uid):
     """Create an event in metadatastore database backend
 
     Parameters
@@ -521,9 +513,6 @@ def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
     # EventDescriptor creation.
     if descriptor is None:
         raise EventDescriptorIsNoneError()
-
-    if uid is None:
-        uid = str(uuid.uuid4())
 
     descriptor = _get_mongo_document(descriptor, EventDescriptor)
     event = Event(descriptor_id=descriptor, uid=uid,
