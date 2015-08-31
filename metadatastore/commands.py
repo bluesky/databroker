@@ -284,7 +284,7 @@ def format_data_keys(data_key_dict):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
+def insert_run_start(time, scan_id, beamline_id, beamline_config, uid,
                      owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
