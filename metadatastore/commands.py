@@ -470,7 +470,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
 
 
 @_ensure_connection
-def insert_event(descriptor, time, seq_num, data, timestamps=None, uid):
+def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     """Create an event in metadatastore database backend
 
     Parameters
@@ -500,14 +500,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps=None, uid):
     (not stored, but exchanged) timestamps is optional. If not included,
     data is expected to include (value, timestamp) tuples.
     """
-    if timestamps is not None and set(data.keys()) != set(timestamps.keys()):
-        raise ValueError("The fields in 'data' and 'timestamps' must match.")
-    if timestamps is not None:
-        # new Document exchange format
-        val_ts_tuple = _transform_data(data, timestamps)
-    else:
-        # old Document exchange format
-        val_ts_tuple = data
+    val_ts_tuple = _transform_data(data, timestamps)
 
     # Allow caller to beg forgiveness rather than ask permission w.r.t
     # EventDescriptor creation.
