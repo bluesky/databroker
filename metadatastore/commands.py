@@ -63,7 +63,7 @@ def _ensure_connection(func):
 
 def _cache_runstart(rs):
     # TODO actually do this de-reference
-    rs.pop('beamline_configs_id', None)
+    rs.pop('beamline_config_id', None)
     oid = rs.pop('_id')
     rs = doc.Document('RunStart', rs)
 
@@ -83,6 +83,7 @@ def _cache_runstop(runstop):
     # update the two caches
     _RUNSTOP_CACHE_OID[oid] = runstop
     _RUNSTOP_UID_to_OID_MAP[runstop['uid']] = oid
+    return runstop
 
 
 def _cache_eventdescriptor(ev_desc):
@@ -96,6 +97,7 @@ def _cache_eventdescriptor(ev_desc):
     # update both caches
     _EVENTDESC_CACHE_OID[oid] = ev_desc
     _EVENTDESC_UID_to_OID_MAP[ev_desc['uid']] = oid
+    return ev_desc
 
 
 @_ensure_connection
@@ -150,7 +152,7 @@ def _event_desc_given_oid(oid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor.objects.as_pymongo.get(id=oid)
+    ev_desc = EventDescriptor.objects.as_pymongo().get(id=oid)
     return _cache_eventdescriptor(ev_desc)
 
 
@@ -162,7 +164,7 @@ def event_desc_given_uid(uid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor.objects.as_pymongo.get(uid=uid)
+    ev_desc = EventDescriptor.objects.as_pymongo().get(uid=uid)
     return _cache_eventdescriptor(ev_desc)
 
 
