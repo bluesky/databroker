@@ -11,6 +11,8 @@ import logging
 import boltons.cacheutils
 import pytz
 
+import pymongo
+
 import bson
 from bson import ObjectId
 
@@ -202,12 +204,31 @@ def get_eventdescriptor_by_runstart(runstart_id):
     pass
 
 
-def fetch_events_generator(descritptor_id):
-    pass
+def fetch_events_generator(desc_uid):
+    col = Event._collection
 
+    desc = event_desc_given_uid(desc_uid)
+    eid = _EVENTDESC_UID_to_OID_MAP[desc_uid]
 
-def fetch_events_table(descritptor_id):
-    pass
+    ev_cur = col.find({'descriptor_id': eid}).sort(
+                            [('time', pymongo.DESCENDING)])
+
+    for ev in ev_cur:
+        # ditch the ObjectID
+        ev.pop('_id')
+        # pop the descriptor oid
+        ev.pop('descriptor_id')
+        # replace it with the defererenced descriptor
+        ev['descriptor'] = desc
+        # pop the data
+        data = ev.pop('data')
+        # replace it with the friendly paired dicts
+        ev['data'], ev['timestamps'] = [{k: v[j] for k, v in data.items()}
+                                        for j in range(2)]
+        # wrap it our fancy dict
+        ev = doc.Document('Event', ev)
+
+        yield ev
 
 
 def db_disconnect():
