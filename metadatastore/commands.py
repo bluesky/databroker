@@ -335,7 +335,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
 
     beamline_config = _get_mongo_document(beamline_config, BeamlineConfig)
     run_start = RunStart(time=time, scan_id=scan_id,
-                         time_as_datetime=_todatetime(time), uid=uid,
+                         uid=uid,
                          beamline_id=beamline_id,
                          beamline_config=beamline_config,
                          owner=owner, group=group, project=project,
@@ -384,7 +384,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         custom = {}
     run_start = _get_mongo_document(run_start, RunStart)
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
-                       time_as_datetime=_todatetime(time), uid=uid,
+                       uid=uid,
                        exit_status=exit_status, **custom)
 
     run_stop.save(validate=True, write_concern={"w": 1})
@@ -465,7 +465,6 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
-                                       time_as_datetime=_todatetime(time),
                                        **custom)
 
     event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
