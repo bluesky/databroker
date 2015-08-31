@@ -5,6 +5,7 @@ from functools import wraps
 from metadatastore.api import (insert_run_start, insert_beamline_config,
                                insert_run_stop, Document, find_run_stops)
 from metadatastore.commands import reorganize_event
+import uuid
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -71,15 +72,14 @@ def noisy(val, sigma=0.01):
         return val + sigma * np.random.randn(len(val)).reshape(val.shape)
 
 
-def get_time():
-    return ttime.time()
-
+get_time = ttime.time
 
 def example(func):
     @wraps(func)
     def mock_run_start(run_start_uid=None, sleep=0, make_run_stop=True):
         if run_start_uid is None:
-            blc_uid = insert_beamline_config({}, time=get_time())
+            blc_uid = insert_beamline_config({}, time=get_time(),
+                                             uid=str(uuid.uuid4()))
             run_start_uid = insert_run_start(time=get_time(), scan_id=1,
                                              beamline_id='example',
                                              uid=str(uuid.uuid4()),
@@ -90,8 +90,9 @@ def example(func):
         # simulated and not necessarily based on the current time.
         time = max([event['time'] for event in events])
         if make_run_stop:
-            run_stop_uid = insert_run_stop(run_start_uid, time=get_time(),
-                                           exit_status='success')
+            run_stop_uid = insert_run_stop(run_start_uid, time=time,
+                                           exit_status='success',
+                                           uid=str(uuid.uuid4()))
             run_stop, = find_run_stops(uid=run_stop_uid)
         return events
     return mock_run_start

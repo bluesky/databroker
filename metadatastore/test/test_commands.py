@@ -9,7 +9,7 @@ from nose.tools import assert_equal, assert_raises, raises
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
-
+import uuid
 
 # some useful globals
 blc_uid = None
@@ -17,29 +17,32 @@ run_start_uid = None
 document_insertion_time = None
 
 
-#### Nose setup/teardown methods ###############################################
+# ### Nose setup/teardown methods #############################################
 
 
 def teardown():
     pass
     mds_teardown()
 
+
 def setup():
     mds_setup()
     global blc_uid, run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
     temperature_ramp.run()
-    blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time)
+    blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time,
+                                          uid=str(uuid.uuid4()))
     run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                           beamline_id='testbed',
                                           beamline_config=blc_uid,
                                           owner='tester',
                                           group='awesome-devs',
                                           project='Nikea',
-                                          time=document_insertion_time)
+                                          time=document_insertion_time,
+                                          uid=str(uuid.uuid4()))
 
 
-#### Testing metadatastore insertion functionality #############################
+# ### Testing metadatastore insertion functionality ###########################
 
 
 @raises(KeyError)
@@ -57,7 +60,8 @@ def check_for_id(document):
 def _blc_tester(config_dict):
     """Test BeamlineConfig Insert
     """
-    blc_uid = mdsc.insert_beamline_config(config_dict, ttime.time())
+    blc_uid = mdsc.insert_beamline_config(config_dict, ttime.time(),
+                                          str(uuid.uuid4()))
     blc_mds, = mdsc.find_beamline_configs(uid=blc_uid)
     # make sure the beamline config document has no id
     check_for_id(blc_mds)
@@ -87,7 +91,8 @@ def test_event_descriptor_insertion():
                                'external': 'FS:foobar'}}
     time = ttime.time()
     # test insert
-    ev_desc_uid = mdsc.insert_event_descriptor(run_start_uid, data_keys, time)
+    ev_desc_uid = mdsc.insert_event_descriptor(run_start_uid, data_keys, time,
+                                               str(uuid.uuid4()))
     ev_desc_mds, = mdsc.find_event_descriptors(uid=ev_desc_uid)
     # make sure the sanitized event descriptor has no uid
     check_for_id(ev_desc_mds)
@@ -109,7 +114,7 @@ def test_ev_insert_fail():
     with no event descriptor
     """
     mdsc.insert_event(None, ttime.time(), data={'key': 0},
-                      timestamps={'key': 0}, seq_num=0)
+                      timestamps={'key': 0}, seq_num=0, uid=str(uuid.uuid4()))
 
 
 def test_insert_run_start():
@@ -117,10 +122,10 @@ def test_insert_run_start():
     beamline_id = 'sample_beamline'
     scan_id = 42
     custom = {'foo': 'bar', 'baz': 42,
-            'aardvark': ['ants', 3.14]}
+              'aardvark': ['ants', 3.14]}
     run_start_uid = mdsc.insert_run_start(
         time, beamline_id=beamline_id, beamline_config=blc_uid,
-        scan_id=scan_id, custom=custom)
+        scan_id=scan_id, custom=custom, uid=str(uuid.uuid4()))
 
     run_start_mds, = mdsc.find_run_starts(uid=run_start_uid)
 
@@ -140,14 +145,14 @@ def test_run_stop_insertion():
     """
     run_start_uid = mdsc.insert_run_start(
         time=ttime.time(), beamline_id='sample_beamline', scan_id=42,
-        beamline_config=blc_uid)
+        beamline_config=blc_uid, uid=str(uuid.uuid4()))
     time = ttime.time()
     exit_status = 'success'
     reason = 'uh, because this is testing and it better be a success?'
     # insert the document
     run_stop_uid = mdsc.insert_run_stop(run_start_uid, time,
                                         exit_status=exit_status,
-                                        reason=reason)
+                                        reason=reason, uid=str(uuid.uuid4()))
 
     # get the sanitized run_stop document from metadatastore
     run_stop, = mdsc.find_run_stops(uid=run_stop_uid)
@@ -167,7 +172,7 @@ def test_run_stop_insertion():
         assert_equal(known_value, getattr(run_stop, attr))
 
 
-#### Testing misc metadatastore functionality ##################################
+# ### Testing misc metadatastore functionality ################################
 
 
 def test_dict_key_replace_rt():
@@ -185,7 +190,7 @@ def test_src_dst_fail():
     assert_raises(ValueError, mdsc._src_dst, 'aardvark')
 
 
-#### Testing metadatastore find functionality ##################################
+# ### Testing metadatastore find functionality ################################
 def _find_helper(func, kw):
     func(**kw)
 
@@ -233,12 +238,7 @@ def test_find_funcs_for_smoke():
             yield _find_helper, func, dct
 
 
-#todo this one...
-def test_find_funcs_for_accuracy():
-    pass
-
-
-#### Test metadatastore time formatting ########################################
+# ### Test metadatastore time formatting ######################################
 
 
 def _normalize_human_friendly_time_tester(val, should_succeed, etype):
@@ -295,18 +295,17 @@ def test_normalize_human_friendly_time():
     for val in good_test_values:
         yield _normalize_human_friendly_time_tester, val, True, None
 
-
     bad_test_values = ['2015-03-08 02:00:00',
                        '2015-03-08 02:59:59']
     for val in bad_test_values:
-        yield _normalize_human_friendly_time_tester, val, False, pytz.NonExistentTimeError
-
+        yield (_normalize_human_friendly_time_tester,
+               val, False, pytz.NonExistentTimeError)
 
     bad_test_values = ['2015-11-01 01:00:00',
                        '2015-11-01 01:59:59']
     for val in bad_test_values:
-        yield _normalize_human_friendly_time_tester, val, False, pytz.AmbiguousTimeError
-
+        yield (_normalize_human_friendly_time_tester,
+               val, False, pytz.AmbiguousTimeError)
 
     bad_test_values = ['2015-04-15 03:',
                        str(ttime.time()),

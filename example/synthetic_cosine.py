@@ -46,7 +46,7 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
             'Tsam': [i + 5, time.time()],
             'scalar_detector': [func(i) + np.random.randn() / 100,
                                 time.time()]}
-    e = insert_event(event_descriptor=e_desc, seq_num=idx,
+    e = insert_event(descriptor=e_desc, seq_num=idx,
                      time=time.time(),
                      data=data)
 last_run = next(find_last())

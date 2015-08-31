@@ -2,10 +2,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import time as ttime
-import datetime
+import uuid
 
-import pytz
-from nose.tools import assert_equal, assert_raises, raises
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
@@ -28,7 +26,8 @@ document_insertion_time = None
 descriptor_uid = None
 run_stop_uid = None
 
-#### Nose setup/teardown methods ###############################################
+# ### Nose setup/teardown methods #############################################
+
 
 def teardown():
     mds_teardown()
@@ -40,16 +39,19 @@ def setup():
     global descriptor_uid
     document_insertion_time = ttime.time()
     temperature_ramp.run()
-    blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time)
+    blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time,
+                                          uid=str(uuid.uuid4()))
     run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                           beamline_id='testbed',
                                           beamline_config=blc_uid,
                                           owner='tester',
                                           group='awesome-devs',
                                           project='Nikea',
-                                          time=document_insertion_time)
+                                          time=document_insertion_time,
+                                          uid=str(uuid.uuid4()))
     run_stop_uid = mdsc.insert_run_stop(run_start=run_start_uid,
-                                        time=ttime.time())
+                                        time=ttime.time(),
+                                        uid=str(uuid.uuid4()))
 
 
 def test_document_funcs_for_smoke():
