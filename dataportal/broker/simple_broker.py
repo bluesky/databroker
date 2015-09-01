@@ -293,10 +293,9 @@ def _inspect_descriptor(descriptor):
     """
     # TODO memoize to cache these results
     data_keys = descriptor.data_keys
-    is_external = defaultdict(lambda: False)
+    is_external = dict()
     for data_key, data_key_dict in data_keys.items():
-        if (data_key_dict and 'external' in data_key_dict):
-            is_external[data_key] = bool(data_key_dict['external'])
+        is_external[data_key] = data_key_dict.get('external', False)
     return is_external
 
 
