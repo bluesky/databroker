@@ -208,7 +208,7 @@ def get_eventdescriptor_by_runstart(runstart_id):
 
 
 def fetch_events_generator(desc_uid):
-    col = Event._collection
+    col = Event._get_collection()
 
     desc = event_desc_given_uid(desc_uid)
     eid = _EVENTDESC_UID_to_OID_MAP[desc_uid]
@@ -525,7 +525,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                           seq_num=ev['seq_num'])
             yield ev_out
 
-    bulk = Event._collection.initialize_ordered_bulk_op()
+    bulk = Event._get_collection().initialize_ordered_bulk_op()
     for ev in event_factory():
         bulk.insert(ev)
 
