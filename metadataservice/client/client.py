@@ -216,7 +216,7 @@ def find_events(**kwargs):
 
 @_ensure_connection
 def find_last():
-    pass
+    raise NotImplementedError('Find last, coming soon...')
 
 
 @_ensure_connection
@@ -308,7 +308,7 @@ def find_event_descriptors(**kwargs):
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + '/event_descriptor', params=simplejson.dumps(query))
+        r = requests.get(_server_path + '/event_descriptor', params=json_util.dumps(query))
         content = json_util.loads(r.text)
         if not content:
             StopIteration()
@@ -327,20 +327,20 @@ def event_desc_given_uid(event_descriptor):
     query['range_floor'] = range_floor
     query['range_ceil'] = range_ceil
     query['uid'] = event_descriptor
-    r = requests.get(_server_path + '/event_descriptor', params=simplejson.dumps(query))
-    print(r)
-    try:
-        content = json_util.loads(r.text)
-    except ValueError:
-        content = None
-    if not content:
-        raise ValueError('EventDescriptor with given uid not found')
-    else:
-        return content
+    r = requests.get(_server_path + '/event_descriptor', params=json_util.dumps(query))
+    return json_util.loads(r.text)
+        
     
+
 @_ensure_connection
 def insert_event(descriptor,events):
     descriptor = event_desc_given_uid(event_descriptor=descriptor)
+    #TODO: Add validation
+    event_dump = list()
+    print(descriptor)
+    r = requests.post(_server_path + '/run_stop', data=json_util.dumps(events))
+    return json_util.loads(r.text)
+
 
 @_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid=None,
@@ -374,7 +374,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     """
     payload = json_util.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
-    return r.status_code
+    return json_util.loads(r.text)
 
 
 # @_ensure_connection
@@ -416,7 +416,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
         data.update(custom)
     payload = json_util.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
-    return r.status_code
+    return json_util.loads(r.text)
 
 
 @_ensure_connection
