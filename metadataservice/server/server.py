@@ -42,17 +42,17 @@ class RunStartHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        # TODO: Add sort by time!
         """Query run_start documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         if start ==0 and stop ==1:
-            cursor = db.run_start.find_one(query)
+            docs = yield db.run_start.find_one(query)
+            self.write(json_util.dumps(docs))
         else:
             cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        self.write(json_util.dumps(docs))
+            docs = yield cursor.to_list(None)
+            self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -78,11 +78,12 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         if start ==0 and stop ==1:
-            cursor = db.run_start.find_one(query)
+            docs = yield db.beamline_config.find_one(query)
+            self.write(json_util.dumps(docs))
         else:
             cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
             docs = yield cursor.to_list(None)
-        self.write(json_util.dumps(docs))
+            self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -137,11 +138,12 @@ class RunStopHandler(tornado.web.RequestHandler):
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         if start ==0 and stop ==1:
-            cursor = db.run_start.find_one(query)
+            docs = yield db.run_stop.find_one(query)
+            self.write(json_util.dumps(docs))
         else:
             cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        self.write(json_util.dumps(docs))
+            docs = yield cursor.to_list(None)
+            self.write(json_util.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
