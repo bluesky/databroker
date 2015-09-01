@@ -63,8 +63,8 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_start.insert(data)#async insert
+        self.write(json_util.dumps(result))
         self.finish()
-        return result
 
 
 class BeamlineConfigHandler(tornado.web.RequestHandler):
@@ -94,7 +94,9 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
+        self.write(json_util.dumps(result))
         self.finish()
+
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
     """Handler for run_start insert and query operations"""
@@ -104,7 +106,6 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         # TODO: Add sort by time!
         """Query event_descriptor documents"""
         query = utils._unpack_params(self)
-        print(query)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         if start==0 and stop==1:
@@ -124,6 +125,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.event_descriptor.insert(data)#async insert
+        self.write(json_util.dumps(result))
         self.finish()
 
 
@@ -150,11 +152,11 @@ class RunStopHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self):
         """Insert a run_start document"""
-        # placeholder dummy!
         db = self.settings['db']
         data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_stop.insert(data)#async insert
+        self.write(json_util.dumps(result))
         self.finish()
 
 
@@ -185,8 +187,10 @@ class EventHandler(tornado.web.RequestHandler):
             bulk.insert(_)
         try:
             yield bulk.execute() #add timeout etc.!
+            self.write(json_util.dumps("Success"))
         except pymongo.errors.BulkWriteError as err:
             print(err)
+            self.write(json_util.dumps(err))
         self.finish()
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
@@ -194,5 +198,5 @@ application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler),
     (r'/run_stop', RunStopHandler), (r'/event_descriptor',EventDescriptorHandler),
     (r'/event',EventHandler)], db=db)
-application.listen(7770)
+application.listen(7771)
 tornado.ioloop.IOLoop.instance().start()
