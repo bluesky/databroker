@@ -12,7 +12,6 @@ from metadatastore.examples.sample_data import temperature_ramp
 import uuid
 
 # some useful globals
-blc_uid = None
 run_start_uid = None
 document_insertion_time = None
 
@@ -27,14 +26,12 @@ def teardown():
 
 def setup():
     mds_setup()
-    global blc_uid, run_start_uid, document_insertion_time
+    global run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
     temperature_ramp.run()
-    blc_uid = mdsc.insert_beamline_config({}, time=document_insertion_time,
-                                          uid=str(uuid.uuid4()))
+
     run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                           beamline_id='testbed',
-                                          beamline_config=blc_uid,
                                           owner='tester',
                                           group='awesome-devs',
                                           project='Nikea',
@@ -55,26 +52,6 @@ def check_for_id(document):
         A sanitized mongoengine document
     """
     document['id']
-
-
-def _blc_tester(config_dict):
-    """Test BeamlineConfig Insert
-    """
-    blc_uid = mdsc.insert_beamline_config(config_dict, ttime.time(),
-                                          str(uuid.uuid4()))
-    blc_mds, = mdsc.find_beamline_configs(uid=blc_uid)
-    # make sure the beamline config document has no id
-    check_for_id(blc_mds)
-    assert_equal(blc_mds.uid, blc_uid)
-    if config_dict is None:
-        config_dict = dict()
-    assert_equal(config_dict, blc_mds.config_params)
-    return blc_mds
-
-
-def test_beamline_config_insertion():
-    for cfd in [None, {}, {'foo': 'bar', 'baz': 5, 'biz': .05}]:
-        yield _blc_tester, cfd
 
 
 def test_event_descriptor_insertion():
@@ -124,7 +101,7 @@ def test_insert_run_start():
     custom = {'foo': 'bar', 'baz': 42,
               'aardvark': ['ants', 3.14]}
     run_start_uid = mdsc.insert_run_start(
-        time, beamline_id=beamline_id, beamline_config=blc_uid,
+        time, beamline_id=beamline_id,
         scan_id=scan_id, custom=custom, uid=str(uuid.uuid4()))
 
     run_start_mds, = mdsc.find_run_starts(uid=run_start_uid)
@@ -135,7 +112,6 @@ def test_insert_run_start():
     for name, val in zip(names, values):
         assert_equal(getattr(run_start_mds, name), val)
 
-    assert_equal(blc_uid, run_start_mds.beamline_config.uid)
     # make sure the metadatstore document raises properly
     check_for_id(run_start_mds)
 
@@ -145,7 +121,7 @@ def test_run_stop_insertion():
     """
     run_start_uid = mdsc.insert_run_start(
         time=ttime.time(), beamline_id='sample_beamline', scan_id=42,
-        beamline_config=blc_uid, uid=str(uuid.uuid4()))
+        uid=str(uuid.uuid4()))
     time = ttime.time()
     exit_status = 'success'
     reason = 'uh, because this is testing and it better be a success?'

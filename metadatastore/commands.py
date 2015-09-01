@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 from functools import wraps
 from itertools import count
-import uuid
+
 import datetime
 import logging
 
@@ -20,7 +20,7 @@ from mongoengine import connect,  ReferenceField
 import mongoengine.connection
 
 from . import conf
-from .odm_templates import (RunStart, BeamlineConfig, RunStop,
+from .odm_templates import (RunStart, RunStop,
                             EventDescriptor, Event, DataKey, ALIAS)
 # new version of Document
 from . import doc
@@ -31,9 +31,9 @@ from .document import Document
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['insert_beamline_config', 'insert_run_start', 'insert_event',
+__all__ = ['insert_run_start', 'insert_event',
            'insert_run_stop', 'insert_event_descriptor', 'find_run_stops',
-           'find_beamline_configs', 'find_event_descriptors', 'find_last',
+           'find_event_descriptors', 'find_last',
            'find_events', 'find_run_starts', 'db_connect', 'db_disconnect',
            'reorganize_event']
 
@@ -236,7 +236,7 @@ def fetch_events_generator(desc_uid):
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     mongoengine.connection.disconnect(ALIAS)
-    for collection in [RunStart, BeamlineConfig, RunStop, EventDescriptor,
+    for collection in [RunStart, RunStop, EventDescriptor,
                        Event, DataKey]:
         collection._collection = None
 
@@ -284,7 +284,7 @@ def format_data_keys(data_key_dict):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, beamline_config, uid,
+def insert_run_start(time, scan_id, beamline_id, uid,
                      owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
@@ -299,12 +299,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid,
     beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
         beamline code for multiple beamline systems
-    beamline_config : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore beamline config document
-        if str:
-            uid of beamline config corresponding to a given run
-    uid : str, optional
+    uid : str
         Globally unique id string provided to metadatastore
     owner : str, optional
         A username associated with the entry
@@ -331,11 +326,9 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config, uid,
     if project is None:
         project = ''
 
-    beamline_config = _get_mongo_document(beamline_config, BeamlineConfig)
     run_start = RunStart(time=time, scan_id=scan_id,
                          uid=uid,
                          beamline_id=beamline_id,
-                         beamline_config=beamline_config,
                          owner=owner, group=group, project=project,
                          **custom)
 
@@ -361,7 +354,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     time : float
         The date/time as found at the client side when an event is
         created.
-    uid : str, optional
+    uid : str
         Globally unique id string provided to metadatastore
     exit_status : {'success', 'abort', 'fail'}, optional
         indicating reason run stopped, 'success' by default
@@ -391,36 +384,6 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
 
 
 @_ensure_connection
-def insert_beamline_config(config_params, time, uid):
-    """ Create a beamline_config  in metadatastore database backend
-
-    Parameters
-    ----------
-    config_params : dict
-        Name/value pairs that indicate beamline configuration
-        parameters during capturing of data
-    time : float
-        The date/time as found at the client side when the
-        beamline configuration is created.
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-
-    Returns
-    -------
-    blc : BeamlineConfig
-        The document added to the collection
-    """
-    beamline_config = BeamlineConfig(config_params=config_params,
-                                     time=time,
-                                     uid=uid)
-    beamline_config.save(validate=True, write_concern={"w": 1})
-    logger.debug("Inserted BeamlineConfig with uid %s",
-                 beamline_config.uid)
-
-    return uid
-
-
-@_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid,
                             custom=None):
     """ Create an event_descriptor in metadatastore database backend
@@ -438,7 +401,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     time : float
         The date/time as found at the client side when an event
         descriptor is created.
-    uid : str, optional
+    uid : str
         Globally unique id string provided to metadatastore
     custom : dict, optional
         Any additional information that data acquisition code/user wants
@@ -491,7 +454,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     timestamps : dict
         Dictionary of measured timestamps for each values, having the
         same keys as `data` above
-    uid : str, optional
+    uid : str
         Globally unique id string provided to metadatastore
 
     Note
@@ -780,7 +743,7 @@ def find_run_starts(**kwargs):
     Note
     ----
     All documents that the RunStart Document points to are dereferenced.
-    These include RunStop, BeamlineConfig, and Sample.
+    These include RunStop, and Sample.
 
     Examples
     --------
@@ -796,45 +759,9 @@ def find_run_starts(**kwargs):
     _normalize_object_id(kwargs, '_id')
     _format_time(kwargs)
 
-    rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')
-    rs_objects = rs_objects.no_dereference()
-    _as_document = _AsDocument()
-    return (_as_document(rs) for rs in rs_objects)
+    rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
 
-
-@_ensure_connection
-def find_beamline_configs(**kwargs):
-    """Given search criteria, locate BeamlineConfig Documents.
-
-    Parameters
-    ----------
-    start_time : time-like, optional
-        time-like representation of the earliest time that a BeamlineConfig
-        was created. Valid options are:
-           - timestamps --> time.time()
-           - '2015'
-           - '2015-01'
-           - '2015-01-30'
-           - '2015-03-30 03:00:00'
-           - datetime.datetime.now()
-    stop_time : time-like, optional
-        timestamp of the latest time that a BeamlineConfig was created. See
-            docs for `start_time` for examples.
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
-
-    Returns
-    -------
-    beamline_configs : iterable of metadatastore.document.Document objects
-    """
-    _format_time(kwargs)
-    # ordered by _id because it is not guaranteed there will be time in cbonfig
-    beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
-    beamline_configs = beamline_configs.no_dereference()
-    _as_document = _AsDocument()
-    return (_as_document(bc) for bc in beamline_configs)
+    return (_cache_runstart(rs) for rs in rs_objects.order_by('-time'))
 
 
 @_ensure_connection

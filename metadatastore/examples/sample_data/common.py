@@ -2,10 +2,9 @@ import numpy as np
 import time as ttime
 import uuid
 from functools import wraps
-from metadatastore.api import (insert_run_start, insert_beamline_config,
-                               insert_run_stop, Document, find_run_stops)
-from metadatastore.commands import reorganize_event
-import uuid
+
+from metadatastore.api import (insert_run_start,
+                               insert_run_stop, find_run_stops)
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
@@ -74,16 +73,15 @@ def noisy(val, sigma=0.01):
 
 get_time = ttime.time
 
+
 def example(func):
     @wraps(func)
     def mock_run_start(run_start_uid=None, sleep=0, make_run_stop=True):
         if run_start_uid is None:
-            blc_uid = insert_beamline_config({}, time=get_time(),
-                                             uid=str(uuid.uuid4()))
             run_start_uid = insert_run_start(time=get_time(), scan_id=1,
                                              beamline_id='example',
-                                             uid=str(uuid.uuid4()),
-                                             beamline_config=blc_uid)
+                                             uid=str(uuid.uuid4()))
+
         # these events are already the sanitized version, not raw mongo objects
         events = func(run_start_uid, sleep)
         # Infer the end run time from events, since all the times are

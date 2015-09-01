@@ -10,29 +10,13 @@ from getpass import getuser
 ALIAS = 'mds'
 
 
-__all__ = ['BeamlineConfig', 'RunStart', 'RunStop', 'DataKey',
+__all__ = ['RunStart', 'RunStop', 'DataKey',
            'EventDescriptor', 'Event']
-
-
-class BeamlineConfig(DynamicDocument):
-    """
-    Attributes
-    ----------
-    config_params: dict
-        Custom configuration parameters for a given run. Avoid using '.'
-        in field names.
-        If you're interested in doing so, let me know @arkilic
-        This has a one-to-many relationship with RunStart documents
-    """
-    config_params = DictField(required=False, unique=False)
-    uid = StringField(required=True, unique=True)
-    time = FloatField(required=True)
-    meta = {'indexes': ['-_id', '-uid'], 'db_alias': ALIAS}
 
 
 class RunStart(DynamicDocument):
     """ Provide a head for a sequence of events. Entry point for
-    an experiment's run. BeamlineConfig is NOT required to create a RunStart
+    an experiment's run.
     The only prereq is an EventDescriptor that identifies the nature of
     event that is starting and
 
@@ -54,8 +38,7 @@ class RunStart(DynamicDocument):
         Unix group to associate this data with
     scan_id : int
          scan identifier visible to the user and data analysis
-    beamline_config: bson.ObjectId
-        Foreign key to beamline config corresponding to a given run
+
     sample : dict
         Information about the sample, may be a UID to another collection
     """
@@ -64,9 +47,7 @@ class RunStart(DynamicDocument):
     project = StringField(required=False)
     beamline_id = StringField(max_length=20, unique=False, required=True)
     scan_id = IntField(required=True)
-    beamline_config = ReferenceField(BeamlineConfig, reverse_delete_rule=DENY,
-                                     required=True,
-                                     db_field='beamline_config_id')
+
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
     sample = DictField(required=False)  # lightweight sample placeholder.
