@@ -107,7 +107,7 @@ def _runstart_given_oid(oid):
         return _RUNSTART_CACHE_OID[oid]
     except KeyError:
         pass
-    rs = RunStart.objects.as_pymongo().get(id=oid)
+    rs = RunStart._get_collection().find_one({'id': oid})
     return _cache_runstart(rs)
 
 
@@ -118,7 +118,7 @@ def runstart_given_uid(uid):
         return _RUNSTART_CACHE_OID[oid]
     except KeyError:
         pass
-    rs = RunStart.objects.as_pymongo().get(uid=uid)
+    rs = RunStart._get_collection().find_one({'uid': uid})
     return _cache_runstart(rs)
 
 
@@ -129,8 +129,7 @@ def _runstop_given_oid(oid):
     except KeyError:
         pass
     # get the raw runstop
-    runstop = RunStop.objects.as_pymongo().get(id=oid)
-    # pop off the oid
+    runstop = RunStop._get_collection().find_one({'id': oid})
     return _cache_runstop(runstop)
 
 
@@ -142,7 +141,7 @@ def runstop_given_uid(uid):
     except KeyError:
         pass
     # get the raw runstop
-    runstop = RunStop.objects.as_pymongo().get(uid=uid)
+    runstop = RunStop._get_collection().find_one({'uid': uid})
     return _cache_runstop(runstop)
 
 
@@ -153,7 +152,7 @@ def _event_desc_given_oid(oid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor.objects.as_pymongo().get(id=oid)
+    ev_desc = EventDescriptor._get_collection().find_one({'id': oid})
     return _cache_eventdescriptor(ev_desc)
 
 
@@ -165,7 +164,7 @@ def event_desc_given_uid(uid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor.objects.as_pymongo().get(uid=uid)
+    ev_desc = EventDescriptor._get_collection().find_one({'uid': uid})
     return _cache_eventdescriptor(ev_desc)
 
 
