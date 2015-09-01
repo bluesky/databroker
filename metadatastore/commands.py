@@ -234,7 +234,6 @@ def fetch_events_generator(desc_uid):
         yield ev
 
 
-
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     mongoengine.connection.disconnect(ALIAS)
@@ -521,15 +520,16 @@ def bulk_insert_events(event_descriptor, events, validate=False):
             val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
             # create the mongoengine object, do this by hand if it goes
             # faster
-            ev_out = Event(descriptor_id=desc_oid, uid=ev['uid'],
-                           data=val_ts_tuple, time=ev['time'],
-                           seq_num=ev['seq_num'])
-            # if validating, use ME to validate
-            if validate:
-                ev_out.validate()
+            ev_out = dict(descriptor_id=desc_oid, uid=ev['uid'],
+                          data=val_ts_tuple, time=ev['time'],
+                          seq_num=ev['seq_num'])
             yield ev_out
 
-    return Event.objects.insert(event_factory(), load_bulk=False)
+    bulk = Event._collection.initialize_ordered_bulk_op()
+    for ev in event_factory():
+        bulk.insert(ev)
+
+    return bulk.execute()
 
 
 def _transform_data(data, timestamps):
