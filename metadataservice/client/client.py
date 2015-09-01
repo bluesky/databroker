@@ -2,6 +2,7 @@ import requests
 import simplejson
 import datetime
 import pytz
+import six
 from functools import wraps
 from bson import json_util
 from metadataservice.client import conf
@@ -319,8 +320,27 @@ def find_event_descriptors(**kwargs):
 
 
 @_ensure_connection
-def insert_event():
-    pass    
+def event_desc_given_uid(event_descriptor):
+    range_floor = 0
+    range_ceil = 1
+    query = dict()
+    query['range_floor'] = range_floor
+    query['range_ceil'] = range_ceil
+    query['uid'] = event_descriptor
+    r = requests.get(_server_path + '/event_descriptor', params=simplejson.dumps(query))
+    print(r)
+    try:
+        content = json_util.loads(r.text)
+    except ValueError:
+        content = None
+    if not content:
+        raise ValueError('EventDescriptor with given uid not found')
+    else:
+        return content
+    
+@_ensure_connection
+def insert_event(descriptor,events):
+    descriptor = event_desc_given_uid(event_descriptor=descriptor)
 
 @_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid=None,
@@ -358,7 +378,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
 
 # @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
+def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
                     owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
