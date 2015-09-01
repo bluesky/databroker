@@ -65,24 +65,19 @@ def run(run_start_uid=None, sleep=0):
         event, = find_events(uid=event_uid)
         events.append(event)
 
-    insert_run_stop(run_start_uid, common.get_time(), str(uuid.uuid4()))
-
     return events
 
 
 if __name__ == '__main__':
     import metadatastore.api as mdsc
-    blc_uid = mdsc.insert_beamline_config({}, time=common.get_time(),
-                                          uid=str(uuid.uuid4()))
+
     run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                           beamline_id='testbed',
-                                          beamline_config=blc_uid,
                                           owner='tester',
                                           group='awesome-devs',
                                           project='Nikea',
                                           time=common.get_time(),
                                           uid=str(uuid.uuid4()))
 
-    print('beamline_config_uid = %s' % blc_uid)
     print('run_start_uid = %s' % run_start_uid)
     run(run_start_uid)

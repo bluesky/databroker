@@ -1,14 +1,12 @@
 from __future__ import print_function
 
-from metadatastore.api import (insert_run_start, insert_beamline_config,
-                               insert_event, insert_event_descriptor,
-                               insert_run_stop)
+from metadatastore.api import (insert_run_start,
+                               insert_event, insert_event_descriptor)
+
 from metadatastore.api import find_last, find_events
 import time
 import numpy as np
-
-b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
-                                  time=time.time())
+import uuid
 
 data_keys = {'linear_motor': {'source': 'PV:pv1',
                               'shape': None,
@@ -29,8 +27,9 @@ except (IndexError, TypeError):
 
 custom = {'plotx': 'linear_motor', 'ploty': 'scalar_detector'}
 # Create a BeginRunEvent that serves as entry point for a run
-rs = insert_run_start(scan_id=scan_id, beamline_id='csx', time=time.time(),
-                      beamline_config=b_config, custom=custom)
+rs = insert_run_start(scan_id=scan_id, beamline_id='csx',
+                      time=time.time(), custom=custom,
+                      uid=str(uuid.uuid4()))
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)
@@ -48,10 +47,12 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
                                 time.time()]}
     e = insert_event(descriptor=e_desc, seq_num=idx,
                      time=time.time(),
-                     data=data)
+                     data=data,
+                     uid=str(uuid.uuid4()))
+
 last_run = next(find_last())
 try:
-    if str(last_run.id) != str(rs.id):
+    if str(last_run.uid) != str(rs):
         print("find_last() is broken")
 except AttributeError as ae:
     print(ae)

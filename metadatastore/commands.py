@@ -763,7 +763,7 @@ def find_run_stops(run_start=None, **kwargs):
     if run_start:
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
-        kwargs['run_start_id'] = run_start.id
+        kwargs['run_start_id'] = run_start
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
