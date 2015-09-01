@@ -4,12 +4,13 @@ import humanize
 import datetime
 import six  # noqa
 from six import StringIO
-from collections import defaultdict, Iterable, deque
+from collections import Iterable, deque
 from ..utils.console import color_print
-from metadatastore.api import (Document, find_last, find_run_starts,
+from metadatastore.api import (find_last, find_run_starts,
                                find_event_descriptors, find_run_stops,
                                find_events)
-from bson import ObjectId
+from .document import Document
+
 import warnings
 import filestore.api as fs
 import os
@@ -352,7 +353,6 @@ class Header(Document):
 
         # Map keys from RunStart and RunStop onto Header.
         run_start_renames = {'start_time': 'time',
-                             'start_datetime': 'time_as_datetime',
                              'scan_id': 'scan_id',
                              'beamline_id': 'beamline_id',
                              'owner': 'owner',
@@ -367,9 +367,12 @@ class Header(Document):
             new_key = run_start_renames_back.get(k, k)
             header[new_key] = run_start[k]
 
+        # patch in friendlier times
+        start_dt = datetime.datetime.fromtimestamp(run_start['time'])
+        header['start_datetime'] = start_dt
+
         if run_stop is not None:
             run_stop_renames = {'stop_time': 'time',
-                                'stop_datetime': 'time_as_datetime',
                                 'exit_reason': 'reason',
                                 'exit_status': 'exit_status',
                                 'run_stop_id': 'id',
@@ -377,17 +380,21 @@ class Header(Document):
             run_stop_renames_back = {v: k for k, v
                                      in run_stop_renames.items()}
             for k in run_stop:
+                if k == 'run_start':
+                    # don't want to move over the runstart value
+                    continue
                 new_key = run_stop_renames_back.get(k, k)
                 header[new_key] = run_stop[k]
-            del header['run_start']
 
-        run_start._name = 'Header'
+            stop_dt = datetime.datetime.fromtimestamp(run_stop['time'])
+            header['stop_datetime'] = stop_dt
 
         # Strip unuseful recursion. We don't mess with underlying Documents,
         # but the header is a special case, and the repr should reflect
         # its structure accurately.
         for ev_desc in header.event_descriptors:
             ev_desc.run_start = ev_desc.run_start.uid
+
         return header
 
     def __repr__(self):

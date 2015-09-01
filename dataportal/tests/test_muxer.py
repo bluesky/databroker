@@ -1,20 +1,22 @@
 from __future__ import print_function
 import six
-import time
+
+import uuid
+
+
 import unittest
 import numpy as np
-from .. import sources
+
 from ..muxer.data_muxer import DataMuxer, BinningError, ColSpec
-from ..sources import switch
+
 from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar)
 from ..broker import DataBroker
 from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
-from metadatastore.api import insert_run_start, insert_beamline_config
-import time as ttime
-from nose.tools import (assert_equal, assert_raises, assert_true,
-                        assert_false)
+from metadatastore.api import insert_run_start
+
+from nose.tools import (assert_true, assert_false)
 from numpy.testing.utils import assert_array_equal
 
 
@@ -22,9 +24,9 @@ def setup():
     fs_setup()
     mds_setup()
 
-    blc_uid = insert_beamline_config({}, ttime.time())
     rs_uid = insert_run_start(time=0.0, scan_id=1, owner='test',
-                              beamline_id='test', beamline_config=blc_uid)
+                              beamline_id='test',
+                              uid=str(uuid.uuid4()))
     temperature_ramp.run(run_start_uid=rs_uid)
 
 
@@ -54,6 +56,7 @@ def test_attributes():
     # dm._dataframe
     # dm.col_info_by_ndim
     # dm.col_info
+
 
 def test_timestamps_as_data():
     hdr = DataBroker[-1]
