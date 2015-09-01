@@ -81,7 +81,7 @@ def test_event_descriptor_insertion():
 
     for k in data_keys:
         for ik in data_keys[k]:
-            assert_equal(getattr(ev_desc_mds.data_keys[k], ik),
+            assert_equal(ev_desc_mds.data_keys[k][ik],
                          data_keys[k][ik])
 
 
@@ -198,14 +198,14 @@ def test_find_funcs_for_smoke():
             {'exit_status': 'success'},
             {'uid': 'foo'}],
         mdsc.find_event_descriptors: [
-            {'run_start': rs},
+#            {'run_start': rs},
             {'run_start_uid': rs.uid},
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
             {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
             {'uid': 'foo'}],
         mdsc.find_run_stops: [
-            {'run_start': rs},
+#            {'run_start': rs},
             {'run_start_uid': rs.uid},
         ]
     }

@@ -62,6 +62,9 @@ def _ensure_connection(func):
 
 
 def _cache_runstart(rs):
+    """De-reference and cache a RunStart document
+
+    """
     # TODO actually do this de-reference
     rs.pop('beamline_config_id', None)
     oid = rs.pop('_id')
@@ -233,6 +236,7 @@ def fetch_events_generator(desc_uid):
         yield ev
 
 
+
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     mongoengine.connection.disconnect(ALIAS)
@@ -371,7 +375,8 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     """
     if custom is None:
         custom = {}
-    run_start = _get_mongo_document(run_start, RunStart)
+
+    run_start = RunStart.objects.get(uid=run_start)
     run_stop = RunStop(run_start=run_start, reason=reason, time=time,
                        uid=uid,
                        exit_status=exit_status, **custom)
@@ -416,7 +421,8 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
-    run_start = _get_mongo_document(run_start, RunStart)
+    run_start = RunStart.objects.get(uid=run_start)
+
     event_descriptor = EventDescriptor(run_start=run_start,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
@@ -469,13 +475,13 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     # EventDescriptor creation.
     if descriptor is None:
         raise EventDescriptorIsNoneError()
-
-    descriptor = _get_mongo_document(descriptor, EventDescriptor)
-    event = Event(descriptor_id=descriptor, uid=uid,
+    descriptor = event_desc_given_uid(descriptor)
+    desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
+    event = Event(descriptor_id=desc_oid, uid=uid,
                   data=val_ts_tuple, time=time, seq_num=seq_num)
 
-    event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
+
     logger.debug("Inserted Event with uid %s referencing "
                  "EventDescriptor with uid %s", event.uid,
                  descriptor.uid)
@@ -546,30 +552,6 @@ class EventDescriptorIsNoneError(ValueError):
 
 
 # DATABASE RETRIEVAL ##########################################################
-
-# TODO: Update all query routine documentation
-class _AsDocument(object):
-    """
-    A caching layer to avoid creating reference objects for _every_
-    """
-    def __init__(self):
-        self._cache = dict()
-
-    def __call__(self, mongoengine_object):
-        return Document.from_mongo(mongoengine_object, self._cache)
-
-
-class _AsDocumentRaw(object):
-    """
-    A caching layer to avoid creating reference objects for _every_
-    """
-    def __init__(self):
-        self._cache = dict()
-
-    def __call__(self, name, input_dict, dref_fields):
-
-        return Document.from_dict(name, input_dict, dref_fields, self._cache)
-
 
 def _format_time(search_dict):
     """Helper function to format the time arguments in a search dict
@@ -684,27 +666,6 @@ def _normalize_object_id(kwargs, key):
     # Database errors will still raise.
 
 
-def _get_mongo_document(document, document_cls):
-    """Helper function to get the mongo id of the mongo document of type
-    ``document_cls``
-
-    Parameters
-    ----------
-    document : mds.odm_templates.Document or str
-        if str: The externally supplied unique identifier of the mongo document
-    document_cls : object
-        One of the class objects from the metadatastore.odm_templates module
-        {RunStart, RunStop, Event, EventDescriptor, etc...}
-    """
-    if isinstance(document, Document):
-        document = document.uid
-    # .get() is slower than .first() which is slower than [0].
-    # __raw__=dict() is faster than kwargs
-    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
-    mongo_document = document_cls.objects(__raw__={'uid': document})[0]
-    return mongo_document
-
-
 @_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -801,17 +762,15 @@ def find_run_stops(run_start=None, **kwargs):
     _format_time(kwargs)
     # get the actual mongo document
     if run_start:
-        run_start = _get_mongo_document(run_start, RunStart)
+        run_start = runstart_given_uid(run_start)
+        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start.id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
-    run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
-    run_stop = run_stop.no_dereference()
+    run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
-    _as_document = _AsDocument()
-
-    return (_as_document(rs) for rs in run_stop)
+    return (_cache_runstop(rs) for rs in run_stop.order_by('-time'))
 
 
 @_ensure_connection
@@ -849,21 +808,14 @@ def find_event_descriptors(run_start=None, **kwargs):
     event_descriptor : iterable of metadatastore.document.Document objects
     """
     _format_time(kwargs)
-    _as_document = _AsDocument()
-    # get the actual mongo document
-    if run_start:
-        run_start = _get_mongo_document(run_start, RunStart)
-        kwargs['run_start_id'] = run_start.id
 
     _normalize_object_id(kwargs, '_id')
     _normalize_object_id(kwargs, 'run_start_id')
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
 
-    event_descriptor_objects = event_descriptor_objects.no_dereference()
+    event_descriptor_objects = event_descriptor_objects.as_pymongo()
     for event_descriptor in event_descriptor_objects.order_by('-time'):
-        event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
-                                                             direction='out')
-        yield _as_document(event_descriptor)
+        yield _cache_eventdescriptor(event_descriptor)
 
 
 @_ensure_connection
@@ -907,24 +859,27 @@ def find_events(descriptor=None, **kwargs):
         raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
 
     _format_time(kwargs)
-    # get the actual mongo document
-    if descriptor:
-        descriptor = _get_mongo_document(descriptor, EventDescriptor)
-        kwargs['descriptor_id'] = descriptor.id
 
     _normalize_object_id(kwargs, '_id')
     events = Event.objects(__raw__=kwargs).order_by('-time')
     events = events.as_pymongo()
-    dref_dict = dict()
-    name = Event.__name__
-    for n, f in Event._fields.items():
-        if isinstance(f, ReferenceField):
-            lookup_name = f.db_field
-            dref_dict[lookup_name] = f
 
-    _as_document = _AsDocumentRaw()
-    return (reorganize_event(_as_document(name, ev, dref_dict))
-            for ev in events)
+    for ev in events:
+        # ditch the ObjectID
+        ev.pop('_id')
+        # pop the descriptor oid
+        desc_oid = ev.pop('descriptor_id')
+        # replace it with the defererenced descriptor
+        ev['descriptor'] = _event_desc_given_oid(desc_oid)
+        # pop the data
+        data = ev.pop('data')
+        # replace it with the friendly paired dicts
+        ev['data'], ev['timestamps'] = [{k: v[j] for k, v in data.items()}
+                                        for j in range(2)]
+        # wrap it our fancy dict
+        ev = doc.Document('Event', ev)
+
+        yield ev
 
 
 @_ensure_connection
@@ -941,18 +896,10 @@ def find_last(num=1):
     run_start: iterable of metadatastore.document.Document objects
     """
     c = count()
-    _as_document = _AsDocument()
-    for rs in RunStart.objects.order_by('-time'):
+    for rs in RunStart.objects.as_pymongo().order_by('-time'):
         if next(c) == num:
             raise StopIteration
-        yield _as_document(rs)
-
-
-def _todatetime(time_stamp):
-    if isinstance(time_stamp, float):
-        return datetime.datetime.fromtimestamp(time_stamp)
-    else:
-        raise TypeError('Timestamp format is not correct!')
+        yield _cache_runstart(rs)
 
 
 def _replace_dict_keys(input_dict, src, dst):
