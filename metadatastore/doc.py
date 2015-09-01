@@ -2,6 +2,25 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 
+_HTML_TEMPLATE = """
+<table>
+{% for key, value in document.items() recursive %}
+  <tr>
+    <th> {{ key }} </th>
+    <td>
+      {% if value.items %}
+        <table>
+          {{ loop(value.items()) }}
+        </table>
+        {% else %}
+          {{ value }}
+        {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+</table>
+"""
+
 
 class Document(dict):
 
@@ -38,3 +57,7 @@ class Document(dict):
         if isinstance(k, six.string_types) and k.startswith('_'):
             return False
         return super(Document, self).__contains(k)
+
+    def _repr_html_(self):
+        import jinja2
+        return jinja2.Template(_HTML_TEMPLATE).render(document=self)
