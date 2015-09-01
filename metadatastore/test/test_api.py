@@ -13,7 +13,6 @@ from metadatastore.api import EventDescriptorIsNoneError
 from metadatastore.api import format_data_keys
 from metadatastore.api import db_connect
 from metadatastore.api import db_disconnect
-from metadatastore.api import Document
 
 
 if __name__ == "__main__":

@@ -22,10 +22,7 @@ import mongoengine.connection
 from . import conf
 from .odm_templates import (RunStart, RunStop,
                             EventDescriptor, Event, DataKey, ALIAS)
-# new version of Document
 from . import doc
-# old version of document
-from .document import Document
 
 
 logger = logging.getLogger(__name__)
