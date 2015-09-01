@@ -11,7 +11,7 @@ from metadatastore.api import (Document, find_last, find_run_starts,
                                find_events)
 from bson import ObjectId
 import warnings
-from filestore.api import retrieve
+import filestore.api as fs
 import os
 import logging
 import uuid
@@ -308,7 +308,7 @@ def fill_event(event):
     for data_key, value in six.iteritems(event.data):
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key] = retrieve(value)
+            event.data[data_key] = fs.retrieve(value)
 
 
 class Header(Document):
