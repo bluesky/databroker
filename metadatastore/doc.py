@@ -73,4 +73,7 @@ class Document(dict):
 def _pretty_print_time(timestamp):
     import humanize
     import time
-    return humanize.naturaltime(time.time() - timestamp)
+    import datetime
+    dt = datetime.datetime.fromtimestamp(timestamp).isoformat()
+    ago = humanize.naturaltime(time.time() - timestamp)
+    return '{ago} ({date})'.format(ago=ago, date=dt)
