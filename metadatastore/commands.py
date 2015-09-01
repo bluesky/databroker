@@ -15,8 +15,9 @@ import pymongo
 
 import bson
 from bson import ObjectId
+from bson.dbref import DBRef
 
-from mongoengine import connect,  ReferenceField
+from mongoengine import connect
 import mongoengine.connection
 
 from . import conf
@@ -373,8 +374,11 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     if custom is None:
         custom = {}
 
-    run_start = RunStart.objects.get(uid=run_start)
-    run_stop = RunStop(run_start=run_start, reason=reason, time=time,
+    run_start = runstart_given_uid(run_start)
+    runstart_oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+    rs_ref = DBRef('RunStart', runstart_oid)
+
+    run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
                        uid=uid,
                        exit_status=exit_status, **custom)
 
@@ -418,15 +422,14 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     if custom is None:
         custom = {}
     data_keys = format_data_keys(data_keys)
-    run_start = RunStart.objects.get(uid=run_start)
 
-    event_descriptor = EventDescriptor(run_start=run_start,
+    run_start = runstart_given_uid(run_start)
+    runstart_oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+    rs_ref = DBRef('RunStart', runstart_oid)
+    event_descriptor = EventDescriptor(run_start=rs_ref,
                                        data_keys=data_keys, time=time,
                                        uid=uid,
                                        **custom)
-
-    event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
-                                                         direction='in')
 
     event_descriptor.save(validate=True, write_concern={"w": 1})
     logger.debug("Inserted EventDescriptor with uid %s referencing "
