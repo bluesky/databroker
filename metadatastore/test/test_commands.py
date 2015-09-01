@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from collections import deque
 import time as ttime
 import datetime
 
@@ -37,6 +38,45 @@ def setup():
                                           project='Nikea',
                                           time=document_insertion_time,
                                           uid=str(uuid.uuid4()))
+
+# ### Helper functions ########################################################
+
+
+def setup_syn(custom=None):
+    if custom is None:
+        custom = {}
+
+    data_keys = {k:  {'source': k,
+                      'dtype': 'number',
+                      'shape': None} for k in 'ABCEDEFHIJKL'
+                 }
+    scan_id = 1
+
+    # Create a BeginRunEvent that serves as entry point for a run
+    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
+                               time=ttime.time(),
+                               custom=custom, uid=str(uuid.uuid4()))
+
+    # Create an EventDescriptor that indicates the data
+    # keys and serves as header for set of Event(s)
+    e_desc = mdsc.insert_event_descriptor(data_keys=data_keys,
+                                          time=ttime.time(),
+                                          run_start=rs, uid=str(uuid.uuid4()))
+    return rs, e_desc, data_keys
+
+
+def syn_data(data_keys, count):
+    all_data = deque()
+    for seq_num in range(count):
+        data = {k: float(seq_num) for k in data_keys}
+        timestamps = {k: ttime.time() for k in data_keys}
+
+        _time = ttime.time()
+        uid = str(uuid.uuid4())
+        all_data.append({'data': data, 'timestamps': timestamps,
+                         'seq_num': seq_num, 'time': _time,
+                         'uid': uid})
+    return all_data
 
 
 # ### Testing metadatastore insertion functionality ###########################
@@ -289,6 +329,20 @@ def test_normalize_human_friendly_time():
                        ]
     for val in bad_test_values:
         yield _normalize_human_friendly_time_tester, val, False, ValueError
+
+
+def test_bulk_insert():
+    num = 50
+    rs, e_desc, data_keys = setup_syn()
+    all_data = syn_data(data_keys, num)
+
+    mdsc.bulk_insert_events(e_desc, all_data, validate=False)
+    ev_gen = mdsc.fetch_events_generator(e_desc)
+
+    for ret, expt in zip(ev_gen, reversed(all_data)):
+        assert_equal(ret['descriptor']['uid'], e_desc)
+        for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
+            assert_equal(ret[k], expt[k])
 
 
 # smoketests
