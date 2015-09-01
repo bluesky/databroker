@@ -4,16 +4,20 @@ import six
 
 _HTML_TEMPLATE = """
 <table>
-{% for key, value in document.items() recursive %}
+{% for key, value in document | dictsort recursive %}
   <tr>
     <th> {{ key }} </th>
     <td>
       {% if value.items %}
         <table>
-          {{ loop(value.items()) }}
+          {{ loop(value | dictsort) }}
         </table>
         {% else %}
-          {{ value }}
+          {% if key == 'time' %}
+            {{ value | human_time }}
+          {% else %}
+            {{ value }}
+          {% endif %}
         {% endif %}
     </td>
   </tr>
@@ -60,4 +64,13 @@ class Document(dict):
 
     def _repr_html_(self):
         import jinja2
-        return jinja2.Template(_HTML_TEMPLATE).render(document=self)
+        env = jinja2.Environment()
+        env.filters['human_time'] = _pretty_print_time
+        template = env.from_string(_HTML_TEMPLATE)
+        return template.render(document=self)
+
+
+def _pretty_print_time(timestamp):
+    import humanize
+    import time
+    return humanize.naturaltime(time.time() - timestamp)
