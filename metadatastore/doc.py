@@ -57,6 +57,9 @@ class Document(dict):
         return (k for k in super(Document, self).keys()
                 if not (isinstance(k, six.string_types) and k.startswith('_')))
 
+    def __len__(self):
+        return len(list(self.keys()))
+
     def __contains__(self, k):
         if isinstance(k, six.string_types) and k.startswith('_'):
             return False
