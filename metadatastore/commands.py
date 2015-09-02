@@ -29,8 +29,7 @@ logger = logging.getLogger(__name__)
 __all__ = ['insert_run_start', 'insert_event',
            'insert_run_stop', 'insert_event_descriptor', 'find_run_stops',
            'find_event_descriptors', 'find_last',
-           'find_events', 'find_run_starts', 'db_connect', 'db_disconnect',
-           'reorganize_event']
+           'find_events', 'find_run_starts', 'db_connect', 'db_disconnect']
 
 # process local caches of 'header' documents these are storing object indexed
 # on Objected because that is what the reference fields in mongo are
@@ -1044,24 +1043,3 @@ def _replace_event_data_key_dots(event, direction='in'):
     event.data = _replace_dict_keys(event.data,
                                     src, dst)
     return event
-
-
-def reorganize_event(event_document):
-    """Reorganize Event attributes, unnormalizing 'data'.
-
-    Convert from Event.data = {'data_key': (value, timestamp)}
-    to Event.data = {'data_key': value}
-    and Event.timestamps = {'data_key': timestamp}
-
-    Parameters
-    ----------
-    event_document : metadatastore.document.Document
-
-    Returns
-    -------
-    event_document
-    """
-    doc = event_document  # for brevity
-    pairs = [((k, v[0]), (k, v[1])) for k, v in six.iteritems(doc.data)]
-    doc.data, doc.timestamps = [dict(tuples) for tuples in zip(*pairs)]
-    return doc
