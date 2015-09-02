@@ -752,6 +752,8 @@ def find_run_stops(run_start=None, **kwargs):
     _format_time(kwargs)
     # get the actual mongo document
     if run_start:
+        if not isinstance(run_start, six.string_types):
+            run_start = run_start['uid']
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
