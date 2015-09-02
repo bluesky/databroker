@@ -189,24 +189,6 @@ def test_run_stop_insertion():
         assert_equal(known_value, getattr(run_stop, attr))
 
 
-# ### Testing misc metadatastore functionality ################################
-
-
-def test_dict_key_replace_rt():
-    """Ensure metadatastore deals with dots in potential data keys correctly
-    """
-    test_d = {'a.b': 1, 'b': .5, 'c.d.e': None}
-    src_in, dst_in = mdsc._src_dst('in')
-    test_d_in = mdsc._replace_dict_keys(test_d, src_in, dst_in)
-    src_out, dst_out = mdsc._src_dst('out')
-    test_d_out = mdsc._replace_dict_keys(test_d_in, src_out, dst_out)
-    assert_equal(test_d_out, test_d)
-
-
-def test_src_dst_fail():
-    assert_raises(ValueError, mdsc._src_dst, 'aardvark')
-
-
 # ### Testing metadatastore find functionality ################################
 def _find_helper(func, kw):
     func(**kw)
@@ -388,6 +370,27 @@ def test_cache_clear_lookups():
 
 def test_find_last_for_smoke():
     last, = mdsc.find_last()
+
+
+@raises(ValueError)
+def test_bad_event_desc():
+
+    data_keys = {k:  {'source': k,
+                      'dtype': 'number',
+                      'shape': None} for k in ['foo', 'foo.bar']
+                 }
+    scan_id = 1
+
+    # Create a BeginRunEvent that serves as entry point for a run
+    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
+                               time=ttime.time(),
+                               uid=str(uuid.uuid4()))
+
+    # Create an EventDescriptor that indicates the data
+    # keys and serves as header for set of Event(s)
+    mdsc.insert_event_descriptor(data_keys=data_keys,
+                                 time=ttime.time(),
+                                 run_start=rs, uid=str(uuid.uuid4()))
 
 
 if __name__ == "__main__":

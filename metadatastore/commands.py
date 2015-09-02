@@ -412,7 +412,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
             uid of RunStart object to associate with this record
     data_keys : dict
         Provides information about keys of the data dictionary in
-        an event will contain
+        an event will contain.  No key name may include '.'
     time : float
         The date/time as found at the client side when an event
         descriptor is created.
@@ -431,6 +431,9 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     if custom is None:
         custom = {}
 
+    for k in data_keys:
+        if '.' in k:
+            raise ValueError("Key names can not contain '.' (period).")
     # needed to make ME happy
     data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
@@ -916,97 +919,3 @@ def find_last(num=1):
         if next(c) == num:
             raise StopIteration
         yield _cache_runstart(rs)
-
-
-def _replace_dict_keys(input_dict, src, dst):
-    """
-    Helper function to replace forbidden chars in dictionary keys
-
-    Parameters
-    ----------
-    input_dict : dict
-        The dict to have it's keys replaced
-
-    src : str
-        the string to be replaced
-
-    dst : str
-        The string to replace the src string with
-
-    Returns
-    -------
-    ret : dict
-        The dictionary with all instances of 'src' in the key
-        replaced with 'dst'
-
-    """
-    return {k.replace(src, dst): v for
-            k, v in six.iteritems(input_dict)}
-
-
-def _src_dst(direction):
-    """
-    Helper function to turn in/out into src/dst pair
-
-    Parameters
-    ----------
-    direction : {'in', 'out'}
-        The direction to do conversion (direction relative to mongodb)
-
-    Returns
-    -------
-    src, dst : str
-        The source and destination strings in that order.
-    """
-    if direction == 'in':
-        src, dst = '.', '[dot]'
-    elif direction == 'out':
-        src, dst = '[dot]', '.'
-    else:
-        raise ValueError('Only in/out allowed as direction params')
-
-    return src, dst
-
-
-def _replace_descriptor_data_key_dots(ev_desc, direction='in'):
-    """Replace the '.' with [dot].
-
-    Relevant because PVs can have dots in their names
-
-    Parameters
-    ---------
-
-    event_descriptor: metadatastore.odm_templates.EventDescriptor
-    EvenDescriptor instance
-
-    direction: str
-    If 'in' ->  replace . with [dot]
-    If 'out' -> replace [dot] with .
-
-    """
-    src, dst = _src_dst(direction)
-    ev_desc.data_keys = _replace_dict_keys(ev_desc.data_keys,
-                                           src, dst)
-    return ev_desc
-
-
-def _replace_event_data_key_dots(event, direction='in'):
-    """Replace the '.' with [dot].
-
-    Relevant because PVs can have dots in their names
-
-    Parameters
-    ---------
-
-    event_descriptor: metadatastore.database.event_descriptor.EventDescriptor
-    EvenDescriptor instance
-
-    direction: str
-    If 'in' ->  replace . with [dot]
-    If 'out' -> replace [dot] with .
-
-    """
-    src, dst = _src_dst(direction)
-    event.data = _replace_dict_keys(event.data,
-                                    src, dst)
-    return event
