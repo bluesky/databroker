@@ -649,22 +649,6 @@ _normalize_human_friendly_time.__doc__ = (
     )
 
 
-def _normalize_object_id(kwargs, key):
-    """Ensure that an id is an ObjectId, not a string.
-
-    ..warning: Does in-place mutation of the search_dict
-    """
-    try:
-        kwargs[key] = ObjectId(kwargs[key])
-    except KeyError:
-        # This key wasn't used by the query; that's fine.
-        pass
-    except TypeError:
-        # This key was given a more complex query.
-        pass
-    # Database errors will still raise.
-
-
 @_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -716,7 +700,14 @@ def find_run_starts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    _normalize_object_id(kwargs, '_id')
+    run_start = kwargs.pop('run_start', None)
+    if run_start:
+        if not isinstance(run_start, six.string_types):
+            run_start = run_start['uid']
+        run_start = runstart_given_uid(run_start)
+        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+        kwargs['run_start_id'] = run_start
+
     _format_time(kwargs)
 
     rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
@@ -765,8 +756,6 @@ def find_run_stops(run_start=None, **kwargs):
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
 
-    _normalize_object_id(kwargs, '_id')
-    _normalize_object_id(kwargs, 'run_start_id')
     run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
     return (_cache_runstop(rs) for rs in run_stop.order_by('-time'))
@@ -864,7 +853,6 @@ def find_events(descriptor=None, **kwargs):
 
     _format_time(kwargs)
 
-    _normalize_object_id(kwargs, '_id')
     events = Event.objects(__raw__=kwargs).order_by('-time')
     events = events.as_pymongo()
 
