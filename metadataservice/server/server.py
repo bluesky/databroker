@@ -112,14 +112,9 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        if start==0 and stop==1:
-            docs = yield db.event_descriptor.find_one(query)
-            if docs:
-                self.write(json_util.dumps(docs))
-        else:
-            cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
-            docs = yield cursor.to_list(None)
-            self.write(ujson.dumps(docs))
+        cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        print(docs)
         self.finish()
 
     @tornado.web.asynchronous

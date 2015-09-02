@@ -322,24 +322,24 @@ def find_event_descriptors(**kwargs):
             range_ceil += 50
             range_floor += 50
 
-
-@_ensure_connection
-def event_desc_given_uid(event_descriptor):
-    range_floor = 0
-    range_ceil = 1
-    query = dict()
-    query['range_floor'] = range_floor
-    query['range_ceil'] = range_ceil
-    query['uid'] = event_descriptor
-    r = requests.get(_server_path + '/event_descriptor', params=ujson.dumps(query))
-    print(r.text)
-#     return json_util.loads(r.text)
-        
+# 
+# @_ensure_connection
+# def event_desc_given_uid(event_descriptor):
+#     range_floor = 0
+#     range_ceil = 1
+#     query = dict()
+#     query['range_floor'] = range_floor
+#     query['range_ceil'] = range_ceil
+#     query['uid'] = event_descriptor
+#     r = requests.get(_server_path + '/event_descriptor', params=ujson.dumps(query))
+#     print("ajpgpag", r.text)
+#     return r.text
+#         
     
 
 @_ensure_connection
 def insert_event(descriptor,events):
-    descriptor = event_desc_given_uid(event_descriptor=descriptor)
+#     descriptor = event_desc_given_uid(event_descriptor=descriptor)
     #TODO: Add validation
     ev = ujson.dumps(list(events))
     r = requests.post(_server_path + '/event', data=ev)
@@ -379,7 +379,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     """
 
     payload = ujson.dumps(locals())
-    r = requests.post(_server_path + '/run_stop', data=payload)
+    r = requests.post(_server_path + '/event_descriptor', data=payload)
     return r.json()['$oid']
 
 
