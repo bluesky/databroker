@@ -806,10 +806,15 @@ def find_event_descriptors(run_start=None, **kwargs):
     -------
     event_descriptor : iterable of metadatastore.document.Document objects
     """
+    if run_start:
+        if not isinstance(run_start, six.string_types):
+            run_start = run_start['uid']
+        run_start = runstart_given_uid(run_start)
+        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+        kwargs['run_start_id'] = run_start
+
     _format_time(kwargs)
 
-    _normalize_object_id(kwargs, '_id')
-    _normalize_object_id(kwargs, 'run_start_id')
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
 
     event_descriptor_objects = event_descriptor_objects.as_pymongo()
