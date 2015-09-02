@@ -785,7 +785,7 @@ def find_run_starts(**kwargs):
         run_start = _doc_or_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
-        kwargs['run_start_id'] = run_start
+        kwargs['_id'] = run_start
 
     _format_time(kwargs)
 

@@ -386,6 +386,19 @@ def test_run_stop_by_run_start():
     assert_equal(ev_desc, ev_desc3)
 
 
+def test_find_runstart():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+
+    run_start = mdsc.runstart_given_uid(run_start_uid)
+
+    run_start2, = list(mdsc.find_run_starts(run_start=run_start_uid))
+    run_start3, = list(mdsc.find_run_starts(run_start=run_start))
+
+    assert_equal(run_start, run_start2)
+    assert_equal(run_start, run_start3)
+
+
 def test_find_last_for_smoke():
     last, = mdsc.find_last()
 
