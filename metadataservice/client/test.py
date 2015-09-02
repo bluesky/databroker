@@ -17,7 +17,7 @@ conf.connection_config['port'] = 7771
 rs = find_run_starts(owner='xf23id1')
 # next(rs)
 print('done')
-print(event_desc_given_uid(event_descriptor='7667c81e-c159-4104-9866-6bbe6eaa0b4a'))
+# print(event_desc_given_uid(event_descriptor='7667c81e-c159-4104-9866-6bbe6eaa0b4a'))
 
 
 custom = {}
@@ -35,6 +35,9 @@ def setup_syn():
     
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
+    
+    print('rs', rs)
+    
     e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
                                      run_start=rs, uid=str(uuid.uuid4()))
     return rs, e_desc, data_keys
@@ -61,6 +64,8 @@ stop = 10
 
 rs, e_desc, data_keys = setup_syn()
 all_data = syn_data(data_keys, num)
+
+
 
 start_time = time.time()
 insert_event(descriptor=e_desc, events=all_data)

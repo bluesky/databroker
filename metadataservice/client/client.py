@@ -2,13 +2,17 @@ import requests
 import simplejson
 import datetime
 import pytz
+import time
 import six
+from bson import json_util
 from functools import wraps
 import ujson
 from metadataservice.client import conf
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 # The client lives in the service for now. I will move it to separate repo once ready for alpha release
+
+
 
 # TODO: Find a way to handle auth with each request. Policy decision, tell me what to do people
 
@@ -157,7 +161,7 @@ def find_run_stops(**kwargs):
                 yield c
             range_ceil += 50
             range_floor += 50
-
+     
 
 @_ensure_connection
 def find_events(**kwargs):
@@ -328,18 +332,20 @@ def event_desc_given_uid(event_descriptor):
     query['range_ceil'] = range_ceil
     query['uid'] = event_descriptor
     r = requests.get(_server_path + '/event_descriptor', params=ujson.dumps(query))
-    print(r)
-    return ujson.loads(r.text)
+    print(r.text)
+#     return json_util.loads(r.text)
         
     
 
 @_ensure_connection
 def insert_event(descriptor,events):
     descriptor = event_desc_given_uid(event_descriptor=descriptor)
-    #TODO: Add validation    
+    #TODO: Add validation
     ev = ujson.dumps(list(events))
     r = requests.post(_server_path + '/event', data=ev)
     return r
+
+
 
 @_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid=None,
@@ -374,7 +380,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
-    return ujson.loads(r.text)
+    return r.json()['$oid']
 
 
 # @_ensure_connection
@@ -416,7 +422,8 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
         data.update(custom)
     payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
-    return ujson.loads(r.text)
+    return r.json()['$oid']
+
 
 
 @_ensure_connection
@@ -453,7 +460,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
     
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
-    return r.status_code
+    return r.json()['$oid']
 
 
 @_ensure_connection
@@ -478,7 +485,7 @@ def insert_beamline_config(config_params, time, uid=None):
     """
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/beamline_config', data=payload)
-    return r.status_code
+    return r.json()['$oid']
 
 
 @_ensure_connection

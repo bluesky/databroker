@@ -2,16 +2,19 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
-import time
 from tornado import gen
-from bson import ujson
 import pymongo
+from bson import json_util
 import motor
+import ujson
 from metadataservice.server import utils
 __author__ = 'arkilic'
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
-
+# Using both json_util and ujson because they both have their moments. 
+# Will figure out a direction soon
+# ujson is 3-5 orders of magnitude fast but doesn't encode bson neatly
+# json_util does encode/decode neatly but painfully slow
 
 def db_connect(database ,host, port):
     """Helper function to deal with stateful connections to motor. Connection established lazily.
@@ -64,7 +67,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_start.insert(data)#async insert
-        self.write(ujson.dumps(result))
+        self.write(json_util.dumps(result))
         self.finish()
 
 
@@ -95,7 +98,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
-        self.write(ujson.dumps(result))
+        self.write(json_util.dumps(result))
         self.finish()
 
 
@@ -111,7 +114,8 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         if start==0 and stop==1:
             docs = yield db.event_descriptor.find_one(query)
-            self.write(ujson.dumps(docs))
+            if docs:
+                self.write(json_util.dumps(docs))
         else:
             cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
             docs = yield cursor.to_list(None)
@@ -126,7 +130,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.event_descriptor.insert(data)#async insert
-        self.write(ujson.dumps(result))
+        self.write(json_util.dumps(result))
         self.finish()
 
 
@@ -157,7 +161,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_stop.insert(data)#async insert
-        self.write(ujson.dumps(result))
+        self.write(json_util.dumps(result))
         self.finish()
 
 class EventHandler(tornado.web.RequestHandler):
@@ -167,7 +171,6 @@ class EventHandler(tornado.web.RequestHandler):
     def get(self):
         # TODO: Add sort by time!
         """Query event documents"""
-        import ujson
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
@@ -184,7 +187,6 @@ class EventHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         bulk = db.event.initialize_unordered_bulk_op()
-        start_time = time.time()
         for _ in data:
             bulk.insert(_)
         try:
@@ -192,8 +194,6 @@ class EventHandler(tornado.web.RequestHandler):
         except pymongo.errors.BulkWriteError as err:
             print(err)
             self.write(ujson.dumps(err))
-        stop_time = time.time()
-        print('insert time: {}'.format(stop_time - start_time))
         self.finish()
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
