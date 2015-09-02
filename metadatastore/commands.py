@@ -289,41 +289,6 @@ def db_connect(database, host, port):
     return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
-def format_data_keys(data_key_dict):
-    """Helper function that allows ophyd to send info about its data keys
-    to metadatastore and have metadatastore format them into whatever the
-    current spec dictates. This functions formats the data key info for
-    the event descriptor
-
-    Parameters
-    ----------
-    data_key_dict : dict
-        The format that ophyd is sending to metadatastore
-        {'data_key1': {
-            'dtype': dtype_value,
-            'source': source_value,
-            'shape': shape_value},
-         'data_key2': {...}
-        }
-
-    Returns
-    -------
-    formatted_dict : dict
-        Data key info for the event descriptor that is formatted for the
-        current metadatastore spec.The current metadatastore spec is:
-        {'data_key1':
-         'data_key2': mds.odm_templates.DataKeys
-        }
-    """
-    data_key_dict = {key_name: (
-                     DataKey(**data_key_description) if
-                     not isinstance(data_key_description, DataKey) else
-                     data_key_description)
-                     for key_name, data_key_description
-                     in six.iteritems(data_key_dict)}
-    return data_key_dict
-
-
 # database INSERTION ###################################################
 
 @_ensure_connection
@@ -465,7 +430,9 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     """
     if custom is None:
         custom = {}
-    data_keys = format_data_keys(data_keys)
+
+    # needed to make ME happy
+    data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
     run_start = runstart_given_uid(run_start)
     runstart_oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]

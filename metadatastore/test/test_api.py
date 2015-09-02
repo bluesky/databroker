@@ -10,7 +10,6 @@ from metadatastore.api import insert_event_descriptor
 from metadatastore.api import insert_run_start
 from metadatastore.api import insert_run_stop
 from metadatastore.api import EventDescriptorIsNoneError
-from metadatastore.api import format_data_keys
 from metadatastore.api import db_connect
 from metadatastore.api import db_disconnect
 
