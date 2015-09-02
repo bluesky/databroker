@@ -107,7 +107,7 @@ def _runstart_given_oid(oid):
         return _RUNSTART_CACHE_OID[oid]
     except KeyError:
         pass
-    rs = RunStart._get_collection().find_one({'id': oid})
+    rs = RunStart._get_collection().find_one({'_id': oid})
     return _cache_runstart(rs)
 
 
@@ -129,7 +129,7 @@ def _runstop_given_oid(oid):
     except KeyError:
         pass
     # get the raw runstop
-    runstop = RunStop._get_collection().find_one({'id': oid})
+    runstop = RunStop._get_collection().find_one({'_id': oid})
     return _cache_runstop(runstop)
 
 
@@ -152,7 +152,7 @@ def _event_desc_given_oid(oid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor._get_collection().find_one({'id': oid})
+    ev_desc = EventDescriptor._get_collection().find_one({'_id': oid})
     return _cache_eventdescriptor(ev_desc)
 
 
