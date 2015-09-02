@@ -159,7 +159,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         self.write(json_util.dumps(result))
         self.finish()
 
-
+import time
 class EventHandler(tornado.web.RequestHandler):
     """Handler for run_start insert and query operations"""
     @tornado.web.asynchronous
@@ -167,6 +167,7 @@ class EventHandler(tornado.web.RequestHandler):
     def get(self):
         # TODO: Add sort by time!
         """Query event documents"""
+        
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
@@ -182,15 +183,17 @@ class EventHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = json_util.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
-        bulk = db.event.initialize_ordered_bulk_op()
+        bulk = db.event.initialize_unordered_bulk_op()
+        start_time = time.time()
         for _ in data:
             bulk.insert(_)
         try:
             yield bulk.execute() #add timeout etc.!
-            self.write(json_util.dumps("Success"))
         except pymongo.errors.BulkWriteError as err:
             print(err)
             self.write(json_util.dumps(err))
+        stop_time = time.time()
+        print('insert time: {}'.format(stop_time - start_time))
         self.finish()
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one

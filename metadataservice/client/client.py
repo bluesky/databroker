@@ -2,6 +2,7 @@ import requests
 import simplejson
 import datetime
 import pytz
+import time
 import six
 from functools import wraps
 from bson import json_util
@@ -328,6 +329,7 @@ def event_desc_given_uid(event_descriptor):
     query['range_ceil'] = range_ceil
     query['uid'] = event_descriptor
     r = requests.get(_server_path + '/event_descriptor', params=json_util.dumps(query))
+    print(r)
     return json_util.loads(r.text)
         
     
@@ -336,10 +338,12 @@ def event_desc_given_uid(event_descriptor):
 def insert_event(descriptor,events):
     descriptor = event_desc_given_uid(event_descriptor=descriptor)
     #TODO: Add validation
-    event_dump = list()
-    print(descriptor)
-    r = requests.post(_server_path + '/run_stop', data=json_util.dumps(events))
-    return json_util.loads(r.text)
+    ev = json_util.dumps(events)
+    start_time = time.time()
+    r = requests.post(_server_path + '/event', data=ev)
+    stop_time = time.time()
+    print('insert time: {}'.format(stop_time - start_time))
+#     return json_util.loads(r.text)
 
 
 @_ensure_connection
