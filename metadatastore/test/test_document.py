@@ -1,15 +1,12 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
 import time as ttime
-import uuid
+import datetime
 
-import metadatastore.commands as mdsc
-from metadatastore.utils.testing import mds_setup, mds_teardown
-from metadatastore.examples.sample_data import temperature_ramp
-from metadatastore.api import (find_run_starts, find_run_stops,
-                               find_event_descriptors)
-from itertools import product
+from nose.tools import (assert_equal, assert_in, assert_not_in)
+from nose import SkipTest
+from ..doc import Document, _pretty_print_time
+
 import logging
 loglevel = logging.DEBUG
 logger = logging.getLogger(__name__)
@@ -24,47 +21,83 @@ document_insertion_time = None
 descriptor_uid = None
 run_stop_uid = None
 
-# ### Nose setup/teardown methods #############################################
+
+def _syn_data_helper():
+    src_str = 'ABCDEFGHI'
+    dd = {k: ord(k) for k in src_str}
+    doc_test = Document('testing', dd)
+    return src_str, dd, doc_test
 
 
-def teardown():
-    mds_teardown()
+def test_doc_plain():
+    src_str, dd, doc_test = _syn_data_helper()
+    assert_equal('testing', doc_test._name)
+
+    assert_equal(set(doc_test.keys()),
+                 set(dd.keys()))
+    for k in doc_test:
+        assert_equal(doc_test[k], ord(k))
+        assert_equal(dd[k], doc_test[k])
+        assert_equal(getattr(doc_test, k), doc_test[k])
+        assert_in(k, doc_test)
+
+    for k, v in doc_test.items():
+        assert_equal(v, ord(k))
+
+    assert_equal(set(dd.values()), set(doc_test.values()))
 
 
-def setup():
-    mds_setup()
-    global run_start_uid, document_insertion_time, run_stop_uid
-    global descriptor_uid
-    document_insertion_time = ttime.time()
-    temperature_ramp.run()
-    run_start_uid = mdsc.insert_run_start(scan_id=3022013,
-                                          beamline_id='testbed',
-                                          owner='tester',
-                                          group='awesome-devs',
-                                          project='Nikea',
-                                          time=document_insertion_time,
-                                          uid=str(uuid.uuid4()))
-    run_stop_uid = mdsc.insert_run_stop(run_start=run_start_uid,
-                                        time=ttime.time(),
-                                        uid=str(uuid.uuid4()))
+def test_doc_descructive_pop():
+    src_str, dd, doc_test = _syn_data_helper()
+    for k in src_str:
+        ret = doc_test.pop(k)
+        assert_equal(ret, ord(k))
+        assert_not_in(k, doc_test)
+        assert_in(k, dd)
+    print(doc_test)
+    assert_equal(len(doc_test), 0)
 
 
-def test_document_funcs_for_smoke():
-    global run_start_uid, descriptor_uid
-    # todo this next line will break once NSLS-II/metadatastore#142 is merged
-    run_start, = find_run_starts(uid=run_start_uid)
-    descriptors = [desc for desc in find_event_descriptors(uid=descriptor_uid)]
-    run_stop, = find_run_stops(uid=run_stop_uid)
-    documents = [run_start, run_stop]
-    documents.extend(descriptors)
-    attrs = ['__repr__', '__str__']  # , '_repr_html_', ]
-    for doc, attr in product(documents, attrs):
-        getattr(doc, attr)()
+def test_doc_descructive_del():
+    src_str, dd, doc_test = _syn_data_helper()
+
+    for k in src_str:
+        del doc_test[k]
+        assert_not_in(k, doc_test)
+        assert_in(k, dd)
+    assert_equal(len(doc_test), 0)
 
 
-# todo def test_from_mongo():
+def test_doc_descructive_delattr():
+    src_str, dd, doc_test = _syn_data_helper()
 
-# todo def test_from_dict():
+    for k in src_str:
+        delattr(doc_test, k)
+        assert_not_in(k, doc_test)
+        assert_in(k, dd)
+    assert_equal(len(doc_test), 0)
+
+
+def test_html_smoke():
+    src_str, dd, doc_test = _syn_data_helper()
+
+    try:
+        doc_test._repr_html_()
+    except ImportError:
+        raise SkipTest("Missing imports for html repr")
+
+
+def test_pprint_time():
+    offset_seconds = 50
+    target = '{off} seconds ago ({dt})'
+    test = ttime.time() - offset_seconds
+    try:
+        res = _pretty_print_time(test)
+    except ImportError:
+        raise SkipTest("Missing imports for pretty print time")
+    dt = datetime.datetime.fromtimestamp(test).isoformat()
+    expt = target.format(off=offset_seconds, dt=dt)
+    assert_equal(res, expt)
 
 if __name__ == '__main__':
     import nose
