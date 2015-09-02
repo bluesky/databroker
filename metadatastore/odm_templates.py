@@ -165,4 +165,4 @@ class Event(Document):
     # TODO validate on this better
     data = DictField(required=True)
     time = FloatField(required=True)
-    meta = {'indexes': ['-descriptor', '-_id', '-uid'], 'db_alias': ALIAS}
+    meta = {'indexes': ['descriptor', '_id', 'uid', '-time'], 'db_alias': ALIAS}
