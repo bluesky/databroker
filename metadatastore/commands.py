@@ -220,6 +220,63 @@ def fetch_events_generator(desc_uid):
         yield ev
 
 
+def fetch_events_table(descriptor):
+    """Return all event data as tables
+
+    Parameters
+    ----------
+    descriptor : dict or uid
+        The EeventDestriptor to get the events for.  Can be either
+        a dict or a uid.
+
+    Returns
+    -------
+    descriptor : dict
+        EventDescriptor document
+
+    data_table : DataFrame
+        All of the data as a DataFrame indexed on sequence number
+
+    uids : Series
+        The uids of each of the events as a `Series` indexed on sequence number
+
+    times : Series
+        The times of each event as a `Series` indexed on sequence number
+
+    uids : Series
+        The uids of each event as a `Series` indexed on sequence number
+
+    timestamps_table : DataFrame
+        The timestamps of each of the measurements as a `DataFrame`.  Same
+        columns as `data_table` indexed on sequence number
+    """
+    import pandas as pd
+    desc_uid = _doc_or_uid(descriptor)
+    descriptor = event_desc_given_uid(desc_uid)
+    # this will get more complicated once transpose caching layer is in place
+    all_events = list(fetch_events_generator(desc_uid))
+
+    # get event sequence numbers
+    seq_num = pd.Series([ev['seq_num'] for ev in all_events])
+
+    # get event times
+    times = pd.to_datetime([ev['time'] for ev in all_events], unit='s')
+    times.index = seq_num
+
+    # get uids
+    uids = pd.Series([ev['uid'] for ev in all_events], index=seq_num)
+
+    # get data values
+    data_table = pd.DataFrame([ev['data'] for ev in all_events], index=seq_num)
+
+    # get timestamps
+    ts = pd.DataFrame([ev['timestamps'] for ev in all_events], index=seq_num)
+    timestamps_table = pd.DataFrame({k: pd.to_datetime(ts[k], unit='s')
+                                     for k in ts})
+    # return the whole lot
+    return descriptor, data_table, times, uids, timestamps_table
+
+
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     mongoengine.connection.disconnect(ALIAS)
