@@ -345,7 +345,26 @@ def test_bulk_insert():
             assert_equal(ret[k], expt[k])
 
 
+def test_cache_clear_lookups():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid,
+                                        ttime.time(), uid=str(uuid.uuid4()))
+    run_start = mdsc.runstart_given_uid(run_start_uid)
+    run_stop = mdsc.runstop_given_uid(run_stop_uid)
+    ev_desc = mdsc.event_desc_given_uid(e_desc_uid)
+
+    mdsc.clear_process_cache()
+
+    run_start2 = mdsc.runstart_given_uid(run_start_uid)
+
+    run_stop2 = mdsc.runstop_given_uid(run_stop_uid)
+    ev_desc2 = mdsc.event_desc_given_uid(e_desc_uid)
+
+    assert_equal(run_start, run_start2)
+    assert_equal(run_stop, run_stop2)
+    assert_equal(ev_desc, ev_desc2)
 # smoketests
+
 
 def test_find_last_for_smoke():
     last, = mdsc.find_last()

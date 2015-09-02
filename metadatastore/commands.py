@@ -48,6 +48,17 @@ _RUNSTOP_UID_to_OID_MAP = dict()
 _EVENTDESC_UID_to_OID_MAP = dict()
 
 
+def clear_process_cache():
+    """Clear all local caches"""
+    _RUNSTART_CACHE_OID.clear()
+    _RUNSTOP_CACHE_OID.clear()
+    _EVENTDESC_CACHE_OID.clear()
+
+    _RUNSTART_UID_to_OID_MAP.clear()
+    _RUNSTOP_UID_to_OID_MAP.clear()
+    _EVENTDESC_UID_to_OID_MAP.clear()
+
+
 def _ensure_connection(func):
     @wraps(func)
     def inner(*args, **kwargs):
