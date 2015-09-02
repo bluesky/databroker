@@ -134,17 +134,6 @@ def runstart_given_uid(uid):
 
 
 @_ensure_connection
-def _runstop_given_oid(oid):
-    try:
-        return _RUNSTOP_CACHE_OID[oid]
-    except KeyError:
-        pass
-    # get the raw runstop
-    runstop = RunStop._get_collection().find_one({'_id': oid})
-    return _cache_runstop(runstop)
-
-
-@_ensure_connection
 def runstop_given_uid(uid):
     try:
         oid = _RUNSTOP_UID_to_OID_MAP[uid]
