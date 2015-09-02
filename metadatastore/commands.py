@@ -332,7 +332,9 @@ def insert_run_start(time, scan_id, beamline_id, uid,
                          owner=owner, group=group, project=project,
                          **custom)
 
-    run_start.save(validate=True, write_concern={"w": 1})
+    run_start = run_start.save(validate=True, write_concern={"w": 1})
+
+    _cache_runstart(run_start.to_mongo().to_dict())
     logger.debug('Inserted RunStart with uid %s', run_start.uid)
 
     return uid
@@ -380,9 +382,10 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
                        uid=uid,
                        exit_status=exit_status, **custom)
 
-    run_stop.save(validate=True, write_concern={"w": 1})
+    run_stop = run_stop.save(validate=True, write_concern={"w": 1})
+    _cache_runstop(run_stop.to_mongo().to_dict())
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop.uid, run_start.uid)
+                 " with uid %s", run_stop.uid, run_start['uid'])
 
     return uid
 
@@ -429,9 +432,14 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
                                        uid=uid,
                                        **custom)
 
-    event_descriptor.save(validate=True, write_concern={"w": 1})
+    event_descriptor = event_descriptor.save(validate=True,
+                                             write_concern={"w": 1})
+
+    _cache_eventdescriptor(event_descriptor.to_mongo().to_dict())
+
     logger.debug("Inserted EventDescriptor with uid %s referencing "
-                 "RunStart with uid %s", event_descriptor.uid, run_start.uid)
+                 "RunStart with uid %s",
+                 event_descriptor.uid, run_start['uid'])
 
     return uid
 
