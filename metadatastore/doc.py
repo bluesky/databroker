@@ -60,7 +60,7 @@ class Document(dict):
     def __contains__(self, k):
         if isinstance(k, six.string_types) and k.startswith('_'):
             return False
-        return super(Document, self).__contains(k)
+        return super(Document, self).__contains__(k)
 
     def _repr_html_(self):
         import jinja2
