@@ -183,15 +183,75 @@ def event_desc_given_uid(uid):
     return _cache_eventdescriptor(ev_desc)
 
 
-def get_runstop_by_runstart(runstart_id):
-    pass
+def runstop_by_runstart(run_start):
+    """Given a RunStart return a list of it's RunStop
+
+    Raises if no RunStop exists.
+
+    Parameters
+    ----------
+    run_start : dict or uid
+        The RunStart to get the events for.  Can be either
+        a dict or a uid.
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document
+    """
+
+    run_start_uid = _doc_or_uid(run_start)
+    run_start = runstart_given_uid(run_start_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+
+    run_stop = RunStop._get_collection().find_one(
+        {'run_start_id': oid})
+
+    if run_stop is None:
+        raise ValueError("No run stop exists")
+
+    return _cache_runstop(run_stop)
 
 
-def get_eventdescriptor_by_runstart(runstart_id):
-    pass
+def eventdescriptors_by_runstart(run_start):
+    """Given a RunStart return a list of it's descriptors
+
+    Raises if no EventDescriptors exist.
+
+    Parameters
+    ----------
+    run_start : dict or uid
+        The RunStart to get the events for.  Can be either
+        a dict or a uid.
+
+    Returns
+    -------
+    event_descriptors : list
+        A list of EventDescriptor documents
+    """
+    # normalize the input and get the runstart oid
+    run_start_uid = _doc_or_uid(run_start)
+    run_start = runstart_given_uid(run_start_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+
+    # query the database for any event descriptors which
+    # refer to the given runstart
+    ev_desc_cur = EventDescriptor._get_collection().find(
+        {'run_start_id': oid})
+
+    # loop over the found documents, cache, and dereference
+    rets = [_cache_eventdescriptor(ev_desc) for ev_desc in ev_desc_cur]
+
+    # if nothing found, raise
+    if not rets:
+        raise ValueError("No EventDescriptors exists")
+
+    # return the list of event descriptors
+    return rets
 
 
 def fetch_events_generator(desc_uid):
+
     col = Event._get_collection()
 
     desc = event_desc_given_uid(desc_uid)

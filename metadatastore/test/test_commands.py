@@ -365,7 +365,25 @@ def test_cache_clear_lookups():
     assert_equal(run_start, run_start2)
     assert_equal(run_stop, run_stop2)
     assert_equal(ev_desc, ev_desc2)
-# smoketests
+
+
+def test_run_stop_by_run_start():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid,
+                                        ttime.time(), uid=str(uuid.uuid4()))
+    run_start = mdsc.runstart_given_uid(run_start_uid)
+    run_stop = mdsc.runstop_given_uid(run_stop_uid)
+    ev_desc = mdsc.event_desc_given_uid(e_desc_uid)
+
+    run_stop2 = mdsc.runstop_by_runstart(run_start)
+    run_stop3 = mdsc.runstop_by_runstart(run_start_uid)
+    assert_equal(run_stop, run_stop2)
+    assert_equal(run_stop, run_stop3)
+
+    ev_desc2, = mdsc.eventdescriptors_by_runstart(run_start)
+    ev_desc3, = mdsc.eventdescriptors_by_runstart(run_start_uid)
+    assert_equal(ev_desc, ev_desc2)
+    assert_equal(ev_desc, ev_desc3)
 
 
 def test_find_last_for_smoke():
