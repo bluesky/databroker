@@ -45,6 +45,26 @@ _RUNSTOP_UID_to_OID_MAP = dict()
 _EVENTDESC_UID_to_OID_MAP = dict()
 
 
+def _doc_or_uid(doc_or_uid):
+    """Helper function to ensure a uid
+
+    Parameters
+    ----------
+    doc_or_uid : dict or str
+        If str, then assume uid and pass through, if not, return
+        the 'uid' field
+
+    Returns
+    -------
+    uid : str
+        A string version of the uid of the given document
+
+    """
+    if not isinstance(doc_or_uid, six.string_types):
+        doc_or_uid = doc_or_uid['uid']
+    return doc_or_uid
+
+
 def clear_process_cache():
     """Clear all local caches"""
     _RUNSTART_CACHE_OID.clear()
@@ -677,8 +697,7 @@ def find_run_starts(**kwargs):
     """
     run_start = kwargs.pop('run_start', None)
     if run_start:
-        if not isinstance(run_start, six.string_types):
-            run_start = run_start['uid']
+        run_start = _doc_or_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
@@ -727,8 +746,7 @@ def find_run_stops(run_start=None, **kwargs):
     _format_time(kwargs)
     # get the actual mongo document
     if run_start:
-        if not isinstance(run_start, six.string_types):
-            run_start = run_start['uid']
+        run_start = _doc_or_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
@@ -773,8 +791,7 @@ def find_event_descriptors(run_start=None, **kwargs):
     event_descriptor : iterable of metadatastore.document.Document objects
     """
     if run_start:
-        if not isinstance(run_start, six.string_types):
-            run_start = run_start['uid']
+        run_start = _doc_or_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
@@ -829,8 +846,8 @@ def find_events(descriptor=None, **kwargs):
         raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
 
     if descriptor:
-        if not isinstance(descriptor, six.string_types):
-            descriptor = descriptor['uid']
+        descriptor = _doc_or_uid(descriptor)
+
         descriptor = event_desc_given_uid(descriptor)
         descriptor = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
         kwargs['descriptor_id'] = descriptor
