@@ -165,37 +165,7 @@ def event_desc_given_uid(uid):
     return _cache_eventdescriptor(ev_desc)
 
 
-def get_runstart(input_id):
-    """Get a single runstart document given a uid or oid
-
-    Parameters
-    ----------
-    input_id : str or ObjectId
-        Unique identified for the runstart to find.  ObjectId
-        search will be deprecated in the future.
-
-    Returns
-    -------
-    rs : doc.Document
-        Dottable dictionary of RunStart document
-    """
-    if isinstance(input_id, bson.ObjectId):
-        return _runstart_given_oid(input_id)
-    elif isinstance(input_id, six.string_types):
-        return runstart_given_uid(input_id)
-    else:
-        raise TypeError("Input must be ObjectId or str")
-
-
-def get_runstop(input_id):
-    pass
-
-
 def get_runstop_by_runstart(runstart_id):
-    pass
-
-
-def get_eventdescriptor(input_id):
     pass
 
 
