@@ -171,7 +171,7 @@ class EventHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-#         self.write(ujson.dumps(docs))
+        self.write(ujson.dumps(list(docs)))
         self.finish()
     
     @tornado.web.asynchronous
