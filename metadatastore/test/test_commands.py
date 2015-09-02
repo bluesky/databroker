@@ -339,7 +339,7 @@ def test_bulk_insert():
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     ev_gen = mdsc.fetch_events_generator(e_desc)
 
-    for ret, expt in zip(ev_gen, reversed(all_data)):
+    for ret, expt in zip(ev_gen, all_data):
         assert_equal(ret['descriptor']['uid'], e_desc)
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert_equal(ret[k], expt[k])

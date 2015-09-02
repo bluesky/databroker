@@ -212,8 +212,8 @@ def fetch_events_generator(desc_uid):
     desc = event_desc_given_uid(desc_uid)
     eid = _EVENTDESC_UID_to_OID_MAP[desc_uid]
 
-    ev_cur = col.find({'descriptor_id': eid}).sort(
-                            [('time', pymongo.DESCENDING)])
+    ev_cur = col.find({'descriptor_id': eid},
+                      sort=[('time', 1)])
 
     for ev in ev_cur:
         # ditch the ObjectID
