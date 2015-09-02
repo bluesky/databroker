@@ -2,9 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.web
 from bson import json_util
-import itertools 
-import six
-import datetime
+import ujson
 from bson.objectid import ObjectId
 __author__ = 'arkilic'
 
@@ -22,7 +20,7 @@ def _unpack_params(handler):
     """
     if not isinstance(handler, tornado.web.RequestHandler):
         raise TypeError('Cannot unpack the query params. Handler required')
-    query = json_util.loads(list(handler.request.arguments.keys())[0])
+    query = ujson.loads(list(handler.request.arguments.keys())[0])
     return query
 
 

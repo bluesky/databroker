@@ -2,10 +2,9 @@ import requests
 import simplejson
 import datetime
 import pytz
-import time
 import six
 from functools import wraps
-from bson import json_util
+import ujson
 from metadataservice.client import conf
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
@@ -95,7 +94,7 @@ def find_run_starts(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start", params=simplejson.dumps(query))
-        content = json_util.loads(r.text)
+        content = ujson.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -149,7 +148,7 @@ def find_run_stops(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_stop", params=simplejson.dumps(query))
-        content = json_util.loads(r.text)
+        content = ujson.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -204,7 +203,7 @@ def find_events(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/event", params=simplejson.dumps(query))
-        content = json_util.loads(r.text)
+        content = ujson.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -257,7 +256,7 @@ def find_beamline_configs(**kwargs):
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/beamline_config", params=simplejson.dumps(query))
-        content = json_util.loads(r.text)
+        content = ujson.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -309,8 +308,8 @@ def find_event_descriptors(**kwargs):
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + '/event_descriptor', params=json_util.dumps(query))
-        content = json_util.loads(r.text)
+        r = requests.get(_server_path + '/event_descriptor', params=ujson.dumps(query))
+        content = ujson.loads(r.text)
         if not content:
             StopIteration()
             break
@@ -328,23 +327,19 @@ def event_desc_given_uid(event_descriptor):
     query['range_floor'] = range_floor
     query['range_ceil'] = range_ceil
     query['uid'] = event_descriptor
-    r = requests.get(_server_path + '/event_descriptor', params=json_util.dumps(query))
+    r = requests.get(_server_path + '/event_descriptor', params=ujson.dumps(query))
     print(r)
-    return json_util.loads(r.text)
+    return ujson.loads(r.text)
         
     
 
 @_ensure_connection
 def insert_event(descriptor,events):
     descriptor = event_desc_given_uid(event_descriptor=descriptor)
-    #TODO: Add validation
-    ev = json_util.dumps(events)
-    start_time = time.time()
+    #TODO: Add validation    
+    ev = ujson.dumps(list(events))
     r = requests.post(_server_path + '/event', data=ev)
-    stop_time = time.time()
-    print('insert time: {}'.format(stop_time - start_time))
-#     return json_util.loads(r.text)
-
+    return r
 
 @_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid=None,
@@ -376,9 +371,10 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
         The document added to the collection.
 
     """
-    payload = json_util.dumps(locals())
+
+    payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
-    return json_util.loads(r.text)
+    return ujson.loads(r.text)
 
 
 # @_ensure_connection
@@ -418,9 +414,9 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
     data = locals()
     if custom:
         data.update(custom)
-    payload = json_util.dumps(data)
+    payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
-    return json_util.loads(r.text)
+    return ujson.loads(r.text)
 
 
 @_ensure_connection
@@ -455,7 +451,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         Inserted mongoengine object
     """
     
-    payload = json_util.dumps(locals())
+    payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
     return r.status_code
 
@@ -480,7 +476,7 @@ def insert_beamline_config(config_params, time, uid=None):
     blc : BeamlineConfig
         The document added to the collection
     """
-    payload = json_util.dumps(locals())
+    payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/beamline_config', data=payload)
     return r.status_code
 

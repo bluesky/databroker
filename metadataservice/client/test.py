@@ -62,5 +62,7 @@ stop = 10
 rs, e_desc, data_keys = setup_syn()
 all_data = syn_data(data_keys, num)
 
+start_time = time.time()
 insert_event(descriptor=e_desc, events=all_data)
-
+stop_time = time.time()
+print('insert time: {}'.format(stop_time - start_time))

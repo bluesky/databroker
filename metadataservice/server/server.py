@@ -2,8 +2,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
+import time
 from tornado import gen
-from bson import json_util
+from bson import ujson
 import pymongo
 import motor
 from metadataservice.server import utils
@@ -48,11 +49,11 @@ class RunStartHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         if start ==0 and stop ==1:
             docs = yield db.run_start.find_one(query)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         else:
             cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
             docs = yield cursor.to_list(None)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -60,10 +61,10 @@ class RunStartHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a run_start document"""
         db = self.settings['db']
-        data = json_util.loads(self.request.body.decode("utf-8"))
+        data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_start.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        self.write(ujson.dumps(result))
         self.finish()
 
 
@@ -79,11 +80,11 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         if start ==0 and stop ==1:
             docs = yield db.beamline_config.find_one(query)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         else:
             cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
             docs = yield cursor.to_list(None)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -91,10 +92,10 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a beamline_config document"""
         db = self.settings['db']
-        data = json_util.loads(self.request.body.decode("utf-8"))
+        data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        self.write(ujson.dumps(result))
         self.finish()
 
 
@@ -110,11 +111,11 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         if start==0 and stop==1:
             docs = yield db.event_descriptor.find_one(query)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         else:
             cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
             docs = yield cursor.to_list(None)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -122,10 +123,10 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert an event_descriptor document"""
         db = self.settings['db']
-        data = json_util.loads(self.request.body.decode("utf-8"))
+        data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.event_descriptor.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        self.write(ujson.dumps(result))
         self.finish()
 
 
@@ -141,11 +142,11 @@ class RunStopHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         if start ==0 and stop ==1:
             docs = yield db.run_stop.find_one(query)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         else:
             cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
             docs = yield cursor.to_list(None)
-            self.write(json_util.dumps(docs))
+            self.write(ujson.dumps(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -153,13 +154,12 @@ class RunStopHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a run_start document"""
         db = self.settings['db']
-        data = json_util.loads(self.request.body.decode("utf-8"))
+        data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_stop.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        self.write(ujson.dumps(result))
         self.finish()
 
-import time
 class EventHandler(tornado.web.RequestHandler):
     """Handler for run_start insert and query operations"""
     @tornado.web.asynchronous
@@ -167,13 +167,13 @@ class EventHandler(tornado.web.RequestHandler):
     def get(self):
         # TODO: Add sort by time!
         """Query event documents"""
-        
+        import ujson
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        self.write(json_util.dumps(docs))
+#         self.write(ujson.dumps(docs))
         self.finish()
     
     @tornado.web.asynchronous
@@ -181,7 +181,7 @@ class EventHandler(tornado.web.RequestHandler):
     def post(self):
         """Insert a run_start document"""
         db = self.settings['db']
-        data = json_util.loads(self.request.body.decode("utf-8"))
+        data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         bulk = db.event.initialize_unordered_bulk_op()
         start_time = time.time()
@@ -191,7 +191,7 @@ class EventHandler(tornado.web.RequestHandler):
             yield bulk.execute() #add timeout etc.!
         except pymongo.errors.BulkWriteError as err:
             print(err)
-            self.write(json_util.dumps(err))
+            self.write(ujson.dumps(err))
         stop_time = time.time()
         print('insert time: {}'.format(stop_time - start_time))
         self.finish()
