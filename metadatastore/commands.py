@@ -853,6 +853,13 @@ def find_events(descriptor=None, **kwargs):
     if 'event_descriptor_id' in kwargs:
         raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
 
+    if descriptor:
+        if not isinstance(descriptor, six.string_types):
+            descriptor = descriptor['uid']
+        descriptor = event_desc_given_uid(descriptor)
+        descriptor = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
+        kwargs['descriptor_id'] = descriptor
+
     _format_time(kwargs)
 
     events = Event.objects(__raw__=kwargs).order_by('-time')
