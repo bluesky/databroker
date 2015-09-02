@@ -337,6 +337,8 @@ def test_bulk_insert():
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+
     ev_gen = mdsc.fetch_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):

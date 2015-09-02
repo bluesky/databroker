@@ -11,10 +11,7 @@ import logging
 import boltons.cacheutils
 import pytz
 
-import pymongo
-
 import bson
-from bson import ObjectId
 from bson.dbref import DBRef
 
 from mongoengine import connect
