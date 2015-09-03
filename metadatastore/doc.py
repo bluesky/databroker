@@ -68,12 +68,12 @@ class Document(dict):
     def _repr_html_(self):
         import jinja2
         env = jinja2.Environment()
-        env.filters['human_time'] = _pretty_print_time
+        env.filters['human_time'] = pretty_print_time
         template = env.from_string(_HTML_TEMPLATE)
         return template.render(document=self)
 
 
-def _pretty_print_time(timestamp):
+def pretty_print_time(timestamp):
     import humanize
     import time
     import datetime

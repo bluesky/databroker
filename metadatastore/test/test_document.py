@@ -5,7 +5,7 @@ import datetime
 
 from nose.tools import (assert_equal, assert_in, assert_not_in)
 from nose import SkipTest
-from ..doc import Document, _pretty_print_time
+from ..doc import Document, pretty_print_time
 
 import logging
 loglevel = logging.DEBUG
@@ -92,7 +92,7 @@ def test_pprint_time():
     target = '{off} seconds ago ({dt})'
     test = ttime.time() - offset_seconds
     try:
-        res = _pretty_print_time(test)
+        res = pretty_print_time(test)
     except ImportError:
         raise SkipTest("Missing imports for pretty print time")
     dt = datetime.datetime.fromtimestamp(test).isoformat()
