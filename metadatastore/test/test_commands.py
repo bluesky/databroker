@@ -413,6 +413,13 @@ def test_find_runstop():
     assert_equal(run_stop, run_stop3)
 
 
+@raises(RuntimeError)
+def test_double_runstop():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+
+
 def test_find_last_for_smoke():
     last, = mdsc.find_last()
 

@@ -446,6 +446,12 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
         custom = {}
 
     run_start = runstart_given_uid(run_start)
+    try:
+        runstop_by_runstart(run_start['uid'])
+    except NoRunStop:
+        pass
+    else:
+        raise RuntimeError("Runstop already exits for {!r}".format(run_start))
     runstart_oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
     rs_ref = DBRef('RunStart', runstart_oid)
 
