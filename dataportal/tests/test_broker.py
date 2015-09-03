@@ -194,9 +194,9 @@ def test_scan_id_lookup():
     print(rd2)
     header = db[3 + 314159]
     scan_id = header['scan_id']
-    owner = header['owner']
+    owner = header['run_start']['owner']
     assert_equal(scan_id, 3 + 314159)
-    assert_equal(rd2[2], header['run_start_uid'])
+    assert_equal(rd2[2], header['uid'])
     # This should be the most *recent* Scan 3 + 314159. There is ambiguity.
     assert_equal(owner, 'nedbrainard')
 
@@ -209,12 +209,12 @@ def test_uid_lookup():
     insert_run_start(time=100., scan_id=1, uid=uid2,
                      owner='drstrangelove', beamline_id='example')
     # using full uid
-    actual_uid = db[uid].run_start_uid
+    actual_uid = db[uid]["uid"]
     assert_equal(actual_uid, uid)
     assert_equal(rs1, uid)
 
     # using first 6 chars
-    actual_uid = db[uid[:6]].run_start_uid
+    actual_uid = db[uid[:6]]["uid"]
     assert_equal(actual_uid, uid)
     assert_equal(rs1, uid)
 
@@ -242,7 +242,7 @@ def test_data_key():
     result2 = db.find_headers(data_key='fork', start_time=150)
     assert_equal(len(result1), 2)
     assert_equal(len(result2), 1)
-    actual = result2[0].run_start_uid
+    actual = result2[0]["uid"]
     assert_equal(actual, str(rs2.uid))
 
 
