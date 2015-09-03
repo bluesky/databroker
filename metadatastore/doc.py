@@ -137,7 +137,7 @@ def vstr(doc, indent=0):
         '!', '$', '%', '&', '(', ')', ',', '/', ';', '<', '>', '?', '@',
         '[', '\\', ']', '{', '|', '}'
     ]
-    name = doc._name
+    name = doc['_name']
 
     ret = "\n%s\n%s" % (name, headings[indent]*len(name))
 
@@ -145,17 +145,19 @@ def vstr(doc, indent=0):
     name_width = 16
     value_width = 40
     for name, value in sorted(doc.items()):
-        if isinstance(value, Document):
-            documents.append((name, value))
-        elif name == 'event_descriptors':
+        if name == 'event_descriptors':
             for val in value:
                 documents.append((name, val))
         elif name == 'data_keys':
             ret += "\n%s" % str(_format_data_keys_dict(value))
         elif isinstance(value, collections.Mapping):
-            # format dicts reasonably
-            ret += "\n%-{}s:".format(name_width, value_width) % (name)
-            ret += _format_dict(value, name_width, value_width, name, tabs=1)
+            if '_name' in value:
+                documents.append((name, value))
+            else:
+                # format dicts reasonably
+                ret += "\n%-{}s:".format(name_width, value_width) % (name)
+                ret += _format_dict(value, name_width, value_width,
+                                    name, tabs=1)
         else:
             ret += ("\n%-{}s: %-{}s".format(name_width, value_width) %
                     (name[:16], value))
