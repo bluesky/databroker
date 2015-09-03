@@ -94,6 +94,30 @@ class Document(dict):
         except ImportError:
             return super(self, Document).__str__()
 
+    def to_name_dict_pair(self):
+        """Convert to (name, dict) pair
+
+        This can be used to safely mutate a Document::
+
+           name, dd = doc.to_name_dict_pair()
+           dd['new_key'] = 'aardvark'
+           dd['run_start'] = dd['run_start']['uid']
+           new_doc = Document(name, dd)
+
+        Returns
+        -------
+        name : str
+            Name of Document
+
+        ret : dict
+            Data payload of Document
+
+
+        """
+        ret = dict(self)
+        name = ret.pop('_name')
+        return name, ret
+
 
 def pretty_print_time(timestamp):
     import humanize

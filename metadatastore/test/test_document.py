@@ -97,6 +97,16 @@ def test_html_smoke():
         raise SkipTest("Missing imports for html repr")
 
 
+def test_round_trip():
+    src_str, dd, doc_test = _syn_data_helper()
+    name, doc_dict = doc_test.to_name_dict_pair()
+    assert_equal(name, doc_test['_name'])
+    assert_equal(name, doc_test._name)
+    assert_equal(dd, doc_dict)
+    new_doc = Document(name, doc_dict)
+    assert_equal(doc_test, new_doc)
+
+
 def test_pprint_time():
     offset_seconds = 50
     target = '{off} seconds ago ({dt})'
