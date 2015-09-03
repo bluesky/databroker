@@ -559,10 +559,6 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     """
     val_ts_tuple = _transform_data(data, timestamps)
 
-    # Allow caller to beg forgiveness rather than ask permission w.r.t
-    # EventDescriptor creation.
-    if descriptor is None:
-        raise EventDescriptorIsNoneError()
     descriptor = event_desc_given_uid(descriptor)
     desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
     event = Event(descriptor_id=desc_oid, uid=uid,
@@ -630,14 +626,6 @@ def _transform_data(data, timestamps):
         {'data': {<key>: (<value>, <timestamp>)}.
     """
     return {k: (data[k], timestamps[k]) for k in data}
-
-
-class EventDescriptorIsNoneError(ValueError):
-    """Special error that ophyd looks for when it passes a `None` event
-    descriptor. Ophyd will then create an event descriptor and create the event
-    again
-    """
-    pass
 
 
 # DATABASE RETRIEVAL ##########################################################

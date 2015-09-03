@@ -126,15 +126,6 @@ def test_event_descriptor_insertion():
                          data_keys[k][ik])
 
 
-@raises(mdsc.EventDescriptorIsNoneError)
-def test_ev_insert_fail():
-    """Make sure metadatastore correctly barfs if an event is inserted
-    with no event descriptor
-    """
-    mdsc.insert_event(None, ttime.time(), data={'key': 0},
-                      timestamps={'key': 0}, seq_num=0, uid=str(uuid.uuid4()))
-
-
 def test_insert_run_start():
     time = ttime.time()
     beamline_id = 'sample_beamline'

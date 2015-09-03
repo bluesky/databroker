@@ -5,7 +5,6 @@ from .commands import (find_events, find_event_descriptors,
 # Data insertion
 from .commands import (insert_event, insert_event_descriptor, insert_run_start,
                        insert_run_stop,
-                       EventDescriptorIsNoneError,
                        db_connect, db_disconnect)
 
 # object model
