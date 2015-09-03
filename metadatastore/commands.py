@@ -43,7 +43,7 @@ _RUNSTOP_UID_to_OID_MAP = dict()
 _EVENTDESC_UID_to_OID_MAP = dict()
 
 
-def _doc_or_uid(doc_or_uid):
+def doc_or_uid_to_uid(doc_or_uid):
     """Helper function to ensure a uid
 
     Parameters
@@ -200,7 +200,7 @@ def runstop_by_runstart(run_start):
         The RunStop document
     """
 
-    run_start_uid = _doc_or_uid(run_start)
+    run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = runstart_given_uid(run_start_uid)
     oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
 
@@ -230,7 +230,7 @@ def eventdescriptors_by_runstart(run_start):
         A list of EventDescriptor documents
     """
     # normalize the input and get the runstart oid
-    run_start_uid = _doc_or_uid(run_start)
+    run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = runstart_given_uid(run_start_uid)
     oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
 
@@ -309,7 +309,7 @@ def fetch_events_table(descriptor):
         columns as `data_table` indexed on sequence number
     """
     import pandas as pd
-    desc_uid = _doc_or_uid(descriptor)
+    desc_uid = doc_or_uid_to_uid(descriptor)
     descriptor = event_desc_given_uid(desc_uid)
     # this will get more complicated once transpose caching layer is in place
     all_events = list(fetch_events_generator(desc_uid))
@@ -782,7 +782,7 @@ def find_run_starts(**kwargs):
     """
     run_start = kwargs.pop('run_start', None)
     if run_start:
-        run_start = _doc_or_uid(run_start)
+        run_start = doc_or_uid_to_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['_id'] = run_start
@@ -831,7 +831,7 @@ def find_run_stops(run_start=None, **kwargs):
     _format_time(kwargs)
     # get the actual mongo document
     if run_start:
-        run_start = _doc_or_uid(run_start)
+        run_start = doc_or_uid_to_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
@@ -876,7 +876,7 @@ def find_event_descriptors(run_start=None, **kwargs):
     event_descriptor : iterable of metadatastore.document.Document objects
     """
     if run_start:
-        run_start = _doc_or_uid(run_start)
+        run_start = doc_or_uid_to_uid(run_start)
         run_start = runstart_given_uid(run_start)
         run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
         kwargs['run_start_id'] = run_start
@@ -931,7 +931,7 @@ def find_events(descriptor=None, **kwargs):
         raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
 
     if descriptor:
-        descriptor = _doc_or_uid(descriptor)
+        descriptor = doc_or_uid_to_uid(descriptor)
 
         descriptor = event_desc_given_uid(descriptor)
         descriptor = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
