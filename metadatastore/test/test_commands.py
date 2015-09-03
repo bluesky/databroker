@@ -180,6 +180,33 @@ def test_run_stop_insertion():
         assert_equal(known_value, getattr(run_stop, attr))
 
 
+def test_find_events_smoke():
+
+    num = 50
+    rs, e_desc, data_keys = setup_syn()
+    all_data = syn_data(data_keys, num)
+
+    mdsc.bulk_insert_events(e_desc, all_data, validate=False)
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.clear_process_cache()
+
+    next(mdsc.find_events())
+
+
+@raises(ValueError)
+def test_no_evdesc():
+
+    run_start_uid = mdsc.insert_run_start(scan_id=42,
+                                          beamline_id='testbed',
+                                          owner='tester',
+                                          group='awesome-devs',
+                                          project='Nikea',
+                                          time=document_insertion_time,
+                                          uid=str(uuid.uuid4()))
+
+    mdsc.eventdescriptors_by_runstart(run_start_uid)
+
+
 # ### Testing metadatastore find functionality ################################
 def _find_helper(func, kw):
     func(**kw)
@@ -212,14 +239,14 @@ def test_find_funcs_for_smoke():
             {'exit_status': 'success'},
             {'uid': 'foo'}],
         mdsc.find_event_descriptors: [
-#            {'run_start': rs},
+            {'run_start': rs},
             {'run_start_uid': rs.uid},
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
             {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
             {'uid': 'foo'}],
         mdsc.find_run_stops: [
-#            {'run_start': rs},
+            {'run_start': rs},
             {'run_start_uid': rs.uid},
         ]
     }
@@ -349,13 +376,17 @@ def test_cache_clear_lookups():
     mdsc.clear_process_cache()
 
     run_start2 = mdsc.runstart_given_uid(run_start_uid)
+    mdsc.clear_process_cache()
 
     run_stop2 = mdsc.runstop_given_uid(run_stop_uid)
+    mdsc.clear_process_cache()
     ev_desc2 = mdsc.event_desc_given_uid(e_desc_uid)
+    ev_desc3 = mdsc.event_desc_given_uid(e_desc_uid)
 
     assert_equal(run_start, run_start2)
     assert_equal(run_stop, run_stop2)
     assert_equal(ev_desc, ev_desc2)
+    assert_equal(ev_desc, ev_desc3)
 
 
 def test_run_stop_by_run_start():
