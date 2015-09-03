@@ -47,8 +47,8 @@ def setup_syn(custom=None):
     if custom is None:
         custom = {}
 
-    data_keys = {k:  {'source': k,
-                      'dtype': 'number',
+    data_keys = {k: {'source': k,
+                     'dtype': 'number',
                       'shape': None} for k in 'ABCEDEFHIJKL'
                  }
     scan_id = 1
