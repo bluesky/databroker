@@ -90,6 +90,12 @@ def test_doc_descructive_update():
     doc_test.update(dd)
 
 
+@raises(AttributeError)
+def test_getattr_fail():
+    src_str, dd, doc_test = _syn_data_helper()
+    getattr(doc_test, 'aardavark')
+
+
 def test_html_smoke():
     src_str, dd, doc_test = _syn_data_helper()
 
@@ -97,6 +103,23 @@ def test_html_smoke():
         doc_test._repr_html_()
     except ImportError:
         raise SkipTest("Missing imports for html repr")
+
+
+def test_str_smoke():
+    d = {'data_keys': {k: {'source': k,
+                           'dtype': 'number',
+                           'shape': None} for k in 'ABCEDEFHIJKL'},
+         'uid': str(uuid.uuid4()), }
+    d = Document('desc', d)
+    a = Document('animal', {'uid': str(uuid.uuid4()),
+                            'animal': 'arrdvark',
+                            'food': {'ants': 'great',
+                                     'beef': 'bad'}})
+    b = Document('zoo', {'name': 'BNL Zoo',
+                         'prime_attraction': a,
+                         'descriptors': [d, d]})
+
+    str(b)
 
 
 def test_round_trip():
