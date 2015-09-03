@@ -380,7 +380,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/event_descriptor', data=payload)
-    return r.json()['$oid']
+    return r.json()
 
 
 @_ensure_connection
@@ -422,7 +422,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
         data.update(custom)
     payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
-    return r.json()['$oid']
+    return r.json()
 
 
 @_ensure_connection
@@ -459,7 +459,7 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
     
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
-    return r.json()['$oid']
+    return r.json()
 
 
 @_ensure_connection
@@ -484,7 +484,7 @@ def insert_beamline_config(config_params, time, uid=None):
     """
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/beamline_config', data=payload)
-    return r.json()['$oid']
+    return r.json()
 
 
 @_ensure_connection

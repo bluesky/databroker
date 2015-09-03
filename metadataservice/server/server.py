@@ -8,7 +8,6 @@ from bson import json_util
 import motor
 import ujson
 from metadataservice.server import utils
-from bson.json_util import object_hook
 __author__ = 'arkilic'
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
@@ -55,7 +54,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
-        self.write(ujson.dumps(payload))
+        utils._return2client(self, payload)
         self.finish()
 
     @tornado.web.asynchronous
@@ -66,7 +65,8 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_start.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        print(type(result))
+        utils._return2client(self, result)
         self.finish()
 
 
@@ -83,7 +83,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
-        self.write(ujson.dumps(payload))
+        utils._return2client(self, payload)
         self.finish()
 
     @tornado.web.asynchronous
@@ -94,7 +94,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         # TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        utils._return2client(self, data)
         self.finish()
 
 
@@ -111,7 +111,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
-        self.write(ujson.dumps(payload))
+        utils._return2client(self, payload)
         self.finish()
 
     @tornado.web.asynchronous
@@ -122,7 +122,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.event_descriptor.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        utils._return2client(self, result)
         self.finish()
 
 
@@ -139,7 +139,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
-        self.write(ujson.dumps(payload))
+        utils._return2client(self, payload)
         self.finish()
 
     @tornado.web.asynchronous
@@ -150,7 +150,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_stop.insert(data)#async insert
-        self.write(json_util.dumps(result))
+        utils._return2client(self, result)
         self.finish()
 
 class EventHandler(tornado.web.RequestHandler):
@@ -166,7 +166,7 @@ class EventHandler(tornado.web.RequestHandler):
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
-        self.write(ujson.dumps(payload))
+        utils._return2client(self, payload)
         self.finish()
     
     @tornado.web.asynchronous
@@ -183,7 +183,7 @@ class EventHandler(tornado.web.RequestHandler):
             yield bulk.execute() #add timeout etc.!
         except pymongo.errors.BulkWriteError as err:
             print(err)
-            self.write(ujson.dumps(err))
+            utils._return2client(err)
         self.finish()
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
