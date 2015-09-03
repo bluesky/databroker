@@ -98,7 +98,26 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
                   datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
 
-    return datum
+    return datum_id
+
+
+@_ensure_connection
+def bulk_insert_datum(resource, datum_ids, datum_kwarg_list):
+
+    resource_id = resource.id
+
+    def datum_factory():
+        for d_id, d_kwargs in zip(datum_ids, datum_kwarg_list):
+            datum = dict(resource_id=resource_id,
+                         datum_id=d_id,
+                         datum_kwargs=d_kwargs)
+            yield datum
+
+    bulk = Datum._get_collection().initialize_ordered_bulk_op()
+    for dm in datum_factory():
+        bulk.insert(dm)
+
+    return bulk.execute()
 
 
 @_ensure_connection
