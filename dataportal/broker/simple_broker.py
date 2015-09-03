@@ -386,8 +386,6 @@ def make_header(run_start, allow_no_runstop=False):
     except ValueError:
         ev_descs = []
     header['descriptors'] = ev_descs
-    # I want to rename this, leave for now to make tests pass
-    header['event_descriptors'] = ev_descs
     return doc.Document('header', header)
 
 
