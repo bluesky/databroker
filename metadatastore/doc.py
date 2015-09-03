@@ -206,3 +206,24 @@ def vstr(doc, indent=0):
     ret = ["%s%s" % ('  '*indent, line) for line in ret]
     ret = "\n".join(ret)
     return ret
+
+
+def ref_doc_to_uid(doc, field):
+    """Convert a reference doc to a uid
+
+    Given a Document, replace the given field (which must contain a
+    Document) with the uid of that Document.
+
+    Returns a new instance with the updated values
+
+    Parameters
+    ----------
+    doc : Document
+        The document to replace an entry in
+
+    field : str
+        The field to replace with the uid of it's contents
+    """
+    name, doc = doc.to_name_dict_pair()
+    doc[field] = doc[field]['uid']
+    return Document(name, doc)

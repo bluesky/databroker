@@ -2,10 +2,12 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import time as ttime
 import datetime
+import uuid
 
-from nose.tools import (assert_equal, assert_in, assert_not_in, raises)
+from nose.tools import (assert_equal, assert_in, raises)
 from nose import SkipTest
-from ..doc import Document, pretty_print_time, DocumentIsReadOnly
+from ..doc import (Document, pretty_print_time,
+                   DocumentIsReadOnly, ref_doc_to_uid)
 
 import logging
 loglevel = logging.DEBUG
@@ -105,6 +107,16 @@ def test_round_trip():
     assert_equal(dd, doc_dict)
     new_doc = Document(name, doc_dict)
     assert_equal(doc_test, new_doc)
+
+
+def test_ref_to_uid():
+    a = Document('animal', {'uid': str(uuid.uuid4()),
+                            'animal': 'arrdvark'})
+    b = Document('zoo', {'name': 'BNL Zoo',
+                         'prime_attraction': a})
+    b2 = ref_doc_to_uid(b, 'prime_attraction')
+    assert_equal(b2['prime_attraction'], a['uid'])
+    assert_equal(b['prime_attraction'], a)
 
 
 def test_pprint_time():
