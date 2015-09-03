@@ -43,6 +43,10 @@ _RUNSTOP_UID_to_OID_MAP = dict()
 _EVENTDESC_UID_to_OID_MAP = dict()
 
 
+class NoRunStop(Exception):
+    pass
+
+
 def doc_or_uid_to_uid(doc_or_uid):
     """Helper function to ensure a uid
 
@@ -208,7 +212,7 @@ def runstop_by_runstart(run_start):
         {'run_start_id': oid})
 
     if run_stop is None:
-        raise ValueError("No run stop exists")
+        raise NoRunStop("No run stop exists")
 
     return _cache_runstop(run_stop)
 
