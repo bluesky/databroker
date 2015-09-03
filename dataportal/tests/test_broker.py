@@ -98,12 +98,12 @@ def test_event_queue():
     queue.update()
     empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)
-    events = temperature_ramp.run(rs)
+    events = temperature_ramp.run(rs, make_run_stop=False)
     # This should add a bundle of Events to the queue.
     queue.update()
     first_bundle = queue.get()
     assert_equal(len(first_bundle), len(events))
-    more_events = temperature_ramp.run(rs)
+    more_events = temperature_ramp.run(rs, make_run_stop=False)
     # Queue should be empty until we update.
     empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)
@@ -250,21 +250,3 @@ def generate_ca_data(channels, start_time, end_time):
     timestamps = list(timestamps.dt.to_pydatetime())
     values = list(np.arange(len(timestamps)))
     return {channel: (timestamps, values) for channel in channels}
-
-
-@raises(dataportal.broker.simple_broker.IntegrityError)
-def test_bad_header():
-    # Exercise the code path that results in a 'badly formatted header'
-    # in this case it works by inserting three run stops
-    # one comes from the temperature_ramp.run() command
-    # then two more come from stop1 and stop2
-    start = insert_run_start(time=ttime.time(), scan_id=8985, owner='docbrown',
-                             beamline_id='example',
-                             uid=str(uuid.uuid4()))
-    temperature_ramp.run(start)
-    insert_run_stop(start, time=ttime.time(),
-                    uid=str(uuid.uuid4()))
-    insert_run_stop(start, time=ttime.time(),
-                    uid=str(uuid.uuid4()))
-
-    db[-1]
