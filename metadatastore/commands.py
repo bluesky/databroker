@@ -25,11 +25,6 @@ from . import doc
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['insert_run_start', 'insert_event',
-           'insert_run_stop', 'insert_event_descriptor', 'find_run_stops',
-           'find_event_descriptors', 'find_last',
-           'find_events', 'find_run_starts', 'db_connect', 'db_disconnect']
-
 # process local caches of 'header' documents these are storing object indexed
 # on ObjectId because that is what the reference fields in mongo are
 # implemented as.   Should move to uids asap
@@ -45,6 +40,7 @@ _EVENTDESC_UID_to_OID_MAP = dict()
 
 class NoRunStop(Exception):
     pass
+
 
 class NoEventDescriptors(Exception):
     pass
