@@ -16,7 +16,6 @@ from metadataservice.client import conf
 
 # TODO: Find a way to handle auth with each request. Policy decision, tell me what to do people
 
-
 def server_connect(host, port, protocol='http'):
     # Do not gasp yet! I copied w/e mongoengine did for global connections
     # Tbh, works pretty neatly and it is quite intuitive
@@ -384,7 +383,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     return r.json()['$oid']
 
 
-# @_ensure_connection
+@_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
                     owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
@@ -424,7 +423,6 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
     payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
     return r.json()['$oid']
-
 
 
 @_ensure_connection

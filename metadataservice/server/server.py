@@ -17,6 +17,7 @@ __author__ = 'arkilic'
 # ujson is 3-5 orders of magnitude fast but doesn't encode bson neatly
 # json_util does encode/decode neatly but painfully slow
 
+
 def db_connect(database ,host, port):
     """Helper function to deal with stateful connections to motor. Connection established lazily.
     Asycnc so do not treat like mongonengine connection pool.
@@ -74,7 +75,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        # TODO: Add sort by time!
+        #  TODO: Add sort by time!
         """Query beamline_config documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
@@ -91,7 +92,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         """Insert a beamline_config document"""
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        #TODO: Add validation once database is implemented
+        # TODO: Add validation once database is implemented
         result = yield db.beamline_config.insert(data)#async insert
         self.write(json_util.dumps(result))
         self.finish()
