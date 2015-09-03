@@ -49,7 +49,7 @@ def setup_syn(custom=None):
 
     data_keys = {k: {'source': k,
                      'dtype': 'number',
-                      'shape': None} for k in 'ABCEDEFHIJKL'
+                     'shape': None} for k in 'ABCEDEFHIJKL'
                  }
     scan_id = 1
 
