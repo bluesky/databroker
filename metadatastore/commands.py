@@ -31,7 +31,7 @@ __all__ = ['insert_run_start', 'insert_event',
            'find_events', 'find_run_starts', 'db_connect', 'db_disconnect']
 
 # process local caches of 'header' documents these are storing object indexed
-# on Objected because that is what the reference fields in mongo are
+# on ObjectId because that is what the reference fields in mongo are
 # implemented as.   Should move to uids asap
 _RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
 _RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
