@@ -68,11 +68,6 @@ class Document(dict):
     def __len__(self):
         return len(list(self.keys()))
 
-    def __contains__(self, k):
-        if isinstance(k, six.string_types) and k.startswith('_'):
-            return False
-        return super(Document, self).__contains__(k)
-
     def _repr_html_(self):
         import jinja2
         env = jinja2.Environment()
