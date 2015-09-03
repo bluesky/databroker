@@ -3,9 +3,9 @@ from __future__ import (absolute_import, division, print_function,
 import time as ttime
 import datetime
 
-from nose.tools import (assert_equal, assert_in, assert_not_in)
+from nose.tools import (assert_equal, assert_in, assert_not_in, raises)
 from nose import SkipTest
-from ..doc import Document, pretty_print_time
+from ..doc import Document, pretty_print_time, DocumentIsReadOnly
 
 import logging
 loglevel = logging.DEBUG
@@ -47,35 +47,45 @@ def test_doc_plain():
     assert_equal(set(dd.values()), set(doc_test.values()))
 
 
+@raises(DocumentIsReadOnly)
 def test_doc_descructive_pop():
     src_str, dd, doc_test = _syn_data_helper()
-    for k in src_str:
-        ret = doc_test.pop(k)
-        assert_equal(ret, ord(k))
-        assert_not_in(k, doc_test)
-        assert_in(k, dd)
-    print(doc_test)
-    assert_equal(len(doc_test), 0)
+    k = next(doc_test.keys())
+    doc_test.pop(k)
 
 
+@raises(DocumentIsReadOnly)
 def test_doc_descructive_del():
     src_str, dd, doc_test = _syn_data_helper()
-
-    for k in src_str:
-        del doc_test[k]
-        assert_not_in(k, doc_test)
-        assert_in(k, dd)
-    assert_equal(len(doc_test), 0)
+    k = next(doc_test.keys())
+    del doc_test[k]
 
 
+@raises(DocumentIsReadOnly)
 def test_doc_descructive_delattr():
     src_str, dd, doc_test = _syn_data_helper()
+    k = next(doc_test.keys())
+    delattr(doc_test, k)
 
-    for k in src_str:
-        delattr(doc_test, k)
-        assert_not_in(k, doc_test)
-        assert_in(k, dd)
-    assert_equal(len(doc_test), 0)
+
+@raises(DocumentIsReadOnly)
+def test_doc_descructive_setitem():
+    src_str, dd, doc_test = _syn_data_helper()
+    k = next(doc_test.keys())
+    doc_test[k] = 'aardvark'
+
+
+@raises(DocumentIsReadOnly)
+def test_doc_descructive_setattr():
+    src_str, dd, doc_test = _syn_data_helper()
+    k = next(doc_test.keys())
+    setattr(doc_test, k,  'aardvark')
+
+
+@raises(DocumentIsReadOnly)
+def test_doc_descructive_update():
+    src_str, dd, doc_test = _syn_data_helper()
+    doc_test.update(dd)
 
 
 def test_html_smoke():

@@ -28,11 +28,15 @@ _HTML_TEMPLATE = """
 """
 
 
+class DocumentIsReadOnly(Exception):
+    pass
+
+
 class Document(dict):
 
     def __init__(self, name, *args, **kwargs):
-        self._name = name
         super(Document, self).__init__(*args, **kwargs)
+        super(Document, self).__setitem__('_name', name)
 
     def __getattr__(self, key):
         try:
@@ -41,13 +45,22 @@ class Document(dict):
             raise AttributeError()
 
     def __setattr__(self, key, value):
-        self[key] = value
+        raise DocumentIsReadOnly()
+
+    def __setitem__(self, key, value):
+        raise DocumentIsReadOnly()
 
     def __delattr__(self, key):
-        try:
-            del self[key]
-        except KeyError:
-            raise AttributeError()
+        raise DocumentIsReadOnly()
+
+    def __delitem__(self, key):
+        raise DocumentIsReadOnly()
+
+    def update(self, *args, **kwargs):
+        raise DocumentIsReadOnly()
+
+    def pop(self, key):
+        raise DocumentIsReadOnly()
 
     def __iter__(self):
         return (k for k in super(Document, self).__iter__()
