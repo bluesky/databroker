@@ -368,7 +368,6 @@ def make_header(run_start, allow_no_runstop=False):
     # see if we have a runstop, ok if we don't
     try:
         run_stop = mc.runstop_by_runstart(run_start_uid)
-        print(run_stop)
         for h_key, rs_key in run_stop_copy.items():
             if rs_key == 'reason':
                 header[h_key] = run_stop.get(rs_key, '')
