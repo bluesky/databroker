@@ -789,7 +789,7 @@ def find_run_starts(**kwargs):
 
     rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
 
-    return (_cache_runstart(rs) for rs in rs_objects.order_by('-time'))
+    return (_cache_runstart(rs) for rs in rs_objects.order_by('time'))
 
 
 @_ensure_connection
