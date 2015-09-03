@@ -33,13 +33,19 @@ class Document(dict):
         super(Document, self).__init__(*args, **kwargs)
 
     def __getattr__(self, key):
-        return self[key]
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError()
 
     def __setattr__(self, key, value):
         self[key] = value
 
     def __delattr__(self, key):
-        del self[key]
+        try:
+            del self[key]
+        except KeyError:
+            raise AttributeError()
 
     def __iter__(self):
         return (k for k in super(Document, self).__iter__()
