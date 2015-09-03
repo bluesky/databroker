@@ -145,7 +145,8 @@ def vstr(doc, indent=0):
     name_width = 16
     value_width = 40
     for name, value in sorted(doc.items()):
-        if name == 'event_descriptors':
+        if name == 'descriptors':
+            # this case is to deal with Headers from databroker
             for val in value:
                 documents.append((name, val))
         elif name == 'data_keys':
