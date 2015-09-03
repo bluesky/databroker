@@ -373,7 +373,9 @@ def make_header(run_start, allow_no_runstop=False):
                 header[h_key] = run_stop.get(rs_key, '')
             else:
                 header[h_key] = run_stop[rs_key]
-        header['run_stop'] = run_stop
+
+        header['run_stop'] = doc.ref_doc_to_uid(run_stop, 'run_start')
+
     except mc.NoRunStop:
         if allow_no_runstop:
             header['run_stop'] = None
@@ -381,10 +383,15 @@ def make_header(run_start, allow_no_runstop=False):
                 header[k] = None
         else:
             raise
+
     try:
-        ev_descs = mc.eventdescriptors_by_runstart(run_start_uid)
-    except ValueError:
+        ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
+                    for ev_desc in
+                    mc.eventdescriptors_by_runstart(run_start_uid)]
+
+    except mc.NoEventDescriptors:
         ev_descs = []
+
     header['descriptors'] = ev_descs
     return doc.Document('header', header)
 
