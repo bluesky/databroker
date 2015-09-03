@@ -52,7 +52,7 @@ def setup():
                                   owner=owner, beamline_id='example',
                                   uid=str(uuid.uuid4()))
             # insert some events into mds
-            temperature_ramp.run(run_start_uid=rs, make_run_stop=(i!=0))
+            temperature_ramp.run(run_start_uid=rs, make_run_stop=(i != 0))
             if i == 0:
                 # only need to do images once, it takes a while...
                 image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
@@ -80,9 +80,10 @@ def test_basic_usage():
 
     header_ned = db.find_headers(owner='nedbrainard')
     header_null = db.find_headers(owner='this owner does not exist')
-    events_1 = db.fetch_events(header_1)
-    events_ned = db.fetch_events(header_ned)
-    events_null = db.fetch_events(header_null)
+    # smoke test
+    db.fetch_events(header_1)
+    db.fetch_events(header_ned)
+    db.fetch_events(header_null)
 
 
 def test_event_queue():
