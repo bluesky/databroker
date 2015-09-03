@@ -99,6 +99,7 @@ def find_run_starts(**kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start", params=simplejson.dumps(query))
         content = ujson.loads(r.text)
+        print(r.text)
         if not content:
             StopIteration()
             break

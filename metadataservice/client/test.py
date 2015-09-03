@@ -71,3 +71,12 @@ start_time = time.time()
 insert_event(descriptor=e_desc, events=all_data)
 stop_time = time.time()
 print('insert time: {}'.format(stop_time - start_time))
+
+print(next(find_run_starts(owner='xf23id1')))
+
+start_time = time.time()
+print(e_desc)
+ret = find_events(descriptor=e_desc)
+stop_time = time.time()
+
+print('retrieve time: {}'.format(stop_time - start_time))

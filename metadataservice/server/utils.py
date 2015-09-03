@@ -3,6 +3,8 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.web
 from bson import json_util
 import ujson
+import datetime
+import six
 from bson.objectid import ObjectId
 __author__ = 'arkilic'
 
@@ -38,3 +40,21 @@ def _normalize_object_id(kwargs, key):
         # This key was given a more complex query.
         pass
     # Database errors will still raise.
+    
+def _stringify_data(docs):
+    stringed = dict()
+    for _ in docs:
+        for k, v in six.iteritems(_):
+            if isinstance(v, ObjectId):
+                stringed[k] = str(v)
+            elif isinstance(v, datetime.datetime):
+                stringed[k] = str(v)
+            elif isinstance(v, dict):
+                stringed[k] = _stringify_data(v)
+            else:
+                stringed[k] = v
+    return stringed
+                
+                
+                
+                

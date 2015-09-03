@@ -8,6 +8,7 @@ from bson import json_util
 import motor
 import ujson
 from metadataservice.server import utils
+from bson.json_util import object_hook
 __author__ = 'arkilic'
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
@@ -50,13 +51,10 @@ class RunStartHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        if start ==0 and stop ==1:
-            docs = yield db.run_start.find_one(query)
-            self.write(ujson.dumps(docs))
-        else:
-            cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
-            docs = yield cursor.to_list(None)
-            self.write(ujson.dumps(docs))
+        cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        payload = utils._stringify_data(docs)
+        self.write(ujson.dumps(payload))
         self.finish()
 
     @tornado.web.asynchronous
@@ -80,14 +78,11 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         """Query beamline_config documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
-        if start ==0 and stop ==1:
-            docs = yield db.beamline_config.find_one(query)
-            self.write(ujson.dumps(docs))
-        else:
-            cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
-            docs = yield cursor.to_list(None)
-            self.write(ujson.dumps(docs))
+        stop = query.pop('range_ceil')    
+        cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        payload = utils._stringify_data(docs)
+        self.write(ujson.dumps(payload))
         self.finish()
 
     @tornado.web.asynchronous
@@ -114,7 +109,8 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        print(docs)
+        payload = utils._stringify_data(docs)
+        self.write(ujson.dumps(payload))
         self.finish()
 
     @tornado.web.asynchronous
@@ -138,14 +134,11 @@ class RunStopHandler(tornado.web.RequestHandler):
         """Query run_start documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
-        if start ==0 and stop ==1:
-            docs = yield db.run_stop.find_one(query)
-            self.write(ujson.dumps(docs))
-        else:
-            cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
-            docs = yield cursor.to_list(None)
-            self.write(ujson.dumps(docs))
+        stop = query.pop('range_ceil')    
+        cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        docs = yield cursor.to_list(None)
+        payload = utils._stringify_data(docs)
+        self.write(ujson.dumps(payload))
         self.finish()
 
     @tornado.web.asynchronous
@@ -171,7 +164,8 @@ class EventHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
         docs = yield cursor.to_list(None)
-        self.write(ujson.dumps(list(docs)))
+        payload = utils._stringify_data(docs)
+        self.write(ujson.dumps(payload))
         self.finish()
     
     @tornado.web.asynchronous
