@@ -46,6 +46,9 @@ _EVENTDESC_UID_to_OID_MAP = dict()
 class NoRunStop(Exception):
     pass
 
+class NoEventDescriptors(Exception):
+    pass
+
 
 def doc_or_uid_to_uid(doc_or_uid):
     """Helper function to ensure a uid
@@ -248,7 +251,7 @@ def eventdescriptors_by_runstart(run_start):
 
     # if nothing found, raise
     if not rets:
-        raise ValueError("No EventDescriptors exists")
+        raise NoEventDescriptors("No EventDescriptors exists")
 
     # return the list of event descriptors
     return rets

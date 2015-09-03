@@ -193,7 +193,7 @@ def test_find_events_smoke():
     next(mdsc.find_events())
 
 
-@raises(ValueError)
+@raises(mdsc.NoEventDescriptors)
 def test_no_evdesc():
 
     run_start_uid = mdsc.insert_run_start(scan_id=42,
