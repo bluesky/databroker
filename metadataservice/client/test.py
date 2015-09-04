@@ -65,5 +65,6 @@ start_time = time.time()
 ret = find_run_starts(beamline_id='xf23id')
 stop_time = time.time()
 print('retrieve time: {}'.format(stop_time - start_time))
-for _ in ret:
-    print(_)
+
+
+print(next(find_run_stops(exit_status= "success")))

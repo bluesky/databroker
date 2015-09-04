@@ -54,7 +54,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         cursor = db.run_start.find(query).sort('time', pymongo.ASCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
-        print(payload)
         utils._return2client(self, payload)
         self.finish()
 

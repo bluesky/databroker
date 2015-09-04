@@ -6,6 +6,7 @@ import time
 import six
 from functools import wraps
 import ujson
+from collections import OrderedDict
 from metadataservice.client import conf
 
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
@@ -103,7 +104,7 @@ def find_run_starts(**kwargs):
             break
         else:
             for c in content:
-                yield c
+                yield OrderedDict(c)
             range_ceil += 50
             range_floor += 50
 
@@ -157,7 +158,7 @@ def find_run_stops(**kwargs):
             break
         else:
             for c in content:
-                yield c
+                yield OrderedDict(c)
             range_ceil += 50
             range_floor += 50
      
@@ -212,7 +213,7 @@ def find_events(**kwargs):
             break
         else:
             for c in content:
-                yield c
+                yield OrderedDict(c)
             range_ceil += 1000
             range_floor += 1000
 
@@ -265,7 +266,7 @@ def find_beamline_configs(**kwargs):
             break
         else:
             for c in content:
-                yield c
+                yield OrderedDict(c)
             range_ceil += 50
             range_floor += 50
 
@@ -319,7 +320,7 @@ def find_event_descriptors(**kwargs):
             break
         else:
             for c in content:
-                yield c
+                yield OrderedDict(c)
             range_ceil += 50
             range_floor += 50
 
