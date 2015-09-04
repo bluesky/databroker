@@ -4,7 +4,6 @@ import datetime
 import pytz
 import time
 import six
-from bson import json_util
 from functools import wraps
 import ujson
 from metadataservice.client import conf
@@ -96,7 +95,7 @@ def find_run_starts(**kwargs):
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/run_start", params=simplejson.dumps(query))
+        r = requests.get(_server_path + "/run_start", params=ujson.dumps(query))
         content = ujson.loads(r.text)
         print(r.text)
         if not content:
@@ -265,7 +264,8 @@ def find_beamline_configs(**kwargs):
             StopIteration()
             break
         else:
-            yield content
+            for c in content:
+                yield c
             range_ceil += 50
             range_floor += 50
 
@@ -318,11 +318,12 @@ def find_event_descriptors(**kwargs):
             StopIteration()
             break
         else:
-            yield content
+            for c in content:
+                yield c
             range_ceil += 50
             range_floor += 50
 
-# 
+#
 # @_ensure_connection
 # def event_desc_given_uid(event_descriptor):
 #     range_floor = 0
@@ -334,8 +335,8 @@ def find_event_descriptors(**kwargs):
 #     r = requests.get(_server_path + '/event_descriptor', params=ujson.dumps(query))
 #     print("ajpgpag", r.text)
 #     return r.text
-#         
-    
+#
+
 
 @_ensure_connection
 def insert_event(descriptor,events):

@@ -1,7 +1,8 @@
 # To Do
 
-- [ ] Fix and unify confusion in json encoding/decoding
-- [ ] Inserted documents should be returned, not only their ObjectId for similar behavior to mds lib
+- [X] Fix and unify confusion in json encoding/decoding
+- [ ] Make uid primary key
+- [ ] Inserted documents should NOT be returned
 - [ ] Add validation to schema
 - [ ] Add Exception Handling
 - [ ] Fix all documentation

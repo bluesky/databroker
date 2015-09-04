@@ -35,27 +35,28 @@ def _unpack_params(handler):
 def _return2client(handler, payload):
     data = _stringify_data(payload)
     if _verify_handler(handler):
-        try:
-            handler.write(ujson.dumps(data))
-        except ValueError:
-            handler.write('json conversion failed')
-    return
+        handler.write(ujson.dumps(data))
+
 
 
 def _stringify_data(docs):
-    stringed = dict()
+    # TODO: Clean up this code!
     if isinstance(docs, list):
+        stringed = list()
         for _ in docs:
+            tmp = dict()
             for k, v in six.iteritems(_):
                 if isinstance(v, ObjectId):
-                    stringed[k] = str(v)
+                    tmp[k] = str(v)
                 elif isinstance(v, datetime.datetime):
-                    stringed[k] = str(v)
+                    tmp[k] = str(v)
                 elif isinstance(v, dict):
-                    stringed[k] = _stringify_data(v)
+                    tmp[k] = _stringify_data(v)
                 else:
-                    stringed[k] = v
+                    tmp[k] = v
+                stringed.append(tmp)
     elif isinstance(docs, dict):
+        stringed = dict()
         for k, v in six.iteritems(docs):
                 if isinstance(v, ObjectId):
                     stringed[k] = str(v)

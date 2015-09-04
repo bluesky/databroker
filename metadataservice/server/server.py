@@ -4,7 +4,7 @@ import tornado.ioloop
 import tornado.web
 from tornado import gen
 import pymongo
-from bson import json_util
+import pymongo.errors
 import motor
 import ujson
 from metadataservice.server import utils
@@ -51,9 +51,10 @@ class RunStartHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.run_start.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        cursor = db.run_start.find(query).sort('time', pymongo.ASCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
+        print(payload)
         utils._return2client(self, payload)
         self.finish()
 
@@ -65,7 +66,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
         result = yield db.run_start.insert(data)#async insert
-        print(type(result))
         utils._return2client(self, result)
         self.finish()
 
@@ -80,7 +80,7 @@ class BeamlineConfigHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')    
-        cursor = db.beamline_config.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        cursor = db.beamline_config.find(query).sort('time', pymongo.ASCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
         utils._return2client(self, payload)
@@ -108,7 +108,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        cursor = db.event_descriptor.find(query).sort('time', pymongo.ASCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
         utils._return2client(self, payload)
@@ -136,7 +136,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')    
-        cursor = db.run_stop.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        cursor = db.run_stop.find(query).sort('time', pymongo.ASCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
         utils._return2client(self, payload)
@@ -163,7 +163,7 @@ class EventHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.event_descriptor.find(query).sort('time', pymongo.DESCENDING)[start:stop]
+        cursor = db.event_descriptor.find(query).sort('time', pymongo.ASCENDING)[start:stop]
         docs = yield cursor.to_list(None)
         payload = utils._stringify_data(docs)
         utils._return2client(self, payload)
