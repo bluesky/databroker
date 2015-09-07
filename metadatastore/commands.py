@@ -91,6 +91,20 @@ def _ensure_connection(func):
 def _cache_runstart(rs):
     """De-reference and cache a RunStart document
 
+    The de-referenced Document is cached against the
+    ObjectId and the uid -> ObjectID mapping is stored.
+
+    Parameters
+    ----------
+    rs : dict
+        raw pymongo dictionary. This is expected to have
+        an entry `_id` with the ObjectId used by mongo.
+
+    Returns
+    -------
+    rs : doc.Document
+        Documentment instance for this RunStart document.
+        The ObjectId has been stripped.
     """
     # TODO actually do this de-reference
     rs.pop('beamline_config_id', None)
