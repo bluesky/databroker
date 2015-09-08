@@ -457,7 +457,12 @@ def fetch_events_generator(descriptor):
 
 
 def fetch_events_table(descriptor):
-    """Return all event data as tables
+    """All event data as tables
+
+    .. warning
+
+       This function has a local import of `pandas` and will only work if
+       `pandas` is installed.
 
     Parameters
     ----------
