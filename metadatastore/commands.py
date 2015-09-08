@@ -649,15 +649,13 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
 @_ensure_connection
 def insert_event_descriptor(run_start, data_keys, time, uid,
                             custom=None):
-    """ Create an event_descriptor in metadatastore database backend
+    """Inesrt an EventDescriptor document in to  database.
 
     Parameters
     ----------
-    run_start : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore RunStart document
-        if str:
-            uid of RunStart object to associate with this record
+    run_start : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     data_keys : dict
         Provides information about keys of the data dictionary in
         an event will contain.  No key name may include '.'
@@ -672,9 +670,8 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
 
     Returns
     -------
-    descriptor : EventDescriptor
-        The document added to the collection.
-
+    descriptor : str
+        uid of inserted Document
     """
     if custom is None:
         custom = {}
@@ -685,22 +682,19 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     # needed to make ME happy
     data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
-    run_start = runstart_given_uid(run_start)
-    runstart_oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+    runstart_uid = doc_or_uid_to_uid(run_start)
+
+    runstart_oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
     rs_ref = DBRef('RunStart', runstart_oid)
-    event_descriptor = EventDescriptor(run_start=rs_ref,
-                                       data_keys=data_keys, time=time,
-                                       uid=uid,
-                                       **custom)
+    descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
+                                 time=time, uid=uid, **custom)
 
-    event_descriptor = event_descriptor.save(validate=True,
-                                             write_concern={"w": 1})
+    descriptor = descriptor.save(validate=True, write_concern={"w": 1})
 
-    _cache_descriptor(event_descriptor.to_mongo().to_dict())
+    descriptor = _cache_descriptor(descriptor.to_mongo().to_dict())
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
-                 "RunStart with uid %s",
-                 event_descriptor.uid, run_start['uid'])
+                 "RunStart with uid %s", descriptor['uid'], runstart_uid)
 
     return uid
 
