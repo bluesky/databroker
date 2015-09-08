@@ -544,52 +544,45 @@ def db_connect(database, host, port):
 
 @_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, uid,
-                     owner=None, group=None, project=None, custom=None):
-    """Provide a head for a sequence of events. Entry point for an
-    experiment's run.
+                     owner='', group='', project='', custom=None):
+    """Insert a RunStart document into the database.
 
     Parameters
     ----------
     time : float
-        The date/time as found at the client side when an event is
-        created.
+        The date/time as found at the client side when the run is started
     scan_id : int
-        Unique scan identifier visible to the user and data analysis
+        Scan identifier visible to the user and data analysis.  This is not
+        a unique identifier.
     beamline_id : str
-        Beamline String identifier. Not unique, just an indicator of
-        beamline code for multiple beamline systems
+        Beamline String identifier.
     uid : str
-        Globally unique id string provided to metadatastore
+        Globally unique id to identify this RunStart
     owner : str, optional
-        A username associated with the entry
+        A username associated with the RunStart
     group : str, optional
-        A group (e.g., UNIX group) associated with the entry
+        An experimental group associated with the RunStart
     project : str, optional
         Any project name to help users locate the data
     custom: dict, optional
         Any additional information that data acquisition code/user wants
-        to append to the Header at the start of the run.
+        to append to the RunStart at the start of the run.
 
     Returns
     -------
-    runstart: mongoengine.Document
-        Inserted mongoengine object
+    runstart : str
+        uid of the inserted document.  Use `runstart_given_uid` to get
+        the full document.
 
     """
     if custom is None:
         custom = {}
-    if owner is None:
-        owner = ''
-    if group is None:
-        group = ''
-    if project is None:
-        project = ''
 
     runstart = RunStart(time=time, scan_id=scan_id,
-                         uid=uid,
-                         beamline_id=beamline_id,
-                         owner=owner, group=group, project=project,
-                         **custom)
+                        uid=uid,
+                        beamline_id=beamline_id,
+                        owner=owner, group=group, project=project,
+                        **custom)
 
     runstart = runstart.save(validate=True, write_concern={"w": 1})
 
