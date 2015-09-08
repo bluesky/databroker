@@ -387,7 +387,7 @@ def make_header(run_start, allow_no_runstop=False):
     try:
         ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
                     for ev_desc in
-                    mc.eventdescriptors_by_runstart(run_start_uid)]
+                    mc.descriptors_by_runstart(run_start_uid)]
 
     except mc.NoEventDescriptors:
         ev_descs = []
