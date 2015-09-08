@@ -374,7 +374,7 @@ def runstop_by_runstart(runstart):
     return _cache_runstop(runstop)
 
 
-def eventdescriptors_by_runstart(runstart):
+def descriptors_by_runstart(runstart):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
