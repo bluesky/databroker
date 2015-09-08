@@ -1,5 +1,5 @@
 # Data retrieval
-from .commands import (find_events, find_event_descriptors,
+from .commands import (find_events, find_descriptors,
                        find_run_starts, find_last,
                        find_run_stops)
 # Data insertion

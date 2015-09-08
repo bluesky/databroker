@@ -874,7 +874,7 @@ def find_run_stops(run_start=None, **kwargs):
 
 
 @_ensure_connection
-def find_event_descriptors(run_start=None, **kwargs):
+def find_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -920,6 +920,9 @@ def find_event_descriptors(run_start=None, **kwargs):
     event_descriptor_objects = event_descriptor_objects.as_pymongo()
     for event_descriptor in event_descriptor_objects.order_by('-time'):
         yield _cache_descriptor(event_descriptor)
+
+# TODO properly mark this as deprecated
+find_event_descriptors = find_descriptors
 
 
 @_ensure_connection

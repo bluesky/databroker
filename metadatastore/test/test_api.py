@@ -1,7 +1,7 @@
 # Smoketest the api
 
 from metadatastore.api import find_events
-from metadatastore.api import find_event_descriptors
+from metadatastore.api import find_descriptors
 from metadatastore.api import find_run_starts
 from metadatastore.api import find_run_stops
 from metadatastore.api import find_last
