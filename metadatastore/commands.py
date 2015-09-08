@@ -414,14 +414,28 @@ def descriptors_by_runstart(runstart):
     return rets
 
 
-def fetch_events_generator(desc_uid):
+def fetch_events_generator(descriptor):
+    """A generator which yields all events from the event stream
 
+    Parameters
+    ----------
+    descriptor : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Yields
+    ------
+    event : doc.Document
+        All events for the given EventDescriptor from oldest to
+        newest
+    """
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    descriptor = descriptor_given_uid(descriptor_uid)
     col = Event._get_collection()
 
-    desc = descriptor_given_uid(desc_uid)
-    eid = _EVENTDESC_UID_to_OID_MAP[desc_uid]
+    oid = _EVENTDESC_UID_to_OID_MAP[descriptor_uid]
 
-    ev_cur = col.find({'descriptor_id': eid},
+    ev_cur = col.find({'descriptor_id': oid},
                       sort=[('time', 1)])
 
     for ev in ev_cur:
@@ -430,7 +444,7 @@ def fetch_events_generator(desc_uid):
         # pop the descriptor oid
         ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
-        ev['descriptor'] = desc
+        ev['descriptor'] = descriptor
         # pop the data
         data = ev.pop('data')
         # replace it with the friendly paired dicts
