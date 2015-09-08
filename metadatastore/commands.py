@@ -78,6 +78,17 @@ def clear_process_cache():
 
 
 def _ensure_connection(func):
+    """Decorator to ensure that the DB connection is open
+
+    This uses the values in `conf.connection_config` to get connection
+    parameters.
+
+    .. warning
+
+       This has no effect if the connection already exists, simply changing
+       the values in `conf.connection_config` is not sufficient to change what
+       data base is being used.
+    """
     @wraps(func)
     def inner(*args, **kwargs):
         database = conf.connection_config['database']
@@ -103,30 +114,59 @@ def _cache_runstart(rs):
     Returns
     -------
     rs : doc.Document
-        Documentment instance for this RunStart document.
+        Document instance for this RunStart document.
         The ObjectId has been stripped.
     """
-    # TODO actually do this de-reference
+    # TODO actually do this de-reference for documents that have it
+    # There is no known actually usage of this document and it is not being
+    # created going forward
     rs.pop('beamline_config_id', None)
+
+    # get the mongo ObjectID
     oid = rs.pop('_id')
+
+    # convert the remaining document do a Document object
     rs = doc.Document('RunStart', rs)
 
-    # populate both caches
+    # populate cache and set up uid->oid mapping
     _RUNSTART_CACHE_OID[oid] = rs
     _RUNSTART_UID_to_OID_MAP[rs['uid']] = oid
+
     return rs
 
 
 def _cache_runstop(runstop):
+    """De-reference and cache a RunStop document
+
+    The de-referenced Document is cached against the
+    ObjectId and the uid -> ObjectID mapping is stored.
+
+    Parameters
+    ----------
+    rs : dict
+        raw pymongo dictionary. This is expected to have
+        an entry `_id` with the ObjectId used by mongo.
+
+    Returns
+    -------
+    runstop : doc.Document
+        Document instance for this RunStop document.
+        The ObjectId has been stripped.
+    """
+    # pop off the ObjectId of this document
     oid = runstop.pop('_id')
+
     # do the run-start de-reference
     start_oid = runstop.pop('run_start_id')
     runstop['run_start'] = _runstart_given_oid(start_oid)
+
+    # create the Document object
     runstop = doc.Document('RunStop', runstop)
 
-    # update the two caches
+    # update the cache and uid->oid mapping
     _RUNSTOP_CACHE_OID[oid] = runstop
     _RUNSTOP_UID_to_OID_MAP[runstop['uid']] = oid
+
     return runstop
 
 
@@ -167,6 +207,25 @@ def _cache_descriptor(descriptor):
 
 @_ensure_connection
 def _runstart_given_oid(oid):
+    """Get RunStart document given an ObjectId
+
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+
+    When we migrate to using uid as the primary key this function
+    will be removed.
+
+    Parameters
+    ----------
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+
+    Returns
+    -------
+    runstart : doc.Document
+        The RunStart document.
+    """
     try:
         return _RUNSTART_CACHE_OID[oid]
     except KeyError:
@@ -382,7 +441,16 @@ def db_disconnect():
 
 
 def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to mongoengine"""
+    """Helper function to deal with stateful connections to mongoengine
+
+    .. warning
+
+       This will silently ignore input if the database is already
+       connected, even if the input database, host, or port are
+       different than currently connected.  To change the database
+       connection you must call `db_disconnect` before attempting to
+       re-connect.
+    """
     return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
