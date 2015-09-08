@@ -221,14 +221,14 @@ def event_desc_given_uid(uid):
     return _cache_descriptor(descriptor)
 
 
-def runstop_by_runstart(run_start):
+def runstop_by_runstart(runstart):
     """Given a RunStart return a list of it's RunStop
 
     Raises if no RunStop exists.
 
     Parameters
     ----------
-    run_start : dict or uid
+    runstart : dict or uid
         The RunStart to get the events for.  Can be either
         a dict or a uid.
 
@@ -238,9 +238,9 @@ def runstop_by_runstart(run_start):
         The RunStop document
     """
 
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = runstart_given_uid(run_start_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+    runstart_uid = doc_or_uid_to_uid(runstart)
+    runstart = runstart_given_uid(runstart_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
 
     run_stop = RunStop._get_collection().find_one(
         {'run_start_id': oid})
@@ -251,14 +251,14 @@ def runstop_by_runstart(run_start):
     return _cache_runstop(run_stop)
 
 
-def eventdescriptors_by_runstart(run_start):
+def eventdescriptors_by_runstart(runstart):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
 
     Parameters
     ----------
-    run_start : dict or uid
+    runstart : dict or uid
         The RunStart to get the events for.  Can be either
         a dict or a uid.
 
@@ -268,9 +268,9 @@ def eventdescriptors_by_runstart(run_start):
         A list of EventDescriptor documents
     """
     # normalize the input and get the runstart oid
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = runstart_given_uid(run_start_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+    runstart_uid = doc_or_uid_to_uid(runstart)
+    runstart = runstart_given_uid(runstart_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
 
     # query the database for any event descriptors which
     # refer to the given runstart
@@ -418,7 +418,7 @@ def insert_run_start(time, scan_id, beamline_id, uid,
 
     Returns
     -------
-    run_start: mongoengine.Document
+    runstart: mongoengine.Document
         Inserted mongoengine object
 
     """
@@ -431,16 +431,16 @@ def insert_run_start(time, scan_id, beamline_id, uid,
     if project is None:
         project = ''
 
-    run_start = RunStart(time=time, scan_id=scan_id,
+    runstart = RunStart(time=time, scan_id=scan_id,
                          uid=uid,
                          beamline_id=beamline_id,
                          owner=owner, group=group, project=project,
                          **custom)
 
-    run_start = run_start.save(validate=True, write_concern={"w": 1})
+    runstart = runstart.save(validate=True, write_concern={"w": 1})
 
-    _cache_runstart(run_start.to_mongo().to_dict())
-    logger.debug('Inserted RunStart with uid %s', run_start.uid)
+    _cache_runstart(runstart.to_mongo().to_dict())
+    logger.debug('Inserted RunStart with uid %s', runstart.uid)
 
     return uid
 
