@@ -594,20 +594,16 @@ def insert_run_start(time, scan_id, beamline_id, uid,
 
 @_ensure_connection
 def insert_run_stop(run_start, time, uid, exit_status='success',
-                    reason=None, custom=None):
-    """ Provide an end to a sequence of events. Exit point for an
-    experiment's run.
+                    reason='', custom=None):
+    """Insert RunStop document into database
 
     Parameters
     ----------
-    run_start : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore RunStart document
-        if str:
-            uid of RunStart object to associate with this record
+    run_start : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     time : float
-        The date/time as found at the client side when an event is
-        created.
+        The date/time as found at the client side
     uid : str
         Globally unique id string provided to metadatastore
     exit_status : {'success', 'abort', 'fail'}, optional
@@ -620,20 +616,22 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
 
     Returns
     -------
-    run_stop : mongoengine.Document
-        Inserted mongoengine object
+    run_stop : str
+        uid of inserted Document
     """
     if custom is None:
         custom = {}
-
-    run_start = runstart_given_uid(run_start)
+    runstart_uid = doc_or_uid_to_uid(run_start)
+    run_start = runstart_given_uid(runstart_uid)
     try:
-        runstop_by_runstart(run_start['uid'])
+        runstop_by_runstart(runstart_uid)
     except NoRunStop:
         pass
     else:
         raise RuntimeError("Runstop already exits for {!r}".format(run_start))
-    runstart_oid = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+    # look up the oid
+    runstart_oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
+    # create a reference field
     rs_ref = DBRef('RunStart', runstart_oid)
 
     run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
