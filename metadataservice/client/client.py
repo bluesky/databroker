@@ -12,8 +12,6 @@ from metadataservice.client import conf
 # READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
 # The client lives in the service for now. I will move it to separate repo once ready for alpha release
 
-
-
 # TODO: Find a way to handle auth with each request. Policy decision, tell me what to do people
 
 def server_connect(host, port, protocol='http'):

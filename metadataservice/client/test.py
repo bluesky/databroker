@@ -11,7 +11,7 @@ conf.connection_config['host'] = 'localhost'
 conf.connection_config['port'] = 7771
 custom = {}
 
-# rs = find_run_starts(owner='xf23id1')
+# rs = _find_run_starts(owner='xf23id1')
 
 def setup_syn():
 
@@ -57,7 +57,7 @@ def syn_data(data_keys, count):
     return all_data
 
 func = np.cos
-num = 10000
+num = 65000
 start = 0
 stop = 10
 
@@ -70,9 +70,9 @@ stop_time = time.time()
 print('insert time: {}'.format(stop_time - start_time))
 
 start_time = time.time()
-ret = find_run_starts(beamline_id='xf23id')
+ret = _find_run_starts(beamline_id='xf23id')
 stop_time = time.time()
 print('retrieve time: {}'.format(stop_time - start_time))
 
 
-print(next(find_run_stops(exit_status= "success")))
+print(next(_find_run_stops(exit_status= "success")))
