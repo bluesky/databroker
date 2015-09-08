@@ -130,18 +130,39 @@ def _cache_runstop(runstop):
     return runstop
 
 
-def _cache_eventdescriptor(ev_desc):
-    oid = ev_desc.pop('_id')
+def _cache_descriptor(descriptor):
+    """De-reference and cache a RunStop document
+
+    The de-referenced Document is cached against the
+    ObjectId and the uid -> ObjectID mapping is stored.
+
+    Parameters
+    ----------
+    descriptor : dict
+        raw pymongo dictionary. This is expected to have
+        an entry `_id` with the ObjectId used by mongo.
+
+    Returns
+    -------
+    descriptor : doc.Document
+        Document instance for this EventDescriptor document.
+        The ObjectId has been stripped.
+    """
+    # pop the ObjectID
+    oid = descriptor.pop('_id')
+
     # do the runstart referencing
-    start_oid = ev_desc.pop('run_start_id')
-    ev_desc['run_start'] = _runstart_given_oid(start_oid)
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _runstart_given_oid(start_oid)
 
-    ev_desc = doc.Document('EventDescriptor', ev_desc)
+    # create the Document instance
+    descriptor = doc.Document('EventDescriptor', descriptor)
 
-    # update both caches
-    _EVENTDESC_CACHE_OID[oid] = ev_desc
-    _EVENTDESC_UID_to_OID_MAP[ev_desc['uid']] = oid
-    return ev_desc
+    # update cache and setup uid->oid mapping
+    _EVENTDESC_CACHE_OID[oid] = descriptor
+    _EVENTDESC_UID_to_OID_MAP[descriptor['uid']] = oid
+
+    return descriptor
 
 
 @_ensure_connection
@@ -184,8 +205,8 @@ def _event_desc_given_oid(oid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor._get_collection().find_one({'_id': oid})
-    return _cache_eventdescriptor(ev_desc)
+    descriptor = EventDescriptor._get_collection().find_one({'_id': oid})
+    return _cache_descriptor(descriptor)
 
 
 @_ensure_connection
@@ -196,8 +217,8 @@ def event_desc_given_uid(uid):
     except KeyError:
         pass
 
-    ev_desc = EventDescriptor._get_collection().find_one({'uid': uid})
-    return _cache_eventdescriptor(ev_desc)
+    descriptor = EventDescriptor._get_collection().find_one({'uid': uid})
+    return _cache_descriptor(descriptor)
 
 
 def runstop_by_runstart(run_start):
@@ -253,11 +274,11 @@ def eventdescriptors_by_runstart(run_start):
 
     # query the database for any event descriptors which
     # refer to the given runstart
-    ev_desc_cur = EventDescriptor._get_collection().find(
+    descriptors = EventDescriptor._get_collection().find(
         {'run_start_id': oid})
 
     # loop over the found documents, cache, and dereference
-    rets = [_cache_eventdescriptor(ev_desc) for ev_desc in ev_desc_cur]
+    rets = [_cache_descriptor(descriptor) for descriptor in descriptors]
 
     # if nothing found, raise
     if not rets:
@@ -506,7 +527,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
 
     Returns
     -------
-    ev_desc : EventDescriptor
+    descriptor : EventDescriptor
         The document added to the collection.
 
     """
@@ -530,7 +551,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
     event_descriptor = event_descriptor.save(validate=True,
                                              write_concern={"w": 1})
 
-    _cache_eventdescriptor(event_descriptor.to_mongo().to_dict())
+    _cache_descriptor(event_descriptor.to_mongo().to_dict())
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
                  "RunStart with uid %s",
@@ -898,7 +919,7 @@ def find_event_descriptors(run_start=None, **kwargs):
 
     event_descriptor_objects = event_descriptor_objects.as_pymongo()
     for event_descriptor in event_descriptor_objects.order_by('-time'):
-        yield _cache_eventdescriptor(event_descriptor)
+        yield _cache_descriptor(event_descriptor)
 
 
 @_ensure_connection
