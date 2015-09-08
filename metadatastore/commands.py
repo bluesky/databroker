@@ -362,8 +362,7 @@ def runstop_by_runstart(runstart):
     """
 
     runstart_uid = doc_or_uid_to_uid(runstart)
-    runstart = runstart_given_uid(runstart_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
+    oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
 
     runstop = RunStop._get_collection().find_one(
         {'run_start_id': oid})
@@ -397,8 +396,7 @@ def descriptors_by_runstart(runstart):
     """
     # normalize the input and get the runstart oid
     runstart_uid = doc_or_uid_to_uid(runstart)
-    runstart = runstart_given_uid(runstart_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
+    oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
 
     # query the database for any event descriptors which
     # refer to the given runstart
