@@ -7,7 +7,7 @@ from six import StringIO
 from collections import Iterable, deque
 from ..utils.console import color_print
 from metadatastore.api import (find_last, find_run_starts,
-                               find_event_descriptors,
+                               find_descriptors,
                                find_events)
 
 import metadatastore.doc as doc
@@ -119,7 +119,7 @@ class _DataBrokerClass(object):
             headers = [headers]
 
         for header in headers:
-            descriptors = find_event_descriptors(
+            descriptors = find_descriptors(
                 run_start=header['uid'])
             for descriptor in descriptors:
                 for event in find_events(descriptor=descriptor):
@@ -184,12 +184,12 @@ class _DataBrokerClass(object):
             query = {node_name: {'$exists': True}}
             descriptors = []
             for rs in run_start:
-                descriptor = find_event_descriptors(run_start=rs, **query)
+                descriptor = find_descriptors(run_start=rs, **query)
                 for d in descriptor:
                     descriptors.append(d)
             # query = {node_name: {'$exists': True},
             #          'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
-            # descriptors = find_event_descriptors(**query)
+            # descriptors = find_descriptors(**query)
             result = []
             known_uids = deque()
             for descriptor in descriptors:
@@ -238,7 +238,7 @@ class EventQueue(object):
         # like fetch_events, but we don't fill in the data right away
         events = []
         for header in self.headers:
-            descriptors = find_event_descriptors(run_start=header['uid'])
+            descriptors = find_descriptors(run_start=header['uid'])
             for descriptor in descriptors:
                 events.extend(list(find_events(descriptor=descriptor)))
         if not events:
