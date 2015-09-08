@@ -235,6 +235,36 @@ def _runstart_given_oid(oid):
 
 
 @_ensure_connection
+def _event_desc_given_oid(oid):
+    """Get EventDescriptor document given an ObjectId
+
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+
+    When we migrate to using uid as the primary key this function
+    will be removed.
+
+    Parameters
+    ----------
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+
+    Returns
+    -------
+    descriptor : doc.Document
+        The RunStart document.
+    """
+    try:
+        return _EVENTDESC_CACHE_OID[oid]
+    except KeyError:
+        pass
+
+    descriptor = EventDescriptor._get_collection().find_one({'_id': oid})
+    return _cache_descriptor(descriptor)
+
+
+@_ensure_connection
 def runstart_given_uid(uid):
     try:
         oid = _RUNSTART_UID_to_OID_MAP[uid]
@@ -255,17 +285,6 @@ def runstop_given_uid(uid):
     # get the raw runstop
     runstop = RunStop._get_collection().find_one({'uid': uid})
     return _cache_runstop(runstop)
-
-
-@_ensure_connection
-def _event_desc_given_oid(oid):
-    try:
-        return _EVENTDESC_CACHE_OID[oid]
-    except KeyError:
-        pass
-
-    descriptor = EventDescriptor._get_collection().find_one({'_id': oid})
-    return _cache_descriptor(descriptor)
 
 
 @_ensure_connection
