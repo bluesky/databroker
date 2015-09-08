@@ -1,6 +1,8 @@
-import ujson
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 from pkg_resources import resource_filename as rs_fn
-__author__ = 'arkilic'
+import ujson
+
 
 SCHEMA_PATH = 'schema'
 SCHEMA_NAMES = {'run_start': 'run_start.json',

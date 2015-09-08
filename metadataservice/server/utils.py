@@ -35,8 +35,8 @@ def _unpack_params(handler):
 def _return2client(handler, payload):
     data = _stringify_data(payload)
     if _verify_handler(handler):
+        #TODO: Add exception handling
         handler.write(ujson.dumps(data))
-
 
 
 def _stringify_data(docs):

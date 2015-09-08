@@ -27,13 +27,74 @@ def server_connect(host, port, protocol='http'):
 def _ensure_connection(func):
     @wraps(func)
     def inner(*args, **kwargs):
-        # TODO: Fix load_configuration()
         protocol = conf.connection_config['protocol']
         host = conf.connection_config['host']
         port = conf.connection_config['port']
         server_connect(host=host, port=port, protocol=protocol)
         return func(*args, **kwargs)
     return inner
+
+
+@_ensure_connection
+def runstart_given_uid(uid):
+    pass
+
+@_ensure_connection
+def runstop_givenuid(uid):
+    pass
+
+@_ensure_connection
+def _event_desc_given_oid(oid):
+    pass
+
+@_ensure_connection
+def event_desc_given_uid(uid):
+    pass
+
+@_ensure_connection
+def runstop_by_runstart(run_start):
+    """Given a RunStart return a list of it's RunStop
+
+    Raises if no RunStop exists.
+
+    Parameters
+    ----------
+    run_start : dict or uid
+        The RunStart to get the events for.  Can be either
+        a dict or a uid.
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document
+    """
+    pass
+
+
+@_ensure_connection
+def eventdescriptors_by_runstart(run_start):
+    """Given a RunStart return a list of it's descriptors
+
+    Raises if no EventDescriptors exist.
+
+    Parameters
+    ----------
+    run_start : dict or uid
+        The RunStart to get the events for.  Can be either
+        a dict or a uid.
+
+    Returns
+    -------
+    event_descriptors : list
+        A list of EventDescriptor documents
+    """
+    pass
+
+
+@_ensure_connection
+def fetch_events_generator(desc_uid):
+    pass
+
 
 
 @_ensure_connection
