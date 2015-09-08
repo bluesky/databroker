@@ -2,6 +2,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
+from metadataservice.schema.validate import schemas
+import jsonschema
 from tornado import gen
 import pymongo
 import pymongo.errors
@@ -64,6 +66,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
+        jsonschema.validate(data,schemas['run_start'])
         result = yield db.run_start.insert(data)#async insert
         utils._return2client(self, result)
         self.finish()
