@@ -266,17 +266,43 @@ def _descriptor_given_oid(oid):
 
 @_ensure_connection
 def runstart_given_uid(uid):
+    """Given a uid, return the RunStart document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    runstart : doc.Document
+        The RunStart document.
+
+    """
     try:
         oid = _RUNSTART_UID_to_OID_MAP[uid]
         return _RUNSTART_CACHE_OID[oid]
     except KeyError:
         pass
-    rs = RunStart._get_collection().find_one({'uid': uid})
-    return _cache_runstart(rs)
+    runstart = RunStart._get_collection().find_one({'uid': uid})
+    return _cache_runstart(runstart)
 
 
 @_ensure_connection
 def runstop_given_uid(uid):
+    """Given a uid, return the RunStop document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    runstart : doc.Document
+        The RunStop document fully de-referenced
+
+    """
     try:
         oid = _RUNSTOP_UID_to_OID_MAP[uid]
         return _RUNSTOP_CACHE_OID[oid]
@@ -289,6 +315,19 @@ def runstop_given_uid(uid):
 
 @_ensure_connection
 def descriptor_given_uid(uid):
+    """Given a uid, return the EventDescriptor document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    runstart : doc.Document
+        The EventDescriptor document fully de-referenced
+
+    """
     try:
         oid = _EVENTDESC_UID_to_OID_MAP[uid]
         return _EVENTDESC_CACHE_OID[oid]
