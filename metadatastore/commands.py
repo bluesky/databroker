@@ -288,7 +288,7 @@ def runstop_given_uid(uid):
 
 
 @_ensure_connection
-def event_desc_given_uid(uid):
+def descriptor_given_uid(uid):
     try:
         oid = _EVENTDESC_UID_to_OID_MAP[uid]
         return _EVENTDESC_CACHE_OID[oid]
@@ -370,7 +370,7 @@ def fetch_events_generator(desc_uid):
 
     col = Event._get_collection()
 
-    desc = event_desc_given_uid(desc_uid)
+    desc = descriptor_given_uid(desc_uid)
     eid = _EVENTDESC_UID_to_OID_MAP[desc_uid]
 
     ev_cur = col.find({'descriptor_id': eid},
@@ -426,7 +426,7 @@ def fetch_events_table(descriptor):
     """
     import pandas as pd
     desc_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = event_desc_given_uid(desc_uid)
+    descriptor = descriptor_given_uid(desc_uid)
     # this will get more complicated once transpose caching layer is in place
     all_events = list(fetch_events_generator(desc_uid))
 
@@ -680,7 +680,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     """
     val_ts_tuple = _transform_data(data, timestamps)
 
-    descriptor = event_desc_given_uid(descriptor)
+    descriptor = descriptor_given_uid(descriptor)
     desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
     event = Event(descriptor_id=desc_oid, uid=uid,
                   data=val_ts_tuple, time=time, seq_num=seq_num)
@@ -710,7 +710,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
     """
 
-    descriptor = event_desc_given_uid(event_descriptor)
+    descriptor = descriptor_given_uid(event_descriptor)
     desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
 
     def event_factory():
@@ -1055,7 +1055,7 @@ def find_events(descriptor=None, **kwargs):
     if descriptor:
         descriptor = doc_or_uid_to_uid(descriptor)
 
-        descriptor = event_desc_given_uid(descriptor)
+        descriptor = descriptor_given_uid(descriptor)
         descriptor = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
         kwargs['descriptor_id'] = descriptor
 

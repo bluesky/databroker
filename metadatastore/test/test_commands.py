@@ -371,7 +371,7 @@ def test_cache_clear_lookups():
                                         ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.runstart_given_uid(run_start_uid)
     run_stop = mdsc.runstop_given_uid(run_stop_uid)
-    ev_desc = mdsc.event_desc_given_uid(e_desc_uid)
+    ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
     mdsc.clear_process_cache()
 
@@ -380,8 +380,8 @@ def test_cache_clear_lookups():
 
     run_stop2 = mdsc.runstop_given_uid(run_stop_uid)
     mdsc.clear_process_cache()
-    ev_desc2 = mdsc.event_desc_given_uid(e_desc_uid)
-    ev_desc3 = mdsc.event_desc_given_uid(e_desc_uid)
+    ev_desc2 = mdsc.descriptor_given_uid(e_desc_uid)
+    ev_desc3 = mdsc.descriptor_given_uid(e_desc_uid)
 
     assert_equal(run_start, run_start2)
     assert_equal(run_stop, run_stop2)
@@ -395,7 +395,7 @@ def test_run_stop_by_run_start():
                                         ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.runstart_given_uid(run_start_uid)
     run_stop = mdsc.runstop_given_uid(run_stop_uid)
-    ev_desc = mdsc.event_desc_given_uid(e_desc_uid)
+    ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
     run_stop2 = mdsc.runstop_by_runstart(run_start)
     run_stop3 = mdsc.runstop_by_runstart(run_start_uid)
