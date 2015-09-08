@@ -339,33 +339,39 @@ def descriptor_given_uid(uid):
 
 
 def runstop_by_runstart(runstart):
-    """Given a RunStart return a list of it's RunStop
+    """Given a RunStart return it's RunStop
 
     Raises if no RunStop exists.
 
     Parameters
     ----------
-    runstart : dict or uid
-        The RunStart to get the events for.  Can be either
-        a dict or a uid.
+    runstart : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
 
     Returns
     -------
-    run_stop : doc.Document
+    runstop : doc.Document
         The RunStop document
+
+    Raises
+    ------
+    NoRunStop
+        If no RunStop document exists for the given RunStart
+
     """
 
     runstart_uid = doc_or_uid_to_uid(runstart)
     runstart = runstart_given_uid(runstart_uid)
     oid = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
 
-    run_stop = RunStop._get_collection().find_one(
+    runstop = RunStop._get_collection().find_one(
         {'run_start_id': oid})
 
-    if run_stop is None:
+    if runstop is None:
         raise NoRunStop("No run stop exists")
 
-    return _cache_runstop(run_stop)
+    return _cache_runstop(runstop)
 
 
 def eventdescriptors_by_runstart(runstart):
@@ -375,14 +381,19 @@ def eventdescriptors_by_runstart(runstart):
 
     Parameters
     ----------
-    runstart : dict or uid
-        The RunStart to get the events for.  Can be either
-        a dict or a uid.
+    runstart : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
 
     Returns
     -------
     event_descriptors : list
         A list of EventDescriptor documents
+
+    Raises
+    ------
+    NoEventDescriptors
+        If no EventDescriptor documents exist for the given RunStart
     """
     # normalize the input and get the runstart oid
     runstart_uid = doc_or_uid_to_uid(runstart)
