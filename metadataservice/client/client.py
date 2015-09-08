@@ -466,31 +466,6 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
 
 
 @_ensure_connection
-def insert_beamline_config(config_params, time, uid=None):
-    """ Create a beamline_config  in metadatastore server backend
-
-    Parameters
-    ----------
-    config_params : dict
-        Name/value pairs that indicate beamline configuration
-        parameters during capturing of data
-    time : float
-        The date/time as found at the client side when the
-        beamline configuration is created.
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-
-    Returns
-    -------
-    blc : BeamlineConfig
-        The document added to the collection
-    """
-    payload = ujson.dumps(locals())
-    r = requests.post(_server_path + '/beamline_config', data=payload)
-    return r.json()
-
-
-@_ensure_connection
 def format_events():
     pass
 

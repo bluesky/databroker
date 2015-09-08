@@ -72,34 +72,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         self.finish()
 
 
-class BeamlineConfigHandler(tornado.web.RequestHandler):
-    """Handler for run_start insert and query operations"""
-    #TODO: Discard this handler. We are making BC an embedded document
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        """Query beamline_config documents"""
-        query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')    
-        cursor = db.beamline_config.find(query).sort('time', pymongo.ASCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        payload = utils._stringify_data(docs)
-        utils._return2client(self, payload)
-        self.finish()
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def post(self):
-        """Insert a beamline_config document"""
-        db = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        # TODO: Add validation once database is implemented
-        result = yield db.beamline_config.insert(data)#async insert
-        utils._return2client(self, data)
-        self.finish()
-
-
 class EventDescriptorHandler(tornado.web.RequestHandler):
     """Handler for run_start insert and query operations"""
     @tornado.web.asynchronous
@@ -192,8 +164,8 @@ class EventHandler(tornado.web.RequestHandler):
 
 db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
 application = tornado.web.Application([
-    (r'/run_start', RunStartHandler), (r'/beamline_config',BeamlineConfigHandler),
-    (r'/run_stop', RunStopHandler), (r'/event_descriptor',EventDescriptorHandler),
+    (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
+    (r'/event_descriptor',EventDescriptorHandler),
     (r'/event',EventHandler)], db=db)
 application.listen(7771)
 tornado.ioloop.IOLoop.instance().start()
