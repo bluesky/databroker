@@ -20,10 +20,18 @@ def setup_syn():
                       'shape': None} for k in 'ABCEDEFHIJKL'
                  }
     scan_id = 1
-
+    cfg = {'beamline_id': 'testing',
+            'custom': {},
+            'group': 'test',
+            'owner': 'test',
+            'project': 'test',
+            'scan_id': 1,
+            'time': 1441727144.985973,
+            'uid': str(uuid.uuid4())}
     # Create a BeginRunEvent that serves as entry point for a run
     rs = insert_run_start(scan_id=scan_id, beamline_id='testing', time=time.time(),
-                          custom=custom, uid=str(uuid.uuid4()))
+                          custom=custom, uid=str(uuid.uuid4()), config=cfg, project='test',
+                          owner='test', group='test')
     
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)

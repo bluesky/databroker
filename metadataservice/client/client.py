@@ -386,7 +386,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
+def insert_run_start(time, scan_id, config, beamline_id, beamline_config={}, uid=None,
                     owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
@@ -420,6 +420,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
 
     """    
     data = locals()
+    print(data)
     if custom:
         data.update(custom)
     payload = ujson.dumps(data)
@@ -428,7 +429,7 @@ def insert_run_start(time, scan_id, beamline_id, beamline_config={}, uid=None,
 
 
 @_ensure_connection
-def insert_run_stop(run_start, time, uid=None, exit_status='success',
+def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
                     reason=None, custom=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.

@@ -1,5 +1,4 @@
 import ujson
-from enum import Enum
 from pkg_resources import resource_filename as rs_fn
 __author__ = 'arkilic'
 

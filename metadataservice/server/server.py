@@ -66,7 +66,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
-        jsonschema.validate(data,schemas['run_start'])
+        jsonschema.validate(data, schemas['run_start'])
         result = yield db.run_start.insert(data)#async insert
         utils._return2client(self, result)
         self.finish()
@@ -74,10 +74,10 @@ class RunStartHandler(tornado.web.RequestHandler):
 
 class BeamlineConfigHandler(tornado.web.RequestHandler):
     """Handler for run_start insert and query operations"""
+    #TODO: Discard this handler. We are making BC an embedded document
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        #  TODO: Add sort by time!
         """Query beamline_config documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
@@ -123,6 +123,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
+        jsonschema.validate(data, schemas['descriptor'])
         result = yield db.event_descriptor.insert(data)#async insert
         utils._return2client(self, result)
         self.finish()
@@ -151,6 +152,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         #TODO: Add validation once database is implemented
+        jsonschema.validate(data, schemas['run_stop'])
         result = yield db.run_stop.insert(data)#async insert
         utils._return2client(self, result)
         self.finish()
@@ -177,7 +179,7 @@ class EventHandler(tornado.web.RequestHandler):
         """Insert a run_start document"""
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        #TODO: Add validation once database is implemented
+        #TODO: Add validation once we figure out how to do this in bluesky
         bulk = db.event.initialize_unordered_bulk_op()
         for _ in data:
             bulk.insert(_)
