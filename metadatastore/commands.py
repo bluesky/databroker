@@ -235,7 +235,7 @@ def _runstart_given_oid(oid):
 
 
 @_ensure_connection
-def _event_desc_given_oid(oid):
+def _descriptor_given_oid(oid):
     """Get EventDescriptor document given an ObjectId
 
     This is an internal function as ObjectIds should not be
@@ -1070,7 +1070,7 @@ def find_events(descriptor=None, **kwargs):
         # pop the descriptor oid
         desc_oid = ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
-        ev['descriptor'] = _event_desc_given_oid(desc_oid)
+        ev['descriptor'] = _descriptor_given_oid(desc_oid)
         # pop the data
         data = ev.pop('data')
         # replace it with the friendly paired dicts
