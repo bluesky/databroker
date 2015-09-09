@@ -6,7 +6,3 @@ from .commands import (find_events, find_descriptors,
 from .commands import (insert_event, insert_descriptor, insert_run_start,
                        insert_run_stop,
                        db_connect, db_disconnect)
-
-# object model
-from .odm_templates import (RunStop, RunStart, Event, EventDescriptor,
-                            DataKey)
