@@ -462,67 +462,74 @@ def fetch_events_generator(descriptor):
         yield ev
 
 
+def _transpose(in_data, keys, field):
+    out = {k: [None] * len(in_data) for k in keys}
+    for j, ev in enumerate(in_data):
+        dd = ev[field]
+        for k in keys:
+            out[k][j] = dd[k]
+    return out
+
+
 @_ensure_connection
 def fetch_events_table(descriptor):
     """All event data as tables
 
-    .. warning
-
-       This function has a local import of `pandas` and will only work if
-       `pandas` is installed.
-
     Parameters
     ----------
     descriptor : dict or uid
-        The EeventDestriptor to get the events for.  Can be either
+        The EventDestriptor to get the events for.  Can be either
         a dict or a uid.
 
     Returns
     -------
-    descriptor : dict
+    descriptor : doc.Document
         EventDescriptor document
 
-    data_table : DataFrame
-        All of the data as a DataFrame indexed on sequence number
+    data_table : dict
+        dict of lists of the transposed data
 
-    uids : Series
-        The uids of each of the events as a `Series` indexed on sequence number
+    uids : list
+        The uids of each of the events.
 
-    times : Series
-        The times of each event as a `Series` indexed on sequence number
+    seq_nums : list
+        The sequence number of each event.
 
-    uids : Series
-        The uids of each event as a `Series` indexed on sequence number
+    times : list
+        The time of each event.
 
-    timestamps_table : DataFrame
-        The timestamps of each of the measurements as a `DataFrame`.  Same
-        columns as `data_table` indexed on sequence number
+    uids : list
+        The uid of each event.
+
+    timestamps_table : dict
+        The timestamps of each of the measurements as dict of lists.  Same
+        keys as `data_table`.
     """
-    import pandas as pd
     desc_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(desc_uid)
     # this will get more complicated once transpose caching layer is in place
     all_events = list(fetch_events_generator(desc_uid))
 
     # get event sequence numbers
-    seq_num = pd.Series([ev['seq_num'] for ev in all_events])
+    seq_nums = [ev['seq_num'] for ev in all_events]
 
     # get event times
-    times = pd.to_datetime([ev['time'] for ev in all_events], unit='s')
-    times.index = seq_num
+    times = [ev['time'] for ev in all_events]
 
     # get uids
-    uids = pd.Series([ev['uid'] for ev in all_events], index=seq_num)
+    uids = [ev['uid'] for ev in all_events]
 
+    keys = list(descriptor['data_keys'])
+
+    # TODO make sure this is fast
     # get data values
-    data_table = pd.DataFrame([ev['data'] for ev in all_events], index=seq_num)
+    data_table = _transpose(all_events, keys, 'data')
 
     # get timestamps
-    ts = pd.DataFrame([ev['timestamps'] for ev in all_events], index=seq_num)
-    timestamps_table = pd.DataFrame({k: pd.to_datetime(ts[k], unit='s')
-                                     for k in ts})
+    timestamps_table = _transpose(all_events, keys, 'timestamps')
+
     # return the whole lot
-    return descriptor, data_table, times, uids, timestamps_table
+    return descriptor, data_table, seq_nums, times, uids, timestamps_table
 
 
 def db_disconnect():

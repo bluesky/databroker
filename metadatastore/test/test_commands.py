@@ -357,10 +357,10 @@ def test_bulk_table():
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
     try:
         ret = mdsc.fetch_events_table(e_desc)
-        descriptor, data_table, times, uids, timestamps_table = ret
+        descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
-        for k in data_table:
-            assert_true((data_table.index == data_table[k]).all())
+        for vals in data_table.values():
+            assert_true(all(s == v for s, v in zip(seq_nums, vals)))
     except ImportError:
         raise SkipTest("Need pandas for table functionality")
 
