@@ -47,7 +47,7 @@ class NoEventDescriptors(Exception):
 
 
 def doc_or_uid_to_uid(doc_or_uid):
-    """Helper function to ensure a uid
+    """Given Document or uid return the uid
 
     Parameters
     ----------
