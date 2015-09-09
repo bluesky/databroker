@@ -99,7 +99,7 @@ def _ensure_connection(func):
     return inner
 
 
-def _cache_runstart(rs):
+def _cache_runstart(runstart):
     """De-reference and cache a RunStart document
 
     The de-referenced Document is cached against the
@@ -107,33 +107,33 @@ def _cache_runstart(rs):
 
     Parameters
     ----------
-    rs : dict
+    runstart : dict
         raw pymongo dictionary. This is expected to have
         an entry `_id` with the ObjectId used by mongo.
 
     Returns
     -------
-    rs : doc.Document
+    runstart : doc.Document
         Document instance for this RunStart document.
         The ObjectId has been stripped.
     """
-    rs = dict(rs)
+    runstart = dict(runstart)
     # TODO actually do this de-reference for documents that have it
     # There is no known actually usage of this document and it is not being
     # created going forward
-    rs.pop('beamline_config_id', None)
+    runstart.pop('beamline_config_id', None)
 
     # get the mongo ObjectID
-    oid = rs.pop('_id')
+    oid = runstart.pop('_id')
 
     # convert the remaining document do a Document object
-    rs = doc.Document('RunStart', rs)
+    runstart = doc.Document('RunStart', runstart)
 
     # populate cache and set up uid->oid mapping
-    _RUNSTART_CACHE_OID[oid] = rs
-    _RUNSTART_UID_to_OID_MAP[rs['uid']] = oid
+    _RUNSTART_CACHE_OID[oid] = runstart
+    _RUNSTART_UID_to_OID_MAP[runstart['uid']] = oid
 
-    return rs
+    return runstart
 
 
 def _cache_runstop(runstop):
