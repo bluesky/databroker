@@ -39,7 +39,8 @@ def db_connect(database ,host, port):
     db: motor.MotorDatabase
         Async server object
     """
-    client = motor.MotorClient()
+    client = motor.MotorClient("localhost", 28000, replicaset="rs0")
+    client.write_concern = {'w': 0, 'wtimeout': 1000}
     database = client[database]
     return database
 
@@ -162,10 +163,11 @@ class EventHandler(tornado.web.RequestHandler):
             utils._return2client(err)
         self.finish()
 
-db = db_connect("datastore2", '127.0.0.1', 27017) #TODO: Replace with configured one
+db = db_connect("datastore2", '127.0.0.1', 28000) #TODO: Replace with configured one
+
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
     (r'/event_descriptor',EventDescriptorHandler),
     (r'/event',EventHandler)], db=db)
-application.listen(7771)
+application.listen(7770)
 tornado.ioloop.IOLoop.instance().start()

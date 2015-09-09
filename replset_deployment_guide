@@ -1,0 +1,128 @@
+Deploy a Replica Set for Testing and Development
+
+Overview
+
+Three member replica sets provide enough redundancy to survive most network partitions and other system failures. These sets also have sufficient capacity for many distributed read operations. Replica sets should always have an odd number of members. This ensures that elections will proceed smoothly. For more about designing replica sets, see the Replication overview.
+
+The basic procedure is to start the mongod instances that will become members of the replica set, configure the replica set itself, and then add the mongod instances to it.
+
+Mongo suggests using odd number of replica sets or an arbiter with even number of replica sets. This sample deployment has 2 replica sets and 1 arbiter.
+
+IMPORTANT: The below steps are not for sharding, this is just for replication. Sharding is a different issue and we should discuss it separately. Already looked into it and have a basic idea regarding deployment strategy.
+
+The below deployment is done on a single machine and is for testing and deployment purposes. It is somewhat similar to a deployment over various servers. In case we need to use more than a single machine, instructions are pretty similar. In case of geographically redundant replica set deployment, refer to the following link: http://docs.mongodb.org/manual/tutorial/deploy-geographically-distributed-replica-set/
+
+TLDR; 1 Primary node, 2 replica sets, and 1 arbiter
+
+% denotes unix shell
+> denotes mongo shell
+
+
+
+
+
+
+
+
+Procedure
+The idea is simple. You have a master node that is primary and bunch of other nodes that are the replicas. In this specific example, I am creating only 1 primary, 2 replica sets, and 1 arbiter that acts as a referee in case a node goes down. Arbiters do not save memory. Think of them as soft iocs that check the heart beat of nodes on the cluster and act as a tie breaker if the database backend has to decide which node should become primary.
+Step 1: Create required directories where the database files will live
+% mkdir -p /srv/mongodb/rs0-0 /srv/mongodb/rs0-1 /srv/mongodb/rs0-2
+Step 2: Start first mongod instance
+% mongod --port 27017 --dbpath /srv/mongodb/rs0-0 --replSet rs0 --smallfiles --oplogSize 128
+
+Step 2: Start 2nd mongod instance
+
+% mongod --port 27018 --dbpath /srv/mongodb/rs0-1 --replSet rs0 --smallfiles --oplogSize 128
+Step 3: Start 3rd mongod instance
+
+% mongod --port 27019 --dbpath /srv/mongodb/rs0-2 --replSet rs0 --smallfiles --oplogSize 128
+
+
+The --smallfiles and --oplogSize settings reduce the disk space that each mongod instance uses. This is ideal for testing and development deployments as it prevents overloading your machine. For more information on these and other configuration options, see Configuration File Options.
+
+Step 4: Connect to mongo shell in the first mongo instance and do all the replication work
+
+% mongo --port 27017
+
+> rsconf = {
+           _id: "rs0",
+           members: [
+                      {
+                       _id: 0,
+                       host: "localhost:27017"}] }
+
+> rs.initiate( rsconf )
+Step 5: Check if the configuration and replica set init worked:
+> rs.conf()
+Step 6: Link the primary set with the other two replica sets
+> rs.add("localhost:27018")
+> rs.add(“localhost:27019")
+Step 7: Create the arbiter and add it to deployment
+
+% mkdir /data/arb
+
+% mongod --port 30000 --dbpath /data/arb --replSet rs0
+
+> rs.addArb("locahost:30000")
+
+
+If the primary node goes down, one of the two secondary I set up here takes over. I have not tested how this works yet but the above setup does perform replication. I think the actual deployment would have to have “hidden members” and “arbiters” in order to make system fault tolerant and performant. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Conclusion:
+
+If all goes well, which it should as long as your mongodb installment is not flaky, this configuration works on mac and linux(debian 8). As long as you follow the above steps, you should have a deployment that looks like below:
+
+A quick, dumb test:
+
+
+
+A somewhat smarter test that checks write_concern with various replica sets:
+
+
+What goes on behind(snatched this straight from mongo website but applies to this case)?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

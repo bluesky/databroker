@@ -8,7 +8,7 @@ import numpy as np
 
 
 conf.connection_config['host'] = 'localhost'
-conf.connection_config['port'] = 7771
+conf.connection_config['port'] = 7770
 custom = {}
 
 # rs = _find_run_starts(owner='xf23id1')
@@ -69,10 +69,10 @@ insert_event(descriptor=e_desc, events=all_data)
 stop_time = time.time()
 print('insert time: {}'.format(stop_time - start_time))
 
-start_time = time.time()
-ret = _find_run_starts(beamline_id='xf23id')
-stop_time = time.time()
-print('retrieve time: {}'.format(stop_time - start_time))
-
-
-print(next(_find_run_stops(exit_status= "success")))
+# start_time = time.time()
+# ret = _find_run_starts(beamline_id='xf23id')
+# stop_time = time.time()
+# print('retrieve time: {}'.format(stop_time - start_time))
+#
+#
+# print(next(_find_run_stops(exit_status= "success")))
