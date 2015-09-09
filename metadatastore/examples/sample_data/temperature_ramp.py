@@ -1,5 +1,5 @@
 from __future__ import division
-from metadatastore.api import (insert_event, insert_event_descriptor,
+from metadatastore.api import (insert_event, insert_descriptor,
                                find_events, insert_run_stop)
 
 import uuid
@@ -27,11 +27,11 @@ def run(run_start_uid=None, sleep=0):
     # Create Event Descriptors
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
-    ev_desc1_uid = insert_event_descriptor(run_start=run_start_uid,
+    ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
                                            data_keys=data_keys1,
                                            time=common.get_time(),
                                            uid=str(uuid.uuid4()))
-    ev_desc2_uid = insert_event_descriptor(run_start=run_start_uid,
+    ev_desc2_uid = insert_descriptor(run_start=run_start_uid,
                                            data_keys=data_keys2,
                                            time=common.get_time(),
                                            uid=str(uuid.uuid4()))

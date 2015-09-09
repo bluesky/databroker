@@ -1,6 +1,6 @@
 from __future__ import division
 import uuid
-from metadatastore.api import insert_event, insert_event_descriptor, find_events
+from metadatastore.api import insert_event, insert_descriptor, find_events
 import numpy as np
 from metadatastore.examples.sample_data import common
 
@@ -26,10 +26,10 @@ def run(run_start=None, sleep=0):
                                     dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                   'Troom': dict(source='PV:ES:Troom', dtype='number')}
-    ev_desc1_uid = insert_event_descriptor(run_start=run_start,
+    ev_desc1_uid = insert_descriptor(run_start=run_start,
                                            data_keys=data_keys1, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
-    ev_desc2_uid = insert_event_descriptor(run_start=run_start,
+    ev_desc2_uid = insert_descriptor(run_start=run_start,
                                            data_keys=data_keys2, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
     print('event descriptor 1 uid = %s' % ev_desc1_uid)

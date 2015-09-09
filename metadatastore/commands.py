@@ -647,7 +647,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
 
 
 @_ensure_connection
-def insert_event_descriptor(run_start, data_keys, time, uid,
+def insert_descriptor(run_start, data_keys, time, uid,
                             custom=None):
     """Inesrt an EventDescriptor document in to  database.
 
@@ -697,6 +697,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid,
                  "RunStart with uid %s", descriptor['uid'], runstart_uid)
 
     return uid
+insert_event_descriptor = insert_descriptor
 
 
 @_ensure_connection

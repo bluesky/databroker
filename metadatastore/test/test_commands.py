@@ -60,7 +60,7 @@ def setup_syn(custom=None):
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
-    e_desc = mdsc.insert_event_descriptor(data_keys=data_keys,
+    e_desc = mdsc.insert_descriptor(data_keys=data_keys,
                                           time=ttime.time(),
                                           run_start=rs, uid=str(uuid.uuid4()))
     return rs, e_desc, data_keys
@@ -109,7 +109,7 @@ def test_event_descriptor_insertion():
                                'external': 'FS:foobar'}}
     time = ttime.time()
     # test insert
-    ev_desc_uid = mdsc.insert_event_descriptor(run_start_uid, data_keys, time,
+    ev_desc_uid = mdsc.insert_descriptor(run_start_uid, data_keys, time,
                                                str(uuid.uuid4()))
     ev_desc_mds, = mdsc.find_event_descriptors(uid=ev_desc_uid)
     # make sure the sanitized event descriptor has no uid
@@ -462,7 +462,7 @@ def test_bad_event_desc():
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
-    mdsc.insert_event_descriptor(data_keys=data_keys,
+    mdsc.insert_descriptor(data_keys=data_keys,
                                  time=ttime.time(),
                                  run_start=rs, uid=str(uuid.uuid4()))
 

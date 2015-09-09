@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from metadatastore.api import (insert_run_start,
-                               insert_event, insert_event_descriptor)
+                               insert_event, insert_descriptor)
 
 from metadatastore.api import find_last, find_events
 import time
@@ -33,7 +33,7 @@ rs = insert_run_start(scan_id=scan_id, beamline_id='csx',
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)
-e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
+e_desc = insert_descriptor(data_keys=data_keys, time=time.time(),
                                  run_start=rs)
 func = np.cos
 num = 1000
