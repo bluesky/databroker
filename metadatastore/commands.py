@@ -117,6 +117,7 @@ def _cache_runstart(rs):
         Document instance for this RunStart document.
         The ObjectId has been stripped.
     """
+    rs = dict(rs)
     # TODO actually do this de-reference for documents that have it
     # There is no known actually usage of this document and it is not being
     # created going forward
@@ -143,7 +144,7 @@ def _cache_runstop(runstop):
 
     Parameters
     ----------
-    rs : dict
+    runstop : dict
         raw pymongo dictionary. This is expected to have
         an entry `_id` with the ObjectId used by mongo.
 
@@ -153,6 +154,7 @@ def _cache_runstop(runstop):
         Document instance for this RunStop document.
         The ObjectId has been stripped.
     """
+    runstop = dict(runstop)
     # pop off the ObjectId of this document
     oid = runstop.pop('_id')
 
@@ -188,6 +190,7 @@ def _cache_descriptor(descriptor):
         Document instance for this EventDescriptor document.
         The ObjectId has been stripped.
     """
+    descriptor = dict(descriptor)
     # pop the ObjectID
     oid = descriptor.pop('_id')
 
