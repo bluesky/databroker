@@ -603,7 +603,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     Parameters
     ----------
     run_start : doc.Document or dict or str
-        The RunStart to get the RunStop for.  Can be either
+        The RunStart to insert the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     time : float
         The date/time as found at the client side
@@ -657,7 +657,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
     Parameters
     ----------
     run_start : doc.Document or dict or str
-        The RunStart to get the RunStop for.  Can be either
+        The RunStart to insert a Descriptor for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     data_keys : dict
         Provides information about keys of the data dictionary in
@@ -709,11 +709,9 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
 
     Parameters
     ----------
-    descriptor : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore EventDescriptor document
-        if str:
-            uid of EventDescriptor object to associate with this record
+    descriptor : doc.Document or dict or str
+        The Descriptor to insert events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     time : float
         The date/time as found at the client side when an event is
         created.
@@ -727,17 +725,14 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
         same keys as `data` above
     uid : str
         Globally unique id string provided to metadatastore
-
-    Note
-    ----
-    In the immediate aftermath of a change to how Documents are exchanged
-    (not stored, but exchanged) timestamps is optional. If not included,
-    data is expected to include (value, timestamp) tuples.
     """
+    # convert data to storage format
     val_ts_tuple = _transform_data(data, timestamps)
-
-    descriptor = descriptor_given_uid(descriptor)
-    desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
+    # make sure we really have a uid
+    descriptor_uid = descriptor_given_uid(descriptor)
+    # get the ObjectID so for reference field
+    desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor_uid]
+    # create the Event document
     event = Event(descriptor_id=desc_oid, uid=uid,
                   data=val_ts_tuple, time=time, seq_num=seq_num)
 
@@ -745,7 +740,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
 
     logger.debug("Inserted Event with uid %s referencing "
                  "EventDescriptor with uid %s", event.uid,
-                 descriptor.uid)
+                 descriptor_uid)
     return uid
 
 BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
