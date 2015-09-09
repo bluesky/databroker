@@ -1,7 +1,6 @@
 from __future__ import print_function
 
-from metadatastore.api import (insert_run_start,
-                               insert_event, insert_descriptor)
+from metadatastore.api import (insert_run_start, insert_event, insert_descriptor)
 
 from metadatastore.api import find_last, find_events
 import time
@@ -25,7 +24,7 @@ try:
 except (IndexError, TypeError):
     scan_id = 1
 
-custom = {'plotx': 'linear_motor', 'ploty': 'scalar_detector'}
+custom = {}
 # Create a BeginRunEvent that serves as entry point for a run
 rs = insert_run_start(scan_id=scan_id, beamline_id='csx',
                       time=time.time(), custom=custom,
@@ -33,7 +32,7 @@ rs = insert_run_start(scan_id=scan_id, beamline_id='csx',
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)
-e_desc = insert_descriptor(data_keys=data_keys, time=time.time(),
+descriptor = insert_descriptor(data_keys=data_keys, time=time.time(),
                                  run_start=rs)
 func = np.cos
 num = 1000
@@ -45,7 +44,7 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
             'Tsam': [i + 5, time.time()],
             'scalar_detector': [func(i) + np.random.randn() / 100,
                                 time.time()]}
-    e = insert_event(descriptor=e_desc, seq_num=idx,
+    e = insert_event(descriptor=descriptor, seq_num=idx,
                      time=time.time(),
                      data=data,
                      uid=str(uuid.uuid4()))
@@ -56,6 +55,6 @@ try:
         print("find_last() is broken")
 except AttributeError as ae:
     print(ae)
-res_2 = find_events(descriptor=e_desc)
+res_2 = find_events(descriptor=descriptor)
 if not res_2:
     print("find_events() is broken")

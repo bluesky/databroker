@@ -17,8 +17,8 @@ from mongoengine import connect
 import mongoengine.connection
 
 from . import conf
-from .odm_templates import (RunStart, RunStop,
-                            EventDescriptor, Event, DataKey, ALIAS)
+from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
+                            ALIAS)
 from . import doc
 
 
@@ -30,12 +30,12 @@ logger = logging.getLogger(__name__)
 # implemented as.   Should move to uids asap
 _RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
 _RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
-_EVENTDESC_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+_DESCRIPTOR_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
 
 # never drop these
 _RUNSTART_UID_to_OID_MAP = dict()
 _RUNSTOP_UID_to_OID_MAP = dict()
-_EVENTDESC_UID_to_OID_MAP = dict()
+_DESCRIPTOR_UID_to_OID_MAP = dict()
 
 
 class NoRunStop(Exception):
@@ -70,11 +70,11 @@ def clear_process_cache():
     """Clear all local caches"""
     _RUNSTART_CACHE_OID.clear()
     _RUNSTOP_CACHE_OID.clear()
-    _EVENTDESC_CACHE_OID.clear()
+    _DESCRIPTOR_CACHE_OID.clear()
 
     _RUNSTART_UID_to_OID_MAP.clear()
     _RUNSTOP_UID_to_OID_MAP.clear()
-    _EVENTDESC_UID_to_OID_MAP.clear()
+    _DESCRIPTOR_UID_to_OID_MAP.clear()
 
 
 def _ensure_connection(func):
@@ -202,8 +202,8 @@ def _cache_descriptor(descriptor):
     descriptor = doc.Document('EventDescriptor', descriptor)
 
     # update cache and setup uid->oid mapping
-    _EVENTDESC_CACHE_OID[oid] = descriptor
-    _EVENTDESC_UID_to_OID_MAP[descriptor['uid']] = oid
+    _DESCRIPTOR_CACHE_OID[oid] = descriptor
+    _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']] = oid
 
     return descriptor
 
@@ -256,10 +256,10 @@ def _descriptor_given_oid(oid):
     Returns
     -------
     descriptor : doc.Document
-        The RunStart document.
+        The EventDescriptor document.
     """
     try:
-        return _EVENTDESC_CACHE_OID[oid]
+        return _DESCRIPTOR_CACHE_OID[oid]
     except KeyError:
         pass
 
@@ -329,11 +329,10 @@ def descriptor_given_uid(uid):
     -------
     runstart : doc.Document
         The EventDescriptor document fully de-referenced
-
     """
     try:
-        oid = _EVENTDESC_UID_to_OID_MAP[uid]
-        return _EVENTDESC_CACHE_OID[oid]
+        oid = _DESCRIPTOR_UID_to_OID_MAP[uid]
+        return _DESCRIPTOR_CACHE_OID[oid]
     except KeyError:
         pass
 
@@ -341,6 +340,7 @@ def descriptor_given_uid(uid):
     return _cache_descriptor(descriptor)
 
 
+@_ensure_connection
 def runstop_by_runstart(runstart):
     """Given a RunStart return it's RunStop
 
@@ -361,10 +361,11 @@ def runstop_by_runstart(runstart):
     ------
     NoRunStop
         If no RunStop document exists for the given RunStart
-
     """
 
     runstart_uid = doc_or_uid_to_uid(runstart)
+    # make sure the cache is actually populated
+    runstart_given_uid(runstart_uid)
     oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
 
     runstop = RunStop._get_collection().find_one(
@@ -376,6 +377,7 @@ def runstop_by_runstart(runstart):
     return _cache_runstop(runstop)
 
 
+@_ensure_connection
 def descriptors_by_runstart(runstart):
     """Given a RunStart return a list of it's descriptors
 
@@ -384,7 +386,7 @@ def descriptors_by_runstart(runstart):
     Parameters
     ----------
     runstart : doc.Document or dict or str
-        The RunStart to get the RunStop for.  Can be either
+        The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
     Returns
@@ -417,13 +419,14 @@ def descriptors_by_runstart(runstart):
     return rets
 
 
+@_ensure_connection
 def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
 
     Parameters
     ----------
     descriptor : doc.Document or dict or str
-        The RunStart to get the RunStop for.  Can be either
+        The EventDescriptors to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
     Yields
@@ -434,16 +437,16 @@ def fetch_events_generator(descriptor):
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(descriptor_uid)
+
+    oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
+
     col = Event._get_collection()
-
-    oid = _EVENTDESC_UID_to_OID_MAP[descriptor_uid]
-
     ev_cur = col.find({'descriptor_id': oid},
                       sort=[('time', 1)])
 
     for ev in ev_cur:
         # ditch the ObjectID
-        ev.pop('_id')
+        del ev['_id']
         # pop the descriptor oid
         ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
@@ -452,13 +455,14 @@ def fetch_events_generator(descriptor):
         data = ev.pop('data')
         # replace it with the friendly paired dicts
         ev['data'], ev['timestamps'] = [{k: v[j] for k, v in data.items()}
-                                        for j in range(2)]
-        # wrap it our fancy dict
+                                        for j in [0, 1]]
+        # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
 
         yield ev
 
 
+@_ensure_connection
 def fetch_events_table(descriptor):
     """All event data as tables
 
@@ -708,10 +712,15 @@ insert_event_descriptor = insert_descriptor
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     """Create an event in metadatastore database backend
 
+    .. warning
+
+       This does not validate that the keys in `data` and `timestamps`
+       match the data keys in `descriptor`.
+
     Parameters
     ----------
     descriptor : doc.Document or dict or str
-        The Descriptor to insert events for.  Can be either
+        The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     time : float
         The date/time as found at the client side when an event is
@@ -734,7 +743,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     # get descriptor to make sure it is in the cache
     descriptor = descriptor_given_uid(descriptor_uid)
     # get the ObjectID so for reference field
-    desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor_uid]
+    desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
     # create the Event document
     event = Event(descriptor_id=desc_oid, uid=uid,
                   data=val_ts_tuple, time=time, seq_num=seq_num)
@@ -756,16 +765,17 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
     Parameters
     ----------
-    event_descriptor : str
-        The event descriptor uid that these events are associated with
-
+    descriptor : doc.Document or dict or str
+        The Descriptor to insert event for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     events : iterable
        iterable of dicts matching the bs.Event schema
 
     """
+    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
+    descriptor = descriptor_given_uid(descriptor_uid)
 
-    descriptor = descriptor_given_uid(event_descriptor)
-    desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
+    desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
 
     def event_factory():
         for ev in events:
@@ -1110,7 +1120,7 @@ def find_events(descriptor=None, **kwargs):
         descriptor = doc_or_uid_to_uid(descriptor)
 
         descriptor = descriptor_given_uid(descriptor)
-        descriptor = _EVENTDESC_UID_to_OID_MAP[descriptor['uid']]
+        descriptor = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
         kwargs['descriptor_id'] = descriptor
 
     _format_time(kwargs)
