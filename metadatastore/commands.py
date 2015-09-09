@@ -686,7 +686,8 @@ def insert_descriptor(run_start, data_keys, time, uid,
     data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
     runstart_uid = doc_or_uid_to_uid(run_start)
-
+    # get document to make sure it is in the cache
+    runstart_given_uid(runstart_uid)
     runstart_oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
     rs_ref = DBRef('RunStart', runstart_oid)
     descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
@@ -729,7 +730,9 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     # convert data to storage format
     val_ts_tuple = _transform_data(data, timestamps)
     # make sure we really have a uid
-    descriptor_uid = descriptor_given_uid(descriptor)
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    # get descriptor to make sure it is in the cache
+    descriptor = descriptor_given_uid(descriptor_uid)
     # get the ObjectID so for reference field
     desc_oid = _EVENTDESC_UID_to_OID_MAP[descriptor_uid]
     # create the Event document
