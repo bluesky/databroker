@@ -37,12 +37,7 @@ class Document(dict):
     def __init__(self, name, *args, **kwargs):
         super(Document, self).__init__(*args, **kwargs)
         super(Document, self).__setitem__('_name', name)
-
-    def __getattr__(self, key):
-        try:
-            return self[key]
-        except KeyError:
-            raise AttributeError()
+        super(Document, self).__setattr__('__dict__',  self)
 
     def __setattr__(self, key, value):
         raise DocumentIsReadOnly()
