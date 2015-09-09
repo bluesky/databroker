@@ -24,7 +24,7 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import (insert_run_start,
-                               insert_run_stop, insert_event_descriptor,
+                               insert_run_stop, insert_descriptor,
                                find_run_starts)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
@@ -233,10 +233,10 @@ def test_data_key():
     rs2, = find_run_starts(uid=rs2_uid)
     data_keys = {'fork': {'source': '_', 'dtype': 'number'},
                  'spoon': {'source': '_', 'dtype': 'number'}}
-    insert_event_descriptor(run_start=rs1_uid, data_keys=data_keys,
+    insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
                             time=100.,
                             uid=str(uuid.uuid4()))
-    insert_event_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
+    insert_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
                             uid=str(uuid.uuid4()))
     result1 = db.find_headers(data_key='fork')
     result2 = db.find_headers(data_key='fork', start_time=150)

@@ -2,7 +2,7 @@ from __future__ import division
 import uuid
 import time as ttime
 import numpy as np
-from metadatastore.api import (insert_event, insert_event_descriptor,
+from metadatastore.api import (insert_event, insert_descriptor,
                                find_events, insert_run_start, insert_run_stop,
                                find_last)
 from filestore.file_writers import save_ndarray
@@ -71,11 +71,11 @@ def run(run_start_uid=None, sleep=0):
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
 
     # save the first event descriptor
-    descriptor1_uid = insert_event_descriptor(
+    descriptor1_uid = insert_descriptor(
         run_start=run_start_uid, data_keys=data_keys1, time=0.,
         uid=str(uuid.uuid4()))
 
-    descriptor2_uid = insert_event_descriptor(
+    descriptor2_uid = insert_descriptor(
         run_start=run_start_uid, data_keys=data_keys2, time=0.,
         uid=str(uuid.uuid4()))
 

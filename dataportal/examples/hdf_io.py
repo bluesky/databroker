@@ -37,7 +37,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from metadatastore.api import (insert_run_start, insert_event,
-                               insert_event_descriptor,
+                               insert_descriptor,
                                find_events)
 from filestore.api import register_handler, insert_resource, insert_datum
 import filestore.file_writers as fw
@@ -140,7 +140,7 @@ def hdf_data_io():
                                       external='FILESTORE:')}
 
     # save the event descriptor
-    descriptor_uid = insert_event_descriptor(
+    descriptor_uid = insert_descriptor(
         run_start=run_start_uid, data_keys=data_keys, time=0.,
         uid=str(uuid.uuid4()))
 
