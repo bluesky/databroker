@@ -40,7 +40,7 @@ def db_connect(database ,host, port):
         Async server object
     """
     client = motor.MotorClient("localhost", 28000, replicaset="rs0")
-    client.write_concern = {'w': 0, 'wtimeout': 1000}
+    client.write_concern = {'w': "majority", 'wtimeout': 1000}
     database = client[database]
     return database
 
