@@ -51,7 +51,7 @@ class RunStart(DynamicDocument):
     owner = StringField(default=getuser(), required=True, unique=False)
     group = StringField(required=False, unique=False, default=None)
     sample = DictField(required=False)  # lightweight sample placeholder.
-    meta = {'indexes': ['-_id', '-owner', '-time', '-scan_id', '-uid'],
+    meta = {'indexes': ['-owner', '-time', '-scan_id'],
             'db_alias': ALIAS}
 
 
@@ -82,7 +82,7 @@ class RunStop(DynamicDocument):
                               choices=('success', 'abort', 'fail'))
     reason = StringField(required=False)
     uid = StringField(required=True, unique=True)
-    meta = {'indexes': ['-_id', '-time', '-exit_status', '-run_start', '-uid'],
+    meta = {'indexes': ['-time', '-exit_status', '-run_start'],
             'db_alias': ALIAS}
 
 
@@ -130,7 +130,7 @@ class EventDescriptor(DynamicDocument):
     uid = StringField(required=True, unique=True)
     time = FloatField(required=True)
     data_keys = MapField(EmbeddedDocumentField(DataKey), required=True)
-    meta = {'indexes': ['-run_start', '-time', '-uid'], 'db_alias': ALIAS}
+    meta = {'indexes': ['-run_start', '-time'], 'db_alias': ALIAS}
 
 
 class Event(Document):
