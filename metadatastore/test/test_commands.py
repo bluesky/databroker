@@ -411,11 +411,9 @@ def test_find_runstart():
 
     runstart = mdsc.runstart_given_uid(runstart_uid)
 
-    runstart2, = list(mdsc.find_runstarts(run_start=runstart_uid))
-    runstart3, = list(mdsc.find_runstarts(run_start=runstart))
+    runstart2, = list(mdsc.find_runstarts(uid=runstart_uid))
 
     assert_equal(runstart, runstart2)
-    assert_equal(runstart, runstart3)
 
 
 def test_find_runstop():

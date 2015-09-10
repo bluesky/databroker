@@ -955,9 +955,6 @@ def find_runstarts(**kwargs):
 
     Parameters
     ----------
-    runstart : doc.Document or dict or str
-        The RunStart to search event for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStart
         was created. Valid options are:
@@ -995,19 +992,6 @@ def find_runstarts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    runstart = None
-    unique_path_keys = ['run_start', 'runstart']
-    for k in unique_path_keys:
-        runstart = kwargs.pop(k, None)
-        if runstart:
-            break
-
-    # if given a runstart, then only one possible result, just return it
-    if runstart:
-        def inner():
-            yield runstart_given_uid(doc_or_uid_to_uid(runstart))
-        return inner()
-
     # now try rest of formatting
     _format_time(kwargs)
 
