@@ -1034,14 +1034,11 @@ def find_runstops(runstart=None, **kwargs):
         The requested RunStop documents
     """
     # if trying to find by runstart, there can be only one
-    if runstart:
-        def inner():
-            try:
-                yield runstop_by_runstart(runstart)
-            except NoRunStop:
-                return
-        return inner()
-
+    # normalize the input and get the runstart oid
+    runstart_uid = doc_or_uid_to_uid(runstart)
+    runstart_given_uid(runstart_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
+    kwargs['run_start_id'] = oid
     _format_time(kwargs)
     runstop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
