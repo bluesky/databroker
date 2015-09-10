@@ -77,6 +77,27 @@ def clear_process_cache():
     _DESCRIPTOR_UID_to_OID_MAP.clear()
 
 
+def db_disconnect():
+    """Helper function to deal with stateful connections to mongoengine"""
+    mongoengine.connection.disconnect(ALIAS)
+    for collection in [RunStart, RunStop, EventDescriptor, Event, DataKey]:
+        collection._collection = None
+
+
+def db_connect(database, host, port):
+    """Helper function to deal with stateful connections to mongoengine
+
+    .. warning
+
+       This will silently ignore input if the database is already
+       connected, even if the input database, host, or port are
+       different than currently connected.  To change the database
+       connection you must call `db_disconnect` before attempting to
+       re-connect.
+    """
+    return connect(db=database, host=host, port=port, alias=ALIAS)
+
+
 def _ensure_connection(func):
     """Decorator to ensure that the DB connection is open
 
@@ -547,27 +568,6 @@ def fetch_events_table(descriptor):
 
     # return the whole lot
     return descriptor, data_table, seq_nums, times, uids, timestamps_table
-
-
-def db_disconnect():
-    """Helper function to deal with stateful connections to mongoengine"""
-    mongoengine.connection.disconnect(ALIAS)
-    for collection in [RunStart, RunStop, EventDescriptor, Event, DataKey]:
-        collection._collection = None
-
-
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to mongoengine
-
-    .. warning
-
-       This will silently ignore input if the database is already
-       connected, even if the input database, host, or port are
-       different than currently connected.  To change the database
-       connection you must call `db_disconnect` before attempting to
-       re-connect.
-    """
-    return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
 # database INSERTION ###################################################
