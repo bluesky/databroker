@@ -367,7 +367,7 @@ def make_header(runstart, allow_no_runstop=False):
 
     # see if we have a runstop, ok if we don't
     try:
-        runstop = mc.runstop_by_runstart(runstart_uid)
+        runstop = mc.stop_by_start(runstart_uid)
         for h_key, rs_key in runstop_copy.items():
             if rs_key == 'reason':
                 header[h_key] = runstop.get(rs_key, '')
@@ -387,7 +387,7 @@ def make_header(runstart, allow_no_runstop=False):
     try:
         ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
                     for ev_desc in
-                    mc.descriptors_by_runstart(runstart_uid)]
+                    mc.descriptors_by_start(runstart_uid)]
 
     except mc.NoEventDescriptors:
         ev_descs = []
