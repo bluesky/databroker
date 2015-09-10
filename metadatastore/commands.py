@@ -1138,14 +1138,12 @@ def find_events(descriptor=None, **kwargs):
         desc_oid = ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
         ev['descriptor'] = _descriptor_given_oid(desc_oid)
-
+        data = ev.pop('data')
         # re-format the data
-        ev['timestamps'] = {k: v[1] for k, v in six.iteritems(ev['data'])}
-        ev['data'] = {k: v[0] for k, v in six.iteritems(ev['data'])}
-
+        ev['timestamps'] = {k: v[1] for k, v in data.items()}
+        ev['data'] = {k: v[0] for k, v in data.items()}
         # wrap it our fancy dict
         ev = doc.Document('Event', ev)
-
         yield ev
 
 
