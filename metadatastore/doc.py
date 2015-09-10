@@ -87,7 +87,7 @@ class Document(dict):
         try:
             return vstr(self)
         except ImportError:
-            return super(self, Document).__str__()
+            return super(Document, self).__str__()
 
     def to_name_dict_pair(self):
         """Convert to (name, dict) pair
