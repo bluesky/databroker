@@ -363,7 +363,7 @@ def descriptor_given_uid(uid):
 
 
 @_ensure_connection
-def runstop_by_runstart(runstart):
+def stop_by_start(runstart):
     """Given a RunStart return it's RunStop
 
     Raises if no RunStop exists.
@@ -399,7 +399,7 @@ def runstop_by_runstart(runstart):
 
 
 @_ensure_connection
-def descriptors_by_runstart(runstart):
+def descriptors_by_start(runstart):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
@@ -661,7 +661,7 @@ def insert_runstop(run_start, time, uid, exit_status='success', reason='',
     runstart_uid = doc_or_uid_to_uid(run_start)
     runstart = runstart_given_uid(runstart_uid)
     try:
-        runstop_by_runstart(runstart_uid)
+        stop_by_start(runstart_uid)
     except NoRunStop:
         pass
     else:

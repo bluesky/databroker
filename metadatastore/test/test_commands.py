@@ -204,7 +204,7 @@ def test_no_evdesc():
                                         time=document_insertion_time,
                                         uid=str(uuid.uuid4()))
 
-    mdsc.descriptors_by_runstart(runstart_uid)
+    mdsc.descriptors_by_start(runstart_uid)
 
 
 # ### Testing metadatastore find functionality ################################
@@ -394,13 +394,13 @@ def test_run_stop_by_runstart():
     run_stop = mdsc.runstop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
-    run_stop2 = mdsc.runstop_by_runstart(runstart)
-    run_stop3 = mdsc.runstop_by_runstart(runstart_uid)
+    run_stop2 = mdsc.stop_by_start(runstart)
+    run_stop3 = mdsc.stop_by_start(runstart_uid)
     assert_equal(run_stop, run_stop2)
     assert_equal(run_stop, run_stop3)
 
-    ev_desc2, = mdsc.descriptors_by_runstart(runstart)
-    ev_desc3, = mdsc.descriptors_by_runstart(runstart_uid)
+    ev_desc2, = mdsc.descriptors_by_start(runstart)
+    ev_desc3, = mdsc.descriptors_by_start(runstart_uid)
     assert_equal(ev_desc, ev_desc2)
     assert_equal(ev_desc, ev_desc3)
 
