@@ -556,7 +556,7 @@ def db_connect(database, host, port):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, uid,
+def insert_runstart(time, scan_id, beamline_id, uid,
                      owner='', group='', project='', custom=None):
     """Insert a RunStart document into the database.
 
@@ -608,13 +608,13 @@ def insert_run_start(time, scan_id, beamline_id, uid,
 
 
 @_ensure_connection
-def insert_run_stop(run_start, time, uid, exit_status='success',
+def insert_runstop(run_start, time, uid, exit_status='success',
                     reason='', custom=None):
     """Insert RunStop document into database
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    runstart : doc.Document or dict or str
         The RunStart to insert the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     time : float
@@ -633,7 +633,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
 
     Returns
     -------
-    run_stop : str
+    runstop : str
         uid of inserted Document
 
     Raises
@@ -644,26 +644,26 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     if custom is None:
         custom = {}
     runstart_uid = doc_or_uid_to_uid(run_start)
-    run_start = runstart_given_uid(runstart_uid)
+    runstart = runstart_given_uid(runstart_uid)
     try:
         runstop_by_runstart(runstart_uid)
     except NoRunStop:
         pass
     else:
-        raise RuntimeError("Runstop already exits for {!r}".format(run_start))
+        raise RuntimeError("Runstop already exits for {!r}".format(runstart))
     # look up the oid
     runstart_oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
     # create a reference field
     rs_ref = DBRef('RunStart', runstart_oid)
 
     runstop = RunStop(run_start=rs_ref, reason=reason, time=time,
-                       uid=uid,
-                       exit_status=exit_status, **custom)
+                      uid=uid,
+                      exit_status=exit_status, **custom)
 
     runstop = runstop.save(validate=True, write_concern={"w": 1})
     _cache_runstop(runstop.to_mongo().to_dict())
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", runstop.uid, run_start['uid'])
+                 " with uid %s", runstop.uid, runstart['uid'])
 
     return uid
 
@@ -675,7 +675,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    runstart : doc.Document or dict or str
         The RunStart to insert a Descriptor for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     data_keys : dict
@@ -928,7 +928,7 @@ _normalize_human_friendly_time.__doc__ = (
 
 
 @_ensure_connection
-def find_run_starts(**kwargs):
+def find_runstarts(**kwargs):
     """Given search criteria, locate RunStart Documents.
 
     Parameters
@@ -964,12 +964,12 @@ def find_run_starts(**kwargs):
 
     Examples
     --------
-    >>> find_run_starts(scan_id=123)
-    >>> find_run_starts(owner='arkilic')
-    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
-    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
+    >>> find_runstarts(scan_id=123)
+    >>> find_runstarts(owner='arkilic')
+    >>> find_runstarts(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_runstarts(start_time=1421176750.514707, stop_time=time.time())
 
-    >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
+    >>> find_runstarts(owner='arkilic', start_time=1421176750.514707,
     ...                stop_time=time.time())
 
     """
@@ -992,15 +992,16 @@ def find_run_starts(**kwargs):
     rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
 
     return (_cache_runstart(rs) for rs in rs_objects.order_by('-time'))
+find_run_starts = find_runstarts
 
 
 @_ensure_connection
-def find_run_stops(run_start=None, **kwargs):
+def find_runstops(runstart=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
     Parameters
     ----------
-    run_start : doc.Document or str, optional
+    runstart : doc.Document or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
@@ -1021,16 +1022,16 @@ def find_run_stops(run_start=None, **kwargs):
     uid : str, optional
         Globally unique id string provided to metadatastore
 
-    Returns
-    -------
-    run_stop : iterable of doc.Document objects
+    Yields
+    ------
+    runstop : doc.Document
+        The requested RunStop documents
     """
-
     # if trying to find by runstart, there can be only one
-    if run_start:
+    if runstart:
         def inner():
             try:
-                yield runstop_by_runstart(run_start)
+                yield runstop_by_runstart(runstart)
             except NoRunStop:
                 return
         return inner()
@@ -1039,15 +1040,16 @@ def find_run_stops(run_start=None, **kwargs):
     runstop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
     return (_cache_runstop(rs) for rs in runstop.order_by('-time'))
+find_run_stops = find_runstops
 
 
 @_ensure_connection
-def find_descriptors(run_start=None, **kwargs):
+def find_descriptors(runstart=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
     ----------
-    run_start : doc.Document or str, optional
+    runstart : doc.Document or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
@@ -1064,15 +1066,16 @@ def find_descriptors(run_start=None, **kwargs):
     uid : str, optional
         Globally unique id string provided to metadatastore
 
-    Returns
+    Yields
     -------
-    event_descriptor : iterable of doc.Document objects
+    descriptor : doc.Document
+        The requested EventDescriptor
     """
-    if run_start:
-        run_start = doc_or_uid_to_uid(run_start)
-        run_start = runstart_given_uid(run_start)
-        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
-        kwargs['run_start_id'] = run_start
+    if runstart:
+        runstart = doc_or_uid_to_uid(runstart)
+        runstart = runstart_given_uid(runstart)
+        runstart = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
+        kwargs['run_start_id'] = runstart
 
     _format_time(kwargs)
 
@@ -1155,9 +1158,10 @@ def find_last(num=1):
     num : integer, optional
         number of RunStart documents to return, default 1
 
-    Returns
-    -------
-    run_start: iterable of doc.Document objects
+    Yields
+    ------
+    runstart doc.Document
+       The requested RunStart documents
     """
     c = count()
     for rs in RunStart.objects.as_pymongo().order_by('-time'):

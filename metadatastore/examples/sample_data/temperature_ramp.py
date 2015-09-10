@@ -1,6 +1,6 @@
 from __future__ import division
 from metadatastore.api import (insert_event, insert_descriptor,
-                               find_events, insert_run_stop)
+                               find_events, insert_runstop)
 
 import uuid
 
@@ -14,7 +14,7 @@ num_exposures = 17
 
 
 @common.example
-def run(run_start_uid=None, sleep=0):
+def run(runstart_uid=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
@@ -27,11 +27,11 @@ def run(run_start_uid=None, sleep=0):
     # Create Event Descriptors
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
-    ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
+    ev_desc1_uid = insert_descriptor(run_start=runstart_uid,
                                            data_keys=data_keys1,
                                            time=common.get_time(),
                                            uid=str(uuid.uuid4()))
-    ev_desc2_uid = insert_descriptor(run_start=run_start_uid,
+    ev_desc2_uid = insert_descriptor(run_start=runstart_uid,
                                            data_keys=data_keys2,
                                            time=common.get_time(),
                                            uid=str(uuid.uuid4()))
@@ -71,7 +71,7 @@ def run(run_start_uid=None, sleep=0):
 if __name__ == '__main__':
     import metadatastore.api as mdsc
 
-    run_start_uid = mdsc.insert_run_start(scan_id=3022013,
+    runstart_uid = mdsc.insert_runstart(scan_id=3022013,
                                           beamline_id='testbed',
                                           owner='tester',
                                           group='awesome-devs',
@@ -79,5 +79,5 @@ if __name__ == '__main__':
                                           time=common.get_time(),
                                           uid=str(uuid.uuid4()))
 
-    print('run_start_uid = %s' % run_start_uid)
-    run(run_start_uid)
+    print('runstart_uid = %s' % runstart_uid)
+    run(runstart_uid)

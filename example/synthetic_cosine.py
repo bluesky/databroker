@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from metadatastore.api import (insert_run_start, insert_event, insert_descriptor)
+from metadatastore.api import (insert_runstart, insert_event, insert_descriptor)
 
 from metadatastore.api import find_last, find_events
 import time
@@ -26,7 +26,7 @@ except (IndexError, TypeError):
 
 custom = {}
 # Create a BeginRunEvent that serves as entry point for a run
-rs = insert_run_start(scan_id=scan_id, beamline_id='csx',
+rs = insert_runstart(scan_id=scan_id, beamline_id='csx',
                       time=time.time(), custom=custom,
                       uid=str(uuid.uuid4()))
 

@@ -5,7 +5,7 @@ from mongoengine import connect
 import mongoengine.connection 
 from pymongo import MongoClient
 import six
-from metadatastore.api import insert_beamline_config, insert_run_start, insert_run_stop, insert_event_descriptor, insert_event
+from metadatastore.api import insert_beamline_config, insert_runstart, insert_runstop, insert_event_descriptor, insert_event
 import metadatastore.conf as conf
 
 conf.mds_config['database'] =  'datastore2'
@@ -29,7 +29,7 @@ for bc in beamline_configs:
 
 begin_runs = db.begin_run_event.find()
 for br in begin_runs:
-    the_run_start = insert_run_start(time=br['time'], beamline_id=br['beamline_id'], beamline_config=the_bc, owner=br['owner'],
+    the_run_start = insert_runstart(time=br['time'], beamline_id=br['beamline_id'], beamline_config=the_bc, owner=br['owner'],
                                      scan_id=br['scan_id'], custom=br.get('custom',{}), uid=br['uid'])
     event_descs = db.event_descriptor.find({'begin_run_id': br['_id']})
     max_time = 0.0     
@@ -41,7 +41,7 @@ for br in begin_runs:
             if ev['time'] > max_time:
                 max_time = ev['time']
             insert_event(event_descriptor=the_e_desc, time=ev['time'], data=ev['data'], seq_num=ev['seq_num'], uid=ev['uid'])
-    insert_run_stop(run_start=the_run_start, time=float(max_time), exit_status='success',
+    insert_runstop(run_start=the_run_start, time=float(max_time), exit_status='success',
                     reason=None, uid=None)
 
 run_start_mapping = dict()
@@ -54,7 +54,7 @@ for rs in run_starts:
     scan_id = rs.pop('scan_id')
     uid = rs.pop('uid')
     trashed = rs.pop('time_as_datetime')
-    my_run_start = insert_run_start(time= time, beamline_id= beamline_id,
+    my_run_start = insert_runstart(time= time, beamline_id= beamline_id,
                                     beamline_config=bcfg_id, owner=owner, 
                                     scan_id=scan_id, uid=uid) 
     run_start_mapping[rs['_id']] = my_run_start
@@ -70,8 +70,8 @@ for rs in run_starts:
 end_runs = db.end_run.find({'run_start_id': rs})
 for er in end_runs:
     rsta = run_start_mapping.pop(er['run_start_id'])
-    insert_run_stop(run_start=rsta, time=er['time'], exit_status=er['exit_status'],
+    insert_runstop(run_start=rsta, time=er['time'], exit_status=er['exit_status'],
                     reason=er['reason'], uid=er['uid'])
 for v in six.itervalues(run_start_mapping):
-   insert_run_stop(run_start=v, time=v.time, exit_status='success',
+   insert_runstop(run_start=v, time=v.time, exit_status='success',
                       reason=None, uid=None)  
