@@ -64,4 +64,3 @@ def load_configuration(name, prefix, fields):
 #                                        ['host', 'server', 'port', 'timezone'])
 
 connection_config = {'host': '127.0.0.1', 'port': 7779, 'protocol': 'http'}
-
