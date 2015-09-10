@@ -11,7 +11,7 @@ num_exposures = 23
 
 
 @common.example
-def run(runstart=None, sleep=0):
+def run(run_start=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
@@ -26,10 +26,10 @@ def run(runstart=None, sleep=0):
                                     dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                   'Troom': dict(source='PV:ES:Troom', dtype='number')}
-    ev_desc1_uid = insert_descriptor(run_start=runstart,
+    ev_desc1_uid = insert_descriptor(run_start=run_start,
                                            data_keys=data_keys1, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
-    ev_desc2_uid = insert_descriptor(run_start=runstart,
+    ev_desc2_uid = insert_descriptor(run_start=run_start,
                                            data_keys=data_keys2, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
     print('event descriptor 1 uid = %s' % ev_desc1_uid)
@@ -67,7 +67,7 @@ def run(runstart=None, sleep=0):
 
 if __name__ == '__main__':
     import metadatastore.api as mdsc
-    runstart_uid = mdsc.insert_runstart(scan_id=2032013,
+    run_start_uid = mdsc.insert_run_start(scan_id=2032013,
                                           beamline_id='testbed',
                                           owner='tester',
                                           group='awesome-devs',
@@ -75,5 +75,5 @@ if __name__ == '__main__':
                                           time=0.,
                                           uid=str(uuid.uuid4()),)
 
-    print('runstart_uid = %s' % runstart_uid)
-    run(runstart_uid)
+    print('run_start_uid = %s' % run_start_uid)
+    run(run_start_uid)

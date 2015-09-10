@@ -3,7 +3,7 @@ import time as ttime
 import uuid
 from functools import wraps
 
-from metadatastore.api import (insert_runstart,
+from metadatastore.api import (insert_run_start,
                                insert_runstop, find_runstops)
 
 
@@ -76,21 +76,21 @@ get_time = ttime.time
 
 def example(func):
     @wraps(func)
-    def mock_runstart(runstart_uid=None, sleep=0, make_runstop=True):
-        if runstart_uid is None:
-            runstart_uid = insert_runstart(time=get_time(), scan_id=1,
+    def mock_run_start(run_start_uid=None, sleep=0, make_runstop=True):
+        if run_start_uid is None:
+            run_start_uid = insert_run_start(time=get_time(), scan_id=1,
                                            beamline_id='example',
                                            uid=str(uuid.uuid4()))
 
         # these events are already the sanitized version, not raw mongo objects
-        events = func(runstart_uid, sleep)
+        events = func(run_start_uid, sleep)
         # Infer the end run time from events, since all the times are
         # simulated and not necessarily based on the current time.
         time = max([event['time'] for event in events])
         if make_runstop:
-            runstop_uid = insert_runstop(runstart_uid, time=time,
+            runstop_uid = insert_runstop(run_start_uid, time=time,
                                          exit_status='success',
                                          uid=str(uuid.uuid4()))
             runstop, = find_runstops(uid=runstop_uid)
         return events
-    return mock_runstart
+    return mock_run_start

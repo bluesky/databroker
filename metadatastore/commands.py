@@ -121,7 +121,7 @@ def _ensure_connection(func):
     return inner
 
 
-def _cache_runstart(runstart):
+def _cache_run_start(run_start):
     """De-reference and cache a RunStart document
 
     The de-referenced Document is cached against the
@@ -129,33 +129,33 @@ def _cache_runstart(runstart):
 
     Parameters
     ----------
-    runstart : dict
+    run_start : dict
         raw pymongo dictionary. This is expected to have
         an entry `_id` with the ObjectId used by mongo.
 
     Returns
     -------
-    runstart : doc.Document
+    run_start : doc.Document
         Document instance for this RunStart document.
         The ObjectId has been stripped.
     """
-    runstart = dict(runstart)
+    run_start = dict(run_start)
     # TODO actually do this de-reference for documents that have it
     # There is no known actually usage of this document and it is not being
     # created going forward
-    runstart.pop('beamline_config_id', None)
+    run_start.pop('beamline_config_id', None)
 
     # get the mongo ObjectID
-    oid = runstart.pop('_id')
+    oid = run_start.pop('_id')
 
     # convert the remaining document do a Document object
-    runstart = doc.Document('RunStart', runstart)
+    run_start = doc.Document('RunStart', run_start)
 
     # populate cache and set up uid->oid mapping
-    _RUNSTART_CACHE_OID[oid] = runstart
-    _RUNSTART_UID_to_OID_MAP[runstart['uid']] = oid
+    _RUNSTART_CACHE_OID[oid] = run_start
+    _RUNSTART_UID_to_OID_MAP[run_start['uid']] = oid
 
-    return runstart
+    return run_start
 
 
 def _cache_runstop(runstop):
@@ -182,7 +182,7 @@ def _cache_runstop(runstop):
 
     # do the run-start de-reference
     start_oid = runstop.pop('run_start_id')
-    runstop['run_start'] = _runstart_given_oid(start_oid)
+    runstop['run_start'] = _run_start_given_oid(start_oid)
 
     # create the Document object
     runstop = doc.Document('RunStop', runstop)
@@ -216,9 +216,9 @@ def _cache_descriptor(descriptor):
     # pop the ObjectID
     oid = descriptor.pop('_id')
 
-    # do the runstart referencing
+    # do the run_start referencing
     start_oid = descriptor.pop('run_start_id')
-    descriptor['run_start'] = _runstart_given_oid(start_oid)
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
 
     # create the Document instance
     descriptor = doc.Document('EventDescriptor', descriptor)
@@ -231,7 +231,7 @@ def _cache_descriptor(descriptor):
 
 
 @_ensure_connection
-def _runstart_given_oid(oid):
+def _run_start_given_oid(oid):
     """Get RunStart document given an ObjectId
 
     This is an internal function as ObjectIds should not be
@@ -248,7 +248,7 @@ def _runstart_given_oid(oid):
 
     Returns
     -------
-    runstart : doc.Document
+    run_start : doc.Document
         The RunStart document.
     """
     try:
@@ -256,7 +256,7 @@ def _runstart_given_oid(oid):
     except KeyError:
         pass
     rs = RunStart._get_collection().find_one({'_id': oid})
-    return _cache_runstart(rs)
+    return _cache_run_start(rs)
 
 
 @_ensure_connection
@@ -290,7 +290,7 @@ def _descriptor_given_oid(oid):
 
 
 @_ensure_connection
-def runstart_given_uid(uid):
+def run_start_given_uid(uid):
     """Given a uid, return the RunStart document
 
     Parameters
@@ -300,7 +300,7 @@ def runstart_given_uid(uid):
 
     Returns
     -------
-    runstart : doc.Document
+    run_start : doc.Document
         The RunStart document.
 
     """
@@ -309,8 +309,8 @@ def runstart_given_uid(uid):
         return _RUNSTART_CACHE_OID[oid]
     except KeyError:
         pass
-    runstart = RunStart._get_collection().find_one({'uid': uid})
-    return _cache_runstart(runstart)
+    run_start = RunStart._get_collection().find_one({'uid': uid})
+    return _cache_run_start(run_start)
 
 
 @_ensure_connection
@@ -363,14 +363,14 @@ def descriptor_given_uid(uid):
 
 
 @_ensure_connection
-def stop_by_start(runstart):
+def stop_by_start(run_start):
     """Given a RunStart return it's RunStop
 
     Raises if no RunStop exists.
 
     Parameters
     ----------
-    runstart : doc.Document or dict or str
+    run_start : doc.Document or dict or str
         The RunStart to get the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -384,29 +384,29 @@ def stop_by_start(runstart):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    runstart_uid = doc_or_uid_to_uid(runstart)
+    run_start_uid = doc_or_uid_to_uid(run_start)
     # make sure the cache is actually populated
-    runstart_given_uid(runstart_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
+    run_start_given_uid(run_start_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
 
     runstop = RunStop._get_collection().find_one(
         {'run_start_id': oid})
 
     if runstop is None:
-        raise NoRunStop("No run stop exists for {!r}".format(runstart))
+        raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
     return _cache_runstop(runstop)
 
 
 @_ensure_connection
-def descriptors_by_start(runstart):
+def descriptors_by_start(run_start):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
 
     Parameters
     ----------
-    runstart : doc.Document or dict or str
+    run_start : doc.Document or dict or str
         The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -420,13 +420,13 @@ def descriptors_by_start(runstart):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    # normalize the input and get the runstart oid
-    runstart_uid = doc_or_uid_to_uid(runstart)
-    runstart_given_uid(runstart_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
+    # normalize the input and get the run_start oid
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    run_start_given_uid(run_start_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
 
     # query the database for any event descriptors which
-    # refer to the given runstart
+    # refer to the given run_start
     descriptors = EventDescriptor._get_collection().find(
         {'run_start_id': oid})
 
@@ -436,7 +436,7 @@ def descriptors_by_start(runstart):
     # if nothing found, raise
     if not rets:
         raise NoEventDescriptors("No EventDescriptors exists "
-                                 "for {!r}".format(runstart))
+                                 "for {!r}".format(run_start))
 
     # return the list of event descriptors
     return rets
@@ -573,7 +573,7 @@ def fetch_events_table(descriptor):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_runstart(time, scan_id, beamline_id, uid, owner='', group='',
+def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
                     project='', custom=None):
     """Insert a RunStart document into the database.
 
@@ -602,22 +602,22 @@ def insert_runstart(time, scan_id, beamline_id, uid, owner='', group='',
 
     Returns
     -------
-    runstart : str
-        uid of the inserted document.  Use `runstart_given_uid` to get
+    run_start : str
+        uid of the inserted document.  Use `run_start_given_uid` to get
         the full document.
 
     """
     if custom is None:
         custom = {}
 
-    runstart = RunStart(time=time, scan_id=scan_id, uid=uid,
+    run_start = RunStart(time=time, scan_id=scan_id, uid=uid,
                         beamline_id=beamline_id, owner=owner, group=group,
                         project=project, **custom)
 
-    runstart = runstart.save(validate=True, write_concern={"w": 1})
+    run_start = run_start.save(validate=True, write_concern={"w": 1})
 
-    _cache_runstart(runstart.to_mongo().to_dict())
-    logger.debug('Inserted RunStart with uid %s', runstart.uid)
+    _cache_run_start(run_start.to_mongo().to_dict())
+    logger.debug('Inserted RunStart with uid %s', run_start.uid)
 
     return uid
 
@@ -658,18 +658,18 @@ def insert_runstop(run_start, time, uid, exit_status='success', reason='',
     """
     if custom is None:
         custom = {}
-    runstart_uid = doc_or_uid_to_uid(run_start)
-    runstart = runstart_given_uid(runstart_uid)
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    run_start = run_start_given_uid(run_start_uid)
     try:
-        stop_by_start(runstart_uid)
+        stop_by_start(run_start_uid)
     except NoRunStop:
         pass
     else:
-        raise RuntimeError("Runstop already exits for {!r}".format(runstart))
+        raise RuntimeError("Runstop already exits for {!r}".format(run_start))
     # look up the oid
-    runstart_oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
+    run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
     # create a reference field
-    rs_ref = DBRef('RunStart', runstart_oid)
+    rs_ref = DBRef('RunStart', run_start_oid)
 
     runstop = RunStop(run_start=rs_ref, reason=reason, time=time,
                       uid=uid,
@@ -678,7 +678,7 @@ def insert_runstop(run_start, time, uid, exit_status='success', reason='',
     runstop = runstop.save(validate=True, write_concern={"w": 1})
     _cache_runstop(runstop.to_mongo().to_dict())
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", runstop.uid, runstart['uid'])
+                 " with uid %s", runstop.uid, run_start['uid'])
 
     return uid
 
@@ -721,11 +721,11 @@ def insert_descriptor(run_start, data_keys, time, uid,
     # needed to make ME happy
     data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
-    runstart_uid = doc_or_uid_to_uid(run_start)
+    run_start_uid = doc_or_uid_to_uid(run_start)
     # get document to make sure it is in the cache
-    runstart_given_uid(runstart_uid)
-    runstart_oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
-    rs_ref = DBRef('RunStart', runstart_oid)
+    run_start_given_uid(run_start_uid)
+    run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
+    rs_ref = DBRef('RunStart', run_start_oid)
     descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
                                  time=time, uid=uid, **custom)
 
@@ -734,7 +734,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
     descriptor = _cache_descriptor(descriptor.to_mongo().to_dict())
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
-                 "RunStart with uid %s", descriptor['uid'], runstart_uid)
+                 "RunStart with uid %s", descriptor['uid'], run_start_uid)
 
     return uid
 insert_event_descriptor = insert_descriptor
@@ -950,7 +950,7 @@ _normalize_human_friendly_time.__doc__ = (
 
 
 @_ensure_connection
-def find_runstarts(**kwargs):
+def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
 
     Parameters
@@ -983,12 +983,12 @@ def find_runstarts(**kwargs):
 
     Examples
     --------
-    >>> find_runstarts(scan_id=123)
-    >>> find_runstarts(owner='arkilic')
-    >>> find_runstarts(start_time=1421176750.514707, stop_time=time.time()})
-    >>> find_runstarts(start_time=1421176750.514707, stop_time=time.time())
+    >>> find_run_starts(scan_id=123)
+    >>> find_run_starts(owner='arkilic')
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
 
-    >>> find_runstarts(owner='arkilic', start_time=1421176750.514707,
+    >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
     ...                stop_time=time.time())
 
     """
@@ -997,17 +997,17 @@ def find_runstarts(**kwargs):
 
     rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
 
-    return (_cache_runstart(rs) for rs in rs_objects.order_by('-time'))
-find_run_starts = find_runstarts
+    return (_cache_run_start(rs) for rs in rs_objects.order_by('-time'))
+find_run_starts = find_run_starts
 
 
 @_ensure_connection
-def find_runstops(runstart=None, **kwargs):
+def find_runstops(run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
     Parameters
     ----------
-    runstart : doc.Document or str, optional
+    run_start : doc.Document or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
@@ -1033,12 +1033,12 @@ def find_runstops(runstart=None, **kwargs):
     runstop : doc.Document
         The requested RunStop documents
     """
-    # if trying to find by runstart, there can be only one
-    # normalize the input and get the runstart oid
-    if runstart:
-        runstart_uid = doc_or_uid_to_uid(runstart)
-        runstart_given_uid(runstart_uid)
-        oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
+    # if trying to find by run_start, there can be only one
+    # normalize the input and get the run_start oid
+    if run_start:
+        run_start_uid = doc_or_uid_to_uid(run_start)
+        run_start_given_uid(run_start_uid)
+        oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
         kwargs['run_start_id'] = oid
     _format_time(kwargs)
     runstop = RunStop.objects(__raw__=kwargs).as_pymongo()
@@ -1048,12 +1048,12 @@ find_run_stops = find_runstops
 
 
 @_ensure_connection
-def find_descriptors(runstart=None, **kwargs):
+def find_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
     ----------
-    runstart : doc.Document or str, optional
+    run_start : doc.Document or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
@@ -1075,11 +1075,11 @@ def find_descriptors(runstart=None, **kwargs):
     descriptor : doc.Document
         The requested EventDescriptor
     """
-    if runstart:
-        runstart = doc_or_uid_to_uid(runstart)
-        runstart = runstart_given_uid(runstart)
-        runstart = _RUNSTART_UID_to_OID_MAP[runstart['uid']]
-        kwargs['run_start_id'] = runstart
+    if run_start:
+        run_start = doc_or_uid_to_uid(run_start)
+        run_start = run_start_given_uid(run_start)
+        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+        kwargs['run_start_id'] = run_start
 
     _format_time(kwargs)
 
@@ -1161,11 +1161,11 @@ def find_last(num=1):
 
     Yields
     ------
-    runstart doc.Document
+    run_start doc.Document
        The requested RunStart documents
     """
     c = count()
     for rs in RunStart.objects.as_pymongo().order_by('-time'):
         if next(c) == num:
             raise StopIteration
-        yield _cache_runstart(rs)
+        yield _cache_run_start(rs)

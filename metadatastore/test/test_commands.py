@@ -14,7 +14,7 @@ from metadatastore.examples.sample_data import temperature_ramp
 import uuid
 
 # some useful globals
-runstart_uid = None
+run_start_uid = None
 document_insertion_time = None
 
 
@@ -28,11 +28,11 @@ def teardown():
 
 def setup():
     mds_setup()
-    global runstart_uid, document_insertion_time
+    global run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
     temperature_ramp.run()
 
-    runstart_uid = mdsc.insert_runstart(scan_id=3022013,
+    run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                         beamline_id='testbed',
                                         owner='tester',
                                         group='awesome-devs',
@@ -54,7 +54,7 @@ def setup_syn(custom=None):
     scan_id = 1
 
     # Create a BeginRunEvent that serves as entry point for a run
-    rs = mdsc.insert_runstart(scan_id=scan_id, beamline_id='testing',
+    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
                               time=ttime.time(),
                               custom=custom, uid=str(uuid.uuid4()))
 
@@ -109,15 +109,15 @@ def test_event_descriptor_insertion():
                                'external': 'FS:foobar'}}
     time = ttime.time()
     # test insert
-    ev_desc_uid = mdsc.insert_descriptor(runstart_uid, data_keys, time,
+    ev_desc_uid = mdsc.insert_descriptor(run_start_uid, data_keys, time,
                                          str(uuid.uuid4()))
     ev_desc_mds, = mdsc.find_event_descriptors(uid=ev_desc_uid)
     # make sure the sanitized event descriptor has no uid
     check_for_id(ev_desc_mds)
 
     # make sure the event descriptor is pointing to the correct run start
-    referenced_runstart = ev_desc_mds['run_start']
-    assert_equal(referenced_runstart.uid, runstart_uid)
+    referenced_run_start = ev_desc_mds['run_start']
+    assert_equal(referenced_run_start.uid, run_start_uid)
     assert_equal(ev_desc_mds['time'], time)
 
     for k in data_keys:
@@ -126,39 +126,39 @@ def test_event_descriptor_insertion():
                          data_keys[k][ik])
 
 
-def test_insert_runstart():
+def test_insert_run_start():
     time = ttime.time()
     beamline_id = 'sample_beamline'
     scan_id = 42
     custom = {'foo': 'bar', 'baz': 42,
               'aardvark': ['ants', 3.14]}
-    runstart_uid = mdsc.insert_runstart(
+    run_start_uid = mdsc.insert_run_start(
         time, beamline_id=beamline_id,
         scan_id=scan_id, custom=custom, uid=str(uuid.uuid4()))
 
-    runstart_mds, = mdsc.find_runstarts(uid=runstart_uid)
+    run_start_mds, = mdsc.find_run_starts(uid=run_start_uid)
 
     names = ['time', 'beamline_id', 'scan_id'] + list(custom.keys())
     values = [time, beamline_id, scan_id] + list(custom.values())
 
     for name, val in zip(names, values):
-        assert_equal(getattr(runstart_mds, name), val)
+        assert_equal(getattr(run_start_mds, name), val)
 
     # make sure the metadatstore document raises properly
-    check_for_id(runstart_mds)
+    check_for_id(run_start_mds)
 
 
 def test_run_stop_insertion():
     """Test, uh, the insertion of run stop documents
     """
-    runstart_uid = mdsc.insert_runstart(
+    run_start_uid = mdsc.insert_run_start(
         time=ttime.time(), beamline_id='sample_beamline', scan_id=42,
         uid=str(uuid.uuid4()))
     time = ttime.time()
     exit_status = 'success'
     reason = 'uh, because this is testing and it better be a success?'
     # insert the document
-    run_stop_uid = mdsc.insert_runstop(runstart_uid, time,
+    run_stop_uid = mdsc.insert_runstop(run_start_uid, time,
                                        exit_status=exit_status,
                                        reason=reason, uid=str(uuid.uuid4()))
 
@@ -168,8 +168,8 @@ def test_run_stop_insertion():
     # make sure it does not have an 'id' field
     check_for_id(run_stop)
     # make sure the run stop is pointing to the correct run start
-    referenced_runstart = run_stop['run_start']
-    assert_equal(referenced_runstart.uid, runstart_uid)
+    referenced_run_start = run_stop['run_start']
+    assert_equal(referenced_run_start.uid, run_start_uid)
 
     # check the remaining fields
     comparisons = {'time': time,
@@ -196,7 +196,7 @@ def test_find_events_smoke():
 @raises(mdsc.NoEventDescriptors)
 def test_no_evdesc():
 
-    runstart_uid = mdsc.insert_runstart(scan_id=42,
+    run_start_uid = mdsc.insert_run_start(scan_id=42,
                                         beamline_id='testbed',
                                         owner='tester',
                                         group='awesome-devs',
@@ -204,7 +204,7 @@ def test_no_evdesc():
                                         time=document_insertion_time,
                                         uid=str(uuid.uuid4()))
 
-    mdsc.descriptors_by_start(runstart_uid)
+    mdsc.descriptors_by_start(run_start_uid)
 
 
 # ### Testing metadatastore find functionality ################################
@@ -215,9 +215,9 @@ def _find_helper(func, kw):
 def test_find_funcs_for_smoke():
     """ Exercise documented kwargs in the find_* functions
     """
-    rs, = mdsc.find_runstarts(uid=runstart_uid)
+    rs, = mdsc.find_run_starts(uid=run_start_uid)
     test_dict = {
-        mdsc.find_runstarts: [
+        mdsc.find_run_starts: [
             {'limit': 5},
             {'start_time': ttime.time()},
             {'start_time': '2015'},
@@ -230,7 +230,7 @@ def test_find_funcs_for_smoke():
             {'project': 'world-domination'},
             {'owner': 'drdrake'},
             {'scan_id': 1},
-            {'uid': runstart_uid}],
+            {'uid': run_start_uid}],
         mdsc.find_runstops: [
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
@@ -363,16 +363,16 @@ def test_bulk_table():
 
 
 def test_cache_clear_lookups():
-    runstart_uid, e_desc_uid, data_keys = setup_syn()
-    run_stop_uid = mdsc.insert_runstop(runstart_uid,
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    run_stop_uid = mdsc.insert_runstop(run_start_uid,
                                        ttime.time(), uid=str(uuid.uuid4()))
-    runstart = mdsc.runstart_given_uid(runstart_uid)
+    run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.runstop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
     mdsc.clear_process_cache()
 
-    runstart2 = mdsc.runstart_given_uid(runstart_uid)
+    run_start2 = mdsc.run_start_given_uid(run_start_uid)
     mdsc.clear_process_cache()
 
     run_stop2 = mdsc.runstop_given_uid(run_stop_uid)
@@ -380,61 +380,61 @@ def test_cache_clear_lookups():
     ev_desc2 = mdsc.descriptor_given_uid(e_desc_uid)
     ev_desc3 = mdsc.descriptor_given_uid(e_desc_uid)
 
-    assert_equal(runstart, runstart2)
+    assert_equal(run_start, run_start2)
     assert_equal(run_stop, run_stop2)
     assert_equal(ev_desc, ev_desc2)
     assert_equal(ev_desc, ev_desc3)
 
 
-def test_run_stop_by_runstart():
-    runstart_uid, e_desc_uid, data_keys = setup_syn()
-    run_stop_uid = mdsc.insert_runstop(runstart_uid,
+def test_run_stop_by_run_start():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    run_stop_uid = mdsc.insert_runstop(run_start_uid,
                                        ttime.time(), uid=str(uuid.uuid4()))
-    runstart = mdsc.runstart_given_uid(runstart_uid)
+    run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.runstop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
-    run_stop2 = mdsc.stop_by_start(runstart)
-    run_stop3 = mdsc.stop_by_start(runstart_uid)
+    run_stop2 = mdsc.stop_by_start(run_start)
+    run_stop3 = mdsc.stop_by_start(run_start_uid)
     assert_equal(run_stop, run_stop2)
     assert_equal(run_stop, run_stop3)
 
-    ev_desc2, = mdsc.descriptors_by_start(runstart)
-    ev_desc3, = mdsc.descriptors_by_start(runstart_uid)
+    ev_desc2, = mdsc.descriptors_by_start(run_start)
+    ev_desc3, = mdsc.descriptors_by_start(run_start_uid)
     assert_equal(ev_desc, ev_desc2)
     assert_equal(ev_desc, ev_desc3)
 
 
-def test_find_runstart():
-    runstart_uid, e_desc_uid, data_keys = setup_syn()
-    mdsc.insert_runstop(runstart_uid, ttime.time(), uid=str(uuid.uuid4()))
+def test_find_run_start():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    mdsc.insert_runstop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
 
-    runstart = mdsc.runstart_given_uid(runstart_uid)
+    run_start = mdsc.run_start_given_uid(run_start_uid)
 
-    runstart2, = list(mdsc.find_runstarts(uid=runstart_uid))
+    run_start2, = list(mdsc.find_run_starts(uid=run_start_uid))
 
-    assert_equal(runstart, runstart2)
+    assert_equal(run_start, run_start2)
 
 
 def test_find_runstop():
-    runstart_uid, e_desc_uid, data_keys = setup_syn()
-    run_stop_uid = mdsc.insert_runstop(runstart_uid, ttime.time(),
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    run_stop_uid = mdsc.insert_runstop(run_start_uid, ttime.time(),
                                        uid=str(uuid.uuid4()))
 
-    runstart = mdsc.runstart_given_uid(runstart_uid)
+    run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.runstop_given_uid(run_stop_uid)
 
-    run_stop2, = list(mdsc.find_runstops(runstart=runstart_uid))
-    run_stop3, = list(mdsc.find_runstops(runstart=runstart))
+    run_stop2, = list(mdsc.find_runstops(run_start=run_start_uid))
+    run_stop3, = list(mdsc.find_runstops(run_start=run_start))
     assert_equal(run_stop, run_stop2)
     assert_equal(run_stop, run_stop3)
 
 
 @raises(RuntimeError)
 def test_double_runstop():
-    runstart_uid, e_desc_uid, data_keys = setup_syn()
-    mdsc.insert_runstop(runstart_uid, ttime.time(), uid=str(uuid.uuid4()))
-    mdsc.insert_runstop(runstart_uid, ttime.time(), uid=str(uuid.uuid4()))
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    mdsc.insert_runstop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_runstop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
 
 
 def test_find_last_for_smoke():
@@ -451,7 +451,7 @@ def test_bad_event_desc():
     scan_id = 1
 
     # Create a BeginRunEvent that serves as entry point for a run
-    rs = mdsc.insert_runstart(scan_id=scan_id, beamline_id='testing',
+    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
                               time=ttime.time(),
                               uid=str(uuid.uuid4()))
 
