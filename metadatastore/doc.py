@@ -1,5 +1,4 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (absolute_import, division, print_function)
 import six
 import collections
 from functools import reduce
@@ -106,8 +105,6 @@ class Document(dict):
 
         ret : dict
             Data payload of Document
-
-
         """
         ret = dict(self)
         name = ret.pop('_name')
