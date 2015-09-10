@@ -1,6 +1,7 @@
 from __future__ import print_function
 
-from metadatastore.api import (insert_runstart, insert_event, insert_descriptor)
+from metadatastore.api import (insert_runstart, insert_event,
+                               insert_descriptor, insert_runstop)
 
 from metadatastore.api import find_last, find_events
 import time
@@ -26,32 +27,35 @@ except (IndexError, TypeError):
 
 custom = {}
 # Create a BeginRunEvent that serves as entry point for a run
-rs = insert_runstart(scan_id=scan_id, beamline_id='csx',
-                      time=time.time(), custom=custom,
-                      uid=str(uuid.uuid4()))
+runstart = insert_runstart(scan_id=scan_id, beamline_id='csx',
+                     time=time.time(), custom=custom,
+                     uid=str(uuid.uuid4()))
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)
 descriptor = insert_descriptor(data_keys=data_keys, time=time.time(),
-                                 run_start=rs)
+                               run_start=runstart, uid=str(uuid.uuid4()))
 func = np.cos
 num = 1000
 start = 0
 stop = 10
 sleep_time = .1
 for idx, i in enumerate(np.linspace(start, stop, num)):
-    data = {'linear_motor': [i, time.time()],
-            'Tsam': [i + 5, time.time()],
-            'scalar_detector': [func(i) + np.random.randn() / 100,
-                                time.time()]}
+    data = {'linear_motor': i,
+            'Tsam': i + 5,
+            'scalar_detector': func(i) + np.random.randn() / 100}
+
+    ts = {k: time.time() for k in data}
+
     e = insert_event(descriptor=descriptor, seq_num=idx,
                      time=time.time(),
+                     timestamps=ts,
                      data=data,
                      uid=str(uuid.uuid4()))
-
+insert_runstop(runstart, time=time.time(), uid=str(uuid.uuid4()))
 last_run = next(find_last())
 try:
-    if str(last_run.uid) != str(rs):
+    if str(last_run.uid) != str(runstart):
         print("find_last() is broken")
 except AttributeError as ae:
     print(ae)
