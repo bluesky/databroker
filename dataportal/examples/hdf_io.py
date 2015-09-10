@@ -36,7 +36,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-from metadatastore.api import (insert_runstart, insert_event,
+from metadatastore.api import (insert_run_start, insert_event,
                                insert_descriptor,
                                find_events)
 from filestore.api import register_handler, insert_resource, insert_datum
@@ -129,7 +129,7 @@ def hdf_data_io():
     """
     Save data to db and run test when data is retrieved.
     """
-    runstart_uid = insert_runstart(time=0., scan_id=1, beamline_id='csx',
+    run_start_uid = insert_run_start(time=0., scan_id=1, beamline_id='csx',
                                      uid=str(uuid.uuid4()))
 
     # data keys entry
@@ -141,7 +141,7 @@ def hdf_data_io():
 
     # save the event descriptor
     descriptor_uid = insert_descriptor(
-        run_start=runstart_uid, data_keys=data_keys, time=0.,
+        run_start=run_start_uid, data_keys=data_keys, time=0.,
         uid=str(uuid.uuid4()))
 
     # number of positions to record, basically along a horizontal line

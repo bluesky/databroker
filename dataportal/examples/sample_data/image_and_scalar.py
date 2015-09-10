@@ -3,7 +3,7 @@ import uuid
 import time as ttime
 import numpy as np
 from metadatastore.api import (insert_event, insert_descriptor,
-                               find_events, insert_runstart, insert_runstop,
+                               find_events, insert_run_start, insert_runstop,
                                find_last)
 from filestore.file_writers import save_ndarray
 from dataportal.examples.sample_data import frame_generators
@@ -49,7 +49,7 @@ def scale_fluc(scale, count):
 
 @nonscalar_example
 @example
-def run(runstart_uid=None, sleep=0):
+def run(run_start_uid=None, sleep=0):
     frame_generator = frame_generators.brownian(img_size, step_scale=.5,
                                                 I_fluc_function=I_func_gaus,
                                                 step_fluc_function=scale_fluc)
@@ -72,11 +72,11 @@ def run(runstart_uid=None, sleep=0):
 
     # save the first event descriptor
     descriptor1_uid = insert_descriptor(
-        run_start=runstart_uid, data_keys=data_keys1, time=0.,
+        run_start=run_start_uid, data_keys=data_keys1, time=0.,
         uid=str(uuid.uuid4()))
 
     descriptor2_uid = insert_descriptor(
-        run_start=runstart_uid, data_keys=data_keys2, time=0.,
+        run_start=run_start_uid, data_keys=data_keys2, time=0.,
         uid=str(uuid.uuid4()))
 
     events = []
@@ -145,11 +145,11 @@ if __name__ == '__main__':
     custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
               'moon': 'full'}
     # insert the run start
-    runstart_uid = insert_runstart(scan_id=scan_id, time=ttime.time(),
+    run_start_uid = insert_run_start(scan_id=scan_id, time=ttime.time(),
                                      beamline_id='csx', custom=custom,
                                      uid=str(uuid.uuid4()))
-    events = run(runstart_uid=runstart_uid, sleep=sleep_time,
+    events = run(run_start_uid=run_start_uid, sleep=sleep_time,
                  make_runstop=False)
-    runstop = insert_runstop(run_start=runstart_uid, time=ttime.time(),
+    runstop = insert_runstop(run_start=run_start_uid, time=ttime.time(),
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))

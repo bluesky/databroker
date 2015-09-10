@@ -6,7 +6,7 @@ import six  # noqa
 from six import StringIO
 from collections import Iterable, deque
 from ..utils.console import color_print
-from metadatastore.api import (find_last, find_runstarts,
+from metadatastore.api import (find_last, find_run_starts,
                                find_descriptors,
                                find_events)
 
@@ -47,16 +47,16 @@ class _DataBrokerClass(object):
                                  "the result could become too large.")
             start = -key.start
             result = list(find_last(start))[stop::key.step]
-            header = Headers([Header.from_runstart(h) for h in result])
+            header = Headers([Header.from_run_start(h) for h in result])
         elif isinstance(key, int):
             if key > -1:
                 # Interpret key as a scan_id.
-                gen = find_runstarts(scan_id=key)
+                gen = find_run_starts(scan_id=key)
                 try:
                     result = next(gen)  # most recent match
                 except StopIteration:
                     raise ValueError("No such run found.")
-                header = Header.from_runstart(result)
+                header = Header.from_run_start(result)
             else:
                 # Interpret key as the Nth last scan.
                 gen = find_last(-key)
@@ -66,14 +66,14 @@ class _DataBrokerClass(object):
                     except StopIteration:
                         raise IndexError(
                             "There are only {0} runs.".format(i))
-                header = Header.from_runstart(result)
+                header = Header.from_run_start(result)
         elif isinstance(key, six.string_types):
             # Interpret key as a uid (or the few several characters of one).
             # First try searching as if we have the full uid.
-            results = list(find_runstarts(uid=key))
+            results = list(find_run_starts(uid=key))
             if len(results) == 0:
                 # No dice? Try searching as if we have a partial uid.
-                gen = find_runstarts(uid={'$regex': '{0}.*'.format(key)})
+                gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
                 results = list(gen)
             if len(results) < 1:
                 raise ValueError("No such run found.")
@@ -81,7 +81,7 @@ class _DataBrokerClass(object):
                 raise ValueError("That partial uid matches multiple runs. "
                                  "Provide more characters.")
             result, = results
-            header = Header.from_runstart(result)
+            header = Header.from_run_start(result)
         elif isinstance(key, Iterable):
             # Interpret key as a list of several keys. If it is a string
             # we will never get this far.
@@ -120,7 +120,7 @@ class _DataBrokerClass(object):
 
         for header in headers:
             descriptors = find_descriptors(
-                runstart=header['uid'])
+                run_start=header['uid'])
             for descriptor in descriptors:
                 for event in find_events(descriptor=descriptor):
                     if fill:
@@ -177,18 +177,18 @@ class _DataBrokerClass(object):
         >>> find_headers(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
-        runstart = find_runstarts(**kwargs)
+        run_start = find_run_starts(**kwargs)
         if data_key is not None:
             node_name = 'data_keys.{0}'.format(data_key)
 
             query = {node_name: {'$exists': True}}
             descriptors = []
-            for rs in runstart:
-                descriptor = find_descriptors(runstart=rs, **query)
+            for rs in run_start:
+                descriptor = find_descriptors(run_start=rs, **query)
                 for d in descriptor:
                     descriptors.append(d)
             # query = {node_name: {'$exists': True},
-            #          'runstart_id': {'$in': [ObjectId(rs.id) for rs in runstart]}}
+            #          'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
             # descriptors = find_descriptors(**query)
             result = []
             known_uids = deque()
@@ -197,10 +197,10 @@ class _DataBrokerClass(object):
                     rs = descriptor['run_start']
                     known_uids.append(rs['uid'])
                     result.append(rs)
-            runstart = result
+            run_start = result
         result = []
-        for rs in runstart:
-            result.append(Header.from_runstart(rs))
+        for rs in run_start:
+            result.append(Header.from_run_start(rs))
         return Headers(result)
 
 
@@ -238,7 +238,7 @@ class EventQueue(object):
         # like fetch_events, but we don't fill in the data right away
         events = []
         for header in self.headers:
-            descriptors = find_descriptors(runstart=header['uid'])
+            descriptors = find_descriptors(run_start=header['uid'])
             for descriptor in descriptors:
                 events.extend(list(find_events(descriptor=descriptor)))
         if not events:
@@ -317,23 +317,23 @@ class Header(doc.Document):
     """A dictionary-like object summarizing metadata for a run."""
 
     @classmethod
-    def from_runstart(cls, runstart, verify_integrity=False):
+    def from_run_start(cls, run_start, verify_integrity=False):
         """
         Build a Header from a RunStart Document.
 
         Parameters
         ----------
-        runstart : metadatastore.document.Document
+        run_start : metadatastore.document.Document
 
         Returns
         -------
         header : dataportal.broker.Header
         """
-        return make_header(runstart, not verify_integrity)
+        return make_header(run_start, not verify_integrity)
 
     def __repr__(self):
         # Even with a scan_id of 6+ digits, this fits under 80 chars.
-        return "<Header scan_id={0} runstart_uid={1!r}>".format(
+        return "<Header scan_id={0} run_start_uid={1!r}>".format(
             self['scan_id'], self['uid'])
 
     @property
@@ -341,24 +341,24 @@ class Header(doc.Document):
         return summerize_header(self)
 
 
-def make_header(runstart, allow_no_runstop=False):
+def make_header(run_start, allow_no_runstop=False):
     header = dict()
-    # make sure that our runstart is really a document
+    # make sure that our run_start is really a document
     # and get the uid
-    runstart_uid = mc.doc_or_uid_to_uid(runstart)
-    runstart = mc.runstart_given_uid(runstart_uid)
-    # fill in the runstart
-    header['run_start'] = runstart
+    run_start_uid = mc.doc_or_uid_to_uid(run_start)
+    run_start = mc.run_start_given_uid(run_start_uid)
+    # fill in the run_start
+    header['run_start'] = run_start
 
-    # fields to copy out of runstart into top-level header
-    runstart_copy = {'start_time': 'time',
+    # fields to copy out of run_start into top-level header
+    run_start_copy = {'start_time': 'time',
                       'time': 'time',
                       'scan_id': 'scan_id',
                       'uid': 'uid',
                       'sample': 'sample'}
 
-    for h_key, rs_key in runstart_copy.items():
-        header[h_key] = runstart[rs_key]
+    for h_key, rs_key in run_start_copy.items():
+        header[h_key] = run_start[rs_key]
 
     # fields to copy to top-level header
     runstop_copy = {'stop_time': 'time',
@@ -367,7 +367,7 @@ def make_header(runstart, allow_no_runstop=False):
 
     # see if we have a runstop, ok if we don't
     try:
-        runstop = mc.stop_by_start(runstart_uid)
+        runstop = mc.stop_by_start(run_start_uid)
         for h_key, rs_key in runstop_copy.items():
             if rs_key == 'reason':
                 header[h_key] = runstop.get(rs_key, '')
@@ -387,7 +387,7 @@ def make_header(runstart, allow_no_runstop=False):
     try:
         ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
                     for ev_desc in
-                    mc.descriptors_by_start(runstart_uid)]
+                    mc.descriptors_by_start(run_start_uid)]
 
     except mc.NoEventDescriptors:
         ev_descs = []
@@ -400,14 +400,14 @@ def summerize_header(header):
     special_keys = set(('start_time', 'time', 'stop_time', 'scan_id',
                         'uid', 'descriptors', 'sample', 'exit_status',
                         'exit_reason', 'event_descriptors'))
-    runstart = header['run_start']
+    run_start = header['run_start']
     s = Stream()
     s.write("<Header ", newline=False)
     s.write("#{0} ".format(header['scan_id']), 'green', newline=False)
     s.write("{0!r}".format(header['uid'][:6]), color='red', newline=False)
     s.write(">")
 
-    s.write("Sample: {0!r} ".format(runstart['sample']))
+    s.write("Sample: {0!r} ".format(run_start['sample']))
     s.write("Start Time: {0}".format(pretty_print_time(header['start_time'])))
     if header['run_stop'] is None:
         st_tm, exit_status, exit_reason = ['Unknown'] * 3

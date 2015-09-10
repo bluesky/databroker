@@ -14,7 +14,7 @@ from ..examples.sample_data import (temperature_ramp, multisource_event,
 from ..broker import DataBroker
 from filestore.utils.testing import fs_setup, fs_teardown
 from metadatastore.utils.testing import mds_setup, mds_teardown
-from metadatastore.api import insert_runstart
+from metadatastore.api import insert_run_start
 
 from nose.tools import (assert_true, assert_false)
 from numpy.testing.utils import assert_array_equal
@@ -24,10 +24,10 @@ def setup():
     fs_setup()
     mds_setup()
 
-    rs_uid = insert_runstart(time=0.0, scan_id=1, owner='test',
+    rs_uid = insert_run_start(time=0.0, scan_id=1, owner='test',
                               beamline_id='test',
                               uid=str(uuid.uuid4()))
-    temperature_ramp.run(runstart_uid=rs_uid)
+    temperature_ramp.run(run_start_uid=rs_uid)
 
 
 def teardown():

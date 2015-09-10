@@ -23,9 +23,9 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 
 from metadatastore.odm_templates import (EventDescriptor,
                                          Event, RunStart, RunStop)
-from metadatastore.api import (insert_runstart,
+from metadatastore.api import (insert_run_start,
                                insert_runstop, insert_descriptor,
-                               find_runstarts)
+                               find_run_starts)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
@@ -48,14 +48,14 @@ def setup():
     for owner in owners:
         for i in range(num_entries):
             logger.debug('{}: {} of {}'.format(owner, i+1, num_entries))
-            rs = insert_runstart(time=ttime.time(), scan_id=i + 1,
+            rs = insert_run_start(time=ttime.time(), scan_id=i + 1,
                                   owner=owner, beamline_id='example',
                                   uid=str(uuid.uuid4()))
             # insert some events into mds
-            temperature_ramp.run(runstart_uid=rs, make_runstop=(i != 0))
+            temperature_ramp.run(run_start_uid=rs, make_runstop=(i != 0))
             if i == 0:
                 # only need to do images once, it takes a while...
-                image_and_scalar.run(runstart_uid=rs, make_runstop=True)
+                image_and_scalar.run(run_start_uid=rs, make_runstop=True)
 
 
 def teardown():
@@ -65,7 +65,7 @@ def teardown():
 
 def test_basic_usage():
     for i in range(5):
-        insert_runstart(time=float(i), scan_id=i + 1,
+        insert_run_start(time=float(i), scan_id=i + 1,
                          owner='nedbrainard', beamline_id='example',
                          uid=str(uuid.uuid4()))
     header_1 = db[-1]
@@ -88,7 +88,7 @@ def test_basic_usage():
 
 def test_event_queue():
     scan_id = np.random.randint(1e12)  # unique enough for government work
-    rs = insert_runstart(time=0., scan_id=scan_id,
+    rs = insert_run_start(time=0., scan_id=scan_id,
                           owner='queue-tester', beamline_id='example',
                           uid=str(uuid.uuid4()))
     header = db.find_headers(scan_id=scan_id)
@@ -120,7 +120,7 @@ def test_event_queue():
 
 def test_indexing():
     for i in range(5):
-        insert_runstart(time=float(i), scan_id=i + 1,
+        insert_run_start(time=float(i), scan_id=i + 1,
                          owner='nedbrainard', beamline_id='example',
                          uid=str(uuid.uuid4()))
 
@@ -183,11 +183,11 @@ def test_indexing():
 
 
 def test_scan_id_lookup():
-    rd1 = [insert_runstart(time=float(i), scan_id=i + 1 + 314159,
+    rd1 = [insert_run_start(time=float(i), scan_id=i + 1 + 314159,
                             owner='docbrown', beamline_id='example',
                             uid=str(uuid.uuid4())) for i in range(5)]
 
-    rd2 = [insert_runstart(time=float(i)+1, scan_id=i + 1 + 314159,
+    rd2 = [insert_run_start(time=float(i)+1, scan_id=i + 1 + 314159,
                             owner='nedbrainard', beamline_id='example',
                             uid=str(uuid.uuid4())) for i in range(5)]
     print(rd1)
@@ -204,9 +204,9 @@ def test_scan_id_lookup():
 def test_uid_lookup():
     uid = str(uuid.uuid4())
     uid2 = uid[0] + str(uuid.uuid4())[1:]  # same first character as uid
-    rs1 = insert_runstart(time=100., scan_id=1, uid=uid,
+    rs1 = insert_run_start(time=100., scan_id=1, uid=uid,
                            owner='drstrangelove', beamline_id='example')
-    insert_runstart(time=100., scan_id=1, uid=uid2,
+    insert_run_start(time=100., scan_id=1, uid=uid2,
                      owner='drstrangelove', beamline_id='example')
     # using full uid
     actual_uid = db[uid]["uid"]
@@ -223,14 +223,14 @@ def test_uid_lookup():
 
 
 def test_data_key():
-    rs1_uid = insert_runstart(time=100., scan_id=1,
+    rs1_uid = insert_run_start(time=100., scan_id=1,
                                owner='nedbrainard', beamline_id='example',
                                uid=str(uuid.uuid4()))
-    rs2_uid = insert_runstart(time=200., scan_id=2,
+    rs2_uid = insert_run_start(time=200., scan_id=2,
                                owner='nedbrainard', beamline_id='example',
                                uid=str(uuid.uuid4()))
-    rs1, = find_runstarts(uid=rs1_uid)
-    rs2, = find_runstarts(uid=rs2_uid)
+    rs1, = find_run_starts(uid=rs1_uid)
+    rs2, = find_run_starts(uid=rs2_uid)
     data_keys = {'fork': {'source': '_', 'dtype': 'number'},
                  'spoon': {'source': '_', 'dtype': 'number'}}
     insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
