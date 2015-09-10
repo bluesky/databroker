@@ -156,8 +156,8 @@ def vstr(doc, indent=0):
 
     Parameters
     ----------_
-    name : str, optional
-        Document header name. Defaults to ``doc._name``
+    doc : Document
+        Dict-like thing to format, must have `_name` key
     indent : int, optional
         The indentation level. Defaults to starting at 0 and adding one tab
         per recursion level
