@@ -28,8 +28,8 @@ except (IndexError, TypeError):
 custom = {}
 # Create a BeginRunEvent that serves as entry point for a run
 runstart = insert_runstart(scan_id=scan_id, beamline_id='csx',
-                     time=time.time(), custom=custom,
-                     uid=str(uuid.uuid4()))
+                           time=time.time(), custom=custom,
+                           uid=str(uuid.uuid4()))
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)
