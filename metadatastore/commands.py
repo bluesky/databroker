@@ -656,14 +656,14 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     # create a reference field
     rs_ref = DBRef('RunStart', runstart_oid)
 
-    run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
+    runstop = RunStop(run_start=rs_ref, reason=reason, time=time,
                        uid=uid,
                        exit_status=exit_status, **custom)
 
-    run_stop = run_stop.save(validate=True, write_concern={"w": 1})
-    _cache_runstop(run_stop.to_mongo().to_dict())
+    runstop = runstop.save(validate=True, write_concern={"w": 1})
+    _cache_runstop(runstop.to_mongo().to_dict())
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop.uid, run_start['uid'])
+                 " with uid %s", runstop.uid, run_start['uid'])
 
     return uid
 
