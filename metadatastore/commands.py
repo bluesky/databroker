@@ -527,19 +527,14 @@ def fetch_events_table(descriptor):
     -------
     descriptor : doc.Document
         EventDescriptor document
-
     data_table : dict
         dict of lists of the transposed data
-
     seq_nums : list
         The sequence number of each event.
-
     times : list
         The time of each event.
-
     uids : list
         The uid of each event.
-
     timestamps_table : dict
         The timestamps of each of the measurements as dict of lists.  Same
         keys as `data_table`.
