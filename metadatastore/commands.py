@@ -974,7 +974,7 @@ def find_run_starts(**kwargs):
 
     """
     runstart = None
-    unique_path_keys = ['run_start', 'runstart', 'uid']
+    unique_path_keys = ['run_start', 'runstart']
     for k in unique_path_keys:
         runstart = kwargs.pop(k, None)
         if runstart:
