@@ -341,7 +341,7 @@ class Header(doc.Document):
         return summerize_header(self)
 
 
-def make_header(run_start, allow_no_runstop=False):
+def make_header(run_start, allow_no_run_stop=False):
     header = dict()
     # make sure that our run_start is really a document
     # and get the uid
@@ -361,25 +361,25 @@ def make_header(run_start, allow_no_runstop=False):
         header[h_key] = run_start[rs_key]
 
     # fields to copy to top-level header
-    runstop_copy = {'stop_time': 'time',
+    run_stop_copy = {'stop_time': 'time',
                      'exit_reason': 'reason',
                      'exit_status': 'exit_status'}
 
-    # see if we have a runstop, ok if we don't
+    # see if we have a run_stop, ok if we don't
     try:
-        runstop = mc.stop_by_start(run_start_uid)
-        for h_key, rs_key in runstop_copy.items():
+        run_stop = mc.stop_by_start(run_start_uid)
+        for h_key, rs_key in run_stop_copy.items():
             if rs_key == 'reason':
-                header[h_key] = runstop.get(rs_key, '')
+                header[h_key] = run_stop.get(rs_key, '')
             else:
-                header[h_key] = runstop[rs_key]
+                header[h_key] = run_stop[rs_key]
 
-        header['run_stop'] = doc.ref_doc_to_uid(runstop, 'run_start')
+        header['run_stop'] = doc.ref_doc_to_uid(run_stop, 'run_start')
 
     except mc.NoRunStop:
-        if allow_no_runstop:
+        if allow_no_run_stop:
             header['run_stop'] = None
-            for k in runstop_copy:
+            for k in run_stop_copy:
                 header[k] = None
         else:
             raise

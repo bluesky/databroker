@@ -24,7 +24,7 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.odm_templates import (EventDescriptor,
                                          Event, RunStart, RunStop)
 from metadatastore.api import (insert_run_start,
-                               insert_runstop, insert_descriptor,
+                               insert_run_stop, insert_descriptor,
                                find_run_starts)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
@@ -52,10 +52,10 @@ def setup():
                                   owner=owner, beamline_id='example',
                                   uid=str(uuid.uuid4()))
             # insert some events into mds
-            temperature_ramp.run(run_start_uid=rs, make_runstop=(i != 0))
+            temperature_ramp.run(run_start_uid=rs, make_run_stop=(i != 0))
             if i == 0:
                 # only need to do images once, it takes a while...
-                image_and_scalar.run(run_start_uid=rs, make_runstop=True)
+                image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
 
 
 def teardown():
@@ -99,12 +99,12 @@ def test_event_queue():
     queue.update()
     empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)
-    events = temperature_ramp.run(rs, make_runstop=False)
+    events = temperature_ramp.run(rs, make_run_stop=False)
     # This should add a bundle of Events to the queue.
     queue.update()
     first_bundle = queue.get()
     assert_equal(len(first_bundle), len(events))
-    more_events = temperature_ramp.run(rs, make_runstop=False)
+    more_events = temperature_ramp.run(rs, make_run_stop=False)
     # Queue should be empty until we update.
     empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)

@@ -3,7 +3,7 @@ import uuid
 import time as ttime
 import numpy as np
 from metadatastore.api import (insert_event, insert_descriptor,
-                               find_events, insert_run_start, insert_runstop,
+                               find_events, insert_run_start, insert_run_stop,
                                find_last)
 from filestore.file_writers import save_ndarray
 from dataportal.examples.sample_data import frame_generators
@@ -149,7 +149,7 @@ if __name__ == '__main__':
                                      beamline_id='csx', custom=custom,
                                      uid=str(uuid.uuid4()))
     events = run(run_start_uid=run_start_uid, sleep=sleep_time,
-                 make_runstop=False)
-    runstop = insert_runstop(run_start=run_start_uid, time=ttime.time(),
+                 make_run_stop=False)
+    run_stop = insert_run_stop(run_start=run_start_uid, time=ttime.time(),
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))
