@@ -690,7 +690,8 @@ def insert_descriptor(run_start, data_keys, time, uid,
         a Document/dict with a 'uid' key or a uid string
     data_keys : dict
         Provides information about keys of the data dictionary in
-        an event will contain.  No key name may include '.'
+        an event will contain.  No key name may include '.'.  See
+        `DataKey` odm template for schema.
     time : float
         The date/time as found at the client side when an event
         descriptor is created.
