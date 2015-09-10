@@ -11,14 +11,11 @@ ALIAS = 'mds'
 
 
 class RunStart(DynamicDocument):
-    """ Provide a head for a sequence of events. Entry point for
-    an experiment's run.
-    The only prereq is an EventDescriptor that identifies the nature of
-    event that is starting and
+    """Document created at the start of a 'run'.
 
     Attributes
     ----------
-    uid: str
+    uid : str
         Globally unique id for this run
     time : timestamp
         The date/time as found at the client side when an run_start is
@@ -52,7 +49,7 @@ class RunStart(DynamicDocument):
 
 
 class RunStop(DynamicDocument):
-    """Indicates the end of a series of events
+    """Document created at the 'end' of a run.
 
     Attributes
     ----------
@@ -83,9 +80,9 @@ class RunStop(DynamicDocument):
 
 
 class DataKey(DynamicEmbeddedDocument):
-    """Describes the objects in the data property of Event documents.
-    Be aware that this is DynamicEmbeddedDoc Append fields rather than
-    custom dict field
+    """Embedded document to describe the format of the DataKeys
+
+    This will be removed in the future.
 
     Attributes
     ----------
@@ -108,12 +105,12 @@ class DataKey(DynamicEmbeddedDocument):
 
 
 class EventDescriptor(DynamicDocument):
-    """ Describes the objects in the data property of Event documents
+    """Describes the objects in the data property of Event documents
 
     Attributes
     ----------
-    run_start : str
-        Globally unique ID to the run_start document this descriptor is associated with.
+    run_start : ObjectId
+        The RunStart document this descriptor is associated with.
     uid : str
         Globally unique ID for this event descriptor.
     time : float
@@ -130,13 +127,7 @@ class EventDescriptor(DynamicDocument):
 
 
 class Event(Document):
-    """ Stores the experimental data. All events point to
-    RunStart, in other words, to RunStart serves as an
-    entry point for all events. Within each event, one can access
-    both RunStart and EventDescriptor. Make sure an event does
-    not exceed 16 MB in size. This is essential since this tool is
-    geared for metadata only. If more storage is required, please
-    use fileStore.
+    """Document to store experimental data.
 
     Attributes
     ----------
@@ -144,15 +135,14 @@ class Event(Document):
         EventDescriptor foreignkey
     uid : str
         Globally unique identifier for this Event
-    seq_num: int
+    seq_num : int
         Sequence number to identify the location of this Event in
         the Event stream
-    data: dict
+    data : dict
         Dict of lists that contain e.g. data = {'motor1': [value, timestamp]}
     time : float
         The event time.  This maybe different than the timestamps
         on each of the data entries
-
     """
     descriptor = ReferenceField(EventDescriptor, reverse_delete_rule=DENY,
                                 required=True, db_field='descriptor_id')
