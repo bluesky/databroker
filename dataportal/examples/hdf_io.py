@@ -141,7 +141,7 @@ def hdf_data_io():
 
     # save the event descriptor
     descriptor_uid = insert_descriptor(
-        runstart=runstart_uid, data_keys=data_keys, time=0.,
+        run_start=runstart_uid, data_keys=data_keys, time=0.,
         uid=str(uuid.uuid4()))
 
     # number of positions to record, basically along a horizontal line

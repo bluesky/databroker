@@ -72,11 +72,11 @@ def run(runstart_uid=None, sleep=0):
 
     # save the first event descriptor
     descriptor1_uid = insert_descriptor(
-        runstart=runstart_uid, data_keys=data_keys1, time=0.,
+        run_start=runstart_uid, data_keys=data_keys1, time=0.,
         uid=str(uuid.uuid4()))
 
     descriptor2_uid = insert_descriptor(
-        runstart=runstart_uid, data_keys=data_keys2, time=0.,
+        run_start=runstart_uid, data_keys=data_keys2, time=0.,
         uid=str(uuid.uuid4()))
 
     events = []
@@ -150,6 +150,6 @@ if __name__ == '__main__':
                                      uid=str(uuid.uuid4()))
     events = run(runstart_uid=runstart_uid, sleep=sleep_time,
                  make_runstop=False)
-    runstop = insert_runstop(runstart=runstart_uid, time=ttime.time(),
+    runstop = insert_runstop(run_start=runstart_uid, time=ttime.time(),
                                reason='run completed', exit_status='success',
                                uid=str(uuid.uuid4()))

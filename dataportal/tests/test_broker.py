@@ -233,10 +233,10 @@ def test_data_key():
     rs2, = find_runstarts(uid=rs2_uid)
     data_keys = {'fork': {'source': '_', 'dtype': 'number'},
                  'spoon': {'source': '_', 'dtype': 'number'}}
-    insert_descriptor(runstart=rs1_uid, data_keys=data_keys,
+    insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
                             time=100.,
                             uid=str(uuid.uuid4()))
-    insert_descriptor(runstart=rs2_uid, data_keys=data_keys, time=200.,
+    insert_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
                             uid=str(uuid.uuid4()))
     result1 = db.find_headers(data_key='fork')
     result2 = db.find_headers(data_key='fork', start_time=150)

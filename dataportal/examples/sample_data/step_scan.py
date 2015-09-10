@@ -22,7 +22,7 @@ def run(runstart=None, sleep=0):
     # Create Event Descriptors
     data_keys = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                  'point_det': dict(source='PV:ES:point_det', dtype='number')}
-    ev_desc = insert_descriptor(runstart=runstart,
+    ev_desc = insert_descriptor(run_start=runstart,
                                       data_keys=data_keys, time=0.,
                                       uid=str(uuid.uuid4()))
 
