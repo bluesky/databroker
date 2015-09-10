@@ -1,6 +1,5 @@
-# metadatastore configuration
-# installed by xpd_configuration
-# DO NOT EDIT
+# metadataservice configuration
+# DO NO EDIT unless authorized
 host: localhost
 database: datastore2
 port: 27017
