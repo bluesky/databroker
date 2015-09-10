@@ -152,7 +152,7 @@ def vstr(doc, indent=0):
     """Recursive document walker and formatter
 
     Parameters
-    ----------_
+    ----------
     doc : Document
         Dict-like thing to format, must have `_name` key
     indent : int, optional
