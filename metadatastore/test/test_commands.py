@@ -7,7 +7,7 @@ import datetime
 
 import pytz
 from nose.tools import assert_equal, assert_raises, raises, assert_true
-from nose import SkipTest
+
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
@@ -61,8 +61,8 @@ def setup_syn(custom=None):
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
     e_desc = mdsc.insert_descriptor(data_keys=data_keys,
-                                          time=ttime.time(),
-                                          run_start=rs, uid=str(uuid.uuid4()))
+                                    time=ttime.time(),
+                                    run_start=rs, uid=str(uuid.uuid4()))
     return rs, e_desc, data_keys
 
 
@@ -355,14 +355,11 @@ def test_bulk_table():
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
-    try:
-        ret = mdsc.fetch_events_table(e_desc)
-        descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
+    ret = mdsc.fetch_events_table(e_desc)
+    descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
-        for vals in data_table.values():
-            assert_true(all(s == v for s, v in zip(seq_nums, vals)))
-    except ImportError:
-        raise SkipTest("Need pandas for table functionality")
+    for vals in data_table.values():
+        assert_true(all(s == v for s, v in zip(seq_nums, vals)))
 
 
 def test_cache_clear_lookups():
