@@ -973,13 +973,20 @@ def find_run_starts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    run_start = kwargs.pop('run_start', None)
-    if run_start:
-        run_start = doc_or_uid_to_uid(run_start)
-        run_start = runstart_given_uid(run_start)
-        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
-        kwargs['_id'] = run_start
+    runstart = None
+    unique_path_keys = ['run_start', 'runstart', 'uid']
+    for k in unique_path_keys:
+        runstart = kwargs.pop(k, None)
+        if runstart:
+            break
 
+    # if given a runstart, then only one possible result, just return it
+    if runstart:
+        def inner():
+            yield runstart_given_uid(doc_or_uid_to_uid(runstart))
+        return inner()
+
+    # now try rest of formatting
     _format_time(kwargs)
 
     rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
@@ -1019,14 +1026,17 @@ def find_run_stops(run_start=None, **kwargs):
     -------
     run_stop : iterable of metadatastore.document.Document objects
     """
-    _format_time(kwargs)
-    # get the actual mongo document
-    if run_start:
-        run_start = doc_or_uid_to_uid(run_start)
-        run_start = runstart_given_uid(run_start)
-        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
-        kwargs['run_start_id'] = run_start
 
+    # if trying to find by runstart, there can be only one
+    if run_start:
+        def inner():
+            try:
+                yield runstop_by_runstart(run_start)
+            except NoRunStop:
+                return
+        return inner()
+
+    _format_time(kwargs)
     run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
     return (_cache_runstop(rs) for rs in run_stop.order_by('-time'))
