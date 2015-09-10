@@ -451,9 +451,9 @@ def fetch_events_generator(descriptor):
         del ev['descriptor_id']
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
-
-        ev['timestamps'] = {k: v[1] for k, v in six.iteritems(ev['data'])}
-        ev['data'] = {k: v[0] for k, v in six.iteritems(ev['data'])}
+        data = ev.pop('data')
+        ev['timestamps'] = {k: v[1] for k, v in data.items()}
+        ev['data'] = {k: v[0] for k, v in data.items()}
 
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
