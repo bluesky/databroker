@@ -11,7 +11,7 @@ deadband_size = 0.9
 
 
 @common.example
-def run(run_start=None, sleep=0):
+def run(runstart=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
@@ -22,7 +22,7 @@ def run(run_start=None, sleep=0):
     # Create Event Descriptors
     data_keys = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                  'point_det': dict(source='PV:ES:point_det', dtype='number')}
-    ev_desc = insert_descriptor(run_start=run_start,
+    ev_desc = insert_descriptor(runstart=runstart,
                                       data_keys=data_keys, time=0.,
                                       uid=str(uuid.uuid4()))
 
