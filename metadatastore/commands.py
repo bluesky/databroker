@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 
 # process local caches of 'header' documents these are storing object indexed
-# on ObjectId because that is what the reference fields in mongo are
-# implemented as.   Should move to uids asap
+# on ObjectId because that is how the reference fields are implemented.
+# Should move to uids asap
 _RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
 _RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
 _DESCRIPTOR_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
@@ -87,7 +87,8 @@ def _ensure_connection(func):
 
        This has no effect if the connection already exists, simply changing
        the values in `conf.connection_config` is not sufficient to change what
-       data base is being used.
+       data base is being used.  Calling `db_disconnect()` will clear the
+       current connection, but you probably should not be doing this.
     """
     @wraps(func)
     def inner(*args, **kwargs):
@@ -302,7 +303,7 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    runstart : doc.Document
+    runstop : doc.Document
         The RunStop document fully de-referenced
 
     """
@@ -327,7 +328,7 @@ def descriptor_given_uid(uid):
 
     Returns
     -------
-    runstart : doc.Document
+    descriptor : doc.Document
         The EventDescriptor document fully de-referenced
     """
     try:
@@ -362,7 +363,6 @@ def runstop_by_runstart(runstart):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-
     runstart_uid = doc_or_uid_to_uid(runstart)
     # make sure the cache is actually populated
     runstart_given_uid(runstart_uid)
@@ -372,7 +372,7 @@ def runstop_by_runstart(runstart):
         {'run_start_id': oid})
 
     if runstop is None:
-        raise NoRunStop("No run stop exists")
+        raise NoRunStop("No run stop exists for {!r}".format(runstart))
 
     return _cache_runstop(runstop)
 
@@ -414,7 +414,8 @@ def descriptors_by_runstart(runstart):
 
     # if nothing found, raise
     if not rets:
-        raise NoEventDescriptors("No EventDescriptors exists")
+        raise NoEventDescriptors("No EventDescriptors exists "
+                                 "for {!r}".format(runstart))
 
     # return the list of event descriptors
     return rets
@@ -427,7 +428,7 @@ def fetch_events_generator(descriptor):
     Parameters
     ----------
     descriptor : doc.Document or dict or str
-        The EventDescriptors to get the Events for.  Can be either
+        The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
     Yields
@@ -448,7 +449,7 @@ def fetch_events_generator(descriptor):
     for ev in ev_cur:
         # ditch the ObjectID
         del ev['_id']
-        # pop the descriptor oid
+        # del the descriptor oid
         del ev['descriptor_id']
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
@@ -463,6 +464,26 @@ def fetch_events_generator(descriptor):
 
 
 def _transpose(in_data, keys, field):
+    """Turn a list of dicts into dict of lists
+
+    Parameters
+    ----------
+    in_data : list
+        A list of dicts which contain at least one dict.
+        All of the inner dicts must have at least the keys
+        in `keys`
+
+    keys : list
+        The list of keys to extract
+
+    field : str
+        The field in the outer dict to use
+
+    Returns
+    -------
+    transpose : dict
+        The transpose of the data
+    """
     out = {k: [None] * len(in_data) for k in keys}
     for j, ev in enumerate(in_data):
         dd = ev[field]
@@ -478,8 +499,8 @@ def fetch_events_table(descriptor):
     Parameters
     ----------
     descriptor : dict or str
-        The EventDestriptor to get the events for.  Can be either
-        a dict or a uid.
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
 
     Returns
     -------
@@ -488,9 +509,6 @@ def fetch_events_table(descriptor):
 
     data_table : dict
         dict of lists of the transposed data
-
-    uids : list
-        The uids of each of the events.
 
     seq_nums : list
         The sequence number of each event.
@@ -521,7 +539,6 @@ def fetch_events_table(descriptor):
 
     keys = list(descriptor['data_keys'])
 
-    # TODO make sure this is fast
     # get data values
     data_table = _transpose(all_events, keys, 'data')
 
@@ -612,7 +629,7 @@ def insert_runstop(run_start, time, uid, exit_status='success', reason='',
 
     Parameters
     ----------
-    runstart : doc.Document or dict or str
+    run_start : doc.Document or dict or str
         The RunStart to insert the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     time : float
@@ -673,7 +690,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
 
     Parameters
     ----------
-    runstart : doc.Document or dict or str
+    run_start : doc.Document or dict or str
         The RunStart to insert a Descriptor for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     data_keys : dict
@@ -780,12 +797,19 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
     Parameters
     ----------
-    descriptor : doc.Document or dict or str
+    event_descriptor : doc.Document or dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     events : iterable
        iterable of dicts matching the bs.Event schema
+    validate : bool, optional
+       If it should be checked that each pair of data/timestamps
+       dicts has identical keys
 
+    Returns
+    -------
+    ret : dict
+        dictionary of details about the insertion
     """
     descriptor_uid = doc_or_uid_to_uid(event_descriptor)
     descriptor = descriptor_given_uid(descriptor_uid)
