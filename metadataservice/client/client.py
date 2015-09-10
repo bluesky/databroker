@@ -9,20 +9,41 @@ import ujson
 from collections import OrderedDict
 from metadataservice.client import conf
 
-# READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
-# The client lives in the service for now. I will move it to separate repo once ready for alpha release
+"""
+.. warning:: This is very early alpha. The skeleton is here but not all full blown features are described here
+.. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
+"""
 
-# TODO: Find a way to handle auth with each request. Policy decision, tell me what to do people
 
 def server_connect(host, port, protocol='http'):
-    # Do not gasp yet! I copied w/e mongoengine did for global connections
-    # Tbh, works pretty neatly and it is quite intuitive
+    """The server here refers the metadataservice server itself, not the mongo server
+    .. note:: Do not gasp yet! I copied w/e mongoengine did for global connectionpool management. Suggestions?
+
+    Parameters
+    ----------
+    host: str
+        name/address of the mongo server
+    port: int
+        port number of mongo server
+    protocol: str
+        in case we want to introduce ssl in the future. for now, eliminates possible ambiguities
+
+     Returns
+    -------
+    _server_path: str
+        Full server path that is set globally. In case client wants to connect to another server, we decorator
+        overwrites config and updates this global server path
+    """
     global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
     return _server_path
 
 
 def _ensure_connection(func):
+    """Ensures connection to the tornado server, not mongo instance itself.
+    Essentially, re-using what we have done for the library but this time for tornado backend
+    instead of mongodb daemon
+    """
     @wraps(func)
     def inner(*args, **kwargs):
         protocol = conf.connection_config['protocol']

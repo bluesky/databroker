@@ -1,10 +1,11 @@
 # To Do
 
 - [X] Fix and unify confusion in json encoding/decoding
-- [ ] Add json schema validation
-- [ ] Make uid primary key
+- [X] Add json schema validation
+- [ ] Add bulk event json schema validation from BlueSky
+- [ ] Make uid primary key in the future
 - [ ] Inserted documents should NOT be returned
-- [ ] Add validation to schema
+- [X] Add validation to schema
 - [ ] Add Exception Handling
 - [ ] Fix all documentation
 - [ ] Implement unit test

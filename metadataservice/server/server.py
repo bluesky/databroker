@@ -10,20 +10,17 @@ import pymongo.errors
 import motor
 import ujson
 from metadataservice.server import utils
-__author__ = 'arkilic'
 
-# READ THE DOCS and COMMENTS before grabbing your pitchforks and torches. A lot going on here!!
-# Using both json_util and ujson because they both have their moments. 
-# Will figure out a direction soon
-# ujson is 3-5 orders of magnitude fast but doesn't encode bson neatly
-# json_util does encode/decode neatly but painfully slow
+"""
+.. note:: ultra-json is 3-5 orders of magnitude faster since it runs outside GIL
+.. note:: bson.json_util does encode/decode neatly but painfully slow normalize object fields manually
+"""
 
 
-def db_connect(database ,host, port):
-    """Helper function to deal with stateful connections to motor. Connection established lazily.
-    Asycnc so do not treat like mongonengine connection pool.
-    Tornado needs both client and server so this routine returns both. Once we figure out how to use tornado and motor
-    properly, we may need to fix this.
+def db_connect(database ,host, port, replicaset=None, write_concern="majority",
+               write_timeout=1000):
+    """Helper function to deal with stateful connections to motor.
+    Connection established lazily. Asycnc so do not treat like mongonengine connection pool.
 
     Parameters
     ----------
@@ -33,24 +30,39 @@ def db_connect(database ,host, port):
         Name/address of the server that mongo daemon lives
     port: int
         Port num of the server
+    replicaset: str
+        Name of the replica set. Configured in mongo deployment.
+    write_concern: int
+        Traditional mongo write concern. Int denotes number of replica set writes
+        to be verified
+
+    write_timeout: int
+        Time before write fails. Affects the package size in bulk insert so use wisely
 
     Returns
     -------
     db: motor.MotorDatabase
-        Async server object
+        Async server object which comes in handy as server has to juggle multiple clients
+        and makes no difference for a single client compared to pymongo
     """
-    client = motor.MotorClient("localhost", 28000, replicaset="rs0")
-    client.write_concern = {'w': "majority", 'wtimeout': 1000}
+    client = motor.MotorClient(host, port, replicaset=replicaset)
+    client.write_concern = {'w': write_concern, 'wtimeout': write_timeout}
     database = client[database]
     return database
 
 
 class RunStartHandler(tornado.web.RequestHandler):
-    """Handler for run_start insert and query operations"""
+    """Handler for run_start insert and query operations.
+    Uses traditional RESTful lingo. get for querying and post for inserts
+    """
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        """Query run_start documents"""
+        """Query run_start documents.Very thin as we do not want to create a
+        bottleneck dealing with multiple clients. self.write() dumps the json to
+        socket. Client keeps connection open until it server kills the socket with
+        self.finish, otherwise keeps hanging wasting resources
+        """
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
@@ -63,23 +75,29 @@ class RunStartHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        """Insert a run_start document"""
+        """Insert a run_start document.Same validation method as bluesky, secondary
+        safety net.
+        """
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        #TODO: Add validation once database is implemented
         jsonschema.validate(data, schemas['run_start'])
-        result = yield db.run_start.insert(data)#async insert
-        utils._return2client(self, result)
+        yield db.run_start.insert(data)
+        utils._return2client(self, data)
         self.finish()
 
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
-    """Handler for run_start insert and query operations"""
+    """Handler for event_descriptor insert and query operations.
+    Uses traditional RESTful lingo. get for querying and post for inserts
+    """
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        # TODO: Add sort by time!
-        """Query event_descriptor documents"""
+        """Query event_descriptor documents.Very thin as we do not want to create a
+        bottleneck dealing with multiple clients. self.write() dumps the json to
+        socket. Client keeps connection open until it server kills the socket with
+        self.finish, otherwise keeps hanging wasting resources
+        """
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
@@ -92,10 +110,11 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        """Insert an event_descriptor document"""
+        """Insert a event_descriptor document.Same validation method as bluesky, secondary
+        safety net.
+        """
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        #TODO: Add validation once database is implemented
         jsonschema.validate(data, schemas['descriptor'])
         result = yield db.event_descriptor.insert(data)#async insert
         utils._return2client(self, result)
@@ -103,12 +122,15 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
 
 
 class RunStopHandler(tornado.web.RequestHandler):
-    """Handler for run_start insert and query operations"""
+    """Query run_stop documents.Very thin as we do not want to create a
+        bottleneck dealing with multiple clients. self.write() dumps the json to
+        socket. Client keeps connection open until it server kills the socket with
+        self.finish, otherwise keeps hanging wasting resources
+    """
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        # TODO: Add sort by time!
-        """Query run_start documents"""
+        """Query run_stop documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')    
@@ -121,10 +143,11 @@ class RunStopHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        """Insert a run_start document"""
+        """Insert run_stop document(s).Same validation method as bluesky, secondary
+        safety net.
+        """
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        #TODO: Add validation once database is implemented
         jsonschema.validate(data, schemas['run_stop'])
         result = yield db.run_stop.insert(data)#async insert
         utils._return2client(self, result)
@@ -135,7 +158,6 @@ class EventHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        # TODO: Add sort by time!
         """Query event documents"""
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
@@ -163,8 +185,9 @@ class EventHandler(tornado.web.RequestHandler):
             utils._return2client(err)
         self.finish()
 
-db = db_connect("datastore2", '127.0.0.1', 28000) #TODO: Replace with configured one
 
+#TODO: Replace with configured one
+db = db_connect('datastore2', '127.0.0.1', 28000)
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
     (r'/event_descriptor',EventDescriptorHandler),

@@ -12,6 +12,5 @@ SCHEMA_NAMES = {'run_start': 'run_start.json',
 fn = '{}/{{}}'.format(SCHEMA_PATH)
 schemas = {}
 for name, filename in SCHEMA_NAMES.items():
-    rn=fn.format(filename)
-    with open(rs_fn('metadataservice', resource_name=rn)) as fin:
+    with open(rs_fn('metadataservice', resource_name=fn.format(filename))) as fin:
         schemas[name] = ujson.load(fin)

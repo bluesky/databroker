@@ -11,7 +11,6 @@ conf.connection_config['host'] = 'localhost'
 conf.connection_config['port'] = 7770
 custom = {}
 
-# rs = _find_run_starts(owner='xf23id1')
 
 def setup_syn():
 
