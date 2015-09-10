@@ -476,7 +476,7 @@ def fetch_events_table(descriptor):
 
     Parameters
     ----------
-    descriptor : dict or uid
+    descriptor : dict or str
         The EventDestriptor to get the events for.  Can be either
         a dict or a uid.
 
@@ -959,7 +959,7 @@ def find_run_starts(**kwargs):
 
     Returns
     -------
-    rs_objects : iterable of metadatastore.document.Document objects
+    rs_objects : iterable of doc.Document objects
 
 
     Examples
@@ -1000,9 +1000,8 @@ def find_run_stops(run_start=None, **kwargs):
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document or str, optional
-        The metadatastore run start document or the metadatastore uid to get
-        the corresponding run end for
+    run_start : doc.Document or str, optional
+        The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
         was created. Valid options are:
@@ -1024,7 +1023,7 @@ def find_run_stops(run_start=None, **kwargs):
 
     Returns
     -------
-    run_stop : iterable of metadatastore.document.Document objects
+    run_stop : iterable of doc.Document objects
     """
 
     # if trying to find by runstart, there can be only one
@@ -1037,9 +1036,9 @@ def find_run_stops(run_start=None, **kwargs):
         return inner()
 
     _format_time(kwargs)
-    run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
+    runstop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
-    return (_cache_runstop(rs) for rs in run_stop.order_by('-time'))
+    return (_cache_runstop(rs) for rs in runstop.order_by('-time'))
 
 
 @_ensure_connection
@@ -1048,13 +1047,8 @@ def find_descriptors(run_start=None, **kwargs):
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document or uid, optional
-        if ``Document``:
-            The metadatastore run start document or the metadatastore uid to get
-            the corresponding run end for
-        if ``str``:
-            Globally unique id string provided to metadatastore for the
-            RunStart Document.
+    run_start : doc.Document or str, optional
+        The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
         was created. Valid options are:
@@ -1072,7 +1066,7 @@ def find_descriptors(run_start=None, **kwargs):
 
     Returns
     -------
-    event_descriptor : iterable of metadatastore.document.Document objects
+    event_descriptor : iterable of doc.Document objects
     """
     if run_start:
         run_start = doc_or_uid_to_uid(run_start)
@@ -1110,14 +1104,14 @@ def find_events(descriptor=None, **kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
-    descriptor : doc.Document or uid, optional
+    descriptor : doc.Document or str, optional
        Find events for a given EventDescriptor
     uid : str, optional
         Globally unique id string provided to metadatastore
 
     Returns
     -------
-    events : iterable of metadatastore.document.Document objects
+    events : iterable of doc.Document objects
     """
     # Some user-friendly error messages for an easy mistake to make
     if 'event_descriptor' in kwargs:
@@ -1125,7 +1119,6 @@ def find_events(descriptor=None, **kwargs):
 
     if descriptor:
         descriptor = doc_or_uid_to_uid(descriptor)
-
         descriptor = descriptor_given_uid(descriptor)
         descriptor = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
         kwargs['descriptor_id'] = descriptor
@@ -1164,7 +1157,7 @@ def find_last(num=1):
 
     Returns
     -------
-    run_start: iterable of metadatastore.document.Document objects
+    run_start: iterable of doc.Document objects
     """
     c = count()
     for rs in RunStart.objects.as_pymongo().order_by('-time'):
