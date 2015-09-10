@@ -1,6 +1,6 @@
 from __future__ import division
 import uuid
-from metadatastore.api import insert_event, insert_event_descriptor, find_events
+from metadatastore.api import insert_event, insert_descriptor, find_events
 import numpy as np
 from metadatastore.examples.sample_data import common
 
@@ -26,10 +26,10 @@ def run(run_start=None, sleep=0):
                                     dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                   'Troom': dict(source='PV:ES:Troom', dtype='number')}
-    ev_desc1_uid = insert_event_descriptor(run_start=run_start,
+    ev_desc1_uid = insert_descriptor(run_start=run_start,
                                            data_keys=data_keys1, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
-    ev_desc2_uid = insert_event_descriptor(run_start=run_start,
+    ev_desc2_uid = insert_descriptor(run_start=run_start,
                                            data_keys=data_keys2, time=common.get_time(),
                                            uid=str(uuid.uuid4()))
     print('event descriptor 1 uid = %s' % ev_desc1_uid)
@@ -67,15 +67,13 @@ def run(run_start=None, sleep=0):
 
 if __name__ == '__main__':
     import metadatastore.api as mdsc
-    blc_uid = mdsc.insert_beamline_config({}, time=0.)
     run_start_uid = mdsc.insert_run_start(scan_id=2032013,
                                           beamline_id='testbed',
-                                          beamline_config=blc_uid,
                                           owner='tester',
                                           group='awesome-devs',
                                           project='Nikea',
-                                          time=0.)
+                                          time=0.,
+                                          uid=str(uuid.uuid4()),)
 
-    print('beamline_config_uid = %s' % blc_uid)
     print('run_start_uid = %s' % run_start_uid)
     run(run_start_uid)

@@ -1,34 +1,116 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+
 import six
 from functools import wraps
 from itertools import count
-from .odm_templates import (RunStart, BeamlineConfig, RunStop,
-                            EventDescriptor, Event, DataKey, ALIAS)
-from .document import Document
+
 import datetime
 import logging
-from metadatastore import conf
-from mongoengine import connect,  ReferenceField
-import mongoengine.connection
 
-import datetime
+import boltons.cacheutils
 import pytz
 
-import uuid
-from bson import ObjectId
+from bson.dbref import DBRef
+
+from mongoengine import connect
+import mongoengine.connection
+
+from . import conf
+from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
+                            ALIAS)
+from . import doc
+
 
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['insert_beamline_config', 'insert_run_start', 'insert_event',
-           'insert_run_stop', 'insert_event_descriptor', 'find_run_stops',
-           'find_beamline_configs', 'find_event_descriptors', 'find_last',
-           'find_events', 'find_run_starts', 'db_connect', 'db_disconnect',
-           'format_data_keys', 'format_events', 'reorganize_event']
+# process local caches of 'header' documents these are storing object indexed
+# on ObjectId because that is how the reference fields are implemented.
+# Should move to uids asap
+_RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+_RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+_DESCRIPTOR_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+
+# never drop these
+_RUNSTART_UID_to_OID_MAP = dict()
+_RUNSTOP_UID_to_OID_MAP = dict()
+_DESCRIPTOR_UID_to_OID_MAP = dict()
+
+
+class NoRunStop(Exception):
+    pass
+
+
+class NoEventDescriptors(Exception):
+    pass
+
+
+def doc_or_uid_to_uid(doc_or_uid):
+    """Given Document or uid return the uid
+
+    Parameters
+    ----------
+    doc_or_uid : dict or str
+        If str, then assume uid and pass through, if not, return
+        the 'uid' field
+
+    Returns
+    -------
+    uid : str
+        A string version of the uid of the given document
+
+    """
+    if not isinstance(doc_or_uid, six.string_types):
+        doc_or_uid = doc_or_uid['uid']
+    return doc_or_uid
+
+
+def clear_process_cache():
+    """Clear all local caches"""
+    _RUNSTART_CACHE_OID.clear()
+    _RUNSTOP_CACHE_OID.clear()
+    _DESCRIPTOR_CACHE_OID.clear()
+
+    _RUNSTART_UID_to_OID_MAP.clear()
+    _RUNSTOP_UID_to_OID_MAP.clear()
+    _DESCRIPTOR_UID_to_OID_MAP.clear()
+
+
+def db_disconnect():
+    """Helper function to deal with stateful connections to mongoengine"""
+    mongoengine.connection.disconnect(ALIAS)
+    for collection in [RunStart, RunStop, EventDescriptor, Event, DataKey]:
+        collection._collection = None
+
+
+def db_connect(database, host, port):
+    """Helper function to deal with stateful connections to mongoengine
+
+    .. warning
+
+       This will silently ignore input if the database is already
+       connected, even if the input database, host, or port are
+       different than currently connected.  To change the database
+       connection you must call `db_disconnect` before attempting to
+       re-connect.
+    """
+    return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
 def _ensure_connection(func):
+    """Decorator to ensure that the DB connection is open
+
+    This uses the values in `conf.connection_config` to get connection
+    parameters.
+
+    .. warning
+
+       This has no effect if the connection already exists, simply changing
+       the values in `conf.connection_config` is not sufficient to change what
+       data base is being used.  Calling `db_disconnect()` will clear the
+       current connection, but you probably should not be doing this.
+    """
     @wraps(func)
     def inner(*args, **kwargs):
         database = conf.connection_config['database']
@@ -39,167 +121,515 @@ def _ensure_connection(func):
     return inner
 
 
-def db_disconnect():
-    """Helper function to deal with stateful connections to mongoengine"""
-    mongoengine.connection.disconnect(ALIAS)
-    for collection in [RunStart, BeamlineConfig, RunStop, EventDescriptor,
-                       Event, DataKey]:
-        collection._collection = None
+def _cache_run_start(run_start):
+    """De-reference and cache a RunStart document
 
-
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to mongoengine"""
-    return connect(db=database, host=host, port=port, alias=ALIAS)
-
-
-def format_data_keys(data_key_dict):
-    """Helper function that allows ophyd to send info about its data keys
-    to metadatastore and have metadatastore format them into whatever the
-    current spec dictates. This functions formats the data key info for
-    the event descriptor
+    The de-referenced Document is cached against the
+    ObjectId and the uid -> ObjectID mapping is stored.
 
     Parameters
     ----------
-    data_key_dict : dict
-        The format that ophyd is sending to metadatastore
-        {'data_key1': {
-            'dtype': dtype_value,
-            'source': source_value,
-            'shape': shape_value},
-         'data_key2': {...}
-        }
+    run_start : dict
+        raw pymongo dictionary. This is expected to have
+        an entry `_id` with the ObjectId used by mongo.
 
     Returns
     -------
-    formatted_dict : dict
-        Data key info for the event descriptor that is formatted for the
-        current metadatastore spec.The current metadatastore spec is:
-        {'data_key1':
-         'data_key2': mds.odm_templates.DataKeys
-        }
+    run_start : doc.Document
+        Document instance for this RunStart document.
+        The ObjectId has been stripped.
     """
-    data_key_dict = {key_name: (
-                     DataKey(**data_key_description) if
-                     not isinstance(data_key_description, DataKey) else
-                     data_key_description)
-                     for key_name, data_key_description
-                     in six.iteritems(data_key_dict)}
-    return data_key_dict
+    run_start = dict(run_start)
+    # TODO actually do this de-reference for documents that have it
+    # There is no known actually usage of this document and it is not being
+    # created going forward
+    run_start.pop('beamline_config_id', None)
+
+    # get the mongo ObjectID
+    oid = run_start.pop('_id')
+
+    # convert the remaining document do a Document object
+    run_start = doc.Document('RunStart', run_start)
+
+    # populate cache and set up uid->oid mapping
+    _RUNSTART_CACHE_OID[oid] = run_start
+    _RUNSTART_UID_to_OID_MAP[run_start['uid']] = oid
+
+    return run_start
 
 
-def format_events(event_dict):
-    """Helper function for ophyd to format its data dictionary in whatever
-    flavor of the week metadatastore's spec says. This insulates ophyd from
-    changes to the mds spec
+def _cache_run_stop(run_stop):
+    """De-reference and cache a RunStop document
 
-    Currently formats the dictionary as {key: [value, timestamp]}
+    The de-referenced Document is cached against the
+    ObjectId and the uid -> ObjectID mapping is stored.
 
     Parameters
     ----------
-    event_dict : dict
-        The format that ophyd is sending to metadatastore
-        {'data_key1': {
-            'timestamp': timestamp_value, # should be a float value!
-            'value': data_value
-         'data_key2': {...}
-        }
+    run_stop : dict
+        raw pymongo dictionary. This is expected to have
+        an entry `_id` with the ObjectId used by mongo.
 
     Returns
     -------
-    formatted_dict : dict
-        The event dict formatted according to the current metadatastore spec.
-        The current metadatastore spec is:
-        {'data_key1': [data_value, timestamp_value],
-         'data_key2': [...],
-        }
+    run_stop : doc.Document
+        Document instance for this RunStop document.
+        The ObjectId has been stripped.
     """
-    return {key: [data_dict['value'], data_dict['timestamp']]
-            for key, data_dict in six.iteritems(event_dict)}
+    run_stop = dict(run_stop)
+    # pop off the ObjectId of this document
+    oid = run_stop.pop('_id')
+
+    # do the run-start de-reference
+    start_oid = run_stop.pop('run_start_id')
+    run_stop['run_start'] = _run_start_given_oid(start_oid)
+
+    # create the Document object
+    run_stop = doc.Document('RunStop', run_stop)
+
+    # update the cache and uid->oid mapping
+    _RUNSTOP_CACHE_OID[oid] = run_stop
+    _RUNSTOP_UID_to_OID_MAP[run_stop['uid']] = oid
+
+    return run_stop
+
+
+def _cache_descriptor(descriptor):
+    """De-reference and cache a RunStop document
+
+    The de-referenced Document is cached against the
+    ObjectId and the uid -> ObjectID mapping is stored.
+
+    Parameters
+    ----------
+    descriptor : dict
+        raw pymongo dictionary. This is expected to have
+        an entry `_id` with the ObjectId used by mongo.
+
+    Returns
+    -------
+    descriptor : doc.Document
+        Document instance for this EventDescriptor document.
+        The ObjectId has been stripped.
+    """
+    descriptor = dict(descriptor)
+    # pop the ObjectID
+    oid = descriptor.pop('_id')
+
+    # do the run_start referencing
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
+
+    # create the Document instance
+    descriptor = doc.Document('EventDescriptor', descriptor)
+
+    # update cache and setup uid->oid mapping
+    _DESCRIPTOR_CACHE_OID[oid] = descriptor
+    _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']] = oid
+
+    return descriptor
+
+
+@_ensure_connection
+def _run_start_given_oid(oid):
+    """Get RunStart document given an ObjectId
+
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+
+    When we migrate to using uid as the primary key this function
+    will be removed.
+
+    Parameters
+    ----------
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+
+    Returns
+    -------
+    run_start : doc.Document
+        The RunStart document.
+    """
+    try:
+        return _RUNSTART_CACHE_OID[oid]
+    except KeyError:
+        pass
+    rs = RunStart._get_collection().find_one({'_id': oid})
+    return _cache_run_start(rs)
+
+
+@_ensure_connection
+def _descriptor_given_oid(oid):
+    """Get EventDescriptor document given an ObjectId
+
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+
+    When we migrate to using uid as the primary key this function
+    will be removed.
+
+    Parameters
+    ----------
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+
+    Returns
+    -------
+    descriptor : doc.Document
+        The EventDescriptor document.
+    """
+    try:
+        return _DESCRIPTOR_CACHE_OID[oid]
+    except KeyError:
+        pass
+
+    descriptor = EventDescriptor._get_collection().find_one({'_id': oid})
+    return _cache_descriptor(descriptor)
+
+
+@_ensure_connection
+def run_start_given_uid(uid):
+    """Given a uid, return the RunStart document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    run_start : doc.Document
+        The RunStart document.
+
+    """
+    try:
+        oid = _RUNSTART_UID_to_OID_MAP[uid]
+        return _RUNSTART_CACHE_OID[oid]
+    except KeyError:
+        pass
+    run_start = RunStart._get_collection().find_one({'uid': uid})
+    return _cache_run_start(run_start)
+
+
+@_ensure_connection
+def run_stop_given_uid(uid):
+    """Given a uid, return the RunStop document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document fully de-referenced
+
+    """
+    try:
+        oid = _RUNSTOP_UID_to_OID_MAP[uid]
+        return _RUNSTOP_CACHE_OID[oid]
+    except KeyError:
+        pass
+    # get the raw run_stop
+    run_stop = RunStop._get_collection().find_one({'uid': uid})
+    return _cache_run_stop(run_stop)
+
+
+@_ensure_connection
+def descriptor_given_uid(uid):
+    """Given a uid, return the EventDescriptor document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    descriptor : doc.Document
+        The EventDescriptor document fully de-referenced
+    """
+    try:
+        oid = _DESCRIPTOR_UID_to_OID_MAP[uid]
+        return _DESCRIPTOR_CACHE_OID[oid]
+    except KeyError:
+        pass
+
+    descriptor = EventDescriptor._get_collection().find_one({'uid': uid})
+    return _cache_descriptor(descriptor)
+
+
+@_ensure_connection
+def stop_by_start(run_start):
+    """Given a RunStart return it's RunStop
+
+    Raises if no RunStop exists.
+
+    Parameters
+    ----------
+    run_start : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document
+
+    Raises
+    ------
+    NoRunStop
+        If no RunStop document exists for the given RunStart
+    """
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    # make sure the cache is actually populated
+    run_start_given_uid(run_start_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
+
+    run_stop = RunStop._get_collection().find_one(
+        {'run_start_id': oid})
+
+    if run_stop is None:
+        raise NoRunStop("No run stop exists for {!r}".format(run_start))
+
+    return _cache_run_stop(run_stop)
+
+
+@_ensure_connection
+def descriptors_by_start(run_start):
+    """Given a RunStart return a list of it's descriptors
+
+    Raises if no EventDescriptors exist.
+
+    Parameters
+    ----------
+    run_start : doc.Document or dict or str
+        The RunStart to get the EventDescriptors for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Returns
+    -------
+    event_descriptors : list
+        A list of EventDescriptor documents
+
+    Raises
+    ------
+    NoEventDescriptors
+        If no EventDescriptor documents exist for the given RunStart
+    """
+    # normalize the input and get the run_start oid
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    run_start_given_uid(run_start_uid)
+    oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
+
+    # query the database for any event descriptors which
+    # refer to the given run_start
+    descriptors = EventDescriptor._get_collection().find(
+        {'run_start_id': oid})
+
+    # loop over the found documents, cache, and dereference
+    rets = [_cache_descriptor(descriptor) for descriptor in descriptors]
+
+    # if nothing found, raise
+    if not rets:
+        raise NoEventDescriptors("No EventDescriptors exists "
+                                 "for {!r}".format(run_start))
+
+    # return the list of event descriptors
+    return rets
+
+
+@_ensure_connection
+def fetch_events_generator(descriptor):
+    """A generator which yields all events from the event stream
+
+    Parameters
+    ----------
+    descriptor : doc.Document or dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Yields
+    ------
+    event : doc.Document
+        All events for the given EventDescriptor from oldest to
+        newest
+    """
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    descriptor = descriptor_given_uid(descriptor_uid)
+
+    oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
+
+    col = Event._get_collection()
+    ev_cur = col.find({'descriptor_id': oid},
+                      sort=[('time', 1)])
+
+    for ev in ev_cur:
+        # ditch the ObjectID
+        del ev['_id']
+        # del the descriptor oid
+        del ev['descriptor_id']
+        # replace it with the defererenced descriptor
+        ev['descriptor'] = descriptor
+        data = ev.pop('data')
+        ev['timestamps'] = {k: v[1] for k, v in data.items()}
+        ev['data'] = {k: v[0] for k, v in data.items()}
+
+        # wrap it in our fancy dict
+        ev = doc.Document('Event', ev)
+
+        yield ev
+
+
+def _transpose(in_data, keys, field):
+    """Turn a list of dicts into dict of lists
+
+    Parameters
+    ----------
+    in_data : list
+        A list of dicts which contain at least one dict.
+        All of the inner dicts must have at least the keys
+        in `keys`
+
+    keys : list
+        The list of keys to extract
+
+    field : str
+        The field in the outer dict to use
+
+    Returns
+    -------
+    transpose : dict
+        The transpose of the data
+    """
+    out = {k: [None] * len(in_data) for k in keys}
+    for j, ev in enumerate(in_data):
+        dd = ev[field]
+        for k in keys:
+            out[k][j] = dd[k]
+    return out
+
+
+@_ensure_connection
+def fetch_events_table(descriptor):
+    """All event data as tables
+
+    Parameters
+    ----------
+    descriptor : dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Returns
+    -------
+    descriptor : doc.Document
+        EventDescriptor document
+    data_table : dict
+        dict of lists of the transposed data
+    seq_nums : list
+        The sequence number of each event.
+    times : list
+        The time of each event.
+    uids : list
+        The uid of each event.
+    timestamps_table : dict
+        The timestamps of each of the measurements as dict of lists.  Same
+        keys as `data_table`.
+    """
+    desc_uid = doc_or_uid_to_uid(descriptor)
+    descriptor = descriptor_given_uid(desc_uid)
+    # this will get more complicated once transpose caching layer is in place
+    all_events = list(fetch_events_generator(desc_uid))
+
+    # get event sequence numbers
+    seq_nums = [ev['seq_num'] for ev in all_events]
+
+    # get event times
+    times = [ev['time'] for ev in all_events]
+
+    # get uids
+    uids = [ev['uid'] for ev in all_events]
+
+    keys = list(descriptor['data_keys'])
+
+    # get data values
+    data_table = _transpose(all_events, keys, 'data')
+
+    # get timestamps
+    timestamps_table = _transpose(all_events, keys, 'timestamps')
+
+    # return the whole lot
+    return descriptor, data_table, seq_nums, times, uids, timestamps_table
 
 
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, beamline_config, uid=None,
-                     owner=None, group=None, project=None, custom=None):
-    """Provide a head for a sequence of events. Entry point for an
-    experiment's run.
+def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
+                    project='', custom=None):
+    """Insert a RunStart document into the database.
 
     Parameters
     ----------
     time : float
-        The date/time as found at the client side when an event is
-        created.
+        The date/time as found at the client side when the run is started
     scan_id : int
-        Unique scan identifier visible to the user and data analysis
+        Scan identifier visible to the user and data analysis.  This is not
+        a unique identifier.
     beamline_id : str
-        Beamline String identifier. Not unique, just an indicator of
-        beamline code for multiple beamline systems
-    beamline_config : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore beamline config document
-        if str:
-            uid of beamline config corresponding to a given run
-    uid : str, optional
-        Globally unique id string provided to metadatastore
+        Beamline String identifier.
+    uid : str
+        Globally unique id to identify this RunStart
     owner : str, optional
-        A username associated with the entry
+        A username associated with the RunStart
     group : str, optional
-        A group (e.g., UNIX group) associated with the entry
+        An experimental group associated with the RunStart
     project : str, optional
         Any project name to help users locate the data
-    custom: dict, optional
+    custom : dict, optional
         Any additional information that data acquisition code/user wants
-        to append to the Header at the start of the run.
+        to append to the RunStart at the start of the run. These keys will be
+        unpacked into the top level of the RunStart that is inserted into the
+        database.
 
     Returns
     -------
-    run_start: mongoengine.Document
-        Inserted mongoengine object
+    run_start : str
+        uid of the inserted document.  Use `run_start_given_uid` to get
+        the full document.
 
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
-    if owner is None:
-        owner = ''
-    if group is None:
-        group = ''
-    if project is None:
-        project = ''
 
-    beamline_config = _get_mongo_document(beamline_config, BeamlineConfig)
-    run_start = RunStart(time=time, scan_id=scan_id,
-                         time_as_datetime=_todatetime(time), uid=uid,
-                         beamline_id=beamline_id,
-                         beamline_config=beamline_config,
-                         owner=owner, group=group, project=project,
-                         **custom)
+    run_start = RunStart(time=time, scan_id=scan_id, uid=uid,
+                        beamline_id=beamline_id, owner=owner, group=group,
+                        project=project, **custom)
 
-    run_start.save(validate=True, write_concern={"w": 1})
+    run_start = run_start.save(validate=True, write_concern={"w": 1})
+
+    _cache_run_start(run_start.to_mongo().to_dict())
     logger.debug('Inserted RunStart with uid %s', run_start.uid)
 
     return uid
 
 
 @_ensure_connection
-def insert_run_stop(run_start, time, uid=None, exit_status='success',
-                    reason=None, custom=None):
-    """ Provide an end to a sequence of events. Exit point for an
-    experiment's run.
+def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
+                   custom=None):
+    """Insert RunStop document into database
 
     Parameters
     ----------
-    run_start : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore RunStart document
-        if str:
-            uid of RunStart object to associate with this record
+    run_start : doc.Document or dict or str
+        The RunStart to insert the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     time : float
-        The date/time as found at the client side when an event is
-        created.
-    uid : str, optional
+        The date/time as found at the client side
+    uid : str
         Globally unique id string provided to metadatastore
     exit_status : {'success', 'abort', 'fail'}, optional
         indicating reason run stopped, 'success' by default
@@ -207,124 +637,119 @@ def insert_run_stop(run_start, time, uid=None, exit_status='success',
         more detailed exit status (stack trace, user remark, etc.)
     custom : dict, optional
         Any additional information that data acquisition code/user wants
-        to append to the Header at the end of the run.
+        to append to the Header at the end of the run.  These keys will be
+        unpacked into the top level of the RunStop that is inserted
+        into the database.
 
     Returns
     -------
-    run_stop : mongoengine.Document
-        Inserted mongoengine object
+    run_stop : str
+        uid of inserted Document
+
+    Raises
+    ------
+    RuntimeError
+        Only one RunStop per RunStart, raises if you try to insert a second
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
-    run_start = _get_mongo_document(run_start, RunStart)
-    run_stop = RunStop(run_start=run_start, reason=reason, time=time,
-                       time_as_datetime=_todatetime(time), uid=uid,
-                       exit_status=exit_status, **custom)
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    run_start = run_start_given_uid(run_start_uid)
+    try:
+        stop_by_start(run_start_uid)
+    except NoRunStop:
+        pass
+    else:
+        raise RuntimeError("Runstop already exits for {!r}".format(run_start))
+    # look up the oid
+    run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
+    # create a reference field
+    rs_ref = DBRef('RunStart', run_start_oid)
 
-    run_stop.save(validate=True, write_concern={"w": 1})
+    run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
+                      uid=uid,
+                      exit_status=exit_status, **custom)
+
+    run_stop = run_stop.save(validate=True, write_concern={"w": 1})
+    _cache_run_stop(run_stop.to_mongo().to_dict())
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop.uid, run_start.uid)
+                 " with uid %s", run_stop.uid, run_start['uid'])
 
     return uid
 
 
 @_ensure_connection
-def insert_beamline_config(config_params, time, uid=None):
-    """ Create a beamline_config  in metadatastore database backend
+def insert_descriptor(run_start, data_keys, time, uid,
+                      custom=None):
+    """Insert an EventDescriptor document in to database.
 
     Parameters
     ----------
-    config_params : dict
-        Name/value pairs that indicate beamline configuration
-        parameters during capturing of data
-    time : float
-        The date/time as found at the client side when the
-        beamline configuration is created.
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-
-    Returns
-    -------
-    blc : BeamlineConfig
-        The document added to the collection
-    """
-    if uid is None:
-        uid = str(uuid.uuid4())
-    beamline_config = BeamlineConfig(config_params=config_params,
-                                     time=time,
-                                     uid=uid)
-    beamline_config.save(validate=True, write_concern={"w": 1})
-    logger.debug("Inserted BeamlineConfig with uid %s",
-                 beamline_config.uid)
-
-    return uid
-
-
-@_ensure_connection
-def insert_event_descriptor(run_start, data_keys, time, uid=None,
-                            custom=None):
-    """ Create an event_descriptor in metadatastore database backend
-
-    Parameters
-    ----------
-    run_start : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore RunStart document
-        if str:
-            uid of RunStart object to associate with this record
+    run_start : doc.Document or dict or str
+        The RunStart to insert a Descriptor for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     data_keys : dict
         Provides information about keys of the data dictionary in
-        an event will contain
+        an event will contain.  No key name may include '.'.  See
+        `DataKey` odm template for schema.
     time : float
         The date/time as found at the client side when an event
         descriptor is created.
-    uid : str, optional
+    uid : str
         Globally unique id string provided to metadatastore
     custom : dict, optional
         Any additional information that data acquisition code/user wants
-        to append to the EventDescriptor.
+        to append to the EventDescriptor.  These keys will be unpacked into
+        the top level of the EventDescriptor that is inserted into the
+        database.
 
     Returns
     -------
-    ev_desc : EventDescriptor
-        The document added to the collection.
-
+    descriptor : str
+        uid of inserted Document
     """
-    if uid is None:
-        uid = str(uuid.uuid4())
     if custom is None:
         custom = {}
-    data_keys = format_data_keys(data_keys)
-    run_start = _get_mongo_document(run_start, RunStart)
-    event_descriptor = EventDescriptor(run_start=run_start,
-                                       data_keys=data_keys, time=time,
-                                       uid=uid,
-                                       time_as_datetime=_todatetime(time),
-                                       **custom)
 
-    event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
-                                                         direction='in')
+    for k in data_keys:
+        if '.' in k:
+            raise ValueError("Key names can not contain '.' (period).")
+    # needed to make ME happy
+    data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
-    event_descriptor.save(validate=True, write_concern={"w": 1})
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    # get document to make sure it is in the cache
+    run_start_given_uid(run_start_uid)
+    run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
+    rs_ref = DBRef('RunStart', run_start_oid)
+    descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
+                                 time=time, uid=uid, **custom)
+
+    descriptor = descriptor.save(validate=True, write_concern={"w": 1})
+
+    descriptor = _cache_descriptor(descriptor.to_mongo().to_dict())
+
     logger.debug("Inserted EventDescriptor with uid %s referencing "
-                 "RunStart with uid %s", event_descriptor.uid, run_start.uid)
+                 "RunStart with uid %s", descriptor['uid'], run_start_uid)
 
     return uid
+insert_event_descriptor = insert_descriptor
 
 
 @_ensure_connection
-def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
+def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     """Create an event in metadatastore database backend
+
+    .. warning
+
+       This does not validate that the keys in `data` and `timestamps`
+       match the data keys in `descriptor`.
 
     Parameters
     ----------
-    descriptor : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore EventDescriptor document
-        if str:
-            uid of EventDescriptor object to associate with this record
+    descriptor : doc.Document or dict or str
+        The Descriptor to insert event for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
     time : float
         The date/time as found at the client side when an event is
         created.
@@ -336,42 +761,78 @@ def insert_event(descriptor, time, seq_num, data, timestamps=None, uid=None):
     timestamps : dict
         Dictionary of measured timestamps for each values, having the
         same keys as `data` above
-    uid : str, optional
+    uid : str
         Globally unique id string provided to metadatastore
-
-    Note
-    ----
-    In the immediate aftermath of a change to how Documents are exchanged
-    (not stored, but exchanged) timestamps is optional. If not included,
-    data is expected to include (value, timestamp) tuples.
     """
-    if timestamps is not None and set(data.keys()) != set(timestamps.keys()):
-        raise ValueError("The fields in 'data' and 'timestamps' must match.")
-    if timestamps is not None:
-        # new Document exchange format
-        val_ts_tuple = _transform_data(data, timestamps)
-    else:
-        # old Document exchange format
-        val_ts_tuple = data
-
-    # Allow caller to beg forgiveness rather than ask permission w.r.t
-    # EventDescriptor creation.
-    if descriptor is None:
-        raise EventDescriptorIsNoneError()
-
-    if uid is None:
-        uid = str(uuid.uuid4())
-
-    descriptor = _get_mongo_document(descriptor, EventDescriptor)
-    event = Event(descriptor_id=descriptor, uid=uid,
+    # convert data to storage format
+    val_ts_tuple = _transform_data(data, timestamps)
+    # make sure we really have a uid
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    # get descriptor to make sure it is in the cache
+    descriptor = descriptor_given_uid(descriptor_uid)
+    # get the ObjectID so for reference field
+    desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
+    # create the Event document
+    event = Event(descriptor_id=desc_oid, uid=uid,
                   data=val_ts_tuple, time=time, seq_num=seq_num)
 
-    event = _replace_event_data_key_dots(event, direction='in')
     event.save(validate=True, write_concern={"w": 1})
+
     logger.debug("Inserted Event with uid %s referencing "
                  "EventDescriptor with uid %s", event.uid,
-                 descriptor.uid)
+                 descriptor_uid)
     return uid
+
+BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
+'timestamps do not match:\n data: {}\ntimestamps:{}"""
+
+
+@_ensure_connection
+def bulk_insert_events(event_descriptor, events, validate=False):
+    """Bulk insert many events
+
+    Parameters
+    ----------
+    event_descriptor : doc.Document or dict or str
+        The Descriptor to insert event for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    events : iterable
+       iterable of dicts matching the bs.Event schema
+    validate : bool, optional
+       If it should be checked that each pair of data/timestamps
+       dicts has identical keys
+
+    Returns
+    -------
+    ret : dict
+        dictionary of details about the insertion
+    """
+    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
+    descriptor = descriptor_given_uid(descriptor_uid)
+
+    desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
+
+    def event_factory():
+        for ev in events:
+            # check keys, this could be expensive
+            if validate:
+                if ev['data'].keys() != ev['timestamps'].keys():
+                    raise ValueError(
+                        BAD_KEYS_FMT.format(ev['data'].keys(),
+                                            ev['timestamps'].keys()))
+
+            # transform the data to the storage format
+            val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
+            ev_out = dict(descriptor_id=desc_oid, uid=ev['uid'],
+                          data=val_ts_tuple, time=ev['time'],
+                          seq_num=ev['seq_num'])
+            yield ev_out
+
+    bulk = Event._get_collection().initialize_ordered_bulk_op()
+    for ev in event_factory():
+        bulk.insert(ev)
+
+    return bulk.execute()
 
 
 def _transform_data(data, timestamps):
@@ -385,39 +846,7 @@ def _transform_data(data, timestamps):
     return {k: (data[k], timestamps[k]) for k in data}
 
 
-class EventDescriptorIsNoneError(ValueError):
-    """Special error that ophyd looks for when it passes a `None` event
-    descriptor. Ophyd will then create an event descriptor and create the event
-    again
-    """
-    pass
-
-
 # DATABASE RETRIEVAL ##########################################################
-
-# TODO: Update all query routine documentation
-class _AsDocument(object):
-    """
-    A caching layer to avoid creating reference objects for _every_
-    """
-    def __init__(self):
-        self._cache = dict()
-
-    def __call__(self, mongoengine_object):
-        return Document.from_mongo(mongoengine_object, self._cache)
-
-
-class _AsDocumentRaw(object):
-    """
-    A caching layer to avoid creating reference objects for _every_
-    """
-    def __init__(self):
-        self._cache = dict()
-
-    def __call__(self, name, input_dict, dref_fields):
-
-        return Document.from_dict(name, input_dict, dref_fields, self._cache)
-
 
 def _format_time(search_dict):
     """Helper function to format the time arguments in a search dict
@@ -516,43 +945,6 @@ _normalize_human_friendly_time.__doc__ = (
     )
 
 
-def _normalize_object_id(kwargs, key):
-    """Ensure that an id is an ObjectId, not a string.
-
-    ..warning: Does in-place mutation of the search_dict
-    """
-    try:
-        kwargs[key] = ObjectId(kwargs[key])
-    except KeyError:
-        # This key wasn't used by the query; that's fine.
-        pass
-    except TypeError:
-        # This key was given a more complex query.
-        pass
-    # Database errors will still raise.
-
-
-def _get_mongo_document(document, document_cls):
-    """Helper function to get the mongo id of the mongo document of type
-    ``document_cls``
-
-    Parameters
-    ----------
-    document : mds.odm_templates.Document or str
-        if str: The externally supplied unique identifier of the mongo document
-    document_cls : object
-        One of the class objects from the metadatastore.odm_templates module
-        {RunStart, RunStop, Event, EventDescriptor, etc...}
-    """
-    if isinstance(document, Document):
-        document = document.uid
-    # .get() is slower than .first() which is slower than [0].
-    # __raw__=dict() is faster than kwargs
-    # see http://nbviewer.ipython.org/gist/ericdill/ca047302c2c1f1865415
-    mongo_document = document_cls.objects(__raw__={'uid': document})[0]
-    return mongo_document
-
-
 @_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -579,19 +971,11 @@ def find_run_starts(**kwargs):
         The username of the logged-in user when the scan was performed
     scan_id : int, optional
         Integer scan identifier
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
 
     Returns
     -------
-    rs_objects : iterable of metadatastore.document.Document objects
+    rs_objects : iterable of doc.Document objects
 
-    Note
-    ----
-    All documents that the RunStart Document points to are dereferenced.
-    These include RunStop, BeamlineConfig, and Sample.
 
     Examples
     --------
@@ -604,48 +988,13 @@ def find_run_starts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    _normalize_object_id(kwargs, '_id')
+    # now try rest of formatting
     _format_time(kwargs)
 
-    rs_objects = RunStart.objects(__raw__=kwargs).order_by('-time')
-    rs_objects = rs_objects.no_dereference()
-    _as_document = _AsDocument()
-    return (_as_document(rs) for rs in rs_objects)
+    rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
 
-
-@_ensure_connection
-def find_beamline_configs(**kwargs):
-    """Given search criteria, locate BeamlineConfig Documents.
-
-    Parameters
-    ----------
-    start_time : time-like, optional
-        time-like representation of the earliest time that a BeamlineConfig
-        was created. Valid options are:
-           - timestamps --> time.time()
-           - '2015'
-           - '2015-01'
-           - '2015-01-30'
-           - '2015-03-30 03:00:00'
-           - datetime.datetime.now()
-    stop_time : time-like, optional
-        timestamp of the latest time that a BeamlineConfig was created. See
-            docs for `start_time` for examples.
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
-
-    Returns
-    -------
-    beamline_configs : iterable of metadatastore.document.Document objects
-    """
-    _format_time(kwargs)
-    # ordered by _id because it is not guaranteed there will be time in cbonfig
-    beamline_configs = BeamlineConfig.objects(__raw__=kwargs).order_by('-_id')
-    beamline_configs = beamline_configs.no_dereference()
-    _as_document = _AsDocument()
-    return (_as_document(bc) for bc in beamline_configs)
+    return (_cache_run_start(rs) for rs in rs_objects.order_by('-time'))
+find_run_starts = find_run_starts
 
 
 @_ensure_connection
@@ -654,9 +1003,8 @@ def find_run_stops(run_start=None, **kwargs):
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document or str, optional
-        The metadatastore run start document or the metadatastore uid to get
-        the corresponding run end for
+    run_start : doc.Document or str, optional
+        The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
         was created. Valid options are:
@@ -675,42 +1023,34 @@ def find_run_stops(run_start=None, **kwargs):
         Long-form description of why the run was terminated.
     uid : str, optional
         Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
 
-    Returns
-    -------
-    run_stop : iterable of metadatastore.document.Document objects
+    Yields
+    ------
+    run_stop : doc.Document
+        The requested RunStop documents
     """
-    _format_time(kwargs)
-    # get the actual mongo document
+    # if trying to find by run_start, there can be only one
+    # normalize the input and get the run_start oid
     if run_start:
-        run_start = _get_mongo_document(run_start, RunStart)
-        kwargs['run_start_id'] = run_start.id
+        run_start_uid = doc_or_uid_to_uid(run_start)
+        run_start_given_uid(run_start_uid)
+        oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
+        kwargs['run_start_id'] = oid
+    _format_time(kwargs)
+    run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
-    _normalize_object_id(kwargs, '_id')
-    _normalize_object_id(kwargs, 'run_start_id')
-    run_stop = RunStop.objects(__raw__=kwargs).order_by('-time')
-    run_stop = run_stop.no_dereference()
-
-    _as_document = _AsDocument()
-
-    return (_as_document(rs) for rs in run_stop)
+    return (_cache_run_stop(rs) for rs in run_stop.order_by('-time'))
+find_run_stops = find_run_stops
 
 
 @_ensure_connection
-def find_event_descriptors(run_start=None, **kwargs):
+def find_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document or uid, optional
-        if ``Document``:
-            The metadatastore run start document or the metadatastore uid to get
-            the corresponding run end for
-        if ``str``:
-            Globally unique id string provided to metadatastore for the
-            RunStart Document.
+    run_start : doc.Document or str, optional
+        The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
         was created. Valid options are:
@@ -725,29 +1065,28 @@ def find_event_descriptors(run_start=None, **kwargs):
         docs for `start_time` for examples.
     uid : str, optional
         Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
 
-    Returns
+    Yields
     -------
-    event_descriptor : iterable of metadatastore.document.Document objects
+    descriptor : doc.Document
+        The requested EventDescriptor
     """
-    _format_time(kwargs)
-    _as_document = _AsDocument()
-    # get the actual mongo document
     if run_start:
-        run_start = _get_mongo_document(run_start, RunStart)
-        kwargs['run_start_id'] = run_start.id
+        run_start = doc_or_uid_to_uid(run_start)
+        run_start = run_start_given_uid(run_start)
+        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
+        kwargs['run_start_id'] = run_start
 
-    _normalize_object_id(kwargs, '_id')
-    _normalize_object_id(kwargs, 'run_start_id')
+    _format_time(kwargs)
+
     event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
 
-    event_descriptor_objects = event_descriptor_objects.no_dereference()
+    event_descriptor_objects = event_descriptor_objects.as_pymongo()
     for event_descriptor in event_descriptor_objects.order_by('-time'):
-        event_descriptor = _replace_descriptor_data_key_dots(event_descriptor,
-                                                             direction='out')
-        yield _as_document(event_descriptor)
+        yield _cache_descriptor(event_descriptor)
+
+# TODO properly mark this as deprecated
+find_event_descriptors = find_descriptors
 
 
 @_ensure_connection
@@ -768,47 +1107,43 @@ def find_events(descriptor=None, **kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
-    descriptor : metadatastore.document.Document or uid, optional
-        if Document:
-            The metadatastore run start document or the metadatastore uid to get
-            the corresponding run end for
-        if uid:
-            Globally unique id string provided to metadatastore for the
-            EventDescriptor Document.
+    descriptor : doc.Document or str, optional
+       Find events for a given EventDescriptor
     uid : str, optional
         Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
 
     Returns
     -------
-    events : iterable of metadatastore.document.Document objects
+    events : iterable of doc.Document objects
     """
     # Some user-friendly error messages for an easy mistake to make
     if 'event_descriptor' in kwargs:
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
-    if 'event_descriptor_id' in kwargs:
-        raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
+
+    if descriptor:
+        descriptor = doc_or_uid_to_uid(descriptor)
+        descriptor = descriptor_given_uid(descriptor)
+        descriptor = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
+        kwargs['descriptor_id'] = descriptor
 
     _format_time(kwargs)
-    # get the actual mongo document
-    if descriptor:
-        descriptor = _get_mongo_document(descriptor, EventDescriptor)
-        kwargs['descriptor_id'] = descriptor.id
 
-    _normalize_object_id(kwargs, '_id')
-    events = Event.objects(__raw__=kwargs).order_by('-time')
+    events = Event.objects(__raw__=kwargs).order_by('time')
     events = events.as_pymongo()
-    dref_dict = dict()
-    name = Event.__name__
-    for n, f in Event._fields.items():
-        if isinstance(f, ReferenceField):
-            lookup_name = f.db_field
-            dref_dict[lookup_name] = f
 
-    _as_document = _AsDocumentRaw()
-    return (reorganize_event(_as_document(name, ev, dref_dict))
-            for ev in events)
+    for ev in events:
+        del ev['_id']
+        # pop the descriptor oid
+        desc_oid = ev.pop('descriptor_id')
+        # replace it with the defererenced descriptor
+        ev['descriptor'] = _descriptor_given_oid(desc_oid)
+        data = ev.pop('data')
+        # re-format the data
+        ev['timestamps'] = {k: v[1] for k, v in data.items()}
+        ev['data'] = {k: v[0] for k, v in data.items()}
+        # wrap it our fancy dict
+        ev = doc.Document('Event', ev)
+        yield ev
 
 
 @_ensure_connection
@@ -820,135 +1155,13 @@ def find_last(num=1):
     num : integer, optional
         number of RunStart documents to return, default 1
 
-    Returns
-    -------
-    run_start: iterable of metadatastore.document.Document objects
+    Yields
+    ------
+    run_start doc.Document
+       The requested RunStart documents
     """
     c = count()
-    _as_document = _AsDocument()
-    for rs in RunStart.objects.order_by('-time'):
+    for rs in RunStart.objects.as_pymongo().order_by('-time'):
         if next(c) == num:
             raise StopIteration
-        yield _as_document(rs)
-
-
-def _todatetime(time_stamp):
-    if isinstance(time_stamp, float):
-        return datetime.datetime.fromtimestamp(time_stamp)
-    else:
-        raise TypeError('Timestamp format is not correct!')
-
-
-def _replace_dict_keys(input_dict, src, dst):
-    """
-    Helper function to replace forbidden chars in dictionary keys
-
-    Parameters
-    ----------
-    input_dict : dict
-        The dict to have it's keys replaced
-
-    src : str
-        the string to be replaced
-
-    dst : str
-        The string to replace the src string with
-
-    Returns
-    -------
-    ret : dict
-        The dictionary with all instances of 'src' in the key
-        replaced with 'dst'
-
-    """
-    return {k.replace(src, dst): v for
-            k, v in six.iteritems(input_dict)}
-
-
-def _src_dst(direction):
-    """
-    Helper function to turn in/out into src/dst pair
-
-    Parameters
-    ----------
-    direction : {'in', 'out'}
-        The direction to do conversion (direction relative to mongodb)
-
-    Returns
-    -------
-    src, dst : str
-        The source and destination strings in that order.
-    """
-    if direction == 'in':
-        src, dst = '.', '[dot]'
-    elif direction == 'out':
-        src, dst = '[dot]', '.'
-    else:
-        raise ValueError('Only in/out allowed as direction params')
-
-    return src, dst
-
-
-def _replace_descriptor_data_key_dots(ev_desc, direction='in'):
-    """Replace the '.' with [dot].
-
-    Relevant because PVs can have dots in their names
-
-    Parameters
-    ---------
-
-    event_descriptor: metadatastore.odm_templates.EventDescriptor
-    EvenDescriptor instance
-
-    direction: str
-    If 'in' ->  replace . with [dot]
-    If 'out' -> replace [dot] with .
-
-    """
-    src, dst = _src_dst(direction)
-    ev_desc.data_keys = _replace_dict_keys(ev_desc.data_keys,
-                                           src, dst)
-    return ev_desc
-
-
-def _replace_event_data_key_dots(event, direction='in'):
-    """Replace the '.' with [dot].
-
-    Relevant because PVs can have dots in their names
-
-    Parameters
-    ---------
-
-    event_descriptor: metadatastore.database.event_descriptor.EventDescriptor
-    EvenDescriptor instance
-
-    direction: str
-    If 'in' ->  replace . with [dot]
-    If 'out' -> replace [dot] with .
-
-    """
-    src, dst = _src_dst(direction)
-    event.data = _replace_dict_keys(event.data,
-                                    src, dst)
-    return event
-
-
-def reorganize_event(event_document):
-    """Reorganize Event attributes, unnormalizing 'data'.
-
-    Convert from Event.data = {'data_key': (value, timestamp)}
-    to Event.data = {'data_key': value}
-    and Event.timestamps = {'data_key': timestamp}
-
-    Parameters
-    ----------
-    event_document : metadatastore.document.Document
-
-    Returns
-    -------
-    event_document
-    """
-    doc = event_document  # for brevity
-    pairs = [((k, v[0]), (k, v[1])) for k, v in six.iteritems(doc.data)]
-    doc.data, doc.timestamps = [dict(tuples) for tuples in zip(*pairs)]
-    return doc
+        yield _cache_run_start(rs)
