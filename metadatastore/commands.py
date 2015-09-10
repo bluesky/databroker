@@ -534,8 +534,7 @@ def fetch_events_table(descriptor):
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     mongoengine.connection.disconnect(ALIAS)
-    for collection in [RunStart, RunStop, EventDescriptor,
-                       Event, DataKey]:
+    for collection in [RunStart, RunStop, EventDescriptor, Event, DataKey]:
         collection._collection = None
 
 
@@ -556,8 +555,8 @@ def db_connect(database, host, port):
 # database INSERTION ###################################################
 
 @_ensure_connection
-def insert_runstart(time, scan_id, beamline_id, uid,
-                     owner='', group='', project='', custom=None):
+def insert_runstart(time, scan_id, beamline_id, uid, owner='', group='',
+                    project='', custom=None):
     """Insert a RunStart document into the database.
 
     Parameters
@@ -593,11 +592,9 @@ def insert_runstart(time, scan_id, beamline_id, uid,
     if custom is None:
         custom = {}
 
-    runstart = RunStart(time=time, scan_id=scan_id,
-                        uid=uid,
-                        beamline_id=beamline_id,
-                        owner=owner, group=group, project=project,
-                        **custom)
+    runstart = RunStart(time=time, scan_id=scan_id, uid=uid,
+                        beamline_id=beamline_id, owner=owner, group=group,
+                        project=project, **custom)
 
     runstart = runstart.save(validate=True, write_concern={"w": 1})
 
@@ -608,8 +605,8 @@ def insert_runstart(time, scan_id, beamline_id, uid,
 
 
 @_ensure_connection
-def insert_runstop(run_start, time, uid, exit_status='success',
-                    reason='', custom=None):
+def insert_runstop(run_start, time, uid, exit_status='success', reason='',
+                   custom=None):
     """Insert RunStop document into database
 
     Parameters
@@ -1133,7 +1130,6 @@ def find_events(descriptor=None, **kwargs):
 
     for ev in events:
         del ev['_id']
-
         # pop the descriptor oid
         desc_oid = ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
