@@ -8,6 +8,9 @@ from bson.objectid import ObjectId
 __author__ = 'arkilic'
 
 
+__all__ = ['_verify_handler', '_unpack_params',
+           '_return2client', '_stringify_data']
+
 def _verify_handler(handler):
     if isinstance(handler, tornado.web.RequestHandler):
         return True
@@ -71,8 +74,3 @@ def _stringify_data(docs):
     else:
         stringed = docs
     return stringed
-
-
-def _write(handler, payload):
-    if not isinstance(handler, tornado.web.RequestHandler):
-        raise TypeError('Cannot unpack the query params. Handler required')
