@@ -448,14 +448,13 @@ def fetch_events_generator(descriptor):
         # ditch the ObjectID
         del ev['_id']
         # pop the descriptor oid
-        ev.pop('descriptor_id')
+        del ev['descriptor_id']
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
-        # pop the data
-        data = ev.pop('data')
-        # replace it with the friendly paired dicts
-        ev['data'], ev['timestamps'] = [{k: v[j] for k, v in data.items()}
-                                        for j in [0, 1]]
+
+        ev['timestamps'] = {k: v[1] for k, v in six.iteritems(ev['data'])}
+        ev['data'] = {k: v[0] for k, v in six.iteritems(ev['data'])}
+
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
 
@@ -1136,17 +1135,17 @@ def find_events(descriptor=None, **kwargs):
     events = events.as_pymongo()
 
     for ev in events:
-        # ditch the ObjectID
-        ev.pop('_id')
+        del ev['_id']
+
         # pop the descriptor oid
         desc_oid = ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
         ev['descriptor'] = _descriptor_given_oid(desc_oid)
-        # pop the data
-        data = ev.pop('data')
-        # replace it with the friendly paired dicts
-        ev['data'], ev['timestamps'] = [{k: v[j] for k, v in data.items()}
-                                        for j in range(2)]
+
+        # re-format the data
+        ev['timestamps'] = {k: v[1] for k, v in six.iteritems(ev['data'])}
+        ev['data'] = {k: v[0] for k, v in six.iteritems(ev['data'])}
+
         # wrap it our fancy dict
         ev = doc.Document('Event', ev)
 
