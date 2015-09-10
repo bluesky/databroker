@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from metadatastore.api import (insert_run_start, insert_event,
-                               insert_descriptor, insert_runstop)
+                               insert_descriptor, insert_run_stop)
 
 from metadatastore.api import find_last, find_events
 import time
@@ -52,7 +52,7 @@ for idx, i in enumerate(np.linspace(start, stop, num)):
                      timestamps=ts,
                      data=data,
                      uid=str(uuid.uuid4()))
-insert_runstop(run_start, time=time.time(), uid=str(uuid.uuid4()))
+insert_run_stop(run_start, time=time.time(), uid=str(uuid.uuid4()))
 last_run = next(find_last())
 try:
     if str(last_run.uid) != str(run_start):

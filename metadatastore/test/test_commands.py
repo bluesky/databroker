@@ -158,12 +158,12 @@ def test_run_stop_insertion():
     exit_status = 'success'
     reason = 'uh, because this is testing and it better be a success?'
     # insert the document
-    run_stop_uid = mdsc.insert_runstop(run_start_uid, time,
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid, time,
                                        exit_status=exit_status,
                                        reason=reason, uid=str(uuid.uuid4()))
 
     # get the sanitized run_stop document from metadatastore
-    run_stop, = mdsc.find_runstops(uid=run_stop_uid)
+    run_stop, = mdsc.find_run_stops(uid=run_stop_uid)
 
     # make sure it does not have an 'id' field
     check_for_id(run_stop)
@@ -187,7 +187,7 @@ def test_find_events_smoke():
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
-    mdsc.insert_runstop(rs, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
     mdsc.clear_process_cache()
 
     next(mdsc.find_events())
@@ -231,7 +231,7 @@ def test_find_funcs_for_smoke():
             {'owner': 'drdrake'},
             {'scan_id': 1},
             {'uid': run_start_uid}],
-        mdsc.find_runstops: [
+        mdsc.find_run_stops: [
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
             {'start_time': ttime.time()-1, 'stop_time': ttime.time()},
@@ -338,7 +338,7 @@ def test_bulk_insert():
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
-    mdsc.insert_runstop(rs, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
 
     ev_gen = mdsc.fetch_events_generator(e_desc)
 
@@ -354,7 +354,7 @@ def test_bulk_table():
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
-    mdsc.insert_runstop(rs, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
     ret = mdsc.fetch_events_table(e_desc)
     descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
@@ -364,10 +364,10 @@ def test_bulk_table():
 
 def test_cache_clear_lookups():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
-    run_stop_uid = mdsc.insert_runstop(run_start_uid,
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid,
                                        ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
-    run_stop = mdsc.runstop_given_uid(run_stop_uid)
+    run_stop = mdsc.run_stop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
     mdsc.clear_process_cache()
@@ -375,7 +375,7 @@ def test_cache_clear_lookups():
     run_start2 = mdsc.run_start_given_uid(run_start_uid)
     mdsc.clear_process_cache()
 
-    run_stop2 = mdsc.runstop_given_uid(run_stop_uid)
+    run_stop2 = mdsc.run_stop_given_uid(run_stop_uid)
     mdsc.clear_process_cache()
     ev_desc2 = mdsc.descriptor_given_uid(e_desc_uid)
     ev_desc3 = mdsc.descriptor_given_uid(e_desc_uid)
@@ -388,10 +388,10 @@ def test_cache_clear_lookups():
 
 def test_run_stop_by_run_start():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
-    run_stop_uid = mdsc.insert_runstop(run_start_uid,
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid,
                                        ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
-    run_stop = mdsc.runstop_given_uid(run_stop_uid)
+    run_stop = mdsc.run_stop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
 
     run_stop2 = mdsc.stop_by_start(run_start)
@@ -407,7 +407,7 @@ def test_run_stop_by_run_start():
 
 def test_find_run_start():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
-    mdsc.insert_runstop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
 
     run_start = mdsc.run_start_given_uid(run_start_uid)
 
@@ -416,25 +416,25 @@ def test_find_run_start():
     assert_equal(run_start, run_start2)
 
 
-def test_find_runstop():
+def test_find_run_stop():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
-    run_stop_uid = mdsc.insert_runstop(run_start_uid, ttime.time(),
+    run_stop_uid = mdsc.insert_run_stop(run_start_uid, ttime.time(),
                                        uid=str(uuid.uuid4()))
 
     run_start = mdsc.run_start_given_uid(run_start_uid)
-    run_stop = mdsc.runstop_given_uid(run_stop_uid)
+    run_stop = mdsc.run_stop_given_uid(run_stop_uid)
 
-    run_stop2, = list(mdsc.find_runstops(run_start=run_start_uid))
-    run_stop3, = list(mdsc.find_runstops(run_start=run_start))
+    run_stop2, = list(mdsc.find_run_stops(run_start=run_start_uid))
+    run_stop3, = list(mdsc.find_run_stops(run_start=run_start))
     assert_equal(run_stop, run_stop2)
     assert_equal(run_stop, run_stop3)
 
 
 @raises(RuntimeError)
-def test_double_runstop():
+def test_double_run_stop():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
-    mdsc.insert_runstop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
-    mdsc.insert_runstop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
 
 
 def test_find_last_for_smoke():

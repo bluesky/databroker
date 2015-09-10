@@ -1,6 +1,6 @@
 from __future__ import division
 from metadatastore.api import (insert_event, insert_descriptor,
-                               find_events, insert_runstop)
+                               find_events, insert_run_stop)
 
 import uuid
 

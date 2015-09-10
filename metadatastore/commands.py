@@ -158,7 +158,7 @@ def _cache_run_start(run_start):
     return run_start
 
 
-def _cache_runstop(runstop):
+def _cache_run_stop(run_stop):
     """De-reference and cache a RunStop document
 
     The de-referenced Document is cached against the
@@ -166,32 +166,32 @@ def _cache_runstop(runstop):
 
     Parameters
     ----------
-    runstop : dict
+    run_stop : dict
         raw pymongo dictionary. This is expected to have
         an entry `_id` with the ObjectId used by mongo.
 
     Returns
     -------
-    runstop : doc.Document
+    run_stop : doc.Document
         Document instance for this RunStop document.
         The ObjectId has been stripped.
     """
-    runstop = dict(runstop)
+    run_stop = dict(run_stop)
     # pop off the ObjectId of this document
-    oid = runstop.pop('_id')
+    oid = run_stop.pop('_id')
 
     # do the run-start de-reference
-    start_oid = runstop.pop('run_start_id')
-    runstop['run_start'] = _run_start_given_oid(start_oid)
+    start_oid = run_stop.pop('run_start_id')
+    run_stop['run_start'] = _run_start_given_oid(start_oid)
 
     # create the Document object
-    runstop = doc.Document('RunStop', runstop)
+    run_stop = doc.Document('RunStop', run_stop)
 
     # update the cache and uid->oid mapping
-    _RUNSTOP_CACHE_OID[oid] = runstop
-    _RUNSTOP_UID_to_OID_MAP[runstop['uid']] = oid
+    _RUNSTOP_CACHE_OID[oid] = run_stop
+    _RUNSTOP_UID_to_OID_MAP[run_stop['uid']] = oid
 
-    return runstop
+    return run_stop
 
 
 def _cache_descriptor(descriptor):
@@ -314,7 +314,7 @@ def run_start_given_uid(uid):
 
 
 @_ensure_connection
-def runstop_given_uid(uid):
+def run_stop_given_uid(uid):
     """Given a uid, return the RunStop document
 
     Parameters
@@ -324,7 +324,7 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    runstop : doc.Document
+    run_stop : doc.Document
         The RunStop document fully de-referenced
 
     """
@@ -333,9 +333,9 @@ def runstop_given_uid(uid):
         return _RUNSTOP_CACHE_OID[oid]
     except KeyError:
         pass
-    # get the raw runstop
-    runstop = RunStop._get_collection().find_one({'uid': uid})
-    return _cache_runstop(runstop)
+    # get the raw run_stop
+    run_stop = RunStop._get_collection().find_one({'uid': uid})
+    return _cache_run_stop(run_stop)
 
 
 @_ensure_connection
@@ -376,7 +376,7 @@ def stop_by_start(run_start):
 
     Returns
     -------
-    runstop : doc.Document
+    run_stop : doc.Document
         The RunStop document
 
     Raises
@@ -389,13 +389,13 @@ def stop_by_start(run_start):
     run_start_given_uid(run_start_uid)
     oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
 
-    runstop = RunStop._get_collection().find_one(
+    run_stop = RunStop._get_collection().find_one(
         {'run_start_id': oid})
 
-    if runstop is None:
+    if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
-    return _cache_runstop(runstop)
+    return _cache_run_stop(run_stop)
 
 
 @_ensure_connection
@@ -623,7 +623,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
 
 
 @_ensure_connection
-def insert_runstop(run_start, time, uid, exit_status='success', reason='',
+def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
                    custom=None):
     """Insert RunStop document into database
 
@@ -648,7 +648,7 @@ def insert_runstop(run_start, time, uid, exit_status='success', reason='',
 
     Returns
     -------
-    runstop : str
+    run_stop : str
         uid of inserted Document
 
     Raises
@@ -671,14 +671,14 @@ def insert_runstop(run_start, time, uid, exit_status='success', reason='',
     # create a reference field
     rs_ref = DBRef('RunStart', run_start_oid)
 
-    runstop = RunStop(run_start=rs_ref, reason=reason, time=time,
+    run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
                       uid=uid,
                       exit_status=exit_status, **custom)
 
-    runstop = runstop.save(validate=True, write_concern={"w": 1})
-    _cache_runstop(runstop.to_mongo().to_dict())
+    run_stop = run_stop.save(validate=True, write_concern={"w": 1})
+    _cache_run_stop(run_stop.to_mongo().to_dict())
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", runstop.uid, run_start['uid'])
+                 " with uid %s", run_stop.uid, run_start['uid'])
 
     return uid
 
@@ -1002,7 +1002,7 @@ find_run_starts = find_run_starts
 
 
 @_ensure_connection
-def find_runstops(run_start=None, **kwargs):
+def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
     Parameters
@@ -1030,7 +1030,7 @@ def find_runstops(run_start=None, **kwargs):
 
     Yields
     ------
-    runstop : doc.Document
+    run_stop : doc.Document
         The requested RunStop documents
     """
     # if trying to find by run_start, there can be only one
@@ -1041,10 +1041,10 @@ def find_runstops(run_start=None, **kwargs):
         oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
         kwargs['run_start_id'] = oid
     _format_time(kwargs)
-    runstop = RunStop.objects(__raw__=kwargs).as_pymongo()
+    run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
 
-    return (_cache_runstop(rs) for rs in runstop.order_by('-time'))
-find_run_stops = find_runstops
+    return (_cache_run_stop(rs) for rs in run_stop.order_by('-time'))
+find_run_stops = find_run_stops
 
 
 @_ensure_connection
