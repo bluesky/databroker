@@ -635,6 +635,11 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     -------
     run_stop : str
         uid of inserted Document
+
+    Raises
+    ------
+    RuntimeError
+        Only one RunStop per RunStart, raises if you try to insert a second
     """
     if custom is None:
         custom = {}
@@ -1096,7 +1101,7 @@ def find_events(descriptor=None, **kwargs):
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
     descriptor : doc.Document or uid, optional
-
+       Find events for a given EventDescriptor
     uid : str, optional
         Globally unique id string provided to metadatastore
 
@@ -1107,8 +1112,6 @@ def find_events(descriptor=None, **kwargs):
     # Some user-friendly error messages for an easy mistake to make
     if 'event_descriptor' in kwargs:
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
-    if 'event_descriptor_id' in kwargs:
-        raise ValueError("Use 'descriptor_id', not 'event_descriptor_id'.")
 
     if descriptor:
         descriptor = doc_or_uid_to_uid(descriptor)
