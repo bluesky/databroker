@@ -401,6 +401,7 @@ def descriptors_by_runstart(runstart):
     """
     # normalize the input and get the runstart oid
     runstart_uid = doc_or_uid_to_uid(runstart)
+    runstart_given_uid(runstart_uid)
     oid = _RUNSTART_UID_to_OID_MAP[runstart_uid]
 
     # query the database for any event descriptors which
