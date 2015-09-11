@@ -1,23 +1,15 @@
 from __future__ import print_function
-import sys
-import humanize
-import time as ttime
+import warnings
 import six  # noqa
-from six import StringIO
 from collections import Iterable, deque
-from ..utils.console import color_print
-from metadatastore.api import (find_last, find_run_starts,
-                               find_descriptors,
-                               find_events)
-
+import pandas as pd
+from metadatastore.commands import (find_last, find_run_starts,
+                                    find_descriptors,
+                                    fetch_events_generator, fetch_events_table)
 import metadatastore.doc as doc
-from metadatastore.doc import pretty_print_time
 import metadatastore.commands as mc
-
 import filestore.api as fs
-import os
 import logging
-import uuid
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +20,6 @@ class _DataBrokerClass(object):
     # You probably do not want to instantiate this; use
     # broker.DataBroker instead.
 
-    @classmethod
     def __getitem__(cls, key):
         if isinstance(key, slice):
             # Interpret key as a slice into previous scans.
@@ -47,7 +38,7 @@ class _DataBrokerClass(object):
                                  "the result could become too large.")
             start = -key.start
             result = list(find_last(start))[stop::key.step]
-            header = Headers([Header.from_run_start(h) for h in result])
+            header = [Header.from_run_start(h) for h in result]
         elif isinstance(key, int):
             if key > -1:
                 # Interpret key as a scan_id.
@@ -85,7 +76,7 @@ class _DataBrokerClass(object):
         elif isinstance(key, Iterable):
             # Interpret key as a list of several keys. If it is a string
             # we will never get this far.
-            return Headers([cls.__getitem__(k) for k in key])
+            return [cls.__getitem__(k) for k in key]
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
@@ -93,42 +84,7 @@ class _DataBrokerClass(object):
                              "like ['a23jslk'].")
         return header
 
-    @classmethod
-    def fetch_events(cls, headers, fill=True):
-        """
-        Get Events from given run(s).
-
-        Parameters
-        ----------
-        headers : RunHeader or iterable of RunHeader
-            The headers to fetch the events for
-
-        fill : bool, optional
-            If non-scalar data should be filled in, Defaults to True
-
-        Yields
-        ------
-        event : Event
-            The event, optionally with non-scalar data filled in
-        """
-        try:
-            headers.items()
-        except AttributeError:
-            pass
-        else:
-            headers = [headers]
-
-        for header in headers:
-            descriptors = find_descriptors(
-                run_start=header['uid'])
-            for descriptor in descriptors:
-                for event in find_events(descriptor=descriptor):
-                    if fill:
-                        fill_event(event)
-                    yield event
-
-    @classmethod
-    def find_headers(cls, **kwargs):
+    def __call__(cls, **kwargs):
         """Given search criteria, find Headers describing runs.
 
         This function returns a list of dictionary-like objects encapsulating
@@ -172,9 +128,9 @@ class _DataBrokerClass(object):
 
         Examples
         --------
-        >>> find_headers(start_time='2015-03-05', stop_time='2015-03-10')
-        >>> find_headers(data_key='motor1')
-        >>> find_headers(data_key='motor1', start_time='2015-03-05')
+        >>> DataBroker(start_time='2015-03-05', stop_time='2015-03-10')
+        >>> DataBroker(data_key='motor1')
+        >>> DataBroker(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
         run_start = find_run_starts(**kwargs)
@@ -201,92 +157,16 @@ class _DataBrokerClass(object):
         result = []
         for rs in run_start:
             result.append(Header.from_run_start(rs))
-        return Headers(result)
+        return result
+
+    def find_headers(cls, **kwargs):
+        "This function is deprecated. Use DataBroker() instead."
+        warnings.warn(UserWarning, "Use DataBroker() instead of "
+                                   "DataBroker.find_headers()")
+        return cls(**kwargs)
 
 
-class EventQueue(object):
-    """
-    Get Events from Headers during data collection.
-
-    This is a simple single-process implementation.
-
-    Example
-    -------
-
-    >>> from dataportal.broker import DataBroker, EventQueue
-    >>> header = DataBroker[-1]  # for example, most recent header
-    >>> queue = EventQueue(header)
-    >>> while True:
-    ...    queue.update()
-    ...    new_events = queue.get()
-    ...    # Do something with them, such as dm.append_events(new_events)
-    """
-
-    def __init__(self, headers):
-        if hasattr(headers, 'keys'):
-            # This is some kind of dict.
-            headers = [headers]
-        self.headers = headers
-        self._known_uids = set()
-        # This is nested, a deque of lists that are bundles of events
-        # discovered in the same update.
-        self._queue = deque()
-
-    def update(self):
-        """Obtain a fresh list of the relevant Events."""
-
-        # like fetch_events, but we don't fill in the data right away
-        events = []
-        for header in self.headers:
-            descriptors = find_descriptors(run_start=header['uid'])
-            for descriptor in descriptors:
-                events.extend(list(find_events(descriptor=descriptor)))
-        if not events:
-            return
-
-        new_events = []
-        for event in events:
-            if event.uid not in self._known_uids:
-                new_events.append(event)
-                self._known_uids.add(event.uid)
-
-        # The major performance savings is here: only fill the new events.
-        [fill_event(event) for event in new_events]
-        self._queue.append(new_events)  # the entry can be an empty list
-
-    def get(self):
-        """
-        Get a list of new Events.
-
-        Each call returns a (maybe empty) list of Events that were
-        discovered in the same call to update().
-        """
-        # EventQueue is FIFO.
-        try:
-            return self._queue.popleft()
-        except IndexError:
-            return []
-
-
-class LocationError(ValueError):
-    pass
-
-
-def _get_local_ca_host():
-    """Obtain the url for the cahost by using the uname() function to
-    grab the local beamline id
-
-    References
-    ----------
-    https://github.com/NSLS-II/channelarchiver/README.rst
-    """
-    beamline_id = os.uname()[1][:4]
-    if not beamline_id.startswith('xf'):
-        raise LocationError('You are not on a registered beamline computer. '
-                            'Unable to guess which channel archiver to use. '
-                            'Please specify the channel archiver you wish to'
-                            'obtain data from.')
-    return 'http://' + beamline_id + '-ca/cgi-bin/ArchiveDataServer.cgi'
+DataBroker = _DataBrokerClass()  # singleton, used by pims_readers import below
 
 
 def _inspect_descriptor(descriptor):
@@ -323,191 +203,137 @@ class Header(doc.Document):
 
         Parameters
         ----------
-        run_start : metadatastore.document.Document
+        run_start : metadatastore.document.Document or str
+            RunStart Document or uid
 
         Returns
         -------
         header : dataportal.broker.Header
         """
-        return make_header(run_start, not verify_integrity)
+        run_start_uid = mc.doc_or_uid_to_uid(run_start)
+        run_start = mc.run_start_given_uid(run_start_uid)
 
-    def __repr__(self):
-        # Even with a scan_id of 6+ digits, this fits under 80 chars.
-        return "<Header scan_id={0} run_start_uid={1!r}>".format(
-            self['scan_id'], self['uid'])
+        try:
+            run_stop = mc.stop_by_start(run_start_uid)
+        except mc.NoRunStop:
+            run_stop = None
 
-    @property
-    def summary(self):
-        return summerize_header(self)
+        try:
+            ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
+                        for ev_desc in
+                        mc.descriptors_by_start(run_start_uid)]
+        except mc.NoEventDescriptors:
+            ev_descs = []
 
-
-def make_header(run_start, allow_no_run_stop=False):
-    header = dict()
-    # make sure that our run_start is really a document
-    # and get the uid
-    run_start_uid = mc.doc_or_uid_to_uid(run_start)
-    run_start = mc.run_start_given_uid(run_start_uid)
-    # fill in the run_start
-    header['run_start'] = run_start
-
-    # fields to copy out of run_start into top-level header
-    run_start_copy = {'start_time': 'time',
-                      'time': 'time',
-                      'scan_id': 'scan_id',
-                      'uid': 'uid',
-                      'sample': 'sample'}
-
-    for h_key, rs_key in run_start_copy.items():
-        header[h_key] = run_start[rs_key]
-
-    # fields to copy to top-level header
-    run_stop_copy = {'stop_time': 'time',
-                     'exit_reason': 'reason',
-                     'exit_status': 'exit_status'}
-
-    # see if we have a run_stop, ok if we don't
-    try:
-        run_stop = mc.stop_by_start(run_start_uid)
-        for h_key, rs_key in run_stop_copy.items():
-            if rs_key == 'reason':
-                header[h_key] = run_stop.get(rs_key, '')
-            else:
-                header[h_key] = run_stop[rs_key]
-
-        header['run_stop'] = doc.ref_doc_to_uid(run_stop, 'run_start')
-
-    except mc.NoRunStop:
-        if allow_no_run_stop:
-            header['run_stop'] = None
-            for k in run_stop_copy:
-                header[k] = None
-        else:
-            raise
-
-    try:
-        ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
-                    for ev_desc in
-                    mc.descriptors_by_start(run_start_uid)]
-
-    except mc.NoEventDescriptors:
-        ev_descs = []
-
-    header['descriptors'] = ev_descs
-    return doc.Document('header', header)
-
-
-def summerize_header(header):
-    special_keys = set(('start_time', 'time', 'stop_time', 'scan_id',
-                        'uid', 'descriptors', 'sample', 'exit_status',
-                        'exit_reason', 'event_descriptors'))
-    run_start = header['run_start']
-    s = Stream()
-    s.write("<Header ", newline=False)
-    s.write("#{0} ".format(header['scan_id']), 'green', newline=False)
-    s.write("{0!r}".format(header['uid'][:6]), color='red', newline=False)
-    s.write(">")
-
-    s.write("Sample: {0!r} ".format(run_start['sample']))
-    s.write("Start Time: {0}".format(pretty_print_time(header['start_time'])))
-    if header['run_stop'] is None:
-        st_tm, exit_status, exit_reason = ['Unknown'] * 3
-    else:
-        st_tm = pretty_print_time(header['stop_time'])
-        exit_status = header['exit_status']
-        exit_reason = header['exit_reason']
-
-    s.write("Stop Time: {0}".format(st_tm))
-    if header['stop_time']:
-        dur = humanize.naturaldelta(header['stop_time'] - header['start_time'])
-        s.write('Run Duration : {0}'.format(dur))
-    s.write("Exit Status: {0}".format(exit_status))
-    s.write("Exit Reason: {0}".format(exit_reason))
-    s.write("uid={0!r}".format(header['uid']), 'lightgrey')
-    s.write("Event Descriptors:")
-    for descriptor in header['descriptors']:
-        s.write("..Descriptor ", newline=False)
-        s.write("({0!r})".format(descriptor['uid']), 'lightgrey')
-        for data_key, data_key_dict in descriptor.data_keys.items():
-            s.write("....", newline=False)
-            s.write("{0}".format(data_key), 'green', newline=False)
-            s.write(': {0}'.format(data_key_dict['source']),
-                    color='lightgrey', newline=False)
-            s.write(" <{0}".format(data_key_dict['dtype']), newline=False)
-            shape = data_key_dict['shape']
-            if shape:
-                s.write(', {}'.format(shape), newline=False)
-            s.write('>')
-    for k in sorted(header):
-        if k in special_keys:
-            continue
-        elif k in ('run_stop', 'run_start'):
-            s.write("{0}:".format(k))
-            for _k, v in sorted(header[k].items()):
-                if _k in 'run_start':
-                    v = repr(v['uid'])
-                elif _k == 'uid':
-                    v = repr(v)
-                elif _k == 'time':
-                    v = pretty_print_time(v)
-                s.write("..{0}: {1}".format(_k, v))
-        else:
-            s.write("{0}: {1}".format(k, header[k]))
-
-    return s.readout()
-
-
-class Stream(object):
-
-    def __init__(self):
-        self._stringio = StringIO()
-        self._stringio.isatty = sys.stdout.isatty
-
-    def write(self, msg, color='default', newline=True):
-        if newline:
-            msg += '\n'
-        color_print(msg, color, file=self._stringio)
-        self._stringio.flush()
-
-    def readout(self):
-        self._stringio.seek(0)
-        return self._stringio.read()
+        d = {'start': run_start, 'stop': run_stop, 'descriptors': ev_descs}
+        return cls('header', d)
 
 
 class IntegrityError(Exception):
     pass
 
 
-class Headers(list):
-    """Put a nice HTML repr on list"""
-    # See http://getbootstrap.com/javascript/#collapse-example-accordion
+def get_events(headers, fields=None):
+    """
+    Get Events from given run(s).
 
-    def _repr_html_(self):
-        repr_uid = uuid.uuid4()
-        prefix = """
-<div class="panel-group" id="accordian-{repr_uid}" role="tablist" aria-multiselectable="true">""".format(repr_uid=repr_uid)
-        element = """
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="heading-{uid}" style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">
-      <h4 class="panel-title">
-        <a data-toggle="collapse" data-parent="#accordion-{repr_uid}" href="#collapse-{uid}" aria-expanded="false" aria-controls="collapse-{uid}">
-          Header: Scan {header.scan_id} &nbsp; <span style="color: #AAAAAA;">{human_time}</span>
-        </a>
-      </h4>
-    </div>
-    <div id="collapse-{uid}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading-{uid}">
-      <div class="panel-body">
-        {html_header}
-      </div>
-    </div>
-  </div>
-        """
-        suffix = """
-</div>"""
-        content = ''.join([element.format(header=header,
-                                          uid=header['uid'],
-                                          html_header=header._repr_html_(),
-                                          repr_uid=repr_uid,
-                                          human_time=humanize.naturaldelta(
-                                              ttime.time() - header['start_time']))
-                           for header in self])
-        return prefix + content + suffix
+    Parameters
+    ----------
+    headers : Header or iterable of Headers
+        The headers to fetch the events for
+    fields : list, optional
+        whitelist of field names of interest; if None, all are returned
+
+    Yields
+    ------
+    event : Event
+        The event, optionally with non-scalar data filled in
+    """
+    # A word about the 'fields' argument:
+    # Notice that we assume that the same field name cannot occur in
+    # more than one descriptor. We could relax this assumption, but
+    # we current enforce it in bluesky, so it is safe for now.
+    try:
+        headers.items()
+    except AttributeError:
+        pass
+    else:
+        headers = [headers]
+
+    if fields is None:
+        fields = []
+    fields = set(fields)
+
+    for header in headers:
+        descriptors = find_descriptors(header['start']['uid'])
+        for descriptor in descriptors:
+            if fields is not None:
+                all_fields = set(descriptor['data_keys'].keys())
+                discard_fields = all_fields - fields
+            else:
+                discard_fields = []
+            for event in fetch_events_generator(descriptor):
+                for field in discard_fields:
+                    del event.data[field]
+                    del event.timestamps[field]
+                fill_event(event)
+                yield event
+
+
+
+def get_table(headers, fields=None):
+    """
+    Make a table (pandas.DataFrame) from given run(s).
+
+    Parameters
+    ----------
+    headers : Header or iterable of Headers
+        The headers to fetch the events for
+    fill : bool, optional
+        If non-scalar data should be filled in, Defaults to True
+    fields : list, optional
+        whitelist of field names of interest; if None, all are returned
+
+    Returns
+    -------
+    table : pandas.DataFrame
+    """
+    # A word about the 'fields' argument:
+    # Notice that we assume that the same field name cannot occur in
+    # more than one descriptor. We could relax this assumption, but
+    # we current enforce it in bluesky, so it is safe for now.
+    try:
+        headers.items()
+    except AttributeError:
+        pass
+    else:
+        headers = [headers]
+
+    if fields is None:
+        fields = []
+    fields = set(fields)
+
+    for header in headers:
+        descriptors = find_descriptors(header['start']['uid'])
+        dfs = []
+        for descriptor in descriptors:
+            if fields is not None:
+                all_fields = set(descriptor['data_keys'].keys())
+                discard_fields = all_fields - fields
+            else:
+                discard_fields = []
+            is_external = _inspect_descriptor(descriptor)
+
+            payload = fetch_events_table(descriptor)
+            descriptor, data, seq_nums, times, uids, timestamps = payload
+            df = pd.DataFrame(times)
+            df.index = seq_nums
+            for field, values in six.iteritems(data):
+                if field in discard_fields:
+                    continue
+                if is_external[field]:
+                    # TODO someday we will have bulk retrieve in FS
+                    data[field] = [fs.retrieve(value) for value in values]
+                df[field] = values
+            dfs.append(df)
+    return pd.concat(dfs)
