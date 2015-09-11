@@ -11,6 +11,22 @@ __author__ = 'arkilic'
 __all__ = ['_verify_handler', '_unpack_params',
            '_return2client', '_stringify_data']
 
+
+
+
+SCHEMA_PATH = 'schema'
+SCHEMA_NAMES = {'run_start': 'run_start.json',
+                'run_stop': 'run_stop.json',
+                'event': 'event.json',
+                'bulk_events': 'bulk_events.json',
+                'descriptor': 'event_descriptor.json'}
+fn = '{}/{{}}'.format(SCHEMA_PATH)
+schemas = {}
+for name, filename in SCHEMA_NAMES.items():
+    with open(rs_fn('metadataservice', resource_name=fn.format(filename))) as fin:
+        schemas[name] = ujson.load(fin)
+
+
 def _verify_handler(handler):
     if isinstance(handler, tornado.web.RequestHandler):
         return True

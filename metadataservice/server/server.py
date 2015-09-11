@@ -2,7 +2,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
-from metadataservice.schema.validate import schemas
 import jsonschema
 from tornado import gen
 import pymongo
@@ -58,12 +57,12 @@ class RunStartHandler(tornado.web.RequestHandler):
    Methods
     -------
     get()
-	Query run_start documents.Very thin as we do not want to create a
+        Query run_start documents.Very thin as we do not want to create a
         bottleneck dealing with multiple clients. self.write() dumps the json to
         socket. Client keeps connection open until server kills the socket with
         self.finish(), otherwise keeps hanging wasting resources
     post()
-	Insert a run_start document.Same validation method as bluesky, secondary
+        Insert a run_start document.Same validation method as bluesky, secondary
         safety net. Any changes done here or BlueSky must be implemented here and
         BlueSky.Any data acquisition script can utilize metadataservice as long as 
         it follows this format. 
@@ -85,7 +84,7 @@ class RunStartHandler(tornado.web.RequestHandler):
     def post(self):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, schemas['run_start'])
+        jsonschema.validate(data, utils.schemas['run_start'])
         yield db.run_start.insert(data)
         utils._return2client(self, data)
         self.finish()
@@ -125,7 +124,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     def post(self):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, schemas['descriptor'])
+        jsonschema.validate(data, utils.schemas['descriptor'])
         yield db.event_descriptor.insert(data)#async insert
         utils._return2client(self, data)
         self.finish()
@@ -164,7 +163,7 @@ class RunStopHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self):
         data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, schemas['run_stop'])
+        jsonschema.validate(data, utils.schemas['run_stop'])
         yield db.run_stop.insert(data)
         utils._return2client(self, data)
         self.finish()
@@ -189,7 +188,7 @@ class EventHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-	query = utils._unpack_params(self)
+        query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         cursor = db.event_descriptor.find(query).sort('time', pymongo.ASCENDING)[start:stop]
@@ -197,16 +196,16 @@ class EventHandler(tornado.web.RequestHandler):
         payload = utils._stringify_data(docs)
         utils._return2client(self, payload)
         self.finish()
-    
+
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-	db = self.settings['db']
+        db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        #TODO: Add validation once we figure out how to do this in BS
         if isinstance(data, list):
-	    # unordered. in seqnum I trust
-	    bulk = db.event.initialize_unordered_bulk_op()
+            # unordered insert. in seqnum I trust
+            jsonschema.validate(data, utils.schemas['bulk_events'])
+            bulk = db.event.initialize_unordered_bulk_op()
             for _ in data:
                 bulk.insert(_)
             try:
@@ -214,8 +213,9 @@ class EventHandler(tornado.web.RequestHandler):
             except pymongo.errors.BulkWriteError as err:
                 utils._return2client(err)
         else:
-	    yield db.event.insert(data)
-	    utils._return2client(self, data)
+            jsonschema.validate(data, utils.schemas['bulk_events'])
+            yield db.event.insert(data)
+        # utils._return2client(self, data)
         self.finish()
 
 
