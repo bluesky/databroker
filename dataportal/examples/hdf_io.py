@@ -37,8 +37,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from metadatastore.api import (insert_run_start, insert_event,
-                               insert_event_descriptor,
-                               insert_beamline_config, find_events)
+                               insert_descriptor,
+                               find_events)
 from filestore.api import register_handler, insert_resource, insert_datum
 import filestore.file_writers as fw
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
@@ -54,7 +54,6 @@ import uuid
 import logging
 logger = logging.getLogger(__name__)
 noisy = common.noisy
-
 
 
 register_handler('hdf_maps', HDFM)
@@ -130,10 +129,8 @@ def hdf_data_io():
     """
     Save data to db and run test when data is retrieved.
     """
-    blc = insert_beamline_config({'cfg1': 1}, 0.0)
     run_start_uid = insert_run_start(time=0., scan_id=1, beamline_id='csx',
-                                     uid=str(uuid.uuid4()),
-                                     beamline_config=blc)
+                                     uid=str(uuid.uuid4()))
 
     # data keys entry
     data_keys = {'x_pos': dict(source='MCA:pos_x', dtype='number'),
@@ -143,7 +140,7 @@ def hdf_data_io():
                                       external='FILESTORE:')}
 
     # save the event descriptor
-    descriptor_uid = insert_event_descriptor(
+    descriptor_uid = insert_descriptor(
         run_start=run_start_uid, data_keys=data_keys, time=0.,
         uid=str(uuid.uuid4()))
 

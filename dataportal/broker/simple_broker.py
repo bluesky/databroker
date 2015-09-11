@@ -1,17 +1,20 @@
 from __future__ import print_function
 import sys
 import humanize
-import datetime
+import time as ttime
 import six  # noqa
 from six import StringIO
-from collections import defaultdict, Iterable, deque
+from collections import Iterable, deque
 from ..utils.console import color_print
-from metadatastore.api import (Document, find_last, find_run_starts,
-                               find_event_descriptors, find_run_stops,
+from metadatastore.api import (find_last, find_run_starts,
+                               find_descriptors,
                                find_events)
-from bson import ObjectId
-import warnings
-from filestore.api import retrieve
+
+import metadatastore.doc as doc
+from metadatastore.doc import pretty_print_time
+import metadatastore.commands as mc
+
+import filestore.api as fs
 import os
 import logging
 import uuid
@@ -116,8 +119,8 @@ class _DataBrokerClass(object):
             headers = [headers]
 
         for header in headers:
-            descriptors = find_event_descriptors(
-                run_start=header.run_start_uid)
+            descriptors = find_descriptors(
+                run_start=header['uid'])
             for descriptor in descriptors:
                 for event in find_events(descriptor=descriptor):
                     if fill:
@@ -181,18 +184,18 @@ class _DataBrokerClass(object):
             query = {node_name: {'$exists': True}}
             descriptors = []
             for rs in run_start:
-                descriptor = find_event_descriptors(run_start=rs, **query)
+                descriptor = find_descriptors(run_start=rs, **query)
                 for d in descriptor:
                     descriptors.append(d)
             # query = {node_name: {'$exists': True},
             #          'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
-            # descriptors = find_event_descriptors(**query)
+            # descriptors = find_descriptors(**query)
             result = []
             known_uids = deque()
             for descriptor in descriptors:
-                if descriptor.run_start.uid not in known_uids:
-                    rs = descriptor.run_start
-                    known_uids.append(rs.uid)
+                if descriptor['run_start']['uid'] not in known_uids:
+                    rs = descriptor['run_start']
+                    known_uids.append(rs['uid'])
                     result.append(rs)
             run_start = result
         result = []
@@ -235,7 +238,7 @@ class EventQueue(object):
         # like fetch_events, but we don't fill in the data right away
         events = []
         for header in self.headers:
-            descriptors = find_event_descriptors(run_start=header.run_start_uid)
+            descriptors = find_descriptors(run_start=header['uid'])
             for descriptor in descriptors:
                 events.extend(list(find_events(descriptor=descriptor)))
         if not events:
@@ -293,10 +296,9 @@ def _inspect_descriptor(descriptor):
     """
     # TODO memoize to cache these results
     data_keys = descriptor.data_keys
-    is_external = defaultdict(lambda: False)
+    is_external = dict()
     for data_key, data_key_dict in data_keys.items():
-        if (data_key_dict and 'external' in data_key_dict):
-            is_external[data_key] = bool(data_key_dict['external'])
+        is_external[data_key] = data_key_dict.get('external', False)
     return is_external
 
 
@@ -308,14 +310,14 @@ def fill_event(event):
     for data_key, value in six.iteritems(event.data):
         if is_external[data_key]:
             # Retrieve a numpy array from filestore
-            event.data[data_key] = retrieve(value)
+            event.data[data_key] = fs.retrieve(value)
 
 
-class Header(Document):
+class Header(doc.Document):
     """A dictionary-like object summarizing metadata for a run."""
 
     @classmethod
-    def from_run_start(cls, run_start, verify_integrity=True):
+    def from_run_start(cls, run_start, verify_integrity=False):
         """
         Build a Header from a RunStart Document.
 
@@ -327,113 +329,131 @@ class Header(Document):
         -------
         header : dataportal.broker.Header
         """
-        header = Header()
-        header._name = "Header"
-        header.event_descriptors = list(
-            find_event_descriptors(run_start=run_start))
-        run_stops = list(find_run_stops(run_start=run_start.uid))
-        try:
-            run_stop, = run_stops
-        except ValueError:
-            num = len(run_stops)
-            run_stop = None
-            if num == 0:
-                error_msg = ("A RunStop record could not be found for the "
-                             "run with run_start_uid {0}".format(run_start.uid))
-                warnings.warn(error_msg)
-            else:
-                error_msg = (
-                    "{0} RunStop records (uids {1}) were found for the run "
-                    "with run_start_uid {2}".format(
-                        num, [rs.uid for rs in run_stops], run_start.uid))
-                if verify_integrity:
-                    raise IntegrityError(error_msg)
-                else:
-                    warnings.warn(error_msg)
-
-        # Map keys from RunStart and RunStop onto Header.
-        run_start_renames = {'start_time': 'time',
-                             'start_datetime': 'time_as_datetime',
-                             'scan_id': 'scan_id',
-                             'beamline_id': 'beamline_id',
-                             'owner': 'owner',
-                             'group': 'group',
-                             'project': 'project',
-                             'run_start_id': 'id',
-                             'run_start_uid': 'uid'}
-
-        run_start_renames_back = {v: k for k, v
-                                  in run_start_renames.items()}
-        for k in run_start:
-            new_key = run_start_renames_back.get(k, k)
-            header[new_key] = run_start[k]
-
-        if run_stop is not None:
-            run_stop_renames = {'stop_time': 'time',
-                                'stop_datetime': 'time_as_datetime',
-                                'exit_reason': 'reason',
-                                'exit_status': 'exit_status',
-                                'run_stop_id': 'id',
-                                'run_stop_uid': 'uid'}
-            run_stop_renames_back = {v: k for k, v
-                                     in run_stop_renames.items()}
-            for k in run_stop:
-                new_key = run_stop_renames_back.get(k, k)
-                header[new_key] = run_stop[k]
-            del header['run_start']
-
-        run_start._name = 'Header'
-
-        # Strip unuseful recursion. We don't mess with underlying Documents,
-        # but the header is a special case, and the repr should reflect
-        # its structure accurately.
-        for ev_desc in header.event_descriptors:
-            ev_desc.run_start = ev_desc.run_start.uid
-        return header
+        return make_header(run_start, not verify_integrity)
 
     def __repr__(self):
         # Even with a scan_id of 6+ digits, this fits under 80 chars.
-        return "<Header scan_id={0} run_start_uid='{1}'>".format(
-            self.scan_id, self.run_start_uid)
+        return "<Header scan_id={0} run_start_uid={1!r}>".format(
+            self['scan_id'], self['uid'])
 
     @property
     def summary(self):
-        special_keys = set(('owner', 'group', 'project', 'beamline_id',
-                            'scan_id', 'start_datetime', 'stop_datetime',
-                            'exit_status', 'exit_reason', 'run_start_uid',
-                            'run_stop_uid', ))
-        s = Stream()
-        s.write("<Header>")
-        s.write("Owner: {0}".format(self.owner))
-        if self.group:
-            s.write("Group: {0}".format(self.group))
-        if self.project:
-            s.write("Project: {0}".format(self.project))
-        s.write("Beamline ID: {0}".format(self.beamline_id), 'lightgray')
-        s.write("Scan ID: {0} ".format(self.scan_id), 'green')
-        s.write("Start Time: {0}".format(self.start_datetime), 'green')
-        s.write("Stop Time: {0}".format(self.get('stop_datetime', 'Unknown')))
-        s.write("Exit Status: {0}".format(self.get('exit_status', 'Unknown')))
-        s.write("Exit Reason: {0}".format(self.get('exit_reason', 'Unknown')))
-        for descriptor in self.event_descriptors:
-            s.write("..Event Descriptor ", newline=False)
-            s.write("(uid='{0}')".format(descriptor.uid), 'lightgrey')
-            for data_key, data_key_dict in descriptor.data_keys.items():
-                s.write("....", newline=False)
-                s.write("{0}".format(data_key), 'green', newline=False)
-                s.write(': {0}'.format(data_key_dict['source']),
-                        color='lightgrey')
-        s.write("run_start_uid='{0}'".format(self.run_start_uid),
-                'lightgrey')
-        if hasattr(self, 'run_stop_uid'):
-            s.write("run_stop_uid='{0}'".format(self.run_stop_uid),
-                    'lightgrey')
-        for k in sorted(self.keys()):
-            if k in special_keys:
-                continue
-            s.write("{0}: {1}".format(k, self[k]))
+        return summerize_header(self)
 
-        return s.readout()
+
+def make_header(run_start, allow_no_run_stop=False):
+    header = dict()
+    # make sure that our run_start is really a document
+    # and get the uid
+    run_start_uid = mc.doc_or_uid_to_uid(run_start)
+    run_start = mc.run_start_given_uid(run_start_uid)
+    # fill in the run_start
+    header['run_start'] = run_start
+
+    # fields to copy out of run_start into top-level header
+    run_start_copy = {'start_time': 'time',
+                      'time': 'time',
+                      'scan_id': 'scan_id',
+                      'uid': 'uid',
+                      'sample': 'sample'}
+
+    for h_key, rs_key in run_start_copy.items():
+        header[h_key] = run_start[rs_key]
+
+    # fields to copy to top-level header
+    run_stop_copy = {'stop_time': 'time',
+                     'exit_reason': 'reason',
+                     'exit_status': 'exit_status'}
+
+    # see if we have a run_stop, ok if we don't
+    try:
+        run_stop = mc.stop_by_start(run_start_uid)
+        for h_key, rs_key in run_stop_copy.items():
+            if rs_key == 'reason':
+                header[h_key] = run_stop.get(rs_key, '')
+            else:
+                header[h_key] = run_stop[rs_key]
+
+        header['run_stop'] = doc.ref_doc_to_uid(run_stop, 'run_start')
+
+    except mc.NoRunStop:
+        if allow_no_run_stop:
+            header['run_stop'] = None
+            for k in run_stop_copy:
+                header[k] = None
+        else:
+            raise
+
+    try:
+        ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
+                    for ev_desc in
+                    mc.descriptors_by_start(run_start_uid)]
+
+    except mc.NoEventDescriptors:
+        ev_descs = []
+
+    header['descriptors'] = ev_descs
+    return doc.Document('header', header)
+
+
+def summerize_header(header):
+    special_keys = set(('start_time', 'time', 'stop_time', 'scan_id',
+                        'uid', 'descriptors', 'sample', 'exit_status',
+                        'exit_reason', 'event_descriptors'))
+    run_start = header['run_start']
+    s = Stream()
+    s.write("<Header ", newline=False)
+    s.write("#{0} ".format(header['scan_id']), 'green', newline=False)
+    s.write("{0!r}".format(header['uid'][:6]), color='red', newline=False)
+    s.write(">")
+
+    s.write("Sample: {0!r} ".format(run_start['sample']))
+    s.write("Start Time: {0}".format(pretty_print_time(header['start_time'])))
+    if header['run_stop'] is None:
+        st_tm, exit_status, exit_reason = ['Unknown'] * 3
+    else:
+        st_tm = pretty_print_time(header['stop_time'])
+        exit_status = header['exit_status']
+        exit_reason = header['exit_reason']
+
+    s.write("Stop Time: {0}".format(st_tm))
+    if header['stop_time']:
+        dur = humanize.naturaldelta(header['stop_time'] - header['start_time'])
+        s.write('Run Duration : {0}'.format(dur))
+    s.write("Exit Status: {0}".format(exit_status))
+    s.write("Exit Reason: {0}".format(exit_reason))
+    s.write("uid={0!r}".format(header['uid']), 'lightgrey')
+    s.write("Event Descriptors:")
+    for descriptor in header['descriptors']:
+        s.write("..Descriptor ", newline=False)
+        s.write("({0!r})".format(descriptor['uid']), 'lightgrey')
+        for data_key, data_key_dict in descriptor.data_keys.items():
+            s.write("....", newline=False)
+            s.write("{0}".format(data_key), 'green', newline=False)
+            s.write(': {0}'.format(data_key_dict['source']),
+                    color='lightgrey', newline=False)
+            s.write(" <{0}".format(data_key_dict['dtype']), newline=False)
+            shape = data_key_dict['shape']
+            if shape:
+                s.write(', {}'.format(shape), newline=False)
+            s.write('>')
+    for k in sorted(header):
+        if k in special_keys:
+            continue
+        elif k in ('run_stop', 'run_start'):
+            s.write("{0}:".format(k))
+            for _k, v in sorted(header[k].items()):
+                if _k in 'run_start':
+                    v = repr(v['uid'])
+                elif _k == 'uid':
+                    v = repr(v)
+                elif _k == 'time':
+                    v = pretty_print_time(v)
+                s.write("..{0}: {1}".format(_k, v))
+        else:
+            s.write("{0}: {1}".format(k, header[k]))
+
+    return s.readout()
 
 
 class Stream(object):
@@ -484,11 +504,10 @@ class Headers(list):
         suffix = """
 </div>"""
         content = ''.join([element.format(header=header,
-                                          uid=header.run_start_uid,
+                                          uid=header['uid'],
                                           html_header=header._repr_html_(),
                                           repr_uid=repr_uid,
-                                          human_time=humanize.naturaltime(
-                                              datetime.datetime.now() -
-                                              header.start_datetime))
+                                          human_time=humanize.naturaldelta(
+                                              ttime.time() - header['start_time']))
                            for header in self])
         return prefix + content + suffix

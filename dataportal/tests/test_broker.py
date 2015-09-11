@@ -21,10 +21,10 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
 
 
-from metadatastore.odm_templates import (BeamlineConfig, EventDescriptor,
+from metadatastore.odm_templates import (EventDescriptor,
                                          Event, RunStart, RunStop)
-from metadatastore.api import (insert_run_start, insert_beamline_config,
-                               insert_run_stop, insert_event_descriptor,
+from metadatastore.api import (insert_run_start,
+                               insert_run_stop, insert_descriptor,
                                find_run_starts)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
@@ -37,7 +37,6 @@ blc = None
 def setup():
     mds_setup()
     fs_setup()
-    blc = insert_beamline_config({}, ttime.time())
 
     switch(channelarchiver=False)
     start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
@@ -51,9 +50,9 @@ def setup():
             logger.debug('{}: {} of {}'.format(owner, i+1, num_entries))
             rs = insert_run_start(time=ttime.time(), scan_id=i + 1,
                                   owner=owner, beamline_id='example',
-                                  beamline_config=blc)
+                                  uid=str(uuid.uuid4()))
             # insert some events into mds
-            temperature_ramp.run(run_start_uid=rs, make_run_stop=(i!=0))
+            temperature_ramp.run(run_start_uid=rs, make_run_stop=(i != 0))
             if i == 0:
                 # only need to do images once, it takes a while...
                 image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
@@ -68,7 +67,7 @@ def test_basic_usage():
     for i in range(5):
         insert_run_start(time=float(i), scan_id=i + 1,
                          owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
+                         uid=str(uuid.uuid4()))
     header_1 = db[-1]
     # Exercise reprs.
     header_1._repr_html_()
@@ -81,16 +80,17 @@ def test_basic_usage():
 
     header_ned = db.find_headers(owner='nedbrainard')
     header_null = db.find_headers(owner='this owner does not exist')
-    events_1 = db.fetch_events(header_1)
-    events_ned = db.fetch_events(header_ned)
-    events_null = db.fetch_events(header_null)
+    # smoke test
+    db.fetch_events(header_1)
+    db.fetch_events(header_ned)
+    db.fetch_events(header_null)
 
 
 def test_event_queue():
     scan_id = np.random.randint(1e12)  # unique enough for government work
     rs = insert_run_start(time=0., scan_id=scan_id,
                           owner='queue-tester', beamline_id='example',
-                          beamline_config=insert_beamline_config({}, time=0.))
+                          uid=str(uuid.uuid4()))
     header = db.find_headers(scan_id=scan_id)
     queue = EventQueue(header)
     # Queue should be empty until we create Events.
@@ -99,12 +99,12 @@ def test_event_queue():
     queue.update()
     empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)
-    events = temperature_ramp.run(rs)
+    events = temperature_ramp.run(rs, make_run_stop=False)
     # This should add a bundle of Events to the queue.
     queue.update()
     first_bundle = queue.get()
     assert_equal(len(first_bundle), len(events))
-    more_events = temperature_ramp.run(rs)
+    more_events = temperature_ramp.run(rs, make_run_stop=False)
     # Queue should be empty until we update.
     empty_bundle = queue.get()
     assert_equal(len(empty_bundle), 0)
@@ -122,7 +122,8 @@ def test_indexing():
     for i in range(5):
         insert_run_start(time=float(i), scan_id=i + 1,
                          owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
+                         uid=str(uuid.uuid4()))
+
     header = db[-1]
     is_list = isinstance(header, list)
     assert_false(is_list)
@@ -182,84 +183,71 @@ def test_indexing():
 
 
 def test_scan_id_lookup():
-    for i in range(5):
-        insert_run_start(time=float(i), scan_id=i + 1,
-                         owner='docbrown', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-    for i in range(5):
-        insert_run_start(time=float(i), scan_id=i + 1,
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-    header = db[3]
-    scan_id = header.scan_id
-    owner = header.owner
-    assert_equal(scan_id, 3)
-    # This should be the most *recent* Scan 3. There is ambiguity.
+    rd1 = [insert_run_start(time=float(i), scan_id=i + 1 + 314159,
+                            owner='docbrown', beamline_id='example',
+                            uid=str(uuid.uuid4())) for i in range(5)]
+
+    rd2 = [insert_run_start(time=float(i)+1, scan_id=i + 1 + 314159,
+                            owner='nedbrainard', beamline_id='example',
+                            uid=str(uuid.uuid4())) for i in range(5)]
+    print(rd1)
+    print(rd2)
+    header = db[3 + 314159]
+    scan_id = header['scan_id']
+    owner = header['run_start']['owner']
+    assert_equal(scan_id, 3 + 314159)
+    assert_equal(rd2[2], header['uid'])
+    # This should be the most *recent* Scan 3 + 314159. There is ambiguity.
     assert_equal(owner, 'nedbrainard')
+
 
 def test_uid_lookup():
     uid = str(uuid.uuid4())
     uid2 = uid[0] + str(uuid.uuid4())[1:]  # same first character as uid
     rs1 = insert_run_start(time=100., scan_id=1, uid=uid,
-                           owner='drstrangelove', beamline_id='example',
-                           beamline_config=insert_beamline_config({}, time=0.))
-    rs2 = insert_run_start(time=100., scan_id=1, uid=uid2,
-                           owner='drstrangelove', beamline_id='example',
-                           beamline_config=insert_beamline_config({}, time=0.))
+                           owner='drstrangelove', beamline_id='example')
+    insert_run_start(time=100., scan_id=1, uid=uid2,
+                     owner='drstrangelove', beamline_id='example')
     # using full uid
-    actual_uid = db[uid].run_start_uid
+    actual_uid = db[uid]["uid"]
     assert_equal(actual_uid, uid)
+    assert_equal(rs1, uid)
 
     # using first 6 chars
-    actual_uid = db[uid[:6]].run_start_uid
+    actual_uid = db[uid[:6]]["uid"]
     assert_equal(actual_uid, uid)
+    assert_equal(rs1, uid)
 
     # using first char (will error)
-    f = lambda: db[uid[0]]
-    assert_raises(ValueError, f)
+    assert_raises(ValueError, lambda: db[uid[0]])
+
 
 def test_data_key():
     rs1_uid = insert_run_start(time=100., scan_id=1,
                                owner='nedbrainard', beamline_id='example',
-                               beamline_config=insert_beamline_config(
-                                   {}, time=0.))
+                               uid=str(uuid.uuid4()))
     rs2_uid = insert_run_start(time=200., scan_id=2,
                                owner='nedbrainard', beamline_id='example',
-                               beamline_config=insert_beamline_config(
-                                   {}, time=0.))
+                               uid=str(uuid.uuid4()))
     rs1, = find_run_starts(uid=rs1_uid)
     rs2, = find_run_starts(uid=rs2_uid)
     data_keys = {'fork': {'source': '_', 'dtype': 'number'},
                  'spoon': {'source': '_', 'dtype': 'number'}}
-    evd1_uid = insert_event_descriptor(run_start=rs1_uid, data_keys=data_keys,
-                                       time=100.)
-    insert_event_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.)
+    insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
+                            time=100.,
+                            uid=str(uuid.uuid4()))
+    insert_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
+                            uid=str(uuid.uuid4()))
     result1 = db.find_headers(data_key='fork')
     result2 = db.find_headers(data_key='fork', start_time=150)
     assert_equal(len(result1), 2)
     assert_equal(len(result2), 1)
-    actual = result2[0].run_start_uid
+    actual = result2[0]["uid"]
     assert_equal(actual, str(rs2.uid))
 
 
 def generate_ca_data(channels, start_time, end_time):
     timestamps = pd.date_range(start_time, end_time, freq='T').to_series()
-    timestamps = list(timestamps.dt.to_pydatetime())  # list of datetime objects
+    timestamps = list(timestamps.dt.to_pydatetime())
     values = list(np.arange(len(timestamps)))
     return {channel: (timestamps, values) for channel in channels}
-
-
-@raises(dataportal.broker.simple_broker.IntegrityError)
-def test_bad_header():
-    # Exercise the code path that results in a 'badly formatted header'
-    # in this case it works by inserting three run stops
-    # one comes from the temperature_ramp.run() command
-    # then two more come from stop1 and stop2
-    start = insert_run_start(time=ttime.time(), scan_id=8985, owner='docbrown',
-                          beamline_id='example',
-                          beamline_config=insert_beamline_config({}, time=0.))
-    ev = temperature_ramp.run(start)
-    stop1 = insert_run_stop(start, time=ttime.time())
-    stop2 = insert_run_stop(start, time=ttime.time())
-
-    hdr = db[-1]

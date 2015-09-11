@@ -78,17 +78,17 @@ def _step_scan_df(headers, fill_events):
         "The header {0} seems to have no event descriptors. "
         "Perhaps it was just created? If this is for an ongoing "
         "scan, please wait a moment.")
-    if not headers[0].event_descriptors:
+    if not headers[0]['descriptors']:
         raise ValueError(empty_error.format(repr(headers[0])))
-    data_keys = headers[0].event_descriptors[0].data_keys.keys()
+    data_keys = headers[0]['descriptors'][0].data_keys.keys()
     for header in headers[1:]:
-        if len(header.event_descriptors) == 0:
+        if len(header['descriptors']) == 0:
             raise ValueError(empty_error.format(repr(header)))
-        if len(header.event_descriptors) > 1:
+        if len(header['descriptors']) > 1:
             raise ValueError("The header {0} has asynchronous Events; "
                              "it cannot be automatically treated as a "
                              "step scan.".format(repr(header)))
-        if header.event_descriptors[0].data_keys.keys() != data_keys:
+        if header['descriptors'][0].data_keys.keys() != data_keys:
             raise ValueError("Data keys for header {0} do not match "
                              "data keys for header {1}. All headers "
                              "must have the same data keys to be part "

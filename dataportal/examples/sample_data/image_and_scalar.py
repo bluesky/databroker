@@ -2,14 +2,14 @@ from __future__ import division
 import uuid
 import time as ttime
 import numpy as np
-from metadatastore.api import insert_event, insert_event_descriptor, find_events
+from metadatastore.api import (insert_event, insert_descriptor,
+                               find_events, insert_run_start, insert_run_stop,
+                               find_last)
 from filestore.file_writers import save_ndarray
 from dataportal.examples.sample_data import frame_generators
 from dataportal.examples.sample_data import common
 from dataportal.examples.sample_data.common_nonscalar import nonscalar_example
 import argparse
-import sys
-import metadatastore
 
 
 # number of motor positions to fake
@@ -25,10 +25,16 @@ example = common.example
 
 img_size = (500, 500)
 period = 150
-I_func_sin = lambda count: (1 + .5*np.sin(2 * count * np.pi / period))
+
+
+def I_func_sin(count):
+    return (1 + .5*np.sin(2 * count * np.pi / period))
 center = 25
 sigma = center / 4
-I_func_gaus = lambda count: (1 + np.exp(-((count - center)/sigma) ** 2))
+
+
+def I_func_gaus(count):
+    return (1 + np.exp(-((count - center)/sigma) ** 2))
 
 
 def scale_fluc(scale, count):
@@ -39,7 +45,6 @@ def scale_fluc(scale, count):
     return None
 
 
-
 # And this section is the actual example.
 
 @nonscalar_example
@@ -48,8 +53,8 @@ def run(run_start_uid=None, sleep=0):
     frame_generator = frame_generators.brownian(img_size, step_scale=.5,
                                                 I_fluc_function=I_func_gaus,
                                                 step_fluc_function=scale_fluc)
-    # Make the data
-    rs = np.random.RandomState(5)
+    # seed data to make deterministic
+    np.random.RandomState(5)
 
     # set up the data keys entry
     data_keys1 = {'linear_motor': dict(source='PV:ES:sam_x', dtype='number'),
@@ -66,11 +71,11 @@ def run(run_start_uid=None, sleep=0):
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
 
     # save the first event descriptor
-    descriptor1_uid = insert_event_descriptor(
+    descriptor1_uid = insert_descriptor(
         run_start=run_start_uid, data_keys=data_keys1, time=0.,
         uid=str(uuid.uuid4()))
 
-    descriptor2_uid = insert_event_descriptor(
+    descriptor2_uid = insert_descriptor(
         run_start=run_start_uid, data_keys=data_keys2, time=0.,
         uid=str(uuid.uuid4()))
 
@@ -119,7 +124,6 @@ def run(run_start_uid=None, sleep=0):
     return events
 
 
-
 def define_parser():
     parser = argparse.ArgumentParser(description='Launch a data viewer')
     parser.add_argument('time', nargs='?', default=0,
@@ -132,10 +136,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     sleep_time = float(args.time)
 
-    from metadatastore.api import (insert_run_start, insert_run_stop,
-                                   insert_beamline_config, find_last)
-    b_config = insert_beamline_config(config_params={'my_beamline': 'my_value'},
-                                      time=ttime.time())
     try:
         last_start_event = next(find_last())
         scan_id = int(last_start_event.scan_id)+1
@@ -146,8 +146,8 @@ if __name__ == '__main__':
               'moon': 'full'}
     # insert the run start
     run_start_uid = insert_run_start(scan_id=scan_id, time=ttime.time(),
-                                     beamline_id='csx',
-                                     beamline_config=b_config, custom=custom)
+                                     beamline_id='csx', custom=custom,
+                                     uid=str(uuid.uuid4()))
     events = run(run_start_uid=run_start_uid, sleep=sleep_time,
                  make_run_stop=False)
     run_stop = insert_run_stop(run_start=run_start_uid, time=ttime.time(),
