@@ -281,7 +281,7 @@ def get_events(headers, fields=None):
 
 
 
-def get_table(headers, fields=None):
+def get_table(headers, fields=None, fill=True):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -331,7 +331,7 @@ def get_table(headers, fields=None):
             for field, values in six.iteritems(data):
                 if field in discard_fields:
                     continue
-                if is_external[field]:
+                if is_external[field] and fill:
                     # TODO someday we will have bulk retrieve in FS
                     data[field] = [fs.retrieve(value) for value in values]
                 df[field] = values
