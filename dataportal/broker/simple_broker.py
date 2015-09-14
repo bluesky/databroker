@@ -338,8 +338,9 @@ def get_table(headers, fields=None, fill=True):
                     print('Discarding field %s' % field)
                     continue
                 if is_external[field] and fill:
+                    print('filling data for %s' % field)
                     # TODO someday we will have bulk retrieve in FS
-                    data[field] = [fs.retrieve(value) for value in values]
+                    values = [fs.retrieve(value) for value in values]
                 df[field] = values
             dfs.append(df)
     return pd.concat(dfs)
