@@ -82,8 +82,11 @@ class RunStartHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = yield db.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        utils._return2client(self, utils._stringify_data(docs))
-        self.finish()
+        if not docs:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, utils._stringify_data(docs))
+            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -93,7 +96,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         jsonschema.validate(data, utils.schemas['run_start'])
         result = yield db.run_start.insert(data)
         if not result:
-            raise tornado.web.HTTPError(404)
+            raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
 
@@ -123,8 +126,11 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = db.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        utils._return2client(self, utils._stringify_data(docs))
-        self.finish()
+        if not docs:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, utils._stringify_data(docs))
+            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -134,7 +140,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         jsonschema.validate(data, utils.schemas['descriptor'])
         result = yield db.event_descriptor.insert(data)#async insert
         if not result:
-            raise tornado.web.HTTPError(404)
+            raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
 
@@ -164,8 +170,11 @@ class RunStopHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')    
         docs = db.run_stop.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        utils._return2client(self, utils._stringify_data(docs))
-        self.finish()
+        if not docs:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, utils._stringify_data(docs))
+            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -174,7 +183,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         jsonschema.validate(data, utils.schemas['run_stop'])
         result = yield db.run_stop.insert(data)
         if not result:
-            raise tornado.web.HTTPError(404)
+            raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
 
@@ -204,8 +213,11 @@ class EventHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = db.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        utils._return2client(self, utils._stringify_data(docs))
-        self.finish()
+        if not docs:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, utils._stringify_data(docs))
+            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -221,13 +233,13 @@ class EventHandler(tornado.web.RequestHandler):
             try:
                 yield bulk.execute() #TODO: Add appropriate timeout
             except pymongo.errors.BulkWriteError as err:
-                raise tornado.web.HTTPError(404)
                 print(err) #TODO: Log this instead of print
+                raise tornado.web.HTTPError(500)
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = yield db.event.insert(data)
             if not result:
-                raise tornado.web.HTTPError(404)
+                raise tornado.web.HTTPError(500)
 
 
 

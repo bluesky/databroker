@@ -182,7 +182,6 @@ def _find_run_starts(**kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start", params=ujson.dumps(query))
         content = ujson.loads(r.text)
-        print(r.text)
         if not content:
             StopIteration()
             break
@@ -401,7 +400,10 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
 
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/event_descriptor', data=payload)
-    return r.json()
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
 
 
 @_ensure_connection
@@ -439,12 +441,14 @@ def insert_run_start(time, scan_id, config, beamline_id, beamline_config={}, uid
 
     """    
     data = locals()
-    print(data)
     if custom:
         data.update(custom)
     payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
-    return r.json()
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
 
 
 @_ensure_connection
@@ -481,7 +485,10 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
-    return r.json()
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
 
 
 @_ensure_connection

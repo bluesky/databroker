@@ -35,9 +35,7 @@ def setup_syn():
     
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
-    
-    print('rs', rs)
-    
+
     e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
                                      run_start=rs, uid=str(uuid.uuid4()))
     return rs, e_desc, data_keys
@@ -61,16 +59,19 @@ num = 65000
 start = 0
 stop = 10
 
-# rs, e_desc, data_keys = setup_syn()
-# all_data = syn_data(data_keys, num)
-#
-# start_time = time.time()
-# insert_event(descriptor=e_desc, events=all_data)
-# stop_time = time.time()
-# print('insert time: {}'.format(stop_time - start_time))
 
-print(next(_find_run_starts(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
+d = next(_find_run_starts(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa"))
 
+
+
+
+rs, e_desc, data_keys = setup_syn()
+all_data = syn_data(data_keys, num)
+
+start_time = time.time()
+insert_event(descriptor=e_desc, events=all_data)
+stop_time = time.time()
+print('insert time: {}'.format(stop_time - start_time))
 
 
 # start_time = time.time()
