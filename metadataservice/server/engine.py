@@ -225,7 +225,7 @@ class EventHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         if isinstance(data, list):
-            # unordered insert. in seqnum I trust
+            # unordered insert. in seq_num I trust
             jsonschema.validate(data, utils.schemas['bulk_events'])
             bulk = db.event.initialize_unordered_bulk_op()
             for _ in data:
