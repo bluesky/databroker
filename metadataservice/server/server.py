@@ -22,6 +22,7 @@ from metadataservice.server import utils
 """
 
 
+
 def db_connect(database ,host, port, replicaset=None, write_concern="majority",
                write_timeout=1000):
     """Helper function to deal with stateful connections to motor.

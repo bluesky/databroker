@@ -21,7 +21,6 @@ setup(
     license="BSD (3-clause)",
     url="https://github.com/synchbot/metadataservice",
     packages=['metadataservice', 'metadataservice.server',
-              'metadataservice.schema',
               'metadataservice.client'],
     long_description=read('README.md'),
     classifiers=[
