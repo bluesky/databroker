@@ -13,54 +13,13 @@ import jsonschema
 
 
 from metadataservice.server import utils
+
+
 """.. note
     ultra-json is 3-5 orders of magnitude faster since it runs outside GIL.
     bson.json_util does encode/decode neatly but painfully slow normalize object fields manually.
     Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
 """
-
-
-# #cache me if you can...(good book, have not seen the movie)
-# _RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
-# _RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
-# _DESCRIPTOR_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
-#
-# _RUNSTART_UID_to_OID_MAP = dict()
-# _RUNSTOP_UID_to_OID_MAP = dict()
-# _DESCRIPTOR_UID_to_OID_MAP = dict()
-#
-# def _cache_run_start(run_start):
-#     """De-reference and cache a RunStart document
-#     Unlike library RunStart dpcument is a dictionary.
-#     The de-referenced Document is cached against the
-#     ObjectId and the uid -> ObjectID mapping is stored.
-#
-#     Parameters
-#     ----------
-#     run_start : dict
-#         raw pymongo dictionary. This is expected to have
-#         an entry `_id` with the ObjectId used by mongo.
-#
-#     Returns
-#     -------
-#     run_start : dict
-#         RunStart document with its _id stripped.
-#     """
-#     # TODO actually do this de-reference for documents that have it
-#     run_start.pop('beamline_config_id', None)
-#
-#     # get the mongo ObjectID
-#     oid = run_start.pop('_id')
-#
-#     # convert the remaining document do a Document object
-#     # populate cache and set up uid->oid mapping
-#
-#     _RUNSTART_CACHE_OID[oid] = run_start
-#     _RUNSTART_UID_to_OID_MAP[run_start['uid']] = oid
-#
-#     return run_start
-
-
 
 
 def db_connect(database ,host, port, replicaset=None, write_concern="majority",
