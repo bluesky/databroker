@@ -98,7 +98,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
                   datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
 
-    return datum_id
+    return datum
 
 
 @_ensure_connection
