@@ -21,13 +21,6 @@ for name, filename in SCHEMA_NAMES.items():
         schemas[name] = ujson.load(fin)
 
 
-def _verify_handler(handler):
-    if isinstance(handler, tornado.web.RequestHandler):
-        return True
-    else:
-        return False
-
-
 def _unpack_params(handler):
     """Unpacks the queries from the body of the header
     Parameters
@@ -39,29 +32,26 @@ def _unpack_params(handler):
     -------
         Unpacked query in dict format.
     """
-    if _verify_handler(handler):
+    if isinstance(handler, tornado.web.RequestHandler):
         return ujson.loads(list(handler.request.arguments.keys())[0])
     else:
-        return None
+        raise TypeError("Handler provided must be of tornado.web.RequestHandler type")
 
 
 def _return2client(handler, payload):
     data = _stringify_data(payload)
-    if _verify_handler(handler):
+    if isinstance(handler, tornado.web.RequestHandler):
         #TODO: Add exception handling
         handler.write(ujson.dumps(data))
 
 
 def _stringify_data(docs):
-    # TODO: Clean this code up!
     if isinstance(docs, list):
         stringed = list()
         for _ in docs:
             tmp = dict()
             for k, v in six.iteritems(_):
-                if isinstance(v, ObjectId):
-                    tmp[k] = str(v)
-                elif isinstance(v, datetime.datetime):
+                if isinstance(v, (ObjectId, datetime.datetime)):
                     tmp[k] = str(v)
                 elif isinstance(v, dict):
                     tmp[k] = _stringify_data(v)
@@ -71,9 +61,7 @@ def _stringify_data(docs):
     elif isinstance(docs, dict):
         stringed = dict()
         for k, v in six.iteritems(docs):
-                if isinstance(v, ObjectId):
-                    stringed[k] = str(v)
-                elif isinstance(v, datetime.datetime):
+                if isinstance(v, (ObjectId, datetime.date)):
                     stringed[k] = str(v)
                 elif isinstance(v, dict):
                     stringed[k] = _stringify_data(v)
@@ -82,5 +70,5 @@ def _stringify_data(docs):
     elif isinstance(docs, ObjectId):
         stringed = str(docs)
     else:
-        stringed = docs
+        raise TypeError("Unsupported type ", type(docs))
     return stringed

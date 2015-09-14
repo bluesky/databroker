@@ -10,7 +10,7 @@ from collections import OrderedDict
 from . import (conf, utils)
 
 """
-.. warning:: This is very early alpha. The skeleton is here but not all full blown features are described here
+.. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 

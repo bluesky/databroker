@@ -244,6 +244,7 @@ class EventHandler(tornado.web.RequestHandler):
 
 
 #TODO: Replace with configured one
+
 db = db_connect('datastore2', '127.0.0.1', 27017)
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
