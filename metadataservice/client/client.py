@@ -7,7 +7,7 @@ import six
 from functools import wraps
 import ujson
 from collections import OrderedDict
-from metadataservice.client import conf
+from . import (conf, utils)
 
 """
 .. warning:: This is very early alpha. The skeleton is here but not all full blown features are described here
@@ -17,7 +17,7 @@ from metadataservice.client import conf
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
-    .. note:: Do not gasp yet! I copied w/e mongoengine did for global connectionpool management. Suggestions?
+    .. note:: Do not gasp yet! I copied w/e mongoengine did for global connectionpool management.
 
     Parameters
     ----------
@@ -25,13 +25,13 @@ def server_connect(host, port, protocol='http'):
         name/address of the mongo server
     port: int
         port number of mongo server
-    protocol: str
+    protocol: str, optional
         in case we want to introduce ssl in the future. for now, eliminates possible ambiguities
 
      Returns
     -------
     _server_path: str
-        Full server path that is set globally. In case client wants to connect to another server, we decorator
+        Full server path that is set globally. Useful for monkeypatching
         overwrites config and updates this global server path
     """
     global _server_path
@@ -109,7 +109,7 @@ def eventdescriptors_by_runstart(run_start):
     Returns
     -------
     event_descriptors : list
-        A list of EventDescriptor documents
+        A list of EventDescriptor documents0
     """
     pass
 

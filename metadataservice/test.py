@@ -1,5 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+from metadataservice.client.client import _find_run_starts
 from metadataservice.client.client import *
 import time
 from collections import deque
@@ -60,13 +61,17 @@ num = 65000
 start = 0
 stop = 10
 
-rs, e_desc, data_keys = setup_syn()
-all_data = syn_data(data_keys, num)
+# rs, e_desc, data_keys = setup_syn()
+# all_data = syn_data(data_keys, num)
+#
+# start_time = time.time()
+# insert_event(descriptor=e_desc, events=all_data)
+# stop_time = time.time()
+# print('insert time: {}'.format(stop_time - start_time))
 
-start_time = time.time()
-insert_event(descriptor=e_desc, events=all_data)
-stop_time = time.time()
-print('insert time: {}'.format(stop_time - start_time))
+print(next(_find_run_starts(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
+
+
 
 # start_time = time.time()
 # ret = _find_run_starts(beamline_id='xf23id')

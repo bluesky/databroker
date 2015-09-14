@@ -1,17 +1,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.web
+from pkg_resources import resource_filename as rs_fn
 import ujson
 import datetime
 import six
 from bson.objectid import ObjectId
-__author__ = 'arkilic'
-
-
-__all__ = ['_verify_handler', '_unpack_params',
-           '_return2client', '_stringify_data']
-
-
 
 
 SCHEMA_PATH = 'schema'
@@ -59,7 +53,7 @@ def _return2client(handler, payload):
 
 
 def _stringify_data(docs):
-    # TODO: Clean up this code!
+    # TODO: Clean this code up!
     if isinstance(docs, list):
         stringed = list()
         for _ in docs:

@@ -2,18 +2,65 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
-import jsonschema
 from tornado import gen
+
 import pymongo
 import pymongo.errors
 import motor
-import ujson
-from metadataservice.server import utils
 
-""".. note:: ultra-json is 3-5 orders of magnitude faster since it runs outside GIL.
-.. note:: bson.json_util does encode/decode neatly but painfully slow normalize object fields manually.
-.. warning:: Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
+import ujson
+import jsonschema
+
+
+from metadataservice.server import utils
+""".. note
+    ultra-json is 3-5 orders of magnitude faster since it runs outside GIL.
+    bson.json_util does encode/decode neatly but painfully slow normalize object fields manually.
+    Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
 """
+
+
+# #cache me if you can...(good book, have not seen the movie)
+# _RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+# _RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+# _DESCRIPTOR_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+#
+# _RUNSTART_UID_to_OID_MAP = dict()
+# _RUNSTOP_UID_to_OID_MAP = dict()
+# _DESCRIPTOR_UID_to_OID_MAP = dict()
+#
+# def _cache_run_start(run_start):
+#     """De-reference and cache a RunStart document
+#     Unlike library RunStart dpcument is a dictionary.
+#     The de-referenced Document is cached against the
+#     ObjectId and the uid -> ObjectID mapping is stored.
+#
+#     Parameters
+#     ----------
+#     run_start : dict
+#         raw pymongo dictionary. This is expected to have
+#         an entry `_id` with the ObjectId used by mongo.
+#
+#     Returns
+#     -------
+#     run_start : dict
+#         RunStart document with its _id stripped.
+#     """
+#     # TODO actually do this de-reference for documents that have it
+#     run_start.pop('beamline_config_id', None)
+#
+#     # get the mongo ObjectID
+#     oid = run_start.pop('_id')
+#
+#     # convert the remaining document do a Document object
+#     # populate cache and set up uid->oid mapping
+#
+#     _RUNSTART_CACHE_OID[oid] = run_start
+#     _RUNSTART_UID_to_OID_MAP[run_start['uid']] = oid
+#
+#     return run_start
+
+
 
 
 def db_connect(database ,host, port, replicaset=None, write_concern="majority",
@@ -36,7 +83,7 @@ def db_connect(database ,host, port, replicaset=None, write_concern="majority",
         to be verified
 
     write_timeout: int
-        Time before write fails. Affects the package size in bulk insert so use wisely
+        Time tolerance before write fails. Affects the package size in bulk insert so use wisely
 
     Returns
     -------
@@ -73,10 +120,9 @@ class RunStartHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.run_start.find(query).sort('time', pymongo.ASCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        payload = utils._stringify_data(docs)
-        utils._return2client(self, payload)
+        docs = yield db.run_start.find(query).sort(
+            'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        utils._return2client(self, utils._stringify_data(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -113,10 +159,9 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.event_descriptor.find(query).sort('time', pymongo.ASCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        payload = utils._stringify_data(docs)
-        utils._return2client(self, payload)
+        docs = db.event_descriptor.find(query).sort(
+            'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        utils._return2client(self, utils._stringify_data(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -153,10 +198,9 @@ class RunStopHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')    
-        cursor = db.run_stop.find(query).sort('time', pymongo.ASCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        payload = utils._stringify_data(docs)
-        utils._return2client(self, payload)
+        docs = db.run_stop.find(query).sort(
+            'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        utils._return2client(self, utils._stringify_data(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -167,6 +211,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         yield db.run_stop.insert(data)
         utils._return2client(self, data)
         self.finish()
+
 
 class EventHandler(tornado.web.RequestHandler):
     """Handler for event insert and query operations.
@@ -183,7 +228,7 @@ class EventHandler(tornado.web.RequestHandler):
         Insert a event document.Same validation method as bluesky, secondary
         safety net. Any changes done here or BlueSky must be implemented here and
         BlueSky.Any data acquisition script can utilize metadataservice as long as 
-        it follows this format. 
+        it follows this format.
     """
     @tornado.web.asynchronous
     @gen.coroutine
@@ -191,10 +236,9 @@ class EventHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        cursor = db.event_descriptor.find(query).sort('time', pymongo.ASCENDING)[start:stop]
-        docs = yield cursor.to_list(None)
-        payload = utils._stringify_data(docs)
-        utils._return2client(self, payload)
+        docs = db.event_descriptor.find(query).sort(
+            'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        utils._return2client(self, utils._stringify_data(docs))
         self.finish()
 
     @tornado.web.asynchronous
@@ -220,7 +264,7 @@ class EventHandler(tornado.web.RequestHandler):
 
 
 #TODO: Replace with configured one
-db = db_connect('datastore2', '127.0.0.1', 28000)
+db = db_connect('datastore2', '127.0.0.1', 27017)
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
     (r'/event_descriptor',EventDescriptorHandler),
