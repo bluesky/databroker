@@ -5,12 +5,14 @@
 - [X] Add bulk event json schema validation from BlueSky
 - [X] Inserted documents should be returned
 - [X] Add validation to schema
-- [ ] Add Exception Handling
-- [ ] Fix all documentation
+- [X] Add HTTPErrors
+- [ ] Fix all server documentation
+- [ ] Fix all client documentation
+- [ ] Complete client side based on mds lib pr
 - [ ] Implement unit test
-- [ ] Implement changes based on new metadatastore library
+- [ ] Add logger
 - [X] Add setup.py
-- [ ] Add normalization layer
+- [ ] Add normalization layer ??
 - [ ] Add conda prescription
 - [ ] Travis 
-- [ ] Add caching layer
+- [ ] Add caching layer ??
