@@ -104,11 +104,9 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 @_ensure_connection
 def bulk_insert_datum(resource, datum_ids, datum_kwarg_list):
 
-    resource_id = resource.id
-
     def datum_factory():
         for d_id, d_kwargs in zip(datum_ids, datum_kwarg_list):
-            datum = dict(resource_id=resource_id,
+            datum = dict(resource=resource,
                          datum_id=d_id,
                          datum_kwargs=d_kwargs)
             yield datum
