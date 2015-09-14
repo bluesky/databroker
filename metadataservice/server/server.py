@@ -91,9 +91,11 @@ class RunStartHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
-        yield db.run_start.insert(data)
-        utils._return2client(self, data)
-        self.finish()
+        result = yield db.run_start.insert(data)
+        if not result:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, data)
 
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
@@ -130,9 +132,11 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         db = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['descriptor'])
-        yield db.event_descriptor.insert(data)#async insert
-        utils._return2client(self, data)
-        self.finish()
+        result = yield db.event_descriptor.insert(data)#async insert
+        if not result:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, data)
 
 
 class RunStopHandler(tornado.web.RequestHandler):
@@ -168,9 +172,11 @@ class RunStopHandler(tornado.web.RequestHandler):
     def post(self):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_stop'])
-        yield db.run_stop.insert(data)
-        utils._return2client(self, data)
-        self.finish()
+        result = yield db.run_stop.insert(data)
+        if not result:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, data)
 
 
 class EventHandler(tornado.web.RequestHandler):
@@ -213,14 +219,16 @@ class EventHandler(tornado.web.RequestHandler):
             for _ in data:
                 bulk.insert(_)
             try:
-                yield bulk.execute() #add timeout etc.!
+                yield bulk.execute() #TODO: Add appropriate timeout
             except pymongo.errors.BulkWriteError as err:
-                utils._return2client(err)
+                raise tornado.web.HTTPError(404)
+                print(err) #TODO: Log this instead of print
         else:
-            jsonschema.validate(data, utils.schemas['bulk_events'])
-            yield db.event.insert(data)
-        # utils._return2client(self, data)
-        self.finish()
+            jsonschema.validate(data, utils.schemas['event'])
+            result = yield db.event.insert(data)
+            if not result:
+                raise tornado.web.HTTPError(404)
+
 
 
 #TODO: Replace with configured one
