@@ -26,7 +26,7 @@ class _DataBrokerClass(object):
             if key.start is not None and key.start > -1:
                 raise ValueError("Slices must be negative. The most recent "
                                  "run is referred to as -1.")
-            if key.stop is not None and key.stop > -1:
+            if key.stop is not None and key.stop > 0:
                 raise ValueError("Slices must be negative. The most recent "
                                  "run is referred to as -1.")
             if key.stop is not None:
