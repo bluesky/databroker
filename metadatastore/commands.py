@@ -922,7 +922,8 @@ def _normalize_human_friendly_time(val):
                 val = ts
                 check = False
             else:
-                raise TypeError('expected datetime.datetime,'
+                # what else could the type be here?
+                raise TypeError('expected datetime.datetime,'  #pragma: no cover
                                 ' got {:r}'.format(ts))
 
         except NameError:
