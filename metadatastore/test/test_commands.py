@@ -261,6 +261,8 @@ def test_find_funcs_for_smoke():
             {'start_time': ttime.time()-1, 'stop_time': ttime.time()},
             {'reason': 'whimsy'},
             {'exit_status': 'success'},
+            {'run_start': rs},
+            {'run_start_uid': rs.uid},
             {'uid': 'foo'}],
         mdsc.find_descriptors: [
             {'run_start': rs},
@@ -269,10 +271,6 @@ def test_find_funcs_for_smoke():
             {'stop_time': ttime.time()},
             {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
             {'uid': 'foo'}],
-        mdsc.find_run_stops: [
-            {'run_start': rs},
-            {'run_start_uid': rs.uid},
-        ]
     }
     for func, list_o_dicts in test_dict.items():
         for dct in list_o_dicts:
