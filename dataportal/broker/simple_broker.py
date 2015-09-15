@@ -234,10 +234,6 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-class IntegrityError(Exception):
-    pass
-
-
 def get_events(headers, fields=None, fill=True):
     """
     Get Events from given run(s).
@@ -321,9 +317,9 @@ def get_table(headers, fields=None, fill=True):
         fields = []
     fields = set(fields)
 
+    dfs = []
     for header in headers:
         descriptors = find_descriptors(header['start']['uid'])
-        dfs = []
         for descriptor in descriptors:
             if fields:
                 all_fields = set(descriptor['data_keys'])
@@ -346,4 +342,8 @@ def get_table(headers, fields=None, fill=True):
                     values = [fs.retrieve(value) for value in values]
                 df[field] = values
             dfs.append(df)
-    return pd.concat(dfs)
+    if dfs:
+        return pd.concat(dfs)
+    else:
+        # edge case: no data
+        return pd.DataFrame()
