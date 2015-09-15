@@ -62,11 +62,15 @@ def test_basic_usage():
     header_1 = db[-1]
 
     header_ned = db(owner='nedbrainard')
+    header_ned = db.find_headers(owner='nedbrainard')  # deprecated API
     header_null = db(owner='this owner does not exist')
     # smoke test
     db.fetch_events(header_1)
     db.fetch_events(header_ned)
     db.fetch_events(header_null)
+    get_events(header_1)
+    get_events(header_ned)
+    get_events(header_null)
 
 
 def test_indexing():
@@ -112,7 +116,6 @@ def test_indexing():
     headers = db[-2:-1]
     assert_true(is_list)
     num = len(headers)
-    print(headers)
     assert_equal(num, 1)
     header, = headers
     scan_id = header['start']['scan_id']
@@ -141,8 +144,6 @@ def test_scan_id_lookup():
     rd2 = [insert_run_start(time=float(i)+1, scan_id=i + 1 + 314159,
                             owner='nedbrainard', beamline_id='example',
                             uid=str(uuid.uuid4())) for i in range(5)]
-    print(rd1)
-    print(rd2)
     header = db[3 + 314159]
     scan_id = header['start']['scan_id']
     owner = header['start']['owner']
@@ -193,7 +194,7 @@ def test_data_key():
     result2 = db(data_key='fork', start_time=150)
     assert_equal(len(result1), 2)
     assert_equal(len(result2), 1)
-    actual = result2[0]["uid"]
+    actual = result2[0]['start']['uid']
     assert_equal(actual, str(rs2.uid))
 
 
