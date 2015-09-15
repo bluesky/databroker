@@ -85,9 +85,9 @@ class Document(dict):
     def __str__(self):
         try:
             return vstr(self)
-        except ImportError:
+        except ImportError:  # pragma: no cover
             # import error will be raised if prettytable is not available
-            return super(Document, self).__str__()
+            return super(Document, self).__str__()  # pragma: no cover
 
     def to_name_dict_pair(self):
         """Convert to (name, dict) pair
