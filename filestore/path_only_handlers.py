@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class AreaDetectorTiffPathOnlyHandler(HandlerBase):
+    """Replacement for AreaDetectorTiffHandler that returns the path not data
+    """
 
     def __init__(self, fpath, template, filename, frame_per_point=1):
         self._path = fpath
