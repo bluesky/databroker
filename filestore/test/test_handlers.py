@@ -18,10 +18,11 @@ from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from filestore.handlers import HDFMapsEnergyHandler as HDFE
 from filestore.handlers import NpyFrameWise
+from filestore.path_only_handlers import AreaDetectorTiffPathOnlyHandler
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
-from nose.tools import assert_true, assert_raises
+from nose.tools import assert_true, assert_raises, assert_equal
 
 from six.moves import range
 db_name = str(uuid.uuid4())
@@ -204,3 +205,17 @@ def test_ADDummy():
 
 def test_npyfw_fail():
     assert_raises(IOError, NpyFrameWise, 'aarvark_rises')
+
+
+def _test_tiff_path_only(path, fname, fpp):
+    test = AreaDetectorTiffPathOnlyHandler(path, '%s%s_%6.6d.tiff', fname, fpp)
+    template = '{}{}_{{:06d}}.tiff'.format(path, fname)
+    for j in range(5):
+        res = test(j)
+        expected = [template.format(n) for n in range(j*fpp, (j+1)*fpp)]
+        assert_equal(res, expected)
+
+
+def test_tiff_path_handler():
+    yield _test_tiff_path_only, '/foo/', 'baz', 1
+    yield _test_tiff_path_only, '/foo/', 'baz', 5
