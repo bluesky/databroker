@@ -5,7 +5,7 @@ from collections import Iterable, deque
 import pandas as pd
 from metadatastore.commands import (find_last, find_run_starts,
                                     find_descriptors,
-                                    fetch_events_generator, fetch_events_table)
+                                    get_events_generator, get_events_table)
 import metadatastore.doc as doc
 import metadatastore.commands as mc
 import filestore.api as fs
@@ -279,7 +279,7 @@ def get_events(headers, fields=None, fill=True):
                 discard_fields = all_fields - fields
             else:
                 discard_fields = []
-            for event in fetch_events_generator(descriptor):
+            for event in get_events_generator(descriptor):
                 for field in discard_fields:
                     del event.data[field]
                     del event.timestamps[field]
@@ -332,7 +332,7 @@ def get_table(headers, fields=None, fill=True):
                 discard_fields = []
             is_external = _inspect_descriptor(descriptor)
 
-            payload = fetch_events_table(descriptor)
+            payload = get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
             df['time'] = times
