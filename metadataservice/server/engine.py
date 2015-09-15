@@ -45,9 +45,8 @@ def db_connect(database ,host, port, replicaset=None, write_concern="majority",
     write_timeout: int
         Time tolerance before write fails. Affects the package size in bulk insert so use wisely
 
-    Returns
+    Returns motor.MotorDatabase
     -------
-    db: motor.MotorDatabase
         Async server object which comes in handy as server has to juggle multiple clients
         and makes no difference for a single client compared to pymongo
     """
@@ -83,13 +82,12 @@ class RunStartHandler(tornado.web.RequestHandler):
         docs = yield db.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         for d in docs:
+            #strip oid fields
             d.pop('_id')
+            d.pop('beamline_config_id', None)
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
-            #strip oid fields
-            docs.pop('_id')
-            docs.pop('beamline_config_id', None)
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
 

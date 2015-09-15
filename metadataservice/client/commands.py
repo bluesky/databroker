@@ -6,7 +6,6 @@ import time
 import six
 from functools import wraps
 import ujson
-from collections import OrderedDict
 from . import (conf, utils)
 
 """
@@ -54,7 +53,7 @@ def _ensure_connection(func):
     return inner
 
 @_ensure_connection
-def _runstart_given_uid(uid):
+def runstart_given_uid(uid):
     """Get RunStart document given an ObjectId
     This is an internal function as ObjectIds should not be
     leaking out to user code.
@@ -70,69 +69,254 @@ def _runstart_given_uid(uid):
     run_start : doc.Document
         The RunStart document.
     """
-    return _find_run_starts(uid=uid)
-
-
-@_ensure_connection
-def runstop_givenuid(uid):
-    return _find_run_stops(uid=uid)
-
+    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
 
 @_ensure_connection
-def _event_desc_given_oid(oid):
-    return _find_event_descriptors(oid=oid)
+def _run_start_given_oid(oid):
+    """Get RunStart document given an ObjectId
 
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
 
-@_ensure_connection
-def event_desc_given_uid(uid):
-    return _find_event_descriptors(uid=uid)
-
-
-@_ensure_connection
-def runstop_by_runstart(run_start):
-    """Given a RunStart return a list of it's RunStop
-
-    Raises if no RunStop exists.
+    When we migrate to using uid as the primary key this function
+    will be removed.
 
     Parameters
     ----------
-    run_start : dict or uid
-        The RunStart to get the events for.  Can be either
-        a dict or a uid.
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+
+    Returns
+    -------
+    run_start : doc.Document
+        The RunStart document.
+    """
+    return utils.Document('RunStart', next(_find_run_starts(_id=oid)))
+
+
+@_ensure_connection
+def runstop_given_uid(uid):
+    """Given a uid, return the RunStop document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
 
     Returns
     -------
     run_stop : doc.Document
-        The RunStop document
+        The RunStop document fully de-referenced
+
+    """
+    run_stop = dict(next(_find_run_stops(uid=uid)))
+    start_oid = run_stop.pop('run_start_id')
+    run_stop['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('RunStop', run_stop)
+
+@_ensure_connection
+def _descriptor_given_oid(oid):
+    """Get EventDescriptor document given an ObjectId
+
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+
+    When we migrate to using uid as the primary key this function
+    will be removed.
+
+    Parameters
+    ----------
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+
+    Returns
+    -------
+    descriptor : doc.Document
+        The EventDescriptor document.
+    """
+    descriptor = dict(next(_find_event_descriptors(oid=oid)))
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('EventDescriptor', descriptor)
+
+@_ensure_connection
+def descriptor_given_uid(uid):
+    """Given a uid, return the EventDescriptor document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    descriptor : doc.Document
+        The EventDescriptor document fully de-referenced
+    """
+    descriptor = dict(next(_find_event_descriptors(uid=uid)))
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('EventDescriptor', descriptor)
+
+
+@_ensure_connection
+def run_start_given_uid(uid):
+    """Given a uid, return the RunStart document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    run_start : doc.Document
+        The RunStart document.
+
     """
     pass
 
 
 @_ensure_connection
-def eventdescriptors_by_runstart(run_start):
+def run_stop_given_uid(uid):
+    """Given a uid, return the RunStop document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document fully de-referenced
+
+    """
+    pass
+
+
+@_ensure_connection
+def stop_by_start(run_start):
+    """Given a RunStart return it's RunStop
+
+    Raises if no RunStop exists.
+
+    Parameters
+    ----------
+    run_start : doc.Document or dict or str
+        The RunStart to get the RunStop for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document
+
+    Raises
+    ------
+    NoRunStop
+        If no RunStop document exists for the given RunStart
+    """
+    pass
+
+
+@_ensure_connection
+def descriptors_by_start(run_start):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
 
     Parameters
     ----------
-    run_start : dict or uid
-        The RunStart to get the events for.  Can be either
-        a dict or a uid.
+    run_start : doc.Document or dict or str
+        The RunStart to get the EventDescriptors for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
 
     Returns
     -------
     event_descriptors : list
-        A list of EventDescriptor documents0
+        A list of EventDescriptor documents
+
+    Raises
+    ------
+    NoEventDescriptors
+        If no EventDescriptor documents exist for the given RunStart
     """
     pass
 
 
 @_ensure_connection
 def fetch_events_generator(desc_uid):
+    """A generator which yields all events from the event stream
+
+    Parameters
+    ----------
+    descriptor : doc.Document or dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Yields
+    ------
+    event : doc.Document
+        All events for the given EventDescriptor from oldest to
+        newest
+    """
     pass
 
 
+def _transpose(in_data, keys, field):
+    """Turn a list of dicts into dict of lists
+
+    Parameters
+    ----------
+    in_data : list
+        A list of dicts which contain at least one dict.
+        All of the inner dicts must have at least the keys
+        in `keys`
+
+    keys : list
+        The list of keys to extract
+
+    field : str
+        The field in the outer dict to use
+
+    Returns
+    -------
+    transpose : dict
+        The transpose of the data
+    """
+    pass
+
+
+@_ensure_connection
+def fetch_events_table(descriptor):
+    """All event data as tables
+
+    Parameters
+    ----------
+    descriptor : dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+
+    Returns
+    -------
+    descriptor : doc.Document
+        EventDescriptor document
+    data_table : dict
+        dict of lists of the transposed data
+    seq_nums : list
+        The sequence number of each event.
+    times : list
+        The time of each event.
+    uids : list
+        The uid of each event.
+    timestamps_table : dict
+        The timestamps of each of the measurements as dict of lists.  Same
+        keys as `data_table`.
+    """
+    pass
 
 @_ensure_connection
 def _find_run_starts(**kwargs):
@@ -201,7 +385,7 @@ def _find_run_starts(**kwargs):
             break
         else:
             for c in content:
-                yield OrderedDict(c)
+                yield dict(c)
             range_ceil += 50
             range_floor += 50
 
@@ -255,7 +439,7 @@ def _find_run_stops(**kwargs):
             break
         else:
             for c in content:
-                yield OrderedDict(c)
+                yield dict(c)
             range_ceil += 50
             range_floor += 50
      
@@ -310,7 +494,7 @@ def _find_events(**kwargs):
             break
         else:
             for c in content:
-                yield OrderedDict(c)
+                yield dict(c)
             range_ceil += 1000
             range_floor += 1000
 
@@ -369,7 +553,7 @@ def _find_event_descriptors(**kwargs):
             break
         else:
             for c in content:
-                yield OrderedDict(c)
+                yield dict(c)
             range_ceil += 50
             range_floor += 50
 

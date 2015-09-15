@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from metadataservice.client.commands import _find_run_starts
+from metadataservice.client.commands import _find_run_starts, runstart_given_uid
 from metadataservice.client.commands import *
 import time
 from collections import deque
@@ -61,8 +61,8 @@ stop = 10
 
 
 d = next(_find_run_starts(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa"))
-print(d)
 
+print(type(runstart_given_uid(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
 
 
 rs, e_desc, data_keys = setup_syn()
