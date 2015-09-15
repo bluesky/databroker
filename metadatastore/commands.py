@@ -443,7 +443,7 @@ def descriptors_by_start(run_start):
 
 
 @_ensure_connection
-def fetch_events_generator(descriptor):
+def get_events_generator(descriptor):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -514,7 +514,7 @@ def _transpose(in_data, keys, field):
 
 
 @_ensure_connection
-def fetch_events_table(descriptor):
+def get_events_table(descriptor):
     """All event data as tables
 
     Parameters
@@ -542,7 +542,7 @@ def fetch_events_table(descriptor):
     desc_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(desc_uid)
     # this will get more complicated once transpose caching layer is in place
-    all_events = list(fetch_events_generator(desc_uid))
+    all_events = list(get_events_generator(desc_uid))
 
     # get event sequence numbers
     seq_nums = [ev['seq_num'] for ev in all_events]

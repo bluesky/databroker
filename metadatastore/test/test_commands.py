@@ -340,7 +340,7 @@ def test_bulk_insert():
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
 
-    ev_gen = mdsc.fetch_events_generator(e_desc)
+    ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
         assert_equal(ret['descriptor']['uid'], e_desc)
@@ -355,7 +355,7 @@ def test_bulk_table():
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
-    ret = mdsc.fetch_events_table(e_desc)
+    ret = mdsc.get_events_table(e_desc)
     descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
     for vals in data_table.values():
