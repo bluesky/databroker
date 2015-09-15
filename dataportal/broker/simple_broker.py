@@ -19,7 +19,7 @@ class _DataBrokerClass(object):
     # You probably do not want to instantiate this; use
     # broker.DataBroker instead.
 
-    def __getitem__(cls, key):
+    def __getitem__(self, key):
         if isinstance(key, slice):
             # Interpret key as a slice into previous scans.
             if key.start is not None and key.start > -1:
@@ -75,7 +75,7 @@ class _DataBrokerClass(object):
         elif isinstance(key, Iterable):
             # Interpret key as a list of several keys. If it is a string
             # we will never get this far.
-            return [cls.__getitem__(k) for k in key]
+            return [self.__getitem__(k) for k in key]
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
@@ -83,7 +83,7 @@ class _DataBrokerClass(object):
                              "like ['a23jslk'].")
         return header
 
-    def __call__(cls, **kwargs):
+    def __call__(self, **kwargs):
         """Given search criteria, find Headers describing runs.
 
         This function returns a list of dictionary-like objects encapsulating
@@ -158,11 +158,17 @@ class _DataBrokerClass(object):
             result.append(Header.from_run_start(rs))
         return result
 
-    def find_headers(cls, **kwargs):
+    def find_headers(self, **kwargs):
         "This function is deprecated. Use DataBroker() instead."
-        warnings.warn(UserWarning, "Use DataBroker() instead of "
-                                   "DataBroker.find_headers()")
-        return cls(**kwargs)
+        warnings.warn("Use DataBroker() instead of "
+                      "DataBroker.find_headers()", UserWarning)
+        return self(**kwargs)
+
+    def fetch_events(self, headers, fill=True):
+        "This function is deprecated. Use top-level function get_events."
+        warnings.warn("Use top-level function "
+                                   "get_events() instead.", UserWarning)
+        return get_events(headers, None, fill)
 
 
 DataBroker = _DataBrokerClass()  # singleton, used by pims_readers import below
@@ -225,7 +231,7 @@ class Header(doc.Document):
             ev_descs = []
 
         d = {'start': run_start, 'stop': run_stop, 'descriptors': ev_descs}
-        return cls('header', d)
+        return self('header', d)
 
 
 class IntegrityError(Exception):
