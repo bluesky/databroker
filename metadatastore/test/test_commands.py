@@ -191,6 +191,9 @@ def test_find_events_smoke():
 
     next(mdsc.find_events())
 
+@raises(ValueError)
+def test_find_events_ValueError():
+    list(mdsc.find_events(event_descriptor='cat'))
 
 @raises(ValueError)
 def test_bad_bulk_insert_event_data():
