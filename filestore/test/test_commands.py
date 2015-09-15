@@ -38,14 +38,28 @@ def _insert_syn_data(f_type, shape, count):
     return ret
 
 
-def test_round_trip():
+def _insert_syn_data_bulk(f_type, shape, count):
+    fb = filestore.commands.insert_resource(f_type, None, {'shape': shape})
+    d_uid = [str(uuid.uuid4()) for k in range(count)]
+    d_kwargs = [{'n': k + 1} for k in range(count)]
+    filestore.commands.bulk_insert_datum(fb, d_uid, d_kwargs)
+
+    return d_uid
+
+
+def _rt_helper(func):
     shape = (25, 32)
-    mod_ids = _insert_syn_data('syn-mod', shape, 10)
+    mod_ids = func('syn-mod', shape, 10)
 
     for j, r_id in enumerate(mod_ids):
         data = retrieve(r_id)
         known_data = np.mod(np.arange(np.prod(shape)), j + 1).reshape(shape)
         assert_array_equal(data, known_data)
+
+
+def test_round_trip():
+    yield _rt_helper, _insert_syn_data
+    yield _rt_helper, _insert_syn_data_bulk
 
 
 def test_non_exist():
