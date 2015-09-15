@@ -46,10 +46,9 @@ def setup():
 def setup_syn(custom=None):
     if custom is None:
         custom = {}
-
     data_keys = {k: {'source': k,
                      'dtype': 'number',
-                     'shape': None} for k in 'ABCEDEFHIJKL'
+                     'shape': None} for k in 'ABCEDEFGHIJKL'
                  }
     scan_id = 1
 
@@ -191,6 +190,29 @@ def test_find_events_smoke():
     mdsc.clear_process_cache()
 
     next(mdsc.find_events())
+
+
+@raises(ValueError)
+def test_bad_bulk_insert_event_data():
+
+    num = 50
+    rs, e_desc, data_keys = setup_syn()
+    all_data = syn_data(data_keys, num)
+
+    # remove one of the keys from the event data
+    del all_data[-1]['data']['E']
+    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+
+
+@raises(ValueError)
+def test_bad_bulk_insert_event_timestamp():
+    """Test what happens when one event is missing a timestamp for one key"""
+    num = 50
+    rs, e_desc, data_keys = setup_syn()
+    all_data = syn_data(data_keys, num)
+    # remove one of the keys from the event timestamps
+    del all_data[1]['timestamps']['F']
+    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
 @raises(mdsc.NoEventDescriptors)
