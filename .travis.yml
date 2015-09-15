@@ -25,7 +25,7 @@ install:
   - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas
   - conda install -n testenv --yes -c nikea mongoengine
   - source activate testenv
-  - pip install coveralls prettytable humanize boltons
+  - pip install coveralls prettytable humanize boltons codecov
   - python setup.py install
 
 
@@ -33,4 +33,5 @@ script:
   - python run_tests.py
 
 after_success:
-  coveralls
+  - coveralls
+  - codecov
