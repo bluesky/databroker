@@ -86,6 +86,7 @@ class Document(dict):
         try:
             return vstr(self)
         except ImportError:
+            # import error will be raised if prettytable is not available
             return super(Document, self).__str__()
 
     def to_name_dict_pair(self):
