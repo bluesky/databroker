@@ -231,12 +231,11 @@ def test_no_evdesc():
 
 # ### Testing metadatastore find functionality ################################
 def _find_helper(func, kw):
-    func(**kw)
+    # dereference the generator...
+    list(func(**kw))
 
 
 def test_find_funcs_for_smoke():
-    """ Exercise documented kwargs in the find_* functions
-    """
     rs, = mdsc.find_run_starts(uid=run_start_uid)
     test_dict = {
         mdsc.find_run_starts: [
@@ -262,7 +261,7 @@ def test_find_funcs_for_smoke():
             {'uid': 'foo'}],
         mdsc.find_descriptors: [
             {'run_start': rs},
-            {'run_start_uid': rs.uid},
+            {'run_start': rs.uid},
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
             {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
