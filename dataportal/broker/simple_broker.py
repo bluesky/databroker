@@ -232,7 +232,7 @@ class IntegrityError(Exception):
     pass
 
 
-def get_events(headers, fields=None):
+def get_events(headers, fields=None, fill=True):
     """
     Get Events from given run(s).
 
@@ -242,6 +242,8 @@ def get_events(headers, fields=None):
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
+    fill : bool, optional
+        Whether externally-stored data should be filled in. Defaults to True
 
     Yields
     ------
@@ -275,7 +277,8 @@ def get_events(headers, fields=None):
                 for field in discard_fields:
                     del event.data[field]
                     del event.timestamps[field]
-                fill_event(event)
+                if fill:
+                    fill_event(event)
                 yield event
 
 
@@ -288,10 +291,10 @@ def get_table(headers, fields=None, fill=True):
     ----------
     headers : Header or iterable of Headers
         The headers to fetch the events for
-    fill : bool, optional
-        If non-scalar data should be filled in, Defaults to True
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
+    fill : bool, optional
+        Whether externally-stored data should be filled in. Defaults to True
 
     Returns
     -------
