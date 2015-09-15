@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from ..sources import channelarchiver as ca
 from ..sources import switch
-from ..broker import DataBroker as db
+from ..broker import DataBroker as db, get_events, get_table
 from ..examples.sample_data import temperature_ramp, image_and_scalar
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false)
@@ -71,6 +71,9 @@ def test_basic_usage():
     get_events(header_1)
     get_events(header_ned)
     get_events(header_null)
+    get_table(header_1)
+    get_table(header_ned)
+    get_table(header_null)
 
 
 def test_indexing():
