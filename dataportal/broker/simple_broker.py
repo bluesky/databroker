@@ -268,8 +268,8 @@ def get_events(headers, fields=None, fill=True):
     for header in headers:
         descriptors = find_descriptors(header['start']['uid'])
         for descriptor in descriptors:
-            if fields is not None:
-                all_fields = set(descriptor['data_keys'].keys())
+            if fields:
+                all_fields = set(descriptor['data_keys'])
                 discard_fields = all_fields - fields
             else:
                 discard_fields = []
@@ -320,7 +320,7 @@ def get_table(headers, fields=None, fill=True):
         dfs = []
         for descriptor in descriptors:
             if fields:
-                all_fields = set(descriptor['data_keys'].keys())
+                all_fields = set(descriptor['data_keys'])
                 discard_fields = all_fields - fields
             else:
                 discard_fields = []
