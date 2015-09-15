@@ -270,11 +270,13 @@ def get_events(headers, fields=None, fill=True):
     for header in headers:
         descriptors = find_descriptors(header['start']['uid'])
         for descriptor in descriptors:
+            all_fields = set(descriptor['data_keys'])
             if fields:
-                all_fields = set(descriptor['data_keys'])
                 discard_fields = all_fields - fields
             else:
                 discard_fields = []
+            if discard_fields == all_fields:
+                continue
             for event in get_events_generator(descriptor):
                 for field in discard_fields:
                     del event.data[field]
@@ -282,7 +284,6 @@ def get_events(headers, fields=None, fill=True):
                 if fill:
                     fill_event(event)
                 yield event
-
 
 
 def get_table(headers, fields=None, fill=True):
@@ -321,11 +322,13 @@ def get_table(headers, fields=None, fill=True):
     for header in headers:
         descriptors = find_descriptors(header['start']['uid'])
         for descriptor in descriptors:
+            all_fields = set(descriptor['data_keys'])
             if fields:
-                all_fields = set(descriptor['data_keys'])
                 discard_fields = all_fields - fields
             else:
                 discard_fields = []
+            if discard_fields == all_fields:
+                continue
             is_external = _inspect_descriptor(descriptor)
 
             payload = get_events_table(descriptor)
