@@ -5,26 +5,17 @@ import six
 import uuid
 import logging
 import time as ttime
-import logging
-from collections import Iterable
-from datetime import datetime
 import numpy as np
 import pandas as pd
-from .. import sources
 from ..sources import channelarchiver as ca
 from ..sources import switch
-from ..broker import EventQueue, DataBroker as db
+from ..broker import DataBroker as db, get_events, get_table
 from ..examples.sample_data import temperature_ramp, image_and_scalar
-import dataportal
-from nose.tools import make_decorator
 from nose.tools import (assert_equal, assert_raises, assert_true,
-                        assert_false, raises)
+                        assert_false)
 
 
-from metadatastore.odm_templates import (EventDescriptor,
-                                         Event, RunStart, RunStop)
-from metadatastore.api import (insert_run_start,
-                               insert_run_stop, insert_descriptor,
+from metadatastore.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
@@ -69,53 +60,20 @@ def test_basic_usage():
                          owner='nedbrainard', beamline_id='example',
                          uid=str(uuid.uuid4()))
     header_1 = db[-1]
-    # Exercise reprs.
-    header_1._repr_html_()
-    repr(header_1)
-    str(header_1)
-    headers = db[-3:]
-    headers._repr_html_()
-    repr(headers)
-    str(headers)
 
-    header_ned = db.find_headers(owner='nedbrainard')
-    header_null = db.find_headers(owner='this owner does not exist')
+    header_ned = db(owner='nedbrainard')
+    header_ned = db.find_headers(owner='nedbrainard')  # deprecated API
+    header_null = db(owner='this owner does not exist')
     # smoke test
     db.fetch_events(header_1)
     db.fetch_events(header_ned)
     db.fetch_events(header_null)
-
-
-def test_event_queue():
-    scan_id = np.random.randint(1e12)  # unique enough for government work
-    rs = insert_run_start(time=0., scan_id=scan_id,
-                          owner='queue-tester', beamline_id='example',
-                          uid=str(uuid.uuid4()))
-    header = db.find_headers(scan_id=scan_id)
-    queue = EventQueue(header)
-    # Queue should be empty until we create Events.
-    empty_bundle = queue.get()
-    assert_equal(len(empty_bundle), 0)
-    queue.update()
-    empty_bundle = queue.get()
-    assert_equal(len(empty_bundle), 0)
-    events = temperature_ramp.run(rs, make_run_stop=False)
-    # This should add a bundle of Events to the queue.
-    queue.update()
-    first_bundle = queue.get()
-    assert_equal(len(first_bundle), len(events))
-    more_events = temperature_ramp.run(rs, make_run_stop=False)
-    # Queue should be empty until we update.
-    empty_bundle = queue.get()
-    assert_equal(len(empty_bundle), 0)
-    queue.update()
-    second_bundle = queue.get()
-    assert_equal(len(second_bundle), len(more_events))
-    # Add Events from a different example into the same Header.
-    other_events = image_and_scalar.run(rs)
-    queue.update()
-    third_bundle = queue.get()
-    assert_equal(len(third_bundle), len(other_events))
+    get_events(header_1)
+    get_events(header_ned)
+    get_events(header_null)
+    get_table(header_1)
+    get_table(header_ned)
+    get_table(header_null)
 
 
 def test_indexing():
@@ -127,13 +85,13 @@ def test_indexing():
     header = db[-1]
     is_list = isinstance(header, list)
     assert_false(is_list)
-    scan_id = header.scan_id
+    scan_id = header['start']['scan_id']
     assert_equal(scan_id, 5)
 
     header = db[-2]
     is_list = isinstance(header, list)
     assert_false(is_list)
-    scan_id = header.scan_id
+    scan_id = header['start']['scan_id']
     assert_equal(scan_id, 4)
 
     f = lambda: db[-100000]
@@ -155,30 +113,29 @@ def test_indexing():
     num = len(headers)
     assert_equal(num, 1)
     header, = headers
-    scan_id = header.scan_id
+    scan_id = header['start']['scan_id']
     assert_equal(scan_id, 5)
 
     headers = db[-2:-1]
     assert_true(is_list)
     num = len(headers)
-    print(headers)
     assert_equal(num, 1)
     header, = headers
-    scan_id = header.scan_id
+    scan_id = header['start']['scan_id']
     assert_equal(scan_id, 4)
 
     headers = db[-3:-1]
-    scan_ids = [h.scan_id for h in headers]
+    scan_ids = [h['start']['scan_id'] for h in headers]
     assert_equal(scan_ids, [4, 3])
 
     # fancy indexing, by location
     headers = db[[-3, -1, -2]]
-    scan_ids = [h.scan_id for h in headers]
+    scan_ids = [h['start']['scan_id'] for h in headers]
     assert_equal(scan_ids, [3, 5, 4])
 
     # fancy indexing, by scan id
     headers = db[[3, 1, 2]]
-    scan_ids = [h.scan_id for h in headers]
+    scan_ids = [h['start']['scan_id'] for h in headers]
     assert_equal(scan_ids, [3, 1, 2])
 
 
@@ -190,13 +147,11 @@ def test_scan_id_lookup():
     rd2 = [insert_run_start(time=float(i)+1, scan_id=i + 1 + 314159,
                             owner='nedbrainard', beamline_id='example',
                             uid=str(uuid.uuid4())) for i in range(5)]
-    print(rd1)
-    print(rd2)
     header = db[3 + 314159]
-    scan_id = header['scan_id']
-    owner = header['run_start']['owner']
+    scan_id = header['start']['scan_id']
+    owner = header['start']['owner']
     assert_equal(scan_id, 3 + 314159)
-    assert_equal(rd2[2], header['uid'])
+    assert_equal(rd2[2], header['start']['uid'])
     # This should be the most *recent* Scan 3 + 314159. There is ambiguity.
     assert_equal(owner, 'nedbrainard')
 
@@ -209,12 +164,12 @@ def test_uid_lookup():
     insert_run_start(time=100., scan_id=1, uid=uid2,
                      owner='drstrangelove', beamline_id='example')
     # using full uid
-    actual_uid = db[uid]["uid"]
+    actual_uid = db[uid]['start']['uid']
     assert_equal(actual_uid, uid)
     assert_equal(rs1, uid)
 
     # using first 6 chars
-    actual_uid = db[uid[:6]]["uid"]
+    actual_uid = db[uid[:6]]['start']['uid']
     assert_equal(actual_uid, uid)
     assert_equal(rs1, uid)
 
@@ -238,11 +193,11 @@ def test_data_key():
                             uid=str(uuid.uuid4()))
     insert_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
                             uid=str(uuid.uuid4()))
-    result1 = db.find_headers(data_key='fork')
-    result2 = db.find_headers(data_key='fork', start_time=150)
+    result1 = db(data_key='fork')
+    result2 = db(data_key='fork', start_time=150)
     assert_equal(len(result1), 2)
     assert_equal(len(result2), 1)
-    actual = result2[0]["uid"]
+    actual = result2[0]['start']['uid']
     assert_equal(actual, str(rs2.uid))
 
 
