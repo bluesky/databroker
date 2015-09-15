@@ -10,8 +10,6 @@ import metadatastore.doc as doc
 import metadatastore.commands as mc
 import filestore.api as fs
 import logging
-from datetime import datetime
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -318,13 +316,11 @@ def get_table(headers, fields=None, fill=True):
         descriptors = find_descriptors(header['start']['uid'])
         dfs = []
         for descriptor in descriptors:
-#             print('descriptor = %s' % descriptor)
             if fields:
                 all_fields = set(descriptor['data_keys'].keys())
                 discard_fields = all_fields - fields
             else:
                 discard_fields = []
-#             print('discard_fields = %s' % discard_fields)
             is_external = _inspect_descriptor(descriptor)
 
             payload = fetch_events_table(descriptor)
@@ -332,12 +328,11 @@ def get_table(headers, fields=None, fill=True):
             df = pd.DataFrame(index=seq_nums)
             df['time'] = times
             for field, values in six.iteritems(data):
-                # print('field = %s' % field)
                 if field in discard_fields:
-                    print('Discarding field %s' % field)
+                    logger.debug('Discarding field %s', field)
                     continue
                 if is_external[field] and fill:
-                    print('filling data for %s' % field)
+                    logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk retrieve in FS
                     values = [fs.retrieve(value) for value in values]
                 df[field] = values
