@@ -110,7 +110,7 @@ def test_event_descriptor_insertion():
     # test insert
     ev_desc_uid = mdsc.insert_descriptor(run_start_uid, data_keys, time,
                                          str(uuid.uuid4()))
-    ev_desc_mds, = mdsc.find_event_descriptors(uid=ev_desc_uid)
+    ev_desc_mds, = mdsc.find_descriptors(uid=ev_desc_uid)
     # make sure the sanitized event descriptor has no uid
     check_for_id(ev_desc_mds)
 
@@ -260,7 +260,7 @@ def test_find_funcs_for_smoke():
             {'reason': 'whimsy'},
             {'exit_status': 'success'},
             {'uid': 'foo'}],
-        mdsc.find_event_descriptors: [
+        mdsc.find_descriptors: [
             {'run_start': rs},
             {'run_start_uid': rs.uid},
             {'start_time': ttime.time()},
