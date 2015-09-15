@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 import numpy as np
-from skxray.core import utils
 
 
 def brownian(im_shape, step_scale=1, decay=30,
@@ -69,8 +68,9 @@ def brownian(im_shape, step_scale=1, decay=30,
         # clip it
         cur_position = np.array([np.clip(v, 0, mx) for
                                  v, mx in zip(cur_position, im_shape)])
-        R = utils.radial_grid(cur_position,
-                                 im_shape)
+        X, Y = np.meshgrid(np.arange(im_shape[1]) - cur_position[1],
+                           np.arange(im_shape[0]) - cur_position[0])
+        R = np.sqrt(X**2 + Y**2)
         I = I_func(count)
         im = np.exp((-R**2 / decay)) * I
         count += 1
