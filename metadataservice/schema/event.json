@@ -2,11 +2,11 @@
 "properties": {
         "data": {
             "type": "object",
-            "description": "The actual measument data"
+            "description": "The actual measurement data"
         },
         "timestamps": {
             "type": "object",
-            "description": "The timestamps of the individual measument data"
+            "description": "The timestamps of the individual measurement data"
         },
         "descriptor": {
             "type": "string",

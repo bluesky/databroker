@@ -39,13 +39,34 @@ def _unpack_params(handler):
 
 
 def _return2client(handler, payload):
+    """Dump the result back to client's open socket. No need to worry about package size
+    or socket behavior as tornado handles this for us
+
+    Parameters
+    -----------
+    handler: tornado.web.RequestHandler
+        Request handler for the collection of operation(post/get)
+    payload: dict, str, list
+        Information to be sent to the client
+    """
     data = _stringify_data(payload)
-    if isinstance(handler, tornado.web.RequestHandler):
-        #TODO: Add exception handling
-        handler.write(ujson.dumps(data))
+    handler.write(ujson.dumps(data))
 
 
 def _stringify_data(docs):
+    """ujson does not allow encoding/decoding of any object other than
+    the basic python types. Therefore, we need to convert datetime and oid
+    into string. If nested dictionary, it is handled here as well.
+
+    Parameters
+    -----------
+    docs: list or dict
+        Query results to be 'stringified'
+    Returns
+    -----------
+    stringed: list or dict
+        Stringified list or dictionary
+    """
     if isinstance(docs, list):
         stringed = list()
         for _ in docs:

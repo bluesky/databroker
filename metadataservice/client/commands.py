@@ -53,9 +53,23 @@ def _ensure_connection(func):
         return func(*args, **kwargs)
     return inner
 
-
 @_ensure_connection
-def runstart_given_uid(uid):
+def _runstart_given_uid(uid):
+    """Get RunStart document given an ObjectId
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+    When we migrate to using uid as the primary key this function
+    will be removed. Server strips the ObjectId fields for the client
+    Parameters
+    ----------
+    oid : ObjectId
+        Mongo's unique identifier for the document.  This is currently
+        used to implement foreign keys
+    Returns
+    -------
+    run_start : doc.Document
+        The RunStart document.
+    """
     return _find_run_starts(uid=uid)
 
 

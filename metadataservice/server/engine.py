@@ -85,6 +85,9 @@ class RunStartHandler(tornado.web.RequestHandler):
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
+            #strip oid fields
+            docs.pop('_id')
+            docs.pop('beamline_config_id', None)
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
 
@@ -124,7 +127,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        docs = db.event_descriptor.find(query).sort(
+        docs = yield db.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs:
             raise tornado.web.HTTPError(404)
@@ -168,7 +171,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')    
-        docs = db.run_stop.find(query).sort(
+        docs = yield db.run_stop.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs:
             raise tornado.web.HTTPError(404)
@@ -211,7 +214,7 @@ class EventHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        docs = db.event_descriptor.find(query).sort(
+        docs = yield db.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs:
             raise tornado.web.HTTPError(404)
@@ -227,7 +230,7 @@ class EventHandler(tornado.web.RequestHandler):
         if isinstance(data, list):
             # unordered insert. in seq_num I trust
             jsonschema.validate(data, utils.schemas['bulk_events'])
-            bulk = db.event.initialize_unordered_bulk_op()
+            bulk = yield db.event.initialize_unordered_bulk_op()
             for _ in data:
                 bulk.insert(_)
             try:
