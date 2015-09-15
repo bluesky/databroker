@@ -231,7 +231,7 @@ class Header(doc.Document):
             ev_descs = []
 
         d = {'start': run_start, 'stop': run_stop, 'descriptors': ev_descs}
-        return self('header', d)
+        return cls('header', d)
 
 
 class IntegrityError(Exception):
