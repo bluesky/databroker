@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 def _resource_on_miss(k):
-    res_objects = Resource.objects.as_pymongo()
-    return res_objects.get(id=k)
+    res_col = Resource._get_collection()
+    return res_col.find_one({'_id': k})
 
-_DATUM_CACHE = boltons.cacheutils.LRU(max_size=100000)
+_DATUM_CACHE = boltons.cacheutils.LRU(max_size=1000000)
 _HANDLER_CACHE = boltons.cacheutils.LRU()
 _RESOURCE_CACHE = boltons.cacheutils.LRU(on_miss=_resource_on_miss)
 
@@ -241,15 +241,17 @@ def get_data(eid, handle_registry=None):
         datum = _DATUM_CACHE[eid]
     except KeyError:
         keys = ['datum_kwargs', 'resource']
-        d_objs = Datum.objects.as_pymongo()
+        d_objs = Datum._get_collection()
         # find the current document
-        edoc = d_objs.get(datum_id=eid)
+        edoc = d_objs.find_one({'datum_id': eid})
+        if edoc is None:
+            raise Datum.DoesNotExist()
         # save it for later
         datum = {k: edoc[k] for k in keys}
-        # pull all datum which share this resource
+
         res = edoc['resource']
         count = 0
-        for dd in d_objs(resource=res):
+        for dd in d_objs.find({'resource': res}):
             count += 1
             d_id = dd['datum_id']
             if d_id not in _DATUM_CACHE:
