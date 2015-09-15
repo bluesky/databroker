@@ -330,8 +330,7 @@ def get_table(headers, fields=None, fill=True):
             payload = fetch_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
-            datetimes = [datetime.fromtimestamp(time) for time in times]
-            df['time'] = datetimes
+            df['time'] = times
             for field, values in six.iteritems(data):
                 # print('field = %s' % field)
                 if field in discard_fields:
