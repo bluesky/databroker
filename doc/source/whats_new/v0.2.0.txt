@@ -1,0 +1,12 @@
+Dataportal v0.2.0
+-----------------
+
+API Changes
+===========
+
+* `DataBroker[]` for slicing by scan ID(s) or recency
+*  `DataBroker()` for building queries from keyword arguments
+* `get_events`  return events generator
+* `get_table`  return DataFrame
+* `Header`, vastly simplified: it is merely `Document` with a dedicated
+  constructor that accepts a Run Start Document
