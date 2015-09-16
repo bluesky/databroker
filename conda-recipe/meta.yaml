@@ -36,15 +36,11 @@ test:
   requires:
     - nslsii_dev_configuration
 
-  # Python imports
   imports:
+    # Import all the packages
     - metadatastore
-    - metadatastore.commands
-    - metadatastore.api
-    - metadatastore.conf
-    - metadatastore.odm_templates
-    - metadatastore.document
-    - metadatastore.utils
+    - metadatastore.examples
+    - metadatastore.examples.sample_data
 
 about:
   home: https://github.com/NSLS-II/metadatastore
