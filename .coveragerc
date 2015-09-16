@@ -8,6 +8,5 @@ omit =
     *_version.py
 
 exclude_lines =
-    pragma: no cover
     def set_default
     if __name__
