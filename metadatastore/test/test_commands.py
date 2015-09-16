@@ -192,8 +192,10 @@ def test_find_events_smoke():
     # make sure the uid works
     next(mdsc.find_events(descriptor=e_desc))
     
+    mdsc.clear_process_cache()
     descriptor, = mdsc.find_descriptors(uid=e_desc)
     
+    mdsc.clear_process_cache()
     # make sure that searching by descriptor document works
     next(mdsc.find_events(descriptor=descriptor))
     
