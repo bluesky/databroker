@@ -29,6 +29,7 @@ requirements:
     - humanize
     - numpy
     - pytz
+    - jinja2
 
 test:
   requires:

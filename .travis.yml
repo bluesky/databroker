@@ -22,7 +22,7 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2
   - conda install -n testenv --yes -c nikea mongoengine
   - source activate testenv
   - pip install coveralls prettytable humanize boltons codecov
