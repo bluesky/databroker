@@ -48,7 +48,7 @@ def load_configuration(name, prefix, fields):
         ]
 
     if 'CONDA_ETC_' in os.environ:
-        filenames.insert(0, os.path.join(  #pragma: no cover
+        filenames.insert(0, os.path.join(
             os.environ['CONDA_ETC_'], name + '.yml'))
 
     config = {}
@@ -65,7 +65,7 @@ def load_configuration(name, prefix, fields):
 
     missing = [k for k, v in config.items() if v is None]
     if missing:
-        raise KeyError("The configuration field(s) {0} "  #pragma: no cover
+        raise KeyError("The configuration field(s) {0} "
                        "were not found in any file or environmental "
                        "variable.".format(missing))
     return config
