@@ -3,6 +3,7 @@ from metadatastore.examples.sample_data import (temperature_ramp,
                                                 multisource_event)
 from metadatastore.utils.testing import mds_setup, mds_teardown
 import numpy as np
+import itertools
 from nose.tools import raises
 
 def setup():
@@ -27,15 +28,15 @@ def test_noisy_for_smoke():
         yield _noisy_helper, v
 
 @raises(NotImplementedError)
-def _failing_sleepy_ramp_helper(delay_time):
+def _failing_helper(mod, delay_time):
     # any non-zero values should work
-    temperature_ramp.run(sleep=delay_time)
+    mod.run(sleep=delay_time)
 
-def test_sleepy_ramp():
+def test_sleepy_failures():
     failing_times = [-1, 1]
-    for failing_time in failing_times:
-        yield _failing_sleepy_ramp_helper, failing_time
-
+    modules = [temperature_ramp, multisource_event]
+    for mod, failing_time in itertools.product(modules, failing_times):
+        yield _failing_helper, mod, failing_time
 
 def test_multisource_event():
     multisource_event.run()

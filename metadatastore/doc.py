@@ -86,6 +86,7 @@ class Document(dict):
         try:
             return vstr(self)
         except ImportError:
+            # import error will be raised if prettytable is not available
             return super(Document, self).__str__()
 
     def to_name_dict_pair(self):
@@ -185,7 +186,7 @@ def vstr(doc, indent=0):
                 documents.append((name, value))
             else:
                 # format dicts reasonably
-                ret += "\n%-{}s:".format(name_width, value_width) % (name)
+                ret += "\n%-{}s:".format(name_width) % (name)
                 ret += _format_dict(value, name_width, value_width,
                                     name, tabs=1)
         else:

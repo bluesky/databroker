@@ -46,10 +46,9 @@ def setup():
 def setup_syn(custom=None):
     if custom is None:
         custom = {}
-
     data_keys = {k: {'source': k,
                      'dtype': 'number',
-                     'shape': None} for k in 'ABCEDEFHIJKL'
+                     'shape': None} for k in 'ABCEDEFGHIJKL'
                  }
     scan_id = 1
 
@@ -111,7 +110,7 @@ def test_event_descriptor_insertion():
     # test insert
     ev_desc_uid = mdsc.insert_descriptor(run_start_uid, data_keys, time,
                                          str(uuid.uuid4()))
-    ev_desc_mds, = mdsc.find_event_descriptors(uid=ev_desc_uid)
+    ev_desc_mds, = mdsc.find_descriptors(uid=ev_desc_uid)
     # make sure the sanitized event descriptor has no uid
     check_for_id(ev_desc_mds)
 
@@ -189,8 +188,43 @@ def test_find_events_smoke():
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
     mdsc.clear_process_cache()
+    
+    # make sure the uid works
+    next(mdsc.find_events(descriptor=e_desc))
+    
+    mdsc.clear_process_cache()
+    descriptor, = mdsc.find_descriptors(uid=e_desc)
+    
+    mdsc.clear_process_cache()
+    # make sure that searching by descriptor document works
+    next(mdsc.find_events(descriptor=descriptor))
+    
+@raises(ValueError)
+def test_find_events_ValueError():
+    list(mdsc.find_events(event_descriptor='cat'))
 
-    next(mdsc.find_events())
+
+@raises(ValueError)
+def test_bad_bulk_insert_event_data():
+
+    num = 50
+    rs, e_desc, data_keys = setup_syn()
+    all_data = syn_data(data_keys, num)
+
+    # remove one of the keys from the event data
+    del all_data[-1]['data']['E']
+    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+
+
+@raises(ValueError)
+def test_bad_bulk_insert_event_timestamp():
+    """Test what happens when one event is missing a timestamp for one key"""
+    num = 50
+    rs, e_desc, data_keys = setup_syn()
+    all_data = syn_data(data_keys, num)
+    # remove one of the keys from the event timestamps
+    del all_data[1]['timestamps']['F']
+    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
 @raises(mdsc.NoEventDescriptors)
@@ -209,12 +243,11 @@ def test_no_evdesc():
 
 # ### Testing metadatastore find functionality ################################
 def _find_helper(func, kw):
-    func(**kw)
+    # dereference the generator...
+    list(func(**kw))
 
 
 def test_find_funcs_for_smoke():
-    """ Exercise documented kwargs in the find_* functions
-    """
     rs, = mdsc.find_run_starts(uid=run_start_uid)
     test_dict = {
         mdsc.find_run_starts: [
@@ -237,18 +270,16 @@ def test_find_funcs_for_smoke():
             {'start_time': ttime.time()-1, 'stop_time': ttime.time()},
             {'reason': 'whimsy'},
             {'exit_status': 'success'},
-            {'uid': 'foo'}],
-        mdsc.find_event_descriptors: [
             {'run_start': rs},
             {'run_start_uid': rs.uid},
+            {'uid': 'foo'}],
+        mdsc.find_descriptors: [
+            {'run_start': rs},
+            {'run_start': rs.uid},
             {'start_time': ttime.time()},
             {'stop_time': ttime.time()},
             {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
             {'uid': 'foo'}],
-        mdsc.find_run_stops: [
-            {'run_start': rs},
-            {'run_start_uid': rs.uid},
-        ]
     }
     for func, list_o_dicts in test_dict.items():
         for dct in list_o_dicts:
