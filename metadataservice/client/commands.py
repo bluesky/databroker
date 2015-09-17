@@ -287,7 +287,12 @@ def _transpose(in_data, keys, field):
     transpose : dict
         The transpose of the data
     """
-    pass
+    out = {k: [None] * len(in_data) for k in keys}
+    for j, ev in enumerate(in_data):
+        dd = ev[field]
+        for k in keys:
+            out[k][j] = dd[k]
+    return out
 
 
 @_ensure_connection
@@ -320,6 +325,7 @@ def fetch_events_table(descriptor):
 
 @_ensure_connection
 def _find_run_starts(**kwargs):
+    #TODO: Make it accept a range for cursor slicing
     """Given search criteria, locate RunStart Documents.
     As we describe in design document, time here is strictly the time
     server entry was created, not IOC timestamp. For the difference, refer
@@ -500,8 +506,25 @@ def _find_events(**kwargs):
 
 
 @_ensure_connection
-def find_last():
-    raise NotImplementedError('Find last, coming soon...')
+def find_last(num=1):
+    """Locate the last `num` RunStart Documents
+
+    Parameters
+    ----------
+    num : integer, optional
+        number of RunStart documents to return, default 1
+
+    Yields
+    ------
+    run_start doc.Document
+       The requested RunStart documents
+    """
+    c = count()
+    _find_run_starts(uid=uid))
+    # for rs in RunStart.objects.as_pymongo().order_by('-time'):
+    #     if next(c) == num:
+    #         raise StopIteration
+    #     yield _cache_run_start(rs)
 
 
 @_ensure_connection
