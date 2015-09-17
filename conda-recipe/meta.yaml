@@ -30,20 +30,25 @@ requirements:
     - numpy
     - pytz
     - jinja2
+    - boltons
 
 test:
   requires:
     - nslsii_dev_configuration
 
-  # Python imports
   imports:
+    # Import all the packages
     - metadatastore
-    - metadatastore.commands
     - metadatastore.api
+    - metadatastore.commands
     - metadatastore.conf
+    - metadatastore.doc
     - metadatastore.odm_templates
-    - metadatastore.document
-    - metadatastore.utils
+    - metadatastore.examples
+    - metadatastore.examples.sample_data
+    - metadatastore.examples.sample_data.common
+    - metadatastore.examples.sample_data.multisource_event
+    - metadatastore.examples.sample_data.temperature_ramp
 
 about:
   home: https://github.com/NSLS-II/metadatastore
