@@ -39,7 +39,7 @@ test:
   imports:
     # Import all the packages
     - metadatastore
-    - metadatstore.api
+    - metadatastore.api
     - metadatastore.commands
     - metadatastore.conf
     - metadatastore.doc
