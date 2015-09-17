@@ -39,8 +39,16 @@ test:
   imports:
     # Import all the packages
     - metadatastore
+    - metadatstore.api
+    - metadatastore.commands
+    - metadatastore.conf
+    - metadatastore.doc
+    - metadatastore.odm_templates
     - metadatastore.examples
     - metadatastore.examples.sample_data
+    - metadatastore.examples.sample_data.common
+    - metadatastore.examples.sample_data.multisource_event
+    - metadatastore.examples.sample_data.temperature_ramp
 
 about:
   home: https://github.com/NSLS-II/metadatastore
