@@ -21,9 +21,10 @@ before_install:
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
+  - conda config --set always_yes true
   - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2
-  - conda install -n testenv --yes -c nikea mongoengine
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2
+  - conda install -n testenv -c nikea mongoengine
   # install deps for building a conda package on travis
   - conda install conda-build
   - source activate testenv
