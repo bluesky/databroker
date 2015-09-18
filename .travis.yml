@@ -28,17 +28,19 @@ install:
   - conda config --set always_yes true
   - conda update conda --yes
   - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2
-  - conda install -n testenv -c nikea mongoengine
+  # install deps that will reliably exist on our public anaconda.org build channel
+  - conda install -n testenv -c lightsource2 mongoengine boltons prettytable humanize
   # install deps for building a conda package on travis
   - conda install conda-build jinja2
   - source activate testenv
-  - pip install coveralls prettytable humanize boltons codecov
+  - pip install coveralls codecov
   - python setup.py install
 
 
 script:
   - python run_tests.py -v
   - git fetch --unshallow
+  # add our public build channel so that conda-build can access any pacakges it needs
   - conda config --add channels lightsource2
   - conda build conda-recipe
 
