@@ -20,7 +20,6 @@ requirements:
   run:
     - python
     - pandas
-    - matplotlib
     - pyyaml
     - pims
     - metadatastore >=0.1.0
@@ -28,7 +27,6 @@ requirements:
     - channelarchiver
     - six
     - humanize
-    - scikit-image
 
 test:
   requires:
