@@ -39,6 +39,7 @@ install:
 script:
   - python run_tests.py -v
   - git fetch --unshallow
+  - conda config --add channels lightsource2
   - conda build conda-recipe
 
 after_success:
