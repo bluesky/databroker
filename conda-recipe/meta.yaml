@@ -20,15 +20,13 @@ requirements:
   run:
     - python
     - pandas
-    - matplotlib
     - pyyaml
     - pims
-    - metadatastore >=0.1.0
-    - filestore >=0.1.0
+    - metadatastore >=0.2.0
+    - filestore >=0.2.0
     - channelarchiver
     - six
     - humanize
-    - scikit-image
 
 test:
   requires:
