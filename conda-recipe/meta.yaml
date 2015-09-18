@@ -43,8 +43,12 @@ test:
     - filestore.file_writers
     - filestore.handlers
     - filestore.odm_templates
+    - filestore.path_only_handlers
     - filestore.retrieve
+    - filestore.readers
+    - filestore.readers.spe
     - filestore.utils
+    - filestore.utils.testing
 
 about:
   home: https://github.com/NSLS-II/filestore
