@@ -38,6 +38,7 @@ install:
 
 script:
   - python run_tests.py -v
+  - git fetch --unshallow
   - conda build conda-recipe
 
 after_success:
