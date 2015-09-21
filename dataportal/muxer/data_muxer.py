@@ -38,6 +38,7 @@ import six
 from collections import namedtuple, deque
 import logging
 import pandas as pd
+import tzlocal
 import numpy as np
 from scipy.interpolate import interp1d
 import pandas.core.groupby  # to get custom exception
@@ -45,6 +46,8 @@ import pandas.core.groupby  # to get custom exception
 
 logger = logging.getLogger(__name__)
 __all__ = ['DataMuxer', 'dataframe_to_dict']
+
+TZ = str(tzlocal.get_localzone())
 
 
 class BinningError(Exception):
@@ -480,9 +483,11 @@ class DataMuxer(object):
 
     def _maybe_convert_times(self, data):
         if self.convert_times:
+            t = pd.to_datetime(data, unit='s', utc=True).dt.tz_localize(TZ)
             if self.reference_time is None:
-                return pd.to_datetime(data, unit='s')
-            return pd.to_datetime(data, unit='s') - self.reference_time
+                return t
+            else:
+                return t - self.reference_time
         return data  # no-op
 
     def include_timestamp_data(self, source_name):

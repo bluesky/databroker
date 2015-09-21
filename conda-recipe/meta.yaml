@@ -28,6 +28,7 @@ requirements:
     - channelarchiver
     - six
     - humanize
+    - tzlocal
 
 test:
   requires:
