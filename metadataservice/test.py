@@ -64,9 +64,13 @@ d = next(_find_run_starts(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa"))
 
 print(type(runstart_given_uid(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
 
+insert_run_start(uid=str(uuid.uuid4()), scan_id=1, beamline_id='arbitrary',
+                 time=time.time(), group='none',project='xyz',
+                 config={'param', 1})
 
-rs, e_desc, data_keys = setup_syn()
-all_data = syn_data(data_keys, num)
+
+# rs, e_desc, data_keys = setup_syn()
+# all_data = syn_data(data_keys, num)
 
 start_time = time.time()
 insert_event(descriptor=e_desc, events=all_data)

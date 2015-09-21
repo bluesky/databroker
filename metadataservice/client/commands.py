@@ -6,13 +6,14 @@ import time
 import six
 from functools import wraps
 import ujson
-from . import (conf, utils)
+from metadataservice.client import (conf, utils)
 
 """
 .. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
+#TODO: Hide all oid from end-user
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -52,6 +53,27 @@ def _ensure_connection(func):
         return func(*args, **kwargs)
     return inner
 
+
+def doc_or_uid_to_uid(doc_or_uid):
+    """Given Document or uid return the uid
+
+    Parameters
+    ----------
+    doc_or_uid : dict or str
+        If str, then assume uid and pass through, if not, return
+        the 'uid' field
+
+    Returns
+    -------
+    uid : str
+        A string version of the uid of the given document
+
+    """
+    if not isinstance(doc_or_uid, six.string_types):
+        doc_or_uid = doc_or_uid['uid']
+    return doc_or_uid
+
+
 @_ensure_connection
 def runstart_given_uid(uid):
     """Get RunStart document given an ObjectId
@@ -61,9 +83,8 @@ def runstart_given_uid(uid):
     will be removed. Server strips the ObjectId fields for the client
     Parameters
     ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
+    uid : str
+        Unique identifier for the document.  
     Returns
     -------
     run_start : doc.Document
@@ -96,26 +117,6 @@ def _run_start_given_oid(oid):
 
 
 @_ensure_connection
-def runstop_given_uid(uid):
-    """Given a uid, return the RunStop document
-
-    Parameters
-    ----------
-    uid : str
-        The uid
-
-    Returns
-    -------
-    run_stop : doc.Document
-        The RunStop document fully de-referenced
-
-    """
-    run_stop = dict(next(_find_run_stops(uid=uid)))
-    start_oid = run_stop.pop('run_start_id')
-    run_stop['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('RunStop', run_stop)
-
-@_ensure_connection
 def _descriptor_given_oid(oid):
     """Get EventDescriptor document given an ObjectId
 
@@ -141,9 +142,10 @@ def _descriptor_given_oid(oid):
     descriptor['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('EventDescriptor', descriptor)
 
+
 @_ensure_connection
-def descriptor_given_uid(uid):
-    """Given a uid, return the EventDescriptor document
+def runstop_given_uid(uid):
+    """Given a uid, return the RunStop document
 
     Parameters
     ----------
@@ -152,13 +154,14 @@ def descriptor_given_uid(uid):
 
     Returns
     -------
-    descriptor : doc.Document
-        The EventDescriptor document fully de-referenced
+    run_stop : doc.Document
+        The RunStop document fully de-referenced
+
     """
-    descriptor = dict(next(_find_event_descriptors(uid=uid)))
-    start_oid = descriptor.pop('run_start_id')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('EventDescriptor', descriptor)
+    run_stop = dict(next(_find_run_stops(uid=uid)))
+    start_oid = run_stop.pop('run_start_id')
+    run_stop['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('RunStop', run_stop)
 
 
 @_ensure_connection
@@ -172,11 +175,11 @@ def run_start_given_uid(uid):
 
     Returns
     -------
-    run_start : doc.Document
+    run_start : utils.Document
         The RunStart document.
 
     """
-    pass
+    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
 
 
 @_ensure_connection
@@ -194,7 +197,30 @@ def run_stop_given_uid(uid):
         The RunStop document fully de-referenced
 
     """
-    pass
+    runstop = dict(next(_find_run_stops(uid=uid)))
+    start_oid = runstop.pop('run_start_id')
+    runstop['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('RunStop', runstop)
+
+
+@_ensure_connection
+def descriptor_given_uid(uid):
+    """Given a uid, return the EventDescriptor document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    descriptor : utils.Document
+        The EventDescriptor document fully de-referenced
+    """
+    descriptor = dict(next(_find_event_descriptors(uid=uid)))
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('EventDescriptor', descriptor)
 
 
 @_ensure_connection
@@ -211,7 +237,7 @@ def stop_by_start(run_start):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : utils.Document
         The RunStop document
 
     Raises
@@ -219,8 +245,12 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    pass
-
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    rstart = run_start_given_uid(run_start_uid)
+    run_stop = dict(next(_find_run_stops(run_start_id=rstart['_id'])))
+    run_stop['run_start'] = run_start
+    return utils.Document('RunStop', run_stop)
+    
 
 @_ensure_connection
 def descriptors_by_start(run_start):
@@ -520,7 +550,7 @@ def find_last(num=1):
        The requested RunStart documents
     """
     c = count()
-    _find_run_starts(uid=uid))
+    # _find_run_starts(uid=uid))
     # for rs in RunStart.objects.as_pymongo().order_by('-time'):
     #     if next(c) == num:
     #         raise StopIteration

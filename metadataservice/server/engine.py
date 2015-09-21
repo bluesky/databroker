@@ -83,7 +83,6 @@ class RunStartHandler(tornado.web.RequestHandler):
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         for d in docs:
             #strip oid fields
-            d.pop('_id')
             d.pop('beamline_config_id', None)
         if not docs:
             raise tornado.web.HTTPError(404)
@@ -129,8 +128,6 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = yield db.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        for d in docs:
-            d.pop('_id')
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
@@ -175,8 +172,6 @@ class RunStopHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')    
         docs = yield db.run_stop.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        for d in docs:
-            d.pop('_id')
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
@@ -220,8 +215,6 @@ class EventHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = yield db.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        for d in docs:
-            d.pop('_id')
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
