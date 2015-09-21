@@ -3,6 +3,7 @@ import warnings
 import six  # noqa
 from collections import Iterable, deque
 import pandas as pd
+import tzlocal
 from metadatastore.commands import (find_last, find_run_starts,
                                     find_descriptors,
                                     get_events_generator, get_events_table)
@@ -11,7 +12,9 @@ import metadatastore.commands as mc
 import filestore.api as fs
 import logging
 
+
 logger = logging.getLogger(__name__)
+TZ = str(tzlocal.get_localzone())
 
 
 class _DataBrokerClass(object):
@@ -284,7 +287,7 @@ def get_events(headers, fields=None, fill=True):
                 yield event
 
 
-def get_table(headers, fields=None, fill=True):
+def get_table(headers, fields=None, fill=True, convert_times=True):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -296,6 +299,9 @@ def get_table(headers, fields=None, fill=True):
         whitelist of field names of interest; if None, all are returned
     fill : bool, optional
         Whether externally-stored data should be filled in. Defaults to True
+    convert_times : bool, optional
+        Whether to convert times from float (seconds since 1970) to
+        numpy datetime64, using pandas. True by default.
 
     Returns
     -------
@@ -332,6 +338,9 @@ def get_table(headers, fields=None, fill=True):
             payload = get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
+            if convert_times:
+                times = pd.to_datetime(
+                    pd.Series(times), unit='s', utc=True).dt.tz_localize(TZ)
             df['time'] = times
             for field, values in six.iteritems(data):
                 if field in discard_fields:
