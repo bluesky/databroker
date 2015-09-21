@@ -1,6 +1,6 @@
 package:
   name: dataportal
-  version: v0.2.2
+  version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
 
 source:
   git_url: ../
@@ -10,7 +10,7 @@ build:
 
   # Note that this will override the default build string with the Python
   #   # and NumPy versions
-  string: v0.2.2
+  string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
 
 requirements:
   build:
