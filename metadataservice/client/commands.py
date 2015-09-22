@@ -138,8 +138,6 @@ def _descriptor_given_oid(oid):
         The EventDescriptor document.
     """
     descriptor = dict(next(_find_event_descriptors(oid=oid)))
-    start_oid = descriptor.pop('run_start_id')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('EventDescriptor', descriptor)
 
 
@@ -159,8 +157,6 @@ def runstop_given_uid(uid):
 
     """
     run_stop = dict(next(_find_run_stops(uid=uid)))
-    start_oid = run_stop.pop('run_start_id')
-    run_stop['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('RunStop', run_stop)
 
 
@@ -198,8 +194,6 @@ def run_stop_given_uid(uid):
 
     """
     runstop = dict(next(_find_run_stops(uid=uid)))
-    start_oid = runstop.pop('run_start_id')
-    runstop['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('RunStop', runstop)
 
 
@@ -218,8 +212,6 @@ def descriptor_given_uid(uid):
         The EventDescriptor document fully de-referenced
     """
     descriptor = dict(next(_find_event_descriptors(uid=uid)))
-    start_oid = descriptor.pop('run_start_id')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('EventDescriptor', descriptor)
 
 
@@ -245,12 +237,12 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    rstart = run_start_given_uid(run_start_uid)
-    run_stop = dict(next(_find_run_stops(run_start_id=rstart['_id'])))
-    run_stop['run_start'] = run_start
-    return utils.Document('RunStop', run_stop)
-    
+    pass
+#     run_start_uid = doc_or_uid_to_uid(run_start)
+#     rstart = run_start_given_uid(run_start_uid)
+#     run_stop = dict(next(_find_run_stops(run_start_id=rstart['_id'])))
+#     return utils.Document('RunStop', run_stop)
+#     
 
 @_ensure_connection
 def descriptors_by_start(run_start):
@@ -274,8 +266,9 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    pass
-
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    run_start_given_uid(run_start_uid)
+    
 
 @_ensure_connection
 def fetch_events_generator(desc_uid):
@@ -549,7 +542,7 @@ def find_last(num=1):
     run_start doc.Document
        The requested RunStart documents
     """
-    c = count()
+    pass
     # _find_run_starts(uid=uid))
     # for rs in RunStart.objects.as_pymongo().order_by('-time'):
     #     if next(c) == num:

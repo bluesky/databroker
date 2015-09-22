@@ -131,6 +131,10 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
+            for d in docs:
+                run_start_id = d.pop('run_start_id')
+                rstart = yield db.run_start.find_one({'run_start_id': run_start_id})
+                d['run_start'] = rstart
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
 
@@ -175,6 +179,10 @@ class RunStopHandler(tornado.web.RequestHandler):
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
+            for d in docs:
+                run_start_id = d.pop('run_start_id')
+                rstart = yield db.run_start.find_one({'run_start_id': run_start_id})
+                d['run_start'] = rstart
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
 
@@ -218,6 +226,8 @@ class EventHandler(tornado.web.RequestHandler):
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
+            for d in docs:
+                d.pop('descriptor_id')
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
 
