@@ -606,8 +606,8 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         custom = {}
 
     run_start = RunStart(time=time, scan_id=scan_id, uid=uid,
-                        beamline_id=beamline_id, owner=owner, group=group,
-                        project=project, **custom)
+                         beamline_id=beamline_id, owner=owner, group=group,
+                         project=project, **custom)
 
     run_start = run_start.save(validate=True, write_concern={"w": 1})
 
@@ -619,7 +619,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
 
 @_ensure_connection
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
-                   custom=None):
+                    custom=None):
     """Insert RunStop document into database
 
     Parameters
