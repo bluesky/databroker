@@ -75,24 +75,6 @@ def doc_or_uid_to_uid(doc_or_uid):
 
 
 @_ensure_connection
-def runstart_given_uid(uid):
-    """Get RunStart document given an ObjectId
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-    When we migrate to using uid as the primary key this function
-    will be removed. Server strips the ObjectId fields for the client
-    Parameters
-    ----------
-    uid : str
-        Unique identifier for the document.  
-    Returns
-    -------
-    run_start : doc.Document
-        The RunStart document.
-    """
-    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
-
-@_ensure_connection
 def _run_start_given_oid(oid):
     """Get RunStart document given an ObjectId
 
@@ -110,10 +92,10 @@ def _run_start_given_oid(oid):
 
     Returns
     -------
-    run_start : doc.Document
+    run_start : utils.Document
         The RunStart document.
     """
-    return utils.Document('RunStart', next(_find_run_starts(_id=oid)))
+    return utils.Document('RunStart', dict(next(_find_run_starts(_id=oid))))
 
 
 @_ensure_connection
@@ -134,11 +116,30 @@ def _descriptor_given_oid(oid):
 
     Returns
     -------
-    descriptor : doc.Document
+    descriptor : utils.Document
         The EventDescriptor document.
     """
     descriptor = dict(next(_find_event_descriptors(oid=oid)))
     return utils.Document('EventDescriptor', descriptor)
+
+
+@_ensure_connection
+def runstart_given_uid(uid):
+    """Get RunStart document given an ObjectId
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+    When we migrate to using uid as the primary key this function
+    will be removed. Server strips the ObjectId fields for the client
+    Parameters
+    ----------
+    uid : str
+        Unique identifier for the document.  
+    Returns
+    -------
+    run_start : utils.Document
+        The RunStart document.
+    """
+    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
 
 
 @_ensure_connection
@@ -152,49 +153,12 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : utils.Document
         The RunStop document fully de-referenced
 
     """
     run_stop = dict(next(_find_run_stops(uid=uid)))
     return utils.Document('RunStop', run_stop)
-
-
-@_ensure_connection
-def run_start_given_uid(uid):
-    """Given a uid, return the RunStart document
-
-    Parameters
-    ----------
-    uid : str
-        The uid
-
-    Returns
-    -------
-    run_start : utils.Document
-        The RunStart document.
-
-    """
-    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
-
-
-@_ensure_connection
-def run_stop_given_uid(uid):
-    """Given a uid, return the RunStop document
-
-    Parameters
-    ----------
-    uid : str
-        The uid
-
-    Returns
-    -------
-    run_stop : doc.Document
-        The RunStop document fully de-referenced
-
-    """
-    runstop = dict(next(_find_run_stops(uid=uid)))
-    return utils.Document('RunStop', runstop)
 
 
 @_ensure_connection
@@ -237,12 +201,8 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    pass
-#     run_start_uid = doc_or_uid_to_uid(run_start)
-#     rstart = run_start_given_uid(run_start_uid)
-#     run_stop = dict(next(_find_run_stops(run_start_id=rstart['_id'])))
-#     return utils.Document('RunStop', run_stop)
-#     
+    raise NotImplementedError('Coming soon')
+
 
 @_ensure_connection
 def descriptors_by_start(run_start):
@@ -266,10 +226,9 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start_given_uid(run_start_uid)
-    
+    raise NotImplementedError('Coming soon')
 
+    
 @_ensure_connection
 def fetch_events_generator(desc_uid):
     """A generator which yields all events from the event stream
@@ -286,7 +245,7 @@ def fetch_events_generator(desc_uid):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    pass
+    raise NotImplementedError('Coming soon')
 
 
 def _transpose(in_data, keys, field):
@@ -344,7 +303,7 @@ def fetch_events_table(descriptor):
         The timestamps of each of the measurements as dict of lists.  Same
         keys as `data_table`.
     """
-    pass
+    raise NotImplementedError('Coming soon')
 
 @_ensure_connection
 def _find_run_starts(**kwargs):
@@ -526,28 +485,6 @@ def _find_events(**kwargs):
                 yield dict(c)
             range_ceil += 1000
             range_floor += 1000
-
-
-@_ensure_connection
-def find_last(num=1):
-    """Locate the last `num` RunStart Documents
-
-    Parameters
-    ----------
-    num : integer, optional
-        number of RunStart documents to return, default 1
-
-    Yields
-    ------
-    run_start doc.Document
-       The requested RunStart documents
-    """
-    pass
-    # _find_run_starts(uid=uid))
-    # for rs in RunStart.objects.as_pymongo().order_by('-time'):
-    #     if next(c) == num:
-    #         raise StopIteration
-    #     yield _cache_run_start(rs)
 
 
 @_ensure_connection
