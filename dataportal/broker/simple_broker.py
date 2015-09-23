@@ -23,6 +23,10 @@ class _DataBrokerClass(object):
     # broker.DataBroker instead.
 
     def __getitem__(self, key):
+        """DWIM slicing
+
+        Some more docs go here
+        """
         if isinstance(key, slice):
             # Interpret key as a slice into previous scans.
             if key.start is not None and key.start > -1:
