@@ -23,21 +23,18 @@ def run(run_start_uid=None, sleep=0):
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
     rs = np.random.RandomState(5)
     point_det_data = rs.randn(num_exposures) + np.arange(num_exposures)
-    I_data = rs.randn(num_exposures) + np.arange(num_exposures)**2
 
     # Create Event Descriptors
-    data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number'),
-                  'current': dict(source='PV:ES:I', dtype='number'),
-                  }
+    data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
     ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
-                                     data_keys=data_keys1,
-                                     time=common.get_time(),
-                                     uid=str(uuid.uuid4()))
+                                           data_keys=data_keys1,
+                                           time=common.get_time(),
+                                           uid=str(uuid.uuid4()))
     ev_desc2_uid = insert_descriptor(run_start=run_start_uid,
-                                     data_keys=data_keys2,
-                                     time=common.get_time(),
-                                     uid=str(uuid.uuid4()))
+                                           data_keys=data_keys2,
+                                           time=common.get_time(),
+                                           uid=str(uuid.uuid4()))
 
     # Create Events.
     events = []
@@ -46,10 +43,8 @@ def run(run_start_uid=None, sleep=0):
     base_time = common.get_time()
     for i in range(num_exposures):
         time = float(2 * i + 0.5 * rs.randn()) + base_time
-        data = {'point_det': point_det_data[i],
-                'current': I_data[i]}
-        timestamps = {'point_det': time,
-                      'current': time}
+        data = {'point_det': point_det_data[i]}
+        timestamps = {'point_det': time}
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data, timestamps=timestamps,
                           uid=str(uuid.uuid4()))
@@ -75,13 +70,12 @@ def run(run_start_uid=None, sleep=0):
 
 if __name__ == '__main__':
     import metadatastore.api as mdsc
-    sample = {'name': 'A', 'prep': 'protocol A'}
+
     run_start_uid = mdsc.insert_run_start(scan_id=3022013,
                                           beamline_id='testbed',
                                           owner='tester',
-                                          group='devs',
+                                          group='awesome-devs',
                                           project='Nikea',
-                                          custom={'sample': sample},
                                           time=common.get_time(),
                                           uid=str(uuid.uuid4()))
 
