@@ -15,3 +15,4 @@ interface, replay. For examples and tutorials, visit the
 
    api
    whats_new
+   basics

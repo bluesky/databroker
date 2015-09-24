@@ -47,8 +47,6 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
     'sphinxcontrib.napoleon',
-    'sphinxext.jsonschema_diff',
-    'sphinxext.xfig',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
 ]
