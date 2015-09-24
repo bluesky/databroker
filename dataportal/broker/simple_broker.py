@@ -224,7 +224,8 @@ class Header(doc.Document):
         run_start = mc.run_start_given_uid(run_start_uid)
 
         try:
-            run_stop = mc.stop_by_start(run_start_uid)
+            run_stop = doc.ref_doc_to_uid(mc.stop_by_start(run_start_uid),
+                                          'run_start')
         except mc.NoRunStop:
             run_stop = None
 
