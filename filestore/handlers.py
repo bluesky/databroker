@@ -62,6 +62,11 @@ class AreaDetectorTiffHandler(HandlerBase):
     def __call__(self, point_number):
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
         if stop > len(self._image_sequence):
+            # if asking for an image past the end, make sure we have an up to
+            # date list of the existing files
+            self._image_sequence = pims.ImageSequence(self._filename)
+        if stop > len(self._image_sequence):
+            # if we _still_ don't have enough files, raise
             raise IntegrityError("Seeking Frame {0} out of {1} frames.".format(
                 stop, len(self._image_sequence)))
         return np.asarray(list(self._image_sequence[start:stop])).squeeze()
