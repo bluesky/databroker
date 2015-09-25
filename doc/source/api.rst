@@ -9,6 +9,9 @@ API reference
 Data Broker
 -----------
 
+Quick Reference
++++++++++++++++
+
 .. autosummary::
    :toctree: generated/
 
@@ -19,9 +22,10 @@ Data Broker
     DataBroker.__call__
     DataBroker.__getitem__
 
-To search for a specific header use call syntax on ``DataBroker``.
+Searching by ID or Recency
+++++++++++++++++++++++++++
 
-You can also using slicing syntax on ``DataBroker``.
+Here is a summary of the "Do What I Mean" slicing supported by ``DataBroker``.
 
 =============================== ==========================================================
 syntax                          meaning
@@ -33,6 +37,35 @@ syntax                          meaning
 ``DataBroker[[108, 109, 110]]`` headers with scan IDs 108, 109, 110
 ``DataBroker['acsf3rf']``       header with unique ID (uid) beginning with ``acsf3rf``
 =============================== ==========================================================
+
+Time-based Queries
+++++++++++++++++++
+
+Runs that took place sometime in a given time interval are also supported.
+
+=============================================================== ======================================
+syntax                                                          meaning
+=============================================================== ======================================
+``DataBroker(start_time='2015-01')``                            all headers from January 2015 or later
+``DataBroker(start_time='2015-01-05', end_time='2015-01-010')`` between January 5 and 10
+=============================================================== ======================================
+
+Complex Queries
++++++++++++++++
+
+Finally, for advanced queries, the full MongoDB query language is supported.
+Here are just a few examples:
+
+=============================================================== ============================================================
+syntax                                                          meaning
+=============================================================== ============================================================
+``DataBroker(sample={'$exists': True})``                        headers that include a custom metadata field labeled 'color'
+``DataBroker(scan_type={'$ne': 'DeltaScan'})``                  headers where the type of scan was not a ``DeltaScan``
+=============================================================== ============================================================
+
+See the
+`MongoDB query documentation <http://docs.mongodb.org/manual/tutorial/query-documents/>`_
+for more.
 
 Data Muxer
 ----------
