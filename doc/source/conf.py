@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname('__file__')))
 import sphinx_rtd_theme
 
 ## NSLS-II repo name
-repo_name = 'DataBroker and DataMuxer'
+repo_name = 'DataBroker'
 # The short X.Y version.
 version = '0.0.6'
 # The full version, including alpha/beta/rc tags.

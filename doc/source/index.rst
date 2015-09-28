@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-DataBroker and DataMuxer Documentation
-======================================
+DataBroker
+==========
 
 Data Broker
 -----------
@@ -17,19 +17,3 @@ Both simple and complex searches are supported. Convenience fucntions
 provide a simple way to handle tabular data and image sequences.
   
 See the :ref:`api` for details.
-
-Data Muxer
-----------
-
-Data Muxer is a tool for interleaving ("muxing") separate streams of data
-based on time. For example, readings taking asynchronously must be aligned --
-that is, assigned common bins in time -- before they can be plotted against
-each other.
-
-See the :ref:`api` for details.
-
-.. toctree::
-   :maxdepth: 1
-
-   api
-   whats_new

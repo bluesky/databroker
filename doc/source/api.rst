@@ -66,17 +66,3 @@ syntax                                                          meaning
 See the
 `MongoDB query documentation <http://docs.mongodb.org/manual/tutorial/query-documents/>`_
 for more.
-
-Data Muxer
-----------
-
-.. currentmodule:: dataportal.muxer
-
-.. autosummary::
-   :toctree: generated/
-
-   DataMuxer
-   ColSpec
-   dataframe_to_dict
-   BinningError
-   BadDownsamplerError
