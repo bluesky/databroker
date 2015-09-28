@@ -1,3 +1,3 @@
 # Documentation
 
-This is the documentation for dataportal.
+This is the documentation for databroker.

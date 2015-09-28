@@ -4,7 +4,7 @@
 API reference
 =============
 
-.. currentmodule:: dataportal.broker
+.. currentmodule:: databroker.broker
 
 Data Broker
 -----------

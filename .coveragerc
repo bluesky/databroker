@@ -1,6 +1,6 @@
 [run]
 source = 
-    dataportal
+    databroker
     replay
 
 [report]
@@ -8,9 +8,9 @@ omit =
     */python?.?/*
     */site-packages/nose/*
     *test*
-    dataportal/__init__.py
-    dataportal/tests/*
-    dataportal/testing/*
+    databroker/__init__.py
+    databroker/tests/*
+    databroker/testing/*
     # ignore _version.py and versioneer.py
     .*version.*
     *_version.py

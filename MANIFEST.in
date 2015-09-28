@@ -1,2 +1,2 @@
 include versioneer.py
-include dataportal/_version.py
+include databroker/_version.py

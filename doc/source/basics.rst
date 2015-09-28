@@ -6,7 +6,7 @@
    from filestore.utils.testing import fs_setup
    mds_setup()
    fs_setup()
-   from dataportal.examples.sample_data import temperature_ramp
+   from databroker.examples.sample_data import temperature_ramp
    from metadatastore.api import insert_run_start, insert_beamline_config
 
    rs_uid = insert_run_start(time=0., scan_id=1, uid='a5fbde',
@@ -52,8 +52,8 @@ is being done, read the next section.
 
 .. ipython:: python
 
-   from dataportal.broker import DataBroker
-   from dataportal.muxer import DataMuxer
+   from databroker.broker import DataBroker
+   from databroker.muxer import DataMuxer
 
    header = DataBroker[-1]  # get most recent run
    events = DataBroker.fetch_events(header)
@@ -93,7 +93,7 @@ type ``DataBroker[-N]``.
 
 .. ipython:: python
 
-   from dataportal.broker import DataBroker
+   from databroker.broker import DataBroker
 
    header = DataBroker[-1]
 
@@ -151,7 +151,7 @@ like so:
 
 .. ipython:: python
 
-   from dataportal.muxer import DataMuxer
+   from databroker.muxer import DataMuxer
    dm = DataMuxer.from_events(events)
 
 The ``events`` can be from one scan or from many scans together. Then, the

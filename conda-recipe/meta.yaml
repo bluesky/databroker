@@ -1,5 +1,5 @@
 package:
-  name: dataportal
+  name: databroker
   version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
 
 source:
@@ -34,12 +34,12 @@ test:
   requires:
     - nslsii_dev_configuration
   imports:
-    - dataportal
-    - dataportal.testing
-    - dataportal.examples
-    - dataportal.examples.sample_data
-    - dataportal.utils
+    - databroker
+    - databroker.testing
+    - databroker.examples
+    - databroker.examples.sample_data
+    - databroker.utils
 
 about:
-  home: https://github.com/NSLS-II/dataportal
+  home: https://github.com/NSLS-II/databroker
   license: BSD

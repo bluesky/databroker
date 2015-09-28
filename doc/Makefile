@@ -16,9 +16,9 @@ else
 	GH_DIR := $(shell mktemp -d)
 endif
 ifeq ($(GIT_MF), 1)
-	GH_URL = git@github.com:NSLS-II/dataportal
+	GH_URL = git@github.com:NSLS-II/databroker
 else
-	GH_URL = https://github.com/NSLS-II/dataportal
+	GH_URL = https://github.com/NSLS-II/databroker
 endif
 
 # User-friendly check for sphinx-build
