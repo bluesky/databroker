@@ -7,7 +7,7 @@ import logging
 import time as ttime
 import numpy as np
 import pandas as pd
-from ..broker import DataBroker as db, get_events, get_table
+from databroker import DataBroker as db, get_events, get_table
 from ..examples.sample_data import temperature_ramp, image_and_scalar
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false)

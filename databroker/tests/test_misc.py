@@ -1,6 +1,6 @@
 from ..utils.diagnostics import watermark
-from ..broker.pims_readers import Images, get_images
-from ..broker import DataBroker as db
+from databroker.pims_readers import Images, get_images
+from databroker import DataBroker as db
 from ..examples.sample_data import image_and_scalar
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown

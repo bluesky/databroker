@@ -20,8 +20,6 @@ setup(
     packages=['databroker', 'databroker.testing',
               'databroker.examples',
               'databroker.examples.sample_data',
-              'databroker.broker',
-              'databroker.sources', 'databroker.sources.dummy_sources',
               'databroker.utils',
               ],
 )
