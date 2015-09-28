@@ -1,6 +1,4 @@
-import sys
 import logging
-from .sources import *
 
 __all__ = ['DataBroker', 'get_images', 'get_events', 'get_table']
 logger = logging.getLogger(__name__)

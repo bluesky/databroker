@@ -7,8 +7,6 @@ import logging
 import time as ttime
 import numpy as np
 import pandas as pd
-from ..sources import channelarchiver as ca
-from ..sources import switch
 from ..broker import DataBroker as db, get_events, get_table
 from ..examples.sample_data import temperature_ramp, image_and_scalar
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -28,11 +26,6 @@ blc = None
 def setup():
     mds_setup()
     fs_setup()
-
-    switch(channelarchiver=False)
-    start, end = '2015-01-01 00:00:00', '2015-01-01 00:01:00'
-    simulated_ca_data = generate_ca_data(['ch1', 'ch2'], start, end)
-    ca.insert_data(simulated_ca_data)
 
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
