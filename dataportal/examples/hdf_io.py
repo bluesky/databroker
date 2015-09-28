@@ -42,7 +42,7 @@ from metadatastore.api import (insert_run_start, insert_event,
 from filestore.api import register_handler, insert_resource, insert_datum
 import filestore.file_writers as fw
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
-from dataportal.examples.sample_data import common
+from databroker.examples.sample_data import common
 
 import six
 import h5py

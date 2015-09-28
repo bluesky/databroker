@@ -6,9 +6,9 @@ from metadatastore.api import (insert_event, insert_descriptor,
                                find_events, insert_run_start, insert_run_stop,
                                find_last)
 from filestore.file_writers import save_ndarray
-from dataportal.examples.sample_data import frame_generators
-from dataportal.examples.sample_data import common
-from dataportal.examples.sample_data.common_nonscalar import nonscalar_example
+from databroker.examples.sample_data import frame_generators
+from databroker.examples.sample_data import common
+from databroker.examples.sample_data.common_nonscalar import nonscalar_example
 import argparse
 
 

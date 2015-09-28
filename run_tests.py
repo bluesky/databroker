@@ -10,11 +10,11 @@
 # See https://nose.readthedocs.org/ for a detailed description of
 # these options.
 import nose
-from dataportal.testing.noseclasses import KnownFailure
+from databroker.testing.noseclasses import KnownFailure
 
 plugins = [KnownFailure]
 env = {"NOSE_WITH_COVERAGE": 1,
-       'NOSE_COVER_PACKAGE': ['dataportal'],
+       'NOSE_COVER_PACKAGE': ['databroker'],
        'NOSE_COVER_HTML': 1}
 # Nose doesn't automatically instantiate all of the plugins in the
 # child processes, so we have to provide the multiprocess plugin with

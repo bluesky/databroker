@@ -13,15 +13,15 @@ except ImportError:
 
 
 setup(
-    name='dataportal',
+    name='databroker',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     author='Brookhaven National Laboratory',
-    packages=['dataportal', 'dataportal.testing',
-              'dataportal.examples',
-              'dataportal.examples.sample_data',
-              'dataportal.broker',
-              'dataportal.sources', 'dataportal.sources.dummy_sources',
-              'dataportal.utils',
+    packages=['databroker', 'databroker.testing',
+              'databroker.examples',
+              'databroker.examples.sample_data',
+              'databroker.broker',
+              'databroker.sources', 'databroker.sources.dummy_sources',
+              'databroker.utils',
               ],
 )

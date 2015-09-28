@@ -1,5 +1,5 @@
 from functools import wraps
-from dataportal.broker.simple_broker import fill_event
+from databroker.broker.simple_broker import fill_event
 
 
 def nonscalar_example(func):

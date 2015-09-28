@@ -218,7 +218,7 @@ class Header(doc.Document):
 
         Returns
         -------
-        header : dataportal.broker.Header
+        header : databroker.broker.Header
         """
         run_start_uid = mc.doc_or_uid_to_uid(run_start)
         run_start = mc.run_start_given_uid(run_start_uid)
