@@ -17,7 +17,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     author='Brookhaven National Laboratory',
-    packages=['dataportal', 'dataportal.api', 'dataportal.testing',
+    packages=['dataportal', 'dataportal.testing',
               'dataportal.examples',
               'dataportal.examples.sample_data',
               'dataportal.broker',

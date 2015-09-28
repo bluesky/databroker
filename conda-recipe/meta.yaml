@@ -35,7 +35,6 @@ test:
     - nslsii_dev_configuration
   imports:
     - dataportal
-    - dataportal.api
     - dataportal.testing
     - dataportal.examples
     - dataportal.examples.sample_data
