@@ -289,8 +289,8 @@ For advanced searches, use ``find_headers``.
 
 .. ipython:: python
 
-   neds_headers = DataBroker.find_headers(owner='nedbrainard')
-   headers_measuring_temperature = DataBroker.find_headers(data_key='Tsam')
+   neds_headers = DataBroker(owner='nedbrainard')
+   headers_measuring_temperature = DataBroker(data_key='Tsam')
 
 Any of these results, whether a single Header or a list of Headers, can be
 passed to ``DataBroker.fetch_events()`` as shown in the previous sections above.
