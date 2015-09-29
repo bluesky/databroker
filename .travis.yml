@@ -33,17 +33,19 @@ install:
   - conda config --set always_yes true
   - conda update conda
   - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six numpy pandas h5py coverage jsonschema jinja2
+  - source activate testenv
+
   # deps needed for metadatastore/filestore
-  - conda install -n pyyaml
+  - conda install -n testenv pyyaml
   # Dependencies not in official conda have been uploaded to binstar orgs.
   - conda install -n testenv -c soft-matter pims tifffile
   - conda config --add channels lightsource2
   - conda install -n testenv mongoengine tzlocal prettytable boltons
-
-  - source activate testenv
+  # install all the pip deps
   - pip install coveralls
   - pip install codecov
-  # these next three will be replaced by the following two lines soon!
+  # these next three will be replaced by the following two lines soon once
+  # conda-forge is activated on metadatastore, filestore and channelarchiver
   # - conda config --add channels lightsource2-dev
   # - conda install -n testenv metadatastore filestore channelarchiver
   - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
