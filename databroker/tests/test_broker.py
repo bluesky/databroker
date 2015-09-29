@@ -10,7 +10,7 @@ import pandas as pd
 from databroker import DataBroker as db, get_events, get_table
 from ..examples.sample_data import temperature_ramp, image_and_scalar
 from nose.tools import (assert_equal, assert_raises, assert_true,
-                        assert_false)
+                        assert_false, raises)
 
 
 from metadatastore.api import (insert_run_start, insert_descriptor,

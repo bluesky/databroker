@@ -76,7 +76,7 @@ class _DataBrokerClass(object):
                 logger.debug('Treating %s as a full uuid' % key)
                 results = list(find_run_starts(uid=key))
                 logger.debug('%s runs found for key=%s treated as a full uuid'
-                             % len(results))
+                             % (len(results), key))
             if not results == 0:
                 # No dice? Try searching as if we have a partial uid.
                 logger.debug('Treating %s as a partial uuid' % key)
