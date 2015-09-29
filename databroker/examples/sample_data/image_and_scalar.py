@@ -143,7 +143,7 @@ if __name__ == '__main__':
         scan_id = 1
     scan_id = str(scan_id)
     custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
-              'moon': 'full'}
+              'moon': 'full', 'scan_type': 'Image and Scalar'}
     # insert the run start
     run_start_uid = insert_run_start(scan_id=scan_id, time=ttime.time(),
                                      beamline_id='csx', custom=custom,
