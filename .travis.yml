@@ -55,7 +55,7 @@ install:
 
 
 script:
-  - python run_tests.py
+  - python run_tests.py -v
 
 after_success:
   - coveralls
