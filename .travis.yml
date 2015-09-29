@@ -33,7 +33,7 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas h5py coverage jsonschema jinja2
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six numpy pandas h5py coverage jsonschema jinja2
   # Dependencies not in official conda have been uploaded to binstar orgs.
   - conda install -n testenv --yes -c soft-matter pims tifffile
   - conda install -n testenv --yes -c nikea mongoengine
