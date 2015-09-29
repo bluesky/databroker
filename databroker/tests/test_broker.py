@@ -68,6 +68,9 @@ def test_basic_usage():
     get_table(header_ned)
     get_table(header_null)
 
+    # get events for multiple headers
+    get_events([header_1, header_ned])
+
 
 def test_indexing():
     for i in range(5):
