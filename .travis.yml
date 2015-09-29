@@ -9,7 +9,11 @@ python:
   - 3.4
 
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh; fi
+  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
+      wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh;
+    fi;
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
@@ -18,30 +22,31 @@ before_install:
   - export MDS_DATABASE=test
   - export MDS_TIMEZONE=US/Eastern
   - mkdir -p /home/travis/.config/metadatastore
-  - 'echo ''port: 27017'' > /home/travis/.config/metadatastore/connection.yml'
+  - echo 'port: 27017 > /home/travis/.config/metadatastore/connection.yml
   - export FS_HOST=localhost
   - export FS_DATABASE=test
   - mkdir -p /home/travis/.config/filestore
-  - 'echo ''port: 27017'' > /home/travis/.config/filestore/connection.yml'
-
-
+  - echo 'port: 27017' > /home/travis/.config/filestore/connection.yml
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six numpy pandas h5py coverage jsonschema jinja2
+  - conda config --set always_yes true
+  - conda update conda
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six numpy pandas h5py coverage jsonschema jinja2
   # Dependencies not in official conda have been uploaded to binstar orgs.
-  - conda install -n testenv --yes -c soft-matter pims tifffile
-  - conda install -n testenv --yes -c nikea mongoengine
+  - conda install -n testenv -c soft-matter pims tifffile
+  - conda config --add channels lightsource2
+  - conda install -n testenv mongoengine tzlocal prettytable boltons
+
   - source activate testenv
-  - 'pip install coveralls'
+  - pip install coveralls
   - pip install codecov
-  - 'pip install prettytable'
-  - 'pip install boltons'
-  - 'pip install tzlocal'
-  - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
-  - 'pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore'
-  - 'pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver'
+  # these next three will be replaced by the following two lines soon!
+  # - conda config --add channels lightsource2-dev
+  # - conda install -n testenv metadatastore filestore channelarchiver
+  - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
+  - pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore
+  - pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver
   - python setup.py install
 
 
