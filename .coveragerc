@@ -1,7 +1,5 @@
 [run]
-source = 
-    databroker
-    replay
+source = databroker
 
 [report]
 omit =
