@@ -41,9 +41,8 @@ install:
   # deps needed for metadatastore/filestore
   - conda install -n testenv pyyaml
   # Dependencies not in official conda have been uploaded to binstar orgs.
-  - conda install -n testenv -c soft-matter pims tifffile
   - conda config --add channels lightsource2
-  - conda install mongoengine tzlocal prettytable boltons pymongo
+  - conda install mongoengine tzlocal prettytable boltons pymongo pims tifffile
   # install all the pip deps
   - pip install coveralls
   - pip install codecov
