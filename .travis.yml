@@ -6,11 +6,12 @@ services:
 
 matrix:
   include:
-    - python: "2.7"
-    - python: "3.4.3"
+    - python: 2.7
+    - python: 3.4.3
   allow_failures:
     # temporarily allow failures on 3.5
-    - python: "3.5"
+    - python: 3.5
+    - python: nightly
 
 before_install:
   # use latest because why not?
