@@ -42,7 +42,6 @@ install:
   - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
   - 'pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore'
   - 'pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver'
-  - 'pip install https://github.com/Nikea/scikit-xray/zipball/master#egg=scikit-xray'
   - python setup.py install
 
 
