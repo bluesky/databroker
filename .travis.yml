@@ -33,6 +33,8 @@ install:
   - conda config --set always_yes true
   - conda update conda
   - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six numpy pandas h5py coverage jsonschema jinja2
+  # deps needed for metadatastore/filestore
+  - conda install -n pyyaml
   # Dependencies not in official conda have been uploaded to binstar orgs.
   - conda install -n testenv -c soft-matter pims tifffile
   - conda config --add channels lightsource2
