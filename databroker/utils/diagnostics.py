@@ -17,7 +17,7 @@ def watermark():
         optional dependency is not installed, None
     """
     packages = ['six', 'numpy', 'scipy', 'matplotlib', 'pandas', 'pims',
-                'pyyaml', 'metadatastore', 'filestore',
+                'metadatastore', 'filestore',
                 'channelarchiver', 'xray_vision']
     result = OrderedDict()
     for package_name in packages:

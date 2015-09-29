@@ -4,19 +4,18 @@ sudo: false
 services:
   - mongodb
 
-python:
-  - 2.7
-  - 3.4
+matrix:
+  include:
+    - python: 2.7
+    - python: 3.4.3
+    - python: 3.5
 
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh; fi
+  # use latest because why not?
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
-  # next 3 lines are needed to spawn a GUI
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 1920x1080x32"
   # Set up config for MDS and FS.
   - export MDS_HOST=localhost
   - export MDS_DATABASE=test
@@ -28,31 +27,32 @@ before_install:
   - mkdir -p /home/travis/.config/filestore
   - 'echo ''port: 27017'' > /home/travis/.config/filestore/connection.yml'
 
-
-
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas h5py coverage jsonschema jinja2
-  # Dependencies not in official conda have been uploaded to binstar orgs.
-  - conda install -n testenv --yes -c soft-matter pims tifffile
-  - conda install -n testenv --yes -c nikea mongoengine
+  - conda config --set always_yes true
+  - conda update conda
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION six numpy pandas h5py coverage jsonschema jinja2
   - source activate testenv
-  - 'pip install coveralls'
+  # deps needed for metadatastore/filestore
+  - conda install -n testenv pyyaml
+  # Dependencies not in official conda have been uploaded to binstar orgs.
+  - conda config --add channels lightsource2
+  - conda install mongoengine tzlocal prettytable boltons pymongo pims tifffile
+  # install all the pip deps
+  - pip install coveralls
   - pip install codecov
-  - 'pip install prettytable'
-  - 'pip install humanize'
-  - 'pip install boltons'
-  - 'pip install tzlocal'
-  - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
-  - 'pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore'
-  - 'pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver'
-  - 'pip install https://github.com/Nikea/scikit-xray/zipball/master#egg=scikit-xray'
+  # these next three will be replaced by the following two lines soon once
+  # conda-forge is activated on metadatastore, filestore and channelarchiver
+  # - conda config --add channels lightsource2-dev
+  # - conda install -n testenv metadatastore filestore channelarchiver
+  - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
+  - pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore
+  - pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver
   - python setup.py install
 
 
 script:
-  - python run_tests.py
+  - python run_tests.py -v
 
 after_success:
   - coveralls

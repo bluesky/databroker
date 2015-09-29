@@ -8,26 +8,18 @@ source:
 build:
   number: 0
 
-  # Note that this will override the default build string with the Python
-  #   # and NumPy versions
-  string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
-
 requirements:
   build:
     - python
-    - numpy
-    - six
 
   run:
     - python
     - pandas
-    - pyyaml
     - pims
     - metadatastore >=0.2.0
     - filestore >=0.2.0
     - channelarchiver
     - six
-    - humanize
     - tzlocal
 
 test:

@@ -1,4 +1,4 @@
-Data Broker
+databroker
 ==========
 
 a unified interface to data sources

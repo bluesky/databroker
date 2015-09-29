@@ -94,7 +94,7 @@ class _DataBrokerClass(object):
         """Given search criteria, find Headers describing runs.
 
         This function returns a list of dictionary-like objects encapsulating
-        the metadata for a run -- start time, instruments uses, and so on.
+        the metadata for a run -- start time, instruments used, and so on.
         In addition to the Parameters below, advanced users can specifiy
         arbitrary queries that are passed through to mongodb.
 
