@@ -22,11 +22,11 @@ before_install:
   - export MDS_DATABASE=test
   - export MDS_TIMEZONE=US/Eastern
   - mkdir -p /home/travis/.config/metadatastore
-  - echo 'port: 27017 > /home/travis/.config/metadatastore/connection.yml
+  - 'echo 'port: 27017 > /home/travis/.config/metadatastore/connection.yml'
   - export FS_HOST=localhost
   - export FS_DATABASE=test
   - mkdir -p /home/travis/.config/filestore
-  - echo 'port: 27017' > /home/travis/.config/filestore/connection.yml
+  - 'echo 'port: 27017' > /home/travis/.config/filestore/connection.yml'
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
