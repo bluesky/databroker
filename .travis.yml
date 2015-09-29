@@ -41,7 +41,6 @@ install:
   - 'pip install coveralls'
   - pip install codecov
   - 'pip install prettytable'
-  - 'pip install humanize'
   - 'pip install boltons'
   - 'pip install tzlocal'
   - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
