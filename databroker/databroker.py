@@ -30,18 +30,22 @@ class _DataBrokerClass(object):
         if isinstance(key, slice):
             # Interpret key as a slice into previous scans.
             if key.start is not None and key.start > -1:
-                raise ValueError("Slices must be negative. The most recent "
-                                 "run is referred to as -1.")
+                raise ValueError("slice.start must be negative. You gave me "
+                                 "key=%s The offending part is key.start=%s"
+                                 % (key, key.start))
             if key.stop is not None and key.stop > 0:
-                raise ValueError("Slices must be negative. The most recent "
-                                 "run is referred to as -1.")
+                raise ValueError("slice.stop must be <= 0. You gave me key=%s. "
+                                 "The offending part is key.stop = %s"
+                                 % (key, key.stop))
             if key.stop is not None:
                 stop = -key.stop
             else:
                 stop = None
             if key.start is None:
-                raise ValueError("Cannot slice infinitely into the past; "
-                                 "the result could become too large.")
+                raise ValueError("slice.start cannot be None because we do not "
+                                 "support slicing infinitely into the past; "
+                                 "the size of the result is non-deterministic "
+                                 "and could become too large.")
             start = -key.start
             result = list(find_last(start))[stop::key.step]
             header = [Header.from_run_start(h) for h in result]
@@ -52,7 +56,8 @@ class _DataBrokerClass(object):
                 try:
                     result = next(gen)  # most recent match
                 except StopIteration:
-                    raise ValueError("No such run found.")
+                    raise ValueError("No such run found for key=%s which is "
+                                     "being interpreted as a scan id." % key)
                 header = Header.from_run_start(result)
             else:
                 # Interpret key as the Nth last scan.
@@ -65,18 +70,24 @@ class _DataBrokerClass(object):
                             "There are only {0} runs.".format(i))
                 header = Header.from_run_start(result)
         elif isinstance(key, six.string_types):
-            # Interpret key as a uid (or the few several characters of one).
-            # First try searching as if we have the full uid.
-            results = list(find_run_starts(uid=key))
-            if len(results) == 0:
+            results = None
+            if len(key) >= 36:
+                # Interpret key as a uid (or the few several characters of one).
+                logger.debug('Treating %s as a full uuid' % key)
+                results = list(find_run_starts(uid=key))
+                logger.debug('%s runs found for key=%s treated as a full uuid'
+                             % (len(results), key))
+            if not results == 0:
                 # No dice? Try searching as if we have a partial uid.
+                logger.debug('Treating %s as a partial uuid' % key)
                 gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
                 results = list(gen)
-            if len(results) < 1:
-                raise ValueError("No such run found.")
+            if not results:
+                # Still no dice? Bail out.
+                raise ValueError("No such run found for key=%s" % key)
             if len(results) > 1:
-                raise ValueError("That partial uid matches multiple runs. "
-                                 "Provide more characters.")
+                raise ValueError("key=%s  matches %s runs. Provide "
+                                 "more characters." % (key, len(results)))
             result, = results
             header = Header.from_run_start(result)
         elif isinstance(key, Iterable):
@@ -86,8 +97,9 @@ class _DataBrokerClass(object):
         else:
             raise ValueError("Must give an integer scan ID like [6], a slice "
                              "into past scans like [-5], [-5:], or [-5:-9:2], "
-                             "a list like [1, 7, 13], or a (partial) uid "
-                             "like ['a23jslk'].")
+                             "a list like [1, 7, 13], a (partial) uid "
+                             "like ['a23jslk'] or a full uid like "
+                             "['f26efc1d-8263-46c8-a560-7bf73d2786e1'].")
         return header
 
     def __call__(self, **kwargs):

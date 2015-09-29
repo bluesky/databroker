@@ -10,7 +10,7 @@ import pandas as pd
 from databroker import DataBroker as db, get_events, get_table
 from ..examples.sample_data import temperature_ramp, image_and_scalar
 from nose.tools import (assert_equal, assert_raises, assert_true,
-                        assert_false)
+                        assert_false, raises)
 
 
 from metadatastore.api import (insert_run_start, insert_descriptor,
@@ -194,8 +194,18 @@ def test_data_key():
     assert_equal(actual, str(rs2.uid))
 
 
-def generate_ca_data(channels, start_time, end_time):
-    timestamps = pd.date_range(start_time, end_time, freq='T').to_series()
-    timestamps = list(timestamps.dt.to_pydatetime())
-    values = list(np.arange(len(timestamps)))
-    return {channel: (timestamps, values) for channel in channels}
+@raises(ValueError)
+def _raiser_helper(key):
+    db[key]
+
+
+def test_raise_conditions():
+    raising_keys = [
+        slice(1, None, None), # raise because trying to slice by scan id
+        slice(-1, 2, None),  # raise because slice stop value is > 0
+        slice(None, None, None), # raise because slice has slice.start == None
+        4500,  # raise on not finding a header by a scan id
+        str(uuid.uuid4()),  # raise on not finding a header by uuid
+    ]
+    for raiser in raising_keys:
+        yield _raiser_helper, raiser
