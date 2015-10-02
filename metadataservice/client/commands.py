@@ -13,6 +13,7 @@ from metadataservice.client import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
+#TODO: Hide all oid from end-user
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -74,6 +75,24 @@ def doc_or_uid_to_uid(doc_or_uid):
 
 
 @_ensure_connection
+def runstart_given_uid(uid):
+    """Get RunStart document given an ObjectId
+    This is an internal function as ObjectIds should not be
+    leaking out to user code.
+    When we migrate to using uid as the primary key this function
+    will be removed. Server strips the ObjectId fields for the client
+    Parameters
+    ----------
+    uid : str
+        Unique identifier for the document.  
+    Returns
+    -------
+    run_start : doc.Document
+        The RunStart document.
+    """
+    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
+
+@_ensure_connection
 def _run_start_given_oid(oid):
     """Get RunStart document given an ObjectId
 
@@ -91,10 +110,10 @@ def _run_start_given_oid(oid):
 
     Returns
     -------
-    run_start : utils.Document
+    run_start : doc.Document
         The RunStart document.
     """
-    return utils.Document('RunStart', dict(next(_find_run_starts(_id=oid))))
+    return utils.Document('RunStart', next(_find_run_starts(_id=oid)))
 
 
 @_ensure_connection
@@ -115,30 +134,13 @@ def _descriptor_given_oid(oid):
 
     Returns
     -------
-    descriptor : utils.Document
+    descriptor : doc.Document
         The EventDescriptor document.
     """
     descriptor = dict(next(_find_event_descriptors(oid=oid)))
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('EventDescriptor', descriptor)
-
-
-@_ensure_connection
-def runstart_given_uid(uid):
-    """Get RunStart document given an ObjectId
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-    When we migrate to using uid as the primary key this function
-    will be removed. Server strips the ObjectId fields for the client
-    Parameters
-    ----------
-    uid : str
-        Unique identifier for the document.  
-    Returns
-    -------
-    run_start : utils.Document
-        The RunStart document.
-    """
-    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
 
 
 @_ensure_connection
@@ -152,12 +154,53 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    run_stop : utils.Document
+    run_stop : doc.Document
         The RunStop document fully de-referenced
 
     """
     run_stop = dict(next(_find_run_stops(uid=uid)))
+    start_oid = run_stop.pop('run_start_id')
+    run_stop['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('RunStop', run_stop)
+
+
+@_ensure_connection
+def run_start_given_uid(uid):
+    """Given a uid, return the RunStart document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    run_start : utils.Document
+        The RunStart document.
+
+    """
+    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
+
+
+@_ensure_connection
+def run_stop_given_uid(uid):
+    """Given a uid, return the RunStop document
+
+    Parameters
+    ----------
+    uid : str
+        The uid
+
+    Returns
+    -------
+    run_stop : doc.Document
+        The RunStop document fully de-referenced
+
+    """
+    runstop = dict(next(_find_run_stops(uid=uid)))
+    start_oid = runstop.pop('run_start_id')
+    runstop['run_start'] = _run_start_given_oid(start_oid)
+    return utils.Document('RunStop', runstop)
 
 
 @_ensure_connection
@@ -175,6 +218,8 @@ def descriptor_given_uid(uid):
         The EventDescriptor document fully de-referenced
     """
     descriptor = dict(next(_find_event_descriptors(uid=uid)))
+    start_oid = descriptor.pop('run_start_id')
+    descriptor['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('EventDescriptor', descriptor)
 
 
@@ -200,8 +245,12 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    raise NotImplementedError('Coming soon')
-
+    run_start_uid = doc_or_uid_to_uid(run_start)
+    rstart = run_start_given_uid(run_start_uid)
+    run_stop = dict(next(_find_run_stops(run_start_id=rstart['_id'])))
+    run_stop['run_start'] = run_start
+    return utils.Document('RunStop', run_stop)
+    
 
 @_ensure_connection
 def descriptors_by_start(run_start):
@@ -225,11 +274,11 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    raise NotImplementedError('Coming soon')
+    pass
 
-    
+
 @_ensure_connection
-def fetch_events_generator(descriptor):
+def get_events_generator(desc_uid):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -244,7 +293,12 @@ def fetch_events_generator(descriptor):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    raise NotImplementedError('Coming soon')
+    desc = descriptor_given_uid(desc_uid)
+    raw_ev_gen = _fetch_events(descriptor_id=str(desc['_id']))
+    for ev in raw_ev_gen:
+        ev.pop('descriptor_id')
+        ev['descriptor'] = dict(desc)
+        yield utils.Document(ev)
 
 
 def _transpose(in_data, keys, field):
@@ -302,11 +356,10 @@ def fetch_events_table(descriptor):
         The timestamps of each of the measurements as dict of lists.  Same
         keys as `data_table`.
     """
-    raise NotImplementedError('Coming soon')
+    pass
 
 @_ensure_connection
-def _find_run_starts(**kwargs):
-    #TODO: Make it accept a range for cursor slicing
+def _find_run_starts(range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, locate RunStart Documents.
     As we describe in design document, time here is strictly the time
     server entry was created, not IOC timestamp. For the difference, refer
@@ -359,9 +412,8 @@ def _find_run_starts(**kwargs):
     ...                stop_time=time.time())
     """
     _format_time(kwargs)
-    range_floor = 0
-    range_ceil = 50
     query = kwargs
+    increment = range_ceil - range_floor + 1
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
@@ -372,13 +424,13 @@ def _find_run_starts(**kwargs):
             break
         else:
             for c in content:
-                yield dict(c)
-            range_ceil += 50
-            range_floor += 50
+                yield utils.Document(c)
+            range_ceil += increment
+            range_floor += increment
 
 
 @_ensure_connection
-def _find_run_stops(**kwargs):
+def _find_run_stops(range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
@@ -413,9 +465,8 @@ def _find_run_stops(**kwargs):
          iterator?
     """
     _format_time(kwargs)
-    range_floor = 0
-    range_ceil = 50
     query = kwargs
+    increment = range_ceil - range_floor + 1
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
@@ -426,13 +477,13 @@ def _find_run_stops(**kwargs):
             break
         else:
             for c in content:
-                yield dict(c)
-            range_ceil += 50
-            range_floor += 50
+                yield utils.Document(c)
+            range_ceil += increment
+            range_floor += increment
      
 
 @_ensure_connection
-def _find_events(**kwargs):
+def _fetch_events(range_floor=0, range_ceil=1000, **kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters
@@ -468,9 +519,8 @@ def _find_events(**kwargs):
          iterator?
     """
     _format_time(kwargs)
-    range_floor = 0
-    range_ceil = 1000
     query = kwargs
+    increment = range_ceil - range_floor + 1
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
@@ -480,14 +530,13 @@ def _find_events(**kwargs):
             StopIteration()
             break
         else:
-            for c in content:
-                yield dict(c)
-            range_ceil += 1000
-            range_floor += 1000
+            yield content
+            range_ceil += increment
+            range_floor += increment
 
 
 @_ensure_connection
-def _find_event_descriptors(**kwargs):
+def _find_event_descriptors(range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -522,9 +571,8 @@ def _find_event_descriptors(**kwargs):
          iterator?
     """
     _format_time(kwargs)
-    range_floor = 0
-    range_ceil = 50
     query = kwargs
+    increment = range_ceil - range_floor + 1
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
@@ -535,9 +583,9 @@ def _find_event_descriptors(**kwargs):
             break
         else:
             for c in content:
-                yield dict(c)
-            range_ceil += 50
-            range_floor += 50
+                yield utils.Document(c)
+            range_ceil += increment
+            range_floor += increment
 
 
 @_ensure_connection
@@ -774,5 +822,6 @@ _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
+
 
 

@@ -60,29 +60,29 @@ start = 0
 stop = 10
 
 
-d = next(_find_run_starts(owner='xf23id1'))
-print(d)
+k = _find_run_starts(range_ceil=0, range_floor=1000, owner="xf23id1")
+tmp = 0
+for _ in k:
+    print(_)
+    print(tmp)
+    tmp += 1
 
-cfg = {'beamline_id': 'testing',
-        'custom': {},
-        'group': 'test',
-        'owner': 'test',
-        'project': 'test',
-        'scan_id': 1,
-        'time': 1441727144.985973,
-        'uid': str(uuid.uuid4())}
 
-insert_run_start(uid=str(uuid.uuid4()), scan_id=1, beamline_id='arbitrary',
-                 time=time.time(), group='none',project='xyz', config=cfg)
 
+# print(type(runstart_given_uid(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
+#
+# insert_run_start(uid=str(uuid.uuid4()), scan_id=1, beamline_id='arbitrary',
+#                  time=time.time(), group='none',project='xyz',
+#                  config={'param', 1})
+#
 
 # rs, e_desc, data_keys = setup_syn()
 # all_data = syn_data(data_keys, num)
 
-start_time = time.time()
-insert_event(descriptor=e_desc, events=all_data)
-stop_time = time.time()
-print('insert time: {}'.format(stop_time - start_time))
+# start_time = time.time()
+# insert_event(descriptor=e_desc, events=all_data)
+# stop_time = time.time()
+# print('insert time: {}'.format(stop_time - start_time))
 
 
 # start_time = time.time()
