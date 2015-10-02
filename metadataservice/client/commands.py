@@ -13,7 +13,6 @@ from metadataservice.client import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-#TODO: Hide all oid from end-user
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -230,7 +229,7 @@ def descriptors_by_start(run_start):
 
     
 @_ensure_connection
-def fetch_events_generator(desc_uid):
+def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -241,7 +240,7 @@ def fetch_events_generator(desc_uid):
 
     Yields
     ------
-    event : doc.Document
+    event : utils.Document
         All events for the given EventDescriptor from oldest to
         newest
     """

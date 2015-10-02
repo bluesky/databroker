@@ -21,6 +21,7 @@ from metadataservice.server import utils
     Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
 """
 
+CACHE_SIZE = 10000
 
 
 def db_connect(database ,host, port, replicaset=None, write_concern="majority",
@@ -76,10 +77,11 @@ class RunStartHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
+        database = self.settings['db']
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        docs = yield db.run_start.find(query).sort(
+        docs = yield database.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         for d in docs:
             #strip oid fields
@@ -93,15 +95,39 @@ class RunStartHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        db = self.settings['db']
+        database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
-        result = yield db.run_start.insert(data)
+        result = yield database.run_start.insert(data)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
 
+    @gen.coroutine
+    def _cache_connect(self):
+        self.cached_db = yield db.create_collection(
+            'run_start_cache',
+            capped=True,
+            size=CACHE_SIZE)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def _get_cache(self):
+        database = self._cache_connect()
+        results = []
+        collection = database.run_start_cache
+        cursor = collection.find(tailable=True, await_data=True)
+        while True:
+            if not cursor.alive:
+                now = datetime.datetime.utcnow()
+                # While collection is empty, tailable cursor dies immediately
+                yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
+                cursor = collection.find(tailable=True, await_data=True)
+
+            if (yield cursor.fetch_next):
+                results.append(cursor.next_object())
+                print('Do something with ', results)
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
     """Handler for event_descriptor insert and query operations.
@@ -123,17 +149,18 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
+        database = self.settings['db']
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        docs = yield db.event_descriptor.find(query).sort(
+        docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
             for d in docs:
                 run_start_id = d.pop('run_start_id')
-                rstart = yield db.run_start.find_one({'run_start_id': run_start_id})
+                rstart = yield database.run_start.find_one({'run_start_id': run_start_id})
                 d['run_start'] = rstart
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
@@ -141,10 +168,10 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        db = self.settings['db']
+        database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['descriptor'])
-        result = yield db.event_descriptor.insert(data)#async insert
+        result = yield database.event_descriptor.insert(data)#async insert
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -171,17 +198,18 @@ class RunStopHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
+        database = self.settings['db']
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')    
-        docs = yield db.run_stop.find(query).sort(
+        docs = yield database.run_stop.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs:
             raise tornado.web.HTTPError(404)
         else:
             for d in docs:
                 run_start_id = d.pop('run_start_id')
-                rstart = yield db.run_start.find_one({'run_start_id': run_start_id})
+                rstart = yield database.run_start.find_one({'run_start_id': run_start_id})
                 d['run_start'] = rstart
             utils._return2client(self, utils._stringify_data(docs))
             self.finish()
@@ -189,9 +217,10 @@ class RunStopHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
+        database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_stop'])
-        result = yield db.run_stop.insert(data)
+        result = yield database.run_stop.insert(data)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -218,10 +247,11 @@ class EventHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
+        database = self.settings['db']
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        docs = yield db.event_descriptor.find(query).sort(
+        docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs:
             raise tornado.web.HTTPError(404)
@@ -234,12 +264,12 @@ class EventHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
-        db = self.settings['db']
+        database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         if isinstance(data, list):
             # unordered insert. in seq_num I trust
             jsonschema.validate(data, utils.schemas['bulk_events'])
-            bulk = yield db.event.initialize_unordered_bulk_op()
+            bulk = yield database.event.initialize_unordered_bulk_op()
             for _ in data:
                 bulk.insert(_)
             try:
@@ -249,10 +279,12 @@ class EventHandler(tornado.web.RequestHandler):
                 raise tornado.web.HTTPError(500)
         else:
             jsonschema.validate(data, utils.schemas['event'])
-            result = yield db.event.insert(data)
+            result = yield database.event.insert(data)
             if not result:
                 raise tornado.web.HTTPError(500)
 
+#TODO: Add handlers for caching
+#TODO: Add ensure_index for insert handlers
 
 
 #TODO: Replace with configured one

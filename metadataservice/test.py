@@ -60,13 +60,20 @@ start = 0
 stop = 10
 
 
-d = next(_find_run_starts(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa"))
+d = next(_find_run_starts(owner='xf23id1'))
+print(d)
 
-print(type(runstart_given_uid(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
+cfg = {'beamline_id': 'testing',
+        'custom': {},
+        'group': 'test',
+        'owner': 'test',
+        'project': 'test',
+        'scan_id': 1,
+        'time': 1441727144.985973,
+        'uid': str(uuid.uuid4())}
 
 insert_run_start(uid=str(uuid.uuid4()), scan_id=1, beamline_id='arbitrary',
-                 time=time.time(), group='none',project='xyz',
-                 config={'param', 1})
+                 time=time.time(), group='none',project='xyz', config=cfg)
 
 
 # rs, e_desc, data_keys = setup_syn()
