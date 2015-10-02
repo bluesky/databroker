@@ -86,7 +86,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         for d in docs:
             #strip oid fields
             d.pop('beamline_config_id', None)
-        if not docs:
+        if not docs and start == 0:
             raise tornado.web.HTTPError(404)
         else:
             utils._return2client(self, utils._stringify_data(docs))
@@ -104,30 +104,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         else:
             utils._return2client(self, data)
 
-    @gen.coroutine
-    def _cache_connect(self):
-        self.cached_db = yield db.create_collection(
-            'run_start_cache',
-            capped=True,
-            size=CACHE_SIZE)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def _get_cache(self):
-        database = self._cache_connect()
-        results = []
-        collection = database.run_start_cache
-        cursor = collection.find(tailable=True, await_data=True)
-        while True:
-            if not cursor.alive:
-                now = datetime.datetime.utcnow()
-                # While collection is empty, tailable cursor dies immediately
-                yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
-                cursor = collection.find(tailable=True, await_data=True)
-
-            if (yield cursor.fetch_next):
-                results.append(cursor.next_object())
-                print('Do something with ', results)
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
     """Handler for event_descriptor insert and query operations.
@@ -155,7 +131,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs:
+        if not docs and start == 0:
             raise tornado.web.HTTPError(404)
         else:
             for d in docs:
@@ -204,7 +180,7 @@ class RunStopHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')    
         docs = yield database.run_stop.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs:
+        if not docs and start == 0:
             raise tornado.web.HTTPError(404)
         else:
             for d in docs:
@@ -253,7 +229,7 @@ class EventHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs:
+        if not docs and start == 0:
             raise tornado.web.HTTPError(404)
         else:
             for d in docs:
@@ -285,7 +261,6 @@ class EventHandler(tornado.web.RequestHandler):
 
 #TODO: Add handlers for caching
 #TODO: Add ensure_index for insert handlers
-
 
 #TODO: Replace with configured one
 
