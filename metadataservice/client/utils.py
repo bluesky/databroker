@@ -3,29 +3,12 @@ import six
 import collections
 from functools import reduce
 
-_HTML_TEMPLATE = """
-<table>
-{% for key, value in document | dictsort recursive %}
-  <tr>
-    <th> {{ key }} </th>
-    <td>
-      {% if value.items %}
-        <table>
-          {{ loop(value | dictsort) }}
-        </table>
-        {% else %}
-          {% if key == 'time' %}
-            {{ value | human_time }}
-          {% else %}
-            {{ value }}
-          {% endif %}
-        {% endif %}
-    </td>
-  </tr>
-{% endfor %}
-</table>
-"""
+class NoRunStop(Exception):
+    pass
 
+
+class NoEventDescriptors(Exception):
+    pass
 
 class DocumentIsReadOnly(Exception):
     pass

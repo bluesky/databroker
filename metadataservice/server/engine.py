@@ -32,7 +32,7 @@ def db_connect(database ,host, port, replicaset=None, write_concern="majority",
     Parameters
     ----------
     server: str
-        The name of the server that data is stored
+    b    The name of the server that data is stored
     host: str
         Name/address of the server that mongo daemon lives
     port: int
