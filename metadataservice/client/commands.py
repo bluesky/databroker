@@ -110,7 +110,7 @@ def _run_start_given_oid(oid):
 
     Returns
     -------
-    run_start : doc.Document
+    run_start : utils.Document
         The RunStart document.
     """
     return utils.Document('RunStart', next(find_run_starts(_id=oid)))
@@ -153,7 +153,7 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : utils.Document
         The RunStop document fully de-referenced
 
     """
@@ -192,7 +192,7 @@ def run_stop_given_uid(uid):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : utils.Document
         The RunStop document fully de-referenced
 
     """
@@ -261,7 +261,7 @@ def descriptors_by_start(run_start):
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    run_start : utils.Document or dict or str
         The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -275,11 +275,13 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    pass
-
+#     run_start_uid = doc_or_uid_to_uid(run_start)
+#     run_start_given_uid(run_start_uid)
+#     descriptors = find_descriptors(run_start=runs
+    raise NotImplementedError()
 
 @_ensure_connection
-def get_events_generator(desc_uid):
+def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -294,12 +296,12 @@ def get_events_generator(desc_uid):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    desc = descriptor_given_uid(desc_uid)
-    raw_ev_gen = _fetch_events(descriptor_id=str(desc['_id']))
+    desc = descriptor_given_uid(descriptor.uid)
+    raw_ev_gen = find_events(descriptor_id=str(desc['_id']))
     for ev in raw_ev_gen:
         ev.pop('descriptor_id')
         ev['descriptor'] = dict(desc)
-        yield utils.Document(ev)
+        yield utils.Document('Event', ev)
 
 
 def _transpose(in_data, keys, field):
