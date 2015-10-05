@@ -83,9 +83,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         stop = query.pop('range_ceil')
         docs = yield database.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        for d in docs:
-            #strip oid fields
-            d.pop('beamline_config_id', None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404)
         else:
@@ -99,6 +96,41 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
         result = yield database.run_start.insert(data)
+        if not result:
+            raise tornado.web.HTTPError(500)
+        else:
+            utils._return2client(self, data)
+
+
+class CappedRunStartHandler(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def get(self):
+        database = self.settings['db']
+        query = utils._unpack_params(self)
+        start = query.pop('range_floor')
+        stop = query.pop('range_ceil')
+        try:
+            docs = yield database.run_start_capped.find(query).sort(
+                    'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        except pymongo.errors.CollectionInvalid:
+            raise tornado.web.HTTPError(500)
+        if not docs and start == 0:
+            raise tornado.web.HTTPError(404)
+        else:
+            utils._return2client(self, utils._stringify_data(docs))
+            self.finish()
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def post(self):
+        database = self.settings['db']
+        data = ujson.loads(self.request.body.decode("utf-8"))
+        jsonschema.validate(data, utils.schemas['run_start'])
+        try:
+            result = yield database.run_start_capped.insert(data)
+        except pymongo.errors.CollectionInvalid:
+            raise tornado.web.HTTPError(500)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
