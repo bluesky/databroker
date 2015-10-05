@@ -96,6 +96,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
         result = yield database.run_start.insert(data)
+        db.run_start.ensure_index()
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -114,8 +115,9 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         try:
-            docs = yield database.run_start_capped.find(query).sort(
-                    'time', pymongo.ASCENDING)[start:stop].to_list(None)
+            docs = yield database.run_start_capped.find(query, 
+                                                        await_data=True,
+                                                        tailable=True).to_list(None)
         except pymongo.errors.CollectionInvalid:
             raise tornado.web.HTTPError(500)
         if not docs and start == 0:
@@ -165,8 +167,9 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         query = utils._unpack_params(self)
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
-        docs = yield database.event_descriptor.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        docs = yield database.event_descriptor.find(query,
+                                                    await_data=True,
+                                                    tailable=True).to_list(None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404)
         else:
@@ -202,8 +205,9 @@ class CappedDescriptorHandler(tornado.web.RequestHandler):
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         try:
-            docs = yield database.event_descriptor_capped.find(query).sort(
-                    'time', pymongo.ASCENDING)[start:stop].to_list(None)
+            docs = yield database.event_descriptor_capped.find(query,
+                                                               await_data=True,
+                                                               tailable=True).to_list(None)
         except pymongo.errors.CollectionInvalid:
             raise tornado.web.HTTPError(500)
         if not docs and start == 0:
@@ -286,8 +290,9 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
         start = query.pop('range_floor')
         stop = query.pop('range_ceil')
         try:
-            docs = yield database.run_start_capped.find(query).sort(
-                    'time', pymongo.ASCENDING)[start:stop].to_list(None)
+            docs = yield database.run_start_capped.find(query,
+                                                        await_data=True,
+                                                        tailable=True).to_list(None)
         except pymongo.errors.CollectionInvalid:
             raise tornado.web.HTTPError(500)
         if not docs and start == 0:
@@ -372,6 +377,9 @@ db = db_connect('datastore2', '127.0.0.1', 27017)
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
     (r'/event_descriptor',EventDescriptorHandler),
-    (r'/event',EventHandler)], db=db)
+    (r'/event',EventHandler),
+    (r'/run_start_capped', CappedRunStartHandler), 
+    (r'/run_stop_capped', CappedRunStopHandler),
+    (r'/descriptor_capped',CappedDescriptorHandler)], db=db)
 application.listen(7770)
 tornado.ioloop.IOLoop.instance().start()

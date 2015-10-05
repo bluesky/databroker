@@ -57,13 +57,13 @@ class Document(dict):
 
     def __len__(self):
         return len(list(self.keys()))
-
-    def _repr_html_(self):
-        import jinja2
-        env = jinja2.Environment()
-        env.filters['human_time'] = pretty_print_time
-        template = env.from_string(_HTML_TEMPLATE)
-        return template.render(document=self)
+# 
+#     def _repr_html_(self):
+#         import jinja2
+#         env = jinja2.Environment()
+#         env.filters['human_time'] = pretty_print_time
+#         template = env.from_string(_HTML_TEMPLATE)
+#         return template.render(document=self)
 
     def __str__(self):
         try:
