@@ -3,8 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.ioloop
 import tornado.web
 from tornado import gen
-
-import pymongo
+import datetime
 import pymongo.errors
 import motor
 
@@ -111,21 +110,24 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
-        try:
-            docs = yield database.run_start_capped.find(query, 
-                                                        await_data=True,
-                                                        tailable=True).to_list(None)
-        except pymongo.errors.CollectionInvalid:
-            raise tornado.web.HTTPError(500)
-        if not docs and start == 0:
-            raise tornado.web.HTTPError(404)
-        else:
-            utils._return2client(self, utils._stringify_data(docs))
-            self.finish()
-
+        cursor = database.run_start_capped.find({},
+                                                await_data=True,
+                                                tailable=True)
+        while True:
+            if (yield cursor.fetch_next):
+                tmp = cursor.next_object() #pop from cursor all old entries
+                print(tmp)
+            else:
+                break
+        while cursor.alive:
+            print('here')
+            if (yield cursor.fetch_next):
+                result = cursor.next_object()
+                break
+            else:
+                yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
+        utils._return2client(self, result)
+            
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
@@ -136,7 +138,7 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
             result = yield database.run_start_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
             #try to create the collection if it doesn't exist
-            db.create_collection('run_start_capped', size=1000)
+            db.create_collection('run_start_capped', size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -164,13 +166,10 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
-        docs = yield database.event_descriptor.find(query,
+        docs = yield database.event_descriptor.find({},
                                                     await_data=True,
                                                     tailable=True).to_list(None)
-        if not docs and start == 0:
+        if not docs:
             raise tornado.web.HTTPError(404)
         else:
             for d in docs:
@@ -193,46 +192,6 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
             utils._return2client(self, data)
             
             
-class CappedDescriptorHandler(tornado.web.RequestHandler):
-    """Handler for capped run_start collection that is used for caching 
-    and monitoring.
-    """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
-        try:
-            docs = yield database.event_descriptor_capped.find(query,
-                                                               await_data=True,
-                                                               tailable=True).to_list(None)
-        except pymongo.errors.CollectionInvalid:
-            raise tornado.web.HTTPError(500)
-        if not docs and start == 0:
-            raise tornado.web.HTTPError(404)
-        else:
-            utils._return2client(self, utils._stringify_data(docs))
-            self.finish()
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, utils.schemas['descriptor'])
-        try:
-            result = yield database.event_descriptor_capped.insert(data)
-        except pymongo.errors.CollectionInvalid:
-            #try to create the collection if it doesn't exist
-            db.create_collection('event_descriptor_capped', size=1000)
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils._return2client(self, data)            
-
-
 class RunStopHandler(tornado.web.RequestHandler):
     """Handler for run_stop insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
@@ -279,39 +238,42 @@ class RunStopHandler(tornado.web.RequestHandler):
 
 
 class CappedRunStopHandler(tornado.web.RequestHandler):
-    """Handler for capped run_start collection that is used for caching 
+    """Handler for capped run_stop collection that is used for caching 
     and monitoring.
     """
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
-        try:
-            docs = yield database.run_start_capped.find(query,
-                                                        await_data=True,
-                                                        tailable=True).to_list(None)
-        except pymongo.errors.CollectionInvalid:
-            raise tornado.web.HTTPError(500)
-        if not docs and start == 0:
-            raise tornado.web.HTTPError(404)
-        else:
-            utils._return2client(self, utils._stringify_data(docs))
-            self.finish()
-
+        cursor = database.run_stop_capped.find({},
+                                               await_data=True,
+                                               tailable=True)
+        while True:
+            if (yield cursor.fetch_next):
+                tmp = cursor.next_object() #pop from cursor all old entries
+                print(tmp)
+            else:
+                break
+        while cursor.alive:
+            print('here')
+            if (yield cursor.fetch_next):
+                result = cursor.next_object()
+                break
+            else:
+                yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
+        utils._return2client(self, result)
+            
     @tornado.web.asynchronous
     @gen.coroutine
     def post(self):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, utils.schemas['run_stop'])
+        jsonschema.validate(data, utils.schemas['run_start'])
         try:
             result = yield database.run_stop_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
             #try to create the collection if it doesn't exist
-            db.create_collection('run_stop_capped', size=1000)
+            db.create_collection('run_start_capped', size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -374,12 +336,12 @@ class EventHandler(tornado.web.RequestHandler):
 
 
 db = db_connect('datastore2', '127.0.0.1', 27017)
+loop = tornado.ioloop.IOLoop.instance()
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
     (r'/event_descriptor',EventDescriptorHandler),
     (r'/event',EventHandler),
     (r'/run_start_capped', CappedRunStartHandler), 
-    (r'/run_stop_capped', CappedRunStopHandler),
-    (r'/descriptor_capped',CappedDescriptorHandler)], db=db)
+    (r'/run_stop_capped', CappedRunStopHandler)], db=db)
 application.listen(7770)
-tornado.ioloop.IOLoop.instance().start()
+loop.start()
