@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from metadataservice.client.commands import _find_run_starts, runstart_given_uid
+from metadataservice.client.commands import find_run_starts, runstart_given_uid
 from metadataservice.client.commands import *
 import time
 from collections import deque
@@ -60,35 +60,10 @@ start = 0
 stop = 10
 
 
-k = _find_run_starts(range_floor=0, range_ceil=1000, owner="xf23id1")
+k = find_run_starts(range_floor=0, range_ceil=1000, owner="xf23id1")
 tmp = 0
 for _ in k:
     print(_)
     print(tmp)
     tmp += 1
 
-
-
-# print(type(runstart_given_uid(uid="07fdecc7-1c50-407a-a274-2bfdd8299ffa")))
-#
-# insert_run_start(uid=str(uuid.uuid4()), scan_id=1, beamline_id='arbitrary',
-#                  time=time.time(), group='none',project='xyz',
-#                  config={'param', 1})
-#
-
-# rs, e_desc, data_keys = setup_syn()
-# all_data = syn_data(data_keys, num)
-
-# start_time = time.time()
-# insert_event(descriptor=e_desc, events=all_data)
-# stop_time = time.time()
-# print('insert time: {}'.format(stop_time - start_time))
-
-
-# start_time = time.time()
-# ret = _find_run_starts(beamline_id='xf23id')
-# stop_time = time.time()
-# print('retrieve time: {}'.format(stop_time - start_time))
-#
-#
-# print(next(_find_run_stops(exit_status= "success")))

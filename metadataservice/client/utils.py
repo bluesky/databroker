@@ -3,29 +3,12 @@ import six
 import collections
 from functools import reduce
 
-_HTML_TEMPLATE = """
-<table>
-{% for key, value in document | dictsort recursive %}
-  <tr>
-    <th> {{ key }} </th>
-    <td>
-      {% if value.items %}
-        <table>
-          {{ loop(value | dictsort) }}
-        </table>
-        {% else %}
-          {% if key == 'time' %}
-            {{ value | human_time }}
-          {% else %}
-            {{ value }}
-          {% endif %}
-        {% endif %}
-    </td>
-  </tr>
-{% endfor %}
-</table>
-"""
+class NoRunStop(Exception):
+    pass
 
+
+class NoEventDescriptors(Exception):
+    pass
 
 class DocumentIsReadOnly(Exception):
     pass
@@ -74,13 +57,13 @@ class Document(dict):
 
     def __len__(self):
         return len(list(self.keys()))
-
-    def _repr_html_(self):
-        import jinja2
-        env = jinja2.Environment()
-        env.filters['human_time'] = pretty_print_time
-        template = env.from_string(_HTML_TEMPLATE)
-        return template.render(document=self)
+# 
+#     def _repr_html_(self):
+#         import jinja2
+#         env = jinja2.Environment()
+#         env.filters['human_time'] = pretty_print_time
+#         template = env.from_string(_HTML_TEMPLATE)
+#         return template.render(document=self)
 
     def __str__(self):
         try:

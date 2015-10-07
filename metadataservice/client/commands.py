@@ -2,7 +2,6 @@ import requests
 import simplejson
 import datetime
 import pytz
-import time
 import six
 from functools import wraps
 import ujson
@@ -90,7 +89,7 @@ def runstart_given_uid(uid):
     run_start : doc.Document
         The RunStart document.
     """
-    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
+    return utils.Document('RunStart', next(find_run_starts(uid=uid)))
 
 @_ensure_connection
 def _run_start_given_oid(oid):
@@ -110,10 +109,10 @@ def _run_start_given_oid(oid):
 
     Returns
     -------
-    run_start : doc.Document
+    run_start : utils.Document
         The RunStart document.
     """
-    return utils.Document('RunStart', next(_find_run_starts(_id=oid)))
+    return utils.Document('RunStart', next(find_run_starts(_id=oid)))
 
 
 @_ensure_connection
@@ -137,9 +136,8 @@ def _descriptor_given_oid(oid):
     descriptor : doc.Document
         The EventDescriptor document.
     """
-    descriptor = dict(next(_find_event_descriptors(oid=oid)))
-    start_oid = descriptor.pop('run_start_id')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
+    #runstart replaced in server side
+    descriptor = dict(next(find_descriptors(oid=oid)))
     return utils.Document('EventDescriptor', descriptor)
 
 
@@ -154,11 +152,11 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : utils.Document
         The RunStop document fully de-referenced
 
     """
-    run_stop = dict(next(_find_run_stops(uid=uid)))
+    run_stop = dict(next(find_run_stops(uid=uid)))
     start_oid = run_stop.pop('run_start_id')
     run_stop['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('RunStop', run_stop)
@@ -179,7 +177,7 @@ def run_start_given_uid(uid):
         The RunStart document.
 
     """
-    return utils.Document('RunStart', next(_find_run_starts(uid=uid)))
+    return utils.Document('RunStart', next(find_run_starts(uid=uid)))
 
 
 @_ensure_connection
@@ -193,11 +191,11 @@ def run_stop_given_uid(uid):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : utils.Document
         The RunStop document fully de-referenced
 
     """
-    runstop = dict(next(_find_run_stops(uid=uid)))
+    runstop = dict(next(find_run_stops(uid=uid)))
     start_oid = runstop.pop('run_start_id')
     runstop['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('RunStop', runstop)
@@ -217,7 +215,7 @@ def descriptor_given_uid(uid):
     descriptor : utils.Document
         The EventDescriptor document fully de-referenced
     """
-    descriptor = dict(next(_find_event_descriptors(uid=uid)))
+    descriptor = dict(next(find_descriptors(uid=uid)))
     start_oid = descriptor.pop('run_start_id')
     descriptor['run_start'] = _run_start_given_oid(start_oid)
     return utils.Document('EventDescriptor', descriptor)
@@ -226,7 +224,6 @@ def descriptor_given_uid(uid):
 @_ensure_connection
 def stop_by_start(run_start):
     """Given a RunStart return it's RunStop
-
     Raises if no RunStop exists.
 
     Parameters
@@ -247,9 +244,12 @@ def stop_by_start(run_start):
     """
     run_start_uid = doc_or_uid_to_uid(run_start)
     rstart = run_start_given_uid(run_start_uid)
-    run_stop = dict(next(_find_run_stops(run_start_id=rstart['_id'])))
-    run_stop['run_start'] = run_start
-    return utils.Document('RunStop', run_stop)
+    if rstart:
+        run_stop = dict(next(find_run_stops(run_start_id=rstart['_id'])))
+        run_stop['run_start'] = run_start
+        return utils.Document('RunStop', run_stop)
+    else:
+        raise utils.NoRunStop()
     
 
 @_ensure_connection
@@ -260,7 +260,7 @@ def descriptors_by_start(run_start):
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    run_start : utils.Document or dict or str
         The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -274,11 +274,13 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    pass
-
+#     run_start_uid = doc_or_uid_to_uid(run_start)
+#     run_start_given_uid(run_start_uid)
+#     descriptors = find_descriptors(run_start=runs
+    raise NotImplementedError()
 
 @_ensure_connection
-def get_events_generator(desc_uid):
+def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -293,12 +295,12 @@ def get_events_generator(desc_uid):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    desc = descriptor_given_uid(desc_uid)
-    raw_ev_gen = _fetch_events(descriptor_id=str(desc['_id']))
+    desc = descriptor_given_uid(descriptor.uid)
+    raw_ev_gen = find_events(descriptor_id=str(desc['_id']))
     for ev in raw_ev_gen:
         ev.pop('descriptor_id')
         ev['descriptor'] = dict(desc)
-        yield utils.Document(ev)
+        yield utils.Document('Event', ev)
 
 
 def _transpose(in_data, keys, field):
@@ -359,7 +361,7 @@ def fetch_events_table(descriptor):
     pass
 
 @_ensure_connection
-def _find_run_starts(range_floor=0, range_ceil=50, **kwargs):
+def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, locate RunStart Documents.
     As we describe in design document, time here is strictly the time
     server entry was created, not IOC timestamp. For the difference, refer
@@ -404,11 +406,11 @@ def _find_run_starts(range_floor=0, range_ceil=50, **kwargs):
 
     Examples
     --------
-    >>> _find_run_starts(scan_id=123)
-    >>> _find_run_starts(owner='arkilic')
-    >>> _find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
-    >>> _find_run_starts(start_time=1421176750.514707, stop_time=time.time())
-    >>> _find_run_starts(owner='arkilic', start_time=1421176750.514707,
+    >>> find_run_starts(scan_id=123)
+    >>> find_run_starts(owner='arkilic')
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
+    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
+    >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
     ...                stop_time=time.time())
     """
     _format_time(kwargs)
@@ -430,7 +432,7 @@ def _find_run_starts(range_floor=0, range_ceil=50, **kwargs):
 
 
 @_ensure_connection
-def _find_run_stops(range_floor=0, range_ceil=50, **kwargs):
+def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
@@ -477,15 +479,13 @@ def _find_run_stops(range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document(c)
+                yield utils.Document('RunStop', c)
             range_ceil += increment
             range_floor += increment
      
-
 @_ensure_connection
-def _fetch_events(range_floor=0, range_ceil=1000, **kwargs):
-    """Given search criteria, locate Event Documents.
-
+def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
+    """
     Parameters
     -----------
     start_time : time-like, optional
@@ -500,43 +500,43 @@ def _fetch_events(range_floor=0, range_ceil=1000, **kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
-    descriptor : metadatastore.document.Document or uid, optional
-        if Document:
-            The metadatastore run start document or the metadatastore uid to get
-            the corresponding run end for
-        if uid:
-            Globally unique id string provided to metadatastore for the
-            EventDescriptor Document.
+    descriptor : doc.Document or str, optional
+       Find events for a given EventDescriptor
     uid : str, optional
         Globally unique id string provided to metadatastore
-    _id : str or ObjectId, optional
-        The unique id generated by mongo
-
     Returns
     -------
-    content : iterable of list of json documents
-        We need lists to be able to JSON encode multiple dicts. We can return an iterator of
-         iterator?
+    events : iterable of utils.Document objects
     """
-    _format_time(kwargs)
+    if 'event_descriptor' in kwargs:
+        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
     query = kwargs
     increment = range_ceil - range_floor + 1
+    if descriptor:
+        #TODO: Try to get from capped collection/cache instead of db hit
+        descriptor = descriptor_given_uid(descriptor)
+        query['descriptor_id'] = descriptor._id
     while True:
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/event", params=simplejson.dumps(query))
+        query
+        r = requests.get(_server_path + "/event", 
+                         params=simplejson.dumps(query))
         content = ujson.loads(r.text)
         if not content:
             StopIteration()
             break
         else:
-            yield content
+            for c in content:
+                c.pop('descriptor_id')
+                c['descriptor'] = descriptor
+                yield utils.Document('Event', c)
             range_ceil += increment
             range_floor += increment
-
+        
 
 @_ensure_connection
-def _find_event_descriptors(range_floor=0, range_ceil=50, **kwargs):
+def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -746,6 +746,19 @@ def _format_time(search_dict):
         search_dict['time'] = time_dict
 
 
+def monitor_run_start():
+    r = requests.get(_server_path + 'run_start_capped')
+    content = ujson.loads(r.text)
+    return utils.Document('RunStart', content)
+    
+
+def monitor_run_stop():
+    r = requests.get(_server_path + 'run_stop_capped')
+    content = ujson.loads(r.text)
+    return utils.Document('RunStart', content)
+
+
+    
 def _normalize_human_friendly_time(val):
     """Given one of :
     - string (in one of the formats below)
