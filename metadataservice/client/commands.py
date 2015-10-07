@@ -2,7 +2,6 @@ import requests
 import simplejson
 import datetime
 import pytz
-import time
 import six
 from functools import wraps
 import ujson
@@ -747,6 +746,19 @@ def _format_time(search_dict):
         search_dict['time'] = time_dict
 
 
+def monitor_run_start():
+    r = requests.get(_server_path + 'run_start_capped')
+    content = ujson.loads(r.text)
+    return utils.Document('RunStart', content)
+    
+
+def monitor_run_stop():
+    r = requests.get(_server_path + 'run_stop_capped')
+    content = ujson.loads(r.text)
+    return utils.Document('RunStart', content)
+
+
+    
 def _normalize_human_friendly_time(val):
     """Given one of :
     - string (in one of the formats below)
