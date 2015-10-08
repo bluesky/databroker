@@ -37,6 +37,7 @@ script:
 after_success:
 - coveralls
 - codecov
+- source deactivate
 - anaconda login --username $USER --password $PASS
 - anaconda upload -u lightsource2-dev `conda build conda-recipe --output`
 env:
