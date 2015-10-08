@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.ioloop
 import tornado.web
 from tornado import gen
+
 import datetime
 import pymongo.errors
 import motor
@@ -100,6 +101,11 @@ class RunStartHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
+   
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
 
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
@@ -148,6 +154,11 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         else:
             utils._return2client(self, data)
             
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
             
 class RunStopHandler(tornado.web.RequestHandler):
     """Handler for run_stop insert and query operations.
@@ -192,6 +203,11 @@ class RunStopHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
 
 
 class EventHandler(tornado.web.RequestHandler):
@@ -247,6 +263,11 @@ class EventHandler(tornado.web.RequestHandler):
             result = yield database.event.insert(data)
             if not result:
                 raise tornado.web.HTTPError(500)
+    
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
 
 
 class CappedRunStartHandler(tornado.web.RequestHandler):
@@ -289,6 +310,11 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
         else:
             utils._return2client(self, data)
 
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
 
 class CappedRunStopHandler(tornado.web.RequestHandler):
     """Handler for capped run_stop collection that is used for caching 
@@ -330,6 +356,11 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
 
 
 db = db_connect('datastore2', '127.0.0.1', 27017)

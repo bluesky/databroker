@@ -583,7 +583,7 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document(c)
+                yield utils.Document('EventDescriptor', c)
             range_ceil += increment
             range_floor += increment
 
@@ -596,8 +596,8 @@ def insert_event(descriptor,events):
 
 
 @_ensure_connection
-def insert_event_descriptor(run_start, data_keys, time, uid=None,
-                            custom=None):
+def insert_descriptor(run_start, data_keys, time, uid=None,
+                      custom=None):
     """ Create an event_descriptor in metadatastore server backend
 
     Parameters
@@ -631,7 +631,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return r.json()
+        return utils.Document('EventDescriptor', dict(r.json()))
 
 
 @_ensure_connection
@@ -745,6 +745,9 @@ def _format_time(search_dict):
     if time_dict:
         search_dict['time'] = time_dict
 
+
+def find_last(range=1):
+    pass
 
 def monitor_run_start():
     r = requests.get(_server_path + 'run_start_capped')
