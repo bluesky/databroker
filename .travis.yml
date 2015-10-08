@@ -38,8 +38,11 @@ after_success:
 - coveralls
 - codecov
 - source deactivate
-- anaconda login --username $USER --password $PASS
-- anaconda upload -u lightsource2-dev `conda build conda-recipe --output`
+# see if we are on the master branch. if so, upload the new build.
+- if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then
+    anaconda login --username $USER --password $PASS;
+    anaconda upload -u lightsource2-dev `conda build conda-recipe --output`;
+  fi;
 env:
   global:
   - secure: o3XFQlwLvStOPXjbpwdIgs7+Tn9d0flcTGGnFsWHrt7/duam6I7prMRy/ItZXHHTPayvSeC8P302gU/kygGQ347P8+nZts5dZMJAx9ngOsTFtawEqM20V/uH6ESG1hVO88sf1T9JIR/nlMl/DYYuijv0bomtsIBp0m+vuxHBsAU=
