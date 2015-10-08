@@ -28,7 +28,7 @@ install:
   - conda config --set always_yes true
   - conda update conda --yes
   - conda config --add channels lightsource2
-  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 mongoengine boltons prettytable humanize
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo=2.6.3 six pyyaml numpy pandas jinja2 mongoengine boltons prettytable humanize
   # install deps for building a conda package on travis
   - conda install conda-build jinja2
   - source activate testenv
