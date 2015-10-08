@@ -1,46 +1,45 @@
 language: python
 sudo: false
-
 services:
-  - mongodb
-
+- mongodb
 matrix:
   include:
-    - python: 2.7
-    - python: 3.4
-    - python: 3.5
-
+  - python: 2.7
+  - python: 3.4
+  - python: 3.5
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh; fi
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b -p /home/travis/mc
-  - export PATH=/home/travis/mc/bin:$PATH
-  - export MDS_HOST=localhost
-  - export MDS_DATABASE=test
-  - export MDS_TIMEZONE=US/Eastern
-  - mkdir -p /home/travis/.config/metadatastore
-  - 'echo ''port: 27017'' > /home/travis/.config/metadatastore/connection.yml'
-
+- if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh
+  -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh
+  -O miniconda.sh; fi
+- chmod +x miniconda.sh
+- "./miniconda.sh -b -p /home/travis/mc"
+- export PATH=/home/travis/mc/bin:$PATH
+- export MDS_HOST=localhost
+- export MDS_DATABASE=test
+- export MDS_TIMEZONE=US/Eastern
+- mkdir -p /home/travis/.config/metadatastore
+- 'echo ''port: 27017'' > /home/travis/.config/metadatastore/connection.yml'
 install:
-  - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda config --set always_yes true
-  - conda update conda --yes
-  - conda config --add channels lightsource2
-  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION "pymongo=2.9" six pyyaml numpy pandas jinja2 mongoengine boltons prettytable humanize
-  - source activate testenv
-  - pip install coveralls codecov
-  - python setup.py install
-
-
+- export GIT_FULL_HASH=`git rev-parse HEAD`
+- conda config --set always_yes true
+- conda update conda --yes
+- conda config --add channels lightsource2
+- conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION "pymongo=2.9" six
+  pyyaml numpy pandas jinja2 mongoengine boltons prettytable humanize
+- source activate testenv
+- pip install coveralls codecov
+- python setup.py install
 script:
-  - python run_tests.py -v
-  # need to fetch the whole repo so that conda-build can correctly determine
-  # the version string
-  - git fetch --unshallow
-  # install deps for building a conda package on travis
-  - conda install -n root conda-build jinja2
-  - conda build conda-recipe
-
+- python run_tests.py -v
+- git fetch --unshallow
+- conda install -n root conda-build jinja2 anaconda-client
+- conda build conda-recipe
 after_success:
-  - coveralls
-  - codecov
+- coveralls
+- codecov
+- anaconda login --username $USER --password $PASS
+- anaconda upload -u lightsource2-dev `conda build conda-recipe --output`
+env:
+  global:
+  - secure: o3XFQlwLvStOPXjbpwdIgs7+Tn9d0flcTGGnFsWHrt7/duam6I7prMRy/ItZXHHTPayvSeC8P302gU/kygGQ347P8+nZts5dZMJAx9ngOsTFtawEqM20V/uH6ESG1hVO88sf1T9JIR/nlMl/DYYuijv0bomtsIBp0m+vuxHBsAU=
+  - secure: EKFAmc1vJ/P9wwLhbd948iEm1PIlgARmip6i7pwbsHwum1Ze5qXHqwbOYsc6qN40f5K2Q5N5oOXCgTA7M9ZITme164NVe3irJoLUuG+C+O7zlDgwkUDb/s+qHieGf/hK8gRpe8dtTHpod/oE9bBpawlxNoBQXeecp5k91WvGRiE=
