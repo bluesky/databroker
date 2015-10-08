@@ -40,7 +40,7 @@ script:
   # the version string
   - git fetch --unshallow
   # install deps for building a conda package on travis
-  - conda install conda-build jinja2
+  - conda install -n root conda-build jinja2
   - conda build conda-recipe
 
 after_success:
