@@ -29,7 +29,6 @@ install:
   - conda update conda --yes
   - conda config --add channels lightsource2
   - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION "pymongo=2.9" six pyyaml numpy pandas jinja2 mongoengine boltons prettytable humanize
-  # install deps for building a conda package on travis  - conda install conda-build jinja2
   - source activate testenv
   - pip install coveralls codecov
   - python setup.py install
@@ -37,8 +36,11 @@ install:
 
 script:
   - python run_tests.py -v
+  # need to fetch the whole repo so that conda-build can correctly determine
+  # the version string
   - git fetch --unshallow
-  # add our public build channel so that conda-build can access any pacakges it needs
+  # install deps for building a conda package on travis
+  - conda install conda-build jinja2
   - conda build conda-recipe
 
 after_success:
