@@ -33,7 +33,7 @@ script:
 - python run_tests.py -v
 - git fetch --unshallow
 - conda install -n root conda-build jinja2 anaconda-client
-- conda build conda-recipe
+- conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION
 after_success:
 - coveralls
 - codecov
