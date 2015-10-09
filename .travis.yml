@@ -33,7 +33,8 @@ script:
 - python run_tests.py -v
 - git fetch --unshallow
 - conda install -n root conda-build jinja2 anaconda-client
-- conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION
+- export CONDA_BUILD_COMMAND="conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION"
+- $CONDA_BUILD_COMMAND
 after_success:
 - coveralls
 - codecov
@@ -41,7 +42,7 @@ after_success:
 # see if we are on the master branch. if so, upload the new build.
 - if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then
     anaconda login --username $USER --password $PASS;
-    anaconda upload -u lightsource2-dev `conda build conda-recipe --output`;
+    anaconda upload -u lightsource2-dev `$CONDA_BUILD_COMMAND --output`;
   fi;
 env:
   global:
