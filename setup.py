@@ -1,5 +1,3 @@
-import sys
-import warnings
 import versioneer
 
 
@@ -22,4 +20,6 @@ setup(
               'databroker.examples.sample_data',
               'databroker.utils',
               ],
+    install_requires=['tzlocal', 'pandas', 'pims',
+                      'metadatastore', 'filestore']
 )
