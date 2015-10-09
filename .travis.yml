@@ -43,15 +43,12 @@ after_success:
 - source deactivate
 # see if we are on the master branch. if so, upload the new build.
 - git clone https://github.com/ericdill/travis-little-helper
-- ls
-- ls travis-little-helper
-- which bash
-- pwd
 - if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then
     $CONDA_BUILD_COMMAND --output | bash travis-little-helper/anaconda-version-string.sh > version;
+    anaconda login --username $USER --password $PASS --hostname "$TRAVIS_PYTHON_VERSION-`cat version`";
     bash travis-little-helper/clean-anaconda-channel.sh lightsource2-dev metadatastore true;
-    anaconda login --username $USER --password $PASS;
     anaconda upload -u lightsource2-dev `$CONDA_BUILD_COMMAND --output`;
+    anaconda logout;
   fi;
 env:
   global:
