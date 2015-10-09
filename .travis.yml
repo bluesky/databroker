@@ -29,6 +29,8 @@ install:
 - source activate testenv
 - pip install coveralls codecov
 - python setup.py install
+- git describe
+- python -c "import metadatastore; print(metadatastore.__version__)"
 script:
 - python run_tests.py -v
 - git fetch --unshallow
