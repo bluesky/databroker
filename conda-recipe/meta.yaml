@@ -12,7 +12,7 @@ build:
 
   # Note that this will override the default build string with the Python
   # and NumPy versions
-  string: {{ environ.get('GIT_BUILD_STR', '') }}_np{{ np }}py{{ py }}
+  string: {{ environ.get('GIT_BUILD_STR', '') }}_py{{ py }}
 
 
 requirements:
@@ -23,6 +23,7 @@ requirements:
   run:
     - python
     - mongoengine ==0.8.7
+    - pymongo ==2.9
     - six
     - pyyaml
     - prettytable
