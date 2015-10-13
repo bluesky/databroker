@@ -357,7 +357,8 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
             df = pd.DataFrame(index=seq_nums)
             if convert_times:
                 times = pd.to_datetime(
-                    pd.Series(times), unit='s', utc=True).dt.tz_localize(TZ)
+                    pd.Series(times, index=seq_nums),
+                    unit='s', utc=True).dt.tz_localize(TZ)
             df['time'] = times
             for field, values in six.iteritems(data):
                 if field in discard_fields:
