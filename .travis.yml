@@ -8,8 +8,6 @@ matrix:
   - python: 3.4
   - python: 3.5
 before_install:
-- echo "ANACONDA_USER=$ANACONDA_USER"
-- echo "ANACONDA_PASS=$ANACONDA_PASS"
 - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 - chmod +x miniconda.sh
 - "./miniconda.sh -b -p /home/travis/mc"
@@ -41,7 +39,7 @@ after_success:
 - codecov
 - source deactivate
 - git clone https://github.com/ericdill/travis-little-helper
-- if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then
+- if [ "${TRAVIS_PULL_REQUEST}" = "false" ] && [ "${TRAVIS_BRANCH}" == "master" ]; then
     $CONDA_BUILD_COMMAND --output | bash travis-little-helper/anaconda-version-string.sh > version;
     anaconda login --username nsls2builder --password $ANACONDA_PASS --hostname "$TRAVIS_PYTHON_VERSION-`cat version`";
     bash travis-little-helper/clean-anaconda-channel.sh lightsource2-dev metadatastore true;
@@ -51,4 +49,3 @@ after_success:
 env:
   global:
     secure: "pYO9aM4keSwyVrom3/tbmjE0mwuSBKJ+SroIF56JUVLh8jT3jiHmwZfI3fUNY6erNewyoiFhkDDBvyY/gxXGHma6T0RcV+LAZmWCXePBL8fsm5X93lo3RlPFtqmXbkOW7C0+h4RDEMQP/UYsNJvL7YbmeDT+fNozV/CpK1zJtU4="
-
