@@ -12,7 +12,12 @@ from metadataservice.client import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-#TODO: Hide all oid from end-user
+# TODO: Ensure hiding all oid from end-user
+# TODO: Add server_disconnect that rolls all config back to default
+# TODO: Add capped collection caching layer.
+# TODO: Add fast read/write capped collection, different than caching capped collection
+# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
+
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -89,7 +94,9 @@ def runstart_given_uid(uid):
     run_start : doc.Document
         The RunStart document.
     """
-    return utils.Document('RunStart', next(find_run_starts(uid=uid)))
+    # TODO: Add capped collection caching lookup
+    return next(find_run_starts(uid=uid)) #already returns document
+
 
 @_ensure_connection
 def _run_start_given_oid(oid):

@@ -1,6 +1,5 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from metadataservice.client.commands import find_run_starts, runstart_given_uid
 from metadataservice.client.commands import *
 import time
 from collections import deque
