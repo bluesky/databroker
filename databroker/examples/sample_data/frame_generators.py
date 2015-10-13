@@ -59,7 +59,7 @@ def brownian(im_shape, step_scale=1, decay=30,
         raise ValueError("image shape must be 2 dimensional "
                          "you passed in {}".format(im_shape))
 
-    cur_position = np.asarray(im_shape) // 2
+    cur_position = np.asarray(im_shape) / 2
     count = 0
     while True:
         # add a random step

@@ -31,13 +31,14 @@ install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda config --set always_yes true
   - conda update conda
-  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION six numpy pandas h5py coverage jsonschema jinja2
+  # pin to numpy < 1.10 because pandas 0.16 and numpy 1.10 do not play nice
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION six "numpy<1.10" pandas h5py coverage jsonschema jinja2
   - source activate testenv
   # deps needed for metadatastore/filestore
   - conda install -n testenv pyyaml
   # Dependencies not in official conda have been uploaded to binstar orgs.
   - conda config --add channels lightsource2
-  - conda install mongoengine tzlocal prettytable boltons pymongo pims tifffile
+  - conda install mongoengine tzlocal prettytable boltons pymongo=2.9 pims tifffile
   # install all the pip deps
   - pip install coveralls
   - pip install codecov
