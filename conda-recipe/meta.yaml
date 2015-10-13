@@ -16,8 +16,8 @@ requirements:
     - python
     - pandas
     - pims
-    - metadatastore >=0.2.0
-    - filestore >=0.2.0
+    - metadatastore >=v0.2.0
+    - filestore >=v0.2.0
     - channelarchiver
     - six
     - tzlocal
