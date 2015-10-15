@@ -11,7 +11,6 @@ import motor
 import ujson
 import jsonschema
 
-
 from metadataservice.server import utils
 
 
@@ -21,7 +20,7 @@ from metadataservice.server import utils
     Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
 """
 
-CACHE_SIZE = 10000
+CACHE_SIZE = 100000
 
 
 def db_connect(database ,host, port, replicaset=None, write_concern="majority",
@@ -107,6 +106,11 @@ class RunStartHandler(tornado.web.RequestHandler):
     def put(self):
         raise tornado.web.HTTPError(404)
 
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
+
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
     """Handler for event_descriptor insert and query operations.
@@ -159,7 +163,13 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     def put(self):
         raise tornado.web.HTTPError(404)
 
-            
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
+
+
+
 class RunStopHandler(tornado.web.RequestHandler):
     """Handler for run_stop insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
@@ -207,6 +217,11 @@ class RunStopHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def put(self):
+        raise tornado.web.HTTPError(404)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
         raise tornado.web.HTTPError(404)
 
 
@@ -269,6 +284,11 @@ class EventHandler(tornado.web.RequestHandler):
     def put(self):
         raise tornado.web.HTTPError(404)
 
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
+
 
 class CappedRunStartHandler(tornado.web.RequestHandler):
     """Handler for capped run_start collection that is used for caching 
@@ -303,7 +323,6 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
         try:
             result = yield database.run_start_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
-            #try to create the collection if it doesn't exist
             db.create_collection('run_start_capped', size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500)
@@ -315,6 +334,10 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
     def put(self):
         raise tornado.web.HTTPError(404)
 
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
 
 class CappedRunStopHandler(tornado.web.RequestHandler):
     """Handler for capped run_stop collection that is used for caching 
@@ -339,7 +362,6 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
                 break
             else:
                 yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
-        
             
     @tornado.web.asynchronous
     @gen.coroutine
@@ -362,4 +384,7 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
     def put(self):
         raise tornado.web.HTTPError(404)
 
-
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)

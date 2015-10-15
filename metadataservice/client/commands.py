@@ -433,7 +433,7 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document(c)
+                yield utils.Document('RunStart',c)
             range_ceil += increment
             range_floor += increment
 
