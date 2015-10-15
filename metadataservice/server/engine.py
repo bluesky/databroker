@@ -3,13 +3,13 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.ioloop
 import tornado.web
 from tornado import gen
+
 import datetime
 import pymongo.errors
 import motor
 
 import ujson
 import jsonschema
-
 
 from metadataservice.server import utils
 
@@ -20,7 +20,7 @@ from metadataservice.server import utils
     Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
 """
 
-CACHE_SIZE = 10000
+CACHE_SIZE = 100000
 
 
 def db_connect(database ,host, port, replicaset=None, write_concern="majority",
@@ -100,6 +100,16 @@ class RunStartHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
+   
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
 
 
 class EventDescriptorHandler(tornado.web.RequestHandler):
@@ -148,7 +158,18 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         else:
             utils._return2client(self, data)
             
-            
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
+
+
+
 class RunStopHandler(tornado.web.RequestHandler):
     """Handler for run_stop insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
@@ -192,6 +213,16 @@ class RunStopHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
 
 
 class EventHandler(tornado.web.RequestHandler):
@@ -247,6 +278,16 @@ class EventHandler(tornado.web.RequestHandler):
             result = yield database.event.insert(data)
             if not result:
                 raise tornado.web.HTTPError(500)
+    
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
 
 
 class CappedRunStartHandler(tornado.web.RequestHandler):
@@ -282,13 +323,21 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
         try:
             result = yield database.run_start_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
-            #try to create the collection if it doesn't exist
             db.create_collection('run_start_capped', size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
 
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
+
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)
 
 class CappedRunStopHandler(tornado.web.RequestHandler):
     """Handler for capped run_stop collection that is used for caching 
@@ -313,7 +362,6 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
                 break
             else:
                 yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
-        
             
     @tornado.web.asynchronous
     @gen.coroutine
@@ -331,14 +379,12 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
         else:
             utils._return2client(self, data)
 
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def put(self):
+        raise tornado.web.HTTPError(404)
 
-db = db_connect('datastore2', '127.0.0.1', 27017)
-loop = tornado.ioloop.IOLoop.instance()
-application = tornado.web.Application([
-    (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
-    (r'/event_descriptor',EventDescriptorHandler),
-    (r'/event',EventHandler),
-    (r'/run_start_capped', CappedRunStartHandler), 
-    (r'/run_stop_capped', CappedRunStopHandler)], db=db)
-application.listen(7770)
-loop.start()
+    @tornado.web.asynchronous
+    @gen.coroutine
+    def delete(self):
+        raise tornado.web.HTTPError(404)

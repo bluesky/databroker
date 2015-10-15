@@ -12,7 +12,12 @@ from metadataservice.client import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-#TODO: Hide all oid from end-user
+# TODO: Ensure hiding all oid from end-user
+# TODO: Add server_disconnect that rolls all config back to default
+# TODO: Add capped collection caching layer.
+# TODO: Add fast read/write capped collection, different than caching capped collection
+# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
+
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -89,7 +94,9 @@ def runstart_given_uid(uid):
     run_start : doc.Document
         The RunStart document.
     """
-    return utils.Document('RunStart', next(find_run_starts(uid=uid)))
+    # TODO: Add capped collection caching lookup
+    return next(find_run_starts(uid=uid)) #already returns document
+
 
 @_ensure_connection
 def _run_start_given_oid(oid):
@@ -426,7 +433,7 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document(c)
+                yield utils.Document('RunStart',c)
             range_ceil += increment
             range_floor += increment
 
@@ -583,7 +590,7 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document(c)
+                yield utils.Document('EventDescriptor', c)
             range_ceil += increment
             range_floor += increment
 
@@ -596,8 +603,8 @@ def insert_event(descriptor,events):
 
 
 @_ensure_connection
-def insert_event_descriptor(run_start, data_keys, time, uid=None,
-                            custom=None):
+def insert_descriptor(run_start, data_keys, time, uid=None,
+                      custom=None):
     """ Create an event_descriptor in metadatastore server backend
 
     Parameters
@@ -631,7 +638,7 @@ def insert_event_descriptor(run_start, data_keys, time, uid=None,
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return r.json()
+        return utils.Document('EventDescriptor', dict(r.json()))
 
 
 @_ensure_connection
@@ -745,6 +752,9 @@ def _format_time(search_dict):
     if time_dict:
         search_dict['time'] = time_dict
 
+
+def find_last(range=1):
+    pass
 
 def monitor_run_start():
     r = requests.get(_server_path + 'run_start_capped')
