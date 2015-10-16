@@ -5,10 +5,9 @@ import six
 import uuid
 import logging
 import time as ttime
-import numpy as np
-import pandas as pd
 from databroker import DataBroker as db, get_events, get_table
-from ..examples.sample_data import temperature_ramp, image_and_scalar
+from ..examples.sample_data import (temperature_ramp, image_and_scalar,
+                                    step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
 
@@ -29,6 +28,10 @@ def setup():
 
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
+    rs = insert_run_start(time=ttime.time(), scan_id=105,
+                          owner='stepper', beamline_id='example',
+                          uid=str(uuid.uuid4()))
+    step_scan.run(run_start_uid=rs)
     for owner in owners:
         for i in range(num_entries):
             logger.debug('{}: {} of {}'.format(owner, i+1, num_entries))
@@ -71,6 +74,9 @@ def test_basic_usage():
     # get events for multiple headers
     get_events([header_1, header_ned])
 
+    # test time shift issue GH9
+    table = get_table(db[105])
+    assert_true(table.notnull().all().all())
 
 def test_indexing():
     for i in range(5):
