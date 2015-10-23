@@ -6,16 +6,16 @@ import six
 from functools import wraps
 import ujson
 from requests.exceptions import  HTTPError
-from metadataservice.client import (conf, utils)
+from metadataclient import (conf, utils)
 
 """
 .. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-# TODO: Ensure hiding all oid from end-user
+# TODO: Ensure hiding all oid from end-user (check what is alraedy done
 # TODO: Add server_disconnect that rolls all config back to default
-# TODO: Add capped collection caching layer.
+# TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
 # TODO: Add timeouts to servers in order to stop ppl from abusing data sources
 

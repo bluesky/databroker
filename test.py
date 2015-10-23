@@ -35,7 +35,7 @@ def setup_syn():
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
 
-    e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
+    e_desc = insert_descriptor(data_keys=data_keys, time=time.time(),
                                      run_start=rs, uid=str(uuid.uuid4()))
     return rs, e_desc, data_keys
 
@@ -61,9 +61,3 @@ stop = 10
 
 k = find_run_starts(beamline_id="testing")
 print(next(k))
-# tmp = 0
-# for _ in k:
-#     print(_)
-#     print(tmp)
-#     tmp += 1
-
