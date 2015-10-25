@@ -2,11 +2,11 @@ import tornado.ioloop
 import tornado.web
 from metadataservice.server.engine import (db_connect, RunStartHandler, RunStopHandler,
                                            EventDescriptorHandler, EventHandler,
-                                           CappedRunStartHandler, CappedRunStopHandler)
+                                           CappedRunStartHandler, CappedRunStopHandler, loop)
 
 
 db = db_connect('datastore2', '127.0.0.1', 27017)
-loop = tornado.ioloop.IOLoop.instance()
+
 application = tornado.web.Application([
     (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
     (r'/event_descriptor',EventDescriptorHandler),
