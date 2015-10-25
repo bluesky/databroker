@@ -18,7 +18,7 @@ from metadataclient import (conf, utils)
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
 # TODO: Add timeouts to servers in order to stop ppl from abusing data sources
-
+# TODO: Add callback capability on monitors
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server

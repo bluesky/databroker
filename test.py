@@ -61,3 +61,15 @@ stop = 10
 
 k = find_run_starts(beamline_id="testing")
 print(next(k))
+cfg = {'beamline_id': 'testing',
+            'custom': {},
+            'group': 'test',
+            'owner': 'test',
+            'project': 'test',
+            'scan_id': 1,
+            'time': 1441727144.985973,
+            'uid': str(uuid.uuid4())}
+rs = insert_run_start(scan_id=1, beamline_id='testing', time=time.time(),
+                      custom=custom, uid=str(uuid.uuid4()), config={}, project='test',
+                    owner='test', group='test')
+print(rs)
