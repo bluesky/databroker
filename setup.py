@@ -20,8 +20,9 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     license="BSD (3-clause)",
     url="https://github.com/synchbot/metadataservice",
-    packages=['metadataservice', 'metadataservice.server',
-              'metadataservice.client'],
+    packages=['metadataservice',
+              'metadataservice.server'
+              ],
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: BSD License",
