@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def load_configuration(name, prefix, fields):
     """
-    Load configuration data form a cascading series of locations.
+    Load configuration data from a cascading series of locations.
 
     The precedence order is (highest priority last):
 
