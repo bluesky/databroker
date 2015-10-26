@@ -2,6 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
+import tornado.websocket
 from tornado import gen
 
 import datetime
@@ -428,3 +429,14 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
     def delete(self):
         raise tornado.web.HTTPError(404,
                                     status='Not allowed on server')
+
+class RStartWebSocket(tornado.websocket.WebSocketHandler):
+    def open(self):
+        print("WebSocket opened")
+
+    def on_message(self, message):
+        print(message)
+        self.write_message(u"You said: " + message)
+
+    def on_close(self):
+        print("WebSocket closed")
