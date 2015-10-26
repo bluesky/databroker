@@ -799,15 +799,39 @@ def find_last(range=1):
     pass
 
 def monitor_run_start():
-    r = requests.get(_server_path + 'run_start_capped')
+    r = requests.get(_server_path + '/run_start_capped')
     content = ujson.loads(r.text)
-    return utils.Document('RunStart', content)
+    yield utils.Document('RunStart', content)
+
+
+def _insert2cappedstart(time, scan_id, config, beamline_id, beamline_config={}, uid=None,
+                    owner=None, group=None, project=None, custom=None):
+    data = locals()
+    if custom:
+        data.update(custom)
+    payload = ujson.dumps(data)
+    r = requests.post(_server_path + '/run_start_capped', data=payload)
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
+
+
+def _insert2cappedstop(run_start, time, uid=None, config={}, exit_status='success',
+                    reason=None, custom=None):
+    payload = ujson.dumps(locals())
+    r = requests.post(_server_path + '/run_stop', data=payload)
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
 
 
 def monitor_run_stop():
-    r = requests.get(_server_path + 'run_stop_capped')
+    r = requests.get(_server_path + '/run_stop_capped')
+    print(r.status_code)
     content = ujson.loads(r.text)
-    return utils.Document('RunStart', content)
+    yield utils.Document('RunStop', content)
 
 
 def _normalize_human_friendly_time(val):
