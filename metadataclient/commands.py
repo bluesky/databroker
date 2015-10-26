@@ -430,6 +430,7 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start",
                          params=ujson.dumps(query))
+        print(r.url)
         r.raise_for_status()
         content = ujson.loads(r.text)
         if not content:

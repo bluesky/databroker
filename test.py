@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 from metadataclient.commands import *
 import time
 from collections import deque
+import websocket
 import uuid
 import numpy as np
 import metadataclient
@@ -98,6 +99,17 @@ for _ in res2:
 metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', time=time.time(),
                       custom=custom, uid=my_uid, config=cfg, project='test',
                     owner='test', group='test')
-print(next(monitor_run_start()))
+
+# print(next(monitor_run_start(callback=None)))
+res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
+for _ in res1:
+    print(_)
     
     
+
+ws = websocket.WebSocket()
+ws.connect("ws://localhost:7770/socket_runstart")
+ws.send('arman')
+result = ws.recv()
+ws.close()
+print(result)
