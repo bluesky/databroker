@@ -5,16 +5,15 @@ import tornado.web
 from tornado import gen
 
 import datetime
-import pymongo.errors
 import pymongo
 import motor
+from bson.objectid import ObjectId
 
 import ujson
 import jsonschema
 
 from metadataservice.server import utils
 
-# TODO: Add params for all create_index()
 # TODO: create index on event bulk write
 # TODO: Fix docstrings
 # TODO: Write tests specifically for the server side(existing ones are garbage!)
@@ -82,14 +81,21 @@ class RunStartHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
+        try:
+            start = query.pop('range_floor')
+            stop = query.pop('range_ceil')
+        except KeyError:
+            raise tornado.web.HTTPError(400,
+                            "range_ceil and range_floor required parameters")
+        _id = query.pop('_id', None)
+        if _id:
+            query['_id'] = ObjectId(_id)
         docs = yield database.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if docs == [] and start == 0:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
-            utils._return2client(self, utils._stringify_data(docs))
+            utils._return2client(self, docs)
             self.finish()
 
     @tornado.web.asynchronous
@@ -99,7 +105,9 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
         result = yield database.run_start.insert(data)
-        database.run_start.create_index([('owner', pymongo.ASCENDING), ('time', pymongo.ASCENDING), ('scan_id', pymongo.ASCENDING)])
+        database.run_start.create_index([('owner', pymongo.ASCENDING), 
+                                         ('time', pymongo.ASCENDING), 
+                                         ('scan_id', pymongo.ASCENDING)])
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -139,18 +147,25 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        docs = yield database.event_descriptor.find({},
-                                                    await_data=True,
-                                                    tailable=True).to_list(None)
-        if not docs:
-            raise tornado.web.HTTPError(500, reason='No results found for query')
+        query = utils._unpack_params(self)
+        try:
+            start = query.pop('range_floor')
+            stop = query.pop('range_ceil')
+        except KeyError:
+            raise tornado.web.HTTPError(400,
+                                        "range_ceil and range_floor required parameters")
+#         _id = query.pop('_id', None)
+#         if _id:
+#             query['_id'] = ObjectId(_id)
+        docs = yield database.event_descriptor.find(query).sort(
+            'time', pymongo.ASCENDING)[start:stop].to_list(None)
+        if docs == [] and start == 0:
+            raise tornado.web.HTTPError(500, 
+                                        reason='No results found for query')
         else:
-            for d in docs:
-                run_start_id = d.pop('run_start_id')
-                rstart = yield database.run_start.find_one({'run_start_id': run_start_id})
-                d['run_start'] = rstart
-            utils._return2client(self, utils._stringify_data(docs))
+            utils._return2client(self, docs)
             self.finish()
+
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -199,15 +214,19 @@ class RunStopHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')    
+        try:
+            start = query.pop('range_floor')
+            stop = query.pop('range_ceil')
+        except KeyError:
+            raise tornado.web.HTTPError(400,
+                                        "range_ceil and range_floor required parameters")
         docs = yield database.run_stop.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404, 
                                         status_code='No results for given query' + str(query))
         else:
-            utils._return2client(self, utils._stringify_data(docs))
+            utils._return2client(self, docs)
             self.finish()
 
     @tornado.web.asynchronous
@@ -258,15 +277,19 @@ class EventHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        start = query.pop('range_floor')
-        stop = query.pop('range_ceil')
+        try:
+            start = query.pop('range_floor')
+            stop = query.pop('range_ceil')
+        except KeyError:
+            raise tornado.web.HTTPError(400,
+                                        "range_ceil and range_floor required parameters")
         docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404,
                                         status='No results for given query')
         else:
-            utils._return2client(self, utils._stringify_data(docs))
+            utils._return2client(self, docs)
             self.finish()
 
     @tornado.web.asynchronous
@@ -283,8 +306,7 @@ class EventHandler(tornado.web.RequestHandler):
             try:
                 yield bulk.execute() #TODO: Add appropriate timeout
             except pymongo.errors.BulkWriteError as err:
-                print(err) #TODO: Log this instead of print
-                raise tornado.web.HTTPError(500)
+                raise tornado.web.HTTPError(500, err)
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = yield database.event.insert(data)
