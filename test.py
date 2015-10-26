@@ -35,7 +35,7 @@ def setup_syn():
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
 
-    e_desc = insert_event_descriptor(data_keys=data_keys, time=time.time(),
+    e_desc = insert_descriptor(data_keys=data_keys, time=time.time(),
                                      run_start=rs, uid=str(uuid.uuid4()))
     return rs, e_desc, data_keys
 
@@ -59,11 +59,39 @@ start = 0
 stop = 10
 
 
-k = find_run_starts(beamline_id="testing")
-print(next(k))
-# tmp = 0
-# for _ in k:
-#     print(_)
-#     print(tmp)
-#     tmp += 1
+# find_run_starts(beamline_id="testing")
+# (next(k))
+cfg = {'beamline_id': 'testing',
+            'custom': {},
+            'group': 'test',
+            'owner': 'test',
+            'project': 'test',
+            'scan_id': 1,
+            'time': 1441727144.985973,
+            'uid': str(uuid.uuid4())}
+my_uid = str(uuid.uuid4())
+rs = insert_run_start(scan_id=1, beamline_id='testing', time=time.time(),
+                      custom=custom, uid=my_uid, config=cfg, project='test',
+                    owner='test', group='test')
 
+res1 = find_run_starts(range_floor=0, range_ceil=100, uid=my_uid)
+
+for _ in res1:
+    print(_)
+data_keys = {k:  {'source': k,
+                      'dtype': 'number',
+                      'shape': None} for k in 'ABCEDEFHIJKL'
+                 }
+for num in range(10):
+    e_desc = insert_descriptor(data_keys=data_keys, time=time.time(),
+                                     run_start=rs, uid=str(uuid.uuid4()))
+
+res2 = find_descriptors(range_floor=0, range_ceil=100,run_start=rs)
+for _ in res2:
+    print(_)
+    
+    
+    
+    
+    
+    

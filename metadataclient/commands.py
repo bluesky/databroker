@@ -5,20 +5,19 @@ import pytz
 import six
 from functools import wraps
 import ujson
-from requests.exceptions import  HTTPError
-from metadataservice.client import (conf, utils)
+from metadataclient import (conf, utils)
 
 """
 .. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-# TODO: Ensure hiding all oid from end-user
+# TODO: Ensure hiding all oid from end-user (check what is alraedy done
 # TODO: Add server_disconnect that rolls all config back to default
-# TODO: Add capped collection caching layer.
+# TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
 # TODO: Add timeouts to servers in order to stop ppl from abusing data sources
-
+# TODO: Add callback capability on monitors
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -424,7 +423,9 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
     _format_time(kwargs)
     query = kwargs
     increment = range_ceil - range_floor + 1
-    while True:
+    has_more = True
+    while has_more:
+        q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start",
@@ -437,8 +438,12 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
         else:
             for c in content:
                 yield utils.Document('RunStart',c)
-            range_ceil += increment
-            range_floor += increment
+            if len(content) <= q_range:
+                has_more = False
+                break
+            else:
+                range_ceil += increment
+                range_floor += increment
 
 
 @_ensure_connection
@@ -479,11 +484,13 @@ def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
     _format_time(kwargs)
     query = kwargs
     increment = range_ceil - range_floor + 1
-    while True:
+    has_more = True
+    while has_more:
+        q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_stop",
-                         params=simplejson.dumps(query)).raise_for_status()
+                         params=ujson.dumps(query))
         r.raise_for_status()
         content = ujson.loads(r.text)
         if not content:
@@ -491,9 +498,13 @@ def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document('RunStop', c)
-            range_ceil += increment
-            range_floor += increment
+                yield utils.Document('RunStop',c)
+            if len(content) <= q_range:
+                has_more = False
+                break
+            else:
+                range_ceil += increment
+                range_floor += increment
 
 
 @_ensure_connection
@@ -529,12 +540,14 @@ def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
         #TODO: Try to get from capped collection/cache instead of db hit
         descriptor = descriptor_given_uid(descriptor)
         query['descriptor_id'] = descriptor._id
-    while True:
+    _format_time(kwargs)        
+    has_more = True
+    while has_more:
+        q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        query
-        r = requests.get(_server_path + "/event",
-                         params=simplejson.dumps(query)).raise_for_status()
+        r = requests.get(_server_path + "/run_stop",
+                         params=ujson.dumps(query))
         r.raise_for_status()
         content = ujson.loads(r.text)
         if not content:
@@ -542,11 +555,21 @@ def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
             break
         else:
             for c in content:
-                c.pop('descriptor_id')
-                c['descriptor'] = descriptor
-                yield utils.Document('Event', c)
-            range_ceil += increment
-            range_floor += increment
+                desc_id = c.pop('descriptor_id')
+                if descriptor:
+                    c['descriptor'] = descriptor
+                else:
+                    # if descriptor not provided, find and replace
+                    # primarily for event based search to succeed
+                    # should not be used
+                    descriptor = next(find_descriptors(_id=desc_id))
+                yield utils.Document('Event',c)
+            if len(content) <= q_range:
+                has_more = False
+                break
+            else:
+                range_ceil += increment
+                range_floor += increment
 
 
 @_ensure_connection
@@ -587,11 +610,13 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     _format_time(kwargs)
     query = kwargs
     increment = range_ceil - range_floor + 1
-    while True:
+    has_more = True
+    while has_more:
+        q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
         query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + '/event_descriptor',
-                         params=ujson.dumps(query)).raise_for_status()
+        r = requests.get(_server_path + "/event_descriptor",
+                         params=ujson.dumps(query))
         r.raise_for_status()
         content = ujson.loads(r.text)
         if not content:
@@ -599,9 +624,13 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
-                yield utils.Document('EventDescriptor', c)
-            range_ceil += increment
-            range_floor += increment
+                yield utils.Document('EventDescriptor',c)
+            if len(content) <= q_range:
+                has_more = False
+                break
+            else:
+                range_ceil += increment
+                range_floor += increment
 
 
 @_ensure_connection
@@ -641,9 +670,13 @@ def insert_descriptor(run_start, data_keys, time, uid=None,
         The document added to the collection.
 
     """
-
-    payload = ujson.dumps(locals())
-    r = requests.post(_server_path + '/event_descriptor', data=payload)
+    payload = locals()
+    print(payload)
+    tmp = payload['run_start']['_id']
+    payload.pop('run_start')
+    payload['run_start'] = tmp
+    r = requests.post(_server_path + '/event_descriptor', 
+                      data=ujson.dumps(payload))
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
