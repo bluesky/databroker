@@ -49,8 +49,7 @@ def _return2client(handler, payload):
     payload: dict, str, list
         Information to be sent to the client
     """
-    data = _stringify_data(payload)
-    handler.write(ujson.dumps(data))
+    handler.write(ujson.dumps(_stringify_data(payload)))
 
 
 def _stringify_data(docs):
@@ -68,28 +67,21 @@ def _stringify_data(docs):
         Stringified list or dictionary
     """
     if isinstance(docs, list):
-        stringed = list()
-        for _ in docs:
-            tmp = dict()
-            for k, v in six.iteritems(_):
+        for d in docs:
+            for k, v  in six.iteritems(d):
                 if isinstance(v, (ObjectId, datetime.datetime)):
-                    tmp[k] = str(v)
+                    tmp = str(v)
+                    d[k] = tmp
                 elif isinstance(v, dict):
-                    tmp[k] = _stringify_data(v)
-                else:
-                    tmp[k] = v
-                stringed.append(tmp)
+                    d[k] = _stringify_data(v)
+        return docs
     elif isinstance(docs, dict):
-        stringed = dict()
         for k, v in six.iteritems(docs):
-                if isinstance(v, (ObjectId, datetime.date)):
-                    stringed[k] = str(v)
-                elif isinstance(v, dict):
-                    stringed[k] = _stringify_data(v)
-                else:
-                    stringed[k] = v
-    elif isinstance(docs, ObjectId):
-        stringed = str(docs)
+            if isinstance(v, (ObjectId, datetime.date)):
+                tmp = str(v)
+                docs[k] = tmp
+            elif isinstance(v, dict):
+                docs[k] = _stringify_data(v)
+        return docs
     else:
         raise TypeError("Unsupported type ", type(docs))
-    return stringed
