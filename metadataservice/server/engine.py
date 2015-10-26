@@ -357,7 +357,8 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
         try:
             result = yield database.run_start_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
-            database.create_collection('run_start_capped', size=CACHE_SIZE)
+            database.create_collection('run_start_capped', capped=True, 
+                                       size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -409,7 +410,7 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
             result = yield database.run_stop_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
             # try to create the collection if it doesn't exist
-            database.create_collection('run_start_capped', size=CACHE_SIZE)
+            database.create_collection('run_start_capped', capped=True, size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500,
                                         status='Insert to CappedRunStop collection failed')
