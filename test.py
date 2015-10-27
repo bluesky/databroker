@@ -47,7 +47,6 @@ def syn_data(data_keys, count):
     for seq_num in range(count):
         data = {k: float(seq_num) for k in data_keys}
         timestamps = {k: time.time() for k in data_keys}
-
         _time = time.time()
         uid = str(uuid.uuid4())
         all_data.append({'data': data, 'timestamps': timestamps,
@@ -105,11 +104,4 @@ res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
 for _ in res1:
     print(_)
     
-    
-
-ws = websocket.WebSocket()
-ws.connect("ws://localhost:7770/socket_runstart")
-ws.send('arman')
-result = ws.recv()
-ws.close()
-print(result)
+print(next(monitor_run_start()))
