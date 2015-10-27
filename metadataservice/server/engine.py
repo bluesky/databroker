@@ -433,10 +433,26 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
 class RStartWebSocket(tornado.websocket.WebSocketHandler):
     def open(self):
         print("WebSocket opened")
+        database = self.settings['db']
+        self.cursor = database.run_start_capped.find({},
+                                                await_data=True,
+                                                tailable=True)
+        self.tailstream()
 
     def on_message(self, message):
-        print(message)
-        self.write_message(u"You said: " + message)
+        self.write_message(message)
+
+
+    
+    @tornado.web.asynchronous
+    def tailstream(self):
+        while self.cursor.alive:
+            try:
+                doc = self.cursor.next()
+                self.print2web(doc)
+            except StopIteration:
+                yield gen.Task(loop.add_timeout, 
+                               datetime.timedelta(seconds=1))                
 
     def on_close(self):
         print("WebSocket closed")
