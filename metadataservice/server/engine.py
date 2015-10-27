@@ -2,7 +2,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.ioloop
 import tornado.web
-import tornado.websocket
 from tornado import gen
 
 import datetime
@@ -396,10 +395,12 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
         while cursor.alive:
             if (yield cursor.fetch_next):
                 result = cursor.next_object()
+                
                 utils._return2client(self, result)
                 break
             else:
-                yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
+                yield gen.Task(loop.add_timeout, 
+                               datetime.timedelta(seconds=1))
             
     @tornado.web.asynchronous
     @gen.coroutine
@@ -429,30 +430,3 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
     def delete(self):
         raise tornado.web.HTTPError(404,
                                     status='Not allowed on server')
-
-class RStartWebSocket(tornado.websocket.WebSocketHandler):
-    def open(self):
-        print("WebSocket opened")
-        database = self.settings['db']
-        self.cursor = database.run_start_capped.find({},
-                                                await_data=True,
-                                                tailable=True)
-        self.tailstream()
-
-    def on_message(self, message):
-        self.write_message(message)
-
-
-    
-    @tornado.web.asynchronous
-    def tailstream(self):
-        while self.cursor.alive:
-            try:
-                doc = self.cursor.next()
-                self.print2web(doc)
-            except StopIteration:
-                yield gen.Task(loop.add_timeout, 
-                               datetime.timedelta(seconds=1))                
-
-    def on_close(self):
-        print("WebSocket closed")
