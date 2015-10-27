@@ -148,7 +148,7 @@ def _cache_run_start(run_start):
     # get the mongo ObjectID
     oid = run_start.pop('_id')
 
-    # convert the remaining document do a Document object
+    # convert the remaining document to a Document object
     run_start = doc.Document('RunStart', run_start)
 
     # populate cache and set up uid->oid mapping
