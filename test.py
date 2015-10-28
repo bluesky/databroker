@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function,
 from metadataclient.commands import *
 import time
 from collections import deque
-import websocket
 import uuid
 import numpy as np
 import metadataclient
@@ -93,7 +92,7 @@ for num in range(10):
 res2 = find_descriptors(range_floor=0, range_ceil=100,run_start=rs)
 for _ in res2:
     print(_)
-    
+     
 
 metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', time=time.time(),
                       custom=custom, uid=my_uid, config=cfg, project='test',
@@ -101,7 +100,7 @@ metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', ti
 
 # print(next(monitor_run_start(callback=None)))
 res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
-for _ in res1:
-    print(_)
+# for _ in res1:
+#     print(_)
     
-print(next(monitor_run_start()))
+# print(next(monitor_run_start()))

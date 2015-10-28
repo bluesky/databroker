@@ -1,5 +1,4 @@
 import requests
-import simplejson
 import datetime
 import pytz
 import six
@@ -430,7 +429,6 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start",
                          params=ujson.dumps(query))
-        print(r.url)
         r.raise_for_status()
         content = ujson.loads(r.text)
         if not content:
@@ -672,7 +670,6 @@ def insert_descriptor(run_start, data_keys, time, uid=None,
 
     """
     payload = locals()
-    print(payload)
     tmp = payload['run_start']['_id']
     payload.pop('run_start')
     payload['run_start'] = tmp
@@ -830,7 +827,6 @@ def _insert2cappedstop(run_start, time, uid=None, config={}, exit_status='succes
 
 def monitor_run_stop():
     r = requests.get(_server_path + '/run_stop_capped')
-    print(r.status_code)
     content = ujson.loads(r.text)
     yield utils.Document('RunStop', content)
 
