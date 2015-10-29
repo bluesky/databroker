@@ -39,11 +39,7 @@
     },
     "required": [
         "uid",
-        "time",
-        "group",
-        "owner",
-        "config",
-        "beamline_id"
+        "time"
      ],
     "type": "object",
     "description": "Document created at the start of run.  Provides a seach target and later documents link to it"

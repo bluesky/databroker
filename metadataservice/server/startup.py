@@ -5,10 +5,7 @@ from metadataservice.server.engine import (db_connect, RunStartHandler, RunStopH
                                            CappedRunStartHandler, CappedRunStopHandler, 
                                            loop)
 
-
 db = db_connect('datastore2', '127.0.0.1', 27017)
-
-
 
 if __name__ == "__main__":
     application = tornado.web.Application([
