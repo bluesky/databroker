@@ -11,7 +11,6 @@ from metadataclient import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-# TODO: Ensure hiding all oid from end-user (check what is alraedy done
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
@@ -249,9 +248,9 @@ def stop_by_start(run_start):
         If no RunStop document exists for the given RunStart
     """
     run_start_uid = doc_or_uid_to_uid(run_start)
-    rstart = run_start_given_uid(run_start_uid)
+    rstart = run_start_given_uid(run_start['uid'])
     if rstart:
-        run_stop = dict(next(find_run_stops(run_start_id=rstart['_id'])))
+        run_stop = next(find_run_stops(run_start=run_start_uid))
         run_stop['run_start'] = run_start
         return utils.Document('RunStop', run_stop)
     else:
@@ -610,6 +609,9 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
+    
+    if run_start:
+        query['run_start'] = run_start.uid
     while has_more:
         q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
@@ -670,7 +672,7 @@ def insert_descriptor(run_start, data_keys, time, uid=None,
 
     """
     payload = locals()
-    tmp = payload['run_start']['_id']
+    tmp = payload['run_start'].uid
     payload.pop('run_start')
     payload['run_start'] = tmp
     r = requests.post(_server_path + '/event_descriptor', 
@@ -757,8 +759,10 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     run_stop : mongoengine.Document
         Inserted mongoengine object
     """
-
-    payload = ujson.dumps(locals())
+    params = locals()
+    rs_obj = params.pop('run_start')
+    params['run_start'] = str(rs_obj.uid)
+    payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
