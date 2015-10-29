@@ -99,7 +99,6 @@ retrieved_desc = next(find_descriptors(range_floor=0, range_ceil=100, run_start=
 print(inserted_desc)
 print(retrieved_desc)
 
-print ('run_start client received from server', retrieved_desc.uid)
 if inserted_desc.uid != retrieved_desc.uid:
     print('Inserted descriptor is not the same as retrieved descriptor')
 
@@ -114,12 +113,14 @@ stop = insert_run_stop(retrieved_rs,
 inserted_stop = utils.Document('RunStop', stop)
 retrieved_stop = next(find_run_stops(range_floor=0, range_ceil=100, run_start=retrieved_rs.uid))
 
+if inserted_stop != retrieved_stop:
+    print('Inserted stop is not the same as retrieved stop')
 
 
 
 
 
-# stop_by_start(run_start=rs)
+print(stop_by_start(run_start=inserted_rs))
 
 
 

@@ -247,14 +247,14 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    rstart = run_start_given_uid(run_start['uid'])
-    if rstart:
-        run_stop = next(find_run_stops(run_start=run_start_uid))
-        run_stop['run_start'] = run_start
-        return utils.Document('RunStop', run_stop)
-    else:
-        raise utils.NoRunStop()
+#     run_start_uid = doc_or_uid_to_uid(run_start)
+#     rstart = run_start_given_uid(run_start.uid)
+#     if rstart:
+    run_stop = next(find_run_stops(run_start=run_start.uid))
+#         run_stop['run_start'] = run_start
+    return utils.Document('RunStop', run_stop)
+#     else:
+#         raise utils.NoRunStop()
 
 
 @_ensure_connection
@@ -761,7 +761,7 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     """
     params = locals()
     rs_obj = params.pop('run_start')
-    params['run_start'] = str(rs_obj.uid)
+    params['run_start'] = rs_obj.uid
     payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code != 200:
