@@ -1,5 +1,4 @@
 import requests
-import simplejson
 import datetime
 import pytz
 import six
@@ -12,7 +11,6 @@ from metadataclient import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-# TODO: Ensure hiding all oid from end-user (check what is alraedy done
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
@@ -249,14 +247,14 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    rstart = run_start_given_uid(run_start_uid)
-    if rstart:
-        run_stop = dict(next(find_run_stops(run_start_id=rstart['_id'])))
-        run_stop['run_start'] = run_start
-        return utils.Document('RunStop', run_stop)
-    else:
-        raise utils.NoRunStop()
+#     run_start_uid = doc_or_uid_to_uid(run_start)
+#     rstart = run_start_given_uid(run_start.uid)
+#     if rstart:
+    run_stop = next(find_run_stops(run_start=run_start.uid))
+#         run_stop['run_start'] = run_start
+    return utils.Document('RunStop', run_stop)
+#     else:
+#         raise utils.NoRunStop()
 
 
 @_ensure_connection
@@ -611,6 +609,9 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
+    
+    if run_start:
+        query['run_start'] = run_start.uid
     while has_more:
         q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
@@ -671,8 +672,7 @@ def insert_descriptor(run_start, data_keys, time, uid=None,
 
     """
     payload = locals()
-    print(payload)
-    tmp = payload['run_start']['_id']
+    tmp = payload['run_start'].uid
     payload.pop('run_start')
     payload['run_start'] = tmp
     r = requests.post(_server_path + '/event_descriptor', 
@@ -759,8 +759,10 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     run_stop : mongoengine.Document
         Inserted mongoengine object
     """
-
-    payload = ujson.dumps(locals())
+    params = locals()
+    rs_obj = params.pop('run_start')
+    params['run_start'] = rs_obj.uid
+    payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
@@ -799,15 +801,38 @@ def find_last(range=1):
     pass
 
 def monitor_run_start():
-    r = requests.get(_server_path + 'run_start_capped')
+    r = requests.get(_server_path + '/run_start_capped')
     content = ujson.loads(r.text)
-    return utils.Document('RunStart', content)
+    yield utils.Document('RunStart', content)
+
+
+def _insert2cappedstart(time, scan_id, config, beamline_id, beamline_config={}, uid=None,
+                    owner=None, group=None, project=None, custom=None):
+    data = locals()
+    if custom:
+        data.update(custom)
+    payload = ujson.dumps(data)
+    r = requests.post(_server_path + '/run_start_capped', data=payload)
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
+
+
+def _insert2cappedstop(run_start, time, uid=None, config={}, exit_status='success',
+                    reason=None, custom=None):
+    payload = ujson.dumps(locals())
+    r = requests.post(_server_path + '/run_stop', data=payload)
+    if r.status_code != 200:
+        raise Exception("Server cannot complete the request", r)
+    else:
+        return r.json()
 
 
 def monitor_run_stop():
-    r = requests.get(_server_path + 'run_stop_capped')
+    r = requests.get(_server_path + '/run_stop_capped')
     content = ujson.loads(r.text)
-    return utils.Document('RunStart', content)
+    yield utils.Document('RunStop', content)
 
 
 def _normalize_human_friendly_time(val):
