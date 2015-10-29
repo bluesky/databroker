@@ -78,6 +78,21 @@ def test_get_handler_global():
     assert_not_in(cache_key, fsr._HANDLER_CACHE)
 
 
+def test_overwrite_global():
+    mock_base = dict(spec='syn-mod',
+                     resource_path='',
+                     resource_kwargs={'shape': (5, 7)})
+
+    res = fsc.insert_resource(**mock_base)
+
+    cache_key = (str(res.id), SynHandlerMod.__name__)
+    with fsr.handler_context({'syn-mod': SynHandlerMod}):
+        fsr.get_spec_handler(res.id)
+        assert_in(cache_key, fsr._HANDLER_CACHE)
+        fsr.register_handler('syn-mod', SynHandlerEcho, overwrite=True)
+        assert_not_in(cache_key, fsr._HANDLER_CACHE)
+
+
 def test_context():
     with SynHandlerMod('', (4, 2)) as hand:
         for j in range(1, 5):

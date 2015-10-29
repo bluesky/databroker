@@ -37,6 +37,10 @@ class HandlerBase(object):
         pass
 
 
+class DuplicateHandler(RuntimeError):
+    pass
+
+
 class HandlerRegistry(dict):
     """
     Sub-class of dict to serve as a registry of available handlers.
@@ -64,8 +68,9 @@ class HandlerRegistry(dict):
         if (not overwrite) and (key in self):
             if self[key] is handler:
                 return
-            raise RuntimeError("You are trying to register a second handler "
-                               "for spec {}, {}".format(key, self))
+            raise DuplicateHandler(
+                "You are trying to register a second handler "
+                "for spec {}, {}".format(key, self))
 
         self[key] = handler
 
@@ -152,7 +157,14 @@ def register_handler(key, handler, overwrite=False):
     `deregister_handler`
 
     """
-    _h_registry.register_handler(key, handler, overwrite)
+    try:
+        _h_registry.register_handler(key, handler)
+    except DuplicateHandler:
+        if overwrite:
+            deregister_handler(key)
+            _h_registry.register_handler(key, handler)
+        else:
+            raise
 
 
 def deregister_handler(key):
