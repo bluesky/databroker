@@ -11,6 +11,7 @@ from metadataclient import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
+# TODO: Add capability that run_start can either be a document or string
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
@@ -40,6 +41,8 @@ def server_connect(host, port, protocol='http'):
     _server_path = protocol + '://' + host + ':' + str(port)
     return _server_path
 
+def server_disconnect():
+    raise NotImplementedError('Coming soon...')
 
 def _ensure_connection(func):
     """Ensures connection to the tornado server, not mongo instance itself.
@@ -247,6 +250,7 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
+    
 #     run_start_uid = doc_or_uid_to_uid(run_start)
 #     rstart = run_start_given_uid(run_start.uid)
 #     if rstart:
@@ -609,7 +613,6 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
-    
     if run_start:
         query['run_start'] = run_start.uid
     while has_more:

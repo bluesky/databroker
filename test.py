@@ -1,11 +1,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from metadataclient.commands import *
+import metadataclient
 import time
 from collections import deque
 import uuid
 import numpy as np
-import metadataclient
 from uuid import uuid4
 
 
@@ -120,7 +120,10 @@ if inserted_stop != retrieved_stop:
 
 
 
-print(stop_by_start(run_start=inserted_rs))
+retrieved_stop = stop_by_start(run_start=inserted_rs)
+
+if inserted_stop != retrieved_stop:
+    print('Inserted stop is not the same as retrieved stop')
 
 
 
@@ -130,22 +133,20 @@ print(stop_by_start(run_start=inserted_rs))
 
 
 
-
-
-# metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', time=time.time(),
-#                       custom=custom, uid=my_uid, config=cfg, project='test',
-#                     owner='test', group='test')
-# 
-# # print(next(monitor_run_start(callback=None)))
-# res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
-# # for _ in res1:
-# #     print(_)
-# my_uid2 = str(uuid.uuid4())
-# 
-# print("here is runstart uid", my_uid)
-#  
-#  
-# # print(next(monitor_run_start()))
-# 
-# 
+metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', time=time.time(),
+                      custom=custom, uid=my_uid, config=cfg, project='test',
+                    owner='test', group='test')
+ 
+# print(next(monitor_run_start(callback=None)))
+res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
+# for _ in res1:
+#     print(_)
+my_uid2 = str(uuid.uuid4())
+ 
+print("here is runstart uid", my_uid)
+  
+  
+# print(next(monitor_run_start()))
+ 
+ 
 
