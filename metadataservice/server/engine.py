@@ -14,14 +14,8 @@ import jsonschema
 
 from metadataservice.server import utils
 
-# TODO: create index on event bulk write
-# TODO: Fix docstrings
+
 # TODO: Write tests specifically for the server side(existing ones are garbage!)
-""".. note
-    ultra-json is 3-5 orders of magnitude faster since it runs outside GIL.
-    bson.json_util does encode/decode neatly but painfully slow normalize object fields manually.
-    Early alpha. Might go under some changes. Handlers and dataapi are unlikely to change.
-"""
 
 CACHE_SIZE = 100000
 loop = tornado.ioloop.IOLoop.instance()
@@ -66,15 +60,10 @@ class RunStartHandler(tornado.web.RequestHandler):
    Methods
     -------
     get()
-        Query run_start documents.Very thin as we do not want to create a
-        bottleneck dealing with multiple clients. self.write() dumps the json to
-        socket. Client keeps connection open until server kills the socket with
-        self.finish(), otherwise keeps hanging wasting resources
+        Query run_start documents. Query params are jsonified for type preservation
     post()
         Insert a run_start document.Same validation method as bluesky, secondary
-        safety net. Any changes done here or BlueSky must be implemented here and
-        BlueSky.Any data acquisition script can utilize metadataservice as long as 
-        it follows this format. 
+        safety net.
     """
     @tornado.web.asynchronous
     @gen.coroutine
@@ -92,6 +81,7 @@ class RunStartHandler(tornado.web.RequestHandler):
             query['_id'] = ObjectId(_id)
         docs = yield database.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
+            #to_list is async so no forcing to make synchronous
         if docs == [] and start == 0:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
@@ -105,8 +95,7 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
         result = yield database.run_start.insert(data)
-        database.run_start.create_index([('owner', pymongo.ASCENDING), 
-                                         ('time', pymongo.ASCENDING), 
+        database.run_start.create_index([('time', pymongo.ASCENDING), 
                                          ('scan_id', pymongo.ASCENDING)])
         if not result:
             raise tornado.web.HTTPError(500)
@@ -133,15 +122,10 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     Methods
     -------
     get()
-        Query event_descriptor documents.Very thin as we do not want to create a
-        bottleneck dealing with multiple clients. self.write() dumps the json to
-        socket. Client keeps connection open until server kills the socket with
-        self.finish(), otherwise keeps hanging wasting resources
+        Query event_descriptor documents. Get params are json encoded in order to preserve type
     post()
         Insert a event_descriptor document.Same validation method as bluesky, secondary
-        safety net. Any changes done here or BlueSky must be implemented here and
-        BlueSky.Any data acquisition script can utilize metadataservice as long as 
-        it follows this format. 
+        safety net.
     """
     @tornado.web.asynchronous
     @gen.coroutine
@@ -154,9 +138,6 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         except KeyError:
             raise tornado.web.HTTPError(400,
                                         "range_ceil and range_floor required parameters")
-#         _id = query.pop('_id', None)
-#         if _id:
-#             query['_id'] = ObjectId(_id)
         docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if docs == [] and start == 0:
@@ -174,7 +155,8 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['descriptor'])
         result = yield database.event_descriptor.insert(data)
-        database.event_descriptor.create_index([('run_start', pymongo.ASCENDING), ('time', pymongo.ASCENDING)])
+        database.event_descriptor.create_index([('run_start', pymongo.ASCENDING), 
+                                                ('time', pymongo.ASCENDING)])
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -199,15 +181,10 @@ class RunStopHandler(tornado.web.RequestHandler):
     Methods
     -------
     get()
-        Query run_stop documents.Very thin as we do not want to create a
-        bottleneck dealing with multiple clients. self.write() dumps the json to
-        socket. Client keeps connection open until server kills the socket with
-        self.finish(), otherwise keeps hanging wasting resources
+        Query run_stop documents. Get params are json encoded in order to preserve type
     post()
         Insert a run_stop document.Same validation method as bluesky, secondary
-        safety net. Any changes done here or BlueSky must be implemented here and
-        BlueSky.Any data acquisition script can utilize metadataservice as long as 
-        it follows this format. 
+        safety net.
     """
     @tornado.web.asynchronous
     @gen.coroutine
@@ -262,15 +239,10 @@ class EventHandler(tornado.web.RequestHandler):
     Methods
     -------
     get()
-        Query event documents.Very thin as we do not want to create a
-        bottleneck dealing with multiple clients. self.write() dumps the json to
-        socket. Client keeps connection open until server kills the socket with
-        self.finish(), otherwise keeps hanging wasting resources
+        Query event documents. Get params are json encoded in order to preserve type
     post()
         Insert a event document.Same validation method as bluesky, secondary
-        safety net. Any changes done here or BlueSky must be implemented here and
-        BlueSky.Any data acquisition script can utilize metadataservice as long as 
-        it follows this format.
+        safety net.
     """
     @tornado.web.asynchronous
     @gen.coroutine
@@ -298,15 +270,16 @@ class EventHandler(tornado.web.RequestHandler):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         if isinstance(data, list):
-            # unordered insert. in seq_num I trust
             jsonschema.validate(data, utils.schemas['bulk_events'])
             bulk = yield database.event.initialize_unordered_bulk_op()
             for _ in data:
                 bulk.insert(_)
             try:
-                yield bulk.execute() #TODO: Add appropriate timeout
+                yield bulk.execute()
             except pymongo.errors.BulkWriteError as err:
-                raise tornado.web.HTTPError(500, err)
+                raise tornado.web.HTTPError(500, str(err))
+            database.event.create_index([('time', pymongo.ASCENDING),
+                                          ('descriptor', pymongo.ASCENDING)])
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = yield database.event.insert(data)
@@ -357,7 +330,8 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
         try:
             result = yield database.run_start_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
-            database.create_collection('run_start_capped', size=CACHE_SIZE)
+            database.create_collection('run_start_capped', capped=True, 
+                                       size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -394,10 +368,12 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
         while cursor.alive:
             if (yield cursor.fetch_next):
                 result = cursor.next_object()
+                
                 utils._return2client(self, result)
                 break
             else:
-                yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
+                yield gen.Task(loop.add_timeout, 
+                               datetime.timedelta(seconds=1))
             
     @tornado.web.asynchronous
     @gen.coroutine
@@ -409,7 +385,7 @@ class CappedRunStopHandler(tornado.web.RequestHandler):
             result = yield database.run_stop_capped.insert(data)
         except pymongo.errors.CollectionInvalid:
             # try to create the collection if it doesn't exist
-            database.create_collection('run_start_capped', size=CACHE_SIZE)
+            database.create_collection('run_start_capped', capped=True, size=CACHE_SIZE)
         if not result:
             raise tornado.web.HTTPError(500,
                                         status='Insert to CappedRunStop collection failed')

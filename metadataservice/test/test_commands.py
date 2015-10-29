@@ -79,9 +79,6 @@ def syn_data(data_keys, count):
     return all_data
 
 
-# ### Testing metadataservice.client insertion functionality ###########################
-
-
 @raises(KeyError)
 def check_for_id(document):
     """Make sure that our documents do not have an id field
