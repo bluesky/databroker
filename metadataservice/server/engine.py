@@ -14,7 +14,6 @@ import jsonschema
 
 from metadataservice.server import utils
 
-
 # TODO: Write tests specifically for the server side(existing ones are garbage!)
 
 CACHE_SIZE = 100000
@@ -78,7 +77,7 @@ class RunStartHandler(tornado.web.RequestHandler):
                             "range_ceil and range_floor required parameters")
         _id = query.pop('_id', None)
         if _id:
-            query['_id'] = ObjectId(_id)
+            raise tornado.web.HTTPError(500, 'No ObjectId search supported')
         docs = yield database.run_start.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
             #to_list is async so no forcing to make synchronous
@@ -255,7 +254,7 @@ class EventHandler(tornado.web.RequestHandler):
         except KeyError:
             raise tornado.web.HTTPError(400,
                                         "range_ceil and range_floor required parameters")
-        docs = yield database.event_descriptor.find(query).sort(
+        docs = yield database.event.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404,
