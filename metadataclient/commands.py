@@ -11,6 +11,7 @@ from metadataclient import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
+# TODO: Add capability that run_start can either be a document or string
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
@@ -40,6 +41,8 @@ def server_connect(host, port, protocol='http'):
     _server_path = protocol + '://' + host + ':' + str(port)
     return _server_path
 
+def server_disconnect():
+    raise NotImplementedError('Coming soon...')
 
 def _ensure_connection(func):
     """Ensures connection to the tornado server, not mongo instance itself.
@@ -247,6 +250,7 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
+    
 #     run_start_uid = doc_or_uid_to_uid(run_start)
 #     rstart = run_start_given_uid(run_start.uid)
 #     if rstart:
@@ -445,7 +449,7 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
 
 
 @_ensure_connection
-def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
+def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
@@ -483,6 +487,11 @@ def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
+    if run_start:
+        try:
+            query['run_start'] = run_start.uid
+        except AttributeError:
+            query['run_start'] = str(run_start)
     while has_more:
         q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
@@ -609,9 +618,10 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
-    
-    if run_start:
+    try:
         query['run_start'] = run_start.uid
+    except AttributeError:
+        query['run_start'] = str(run_start)
     while has_more:
         q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
@@ -636,6 +646,13 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
 
 @_ensure_connection
 def insert_event(descriptor,events):
+    "Insert a list of events. Server handles this in bulk"
+    for ev in list(events):
+        ev.pop('descriptor')
+        try:
+            ev['descriptor'] = descriptor.uid
+        except AttributeError:
+            ev['run_start'] = str(descriptor)
     ev = ujson.dumps(list(events))
     r = requests.post(_server_path + '/event', data=ev)
     return r
@@ -715,6 +732,11 @@ def insert_run_start(time, scan_id, config, beamline_id, beamline_config={}, uid
     custom: dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run.
+        
+    Returns
+    ----------
+    utils.Document
+        The run_start document that is successfully saved in mongo
 
     """
     data = locals()
@@ -725,7 +747,7 @@ def insert_run_start(time, scan_id, config, beamline_id, beamline_config={}, uid
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return r.json()
+        return utils.Document('RunStart',r.json())
 
 
 @_ensure_connection
@@ -761,13 +783,16 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     """
     params = locals()
     rs_obj = params.pop('run_start')
-    params['run_start'] = rs_obj.uid
+    try:
+        params['run_start'] = rs_obj.uid
+    except AttributeError:
+        params['run_start'] = rs_obj
     payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return r.json()
+        return utils.Document('RunStop', r.json())
 
 
 @_ensure_connection
