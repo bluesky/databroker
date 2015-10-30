@@ -4,3 +4,4 @@ host: localhost
 database: datastore2
 port: 27017
 timezone: US/Eastern
+protocol: http
