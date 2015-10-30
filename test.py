@@ -117,7 +117,7 @@ if inserted_stop != retrieved_stop:
     print('Inserted stop is not the same as retrieved stop')
 
 
-
+retrieved_stop2 = next(find_run_stops(range_floor=0, range_ceil=100, run_start=retrieved_rs.uid))
 
 
 retrieved_stop = stop_by_start(run_start=inserted_rs)
@@ -133,18 +133,18 @@ if inserted_stop != retrieved_stop:
 
 
 
-metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', time=time.time(),
-                      custom=custom, uid=my_uid, config=cfg, project='test',
-                    owner='test', group='test')
- 
-# print(next(monitor_run_start(callback=None)))
-res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
-# for _ in res1:
-#     print(_)
-my_uid2 = str(uuid.uuid4())
- 
-print("here is runstart uid", my_uid)
-  
+# metadataclient.commands._insert2cappedstart(scan_id=1, beamline_id='testing', time=time.time(),
+#                       custom=custom, uid=my_uid, config=cfg, project='test',
+#                     owner='test', group='test')
+#  
+# # print(next(monitor_run_start(callback=None)))
+# res1 = find_run_starts(range_floor=0, range_ceil=100, owner='test')
+# # for _ in res1:
+# #     print(_)
+# my_uid2 = str(uuid.uuid4())
+#  
+# print("here is runstart uid", my_uid)
+#   
   
 # print(next(monitor_run_start()))
  

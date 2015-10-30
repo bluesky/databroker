@@ -449,7 +449,7 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
 
 
 @_ensure_connection
-def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
+def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
@@ -487,6 +487,11 @@ def find_run_stops(range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
+    if run_start:
+        try:
+            query['run_start'] = run_start.uid
+        except AttributeError:
+            query['run_start'] = str(run_start)
     while has_more:
         q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
@@ -613,8 +618,10 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     has_more = True
-    if run_start:
+    try:
         query['run_start'] = run_start.uid
+    except AttributeError:
+        query['run_start'] = str(run_start)
     while has_more:
         q_range = range_ceil - range_floor
         query['range_floor'] = range_floor
@@ -639,6 +646,13 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
 
 @_ensure_connection
 def insert_event(descriptor,events):
+    "Insert a list of events. Server handles this in bulk"
+    for ev in list(events):
+        ev.pop('descriptor')
+        try:
+            ev['descriptor'] = descriptor.uid
+        except AttributeError:
+            ev['run_start'] = str(descriptor)
     ev = ujson.dumps(list(events))
     r = requests.post(_server_path + '/event', data=ev)
     return r
@@ -718,6 +732,11 @@ def insert_run_start(time, scan_id, config, beamline_id, beamline_config={}, uid
     custom: dict, optional
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run.
+        
+    Returns
+    ----------
+    utils.Document
+        The run_start document that is successfully saved in mongo
 
     """
     data = locals()
@@ -728,7 +747,7 @@ def insert_run_start(time, scan_id, config, beamline_id, beamline_config={}, uid
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return r.json()
+        return utils.Document('RunStart',r.json())
 
 
 @_ensure_connection
@@ -764,13 +783,16 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     """
     params = locals()
     rs_obj = params.pop('run_start')
-    params['run_start'] = rs_obj.uid
+    try:
+        params['run_start'] = rs_obj.uid
+    except AttributeError:
+        params['run_start'] = rs_obj
     payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return r.json()
+        return utils.Document('RunStop', r.json())
 
 
 @_ensure_connection
