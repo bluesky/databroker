@@ -67,17 +67,23 @@ def _stringify_data(docs):
         Stringified list or dictionary
     """
     if isinstance(docs, list):
+        new_docs = []
+        tmp = dict
         for d in docs:
-            for k, v  in six.iteritems(d):
-                if isinstance(v, (ObjectId, datetime.datetime)):
+            for k, v  in d.items():
+                if isinstance(v, ObjectId):
+                    d[k] = 'N/A'
+                elif isinstance(v, datetime.datetime):
                     tmp = str(v)
                     d[k] = tmp
                 elif isinstance(v, dict):
                     d[k] = _stringify_data(v)
         return docs
     elif isinstance(docs, dict):
-        for k, v in six.iteritems(docs):
-            if isinstance(v, (ObjectId, datetime.date)):
+        for k, v in docs.items():
+            if isinstance(v, ObjectId):
+                docs[k] = 'N/A'
+            elif isinstance(v, datetime.date):
                 tmp = str(v)
                 docs[k] = tmp
             elif isinstance(v, dict):
