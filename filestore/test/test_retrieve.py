@@ -43,7 +43,8 @@ import filestore.retrieve as fsr
 import filestore.commands as fsc
 from filestore.utils.testing import fs_setup, fs_teardown
 import numpy as np
-from nose.tools import assert_true, assert_raises, assert_false
+from nose.tools import (assert_true, assert_raises, assert_false,
+                        assert_in, assert_not_in)
 
 from filestore.test.t_utils import SynHandlerMod, SynHandlerEcho
 import uuid
@@ -66,12 +67,30 @@ def test_get_handler_global():
                      resource_kwargs={'shape': (5, 7)})
 
     res = fsc.insert_resource(**mock_base)
-
+    cache_key = (str(res.id), SynHandlerMod.__name__)
     with fsr.handler_context({'syn-mod': SynHandlerMod}):
 
         handle = fsr.get_spec_handler(res.id)
 
         assert_true(isinstance(handle, SynHandlerMod))
+        assert_in(cache_key, fsr._HANDLER_CACHE)
+
+    assert_not_in(cache_key, fsr._HANDLER_CACHE)
+
+
+def test_overwrite_global():
+    mock_base = dict(spec='syn-mod',
+                     resource_path='',
+                     resource_kwargs={'shape': (5, 7)})
+
+    res = fsc.insert_resource(**mock_base)
+
+    cache_key = (str(res.id), SynHandlerMod.__name__)
+    with fsr.handler_context({'syn-mod': SynHandlerMod}):
+        fsr.get_spec_handler(res.id)
+        assert_in(cache_key, fsr._HANDLER_CACHE)
+        fsr.register_handler('syn-mod', SynHandlerEcho, overwrite=True)
+        assert_not_in(cache_key, fsr._HANDLER_CACHE)
 
 
 def test_context():

@@ -37,6 +37,10 @@ class HandlerBase(object):
         pass
 
 
+class DuplicateHandler(RuntimeError):
+    pass
+
+
 class HandlerRegistry(dict):
     """
     Sub-class of dict to serve as a registry of available handlers.
@@ -64,8 +68,9 @@ class HandlerRegistry(dict):
         if (not overwrite) and (key in self):
             if self[key] is handler:
                 return
-            raise RuntimeError("You are trying to register a second handler "
-                               "for spec {}, {}".format(key, self))
+            raise DuplicateHandler(
+                "You are trying to register a second handler "
+                "for spec {}, {}".format(key, self))
 
         self[key] = handler
 
@@ -79,8 +84,7 @@ class HandlerRegistry(dict):
         key : str
             The spec label to remove
         """
-        if key in self:
-            del self[key]
+        return self.pop(key, None)
 
 # singleton module-level registry, not 100% with
 # this design choice
@@ -118,13 +122,14 @@ def handler_context(temp_handlers):
         else:
             old_h = _h_registry.pop(k)
             replace_list.append((k, old_h))
-        _h_registry.register_handler(k, v)
+        register_handler(k, v)
 
     yield
     for k in remove_list:
-        _h_registry.deregister_handler(k)
+        deregister_handler(k)
     for k, v in replace_list:
-        _h_registry.register_handler(k, v, overwrite=True)
+        deregister_handler(k)
+        register_handler(k, v)
 
 
 def register_handler(key, handler, overwrite=False):
@@ -152,7 +157,14 @@ def register_handler(key, handler, overwrite=False):
     `deregister_handler`
 
     """
-    _h_registry.register_handler(key, handler, overwrite)
+    try:
+        _h_registry.register_handler(key, handler)
+    except DuplicateHandler:
+        if overwrite:
+            deregister_handler(key)
+            _h_registry.register_handler(key, handler)
+        else:
+            raise
 
 
 def deregister_handler(key):
@@ -169,7 +181,12 @@ def deregister_handler(key):
     `register_handler`
 
     """
-    _h_registry.deregister_handler(key)
+    handler = _h_registry.deregister_handler(key)
+    if handler is not None:
+        name = handler.__name__
+        for k in list(_HANDLER_CACHE):
+            if k[1] == name:
+                del _HANDLER_CACHE[k]
 
 
 def get_spec_handler(resource, handle_registry=None):
