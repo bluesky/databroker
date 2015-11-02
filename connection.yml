@@ -1,0 +1,6 @@
+# metadataservice configuration
+# DO NO EDIT unless authorized
+host: localhost
+port: 7770
+timezone: US/Eastern
+protocol: http
