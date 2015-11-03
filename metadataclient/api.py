@@ -4,3 +4,4 @@ from metadataclient.commands import (find_events, find_descriptors, find_run_sta
 # Data insertion
 from metadataclient.commands import (insert_event, insert_descriptor, insert_run_start,
                        insert_run_stop)
+from metadataclient.utils import Document

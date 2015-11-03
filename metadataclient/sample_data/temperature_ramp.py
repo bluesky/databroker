@@ -1,10 +1,9 @@
 from __future__ import division
-from metadataservice.client.api import (insert_event, insert_event_descriptor,
+from metadataclient.api import (insert_event, insert_event_descriptor,
                                find_events, insert_run_stop)
 import numpy as np
-from metadataservice.client.examples.sample_data import common
+from metadataclient.examples.sample_data import common
 
-# "Magic numbers" for this simulation
 start, stop, step, points_per_step = 0, 6, 1, 7
 deadband_size = 0.9
 num_exposures = 17
@@ -14,13 +13,11 @@ def run(run_start_uid=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
-    # Make the data
     ramp = common.stepped_ramp(start, stop, step, points_per_step)
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
     rs = np.random.RandomState(5)
     point_det_data = rs.randn(num_exposures) + np.arange(num_exposures)
 
-    # Create Event Descriptors
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
     ev_desc1_uid = insert_event_descriptor(run_start=run_start_uid,
@@ -28,10 +25,8 @@ def run(run_start_uid=None, sleep=0):
     ev_desc2_uid = insert_event_descriptor(run_start=run_start_uid,
                                            data_keys=data_keys2, time=common.get_time())
 
-    # Create Events.
     events = []
 
-    # Point Detector Events
     base_time = common.get_time()
     for i in range(num_exposures):
         time = float(2 * i + 0.5 * rs.randn()) + base_time
@@ -40,11 +35,9 @@ def run(run_start_uid=None, sleep=0):
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data, timestamps=timestamps)
         event_uid = insert_event(**event_dict)
-        # grab the actual event from metadatastore
         event, = find_events(uid=event_uid)
         events.append(event)
 
-    # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time) + base_time 
         data = {'Tsam': temp}
