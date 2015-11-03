@@ -58,5 +58,5 @@ def load_configuration(name, prefix, fields):
                        "file or environmental variable.".format(missing))
     return config
 
-connection_config = load_configuration('metadatastore', 'MDS',
-                                       ['host', 'server', 'port', 'timezone'])
+connection_config = load_configuration('metadataservice', 'MDS',
+                                       ['host', 'port', 'timezone'])

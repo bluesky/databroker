@@ -139,7 +139,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
                                         "range_ceil and range_floor required parameters")
         docs = yield database.event_descriptor.find(query).sort(
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if docs == [] and start == 0:
+        if not docs and start == 0:
             raise tornado.web.HTTPError(500, 
                                         reason='No results found for query')
         else:
@@ -200,7 +200,7 @@ class RunStopHandler(tornado.web.RequestHandler):
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404, 
-                                        status_code='No results for given query' + str(query))
+                                        'No results for given query' + str(query))
         else:
             utils._return2client(self, docs)
             self.finish()
@@ -258,7 +258,7 @@ class EventHandler(tornado.web.RequestHandler):
             'time', pymongo.ASCENDING)[start:stop].to_list(None)
         if not docs and start == 0:
             raise tornado.web.HTTPError(404,
-                                        status='No results for given query')
+                                        status_code='No results for given query' + str(query))
         else:
             utils._return2client(self, docs)
             self.finish()
