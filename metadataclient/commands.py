@@ -829,8 +829,9 @@ def _format_time(search_dict):
         search_dict['time'] = time_dict
 
 
-def find_last(range=1):
-    pass
+def find_last(num=1):
+    return find_run_starts(range_floor=0, range_ceil=num)
+
 
 def monitor_run_start():
     r = requests.get(_server_path + '/run_start_capped')
