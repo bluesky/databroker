@@ -168,3 +168,4 @@ def test_run_stop_insertion():
                    'uid': run_stop_uid}
     for attr, known_value in comparisons.items():
         assert_equal(known_value, getattr(run_stop, attr))
+        

@@ -11,6 +11,7 @@ from metadataclient import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
+# TODO: Add bulk_event insert and all other missing routines from mds library
 # TODO: Add capability that run_start can either be a document or string
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
@@ -661,7 +662,7 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
 
 @_ensure_connection
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):
-    "Insert a list of events. Server handles this in bulk"
+    "Insert a single event. Server handles this in bulk"
     event = dict(time=time, seq_num=seq_num,
                  data=data, timestamps=timestamps, uid=uid)
     try:
@@ -677,6 +678,30 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     r.raise_for_status()
     return uid
 
+@_ensure_connection
+def bulk_insert_events(event_descriptor, events, validate=False):
+    """Bulk insert many events
+    Parameters
+    ----------
+    event_descriptor : doc.Document or dict or str
+        The Descriptor to insert event for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    events : iterable
+       iterable of dicts matching the bs.Event schema
+    validate : bool, optional
+       If it should be checked that each pair of data/timestamps
+       dicts has identical keys
+    Returns
+    -------
+    ret : dict
+        dictionary of details about the insertion
+    """
+    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
+    descriptor = descriptor_given_uid(descriptor_uid)
+    # let server validate this in bulk. It is much less expensive this way
+    payload = ujson.dumps(events)
+    r = requests.post(_server_path + '/event', data=payload)
+    return r.status_code
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
