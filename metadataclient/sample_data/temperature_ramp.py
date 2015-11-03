@@ -19,13 +19,11 @@ def run(run_start_uid=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
-    # Make the data
     ramp = common.stepped_ramp(start, stop, step, points_per_step)
     deadbanded_ramp = common.apply_deadband(ramp, deadband_size)
     rs = np.random.RandomState(5)
     point_det_data = rs.randn(num_exposures) + np.arange(num_exposures)
 
-    # Create Event Descriptors
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number',
                                     shape=2)}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number',
@@ -39,10 +37,8 @@ def run(run_start_uid=None, sleep=0):
                                            time=common.get_time(),
                                            uid=str(uuid.uuid4()))
 
-    # Create Events.
     events = []
 
-    # Point Detector Events
     base_time = common.get_time()
     for i in range(num_exposures):
         time = float(2 * i + 0.5 * rs.randn()) + base_time
@@ -52,11 +48,9 @@ def run(run_start_uid=None, sleep=0):
                           time=time, data=data, timestamps=timestamps,
                           uid=str(uuid.uuid4()))
         event_uid = insert_event(**event_dict)
-        # grab the actual event from metadatastore
         event, = find_events(uid=event_uid)
         events.append(event)
 
-    # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
         time = float(time) + base_time
         data = {'Tsam': temp}
@@ -84,3 +78,4 @@ if __name__ == '__main__':
 
     print('run_start_uid = %s' % run_start_uid)
     run(run_start_uid)
+    print(next(mdsc.find_last(num=1)))

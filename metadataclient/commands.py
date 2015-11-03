@@ -39,7 +39,7 @@ def server_connect(host, port, protocol='http'):
     """
     global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
-    return _server_path
+    return str(_server_path)
 
 def server_disconnect():
     raise NotImplementedError('Coming soon...')
@@ -485,6 +485,7 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """
     _format_time(kwargs)
     query = kwargs
+    rstart = None
     increment = range_ceil - range_floor + 1
     has_more = True
     if run_start:
@@ -492,6 +493,7 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             query['run_start'] = run_start.uid
         except AttributeError:
             query['run_start'] = str(run_start)
+        rstart = next(find_run_starts(uid=query['run_start']))
     q_range = range_ceil - range_floor
     while has_more:
         query['range_floor'] = range_floor
@@ -505,6 +507,10 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
+                if rstart is None:
+                    rstart = next(find_run_starts(uid=c['run_start']))
+                garbage = c.pop('run_start')
+                c['run_start'] = rstart
                 yield utils.Document('RunStop',c)
             if len(content) <= q_range:
                 has_more = False
@@ -618,6 +624,7 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """
     _format_time(kwargs)
     query = kwargs
+    rstart = None
     increment = range_ceil - range_floor + 1
     has_more = True
     if run_start:
@@ -625,6 +632,7 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             query['run_start'] = run_start.uid
         except AttributeError:
             query['run_start'] = str(run_start)
+        rstart = next(find_run_starts(uid=query['run_start']))
     q_range = range_ceil - range_floor
     while has_more:
         query['range_floor'] = range_floor
@@ -638,6 +646,10 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
             break
         else:
             for c in content:
+                if rstart is None:
+                    rstart = next(find_run_starts(uid=c['run_start']))
+                garbage = c.pop('run_start')
+                c['run_start'] = rstart
                 yield utils.Document('EventDescriptor',c)
             if len(content) <= q_range:
                 has_more = False
@@ -748,10 +760,17 @@ def insert_run_start(time, scan_id, beamline_id, uid, config={},
         The run_start document that is successfully saved in mongo
 
     """
-    data = locals()
+    data = dict(time=time, scan_id=scan_id, beamline_id=beamline_id, uid=uid,
+                config=config, owner=owner, group=group, project=project)
+    data = {k: v if v is not None else '' for k,v in data.items()}
+
     if custom:
-        data.update(custom)
-    payload = ujson.dumps(data)
+        z = data.copy()
+        z.update(custom)
+        payload = ujson.dumps(z)
+    else:
+        data['custom'] = {}
+        payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
     r.raise_for_status()
     return uid
@@ -788,18 +807,22 @@ def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
     run_stop : mongoengine.Document
         Inserted mongoengine object
     """
-    params = locals()
-    rs_obj = params.pop('run_start')
+    params = dict(time=time, uid=uid, config=config, exit_status=exit_status,
+                  reason=reason)
     try:
-        params['run_start'] = rs_obj.uid
+        params['run_start'] = run_start.uid
     except AttributeError:
-        params['run_start'] = rs_obj
-    payload = ujson.dumps(params)
-    r = requests.post(_server_path + '/run_stop', data=payload)
-    if r.status_code != 200:
-        raise Exception("Server cannot complete the request", r)
+        params['run_start'] = run_start
+    if custom:
+        z = params.copy()
+        z.update(custom)
+        payload = ujson.dumps(z)
     else:
-        return uid
+        params['custom'] = {}
+        payload = ujson.dumps(params)
+    r = requests.post(_server_path + '/run_stop', data=payload)
+    r.raise_for_status()
+    return uid
 
 
 @_ensure_connection

@@ -13,5 +13,9 @@ def start_mdservice():
 
 
 def mds_setup():
-    server_connect(host=testing_config['host'],
-                   port=testing_config['port'])
+    # server_connect(host=testing_config['host'],
+    #                port=testing_config['port'])
+    pass
+
+def mds_teardown():
+    pass
