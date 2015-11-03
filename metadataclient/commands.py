@@ -650,26 +650,24 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
 @_ensure_connection
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     "Insert a list of events. Server handles this in bulk"
-    event = dict(descriptor=descriptor, time=time, seq_num=seq_num,
+    event = dict(time=time, seq_num=seq_num,
                  data=data, timestamps=timestamps, uid=uid)
     try:
         desc_uid = descriptor.uid
     except AttributeError:
         desc_uid = str(descriptor)
     try:
-        tmp = event.pop('descriptor')
         event['descriptor'] = desc_uid
     except AttributeError:
         event['descriptor'] = desc_uid
     ev = ujson.dumps(event)
     r = requests.post(_server_path + '/event', data=ev)
-    # if r.status_code != 200:
-    #     raise Exception("Server cannot complete the request", r)
+    r.raise_for_status()
     return uid
 
 
 @_ensure_connection
-def insert_descriptor(run_start, data_keys, time, uid=None,
+def insert_descriptor(run_start, data_keys, time, uid,
                       custom=None):
     """ Create an event_descriptor in metadatastore server backend
 
@@ -698,16 +696,17 @@ def insert_descriptor(run_start, data_keys, time, uid=None,
         The document added to the collection.
 
     """
-    payload = locals()
-    tmp = payload['run_start'].uid
-    payload.pop('run_start')
-    payload['run_start'] = tmp
+    payload = dict(data_keys=data_keys,
+                   time=time, uid=uid, custom=custom)
+    try:
+        rs_uid = run_start.uid
+    except AttributeError:
+        rs_uid = str(run_start)
+    payload['run_start'] = rs_uid
     r = requests.post(_server_path + '/event_descriptor', 
                       data=ujson.dumps(payload))
-    if r.status_code != 200:
-        raise Exception("Server cannot complete the request", r)
-    else:
-        return utils.Document('EventDescriptor', dict(r.json()))
+    r.raise_for_status()
+    return uid
 
 
 @_ensure_connection
@@ -754,14 +753,12 @@ def insert_run_start(time, scan_id, beamline_id, uid, config={},
         data.update(custom)
     payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
-    if r.status_code != 200:
-        raise Exception("Server cannot complete the request", r)
-    else:
-        return utils.Document('RunStart',r.json())
+    r.raise_for_status()
+    return uid
 
 
 @_ensure_connection
-def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
+def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
                     reason='', custom=None):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
@@ -802,7 +799,7 @@ def insert_run_stop(run_start, time, uid=None, config={}, exit_status='success',
     if r.status_code != 200:
         raise Exception("Server cannot complete the request", r)
     else:
-        return utils.Document('RunStop', r.json()).uid
+        return uid
 
 
 @_ensure_connection
