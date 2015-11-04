@@ -4,6 +4,7 @@ import time as ttime
 import operator as op
 from functools import reduce
 
+
 def pivot_timeseries(events, pivot_keys, static_keys=None):
     """Pivot sequence of events with sequences as data to single sequence
 
@@ -72,13 +73,11 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
         ts = ev['timestamps']
         time = ev['time']
         static_data = {k: data[k] for k in static_keys}
-        static_ts = {k: ts[k] for k in static_keys}
+        static_ts = {k: ts[k] for k in chain(static_keys, pivot_keys)}
 
         pivot_data = zip(*[data[k] for k in pivot_keys])
-        pivot_ts = zip(*[ts[k] for k in pivot_keys])
 
-
-        for fr_no, (_data, _ts) in enumerate(zip(pivot_data, pivot_ts)):
+        for fr_no, _data in enumerate(pivot_data):
             new_ev = {'uid': str(uuid.uuid4()),
                       'time': time,
                       'descriptor': inner_desc,
@@ -93,6 +92,7 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
             new_ev['timestamps'] = inner_ts
             yield new_ev
             seq_no += 1
+
 
 def zip_events(*evs, lazy=True):
     """Zip together a collection of event streams

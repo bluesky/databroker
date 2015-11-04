@@ -29,17 +29,18 @@ def _pivot_data_helper(M, N):
                 for k, n in zip('abc', range(3))}
         data.update({k: ord(k) + j for k in 'def'})
         data.update({k: np.asarray([(m + j*M + n) * np.ones((2, 2))
-                        for m in range(M)])
+                                    for m in range(M)])
                      for k, n in zip('ghi', range(3))})
 
-        ts = dict(data)
+        ts = {k: ttime.time() for k in data}
         ev = {'uid': str(j),
               'data': data,
               'timestamps': ts,
               'time': ttime.time(),
               'descriptor': desc,
-              'seq_no': j,}
+              'seq_no': j, }
         yield ev
+
 
 def _zip_data_helper(key_lists, N):
     """
