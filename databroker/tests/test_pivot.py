@@ -106,7 +106,8 @@ def test_pivot_smoke():
         assert_equal(desc['data_keys']['c']['shape'], (3, ))
         assert_equal(desc['data_keys']['g']['shape'], (2, 2))
         assert_equal(desc['data_keys']['h']['shape'], (3, 2, 2))
-
+        assert_equal(set(desc['data_keys']), set(ev['data']))
+        assert_equal(set(desc['data_keys']), set(ev['timestamps']))
         for k in 'cdh':
             assert_equal(desc['data_keys'][k]['source'], 'syn')
             assert_array_equal(ev['data'][k], evs[j // M]['data'][k])

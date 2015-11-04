@@ -62,7 +62,6 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
         if orig_data_key['dtype'] != 'array':
             raise RuntimeError("trying to pivot on non-array data")
 
-
     pv_lens = [orig_desc['data_keys'][k]['shape'][0] for k in pivot_keys]
     if not all(pv_lens[0] == pl for pl in pv_lens):
         raise RuntimeError("not all pivot columns are the same length")
