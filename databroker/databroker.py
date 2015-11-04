@@ -11,7 +11,18 @@ import metadatastore.doc as doc
 import metadatastore.commands as mc
 import filestore.api as fs
 import logging
-from functools import singledispatch
+try:
+    from functools import singledispatch
+except ImportError:
+    try:
+        # We are running on Python 2.6, 2.7, or 3.3
+        import singledispatch
+    except ImportError:
+        print("Please install singledispatch from PyPI"
+              "\n\n   pip install single dispatch"
+              "\n\nThen run your program again.")
+        raise
+
 import numbers
 from collections import abc
 
