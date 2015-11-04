@@ -2,7 +2,6 @@
 
 import nose
 
-# plugins = [KnownFailure]
 plugins = []
 env = {"NOSE_WITH_COVERAGE": 1,
        'NOSE_COVER_PACKAGE': 'metadataclient',

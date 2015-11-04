@@ -10,6 +10,7 @@ from metadataclient.api import find_run_stops
 from metadataclient.api import find_descriptors
 from metadataclient.api import find_events
 from metadataclient.api import find_last
+from metadataclient.api import bulk_insert_events
 
 
 if __name__ == "__main__":

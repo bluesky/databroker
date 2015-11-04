@@ -77,7 +77,8 @@ def doc_or_uid_to_uid(doc_or_uid):
     """
     if not isinstance(doc_or_uid, six.string_types):
         doc_or_uid = doc_or_uid['uid']
-    return doc_or_uid
+    # type casting
+    return str(doc_or_uid)
 
 
 @_ensure_connection
@@ -490,10 +491,7 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     increment = range_ceil - range_floor + 1
     has_more = True
     if run_start:
-        try:
-            query['run_start'] = run_start.uid
-        except AttributeError:
-            query['run_start'] = str(run_start)
+        query['run_start'] = doc_or_uid_to_uid(run_start)
         rstart = next(find_run_starts(uid=query['run_start']))
     q_range = range_ceil - range_floor
     while has_more:
@@ -551,10 +549,7 @@ def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
     query = kwargs
     increment = range_ceil - range_floor + 1
     if descriptor:
-        try:
-            desc_uid = descriptor.uid
-        except AttributeError:
-            desc_uid = descriptor
+        desc_uid = doc_or_uid_to_uid(descriptor)
         query['descriptor'] = desc_uid
     _format_time(query)
     has_more = True
@@ -629,10 +624,7 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     increment = range_ceil - range_floor + 1
     has_more = True
     if run_start:
-        try:
-            query['run_start'] = run_start.uid
-        except AttributeError:
-            query['run_start'] = str(run_start)
+        query['run_start'] = doc_or_uid_to_uid(run_start)
         rstart = next(find_run_starts(uid=query['run_start']))
     q_range = range_ceil - range_floor
     while has_more:
@@ -665,14 +657,9 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     "Insert a single event. Server handles this in bulk"
     event = dict(time=time, seq_num=seq_num,
                  data=data, timestamps=timestamps, uid=uid)
-    try:
-        desc_uid = descriptor.uid
-    except AttributeError:
-        desc_uid = str(descriptor)
-    try:
-        event['descriptor'] = desc_uid
-    except AttributeError:
-        event['descriptor'] = desc_uid
+    desc_uid = doc_or_uid_to_uid(descriptor)
+    event['descriptor'] = desc_uid
+
     ev = ujson.dumps(event)
     r = requests.post(_server_path + '/event', data=ev)
     r.raise_for_status()
@@ -696,8 +683,9 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     ret : dict
         dictionary of details about the insertion
     """
+    # TODO: Add validate
     descriptor_uid = doc_or_uid_to_uid(event_descriptor)
-    descriptor = descriptor_given_uid(descriptor_uid)
+    # descriptor = descriptor_given_uid(descriptor_uid)
     # let server validate this in bulk. It is much less expensive this way
     payload = ujson.dumps(events)
     r = requests.post(_server_path + '/event', data=payload)
@@ -735,10 +723,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
     """
     payload = dict(data_keys=data_keys,
                    time=time, uid=uid, custom=custom)
-    try:
-        rs_uid = run_start.uid
-    except AttributeError:
-        rs_uid = str(run_start)
+    rs_uid = doc_or_uid_to_uid(run_start)
     payload['run_start'] = rs_uid
     r = requests.post(_server_path + '/event_descriptor', 
                       data=ujson.dumps(payload))
@@ -834,10 +819,7 @@ def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
     """
     params = dict(time=time, uid=uid, config=config, exit_status=exit_status,
                   reason=reason)
-    try:
-        params['run_start'] = run_start.uid
-    except AttributeError:
-        params['run_start'] = run_start
+    params['run_start'] = doc_or_uid_to_uid(run_start)
     if custom:
         z = params.copy()
         z.update(custom)
