@@ -119,6 +119,14 @@ def test_pivot_smoke():
                                source_ev['data'][k][ev['data']['fr_no']])
 
 
+def test_zip_events_smoke():
+    dd = _zip_data_helper(('abc', 'def'), 10)
+    for ev in zip_events(*dd):
+        assert_equal(set('abcdef'), set(ev['descriptor']['data_keys']))
+        assert_equal(set('abcdef'), set(ev['data']))
+        assert_equal(set('abcdef'), set(ev['timestamps']))
+
+
 def test_reset_time_smoke():
     evs = list(_reset_time_data_helper())
     revs = list(reset_time(evs, 'a'))
