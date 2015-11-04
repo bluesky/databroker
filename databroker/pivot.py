@@ -52,13 +52,16 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
                 'data_keys': dict(),
                 'run_start': orig_desc['run_start'],
                 'time': ttime.time()}
-
+    new_desc['data_keys']['fr_no'] = {'shape': (),
+                                      'dtype': 'number',
+                                      'source': 'pivot'}
     for key in static_keys:
         new_desc['data_keys'][key] = orig_desc['data_keys'][key]
     for key in pivot_keys:
         orig_data_key = orig_desc['data_keys'][key]
         if orig_data_key['dtype'] != 'array':
             raise RuntimeError("trying to pivot on non-array data")
+
 
     pv_lens = [orig_desc['data_keys'][k]['shape'][0] for k in pivot_keys]
     if not all(pv_lens[0] == pl for pl in pv_lens):
@@ -75,6 +78,7 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
             inner_desc['data_keys'][key] = {'shape': shape,
                                             'dtype': dtype,
                                             'source': ev['uid']}
+
         data = ev['data']
         ts = ev['timestamps']
         time = ev['time']
