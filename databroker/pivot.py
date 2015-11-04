@@ -1,4 +1,10 @@
-from itertools import chain, zip_longest
+from itertools import chain
+# BEGIN LPy
+try:
+    from itertools import zip_longest
+except ImportError:
+    from itertools import izip_longest as zip_longest
+# END LPy
 import uuid
 import time as ttime
 import operator as op
@@ -94,7 +100,7 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
             seq_no += 1
 
 
-def zip_events(*evs, lazy=True):
+def zip_events(*evs, **kwargs):
     """Zip together a collection of event streams
 
     All events in a single stream must have the same
@@ -113,6 +119,15 @@ def zip_events(*evs, lazy=True):
         If False, listify event streams first for validation
         defaults to True
     """
+    # BEGIN LPy
+    # Once we drop LPy support the signature can be changed back to
+    # def zip_events(*evs, lazy=True)
+    # the code below is to work around limitations of the LPy syntax
+    lazy = kwargs.pop('lazy', True)
+    if len(kwargs):
+        raise TypeError("Passed unknown key word arguments")
+    # END LPy
+
     if not lazy:
         # need to listify
         evs = [list(ev) for ev in evs]
