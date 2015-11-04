@@ -103,6 +103,15 @@ def zip_events(*evs, lazy=True):
     All event streams must be the same length
 
     All event streams must have same run_start (for now)
+
+    Parameters
+    ----------
+    *evs
+        sequences that yield events
+
+    lazy : bool, optional
+        If False, listify event streams first for validation
+        defaults to True
     """
     if not lazy:
         # need to listify
