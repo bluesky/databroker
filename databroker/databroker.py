@@ -18,10 +18,11 @@ except ImportError:
         # We are running on Python 2.6, 2.7, or 3.3
         import singledispatch
     except ImportError:
-        print("Please install singledispatch from PyPI"
-              "\n\n   pip install single dispatch"
-              "\n\nThen run your program again.")
-        raise
+        raise ImportError(
+            "Please install singledispatch from PyPI"
+            "\n\n   pip install singledispatch"
+            "\n\nThen run your program again."
+        )
 
 import numbers
 from collections import abc
