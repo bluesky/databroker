@@ -1,8 +1,9 @@
 from nose.tools import assert_equal, assert_in
-from databroker.pivot import pivot_timeseries
+from databroker.pivot import pivot_timeseries, zip_events, reset_time
 from numpy.testing import assert_array_equal
 import numpy as np
 import time as ttime
+
 
 def _pivot_data_helper(M, N):
     """
@@ -57,18 +58,36 @@ def _zip_data_helper(key_lists, N):
                                     'dtype': 'number',
                                     'shape': ()}
         for j in range(N):
-            data = {k: offset + j + n  for n, k in
+            data = {k: offset + j + n for n, k in
                     enumerate(keys)}
-            ts = dict(data)
 
+            ts = {k: ttime.time() for k in data}
             ev = {'uid': str(j),
                   'data': data,
                   'timestamps': ts,
                   'time': ttime.time(),
                   'descriptor': desc,
-                  'seq_no': j,}
+                  'seq_no': j, }
             yield ev
     return [_inner_gen(keys, N) for keys in key_lists]
+
+
+def _reset_time_data_helper():
+    desc = {'uid': 'fake desc',
+            'data_keys': dict(),
+            'run_start': 'run_start',
+            'time': ttime.time()}
+    for j in range(12):
+        data = {'a': j, 'b': -j}
+        ts = {'a': j, 'b': j + 300}
+        ev = {'uid': str(j),
+              'data': data,
+              'timestamps': ts,
+              'time': ttime.time(),
+              'descriptor': desc,
+              'seq_no': j, }
+        yield ev
+
 
 def test_pivot_smoke():
     M, N = 3, 10
@@ -98,3 +117,12 @@ def test_pivot_smoke():
             source_ev = ev_dict[src]
             assert_array_equal(ev['data'][k],
                                source_ev['data'][k][ev['data']['fr_no']])
+
+
+def test_reset_time_smoke():
+    evs = list(_reset_time_data_helper())
+    revs = list(reset_time(evs, 'a'))
+    for ev, rev in zip(evs, revs):
+        assert_equal(rev['time'], rev['timestamps']['a'])
+        assert_equal(ev['data'], rev['data'])
+        assert_equal(ev['timestamps'], rev['timestamps'])

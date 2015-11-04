@@ -156,3 +156,30 @@ def zip_events(*evs, lazy=True):
             new_ev['timestamps'].update(ev['timestamps'])
 
         yield new_ev
+
+
+def reset_time(evs, field, source='timestamps'):
+    """Reset the time field on the event.
+
+    Promote a specific timestamp to be the time of the whole
+    event.
+
+    Parameters
+    ----------
+    evs : iterable
+        Iterable of events to work on
+
+    field : str
+        The field to use for the value
+
+    source : {'timestamps', 'data'}, optional
+        Where to look for that field
+
+    Yields
+    ------
+    events
+    """
+    for ev in evs:
+        ev = dict(ev)
+        ev['time'] = ev[source][field]
+        yield ev
