@@ -25,7 +25,11 @@ except ImportError:
         )
 
 import numbers
-from collections import abc
+try:
+    from collections.abc import MutableSequence
+except ImportError:
+    # This will error on python < 3.3
+    from collections import MutableSequence
 
 
 logger = logging.getLogger(__name__)
@@ -118,7 +122,7 @@ def _(key):
 
 @search.register(set)
 @search.register(tuple)
-@search.register(abc.MutableSequence)
+@search.register(MutableSequence)
 def _(key):
     return [search(k) for k in key]
 
