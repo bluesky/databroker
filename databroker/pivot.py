@@ -1,6 +1,8 @@
-from itertools import chain
+from itertools import chain, zip_longest
 import uuid
 import time as ttime
+import operator as op
+from functools import reduce
 
 def pivot_timeseries(events, pivot_keys, static_keys=None):
     """Pivot sequence of events with sequences as data to single sequence
@@ -91,3 +93,57 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
             new_ev['timestamps'] = inner_ts
             yield new_ev
             seq_no += 1
+
+def zip_events(*evs, lazy=True):
+    """Zip together a collection of event streams
+
+    All events in a single stream must have the same
+    descriptor.
+
+    All event streams must be the same length
+
+    All event streams must have same run_start (for now)
+    """
+    if not lazy:
+        # need to listify
+        evs = [list(ev) for ev in evs]
+        lens = [len(ev) for ev in evs]
+        # TODO check single descriptor invariant
+        if not all(l == lens[0] for l in lens):
+            raise RuntimeError("All event streams must be same len")
+
+    # set up iterators and spy on the first event
+    evs = [iter(ev) for ev in evs]
+    first_events = [next(ev) for ev in evs]
+    evs = [chain((ev0, ), ev) for ev0, ev in zip(first_events, evs)]
+    # make new descriptor
+    descs = [ev['descriptor'] for ev in first_events]
+    if not all(d['run_start'] == descs[0]['run_start'] for d in descs):
+        raise RuntimeError("Not all descriptors have same runstart")
+    sum_keys = set(chain(*(d['data_keys'] for d in descs)))
+    if len(sum_keys) != reduce(op.add, [len(d['data_keys']) for d in descs]):
+        raise RuntimeError("event descriptors have overlapping keys")
+    zip_desc = {'uid': str(uuid.uuid4()),
+                'data_keys': dict(),
+                'run_start': descs[0]['run_start'],
+                'time': ttime.time()}
+    for d in descs:
+        zip_desc['data_keys'].update(d['data_keys'])
+
+    for seq_no, events in enumerate(zip_longest(*evs)):
+        if any(ev is None for ev in events):
+            raise RuntimeError("not all streams same length")
+        for ev, desc in zip(events, descs):
+            if ev['descriptor']['uid'] != desc['uid']:
+                raise RuntimeError("one of event streams changes descriptors")
+        new_ev = {'uid': str(uuid.uuid4()),
+                  'time': ttime.time(),
+                  'descriptor': zip_desc,
+                  'seq_no': seq_no,
+                  'data': dict(),
+                  'timestamps': dict()}
+        for ev in events:
+            new_ev['data'].update(ev['data'])
+            new_ev['timestamps'].update(ev['timestamps'])
+
+        yield new_ev

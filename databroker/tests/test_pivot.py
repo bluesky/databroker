@@ -41,6 +41,34 @@ def _pivot_data_helper(M, N):
               'seq_no': j,}
         yield ev
 
+def _zip_data_helper(key_lists, N):
+    """
+    make some synthetic data
+    """
+    def _inner_gen(keys, N, offset=0):
+
+        desc = {'uid': 'fake desc',
+                'data_keys': dict(),
+                'run_start': 'run_start',
+                'time': ttime.time()}
+        for k in keys:
+            desc['data_keys'][k] = {'source': 'syn',
+                                    'dtype': 'number',
+                                    'shape': ()}
+        for j in range(N):
+            data = {k: offset + j + n  for n, k in
+                    enumerate(keys)}
+            ts = dict(data)
+
+            ev = {'uid': str(j),
+                  'data': data,
+                  'timestamps': ts,
+                  'time': ttime.time(),
+                  'descriptor': desc,
+                  'seq_no': j,}
+            yield ev
+    return [_inner_gen(keys, N) for keys in key_lists]
+
 def test_pivot_smoke():
     M, N = 3, 10
     evs = list(_pivot_data_helper(M, N))
