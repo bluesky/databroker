@@ -179,6 +179,11 @@ def test_uid_lookup():
     assert_raises(ValueError, lambda: db[uid[0]])
 
 
+def test_set_search():
+    # smoketest the search with a set
+    db[{-1, -2}]
+
+
 def test_data_key():
     rs1_uid = insert_run_start(time=100., scan_id=1,
                                owner='nedbrainard', beamline_id='example',

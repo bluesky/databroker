@@ -115,6 +115,7 @@ def _(key):
     return header
 
 
+@search.register(set)
 @search.register(tuple)
 @search.register(abc.MutableSequence)
 def _(key):
