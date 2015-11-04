@@ -11,96 +11,115 @@ import metadatastore.doc as doc
 import metadatastore.commands as mc
 import filestore.api as fs
 import logging
+from functools import singledispatch
+import numbers
+from collections import abc
 
 
 logger = logging.getLogger(__name__)
 TZ = str(tzlocal.get_localzone())
 
 
+@singledispatch
+def search(key):
+    raise ValueError("Must give an integer scan ID like [6], a slice "
+                     "into past scans like [-5], [-5:], or [-5:-9:2], "
+                     "a list like [1, 7, 13], a (partial) uid "
+                     "like ['a23jslk'] or a full uid like "
+                     "['f26efc1d-8263-46c8-a560-7bf73d2786e1'].")
+
+
+@search.register(slice)
+def _(key):
+    # Interpret key as a slice into previous scans.
+    if key.start is not None and key.start > -1:
+        raise ValueError("slice.start must be negative. You gave me "
+                         "key=%s The offending part is key.start=%s"
+                         % (key, key.start))
+    if key.stop is not None and key.stop > 0:
+        raise ValueError("slice.stop must be <= 0. You gave me key=%s. "
+                         "The offending part is key.stop = %s"
+                         % (key, key.stop))
+    if key.stop is not None:
+        stop = -key.stop
+    else:
+        stop = None
+    if key.start is None:
+        raise ValueError("slice.start cannot be None because we do not "
+                         "support slicing infinitely into the past; "
+                         "the size of the result is non-deterministic "
+                         "and could become too large.")
+    start = -key.start
+    result = list(find_last(start))[stop::key.step]
+    header = [Header.from_run_start(h) for h in result]
+    return header
+
+
+@search.register(numbers.Integral)
+def _(key):
+    if key > -1:
+        # Interpret key as a scan_id.
+        gen = find_run_starts(scan_id=key)
+        try:
+            result = next(gen)  # most recent match
+        except StopIteration:
+            raise ValueError("No such run found for key=%s which is "
+                             "being interpreted as a scan id." % key)
+        header = Header.from_run_start(result)
+    else:
+        # Interpret key as the Nth last scan.
+        gen = find_last(-key)
+        for i in range(-key):
+            try:
+                result = next(gen)
+            except StopIteration:
+                raise IndexError(
+                    "There are only {0} runs.".format(i))
+        header = Header.from_run_start(result)
+    return header
+
+
+@search.register(str)
+def _(key):
+    results = None
+    if len(key) >= 36:
+        # Interpret key as a uid (or the few several characters of one).
+        logger.debug('Treating %s as a full uuid' % key)
+        results = list(find_run_starts(uid=key))
+        logger.debug('%s runs found for key=%s treated as a full uuid'
+                     % (len(results), key))
+    if not results == 0:
+        # No dice? Try searching as if we have a partial uid.
+        logger.debug('Treating %s as a partial uuid' % key)
+        gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        results = list(gen)
+    if not results:
+        # Still no dice? Bail out.
+        raise ValueError("No such run found for key=%s" % key)
+    if len(results) > 1:
+        raise ValueError("key=%s  matches %s runs. Provide "
+                         "more characters." % (key, len(results)))
+    result, = results
+    header = Header.from_run_start(result)
+    return header
+
+
+@search.register(tuple)
+@search.register(abc.MutableSequence)
+def _(key):
+    return [search(k) for k in key]
+
+
 class _DataBrokerClass(object):
     # A singleton is instantiated in broker/__init__.py.
     # You probably do not want to instantiate this; use
     # broker.DataBroker instead.
-
     def __getitem__(self, key):
         """DWIM slicing
 
         Some more docs go here
         """
-        if isinstance(key, slice):
-            # Interpret key as a slice into previous scans.
-            if key.start is not None and key.start > -1:
-                raise ValueError("slice.start must be negative. You gave me "
-                                 "key=%s The offending part is key.start=%s"
-                                 % (key, key.start))
-            if key.stop is not None and key.stop > 0:
-                raise ValueError("slice.stop must be <= 0. You gave me key=%s. "
-                                 "The offending part is key.stop = %s"
-                                 % (key, key.stop))
-            if key.stop is not None:
-                stop = -key.stop
-            else:
-                stop = None
-            if key.start is None:
-                raise ValueError("slice.start cannot be None because we do not "
-                                 "support slicing infinitely into the past; "
-                                 "the size of the result is non-deterministic "
-                                 "and could become too large.")
-            start = -key.start
-            result = list(find_last(start))[stop::key.step]
-            header = [Header.from_run_start(h) for h in result]
-        elif isinstance(key, int):
-            if key > -1:
-                # Interpret key as a scan_id.
-                gen = find_run_starts(scan_id=key)
-                try:
-                    result = next(gen)  # most recent match
-                except StopIteration:
-                    raise ValueError("No such run found for key=%s which is "
-                                     "being interpreted as a scan id." % key)
-                header = Header.from_run_start(result)
-            else:
-                # Interpret key as the Nth last scan.
-                gen = find_last(-key)
-                for i in range(-key):
-                    try:
-                        result = next(gen)
-                    except StopIteration:
-                        raise IndexError(
-                            "There are only {0} runs.".format(i))
-                header = Header.from_run_start(result)
-        elif isinstance(key, six.string_types):
-            results = None
-            if len(key) >= 36:
-                # Interpret key as a uid (or the few several characters of one).
-                logger.debug('Treating %s as a full uuid' % key)
-                results = list(find_run_starts(uid=key))
-                logger.debug('%s runs found for key=%s treated as a full uuid'
-                             % (len(results), key))
-            if not results == 0:
-                # No dice? Try searching as if we have a partial uid.
-                logger.debug('Treating %s as a partial uuid' % key)
-                gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
-                results = list(gen)
-            if not results:
-                # Still no dice? Bail out.
-                raise ValueError("No such run found for key=%s" % key)
-            if len(results) > 1:
-                raise ValueError("key=%s  matches %s runs. Provide "
-                                 "more characters." % (key, len(results)))
-            result, = results
-            header = Header.from_run_start(result)
-        elif isinstance(key, Iterable):
-            # Interpret key as a list of several keys. If it is a string
-            # we will never get this far.
-            return [self.__getitem__(k) for k in key]
-        else:
-            raise ValueError("Must give an integer scan ID like [6], a slice "
-                             "into past scans like [-5], [-5:], or [-5:-9:2], "
-                             "a list like [1, 7, 13], a (partial) uid "
-                             "like ['a23jslk'] or a full uid like "
-                             "['f26efc1d-8263-46c8-a560-7bf73d2786e1'].")
-        return header
+        return search(key)
 
     def __call__(self, **kwargs):
         """Given search criteria, find Headers describing runs.
