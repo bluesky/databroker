@@ -11,20 +11,21 @@ import metadatastore.doc as doc
 import metadatastore.commands as mc
 import filestore.api as fs
 import logging
+import numbers
+
+
 try:
     from functools import singledispatch
 except ImportError:
     try:
         # We are running on Python 2.6, 2.7, or 3.3
-        import singledispatch
+        from singledispatch import singledispatch
     except ImportError:
         raise ImportError(
             "Please install singledispatch from PyPI"
             "\n\n   pip install singledispatch"
             "\n\nThen run your program again."
         )
-
-import numbers
 try:
     from collections.abc import MutableSequence
 except ImportError:
