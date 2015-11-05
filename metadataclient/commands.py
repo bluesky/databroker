@@ -81,6 +81,14 @@ def doc_or_uid_to_uid(doc_or_uid):
     return str(doc_or_uid)
 
 
+class NoRunStop(Exception):
+    pass
+
+
+class NoEventDescriptors(Exception):
+    pass
+
+
 @_ensure_connection
 def runstart_given_uid(uid):
     """Get RunStart document given an ObjectId
@@ -205,10 +213,7 @@ def run_stop_given_uid(uid):
         The RunStop document fully de-referenced
 
     """
-    runstop = dict(next(find_run_stops(uid=uid)))
-    start_oid = runstop.pop('run_start_id')
-    runstop['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('RunStop', runstop)
+    return next(find_run_stops(uid=uid))
 
 
 @_ensure_connection
@@ -225,10 +230,9 @@ def descriptor_given_uid(uid):
     descriptor : utils.Document
         The EventDescriptor document fully de-referenced
     """
-    descriptor = dict(next(find_descriptors(uid=uid)))
-    start_oid = descriptor.pop('run_start')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('EventDescriptor', descriptor)
+
+    return utils.Document('EventDescriptor',
+                          next(find_descriptors(uid=uid)))
 
 
 @_ensure_connection
@@ -252,15 +256,9 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    
-#     run_start_uid = doc_or_uid_to_uid(run_start)
-#     rstart = run_start_given_uid(run_start.uid)
-#     if rstart:
-    run_stop = next(find_run_stops(run_start=run_start.uid))
-#         run_stop['run_start'] = run_start
+    rstart = doc_or_uid_to_uid(run_start)
+    run_stop = next(find_run_stops(run_start=rstart))
     return utils.Document('RunStop', run_stop)
-#     else:
-#         raise utils.NoRunStop()
 
 
 @_ensure_connection
@@ -288,7 +286,14 @@ def descriptors_by_start(run_start):
 #     run_start_uid = doc_or_uid_to_uid(run_start)
 #     run_start_given_uid(run_start_uid)
 #     descriptors = find_descriptors(run_start=runs
-    raise NotImplementedError()
+    run_start_id = doc_or_uid_to_uid(run_start)
+
+    res = find_descriptors(run_start=run_start_id)
+    if res is None:
+        raise NoEventDescriptors("No EventDescriptors exists "
+                                 "for {!r}".format(run_start))
+    else:
+        return next(res)
 
 @_ensure_connection
 def fetch_events_generator(descriptor):
@@ -434,7 +439,9 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_start",
                          params=ujson.dumps(query))
-        r.raise_for_status()
+        # r.raise_for_status()
+        if r.status_code != 200:
+            return None
         content = ujson.loads(r.text)
         if not content:
             StopIteration()
@@ -499,7 +506,9 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/run_stop",
                          params=ujson.dumps(query))
-        r.raise_for_status()
+        # r.raise_for_status()
+        if r.status_code != 200:
+            return None
         content = ujson.loads(r.text)
         if not content:
             StopIteration()
@@ -632,24 +641,28 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
         query['range_ceil'] = range_ceil
         r = requests.get(_server_path + "/event_descriptor",
                          params=ujson.dumps(query))
-        r.raise_for_status()
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
+        if r.status_code != 200:
+            return None
+            # raise NoEventDescriptors("No EventDescriptors exists "
+            #                      "for {!r}".format(run_start))
         else:
-            for c in content:
-                if rstart is None:
-                    rstart = next(find_run_starts(uid=c['run_start']))
-                garbage = c.pop('run_start')
-                c['run_start'] = rstart
-                yield utils.Document('EventDescriptor',c)
-            if len(content) <= q_range:
-                has_more = False
+            content = ujson.loads(r.text)
+            if not content:
+                StopIteration()
                 break
             else:
-                range_ceil += increment
-                range_floor += increment
+                for c in content:
+                    if rstart is None:
+                        rstart = next(find_run_starts(uid=c['run_start']))
+                    garbage = c.pop('run_start')
+                    c['run_start'] = rstart
+                    yield utils.Document('EventDescriptor',c)
+                if len(content) <= q_range:
+                    has_more = False
+                    break
+                else:
+                    range_ceil += increment
+                    range_floor += increment
 
 
 @_ensure_connection
@@ -664,6 +677,95 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     r = requests.post(_server_path + '/event', data=ev)
     r.raise_for_status()
     return uid
+
+
+def _transform_data(data, timestamps):
+    """
+    Transform from Document spec:
+        {'data': {'key': <value>},
+         'timestamps': {'key': <timestamp>}}
+    to storage format:
+        {'data': {<key>: (<value>, <timestamp>)}.
+    """
+    return {k: (data[k], timestamps[k]) for k in data}
+
+
+
+@_ensure_connection
+def get_events_generator(descriptor):
+    """A generator which yields all events from the event stream
+    Parameters
+    ----------
+    descriptor : doc.Document or dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    Yields
+    ------
+    event : doc.Document
+        All events for the given EventDescriptor from oldest to
+        newest
+    """
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    # descriptor = descriptor_given_uid(descriptor_uid)
+
+
+    ev_cur = find_events(descriptor=descriptor_uid)
+
+
+
+    for ev in ev_cur:
+        ev = dict(ev)
+        ev['descriptor'] = next(find_descriptors(uid=descriptor_uid))
+        yield utils.Document('Event', ev)
+
+
+
+
+
+
+
+@_ensure_connection
+def get_events_table(descriptor):
+    """All event data as tables
+    Parameters
+    ----------
+    descriptor : dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    Returns
+    -------
+    descriptor : doc.Document
+        EventDescriptor document
+    data_table : dict
+        dict of lists of the transposed data
+    seq_nums : list
+        The sequence number of each event.
+    times : list
+        The time of each event.
+    uids : list
+        The uid of each event.
+    timestamps_table : dict
+        The timestamps of each of the measurements as dict of lists.  Same
+        keys as `data_table`.
+    """
+    desc_uid = doc_or_uid_to_uid(descriptor)
+    descriptor = descriptor_given_uid(desc_uid)
+    # this will get more complicated once transpose caching layer is in place
+    all_events = list(get_events_generator(desc_uid))
+    # get event sequence numbers
+    seq_nums = [ev['seq_num'] for ev in all_events]
+    # get event times
+    times = [ev['time'] for ev in all_events]
+    # get uids
+    uids = [ev['uid'] for ev in all_events]
+    keys = list(descriptor['data_keys'])
+    # get data values
+    data_table = _transpose(all_events, keys, 'data')
+    # get timestamps
+    timestamps_table = _transpose(all_events, keys, 'timestamps')
+    # return the whole lot
+    return descriptor, data_table, seq_nums, times, uids, timestamps_table
+
 
 @_ensure_connection
 def bulk_insert_events(event_descriptor, events, validate=False):
@@ -683,11 +785,27 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     ret : dict
         dictionary of details about the insertion
     """
-    # TODO: Add validate
+    BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
+                     'timestamps do not match:\n data: {}\ntimestamps:{}"""
     descriptor_uid = doc_or_uid_to_uid(event_descriptor)
     # descriptor = descriptor_given_uid(descriptor_uid)
     # let server validate this in bulk. It is much less expensive this way
-    payload = ujson.dumps(events)
+    for ev in events:
+        desc_id = doc_or_uid_to_uid(event_descriptor)
+        ev['descriptor'] = desc_id
+        if validate:
+            if ev['data'].keys() != ev['timestamps'].keys():
+                raise ValueError(
+                    BAD_KEYS_FMT.format(ev['data'].keys(),
+                                        ev['timestamps'].keys()))
+
+            # transform the data to the storage format
+            val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
+            ev_out = dict(descriptor=desc_id, uid=ev['uid'],
+                  data=val_ts_tuple, time=ev['time'],
+                  seq_num=ev['seq_num'])
+            ev = ev_out
+    payload = ujson.dumps(list(events))
     r = requests.post(_server_path + '/event', data=payload)
     return r.status_code
 
