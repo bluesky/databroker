@@ -280,18 +280,14 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-#     run_start_uid = doc_or_uid_to_uid(run_start)
-#     run_start_given_uid(run_start_uid)
-#     descriptors = find_descriptors(run_start=runs
     run_start_id = doc_or_uid_to_uid(run_start)
-
     res = find_descriptors(run_start=run_start_id)
-    if res is None:
+    try:
+        return next(res)
+    except StopIteration:
         raise NoEventDescriptors("No EventDescriptors exists "
                                  "for {!r}".format(run_start))
-    else:
-        return next(res)
-
+    
 @_ensure_connection
 def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
