@@ -443,37 +443,37 @@ def test_find_run_stop():
     assert_equal(run_stop, run_stop2)
     assert_equal(run_stop, run_stop3)
  
-# 
-# @raises(RuntimeError)
-# def test_double_run_stop():
-#     run_start_uid, e_desc_uid, data_keys = setup_syn()
-#     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
-#     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
-# 
-# 
-# def test_find_last_for_smoke():
-#     last, = mdsc.find_last()
-# 
-# 
-# @raises(ValueError)
-# def test_bad_event_desc():
-# 
-#     data_keys = {k:  {'source': k,
-#                       'dtype': 'number',
-#                       'shape': None} for k in ['foo', 'foo.bar']
-#                  }
-#     scan_id = 1
-# 
-#     # Create a BeginRunEvent that serves as entry point for a run
-#     rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
-#                               time=ttime.time(),
-#                               uid=str(uuid.uuid4()))
-# 
-#     # Create an EventDescriptor that indicates the data
-#     # keys and serves as header for set of Event(s)
-#     mdsc.insert_descriptor(data_keys=data_keys,
-#                            time=ttime.time(),
-#                            run_start=rs, uid=str(uuid.uuid4()))
+ 
+@raises(RuntimeError)
+def test_double_run_stop():
+    run_start_uid, e_desc_uid, data_keys = setup_syn()
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+ 
+ 
+def test_find_last_for_smoke():
+    last = mdsc.find_last()
+ 
+ 
+@raises(ValueError)
+def test_bad_event_desc():
+ 
+    data_keys = {k:  {'source': k,
+                      'dtype': 'number',
+                      'shape': None} for k in ['foo', 'foo.bar']
+                 }
+    scan_id = 1
+ 
+    # Create a BeginRunEvent that serves as entry point for a run
+    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
+                              time=ttime.time(),
+                              uid=str(uuid.uuid4()))
+ 
+    # Create an EventDescriptor that indicates the data
+    # keys and serves as header for set of Event(s)
+    mdsc.insert_descriptor(data_keys=data_keys,
+                           time=ttime.time(),
+                           run_start=rs, uid=str(uuid.uuid4()))
 if __name__ == "__main__":
     import nose
     nose.runmodule(argv=['-s', '--with-doctest'], exit=False)

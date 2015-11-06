@@ -777,7 +777,8 @@ def insert_descriptor(run_start, data_keys, time, uid,
     payload['run_start'] = rs_uid
     r = requests.post(_server_path + '/event_descriptor', 
                       data=ujson.dumps(payload))
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise ValueError('Bad event descriptor')
     return uid
 
 
@@ -878,7 +879,8 @@ def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
         params['custom'] = {}
         payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
-    r.raise_for_status()
+    if r.status_code == 500:
+        raise RuntimeError('RunStop already exists for this RunStart')
     return uid
 
 
