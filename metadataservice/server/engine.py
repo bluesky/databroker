@@ -69,19 +69,12 @@ class RunStartHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                            "range_ceil and range_floor required parameters")
         _id = query.pop('_id', None)
         if _id:
             raise tornado.web.HTTPError(500, 'No ObjectId search supported')
         docs = yield database.run_start.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-            #to_list is async so no forcing to make synchronous
-        if docs == [] and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
             utils._return2client(self, docs)
