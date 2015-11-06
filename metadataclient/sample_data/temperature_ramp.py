@@ -78,4 +78,3 @@ if __name__ == '__main__':
 
     print('run_start_uid = %s' % run_start_uid)
     run(run_start_uid)
-    print(next(mdsc.find_last(num=1)))

@@ -11,13 +11,10 @@ from metadataclient import (conf, utils)
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
 
-# TODO: Add bulk_event insert and all other missing routines from mds library
-# TODO: Add capability that run_start can either be a document or string
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
 # TODO: Add timeouts to servers in order to stop ppl from abusing data sources
-# TODO: Add callback capability on monitors
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -377,7 +374,7 @@ def fetch_events_table(descriptor):
     pass
 
 @_ensure_connection
-def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
+def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
     As we describe in design document, time here is strictly the time
     server entry was created, not IOC timestamp. For the difference, refer
@@ -431,32 +428,18 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
     """
     _format_time(kwargs)
     query = kwargs
-    increment = range_ceil - range_floor + 1
-    has_more = True
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/run_start",
-                         params=ujson.dumps(query))
-        # r.raise_for_status()
-        if r.status_code != 200:
-            return None
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
-        else:
-            for c in content:
-                yield utils.Document('RunStart',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
-            else:
-                range_ceil += increment
-                range_floor += increment
-
-
+    r = requests.get(_server_path + "/run_start",
+                     params=ujson.dumps(query))
+    # r.raise_for_status()
+    if r.status_code != 200:
+        return None
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        for c in content:
+            yield utils.Document('RunStart',c)
+        
 @_ensure_connection
 def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """Given search criteria, query for RunStop Documents.
