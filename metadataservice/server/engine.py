@@ -46,7 +46,7 @@ def db_connect(database ,host, port, replicaset=None, write_concern="majority",
         Async server object which comes in handy as server has to juggle multiple clients
         and makes no difference for a single client compared to pymongo
     """
-    client = motor.MotorClient(host, port, replicaset=replicaset)
+    client = motor.MotorClient(host, int(port), replicaset=replicaset)
     client.write_concern = {'w': write_concern, 'wtimeout': write_timeout}
     database = client[database]
     return database
@@ -248,15 +248,9 @@ class EventHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                                        "range_ceil and range_floor required parameters")
         docs = yield database.event.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(404,
                                         status_code='No results for given query' + str(query))
         else:
@@ -270,11 +264,11 @@ class EventHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         if isinstance(data, list):
             jsonschema.validate(data, utils.schemas['bulk_events'])
-            bulk = yield database.event.initialize_unordered_bulk_op()
+            bulk = database.event.initialize_unordered_bulk_op()
             for _ in data:
                 bulk.insert(_)
             try:
-                yield bulk.execute()
+                bulk.execute()
             except pymongo.errors.BulkWriteError as err:
                 raise tornado.web.HTTPError(500, str(err))
             database.event.create_index([('time', pymongo.ASCENDING),
