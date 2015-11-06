@@ -191,6 +191,11 @@ class RunStopHandler(tornado.web.RequestHandler):
     def post(self):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
+        docs = yield database.run_stop.find({'run_start': data['run_start']}).sort(
+            'time', pymongo.ASCENDING).to_list(None)
+        if docs:
+            raise tornado.web.HTTPError(500,
+                                        'A run_stop already created for given run_start')
         jsonschema.validate(data, utils.schemas['run_stop'])
         result = yield database.run_stop.insert(data)
         database.run_stop.create_index([('time', pymongo.ASCENDING), 
@@ -211,6 +216,7 @@ class RunStopHandler(tornado.web.RequestHandler):
     def delete(self):
         raise tornado.web.HTTPError(404)
 
+    
 
 class EventHandler(tornado.web.RequestHandler):
     """Handler for event insert and query operations.
