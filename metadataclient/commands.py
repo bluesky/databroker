@@ -441,7 +441,7 @@ def find_run_starts(**kwargs):
             yield utils.Document('RunStart',c)
         
 @_ensure_connection
-def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
+def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
@@ -478,39 +478,23 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     _format_time(kwargs)
     query = kwargs
     rstart = None
-    increment = range_ceil - range_floor + 1
-    has_more = True
     if run_start:
         query['run_start'] = doc_or_uid_to_uid(run_start)
         rstart = next(find_run_starts(uid=query['run_start']))
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/run_stop",
-                         params=ujson.dumps(query))
-        # r.raise_for_status()
-        if r.status_code != 200:
-            return None
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
-        else:
-            for c in content:
-                if rstart is None:
-                    rstart = next(find_run_starts(uid=c['run_start']))
-                garbage = c.pop('run_start')
-                c['run_start'] = rstart
-                yield utils.Document('RunStop',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
-            else:
-                range_ceil += increment
-                range_floor += increment
-
-
+    r = requests.get(_server_path + "/run_stop",
+                     params=ujson.dumps(query))
+    if r.status_code != 200:
+        return None
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        for c in content:
+            if rstart is None:
+                rstart = next(find_run_starts(uid=c['run_start']))
+            c['run_start'] = rstart
+            yield utils.Document('RunStop',c)
+        
 @_ensure_connection
 def find_events(descriptor=None, **kwargs):
     """
@@ -555,15 +539,12 @@ def find_events(descriptor=None, **kwargs):
             if descriptor:
                 c['descriptor'] = descriptor
             else:
-                # if descriptor not provided, find and replace
-                # primarily for event based search to succeed
-                # should not be used
                 descriptor = next(find_descriptors(uid=desc_id))
             yield utils.Document('Event',c)
 
 
 @_ensure_connection
-def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
+def find_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -600,40 +581,25 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     _format_time(kwargs)
     query = kwargs
     rstart = None
-    increment = range_ceil - range_floor + 1
-    has_more = True
     if run_start:
         query['run_start'] = doc_or_uid_to_uid(run_start)
-        rstart = next(find_run_starts(uid=query['run_start']))
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/event_descriptor",
-                         params=ujson.dumps(query))
-        if r.status_code != 200:
+        rstart = next(find_run_starts(uid=query['run_start']))    
+    r = requests.get(_server_path + "/event_descriptor",
+                     params=ujson.dumps(query))
+    if r.status_code != 200:
+        return None
+    else:
+        content = ujson.loads(r.text)
+        if not content:
             return None
-            # raise NoEventDescriptors("No EventDescriptors exists "
-            #                      "for {!r}".format(run_start))
-        else:
-            content = ujson.loads(r.text)
-            if not content:
-                StopIteration()
-                break
-            else:
-                for c in content:
-                    if rstart is None:
-                        rstart = next(find_run_starts(uid=c['run_start']))
-                    garbage = c.pop('run_start')
-                    c['run_start'] = rstart
-                    yield utils.Document('EventDescriptor',c)
-                if len(content) <= q_range:
-                    has_more = False
-                    break
-                else:
-                    range_ceil += increment
-                    range_floor += increment
-
+        else:    
+            for c in content:
+                if rstart is None:
+                    rstart = next(find_run_starts(uid=c['run_start']))
+                c['run_start'] = rstart
+                yield utils.Document('EventDescriptor',c)
+        
+                
 
 @_ensure_connection
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):

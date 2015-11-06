@@ -67,7 +67,6 @@ def noisy(val, sigma=0.01):
 
 
 get_time = ttime.time
-print(type(get_time()))
 
 def example(func):
     @wraps(func)
