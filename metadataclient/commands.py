@@ -10,7 +10,8 @@ from metadataclient import (conf, utils)
 .. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
-
+# TODO: Add when descriptor is None, use cached descriptor!
+# TODO: Fix descriptor replace (related to above)
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
@@ -85,6 +86,8 @@ class NoRunStop(Exception):
 class NoEventDescriptors(Exception):
     pass
 
+class NoRunStart(Exception):
+    pass
 
 @_ensure_connection
 def runstart_given_uid(uid):
@@ -519,6 +522,7 @@ def find_events(descriptor=None, **kwargs):
     if 'event_descriptor' in kwargs:
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
     query = kwargs
+    desc = None
     if descriptor:
         desc_uid = doc_or_uid_to_uid(descriptor)
         query['descriptor'] = desc_uid
@@ -530,12 +534,14 @@ def find_events(descriptor=None, **kwargs):
     if not content:
         return None
     else:
+        if descriptor:
+            desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
         for c in content:
-            desc_id = c.pop('descriptor')
-            if descriptor:
-                c['descriptor'] = descriptor
-            else:
-                descriptor = next(find_descriptors(uid=desc_id))
+            if desc:
+                # Obvious bottleneck!!!
+                # Fix using local caching!!!!
+                # desc = next(find_descriptors(uid=c['descriptor']))
+                c['descriptor'] = desc
             yield utils.Document('Event',c)
 
 
@@ -579,7 +585,10 @@ def find_descriptors(run_start=None, **kwargs):
     rstart = None
     if run_start:
         query['run_start'] = doc_or_uid_to_uid(run_start)
-        rstart = next(find_run_starts(uid=query['run_start']))    
+        try:
+            rstart = next(find_run_starts(uid=query['run_start']))
+        except StopIteration:
+            raise NoRunStart()    
     r = requests.get(_server_path + "/event_descriptor",
                      params=ujson.dumps(query))
     if r.status_code != 200:
