@@ -183,15 +183,9 @@ class RunStopHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                                        "range_ceil and range_floor required parameters")
         docs = yield database.run_stop.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(404, 
                                         'No results for given query' + str(query))
         else:
