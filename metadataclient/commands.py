@@ -529,7 +529,7 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
 
 
 @_ensure_connection
-def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
+def find_events(descriptor=None, **kwargs):
     """
     Parameters
     -----------
@@ -556,40 +556,27 @@ def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
     if 'event_descriptor' in kwargs:
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
     query = kwargs
-    increment = range_ceil - range_floor + 1
     if descriptor:
         desc_uid = doc_or_uid_to_uid(descriptor)
         query['descriptor'] = desc_uid
     _format_time(query)
-    has_more = True
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/event",
-                         params=ujson.dumps(query))
-        r.raise_for_status()
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
-        else:
-            for c in content:
-                desc_id = c.pop('descriptor')
-                if descriptor:
-                    c['descriptor'] = descriptor
-                else:
-                    # if descriptor not provided, find and replace
-                    # primarily for event based search to succeed
-                    # should not be used
-                    descriptor = next(find_descriptors(uid=desc_id))
-                yield utils.Document('Event',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
+    r = requests.get(_server_path + "/event",
+                     params=ujson.dumps(query))
+    r.raise_for_status()
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        for c in content:
+            desc_id = c.pop('descriptor')
+            if descriptor:
+                c['descriptor'] = descriptor
             else:
-                range_ceil += increment
-                range_floor += increment
+                # if descriptor not provided, find and replace
+                # primarily for event based search to succeed
+                # should not be used
+                descriptor = next(find_descriptors(uid=desc_id))
+            yield utils.Document('Event',c)
 
 
 @_ensure_connection
