@@ -10,13 +10,12 @@ from metadataclient import (conf, utils)
 .. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
 .. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
 """
-
-# TODO: Add capability that run_start can either be a document or string
+# TODO: Add when descriptor is None, use cached descriptor!
+# TODO: Fix descriptor replace (related to above)
 # TODO: Add server_disconnect that rolls all config back to default
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
 # TODO: Add timeouts to servers in order to stop ppl from abusing data sources
-# TODO: Add callback capability on monitors
 
 def server_connect(host, port, protocol='http'):
     """The server here refers the metadataservice server itself, not the mongo server
@@ -39,7 +38,7 @@ def server_connect(host, port, protocol='http'):
     """
     global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
-    return _server_path
+    return str(_server_path)
 
 def server_disconnect():
     raise NotImplementedError('Coming soon...')
@@ -76,8 +75,19 @@ def doc_or_uid_to_uid(doc_or_uid):
     """
     if not isinstance(doc_or_uid, six.string_types):
         doc_or_uid = doc_or_uid['uid']
-    return doc_or_uid
+    # type casting
+    return str(doc_or_uid)
 
+
+class NoRunStop(Exception):
+    pass
+
+
+class NoEventDescriptors(Exception):
+    pass
+
+class NoRunStart(Exception):
+    pass
 
 @_ensure_connection
 def runstart_given_uid(uid):
@@ -203,10 +213,7 @@ def run_stop_given_uid(uid):
         The RunStop document fully de-referenced
 
     """
-    runstop = dict(next(find_run_stops(uid=uid)))
-    start_oid = runstop.pop('run_start_id')
-    runstop['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('RunStop', runstop)
+    return next(find_run_stops(uid=uid))
 
 
 @_ensure_connection
@@ -223,10 +230,9 @@ def descriptor_given_uid(uid):
     descriptor : utils.Document
         The EventDescriptor document fully de-referenced
     """
-    descriptor = dict(next(find_descriptors(uid=uid)))
-    start_oid = descriptor.pop('run_start')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('EventDescriptor', descriptor)
+
+    return utils.Document('EventDescriptor',
+                          next(find_descriptors(uid=uid)))
 
 
 @_ensure_connection
@@ -250,15 +256,9 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    
-#     run_start_uid = doc_or_uid_to_uid(run_start)
-#     rstart = run_start_given_uid(run_start.uid)
-#     if rstart:
-    run_stop = next(find_run_stops(run_start=run_start.uid))
-#         run_stop['run_start'] = run_start
+    rstart = doc_or_uid_to_uid(run_start)
+    run_stop = next(find_run_stops(run_start=rstart))
     return utils.Document('RunStop', run_stop)
-#     else:
-#         raise utils.NoRunStop()
 
 
 @_ensure_connection
@@ -283,11 +283,14 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-#     run_start_uid = doc_or_uid_to_uid(run_start)
-#     run_start_given_uid(run_start_uid)
-#     descriptors = find_descriptors(run_start=runs
-    raise NotImplementedError()
-
+    run_start_id = doc_or_uid_to_uid(run_start)
+    res = find_descriptors(run_start=run_start_id)
+    try:
+        return next(res)
+    except StopIteration:
+        raise NoEventDescriptors("No EventDescriptors exists "
+                                 "for {!r}".format(run_start))
+    
 @_ensure_connection
 def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
@@ -370,7 +373,7 @@ def fetch_events_table(descriptor):
     pass
 
 @_ensure_connection
-def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
+def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
     As we describe in design document, time here is strictly the time
     server entry was created, not IOC timestamp. For the difference, refer
@@ -424,32 +427,20 @@ def find_run_starts(range_floor=0, range_ceil=50, **kwargs):
     """
     _format_time(kwargs)
     query = kwargs
-    increment = range_ceil - range_floor + 1
-    has_more = True
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/run_start",
-                         params=ujson.dumps(query))
-        r.raise_for_status()
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
-        else:
-            for c in content:
-                yield utils.Document('RunStart',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
-            else:
-                range_ceil += increment
-                range_floor += increment
-
-
+    r = requests.get(_server_path + "/run_start",
+                     params=ujson.dumps(query))
+    # r.raise_for_status()
+    if r.status_code != 200:
+        return None
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        for c in content:
+            yield utils.Document('RunStart',c)
+        
 @_ensure_connection
-def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
+def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
@@ -485,37 +476,26 @@ def find_run_stops(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """
     _format_time(kwargs)
     query = kwargs
-    increment = range_ceil - range_floor + 1
-    has_more = True
+    rstart = None
     if run_start:
-        try:
-            query['run_start'] = run_start.uid
-        except AttributeError:
-            query['run_start'] = str(run_start)
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/run_stop",
-                         params=ujson.dumps(query))
-        r.raise_for_status()
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
-        else:
-            for c in content:
-                yield utils.Document('RunStop',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
-            else:
-                range_ceil += increment
-                range_floor += increment
-
-
+        query['run_start'] = doc_or_uid_to_uid(run_start)
+        rstart = next(find_run_starts(uid=query['run_start']))
+    r = requests.get(_server_path + "/run_stop",
+                     params=ujson.dumps(query))
+    if r.status_code != 200:
+        return None
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        for c in content:
+            if rstart is None:
+                rstart = next(find_run_starts(uid=c['run_start']))
+            c['run_start'] = rstart
+            yield utils.Document('RunStop',c)
+        
 @_ensure_connection
-def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
+def find_events(descriptor=None, **kwargs):
     """
     Parameters
     -----------
@@ -542,47 +522,31 @@ def find_events(descriptor=None, range_floor=0, range_ceil=1000, **kwargs):
     if 'event_descriptor' in kwargs:
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
     query = kwargs
-    increment = range_ceil - range_floor + 1
+    desc = None
     if descriptor:
-        try:
-            desc_uid = descriptor.uid
-        except AttributeError:
-            desc_uid = descriptor
+        desc_uid = doc_or_uid_to_uid(descriptor)
         query['descriptor'] = desc_uid
     _format_time(query)
-    has_more = True
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/event",
-                         params=ujson.dumps(query))
-        r.raise_for_status()
-        content = ujson.loads(r.text)
-        if not content:
-            StopIteration()
-            break
-        else:
-            for c in content:
-                desc_id = c.pop('descriptor')
-                if descriptor:
-                    c['descriptor'] = descriptor
-                else:
-                    # if descriptor not provided, find and replace
-                    # primarily for event based search to succeed
-                    # should not be used
-                    descriptor = next(find_descriptors(uid=desc_id))
-                yield utils.Document('Event',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
-            else:
-                range_ceil += increment
-                range_floor += increment
+    r = requests.get(_server_path + "/event",
+                     params=ujson.dumps(query))
+    r.raise_for_status()
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        if descriptor:
+            desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
+        for c in content:
+            if desc:
+                # Obvious bottleneck!!!
+                # Fix using local caching!!!!
+                # desc = next(find_descriptors(uid=c['descriptor']))
+                c['descriptor'] = desc
+            yield utils.Document('Event',c)
 
 
 @_ensure_connection
-def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
+def find_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -618,53 +582,173 @@ def find_descriptors(run_start=None, range_floor=0, range_ceil=50, **kwargs):
     """
     _format_time(kwargs)
     query = kwargs
-    increment = range_ceil - range_floor + 1
-    has_more = True
+    rstart = None
     if run_start:
+        query['run_start'] = doc_or_uid_to_uid(run_start)
         try:
-            query['run_start'] = run_start.uid
-        except AttributeError:
-            query['run_start'] = str(run_start)
-    q_range = range_ceil - range_floor
-    while has_more:
-        query['range_floor'] = range_floor
-        query['range_ceil'] = range_ceil
-        r = requests.get(_server_path + "/event_descriptor",
-                         params=ujson.dumps(query))
-        r.raise_for_status()
+            rstart = next(find_run_starts(uid=query['run_start']))
+        except StopIteration:
+            raise NoRunStart()    
+    r = requests.get(_server_path + "/event_descriptor",
+                     params=ujson.dumps(query))
+    if r.status_code != 200:
+        return None
+    else:
         content = ujson.loads(r.text)
         if not content:
-            StopIteration()
-            break
-        else:
+            return None
+        else:    
             for c in content:
+                if rstart is None:
+                    rstart = next(find_run_starts(uid=c['run_start']))
+                c['run_start'] = rstart
                 yield utils.Document('EventDescriptor',c)
-            if len(content) <= q_range:
-                has_more = False
-                break
-            else:
-                range_ceil += increment
-                range_floor += increment
-
+        
+                
 
 @_ensure_connection
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):
-    "Insert a list of events. Server handles this in bulk"
+    "Insert a single event. Server handles this in bulk"
     event = dict(time=time, seq_num=seq_num,
                  data=data, timestamps=timestamps, uid=uid)
-    try:
-        desc_uid = descriptor.uid
-    except AttributeError:
-        desc_uid = str(descriptor)
-    try:
-        event['descriptor'] = desc_uid
-    except AttributeError:
-        event['descriptor'] = desc_uid
+    desc_uid = doc_or_uid_to_uid(descriptor)
+    event['descriptor'] = desc_uid
+
     ev = ujson.dumps(event)
     r = requests.post(_server_path + '/event', data=ev)
     r.raise_for_status()
     return uid
 
+
+def _transform_data(data, timestamps):
+    """
+    Transform from Document spec:
+        {'data': {'key': <value>},
+         'timestamps': {'key': <timestamp>}}
+    to storage format:
+        {'data': {<key>: (<value>, <timestamp>)}.
+    """
+    return {k: (data[k], timestamps[k]) for k in data}
+
+
+
+@_ensure_connection
+def get_events_generator(descriptor):
+    """A generator which yields all events from the event stream
+    Parameters
+    ----------
+    descriptor : doc.Document or dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    Yields
+    ------
+    event : doc.Document
+        All events for the given EventDescriptor from oldest to
+        newest
+    """
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    # descriptor = descriptor_given_uid(descriptor_uid)
+
+
+    ev_cur = find_events(descriptor=descriptor_uid)
+
+
+
+    for ev in ev_cur:
+        ev = dict(ev)
+        ev['descriptor'] = next(find_descriptors(uid=descriptor_uid))
+        yield utils.Document('Event', ev)
+
+
+
+
+
+
+
+@_ensure_connection
+def get_events_table(descriptor):
+    """All event data as tables
+    Parameters
+    ----------
+    descriptor : dict or str
+        The EventDescriptor to get the Events for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    Returns
+    -------
+    descriptor : doc.Document
+        EventDescriptor document
+    data_table : dict
+        dict of lists of the transposed data
+    seq_nums : list
+        The sequence number of each event.
+    times : list
+        The time of each event.
+    uids : list
+        The uid of each event.
+    timestamps_table : dict
+        The timestamps of each of the measurements as dict of lists.  Same
+        keys as `data_table`.
+    """
+    desc_uid = doc_or_uid_to_uid(descriptor)
+    descriptor = descriptor_given_uid(desc_uid)
+    # this will get more complicated once transpose caching layer is in place
+    all_events = list(get_events_generator(desc_uid))
+    # get event sequence numbers
+    seq_nums = [ev['seq_num'] for ev in all_events]
+    # get event times
+    times = [ev['time'] for ev in all_events]
+    # get uids
+    uids = [ev['uid'] for ev in all_events]
+    keys = list(descriptor['data_keys'])
+    # get data values
+    data_table = _transpose(all_events, keys, 'data')
+    # get timestamps
+    timestamps_table = _transpose(all_events, keys, 'timestamps')
+    # return the whole lot
+    return descriptor, data_table, seq_nums, times, uids, timestamps_table
+
+
+@_ensure_connection
+def bulk_insert_events(event_descriptor, events, validate=False):
+    """Bulk insert many events
+    Parameters
+    ----------
+    event_descriptor : doc.Document or dict or str
+        The Descriptor to insert event for.  Can be either
+        a Document/dict with a 'uid' key or a uid string
+    events : iterable
+       iterable of dicts matching the bs.Event schema
+    validate : bool, optional
+       If it should be checked that each pair of data/timestamps
+       dicts has identical keys
+    Returns
+    -------
+    ret : dict
+        dictionary of details about the insertion
+    """
+    BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
+                     'timestamps do not match:\n data: {}\ntimestamps:{}"""
+    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
+    # descriptor = descriptor_given_uid(descriptor_uid)
+    # let server validate this in bulk. It is much less expensive this way
+    for ev in events:
+        desc_id = doc_or_uid_to_uid(event_descriptor)
+        ev['descriptor'] = desc_id
+        if validate:
+            if ev['data'].keys() != ev['timestamps'].keys():
+                raise ValueError(
+                    BAD_KEYS_FMT.format(ev['data'].keys(),
+                                        ev['timestamps'].keys()))
+
+            # transform the data to the storage format
+            val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
+            ev_out = dict(descriptor=desc_id, uid=ev['uid'],
+                  data=val_ts_tuple, time=ev['time'],
+                  seq_num=ev['seq_num'])
+            ev = ev_out
+    payload = ujson.dumps(list(events))
+    r = requests.post(_server_path + '/event', data=payload)
+    return r.status_code
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
@@ -698,14 +782,12 @@ def insert_descriptor(run_start, data_keys, time, uid,
     """
     payload = dict(data_keys=data_keys,
                    time=time, uid=uid, custom=custom)
-    try:
-        rs_uid = run_start.uid
-    except AttributeError:
-        rs_uid = str(run_start)
+    rs_uid = doc_or_uid_to_uid(run_start)
     payload['run_start'] = rs_uid
     r = requests.post(_server_path + '/event_descriptor', 
                       data=ujson.dumps(payload))
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise ValueError('Bad event descriptor')
     return uid
 
 
@@ -748,10 +830,17 @@ def insert_run_start(time, scan_id, beamline_id, uid, config={},
         The run_start document that is successfully saved in mongo
 
     """
-    data = locals()
+    data = dict(time=time, scan_id=scan_id, beamline_id=beamline_id, uid=uid,
+                config=config, owner=owner, group=group, project=project)
+    data = {k: v if v is not None else '' for k,v in data.items()}
+
     if custom:
-        data.update(custom)
-    payload = ujson.dumps(data)
+        z = data.copy()
+        z.update(custom)
+        payload = ujson.dumps(z)
+    else:
+        data['custom'] = {}
+        payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
     r.raise_for_status()
     return uid
@@ -788,18 +877,20 @@ def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
     run_stop : mongoengine.Document
         Inserted mongoengine object
     """
-    params = locals()
-    rs_obj = params.pop('run_start')
-    try:
-        params['run_start'] = rs_obj.uid
-    except AttributeError:
-        params['run_start'] = rs_obj
-    payload = ujson.dumps(params)
-    r = requests.post(_server_path + '/run_stop', data=payload)
-    if r.status_code != 200:
-        raise Exception("Server cannot complete the request", r)
+    params = dict(time=time, uid=uid, config=config, exit_status=exit_status,
+                  reason=reason)
+    params['run_start'] = doc_or_uid_to_uid(run_start)
+    if custom:
+        z = params.copy()
+        z.update(custom)
+        payload = ujson.dumps(z)
     else:
-        return uid
+        params['custom'] = {}
+        payload = ujson.dumps(params)
+    r = requests.post(_server_path + '/run_stop', data=payload)
+    if r.status_code == 500:
+        raise RuntimeError('RunStop already exists for this RunStart')
+    return uid
 
 
 @_ensure_connection
@@ -829,8 +920,9 @@ def _format_time(search_dict):
         search_dict['time'] = time_dict
 
 
-def find_last(range=1):
-    pass
+def find_last(num=1):
+    return find_run_starts(range_floor=0, range_ceil=num)
+
 
 def monitor_run_start():
     r = requests.get(_server_path + '/run_start_capped')

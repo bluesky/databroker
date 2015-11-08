@@ -68,7 +68,6 @@ def noisy(val, sigma=0.01):
 
 get_time = ttime.time
 
-
 def example(func):
     @wraps(func)
     def mock_run_start(run_start_uid=None, sleep=0, make_run_stop=True):
