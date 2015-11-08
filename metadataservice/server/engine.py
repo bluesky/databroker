@@ -46,7 +46,7 @@ def db_connect(database ,host, port, replicaset=None, write_concern="majority",
         Async server object which comes in handy as server has to juggle multiple clients
         and makes no difference for a single client compared to pymongo
     """
-    client = motor.MotorClient(host, port, replicaset=replicaset)
+    client = motor.MotorClient(host, int(port), replicaset=replicaset)
     client.write_concern = {'w': write_concern, 'wtimeout': write_timeout}
     database = client[database]
     return database
@@ -69,19 +69,12 @@ class RunStartHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                            "range_ceil and range_floor required parameters")
         _id = query.pop('_id', None)
         if _id:
             raise tornado.web.HTTPError(500, 'No ObjectId search supported')
         docs = yield database.run_start.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-            #to_list is async so no forcing to make synchronous
-        if docs == [] and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
             utils._return2client(self, docs)
@@ -131,15 +124,9 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                                        "range_ceil and range_floor required parameters")
         docs = yield database.event_descriptor.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(500, 
                                         reason='No results found for query')
         else:
@@ -190,15 +177,9 @@ class RunStopHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                                        "range_ceil and range_floor required parameters")
         docs = yield database.run_stop.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(404, 
                                         'No results for given query' + str(query))
         else:
@@ -210,6 +191,11 @@ class RunStopHandler(tornado.web.RequestHandler):
     def post(self):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
+        docs = yield database.run_stop.find({'run_start': data['run_start']}).sort(
+            'time', pymongo.ASCENDING).to_list(None)
+        if docs:
+            raise tornado.web.HTTPError(500,
+                                        'A run_stop already created for given run_start')
         jsonschema.validate(data, utils.schemas['run_stop'])
         result = yield database.run_stop.insert(data)
         database.run_stop.create_index([('time', pymongo.ASCENDING), 
@@ -230,6 +216,7 @@ class RunStopHandler(tornado.web.RequestHandler):
     def delete(self):
         raise tornado.web.HTTPError(404)
 
+    
 
 class EventHandler(tornado.web.RequestHandler):
     """Handler for event insert and query operations.
@@ -248,15 +235,9 @@ class EventHandler(tornado.web.RequestHandler):
     def get(self):
         database = self.settings['db']
         query = utils._unpack_params(self)
-        try:
-            start = query.pop('range_floor')
-            stop = query.pop('range_ceil')
-        except KeyError:
-            raise tornado.web.HTTPError(400,
-                                        "range_ceil and range_floor required parameters")
         docs = yield database.event.find(query).sort(
-            'time', pymongo.ASCENDING)[start:stop].to_list(None)
-        if not docs and start == 0:
+            'time', pymongo.ASCENDING).to_list(None)
+        if not docs:
             raise tornado.web.HTTPError(404,
                                         status_code='No results for given query' + str(query))
         else:
@@ -270,11 +251,11 @@ class EventHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         if isinstance(data, list):
             jsonschema.validate(data, utils.schemas['bulk_events'])
-            bulk = yield database.event.initialize_unordered_bulk_op()
+            bulk = database.event.initialize_unordered_bulk_op()
             for _ in data:
                 bulk.insert(_)
             try:
-                yield bulk.execute()
+                bulk.execute()
             except pymongo.errors.BulkWriteError as err:
                 raise tornado.web.HTTPError(500, str(err))
             database.event.create_index([('time', pymongo.ASCENDING),
