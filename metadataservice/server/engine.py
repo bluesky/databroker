@@ -64,9 +64,18 @@ class RunStartHandler(tornado.web.RequestHandler):
         Insert a run_start document.Same validation method as bluesky, secondary
         safety net.
     """
+    def set_default_headers(self):
+        self.set_header('Access-Control-Allow-Origin', '*')
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.set_header('Access-Control-Max-Age', 1000)
+        #self.set_header('Access-Control-Allow-Headers', 'origin, x-csrftoken, content-type, accept')
+        self.set_header('Access-Control-Allow-Headers', '*')
+        self.set_header('Content-type', 'application/json')
+
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
+        #self.set_default_headers()
         database = self.settings['db']
         query = utils._unpack_params(self)
         _id = query.pop('_id', None)
