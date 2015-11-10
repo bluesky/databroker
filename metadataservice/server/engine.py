@@ -51,8 +51,19 @@ def db_connect(database ,host, port, replicaset=None, write_concern="majority",
     database = client[database]
     return database
 
+class DefaultHandler(tornado.web.RequestHandler):
+    """DefaultHandler which takes care of CORS
+    """
+    @tornado.web.asynchronous
+    def set_default_headers(self):
+        self.set_header('Access-Control-Allow-Origin', '*')
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.set_header('Access-Control-Max-Age', 1000)
+        #self.set_header('Access-Control-Allow-Headers', 'origin, x-csrftoken, content-type, accept')
+        self.set_header('Access-Control-Allow-Headers', '*')
+        self.set_header('Content-type', 'application/json')
 
-class RunStartHandler(tornado.web.RequestHandler):
+class RunStartHandler(DefaultHandler):
     """Handler for run_start insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
     
@@ -64,14 +75,6 @@ class RunStartHandler(tornado.web.RequestHandler):
         Insert a run_start document.Same validation method as bluesky, secondary
         safety net.
     """
-    def set_default_headers(self):
-        self.set_header('Access-Control-Allow-Origin', '*')
-        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.set_header('Access-Control-Max-Age', 1000)
-        #self.set_header('Access-Control-Allow-Headers', 'origin, x-csrftoken, content-type, accept')
-        self.set_header('Access-Control-Allow-Headers', '*')
-        self.set_header('Content-type', 'application/json')
-
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
@@ -121,7 +124,7 @@ class RunStartHandler(tornado.web.RequestHandler):
                                     status='Not allowed on server')
 
 
-class EventDescriptorHandler(tornado.web.RequestHandler):
+class EventDescriptorHandler(DefaultHandler):
     """Handler for event_descriptor insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
     
@@ -178,7 +181,7 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(404)
 
 
-class RunStopHandler(tornado.web.RequestHandler):
+class RunStopHandler(DefaultHandler):
     """Handler for run_stop insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
     
@@ -240,7 +243,7 @@ class RunStopHandler(tornado.web.RequestHandler):
 
     
 
-class EventHandler(tornado.web.RequestHandler):
+class EventHandler(DefaultHandler):
     """Handler for event insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
     
@@ -300,7 +303,7 @@ class EventHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(404)
 
 
-class CappedRunStartHandler(tornado.web.RequestHandler):
+class CappedRunStartHandler(DefaultHandler):
     """Handler for capped run_start collection that is used for caching 
     and monitoring.
     """
@@ -350,7 +353,7 @@ class CappedRunStartHandler(tornado.web.RequestHandler):
     def delete(self):
         raise tornado.web.HTTPError(404)
 
-class CappedRunStopHandler(tornado.web.RequestHandler):
+class CappedRunStopHandler(DefaultHandler):
     """Handler for capped run_stop collection that is used for caching 
     and monitoring.
     """
