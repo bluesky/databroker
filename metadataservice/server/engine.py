@@ -87,8 +87,13 @@ class RunStartHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
         result = yield database.run_start.insert(data)
+        database.run_start.create_index([('uid', pymongo.ASCENDING)],
+                                        unique=True, background=True) 
         database.run_start.create_index([('time', pymongo.ASCENDING), 
-                                         ('scan_id', pymongo.ASCENDING)])
+                                         ('scan_id', pymongo.ASCENDING)],
+                                        background=True)
+        database.run_start.create_index([('owner', pymongo.ASCENDING)],
+                                        background=True, sparse=True) 
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -141,8 +146,12 @@ class EventDescriptorHandler(tornado.web.RequestHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['descriptor'])
         result = yield database.event_descriptor.insert(data)
-        database.event_descriptor.create_index([('run_start', pymongo.ASCENDING), 
-                                                ('time', pymongo.ASCENDING)])
+        database.event_descriptor.create_index([('uid', pymongo.ASCENDING)],
+                                        unique=True, background=True) 
+        database.event_descriptor.create_index([('run_start', pymongo.ASCENDING),
+                                                ('time', pymongo.ASCENDING),
+                                                ('data_keys', pymongo.ASCENDING)],
+                                               unique=False, background=True) 
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -198,9 +207,13 @@ class RunStopHandler(tornado.web.RequestHandler):
                                         'A run_stop already created for given run_start')
         jsonschema.validate(data, utils.schemas['run_stop'])
         result = yield database.run_stop.insert(data)
+        database.run_stop.create_index([('uid', pymongo.ASCENDING)],
+                                        unique=True, background=True) 
+        database.run_stop.create_index([('run_start', pymongo.ASCENDING)],
+                                               unique=True, background=True)
         database.run_stop.create_index([('time', pymongo.ASCENDING), 
-                                        ('exit_status', pymongo.ASCENDING), 
-                                        ('run_start', pymongo.ASCENDING)])
+                                        ('exit_status', pymongo.ASCENDING)],
+                                       background=True)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -259,7 +272,8 @@ class EventHandler(tornado.web.RequestHandler):
             except pymongo.errors.BulkWriteError as err:
                 raise tornado.web.HTTPError(500, str(err))
             database.event.create_index([('time', pymongo.ASCENDING),
-                                          ('descriptor', pymongo.ASCENDING)])
+                                          ('descriptor', pymongo.ASCENDING)],
+                                        background=True)
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = yield database.event.insert(data)
