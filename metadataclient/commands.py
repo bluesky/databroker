@@ -749,6 +749,8 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
     if len(events) > 10000:
         chunks = [events[x:x + 10000] for x in range(0, len(events), 10000)]
+    else:
+        chunks = events
     for c in chunks:
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
