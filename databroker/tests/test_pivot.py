@@ -96,7 +96,7 @@ def test_pivot_smoke():
     pevs = list(pivot_timeseries(evs, 'abg', 'cdh'))
     for j, ev in enumerate(pevs):
         assert_equal(j, ev['seq_no'])
-        assert_equal(ev['data']['fr_no'], j % M)
+        assert_equal(ev['data']['_ind'], j % M)
 
         desc = ev['descriptor']
         for k in 'abgcdh':
@@ -117,7 +117,7 @@ def test_pivot_smoke():
             assert_equal(src, str(j // M))
             source_ev = ev_dict[src]
             assert_array_equal(ev['data'][k],
-                               source_ev['data'][k][ev['data']['fr_no']])
+                               source_ev['data'][k][ev['data']['_ind']])
 
 
 def test_zip_events_smoke():

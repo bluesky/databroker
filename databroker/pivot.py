@@ -52,9 +52,9 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
                 'data_keys': dict(),
                 'run_start': orig_desc['run_start'],
                 'time': ttime.time()}
-    new_desc['data_keys']['fr_no'] = {'shape': (),
-                                      'dtype': 'number',
-                                      'source': 'pivot'}
+    new_desc['data_keys']['_ind'] = {'shape': (),
+                                     'dtype': 'number',
+                                     'source': 'pivot'}
     for key in static_keys:
         new_desc['data_keys'][key] = orig_desc['data_keys'][key]
     for key in pivot_keys:
@@ -86,7 +86,7 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
 
         pivot_data = zip(*[data[k] for k in pivot_keys])
 
-        for fr_no, _data in enumerate(pivot_data):
+        for _ind, _data in enumerate(pivot_data):
             new_ev = {'uid': str(uuid.uuid4()),
                       'time': time,
                       'descriptor': inner_desc,
@@ -94,9 +94,9 @@ def pivot_timeseries(events, pivot_keys, static_keys=None):
                       }
             inner_data = dict(static_data)
             inner_data.update({k: v for k, v in zip(pivot_keys, _data)})
-            inner_data['fr_no'] = fr_no
+            inner_data['_ind'] = _ind
             inner_ts = dict(static_ts)
-            inner_ts['fr_no'] = ttime.time()
+            inner_ts['_ind'] = ttime.time()
             new_ev['data'] = inner_data
             new_ev['timestamps'] = inner_ts
             yield new_ev
