@@ -177,26 +177,6 @@ def test_uid_lookup():
     assert_raises(ValueError, lambda: db[uid[0]])
 
 
-def _search_helper(query):
-    # basically assert that the search does not raise anything
-    db[query]
-
-
-def test_search_for_smoke():
-    # smoketest the search with a set
-    queries = [
-        {'-1', '-2'},
-        ('-1', '-2'),
-        '-1',
-        -1,
-        ['-1', '-2'],
-        deque(['-1', -2]),
-        slice(-1, -5, -1),
-    ]
-    for query in queries:
-        yield _search_helper, query
-
-
 def test_data_key():
     rs1_uid = insert_run_start(time=100., scan_id=1,
                                owner='nedbrainard', beamline_id='example',
@@ -219,6 +199,32 @@ def test_data_key():
     assert_equal(len(result2), 1)
     actual = result2[0]['start']['uid']
     assert_equal(actual, str(rs2.uid))
+
+
+
+def _search_helper(query):
+    # basically assert that the search does not raise anything
+    db[query]
+
+
+def test_search_for_smoke():
+    # smoketest the search with a set
+    uid1 = db[-1]['start']['uid'][:8]
+    uid2 = db[-2]['start']['uid'][:8]
+    uid3 = db[-3]['start']['uid'][:8]
+    queries = [
+        {-1, -2},
+        (-1, -2),
+        -1,
+        uid1,
+        six.text_type(uid1),
+        [uid1, [uid2, uid3]],
+        [-1, uid1, slice(-5, 0)],
+        slice(-5, 0, 2),
+        slice(-5, 0),
+    ]
+    for query in queries:
+        yield _search_helper, query
 
 
 @raises(ValueError)
