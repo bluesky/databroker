@@ -100,6 +100,11 @@ def _(key):
 
 
 @search.register(str)
+@search.register(six.text_type)
+# py2: six.string_types = (basestring,)
+# py3: six.string_types = (str,)
+# so we need to just grab the only element out of this
+@search.register(six.string_types,)
 def _(key):
     logger.info('Interpreting key = %s as a str' % key)
     results = None
