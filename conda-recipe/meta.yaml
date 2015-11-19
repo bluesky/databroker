@@ -22,7 +22,7 @@ requirements:
     - channelarchiver
     - six
     - tzlocal
-    - singledispatch [py26 or py27 or py33]
+    - singledispatch [py27]
 
 test:
   requires:
