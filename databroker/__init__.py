@@ -6,7 +6,8 @@ __all__ = ['DataBroker', 'get_images', 'get_events', 'get_table']
 
 
 # generally useful imports
-from .databroker import DataBroker, get_events, get_table, search
+from .databroker import (DataBroker, DataBroker as db,
+                         get_events, get_table, search)
 from .pims_readers import get_images
 from .handler_registration import register_builtin_handlers
 
