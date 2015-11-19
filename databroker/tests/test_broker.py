@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+from collections import deque
 import six
 import uuid
 import logging
@@ -179,9 +179,24 @@ def test_uid_lookup():
     assert_raises(ValueError, lambda: db[uid[0]])
 
 
-def test_set_search():
+def _search_helper(query):
+    # basically assert that the search does not raise anything
+    db[query]
+
+
+def test_search_for_smoke():
     # smoketest the search with a set
-    db[{-1, -2}]
+    queries = [
+        {'-1', '-2'},
+        ('-1', '-2'),
+        '-1',
+        -1,
+        ['-1', '-2'],
+        deque(['-1', -2]),
+        slice(-1, -5, -1),
+    ]
+    for query in queries:
+        yield _search_helper, query
 
 
 def test_data_key():
