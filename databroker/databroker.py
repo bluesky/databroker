@@ -39,6 +39,7 @@ TZ = str(tzlocal.get_localzone())
 
 @singledispatch
 def search(key):
+    logger.info('Using default search for key = %s' % key)
     raise ValueError("Must give an integer scan ID like [6], a slice "
                      "into past scans like [-5], [-5:], or [-5:-9:2], "
                      "a list like [1, 7, 13], a (partial) uid "
@@ -49,6 +50,7 @@ def search(key):
 @search.register(slice)
 def _(key):
     # Interpret key as a slice into previous scans.
+    logger.info('Interpreting key = %s as a slice' % key)
     if key.start is not None and key.start > -1:
         raise ValueError("slice.start must be negative. You gave me "
                          "key=%s The offending part is key.start=%s"
@@ -74,6 +76,7 @@ def _(key):
 
 @search.register(numbers.Integral)
 def _(key):
+    logger.info('Interpreting key = %s as an integer' % key)
     if key > -1:
         # Interpret key as a scan_id.
         gen = find_run_starts(scan_id=key)
@@ -98,6 +101,7 @@ def _(key):
 
 @search.register(str)
 def _(key):
+    logger.info('Interpreting key = %s as a str' % key)
     results = None
     if len(key) >= 36:
         # Interpret key as a uid (or the few several characters of one).
@@ -125,6 +129,8 @@ def _(key):
 @search.register(tuple)
 @search.register(MutableSequence)
 def _(key):
+    logger.info('Interpreting key = {} as a set, tuple or MutableSequence'
+                ''.format(key))
     return [search(k) for k in key]
 
 
