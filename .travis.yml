@@ -46,6 +46,9 @@ install:
   # conda-forge is activated on metadatastore, filestore and channelarchiver
   # - conda config --add channels lightsource2-dev
   # - conda install -n testenv metadatastore filestore channelarchiver
+  - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
+      pip install singledispatch;
+    fi;
   - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
   - pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore
   - pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver
