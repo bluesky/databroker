@@ -746,9 +746,16 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                   data=val_ts_tuple, time=ev['time'],
                   seq_num=ev['seq_num'])
             ev = ev_out
-    payload = ujson.dumps(list(events))
-    r = requests.post(_server_path + '/event', data=payload)
+    
+    chunk_size = 10000
+    data_len = len(events)
+    chunk_count = data_len // chunk_size + bool(data_len % chunk_size)
+    chunks = (events[j*chunk_size:(j+1)*chunk_size] for j in range(chunk_count))
+    for c in chunks:
+        payload = ujson.dumps(list(c))
+        r = requests.post(_server_path + '/event', data=payload, timeout=None)
     return r.status_code
+
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
