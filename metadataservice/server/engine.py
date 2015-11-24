@@ -161,14 +161,13 @@ class EventDescriptorHandler(DefaultHandler):
         database.event_descriptor.create_index([('uid', pymongo.ASCENDING)],
                                         unique=True, background=True) 
         database.event_descriptor.create_index([('run_start', pymongo.ASCENDING),
-                                                ('time', pymongo.ASCENDING),
-                                                ('data_keys', pymongo.ASCENDING)],
+                                                ('time', pymongo.ASCENDING)],
                                                unique=False, background=True) 
         if not result:
             raise tornado.web.HTTPError(500)
         else:
             utils._return2client(self, data)
-            
+ 
     @tornado.web.asynchronous
     @gen.coroutine
     def put(self):
