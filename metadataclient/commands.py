@@ -528,20 +528,24 @@ def find_events(descriptor=None, **kwargs):
         query['descriptor'] = desc_uid
     _format_time(query)
     r = requests.get(_server_path + "/event",
-                     params=ujson.dumps(query))
+                     params=ujson.dumps(query),
+                     stream=True)
     r.raise_for_status()
+    # content = ujson.loads(r.raw.readlines())
     content = ujson.loads(r.text)
     if not content:
         return None
     else:
         if descriptor:
-            desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
+            # desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
+            desc = {}
         for c in content:
             if desc:
                 # Obvious bottleneck!!!
                 # Fix using local caching!!!!
                 # desc = next(find_descriptors(uid=c['descriptor']))
                 c['descriptor'] = desc
+            #yield c
             yield utils.Document('Event',c)
 
 
@@ -754,8 +758,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     for c in chunks:
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
-    return r.status_code
-
+        r.raise_for_status()
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
