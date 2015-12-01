@@ -13,9 +13,9 @@ import argparse
 
 
 # number of motor positions to fake
-num_motor_positions = 50
+num1 = num_motor_positions = 50
 # number of temperatures to record per motor position
-num_temps_per_motor_position = 10
+num2 = num_temps_per_motor_position = 10
 
 # These are imported from MDS and cannot be imported as things.
 noisy = common.noisy
