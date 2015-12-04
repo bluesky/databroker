@@ -65,7 +65,7 @@ def explorer(ax):
             try:
                 hdr = db[scan]
             except ValueError:
-                print("%s is not a valid scan" % scan)
+                logger.error("%s is not a valid scan" % scan)
             else:
                 if scan not in data:
                     scalar_keys = set()
@@ -95,12 +95,12 @@ def explorer(ax):
 
 
     def get_scans(scans):
-        print('scans = %s' % scans)
+        logger.debug('scans = %s' % scans)
         if ',' in scans:
             scans = scans.split(',')
         else:
             scans = [scans]
-        print('scans = %s' % scans)
+        logger.debug('scans = %s' % scans)
         all_scans = set()
 
         splitter = {
@@ -125,9 +125,14 @@ def explorer(ax):
 
 
     def replot(sender):
-        print('sender = %s' % sender)
+        """
+        Parameters
+        ----------
+        sender : str
+            The name of the attribute that changed.
+        """
         scans_to_plot = scan_select.value
-        print('input scan value = {}'.format(scans_to_plot))
+        logger.debug('input scan value = {}'.format(scans_to_plot))
         x_name = x_dropdown.value
         y_names= y_select.value
         if not scans_to_plot or not x_name or not y_names:
@@ -150,7 +155,7 @@ def explorer(ax):
 
         plt.show()
 
-        print('selected scans = {}'.format(scan_select.value))
+        logger.debug('selected scans = {}'.format(scan_select.value))
     data = {}
     # create the widgets
 
