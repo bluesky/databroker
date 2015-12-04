@@ -6,6 +6,7 @@ from collections import namedtuple
 from traitlets import Tuple, Unicode, HasTraits, Set, Int, link
 
 import logging
+from collections import namedtuple
 logger = logging.getLogger(__name__)
 
 
@@ -176,4 +177,4 @@ def explorer(ax):
                'key_select': key_select,
                'scan_text': scan_text}
     box = VBox([fill_checkbox, HBox([scan_text, key_select]), scan_select, x_dropdown, y_select])
-    return widgets, box
+    return namedtuple('explorer_return_values', ['widgets', 'display'])(widgets, box)
