@@ -33,8 +33,10 @@ def explorer(ax):
     Copy/paste this code block into a notebook and execute the cell ::
 
         from databroker.widgets import explorer
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
         %matplotlib notebook
-        widgets, display = explorer.explorer()
+        widgets, display = explorer.explorer(ax)
         display
     """
 
