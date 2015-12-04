@@ -10,7 +10,32 @@ logger = logging.getLogger(__name__)
 
 
 
-def explorer():
+def explorer(ax):
+    """A databroker explorer widget. See below for suggested usage
+
+    Parameters
+    ----------
+    ax : matplotlib.Axes
+        Axes that these data should be plotted into.
+        Note that this widget will call ax.cla() frequently on this axis.
+
+    Returns
+    -------
+    widgets : dict
+        Dictionary of all the ipython widgets that were created for this
+        explorer widget
+    display : ipywidgets.widgets.widget_box.FlexBox
+        The thing that contains the control widgets
+
+    Notes
+    -----
+    Copy/paste this code block into a notebook and execute the cell ::
+
+        from databroker.widgets import explorer
+        %matplotlib notebook
+        widgets, display = explorer.explorer()
+        display
+    """
 
     def _has_hyphen(scan):
         start, stop = scan.split('-')
