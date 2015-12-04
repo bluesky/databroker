@@ -3,7 +3,11 @@ from ipywidgets import (interact, Text, Dropdown, Checkbox, VBox, HBox,
                         SelectMultiple, ToggleButtons, Select)
 import matplotlib.pyplot as plt
 from collections import namedtuple
-from traitlets import Tuple, Unicode, HasTraits, Set, Int, observe, link
+from traitlets import Tuple, Unicode, HasTraits, Set, Int, link
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 def explorer():
@@ -20,16 +24,14 @@ def explorer():
             step = 1
         return list(range(int(start), int(stop)+1, int(step)))
 
-    splitter = {
-        '-': _has_hyphen,
-        ':': _has_colon,
-    }
 
     def scan_submit(sender):
         all_scans = get_scans(scan_text.value)
+        logger.debug('all_scans = %s', all_scans)
         valid_scans = set()
         for scan in all_scans:
             if scan in data:
+                valid_scans.add(scan)
                 # skip scans where we have already gotten the data
                 continue
             # for now assume we have one scan per scan_id. This is a bad assumption
@@ -38,12 +40,16 @@ def explorer():
                 hdr = db[scan]
             except ValueError:
                 print("%s is not a valid scan" % scan)
-                pass
             else:
                 if scan not in data:
-                    data[scan] = get_table(hdr, fill=fill_checkbox.value)
+                    scalar_keys = set()
+                    for descriptor in hdr['descriptors']:
+                        for k, v in descriptor['data_keys'].items():
+                            if 'external' not in v:
+                                scalar_keys.add(k)
+                    data[scan] = get_table(hdr, fill=fill_checkbox.value, fields=scalar_keys)
                 valid_scans.add(scan)
-        print('valid_scans = %s' % valid_scans)
+        logger.debug('valid_scans = %s', valid_scans)
         if valid_scans:
             if key_select.value == 'Intersection':
                 keys = set.intersection(*[set(d) for scan_id, d in data.items()])
@@ -70,6 +76,11 @@ def explorer():
             scans = [scans]
         print('scans = %s' % scans)
         all_scans = set()
+
+        splitter = {
+            '-': _has_hyphen,
+            ':': _has_colon,
+        }
         for scan in scans:
             for delimiter, split in splitter.items():
                 # parse the scans with delimiters
@@ -91,16 +102,25 @@ def explorer():
         print('sender = %s' % sender)
         scans_to_plot = scan_select.value
         print('input scan value = {}'.format(scans_to_plot))
-        x = x_dropdown.value
-        y = y_select.value
-        if not scans_to_plot or not x or not y:
+        x_name = x_dropdown.value
+        y_names= y_select.value
+        if not scans_to_plot or not x_name or not y_names:
             return
         ax.cla()
         for scan in scans_to_plot:
-            for y_axis in y:
-                ax.plot(data[scan][x], data[scan][y_axis], label='%s, %s' % (scan, y_axis))
+            for y_axis in y_names:
+                try:
+                    x_data = data[scan][x_name]
+                    y_data = data[scan][y_axis]
+                    label = '%s, %s' % (scan, y_axis)
+                except KeyError:
+                    x_data = []
+                    y_data = []
+                    label = '%s, %s. No data available' % (scan, y_axis)
+
+                ax.plot(x_data, y_data, label=label)
         ax.legend(loc=0)
-        ax.set_xlabel(x)
+        ax.set_xlabel(x_name)
 
         plt.show()
 
@@ -117,9 +137,11 @@ def explorer():
     scan_text = Text(description="Scan IDs", options=['ab', 'c'])
 
     scan_text.on_submit(scan_submit)
-    scan_select.observe(replot, 'value')
-    x_dropdown.observe(replot, 'value')
-    y_select.observe(replot, 'value')
+    scan_select.on_trait_change(replot, 'value')
+    x_dropdown.on_trait_change(replot, 'value')
+    y_select.on_trait_change(replot, 'value')
+    # recompute the plottable keys when intersection or all is computed
+    key_select.on_trait_change(scan_submit, 'value')
 
     fig, ax = plt.subplots()
     widgets = {'x_dropdown': x_dropdown,
@@ -128,5 +150,5 @@ def explorer():
                'fill_checkbox': fill_checkbox,
                'key_select': key_select,
                'scan_text': scan_text}
-    box = VBox([fill_checkbox, scan_text, scan_select, x_dropdown, y_select])
+    box = VBox([fill_checkbox, HBox([scan_text, key_select]), scan_select, x_dropdown, y_select])
     return widgets, box
