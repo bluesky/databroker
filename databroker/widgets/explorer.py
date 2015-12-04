@@ -169,7 +169,6 @@ def explorer(ax):
     # recompute the plottable keys when intersection or all is computed
     key_select.on_trait_change(scan_submit, 'value')
 
-    fig, ax = plt.subplots()
     widgets = {'x_dropdown': x_dropdown,
                'y_select': y_select,
                'scan_select': scan_select,
