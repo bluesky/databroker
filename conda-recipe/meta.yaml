@@ -24,6 +24,8 @@ requirements:
     - tzlocal
     - singledispatch [py27]
     - doct
+    - ipywidgets
+    - traitlets
 
 test:
   requires:
