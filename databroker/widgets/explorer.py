@@ -1,14 +1,11 @@
-from databroker import DataBroker as db, get_events, get_table
-from ipywidgets import (interact, Text, Dropdown, Checkbox, VBox, HBox,
-                        SelectMultiple, ToggleButtons, Select)
+from databroker import DataBroker as db, get_table
+from ipywidgets import (Text, Checkbox, VBox, HBox, SelectMultiple,
+                        ToggleButtons, Select)
 import matplotlib.pyplot as plt
 from collections import namedtuple
-from traitlets import Tuple, Unicode, HasTraits, Set, Int, link
 
 import logging
-from collections import namedtuple
 logger = logging.getLogger(__name__)
-
 
 
 def explorer(ax):
@@ -52,7 +49,6 @@ def explorer(ax):
             step = 1
         return list(range(int(start), int(stop)+1, int(step)))
 
-
     def scan_submit(sender):
         all_scans = get_scans(scan_text.value)
         logger.debug('all_scans = %s', all_scans)
@@ -62,8 +58,11 @@ def explorer(ax):
                 valid_scans.add(scan)
                 # skip scans where we have already gotten the data
                 continue
-            # for now assume we have one scan per scan_id. This is a bad assumption
-            # and should be fortified before too long
+            # for now assume we have one scan per scan_id. This is a bad
+            # assumption and should be fixed before too long. As of now, `data`
+            # will only keep one of the scans. This could be fixed by making
+            # the keys of the `data` dict the `uid` of the RunStart document
+            # instead of using the scan_id.
             try:
                 hdr = db[scan]
             except ValueError:
@@ -75,14 +74,17 @@ def explorer(ax):
                         for k, v in descriptor['data_keys'].items():
                             if 'external' not in v:
                                 scalar_keys.add(k)
-                    data[scan] = get_table(hdr, fill=fill_checkbox.value, fields=scalar_keys)
+                    data[scan] = get_table(hdr, fill=fill_checkbox.value,
+                                           fields=scalar_keys)
                 valid_scans.add(scan)
         logger.debug('valid_scans = %s', valid_scans)
         if valid_scans:
             if key_select.value == 'Intersection':
-                keys = set.intersection(*[set(d) for scan_id, d in data.items()])
+                keys = set.intersection(*[set(d) for scan_id, d
+                                          in data.items()])
             else:
-                keys = set([key for scan_id, d in data.items() for key in list(d)])
+                keys = set([key for scan_id, d in data.items() for key
+                            in list(d)])
         else:
             keys = []
         sorted_scans = sorted(list(valid_scans))
@@ -94,7 +96,6 @@ def explorer(ax):
         x_dropdown.options = sorted_keys
     #     y_select.selected_labels = []
         y_select.options = sorted_keys
-
 
     def get_scans(scans):
         logger.debug('scans = %s' % scans)
@@ -120,11 +121,11 @@ def explorer(ax):
                 try:
                     scan = int(scan)
                 except ValueError:
-                    raise ValueError("'%s' cannot be interpreted as an integer" % scan)
+                    raise ValueError("'%s' cannot be interpreted as an "
+                                     "integer" % scan)
                 # if no error, append the scan as an integer
                 all_scans.add(scan)
         return all_scans
-
 
     def replot(sender):
         """
@@ -136,7 +137,7 @@ def explorer(ax):
         scans_to_plot = scan_select.value
         logger.debug('input scan value = {}'.format(scans_to_plot))
         x_name = x_dropdown.value
-        y_names= y_select.value
+        y_names = y_select.value
         if not scans_to_plot or not x_name or not y_names:
             return
         ax.cla()
@@ -164,7 +165,8 @@ def explorer(ax):
     x_dropdown = Select(description="X axis")
     y_select = SelectMultiple(description='Y axes')
     scan_select = SelectMultiple(description="Select scans")
-    fill_checkbox = Checkbox(description='Get file data (slow!)', disabled=True)
+    fill_checkbox = Checkbox(description='Get file data (slow!)',
+                             disabled=True)
     key_select = ToggleButtons(description='Plotting keys',
                                options=['Intersection', 'All'])
     scan_text = Text(description="Scan IDs", options=['ab', 'c'])
@@ -182,5 +184,10 @@ def explorer(ax):
                'fill_checkbox': fill_checkbox,
                'key_select': key_select,
                'scan_text': scan_text}
-    box = VBox([fill_checkbox, HBox([scan_text, key_select]), scan_select, x_dropdown, y_select])
-    return namedtuple('explorer_return_values', ['widgets', 'display'])(widgets, box)
+    box = VBox([fill_checkbox,
+                HBox([scan_text, key_select]),
+                scan_select,
+                x_dropdown,
+                y_select])
+    return namedtuple('explorer_return_values',
+                      ['widgets', 'display'])(widgets, box)
