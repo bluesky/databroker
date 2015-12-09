@@ -2,12 +2,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import tornado.web
 from pkg_resources import resource_filename as rs_fn
-# import ujson
 import ujson
-import datetime
-import six
-from bson.objectid import ObjectId
-from bson import json_util
+
 
 SCHEMA_PATH = 'schema'
 SCHEMA_NAMES = {'run_start': 'run_start.json',
@@ -22,6 +18,30 @@ for name, filename in SCHEMA_NAMES.items():
         schemas[name] = ujson.load(fin)
 
 
+def db_connect(database, host, port):
+    """Helper function to deal with stateful connections to motor.
+    Connection established lazily.
+
+    Parameters
+    ----------
+    database: str
+        The name of database pymongo creates and/or connects
+    host: str
+        Name/address of the server that mongo daemon lives
+    port: int
+        Port num of the server
+
+    Returns motor.MotorDatabase
+    -------
+        Async server object which comes in handy as server has to juggle multiple clients
+        and makes no difference for a single client compared to pymongo
+    """
+
+    client = pymongo.Connection(host=host, port=port)
+    database = client[database]
+    return database
+
+
 def _unpack_params(handler):
     """Unpacks the queries from the body of the header
     Parameters
@@ -29,7 +49,7 @@ def _unpack_params(handler):
     handler: tornado.web.RequestHandler
         Handler for incoming request to collection
 
-    Returns: dict
+    Returns dict
     -------
         Unpacked query in dict format.
     """
@@ -47,7 +67,7 @@ def _return2client(handler, payload):
     -----------
     handler: tornado.web.RequestHandler
         Request handler for the collection of operation(post/get)
-    payload: dict, str, list
+    payload: dict, list
         Information to be sent to the client
     """
     handler.write('[')
