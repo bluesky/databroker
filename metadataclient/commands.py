@@ -6,20 +6,10 @@ from functools import wraps
 import ujson
 from metadataclient import (conf, utils)
 
-"""
-.. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
-.. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
-"""
-# TODO: Add when descriptor is None, use cached descriptor!
-# TODO: Fix descriptor replace (related to above)
-# TODO: Add server_disconnect that rolls all config back to default
-# TODO: Add capped collection caching layer for the client
-# TODO: Add fast read/write capped collection, different than caching capped collection
-# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
 
 def server_connect(host, port, protocol='http'):
-    """The server here refers the metadataservice server itself, not the mongo server
-    .. note:: Do not gasp yet! I copied w/e mongoengine did for global connectionpool management.
+    """The server here refers the metadataservice server itself, not the mongo server.
+    For MongoDB server information, check metadataservice.
 
     Parameters
     ----------
@@ -40,8 +30,14 @@ def server_connect(host, port, protocol='http'):
     _server_path = protocol + '://' + host + ':' + str(port)
     return str(_server_path)
 
+
 def server_disconnect():
-    raise NotImplementedError('Coming soon...')
+    """ Rolls back to default configuration from yaml file"""
+    protocol = conf.connection_config['protocol']
+    host = conf.connection_config['host']
+    port = conf.connection_config['port']
+    server_connect(host=host, port=port, protocol=protocol)
+
 
 def _ensure_connection(func):
     """Ensures connection to the tornado server, not mongo instance itself.
@@ -1046,5 +1042,10 @@ _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
 
-
+# TODO: Add when descriptor is None, use cached descriptor!
+# TODO: Fix descriptor replace (related to above)
+# TODO: Add server_disconnect that rolls all config back to default
+# TODO: Add capped collection caching layer for the client
+# TODO: Add fast read/write capped collection, different than caching capped collection
+# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
 
