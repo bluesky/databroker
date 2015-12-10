@@ -18,30 +18,6 @@ for name, filename in SCHEMA_NAMES.items():
         schemas[name] = ujson.load(fin)
 
 
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to motor.
-    Connection established lazily.
-
-    Parameters
-    ----------
-    database: str
-        The name of database pymongo creates and/or connects
-    host: str
-        Name/address of the server that mongo daemon lives
-    port: int
-        Port num of the server
-
-    Returns motor.MotorDatabase
-    -------
-        Async server object which comes in handy as server has to juggle multiple clients
-        and makes no difference for a single client compared to pymongo
-    """
-
-    client = pymongo.Connection(host=host, port=port)
-    database = client[database]
-    return database
-
-
 def _unpack_params(handler):
     """Unpacks the queries from the body of the header
     Parameters
