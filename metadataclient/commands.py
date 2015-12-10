@@ -18,13 +18,13 @@ def server_connect(host, port, protocol='http'):
     port: int
         port number of mongo server
     protocol: str, optional
-        in case we want to introduce ssl in the future. for now, eliminates possible ambiguities
+        in case we want to introduce ssl in the future.
 
      Returns
     -------
     _server_path: str
         Full server path that is set globally. Useful for monkeypatching
-        overwrites config and updates this global server path
+        overwrites config and updates this global server path.
     """
     global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
@@ -71,7 +71,6 @@ def doc_or_uid_to_uid(doc_or_uid):
     """
     if not isinstance(doc_or_uid, six.string_types):
         doc_or_uid = doc_or_uid['uid']
-    # type casting
     return str(doc_or_uid)
 
 
@@ -82,23 +81,27 @@ class NoRunStop(Exception):
 class NoEventDescriptors(Exception):
     pass
 
+
 class NoRunStart(Exception):
     pass
 
+
+class MetadataServiceError(Exception):
+    pass
+
+
 @_ensure_connection
 def runstart_given_uid(uid):
-    """Get RunStart document given an ObjectId
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-    When we migrate to using uid as the primary key this function
-    will be removed. Server strips the ObjectId fields for the client
+    """ uid based search for run_start documents.
+
     Parameters
     ----------
     uid : str
         Unique identifier for the document.
+
     Returns
     -------
-    run_start : doc.Document
+    run_start : metadataservice.utils.Document
         The RunStart document.
     """
     # TODO: Add capped collection caching lookup
@@ -107,57 +110,19 @@ def runstart_given_uid(uid):
 
 @_ensure_connection
 def _run_start_given_oid(oid):
-    """Get RunStart document given an ObjectId
-
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-
-    When we migrate to using uid as the primary key this function
-    will be removed.
-
-    Parameters
-    ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
-
-    Returns
-    -------
-    run_start : utils.Document
-        The RunStart document.
-    """
-    return utils.Document('RunStart', next(find_run_starts(_id=oid)))
+    """No support for this anymore. Implemented in case it leaked somewhere in the stack"""
+    raise MetadataServiceError('No ObjectId based search is supported. DEPRECATED')
 
 
 @_ensure_connection
 def _descriptor_given_oid(oid):
-    """Get EventDescriptor document given an ObjectId
-
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-
-    When we migrate to using uid as the primary key this function
-    will be removed.
-
-    Parameters
-    ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
-
-    Returns
-    -------
-    descriptor : doc.Document
-        The EventDescriptor document.
-    """
-    #runstart replaced in server side
-    descriptor = dict(next(find_descriptors(oid=oid)))
-    return utils.Document('EventDescriptor', descriptor)
+    """No support for this anymore. Implemented in case it leaked somewhere in the stack"""
+    raise MetadataServiceError('No ObjectId based search is supported. DEPRECATED')
 
 
 @_ensure_connection
 def runstop_given_uid(uid):
-    """Given a uid, return the RunStop document
+    """Given a uid, return the RunStop document.
 
     Parameters
     ----------
@@ -168,7 +133,6 @@ def runstop_given_uid(uid):
     -------
     run_stop : utils.Document
         The RunStop document fully de-referenced
-
     """
     run_stop = dict(next(find_run_stops(uid=uid)))
     start_oid = run_stop.pop('run_start_id')
@@ -746,15 +710,17 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                   data=val_ts_tuple, time=ev['time'],
                   seq_num=ev['seq_num'])
             ev = ev_out
-    
-    chunk_size = 10000
+
+    chunk_size = 500
     data_len = len(events)
     chunk_count = data_len // chunk_size + bool(data_len % chunk_size)
-    chunks = (events[j*chunk_size:(j+1)*chunk_size] for j in range(chunk_count))
+    # TODO: Fix bulk insert
+    chunks = (events[j * chunk_size:(j+1)*chunk_size] for j in range(int(chunk_count)))
     for c in chunks:
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
         r.raise_for_status()
+
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
