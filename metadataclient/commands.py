@@ -332,6 +332,7 @@ def fetch_events_table(descriptor):
     """
     pass
 
+
 @_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -625,11 +626,6 @@ def get_events_generator(descriptor):
         yield utils.Document('Event', ev)
 
 
-
-
-
-
-
 @_ensure_connection
 def get_events_table(descriptor):
     """All event data as tables
@@ -693,9 +689,6 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     """
     BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
                      'timestamps do not match:\n data: {}\ntimestamps:{}"""
-    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
-    # descriptor = descriptor_given_uid(descriptor_uid)
-    # let server validate this in bulk. It is much less expensive this way
     for ev in events:
         desc_id = doc_or_uid_to_uid(event_descriptor)
         ev['descriptor'] = desc_id
@@ -715,8 +708,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     chunk_size = 500
     data_len = len(events)
     chunk_count = data_len // chunk_size + bool(data_len % chunk_size)
-    chunks = (list(events)[(j*chunk_size):((j+1)*chunk_size)] for j in range(int(chunk_count)))
-    
+    chunks = utils.grouper(events, chunk_count)
     for c in chunks:
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
