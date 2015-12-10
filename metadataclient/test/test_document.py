@@ -6,7 +6,7 @@ import uuid
  
 from nose.tools import (assert_equal, assert_in, raises)
 from nose import SkipTest
-from ..utils import (Document, pretty_print_time,
+from metadataclient.utils import (Document, pretty_print_time,
                    DocumentIsReadOnly, ref_doc_to_uid)
  
 import logging

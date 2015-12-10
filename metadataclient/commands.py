@@ -392,6 +392,7 @@ def find_run_starts(**kwargs):
     # r.raise_for_status()
     if r.status_code != 200:
         return None
+
     content = ujson.loads(r.text)
     if not content:
         return None
@@ -714,8 +715,8 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     chunk_size = 500
     data_len = len(events)
     chunk_count = data_len // chunk_size + bool(data_len % chunk_size)
-    # TODO: Fix bulk insert
-    chunks = (events[j * chunk_size:(j+1)*chunk_size] for j in range(int(chunk_count)))
+    chunks = (list(events)[(j*chunk_size):((j+1)*chunk_size)] for j in range(int(chunk_count)))
+    
     for c in chunks:
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
