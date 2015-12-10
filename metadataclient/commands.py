@@ -6,20 +6,10 @@ from functools import wraps
 import ujson
 from metadataclient import (conf, utils)
 
-"""
-.. warning:: This is very early alpha. The skeleton is here but not all full blown features are implemented here
-.. warning: The client lives in the service for now. I will move it to separate repo once ready for alpha release
-"""
-# TODO: Add when descriptor is None, use cached descriptor!
-# TODO: Fix descriptor replace (related to above)
-# TODO: Add server_disconnect that rolls all config back to default
-# TODO: Add capped collection caching layer for the client
-# TODO: Add fast read/write capped collection, different than caching capped collection
-# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
 
 def server_connect(host, port, protocol='http'):
-    """The server here refers the metadataservice server itself, not the mongo server
-    .. note:: Do not gasp yet! I copied w/e mongoengine did for global connectionpool management.
+    """The server here refers the metadataservice server itself, not the mongo server.
+    For MongoDB server information, check metadataservice.
 
     Parameters
     ----------
@@ -28,20 +18,26 @@ def server_connect(host, port, protocol='http'):
     port: int
         port number of mongo server
     protocol: str, optional
-        in case we want to introduce ssl in the future. for now, eliminates possible ambiguities
+        in case we want to introduce ssl in the future.
 
      Returns
     -------
     _server_path: str
         Full server path that is set globally. Useful for monkeypatching
-        overwrites config and updates this global server path
+        overwrites config and updates this global server path.
     """
     global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
     return str(_server_path)
 
+
 def server_disconnect():
-    raise NotImplementedError('Coming soon...')
+    """ Rolls back to default configuration from yaml file"""
+    protocol = conf.connection_config['protocol']
+    host = conf.connection_config['host']
+    port = conf.connection_config['port']
+    server_connect(host=host, port=port, protocol=protocol)
+
 
 def _ensure_connection(func):
     """Ensures connection to the tornado server, not mongo instance itself.
@@ -75,7 +71,6 @@ def doc_or_uid_to_uid(doc_or_uid):
     """
     if not isinstance(doc_or_uid, six.string_types):
         doc_or_uid = doc_or_uid['uid']
-    # type casting
     return str(doc_or_uid)
 
 
@@ -86,23 +81,27 @@ class NoRunStop(Exception):
 class NoEventDescriptors(Exception):
     pass
 
+
 class NoRunStart(Exception):
     pass
 
+
+class MetadataServiceError(Exception):
+    pass
+
+
 @_ensure_connection
 def runstart_given_uid(uid):
-    """Get RunStart document given an ObjectId
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-    When we migrate to using uid as the primary key this function
-    will be removed. Server strips the ObjectId fields for the client
+    """ uid based search for run_start documents.
+
     Parameters
     ----------
     uid : str
         Unique identifier for the document.
+
     Returns
     -------
-    run_start : doc.Document
+    run_start : metadataservice.utils.Document
         The RunStart document.
     """
     # TODO: Add capped collection caching lookup
@@ -111,57 +110,19 @@ def runstart_given_uid(uid):
 
 @_ensure_connection
 def _run_start_given_oid(oid):
-    """Get RunStart document given an ObjectId
-
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-
-    When we migrate to using uid as the primary key this function
-    will be removed.
-
-    Parameters
-    ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
-
-    Returns
-    -------
-    run_start : utils.Document
-        The RunStart document.
-    """
-    return utils.Document('RunStart', next(find_run_starts(_id=oid)))
+    """No support for this anymore. Implemented in case it leaked somewhere in the stack"""
+    raise MetadataServiceError('No ObjectId based search is supported. DEPRECATED')
 
 
 @_ensure_connection
 def _descriptor_given_oid(oid):
-    """Get EventDescriptor document given an ObjectId
-
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-
-    When we migrate to using uid as the primary key this function
-    will be removed.
-
-    Parameters
-    ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
-
-    Returns
-    -------
-    descriptor : doc.Document
-        The EventDescriptor document.
-    """
-    #runstart replaced in server side
-    descriptor = dict(next(find_descriptors(oid=oid)))
-    return utils.Document('EventDescriptor', descriptor)
+    """No support for this anymore. Implemented in case it leaked somewhere in the stack"""
+    raise MetadataServiceError('No ObjectId based search is supported. DEPRECATED')
 
 
 @_ensure_connection
 def runstop_given_uid(uid):
-    """Given a uid, return the RunStop document
+    """Given a uid, return the RunStop document.
 
     Parameters
     ----------
@@ -172,7 +133,6 @@ def runstop_given_uid(uid):
     -------
     run_stop : utils.Document
         The RunStop document fully de-referenced
-
     """
     run_stop = dict(next(find_run_stops(uid=uid)))
     start_oid = run_stop.pop('run_start_id')
@@ -432,6 +392,7 @@ def find_run_starts(**kwargs):
     # r.raise_for_status()
     if r.status_code != 200:
         return None
+
     content = ujson.loads(r.text)
     if not content:
         return None
@@ -528,20 +489,24 @@ def find_events(descriptor=None, **kwargs):
         query['descriptor'] = desc_uid
     _format_time(query)
     r = requests.get(_server_path + "/event",
-                     params=ujson.dumps(query))
+                     params=ujson.dumps(query),
+                     stream=True)
     r.raise_for_status()
+    # content = ujson.loads(r.raw.readlines())
     content = ujson.loads(r.text)
     if not content:
         return None
     else:
         if descriptor:
-            desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
+            # desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
+            desc = {}
         for c in content:
             if desc:
                 # Obvious bottleneck!!!
                 # Fix using local caching!!!!
                 # desc = next(find_descriptors(uid=c['descriptor']))
                 c['descriptor'] = desc
+            #yield c
             yield utils.Document('Event',c)
 
 
@@ -746,15 +711,16 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                   data=val_ts_tuple, time=ev['time'],
                   seq_num=ev['seq_num'])
             ev = ev_out
-    
-    chunk_size = 10000
+
+    chunk_size = 500
     data_len = len(events)
     chunk_count = data_len // chunk_size + bool(data_len % chunk_size)
-    chunks = (events[j*chunk_size:(j+1)*chunk_size] for j in range(chunk_count))
+    chunks = (list(events)[(j*chunk_size):((j+1)*chunk_size)] for j in range(int(chunk_count)))
+    
     for c in chunks:
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
-    return r.status_code
+        r.raise_for_status()
 
 
 @_ensure_connection
@@ -1043,5 +1009,10 @@ _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
 
-
+# TODO: Add when descriptor is None, use cached descriptor!
+# TODO: Fix descriptor replace (related to above)
+# TODO: Add server_disconnect that rolls all config back to default
+# TODO: Add capped collection caching layer for the client
+# TODO: Add fast read/write capped collection, different than caching capped collection
+# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
 
