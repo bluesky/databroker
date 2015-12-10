@@ -6,7 +6,6 @@ from tornado import gen
 
 import pymongo
 
-
 import ujson
 import jsonschema
 
@@ -17,6 +16,29 @@ from metadataservice.server import utils
 
 CACHE_SIZE = 100000
 loop = tornado.ioloop.IOLoop.instance()
+
+
+def db_connect(database, host, port):
+    """Helper function to deal with stateful connections to motor.
+    Connection established lazily.
+
+    Parameters
+    ----------
+    database: str
+        The name of database pymongo creates and/or connects
+    host: str
+        Name/address of the server that mongo daemon lives
+    port: int
+        Port num of the server
+
+    Returns motor.MotorDatabase
+    -------
+        Async server object which comes in handy as server has to juggle multiple clients
+        and makes no difference for a single client compared to pymongo
+    """
+    client = pymongo.MongoClient(host=host, port=port)
+    database = client[database]
+    return database
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -60,7 +82,6 @@ class RunStartHandler(DefaultHandler):
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
             utils._return2client(self, docs)
-            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -117,7 +138,6 @@ class EventDescriptorHandler(DefaultHandler):
                                         reason='No results found for query')
         else:
             utils._return2client(self, docs)
-            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -171,7 +191,6 @@ class RunStopHandler(DefaultHandler):
                                         'No results for given query' + str(query))
         else:
             utils._return2client(self, docs)
-            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine

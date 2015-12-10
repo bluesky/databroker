@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.web
 from pkg_resources import resource_filename as rs_fn
 import ujson
-
+import pymongo.cursor
 
 SCHEMA_PATH = 'schema'
 SCHEMA_NAMES = {'run_start': 'run_start.json',
@@ -16,30 +16,6 @@ schemas = {}
 for name, filename in SCHEMA_NAMES.items():
     with open(rs_fn('metadataservice', resource_name=fn.format(filename))) as fin:
         schemas[name] = ujson.load(fin)
-
-
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to motor.
-    Connection established lazily.
-
-    Parameters
-    ----------
-    database: str
-        The name of database pymongo creates and/or connects
-    host: str
-        Name/address of the server that mongo daemon lives
-    port: int
-        Port num of the server
-
-    Returns motor.MotorDatabase
-    -------
-        Async server object which comes in handy as server has to juggle multiple clients
-        and makes no difference for a single client compared to pymongo
-    """
-
-    client = pymongo.Connection(host=host, port=port)
-    database = client[database]
-    return database
 
 
 def _unpack_params(handler):
@@ -70,11 +46,19 @@ def _return2client(handler, payload):
     payload: dict, list
         Information to be sent to the client
     """
-    handler.write('[')
-    if isinstance(payload, dict):
+
+    
+    if isinstance(payload, pymongo.cursor.Cursor):
+            l = []
+            for p in payload:
+                del(p['_id'])
+                l.append(p)           
+            handler.write(ujson.dumps(l))
+    elif isinstance(payload, dict):
         del(payload['_id'])
-        handler.write(ujson.dumps(payload))
+        handler.write(ujson.dumps(list(payload)))
     else:
+        handler.write('[')
         d = next(payload)
         while True:
             try:
@@ -84,5 +68,5 @@ def _return2client(handler, payload):
                 handler.write(',')
             except StopIteration:
                 break
-    handler.write(']')
+        handler.write(']')
     handler.finish()
