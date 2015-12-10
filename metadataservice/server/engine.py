@@ -36,7 +36,7 @@ def db_connect(database, host, port):
         Async server object which comes in handy as server has to juggle multiple clients
         and makes no difference for a single client compared to pymongo
     """
-    client = pymongo.Connection(host=host, port=port)
+    client = pymongo.MongoClient(host=host, port=port)
     database = client[database]
     return database
 
