@@ -82,7 +82,6 @@ class RunStartHandler(DefaultHandler):
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
             utils._return2client(self, docs)
-            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -139,7 +138,6 @@ class EventDescriptorHandler(DefaultHandler):
                                         reason='No results found for query')
         else:
             utils._return2client(self, docs)
-            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -193,7 +191,6 @@ class RunStopHandler(DefaultHandler):
                                         'No results for given query' + str(query))
         else:
             utils._return2client(self, docs)
-            self.finish()
 
     @tornado.web.asynchronous
     @gen.coroutine
