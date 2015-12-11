@@ -187,7 +187,7 @@ def descriptor_given_uid(uid):
 
     Returns
     -------
-    descriptor : utils.Document
+    EventDescriptor : utils.Document
         The EventDescriptor document fully de-referenced
     """
 
@@ -202,9 +202,9 @@ def stop_by_start(run_start):
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    run_start : utils.Document or dict or str
         The RunStart to get the RunStop for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
+        a Document/dict with a 'uid' key or a uid string.
 
     Returns
     -------
@@ -214,7 +214,7 @@ def stop_by_start(run_start):
     Raises
     ------
     NoRunStop
-        If no RunStop document exists for the given RunStart
+        If no RunStop document exists for the given RunStart.
     """
     rstart = doc_or_uid_to_uid(run_start)
     run_stop = next(find_run_stops(run_start=rstart))
@@ -250,7 +250,8 @@ def descriptors_by_start(run_start):
     except StopIteration:
         raise NoEventDescriptors("No EventDescriptors exists "
                                  "for {!r}".format(run_start))
-    
+
+
 @_ensure_connection
 def fetch_events_generator(descriptor):
     """A generator which yields all events from the event stream
@@ -270,7 +271,6 @@ def fetch_events_generator(descriptor):
     desc = descriptor_given_uid(descriptor.uid)
     raw_ev_gen = find_events(descriptor_id=str(desc['_id']))
     for ev in raw_ev_gen:
-        ev.pop('descriptor_id')
         ev['descriptor'] = dict(desc)
         yield utils.Document('Event', ev)
 
@@ -330,7 +330,8 @@ def fetch_events_table(descriptor):
         The timestamps of each of the measurements as dict of lists.  Same
         keys as `data_table`.
     """
-    pass
+    # TODO: Implement this and ADD TO UNIT TESTS
+    raise NotImplementedError("Implement this and ADD TO UNIT TESTS")
 
 
 @_ensure_connection
@@ -391,16 +392,17 @@ def find_run_starts(**kwargs):
     r = requests.get(_server_path + "/run_start",
                      params=ujson.dumps(query))
     # r.raise_for_status()
+    # TODO: Done this way to replicate library behavior, we need to change this to raise_status
     if r.status_code != 200:
         return None
-
     content = ujson.loads(r.text)
     if not content:
         return None
     else:
         for c in content:
-            yield utils.Document('RunStart',c)
-        
+            yield utils.Document('RunStart', c)
+
+
 @_ensure_connection
 def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, query for RunStop Documents.
@@ -481,6 +483,8 @@ def find_events(descriptor=None, **kwargs):
     -------
     events : iterable of utils.Document objects
     """
+    # TODO: Add more tests!!! Make sure descriptor is returned for each event
+
     if 'event_descriptor' in kwargs:
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
     query = kwargs
@@ -493,22 +497,20 @@ def find_events(descriptor=None, **kwargs):
                      params=ujson.dumps(query),
                      stream=True)
     r.raise_for_status()
-    # content = ujson.loads(r.raw.readlines())
     content = ujson.loads(r.text)
     if not content:
         return None
     else:
         if descriptor:
-            # desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
-            desc = {}
+            desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
         for c in content:
             if desc:
                 # Obvious bottleneck!!!
                 # Fix using local caching!!!!
-                # desc = next(find_descriptors(uid=c['descriptor']))
                 c['descriptor'] = desc
-            #yield c
-            yield utils.Document('Event',c)
+            else:
+                desc = next(find_descriptors(uid=c['descriptor']))
+            yield utils.Document('Event', c)
 
 
 @_ensure_connection
@@ -597,7 +599,6 @@ def _transform_data(data, timestamps):
     return {k: (data[k], timestamps[k]) for k in data}
 
 
-
 @_ensure_connection
 def get_events_generator(descriptor):
     """A generator which yields all events from the event stream
@@ -608,18 +609,12 @@ def get_events_generator(descriptor):
         a Document/dict with a 'uid' key or a uid string
     Yields
     ------
-    event : doc.Document
+    event : utils.Document
         All events for the given EventDescriptor from oldest to
         newest
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
-    # descriptor = descriptor_given_uid(descriptor_uid)
-
-
     ev_cur = find_events(descriptor=descriptor_uid)
-
-
-
     for ev in ev_cur:
         ev = dict(ev)
         ev['descriptor'] = next(find_descriptors(uid=descriptor_uid))
@@ -713,6 +708,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
         payload = ujson.dumps(list(c))
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
         r.raise_for_status()
+        # TODO: Add unittest for this failure
 
 
 @_ensure_connection
@@ -839,8 +835,8 @@ def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
 
     Returns
     -------
-    run_stop : mongoengine.Document
-        Inserted mongoengine object
+    uid : str
+        uid of the inserted document
     """
     params = dict(time=time, uid=uid, config=config, exit_status=exit_status,
                   reason=reason)
@@ -858,13 +854,12 @@ def insert_run_stop(run_start, time, uid, config={}, exit_status='success',
     return uid
 
 
-@_ensure_connection
 def format_events():
-    pass
+    raise NotImplementedError('You got me, turns out somebody needs this')
 
 
 def format_data_keys():
-    pass
+    raise NotImplementedError('You got me, turns out somebody needs this')
 
 
 def _format_time(search_dict):
@@ -886,10 +881,12 @@ def _format_time(search_dict):
 
 
 def find_last(num=1):
-    return find_run_starts(range_floor=0, range_ceil=num)
+    # TODO: Changes from motor to pymongo and json encode/decode broke this.
+    raise NotImplementedError('It is coming!!')
 
 
 def monitor_run_start():
+    raise NotImplementedError('Not this cycle. Code works, needs capped collection support')
     r = requests.get(_server_path + '/run_start_capped')
     content = ujson.loads(r.text)
     yield utils.Document('RunStart', content)
@@ -897,6 +894,7 @@ def monitor_run_start():
 
 def _insert2cappedstart(time, scan_id, config, beamline_id, beamline_config={}, uid=None,
                     owner=None, group=None, project=None, custom=None):
+    raise NotImplementedError('Not this cycle. Code works, needs capped collection support')
     data = locals()
     if custom:
         data.update(custom)
@@ -910,6 +908,7 @@ def _insert2cappedstart(time, scan_id, config, beamline_id, beamline_config={}, 
 
 def _insert2cappedstop(run_start, time, uid=None, config={}, exit_status='success',
                     reason=None, custom=None):
+    raise NotImplementedError('Not this cycle. Code works, needs capped collection support')
     payload = ujson.dumps(locals())
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code != 200:
@@ -1007,4 +1006,3 @@ _normalize_human_friendly_time.__doc__ = (
 # TODO: Add capped collection caching layer for the client
 # TODO: Add fast read/write capped collection, different than caching capped collection
 # TODO: Add timeouts to servers in order to stop ppl from abusing data sources
-
