@@ -2,14 +2,12 @@ from __future__ import absolute_import, print_function, division
 from databroker import DataBroker as db, get_table
 from ipywidgets import (Text, Checkbox, VBox, HBox, SelectMultiple,
                         ToggleButtons, Select)
-import matplotlib.pyplot as plt
 from collections import namedtuple
 
 import logging
 logger = logging.getLogger(__name__)
 
-
-def explorer(ax):
+def explorer(ax=None):
     """A databroker explorer widget. See below for suggested usage
 
     Parameters
@@ -37,6 +35,9 @@ def explorer(ax):
         widgets, display = explorer.explorer(ax)
         display
     """
+    if ax is None:
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
 
     def _has_hyphen(scan):
         start, stop = scan.split('-')
@@ -156,8 +157,6 @@ def explorer(ax):
                 ax.plot(x_data, y_data, label=label)
         ax.legend(loc=0)
         ax.set_xlabel(x_name)
-
-        plt.show()
 
         logger.debug('selected scans = {}'.format(scan_select.value))
     data = {}
