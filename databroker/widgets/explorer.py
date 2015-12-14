@@ -169,7 +169,7 @@ def explorer(ax=None):
                              disabled=True)
     key_select = ToggleButtons(description='Plotting keys',
                                options=['Intersection', 'All'])
-    scan_text = Text(description="Scan IDs", options=['ab', 'c'])
+    scan_text = Text(description="Scan IDs")
 
     scan_text.on_submit(scan_submit)
     scan_select.on_trait_change(replot, 'value')
