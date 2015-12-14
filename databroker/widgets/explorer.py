@@ -190,5 +190,8 @@ def explorer(ax):
                 scan_select,
                 x_dropdown,
                 y_select])
-    return namedtuple('explorer_return_values',
-                      ['widgets', 'display'])(widgets, box)
+    return _ret(widgets, box)
+
+
+# namedtuple return value for the return values of this explorer function
+_ret = namedtuple('explorer_return_values', ['widgets', 'display'])
