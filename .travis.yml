@@ -28,9 +28,9 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
-  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml nose pytz six
+  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz six
   - source activate testenv
-  - pip install coveralls
+  - pip install coveralls codecov
   - pip install prettytable
   - python setup.py install
 
@@ -39,3 +39,7 @@ script:
   - python /home/travis/metadataservice/metadataservice/server/startup.py &
   - sleep 5
   - python run_tests.py -v
+
+after_success:
+  - coverall
+  - codecov
