@@ -5,6 +5,7 @@ import tornado.web
 from tornado import gen
 
 import pymongo
+import pymongo.errors as perr
 
 import ujson
 import jsonschema
@@ -94,11 +95,17 @@ class RunStartHandler(DefaultHandler):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
-        result = database.run_start.insert(data)
+        try:
+            result = database.run_start.insert(data)
+        except perr.PyMongoError:
+            raise tornado.web.HTTPError(500,
+                                        status='Unable to insert the document')
+
         database.run_start.create_index([('uid', pymongo.ASCENDING)],
                                        unique=True, background=True)
         database.run_start.create_index([('time', pymongo.ASCENDING),
-                                        ('scan_id', pymongo.ASCENDING)])
+                                        ('scan_id', pymongo.ASCENDING)],
+                                        unique=False)
 
         if not result:
             raise tornado.web.HTTPError(500)
@@ -108,7 +115,7 @@ class RunStartHandler(DefaultHandler):
     @tornado.web.asynchronous
     @gen.coroutine
     def put(self):
-        raise tornado.web.HTTPError(404, 
+        raise tornado.web.HTTPError(404,
                                     status='Not allowed on server')
 
     @tornado.web.asynchronous
@@ -148,7 +155,12 @@ class EventDescriptorHandler(DefaultHandler):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['descriptor'])
-        result = database.event_descriptor.insert(data)
+
+        try:
+            result = database.event_descriptor.insert(data)
+        except perr.PyMongoError:
+            raise tornado.web.HTTPError(500,
+                                        status='Unable to insert the document')
         database.event_descriptor.create_index([('run_start', pymongo.ASCENDING)],
                                                unique=False)
         database.event_descriptor.create_index([('time', pymongo.ASCENDING)],
@@ -189,7 +201,7 @@ class RunStopHandler(DefaultHandler):
         query = utils.unpack_params(self)
         docs = database.run_stop.find(query)
         if not docs:
-            raise tornado.web.HTTPError(404, 
+            raise tornado.web.HTTPError(500,
                                         'No results for given query' + str(query))
         else:
             utils.return2client(self, docs)
@@ -199,7 +211,7 @@ class RunStopHandler(DefaultHandler):
     def post(self):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
-        docs =  database.run_stop.find({'run_start': data['run_start']})
+        docs = database.run_stop.find({'run_start': data['run_start']})
         try:
             res = next(docs)
             raise tornado.web.HTTPError(500,
@@ -207,13 +219,15 @@ class RunStopHandler(DefaultHandler):
         except StopIteration:
             pass
         jsonschema.validate(data, utils.schemas['run_stop'])
-        result = database.run_stop.insert(data)
 
-        database.run_stop.create_index([('run_start', pymongo.ASCENDING)],
-                                       unique=False)
-        database.run_stop.create_index([('time', pymongo.ASCENDING)],
-                                       unique=False)
+        try:
+            result = database.run_stop.insert(data)
+        except perr.PyMongoError:
+            raise tornado.web.HTTPError(500,
+                                        status='Unable to insert the document')
 
+        database.run_stop.create_index([('run_start', pymongo.ASCENDING), ('time', pymongo.ASCENDING)],
+                                       unique=False)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
@@ -249,7 +263,7 @@ class EventHandler(DefaultHandler):
         query = utils.unpack_params(self)
         docs = database['event'].find(query)
         if not docs:
-            raise tornado.web.HTTPError(404,
+            raise tornado.web.HTTPError(500,
                                         status_code='No results for given query' + str(query))
         else:
             self.write('[')
