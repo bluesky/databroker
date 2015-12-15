@@ -15,8 +15,14 @@ before_install:
   - git clone https://github.com/synchbot/metadataservice.git /home/travis/metadataservice
   - export PATH=/home/travis/mc/bin:$PATH
   - mkdir -p /home/travis/.config/metadatastore
-  - echo -e 'database: testdb\nport: 27017\nhost: 127.0.0.1\ntimezone: US/Eastern' > /home/travis/.config/metadataservice/connection.yml
-  - echo -e 'port: 7770\nhost: localhost\nprotocol: http\ntimezone: US/Eastern' > /home/travis/.config/metadataclient/connection.yml
+  - echo 'database: testdb' > /home/travis/.config/metadataservice/connection.yml
+  - echo 'port: 27017' >> /home/travis/.config/metadataservice/connection.yml
+  - echo 'host: 127.0.0.1' >> /home/travis/.config/metadataservice/connection.yml
+  - echo 'timezone: US/Eastern' >> /home/travis/.config/metadataservice/connection.yml
+  - echo 'port: 7770' > /home/travis/.config/metadataclient/connection.yml
+  - echo 'host: localhost' >> /home/travis/.config/metadataclient/connection.yml
+  - echo 'protocol: http' >> /home/travis/.config/metadataclient/connection.yml
+  - echo 'timezone: US/Eastern' >> /home/travis/.config/metadataclient/connection.yml
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
