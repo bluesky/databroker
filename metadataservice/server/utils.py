@@ -5,6 +5,7 @@ from pkg_resources import resource_filename as rs_fn
 import ujson
 import pymongo.cursor
 
+
 SCHEMA_PATH = 'schema'
 SCHEMA_NAMES = {'run_start': 'run_start.json',
                 'run_stop': 'run_stop.json',
