@@ -40,5 +40,5 @@ script:
   - python run_tests.py -v
 
 after_success:
-  - coverall
+  - coveralls
   - codecov
