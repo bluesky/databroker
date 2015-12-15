@@ -37,7 +37,6 @@ install:
 script:
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataservice/
   - python /home/travis/metadataservice/metadataservice/server/startup.py &
-  - sleep 5
   - python run_tests.py -v
 
 after_success:
