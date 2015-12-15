@@ -31,7 +31,7 @@ def db_connect(database, host, port):
     port: int
         Port num of the server
 
-    Returns motor.MotorDatabase
+    Returns pymongo.MotorDatabase
     -------
         Async server object which comes in handy as server has to juggle multiple clients
         and makes no difference for a single client compared to pymongo
@@ -73,11 +73,11 @@ class RunStartHandler(DefaultHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
+        query = utils.unpack_params(self)
         _id = query.pop('_id', None)
         find_last = query.pop('find_last', None)
         if _id:
-            raise tornado.web.HTTPError(500, 'No ObjectId search supported')
+            raise tornado.web.HTTPError(500, 'No ObjectId based search supported')
         if find_last:
             docs = database.run_start.find().sort('time', direction=pymongo.DESCENDING)
         else:
@@ -86,7 +86,7 @@ class RunStartHandler(DefaultHandler):
         if not docs:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
-            utils._return2client(self, docs)
+            utils.return2client(self, docs)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -95,17 +95,15 @@ class RunStartHandler(DefaultHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['run_start'])
         result = database.run_start.insert(data)
-        # database.run_start.create_index([('uid', pymongo.ASCENDING)],
-        #                                unique=True, background=True)
-        #database.run_start.create_index([('time', pymongo.ASCENDING),
-        #                                 ('scan_id', pymongo.ASCENDING)],
-        #                               background=True)
-        #database.run_start.create_index([('owner', pymongo.ASCENDING)],
-        #                                background=True, sparse=True)
+        database.run_start.create_index([('uid', pymongo.ASCENDING)],
+                                       unique=True, background=True)
+        database.run_start.create_index([('time', pymongo.ASCENDING),
+                                        ('scan_id', pymongo.ASCENDING)])
+
         if not result:
             raise tornado.web.HTTPError(500)
         else:
-            utils._return2client(self, data)
+            utils.return2client(self, data)
    
     @tornado.web.asynchronous
     @gen.coroutine
@@ -136,13 +134,13 @@ class EventDescriptorHandler(DefaultHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
+        query = utils.unpack_params(self)
         docs = database.event_descriptor.find(query)
         if not docs:
             raise tornado.web.HTTPError(500, 
                                         reason='No results found for query')
         else:
-            utils._return2client(self, docs)
+            utils.return2client(self, docs)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -151,15 +149,14 @@ class EventDescriptorHandler(DefaultHandler):
         data = ujson.loads(self.request.body.decode("utf-8"))
         jsonschema.validate(data, utils.schemas['descriptor'])
         result = database.event_descriptor.insert(data)
-        #database.event_descriptor.create_index([('uid', pymongo.ASCENDING)],
-        #                                unique=True, background=True) 
-        #database.event_descriptor.create_index([('run_start', pymongo.ASCENDING),
-        #                                        ('time', pymongo.ASCENDING)],
-        #                                       unique=False, background=True) 
+        database.event_descriptor.create_index([('run_start', pymongo.ASCENDING)],
+                                               unique=False)
+        database.event_descriptor.create_index([('time', pymongo.ASCENDING)],
+                                               unique=False)
         if not result:
             raise tornado.web.HTTPError(500)
         else:
-            utils._return2client(self, data)
+            utils.return2client(self, data)
  
     @tornado.web.asynchronous
     @gen.coroutine
@@ -189,13 +186,13 @@ class RunStopHandler(DefaultHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
+        query = utils.unpack_params(self)
         docs = database.run_stop.find(query)
         if not docs:
             raise tornado.web.HTTPError(404, 
                                         'No results for given query' + str(query))
         else:
-            utils._return2client(self, docs)
+            utils.return2client(self, docs)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -211,17 +208,16 @@ class RunStopHandler(DefaultHandler):
             pass
         jsonschema.validate(data, utils.schemas['run_stop'])
         result = database.run_stop.insert(data)
-        #database.run_stop.create_index([('uid', pymongo.ASCENDING)],
-        #                                unique=True, background=True) 
-        #database.run_stop.create_index([('run_start', pymongo.ASCENDING)],
-        #                                       unique=True, background=True)
-        #database.run_stop.create_index([('time', pymongo.ASCENDING), 
-        #                                ('exit_status', pymongo.ASCENDING)],
-        #                               background=True)
+
+        database.run_stop.create_index([('run_start', pymongo.ASCENDING)],
+                                       unique=False)
+        database.run_stop.create_index([('time', pymongo.ASCENDING)],
+                                       unique=False)
+
         if not result:
             raise tornado.web.HTTPError(500)
         else:
-            utils._return2client(self, data)
+            utils.return2client(self, data)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -250,7 +246,7 @@ class EventHandler(DefaultHandler):
     @gen.coroutine
     def get(self):
         database = self.settings['db']
-        query = utils._unpack_params(self)
+        query = utils.unpack_params(self)
         docs = database['event'].find(query)
         if not docs:
             raise tornado.web.HTTPError(404,
@@ -283,9 +279,8 @@ class EventHandler(DefaultHandler):
                 bulk.execute()
             except pymongo.errors.BulkWriteError as err:
                 raise tornado.web.HTTPError(500, str(err))
-            #database.event.create_index([('time', pymongo.ASCENDING),
-            #                              ('descriptor', pymongo.ASCENDING)],
-            #                            background=True)
+            database.event.create_index([('time', pymongo.ASCENDING),
+                                         ('descriptor', pymongo.ASCENDING)])
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = database.event.insert(data)
@@ -322,7 +317,7 @@ class EventHandler(DefaultHandler):
 #         while cursor.alive:
 #             if (yield cursor.fetch_next):
 #                 result = cursor.next_object()
-#                 utils._return2client(self, result)
+#                 utils.return2client(self, result)
 #                 break
 #             else:
 #                 yield gen.Task(loop.add_timeout, datetime.timedelta(seconds=1))
@@ -341,7 +336,7 @@ class EventHandler(DefaultHandler):
 #         if not result:
 #             raise tornado.web.HTTPError(500)
 #         else:
-#             utils._return2client(self, data)
+#             utils.return2client(self, data)
 #
 #     @tornado.web.asynchronous
 #     @gen.coroutine
@@ -374,7 +369,7 @@ class EventHandler(DefaultHandler):
 #         while cursor.alive:
 #             if (yield cursor.fetch_next):
 #                 result = cursor.next_object()
-#                 utils._return2client(self, result)
+#                 utils.return2client(self, result)
 #                 break
 #             else:
 #                 yield gen.Task(loop.add_timeout,
@@ -394,7 +389,7 @@ class EventHandler(DefaultHandler):
 #             raise tornado.web.HTTPError(500,
 #                                         status='Insert to CappedRunStop collection failed')
 #         else:
-#             utils._return2client(self, data)
+#             utils.return2client(self, data)
 #
 #     @tornado.web.asynchronous
 #     @gen.coroutine
