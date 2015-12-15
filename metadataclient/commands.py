@@ -403,6 +403,20 @@ def find_run_starts(**kwargs):
             yield utils.Document('RunStart', c)
 
 
+def find_last(num=1):
+    """Return the last 'num' many headers"""
+    query = dict(get_last=num)
+    r = requests.get(_server_path + "/run_start",
+                     params=ujson.dumps(query))
+    if r.status_code != 200:
+        return None
+    content = ujson.loads(r.text)
+    if not content:
+        return None
+    else:
+        for c in content:
+            yield utils.Document('RunStart', c)
+
 @_ensure_connection
 def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, query for RunStop Documents.
@@ -878,11 +892,6 @@ def _format_time(search_dict):
         time_dict['$lte'] = _normalize_human_friendly_time(stop_time)
     if time_dict:
         search_dict['time'] = time_dict
-
-
-def find_last(num=1):
-    # TODO: Changes from motor to pymongo and json encode/decode broke this.
-    raise NotImplementedError('It is coming!!')
 
 
 def monitor_run_start():
