@@ -1,0 +1,9 @@
+[run]
+source=metadataclient
+branch=True
+[report]
+omit =
+    *test*
+    *example*
+    # ignore _version.py and versioneer.py
+    *version*
