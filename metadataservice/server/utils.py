@@ -19,7 +19,7 @@ for name, filename in SCHEMA_NAMES.items():
         schemas[name] = ujson.load(fin)
 
 
-def _unpack_params(handler):
+def unpack_params(handler):
     """Unpacks the queries from the body of the header
     Parameters
     ----------
@@ -36,7 +36,7 @@ def _unpack_params(handler):
         raise TypeError("Handler provided must be of tornado.web.RequestHandler type")
 
 
-def _return2client(handler, payload):
+def return2client(handler, payload):
     """Dump the result back to client's open socket. No need to worry about package size
     or socket behavior as tornado handles this for us
 
