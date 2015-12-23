@@ -83,14 +83,13 @@ class RunStartHandler(DefaultHandler):
         database = self.settings['db']
         query = utils.unpack_params(self)
         _id = query.pop('_id', None)
-        find_last = query.pop('find_last', None)
+        num = query.pop('num', None)
         if _id:
             raise tornado.web.HTTPError(500, 'No ObjectId based search supported')
-        if find_last:
-            docs = database.run_start.find().sort('time', direction=pymongo.DESCENDING)
+        if num:
+            docs = database.run_start.find().sort('time', direction=pymongo.DESCENDING).limit(num)
         else:
             docs = database.run_start.find(query)
-
         if not docs:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
