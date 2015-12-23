@@ -459,7 +459,21 @@ def test_find_last_for_smoke():
 def test_find_last():
     last = next(mdsc.find_last(num=1))
 
-    
+
+def test_find_last_mult():
+    hdr = 4
+    last_mult = mdsc.find_last(num=hdr)
+    res = [c for c in last_mult]
+    assert_equal(len(res), hdr)    
+
+
+@raises(StopIteration)       
+def test_find_last_err():
+    last_mult = mdsc.find_last(num=4)
+    res = [c for c in last_mult]
+    r = next(last_mult)
+
+        
 @raises(ValueError)
 def test_bad_event_desc():
  

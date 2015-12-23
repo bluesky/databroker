@@ -405,7 +405,7 @@ def find_run_starts(**kwargs):
 
 def find_last(num=1):
     """Return the last 'num' many headers"""
-    query = dict(get_last=num)
+    query = dict(num=num)
     r = requests.get(_server_path + "/run_start",
                      params=ujson.dumps(query))
     if r.status_code != 200:
