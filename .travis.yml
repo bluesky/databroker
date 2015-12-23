@@ -12,7 +12,7 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
-  - git clone https://github.com/nsls-ii/metadataservice.git /home/travis/metadataservice
+  - git clone https://github.com/NSLS-II/metadataservice.git /home/travis/metadataservice
   - export PATH=/home/travis/mc/bin:$PATH
   - mkdir -p /home/travis/.config/metadataservice
   - mkdir -p /home/travis/.config/metadataclient
@@ -36,7 +36,7 @@ install:
 
 script:
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataservice/
-  - python /home/travis/metadataservice/metadataservice/server/startup.py &
+  - python /home/travis/metadataservice/startup.py &
   - python run_tests.py -v
 
 after_success:
