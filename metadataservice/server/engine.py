@@ -294,7 +294,8 @@ class EventHandler(DefaultHandler):
             jsonschema.validate(data, utils.schemas['bulk_events'])
             bulk = database.event.initialize_unordered_bulk_op()
             for _ in data:
-                bulk.insert(_)
+                if _ is not None:
+                    bulk.insert(_)
             try:
                 bulk.execute()
             except pymongo.errors.BulkWriteError as err:
