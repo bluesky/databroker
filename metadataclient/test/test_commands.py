@@ -454,8 +454,12 @@ def test_double_run_stop():
  
 def test_find_last_for_smoke():
     last = mdsc.find_last()
- 
- 
+
+    
+def test_find_last():
+    last = next(mdsc.find_last(num=1))
+
+    
 @raises(ValueError)
 def test_bad_event_desc():
  
