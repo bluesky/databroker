@@ -13,7 +13,6 @@ db = db_connect(connection_config['database'],
                 connection_config['port'])
 
 if __name__ == "__main__":
-    # start server in main thread
     application = tornado.web.Application([
         (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
         (r'/event_descriptor', EventDescriptorHandler),

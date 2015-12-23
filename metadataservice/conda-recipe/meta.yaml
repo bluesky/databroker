@@ -1,0 +1,46 @@
+package:
+  name: metadataservice
+  version: {{ environ['GIT_DESCRIBE_TAG'] }}.post{{ environ['GIT_DESCRIBE_NUMBER'] }}
+
+source:
+  git_url: ../
+
+build:
+  number: 0
+
+  # Note that this will override the default build string with the Python
+  # and NumPy versions
+  string: {{ environ.get('GIT_BUILD_STR', '') }}_py{{ py }}
+
+
+requirements:
+
+requirements:
+  build:
+    - python
+
+
+  run:
+    - python
+    - pymongo
+    - tornado
+    - ujson
+    - pyyaml
+
+
+
+test:
+  requires:
+    - nslsii_dev_configuration
+
+  imports:
+    # Import all the packages
+    - metadataservice
+    - metadataservice.schema
+    - metadataservice.server
+
+
+
+about:
+  home: https://github.com/NSLS-II/metadataservice
+  license: BSD
