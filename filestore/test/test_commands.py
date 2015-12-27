@@ -33,7 +33,7 @@ def _insert_syn_data(f_type, shape, count):
     ret = []
     for k in range(count):
         r_id = str(uuid.uuid4())
-        insert_datum(str(fb.id), r_id, {'n': k + 1})
+        insert_datum(str(fb['id']), r_id, {'n': k + 1})
         ret.append(r_id)
     return ret
 

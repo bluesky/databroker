@@ -50,6 +50,8 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
         passed to the handler to open this resource.
 
     """
+    col = Resource._get_collection()
+
     if resource_path is None:
         resource_path = ''
     if resource_kwargs is None:
@@ -57,11 +59,12 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
 
-    resource_object = Resource(spec=spec, resource_path=resource_path,
+    resource_object = dict(spec=spec, resource_path=resource_path,
                                resource_kwargs=resource_kwargs)
 
-    resource_object.save(validate=True, write_concern={"w": 1})
-
+    col.insert_one(resource_object)
+    # rename to play nice with ME
+    resource_object['id'] = resource_object.pop('_id')
     return resource_object
 
 
@@ -86,15 +89,15 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 
     """
     try:
-        spec = resource.spec
-    except AttributeError:
+        spec = resource['spec']
+    except (AttributeError, TypeError):
         resource = Resource.objects.get(id=resource)
-        spec = resource.spec
+        spec = resource['spec']
     if datum_kwargs is None:
         datum_kwargs = {}
     if spec in known_spec:
         js_validate(datum_kwargs, known_spec[spec]['datum'])
-    datum = Datum(resource=resource.id, datum_id=datum_id,
+    datum = Datum(resource=resource['id'], datum_id=datum_id,
                   datum_kwargs=datum_kwargs)
     datum.save(validate=True, write_concern={"w": 1})
 
@@ -104,7 +107,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 @_ensure_connection
 def bulk_insert_datum(resource, datum_ids, datum_kwarg_list):
 
-    resource_id = resource.id
+    resource_id = resource['id']
 
     def datum_factory():
         for d_id, d_kwargs in zip(datum_ids, datum_kwarg_list):
