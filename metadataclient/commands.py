@@ -217,8 +217,11 @@ def stop_by_start(run_start):
         If no RunStop document exists for the given RunStart.
     """
     rstart = doc_or_uid_to_uid(run_start)
-    run_stop = next(find_run_stops(run_start=rstart))
-    return utils.Document('RunStop', run_stop)
+    try:
+        run_stop = next(find_run_stops(run_start=rstart))
+        return utils.Document('RunStop', run_stop)
+    except StopIteration:
+        raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
 
 @_ensure_connection
@@ -250,7 +253,11 @@ def descriptors_by_start(run_start):
     if not e_descs:
         raise NoEventDescriptors("No EventDescriptors exists "
                                  "for {!r}".format(run_start))
-    return e_descs
+    # temp solution to get databroker working with this.
+    if len(e_descs) == 1:
+        return e_descs[0]
+    else:
+        return e_descs
 
 
 @_ensure_connection
