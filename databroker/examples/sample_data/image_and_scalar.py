@@ -2,7 +2,7 @@ from __future__ import division
 import uuid
 import time as ttime
 import numpy as np
-from metadatastore.api import (insert_event, insert_descriptor,
+from metadataclient.api import (insert_event, insert_descriptor,
                                find_events, insert_run_start, insert_run_stop,
                                find_last)
 from filestore.file_writers import save_ndarray
