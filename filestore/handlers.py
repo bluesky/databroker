@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function,
 import six
 
 import logging
-import tifffile
 import h5py
 import numpy as np
 import os.path

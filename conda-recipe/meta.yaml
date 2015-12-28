@@ -29,7 +29,6 @@ requirements:
     - pyyaml
     - jsonschema
     - pims
-    - tifffile
     - boltons
 
 test:
