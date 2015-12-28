@@ -245,11 +245,12 @@ def descriptors_by_start(run_start):
     """
     run_start_id = doc_or_uid_to_uid(run_start)
     res = find_descriptors(run_start=run_start_id)
-    try:
-        return next(res)
-    except StopIteration:
+    e_descs = [utils.Document('EventDescriptor', r) for r in res]
+
+    if not e_descs:
         raise NoEventDescriptors("No EventDescriptors exists "
                                  "for {!r}".format(run_start))
+    return e_descs
 
 
 @_ensure_connection
