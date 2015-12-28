@@ -5,8 +5,8 @@ from collections import deque
 import pandas as pd
 import tzlocal
 from metadataclient.commands import (find_last, find_run_starts,
-                                    find_descriptors,
-                                    get_events_generator, get_events_table)
+                                     find_descriptors,
+                                     get_events_generator, get_events_table)
 import doct as doc
 import metadatastore.commands as mc
 import filestore.api as fs

@@ -186,8 +186,8 @@ def test_data_key():
                                uid=str(uuid.uuid4()))
     rs1, = find_run_starts(uid=rs1_uid)
     rs2, = find_run_starts(uid=rs2_uid)
-    data_keys = {'fork': {'source': '_', 'dtype': 'number'},
-                 'spoon': {'source': '_', 'dtype': 'number'}}
+    data_keys = {'fork': {'source': '_', 'dtype': 'number', 'shape': []},
+                 'spoon': {'source': '_', 'dtype': 'number', 'shape': []}}
     insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
                             time=100.,
                             uid=str(uuid.uuid4()))
