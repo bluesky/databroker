@@ -1,11 +1,11 @@
 from nose.tools import assert_true
-from ..examples.sample_data import (temperature_ramp, multisource_event,
+from databroker.examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar, step_scan)
 import six
 from filestore.utils.testing import fs_setup, fs_teardown
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadataclient.testing_utils import mds_setup, mds_teardown
 
-from ..testing.utils import Command
+from databroker.testing.utils import Command
 
 
 examples = [temperature_ramp, multisource_event, image_and_scalar, step_scan]

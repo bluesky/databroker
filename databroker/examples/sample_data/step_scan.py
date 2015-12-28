@@ -1,6 +1,6 @@
 from __future__ import division
 import uuid
-from metadatastore.api import (insert_event, insert_descriptor,
+from metadataclient.api import (insert_event, insert_descriptor,
                                find_events)
 import numpy as np
 from metadatastore.examples.sample_data import common

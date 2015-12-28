@@ -4,15 +4,15 @@ import uuid
 import logging
 import time as ttime
 from databroker import DataBroker as db, get_events, get_table
-from ..examples.sample_data import (temperature_ramp, image_and_scalar,
+from databroker.examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
 
 
-from metadatastore.api import (insert_run_start, insert_descriptor,
+from metadataclient.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadataclient.testing_utils import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 

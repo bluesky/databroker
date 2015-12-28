@@ -1,8 +1,8 @@
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal
 from filestore.api import retrieve
-from ..examples.hdf_io import hdf_data_io
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from databroker.examples.hdf_io import hdf_data_io
+from metadataclient.testing_utils import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 
 
