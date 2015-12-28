@@ -7,6 +7,7 @@ def nonscalar_example(func):
     def fill_all_events(*args, **kwargs):
         events = func(*args, **kwargs)
         for event in events:
+            print(event)
             fill_event(event)
         return events
     return fill_all_events
