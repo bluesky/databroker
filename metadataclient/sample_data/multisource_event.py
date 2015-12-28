@@ -70,7 +70,7 @@ if __name__ == '__main__':
     import metadataclient.api as mdsc
     run_start_uid = mdsc.insert_run_start(scan_id=2032013,
                                           beamline_id='testbed',
-                                          config= {'config_id': str(uuid.uuid4()) },
+                                          custom= {'config_id': str(uuid.uuid4()) },
                                           owner='tester',
                                           group='awesome-devs',
                                           project='Nikea',

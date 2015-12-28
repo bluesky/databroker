@@ -1,4 +1,3 @@
-
 from __future__ import division
 from metadataclient.api import (insert_event, insert_descriptor,
                                find_events, insert_run_stop)
