@@ -4,15 +4,15 @@ import uuid
 import logging
 import time as ttime
 from databroker import DataBroker as db, get_events, get_table
-from ..examples.sample_data import (temperature_ramp, image_and_scalar,
+from databroker.examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
 
 
-from metadatastore.api import (insert_run_start, insert_descriptor,
+from metadataclient.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadataclient.testing_utils import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
@@ -186,8 +186,8 @@ def test_data_key():
                                uid=str(uuid.uuid4()))
     rs1, = find_run_starts(uid=rs1_uid)
     rs2, = find_run_starts(uid=rs2_uid)
-    data_keys = {'fork': {'source': '_', 'dtype': 'number'},
-                 'spoon': {'source': '_', 'dtype': 'number'}}
+    data_keys = {'fork': {'source': '_', 'dtype': 'number', 'shape': []},
+                 'spoon': {'source': '_', 'dtype': 'number', 'shape': []}}
     insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
                             time=100.,
                             uid=str(uuid.uuid4()))

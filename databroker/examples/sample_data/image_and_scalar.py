@@ -2,7 +2,7 @@ from __future__ import division
 import uuid
 import time as ttime
 import numpy as np
-from metadatastore.api import (insert_event, insert_descriptor,
+from metadataclient.api import (insert_event, insert_descriptor,
                                find_events, insert_run_start, insert_run_stop,
                                find_last)
 from filestore.file_writers import save_ndarray
@@ -57,18 +57,18 @@ def run(run_start_uid=None, sleep=0):
     np.random.RandomState(5)
 
     # set up the data keys entry
-    data_keys1 = {'linear_motor': dict(source='PV:ES:sam_x', dtype='number'),
+    data_keys1 = {'linear_motor': dict(source='PV:ES:sam_x', dtype='number', shape=[]),
                   'img': dict(source='CCD', shape=(5, 5), dtype='array',
                               external='FILESTORE:'),
-                  'total_img_sum': dict(source='CCD:sum', dtype='number'),
-                  'img_x_max': dict(source='CCD:xmax', dtype='number'),
-                  'img_y_max': dict(source='CCD:ymax', dtype='number'),
+                  'total_img_sum': dict(source='CCD:sum', dtype='number', shape=[]),
+                  'img_x_max': dict(source='CCD:xmax', dtype='number', shape=[]),
+                  'img_y_max': dict(source='CCD:ymax', dtype='number', shape=[]),
                   'img_sum_x': dict(source='CCD:xsum', dtype='array',
                                     shape=(5,), external='FILESTORE:'),
                   'img_sum_y': dict(source='CCD:ysum', dtype='array',
                                     shape=(5,), external='FILESTORE:')
                   }
-    data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
+    data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number', shape=[])}
 
     # save the first event descriptor
     descriptor1_uid = insert_descriptor(
