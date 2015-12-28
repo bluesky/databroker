@@ -510,12 +510,11 @@ def find_events(descriptor=None, **kwargs):
         if descriptor:
             desc = next(find_descriptors(uid=doc_or_uid_to_uid(descriptor)))
         for c in content:
-            if desc:
+            if not  desc:
                 # Obvious bottleneck!!!
                 # Fix using local caching!!!!
-                c['descriptor'] = desc
-            else:
                 desc = next(find_descriptors(uid=c['descriptor']))
+            c['descriptor'] = desc
             yield utils.Document('Event', c)
 
 
