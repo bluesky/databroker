@@ -693,8 +693,8 @@ def bulk_insert_events(event_descriptor, events, validate=False):
        dicts has identical keys
     Returns
     -------
-    ret : dict
-        dictionary of details about the insertion
+    ret : str
+        text of details about the insertion
     """
     BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
                      'timestamps do not match:\n data: {}\ntimestamps:{}"""
@@ -723,7 +723,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
         r = requests.post(_server_path + '/event', data=payload, timeout=None)
         r.raise_for_status()
         # TODO: Add unittest for this failure
-
+    r.text
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
@@ -747,7 +747,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
         Globally unique id string provided to metadatastore
     custom : dict, optional
         Any additional information that data acquisition code/user wants
-        to append to the EventDescriptor.
+        to append to the EventDescriptor.Again, custom not unpacked.
 
     Returns
     -------
