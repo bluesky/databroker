@@ -5,6 +5,7 @@ import six
 from functools import wraps
 import ujson
 from metadataclient import (conf, utils)
+from metadataclient.conf import _server_path
 
 
 def server_connect(host, port, protocol='http'):
@@ -26,7 +27,6 @@ def server_connect(host, port, protocol='http'):
         Full server path that is set globally. Useful for monkeypatching
         overwrites config and updates this global server path.
     """
-    global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
     return str(_server_path)
 
