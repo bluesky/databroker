@@ -22,9 +22,8 @@ install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
   - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema
-  - conda install -n testenv --yes -c soft-matter tifffile pims
   - source activate testenv
-  - pip install coveralls mongoengine boltons
+  - pip install coveralls mongoengine boltons pims
   - python setup.py install
 
 
