@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 import mongoengine.connection
+from bson import ObjectId
 from .odm_templates import Resource, Datum, ALIAS
 from .retrieve import get_data as _get_data
 from . import conf
@@ -60,7 +61,7 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
         js_validate(resource_kwargs, known_spec[spec]['resource'])
 
     resource_object = dict(spec=spec, resource_path=resource_path,
-                               resource_kwargs=resource_kwargs)
+                           resource_kwargs=resource_kwargs)
 
     col.insert_one(resource_object)
     # rename to play nice with ME
@@ -91,8 +92,10 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
     try:
         spec = resource['spec']
     except (AttributeError, TypeError):
-        resource = Resource.objects.get(id=resource)
+        res_col = Resource._get_collection()
+        resource = res_col.find_one({'_id': ObjectId(resource)})
         spec = resource['spec']
+        resource['id'] = resource['_id']
     if datum_kwargs is None:
         datum_kwargs = {}
     if spec in known_spec:
