@@ -767,7 +767,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
 
 
 @_ensure_connection
-def insert_run_start(time, scan_id, beamline_id, uid, config={},
+def insert_run_start(time, scan_id, beamline_id, uid,
                     owner=None, group=None, project=None, custom=None):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
@@ -781,14 +781,9 @@ def insert_run_start(time, scan_id, beamline_id, uid, config={},
         Unique scan identifier visible to the user and data analysis
     beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
-        beamline code for multiple beamline systems
-    beamline_config : metadatastore.documents.Document or str
-        if Document:
-            The metadatastore beamline config document
-        if str:
-            uid of beamline config corresponding to a given run
-    uid : str, optional
-        Globally unique id string provided to metadatastore
+        beamline code for multiple beamline systems 
+    uid : str
+        Globally unique id string provided to metadatastore   
     owner : str, optional
         A username associated with the entry
     group : str, optional
@@ -797,7 +792,9 @@ def insert_run_start(time, scan_id, beamline_id, uid, config={},
         Any project name to help users locate the data
     custom: dict, optional
         Any additional information that data acquisition code/user wants
-        to append to the Header at the start of the run.
+        to append to the Header at the start of the run. These are not unpacked to avoid
+        confusion. Data on the way in should be identical to data retrieved for consistency(any data
+        science book, chapter 1. Read CAP theorem for more info). 
         
     Returns
     ----------
@@ -806,7 +803,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, config={},
 
     """
     data = dict(time=time, scan_id=scan_id, beamline_id=beamline_id, uid=uid,
-                config=config, owner=owner, group=group, project=project)
+                 owner=owner, group=group, project=project)
     data = {k: v if v is not None else '' for k,v in data.items()}
 
     if custom:
