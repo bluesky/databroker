@@ -107,10 +107,10 @@ class RunStartHandler(DefaultHandler):
             raise tornado.web.HTTPError(500,
                                         status='Unable to insert the document')
 
-        database.run_start.create_index([('uid', pymongo.ASCENDING)],
+        database.run_start.create_index([('uid', pymongo.DESCENDING)],
                                        unique=True, background=True)
-        database.run_start.create_index([('time', pymongo.ASCENDING),
-                                        ('scan_id', pymongo.ASCENDING)],
+        database.run_start.create_index([('time', pymongo.DESCENDING),
+                                        ('scan_id', pymongo.DESCENDING)],
                                         unique=False)
 
         if not result:
@@ -167,9 +167,9 @@ class EventDescriptorHandler(DefaultHandler):
         except perr.PyMongoError:
             raise tornado.web.HTTPError(500,
                                         status='Unable to insert the document')
-        database.event_descriptor.create_index([('run_start', pymongo.ASCENDING)],
+        database.event_descriptor.create_index([('run_start', pymongo.DESCENDING)],
                                                unique=False)
-        database.event_descriptor.create_index([('time', pymongo.ASCENDING)],
+        database.event_descriptor.create_index([('time', pymongo.DESCENDING)],
                                                unique=False)
         if not result:
             raise tornado.web.HTTPError(500)
@@ -232,7 +232,7 @@ class RunStopHandler(DefaultHandler):
             raise tornado.web.HTTPError(500,
                                         status='Unable to insert the document')
 
-        database.run_stop.create_index([('run_start', pymongo.ASCENDING), ('time', pymongo.ASCENDING)],
+        database.run_stop.create_index([('run_start', pymongo.DESCENDING), ('time', pymongo.DESCENDING)],
                                        unique=False)
         if not result:
             raise tornado.web.HTTPError(500)
@@ -300,8 +300,8 @@ class EventHandler(DefaultHandler):
                 bulk.execute()
             except pymongo.errors.BulkWriteError as err:
                 raise tornado.web.HTTPError(500, str(err))
-            database.event.create_index([('time', pymongo.ASCENDING),
-                                         ('descriptor', pymongo.ASCENDING)])
+            database.event.create_index([('time', pymongo.DESCENDING),
+                                         ('descriptor', pymongo.DESCENDING)])
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = database.event.insert(data)
