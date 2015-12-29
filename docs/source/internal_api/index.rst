@@ -17,7 +17,6 @@ Handler Management
     :toctree: generated/
 
    HandlerRegistry
-   _h_registry
    get_spec_handler
 
 Data Retrieval

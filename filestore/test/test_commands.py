@@ -7,7 +7,7 @@ import uuid
 
 import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler)
+                           register_handler, deregister_handler)
 from filestore.odm_templates import Datum
 from filestore.utils.testing import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
@@ -24,8 +24,7 @@ def setup():
 
 def teardown():
     fs_teardown()
-
-    del filestore.retrieve._h_registry['syn-mod']
+    deregister_handler('syn-mod')
 
 
 def _insert_syn_data(f_type, shape, count):

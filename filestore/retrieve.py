@@ -6,26 +6,18 @@ import logging
 from contextlib import contextmanager
 import boltons.cacheutils
 from .odm_templates import Resource, Datum
+from .fs import FileStore
 
 # needed for API
-from .handlers_base import HandlerBase
-from .handlers_base import HandlerRegistry, DuplicateHandler
+from .handlers_base import HandlerBase, HandlerRegistry, DuplicateHandler
 
 logger = logging.getLogger(__name__)
 
 
-def _resource_on_miss(k):
-    res_col = Resource._get_collection()
-    return res_col.find_one({'_id': k})
-
-_DATUM_CACHE = boltons.cacheutils.LRU(max_size=1000000)
-_HANDLER_CACHE = boltons.cacheutils.LRU()
-_RESOURCE_CACHE = boltons.cacheutils.LRU(on_miss=_resource_on_miss)
-
-
-# singleton module-level registry, not 100% with
-# this design choice
-_h_registry = HandlerRegistry()
+_FS_SINGLETON = FileStore({})
+_DATUM_CACHE = _FS_SINGLETON._datum_cache
+_HANDLER_CACHE = _FS_SINGLETON._handler_cache
+_RESOURCE_CACHE = _FS_SINGLETON._resource_cache
 
 
 class DatumNotFound(Datum.DoesNotExist):
@@ -55,22 +47,8 @@ def handler_context(temp_handlers):
            FS.retrieve(EID)
 
     """
-    remove_list = []
-    replace_list = []
-    for k, v in six.iteritems(temp_handlers):
-        if k not in _h_registry:
-            remove_list.append(k)
-        else:
-            old_h = _h_registry.pop(k)
-            replace_list.append((k, old_h))
-        register_handler(k, v)
-
-    yield
-    for k in remove_list:
-        deregister_handler(k)
-    for k, v in replace_list:
-        deregister_handler(k)
-        register_handler(k, v)
+    with _FS_SINGLETON.handler_context(temp_handlers) as fs:
+        yield fs
 
 
 def register_handler(key, handler, overwrite=False):
@@ -98,14 +76,7 @@ def register_handler(key, handler, overwrite=False):
     `deregister_handler`
 
     """
-    try:
-        _h_registry.register_handler(key, handler)
-    except DuplicateHandler:
-        if overwrite:
-            deregister_handler(key)
-            _h_registry.register_handler(key, handler)
-        else:
-            raise
+    _FS_SINGLETON.register_handler(key, handler, overwrite)
 
 
 def deregister_handler(key):
@@ -122,12 +93,7 @@ def deregister_handler(key):
     `register_handler`
 
     """
-    handler = _h_registry.deregister_handler(key)
-    if handler is not None:
-        name = handler.__name__
-        for k in list(_HANDLER_CACHE):
-            if k[1] == name:
-                del _HANDLER_CACHE[k]
+    _FS_SINGLETON.deregister_handler(key)
 
 
 def get_spec_handler(resource, handle_registry=None):
@@ -155,9 +121,9 @@ def get_spec_handler(resource, handle_registry=None):
         document returns the externally stored data
 
     """
-
     if handle_registry is None:
-        handle_registry = _h_registry
+        handle_registry = _FS_SINGLETON.handler_reg
+
     resource = _RESOURCE_CACHE[resource]
 
     spec = resource['spec']

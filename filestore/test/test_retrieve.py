@@ -110,7 +110,7 @@ def test_register_fail():
 
 
 def test_context_manager_replace():
-    test_reg = fsr._h_registry
+    test_reg = fsr._FS_SINGLETON.handler_reg
     with fsr.handler_context({'syn-mod': SynHandlerMod}):
         assert_true(test_reg['syn-mod'] is SynHandlerMod)
         with fsr.handler_context({'syn-mod': SynHandlerEcho}):
@@ -120,7 +120,7 @@ def test_context_manager_replace():
 
 
 def test_deregister():
-    test_reg = fsr._h_registry
+    test_reg = fsr._FS_SINGLETON.handler_reg
     test_spec_name = str(uuid.uuid4())
     fsr.register_handler(test_spec_name, SynHandlerMod)
     assert_true(test_reg[test_spec_name] is SynHandlerMod)
