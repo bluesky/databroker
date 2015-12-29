@@ -110,17 +110,19 @@ def test_register_fail():
 
 
 def test_context_manager_replace():
+    test_reg = fsr._h_registry
     with fsr.handler_context({'syn-mod': SynHandlerMod}):
-        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
+        assert_true(test_reg['syn-mod'] is SynHandlerMod)
         with fsr.handler_context({'syn-mod': SynHandlerEcho}):
-            assert_true(fsr._h_registry['syn-mod'] is SynHandlerEcho)
-        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
-    assert_false('syn-mod' in fsr._h_registry)
+            assert_true(test_reg['syn-mod'] is SynHandlerEcho)
+        assert_true(test_reg['syn-mod'] is SynHandlerMod)
+    assert_false('syn-mod' in test_reg)
 
 
 def test_deregister():
+    test_reg = fsr._h_registry
     test_spec_name = str(uuid.uuid4())
     fsr.register_handler(test_spec_name, SynHandlerMod)
-    assert_true(fsr._h_registry[test_spec_name] is SynHandlerMod)
+    assert_true(test_reg[test_spec_name] is SynHandlerMod)
     fsr.deregister_handler(test_spec_name)
-    assert_false(test_spec_name in fsr._h_registry)
+    assert_false(test_spec_name in test_reg)
