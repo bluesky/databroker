@@ -11,6 +11,8 @@ from functools import wraps
 from .odm_templates import known_spec
 from jsonschema import validate as js_validate
 
+from document import Document
+
 
 def _ensure_connection(func):
     @wraps(func)
@@ -89,6 +91,7 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
         resource.
 
     """
+    col = Datum._get_collection()
     try:
         spec = resource['spec']
     except (AttributeError, TypeError):
@@ -100,11 +103,12 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
         datum_kwargs = {}
     if spec in known_spec:
         js_validate(datum_kwargs, known_spec[spec]['datum'])
-    datum = Datum(resource=resource['id'], datum_id=datum_id,
-                  datum_kwargs=datum_kwargs)
-    datum.save(validate=True, write_concern={"w": 1})
+    datum = dict(resource=resource['id'], datum_id=datum_id,
+                 datum_kwargs=datum_kwargs)
+    col.insert_one(datum)
+    datum.pop('_id')
 
-    return datum
+    return Document('datum', datum)
 
 
 @_ensure_connection
