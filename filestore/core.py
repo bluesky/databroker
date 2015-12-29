@@ -36,3 +36,21 @@ def get_datum(col, eid, handle_registry, _DATUM_CACHE,
 
     handler = get_spec_handler(datum['resource'], handle_registry)
     return handler(**datum['datum_kwargs'])
+
+
+def bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list):
+
+    resource_id = resource['id']
+
+    def datum_factory():
+        for d_id, d_kwargs in zip(datum_ids, datum_kwarg_list):
+            datum = dict(resource=resource_id,
+                         datum_id=d_id,
+                         datum_kwargs=d_kwargs)
+            yield datum
+
+    bulk = col.initialize_ordered_bulk_op()
+    for dm in datum_factory():
+        bulk.insert(dm)
+
+    return bulk.execute()
