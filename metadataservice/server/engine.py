@@ -18,6 +18,7 @@ from metadataservice.server import utils
 CACHE_SIZE = 100000
 loop = tornado.ioloop.IOLoop.instance()
 
+
 class MetadataServiceException(Exception):
     pass
 
