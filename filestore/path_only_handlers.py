@@ -4,7 +4,7 @@ import six
 
 import logging
 
-from .retrieve import HandlerBase
+from .handlers_base import HandlerBase
 
 logger = logging.getLogger(__name__)
 

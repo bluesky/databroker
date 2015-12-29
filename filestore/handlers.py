@@ -8,7 +8,7 @@ import numpy as np
 import os.path
 import pims
 
-from .retrieve import HandlerBase
+from .handlers_base import HandlerBase
 from .readers.spe import PrincetonSPEFile
 
 logger = logging.getLogger(__name__)
