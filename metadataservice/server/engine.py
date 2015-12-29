@@ -89,7 +89,7 @@ class RunStartHandler(DefaultHandler):
         if num:
             docs = database.run_start.find().sort('time', direction=pymongo.DESCENDING).limit(num)
         else:
-            docs = database.run_start.find(query)
+            docs = database.run_start.find(query).sort('time', direction=pymongo.DESCENDING)
         if not docs:
             raise tornado.web.HTTPError(500, reason='No results found for query')
         else:
