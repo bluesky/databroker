@@ -8,7 +8,7 @@ import uuid
 import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler)
-from filestore.odm_templates import Datum
+from filestore.core import DatumNotFound
 from filestore.utils.testing import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
@@ -62,4 +62,4 @@ def test_round_trip():
 
 
 def test_non_exist():
-    assert_raises(Datum.DoesNotExist, retrieve, 'aardvark')
+    assert_raises(DatumNotFound, retrieve, 'aardvark')
