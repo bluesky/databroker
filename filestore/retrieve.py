@@ -28,6 +28,10 @@ _RESOURCE_CACHE = boltons.cacheutils.LRU(on_miss=_resource_on_miss)
 _h_registry = HandlerRegistry()
 
 
+class DatumNotFound(Datum.DoesNotExist):
+    pass
+
+
 @contextmanager
 def handler_context(temp_handlers):
     """
@@ -190,22 +194,27 @@ def get_data(eid, handle_registry=None):
     data : ndarray
         The data in ndarray form.
     """
+    col = Datum._get_collection()
 
+    return _get_data(col, eid, handle_registry)
+
+
+def _get_data(col, eid, handle_registry):
     try:
         datum = _DATUM_CACHE[eid]
     except KeyError:
         keys = ['datum_kwargs', 'resource']
-        d_objs = Datum._get_collection()
         # find the current document
-        edoc = d_objs.find_one({'datum_id': eid})
+        edoc = col.find_one({'datum_id': eid})
         if edoc is None:
-            raise Datum.DoesNotExist()
+            raise DatumNotFound(
+                "No datum found with datum_id {!r}".format(eid))
         # save it for later
         datum = {k: edoc[k] for k in keys}
 
         res = edoc['resource']
         count = 0
-        for dd in d_objs.find({'resource': res}):
+        for dd in col.find({'resource': res}):
             count += 1
             d_id = dd['datum_id']
             if d_id not in _DATUM_CACHE:
