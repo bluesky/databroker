@@ -200,6 +200,7 @@ def ref_doc_to_uid(doc, field):
     field : str
         The field to replace with the uid of it's contents
     """
+    # print("Here is doc type", type(doc))
     name, doc = doc.to_name_dict_pair()
     doc[field] = doc[field]['uid']
     return Document(name, doc)

@@ -404,8 +404,8 @@ def test_run_stop_by_run_start():
     ev_desc2 = mdsc.descriptors_by_start(run_start)
     ev_desc3 = mdsc.descriptors_by_start(run_start_uid)
 
-    assert_equal(ev_desc, ev_desc2)
-    assert_equal(ev_desc, ev_desc3)
+    assert_equal(ev_desc, ev_desc2[0])
+    assert_equal(ev_desc, ev_desc3[0])
 
 #
 @raises(mdsc.NoEventDescriptors)

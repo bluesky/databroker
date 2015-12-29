@@ -254,10 +254,10 @@ def descriptors_by_start(run_start):
         raise NoEventDescriptors("No EventDescriptors exists "
                                  "for {!r}".format(run_start))
     # temp solution to get databroker working with this.
-    if len(e_descs) == 1:
-        return e_descs[0]
-    else:
-        return e_descs
+    # if len(e_descs) == 1:
+    #     return e_descs[0]
+    # else:
+    return e_descs
 
 
 @_ensure_connection
@@ -625,10 +625,13 @@ def get_events_generator(descriptor):
         newest
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
+    print(descriptor_uid)
+
     ev_cur = find_events(descriptor=descriptor_uid)
+    print(ev_cur)
     for ev in ev_cur:
-        ev = dict(ev)
-        ev['descriptor'] = next(find_descriptors(uid=descriptor_uid))
+        # ev = dict(ev)
+        # ev['descriptor'] = next(find_descriptors(uid=descriptor_uid))
         yield utils.Document('Event', ev)
 
 
