@@ -4,8 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 from contextlib import contextmanager
-import boltons.cacheutils
-from .odm_templates import Resource, Datum
+from .odm_templates import Datum
 from .fs import FileStore
 
 # needed for API
