@@ -4,11 +4,15 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 from contextlib import contextmanager
-from .odm_templates import Datum
+
 from .fs import FileStore
+from .odm_templates import Datum
 
 # needed for API
+from .core import DatumNotFound
 from .handlers_base import HandlerBase, HandlerRegistry, DuplicateHandler
+
+from .core import get_datum as _get_datum
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +21,6 @@ _FS_SINGLETON = FileStore({})
 _DATUM_CACHE = _FS_SINGLETON._datum_cache
 _HANDLER_CACHE = _FS_SINGLETON._handler_cache
 _RESOURCE_CACHE = _FS_SINGLETON._resource_cache
-
-
-class DatumNotFound(Datum.DoesNotExist):
-    pass
 
 
 @contextmanager
@@ -161,32 +161,5 @@ def get_data(eid, handle_registry=None):
     """
     col = Datum._get_collection()
 
-    return _get_data(col, eid, handle_registry)
-
-
-def _get_data(col, eid, handle_registry):
-    try:
-        datum = _DATUM_CACHE[eid]
-    except KeyError:
-        keys = ['datum_kwargs', 'resource']
-        # find the current document
-        edoc = col.find_one({'datum_id': eid})
-        if edoc is None:
-            raise DatumNotFound(
-                "No datum found with datum_id {!r}".format(eid))
-        # save it for later
-        datum = {k: edoc[k] for k in keys}
-
-        res = edoc['resource']
-        count = 0
-        for dd in col.find({'resource': res}):
-            count += 1
-            d_id = dd['datum_id']
-            if d_id not in _DATUM_CACHE:
-                _DATUM_CACHE[d_id] = {k: dd[k] for k in keys}
-        if count > _DATUM_CACHE.max_size:
-            logger.warn("More datum in a resource than your "
-                        "datum cache can hold.")
-
-    handler = get_spec_handler(datum['resource'], handle_registry)
-    return handler(**datum['datum_kwargs'])
+    return _get_datum(col, eid, handle_registry, _DATUM_CACHE,
+                      get_spec_handler, logger)
