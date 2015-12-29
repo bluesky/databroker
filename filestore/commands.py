@@ -9,11 +9,10 @@ from . import conf
 from functools import wraps
 
 from .odm_templates import known_spec
-from jsonschema import validate as js_validate
 
-from document import Document
-
-from .core import bulk_insert_datum as _bulk_insert_datum
+from .core import (bulk_insert_datum as _bulk_insert_datum,
+                   insert_datum as _insert_datum,
+                   insert_resource as _insert_resource)
 
 
 def _ensure_connection(func):
@@ -61,16 +60,9 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
         resource_path = ''
     if resource_kwargs is None:
         resource_kwargs = {}
-    if spec in known_spec:
-        js_validate(resource_kwargs, known_spec[spec]['resource'])
 
-    resource_object = dict(spec=spec, resource_path=resource_path,
-                           resource_kwargs=resource_kwargs)
-
-    col.insert_one(resource_object)
-    # rename to play nice with ME
-    resource_object['id'] = resource_object.pop('_id')
-    return resource_object
+    return _insert_resource(col, spec, resource_path, resource_kwargs,
+                            known_spec)
 
 
 @_ensure_connection
@@ -94,23 +86,18 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
 
     """
     col = Datum._get_collection()
+
     try:
-        spec = resource['spec']
+        resource['spec']
     except (AttributeError, TypeError):
         res_col = Resource._get_collection()
         resource = res_col.find_one({'_id': ObjectId(resource)})
-        spec = resource['spec']
         resource['id'] = resource['_id']
     if datum_kwargs is None:
         datum_kwargs = {}
-    if spec in known_spec:
-        js_validate(datum_kwargs, known_spec[spec]['datum'])
-    datum = dict(resource=resource['id'], datum_id=datum_id,
-                 datum_kwargs=datum_kwargs)
-    col.insert_one(datum)
-    datum.pop('_id')
 
-    return Document('datum', datum)
+    return _insert_datum(col, resource, datum_id, datum_kwargs,
+                         known_spec)
 
 
 @_ensure_connection

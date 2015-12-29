@@ -2,6 +2,8 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
+from document import Document
+from jsonschema import validate as js_validate
 
 
 class DatumNotFound(Exception):
@@ -53,3 +55,31 @@ def bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list):
         bulk.insert(dm)
 
     return bulk.execute()
+
+
+def insert_datum(col, resource, datum_id, datum_kwargs, known_spec):
+    spec = resource['spec']
+    if spec in known_spec:
+        js_validate(datum_kwargs, known_spec[spec]['datum'])
+    datum = dict(resource=resource['id'], datum_id=datum_id,
+                 datum_kwargs=datum_kwargs)
+
+    col.insert_one(datum)
+    # do not leak mongo objectID
+    datum.pop('_id', None)
+
+    return Document('datum', datum)
+
+
+def insert_resource(col, spec, resource_path, resource_kwargs,
+                    known_spec):
+    if spec in known_spec:
+        js_validate(resource_kwargs, known_spec[spec]['resource'])
+
+    resource_object = dict(spec=spec, resource_path=resource_path,
+                           resource_kwargs=resource_kwargs)
+
+    col.insert_one(resource_object)
+    # rename to play nice with ME
+    resource_object['id'] = resource_object.pop('_id')
+    return resource_object
