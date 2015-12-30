@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import numpy as np
 import uuid
+import itertools
 
 import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
@@ -31,9 +32,12 @@ def teardown():
 def _insert_syn_data(f_type, shape, count):
     fb = insert_resource(f_type, None, {'shape': shape})
     ret = []
-    for k in range(count):
+    res_map_cycle = itertools.cycle((lambda x: x,
+                                     lambda x: x['id'],
+                                     lambda x: str(x['id'])))
+    for k, rmap in zip(range(count), res_map_cycle):
         r_id = str(uuid.uuid4())
-        insert_datum(str(fb['id']), r_id, {'n': k + 1})
+        insert_datum(rmap(fb), r_id, {'n': k + 1})
         ret.append(r_id)
     return ret
 
