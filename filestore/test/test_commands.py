@@ -14,6 +14,7 @@ from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
 from .t_utils import SynHandlerMod
+import pymongo.errors
 
 
 def setup():
@@ -63,3 +64,12 @@ def test_round_trip():
 
 def test_non_exist():
     assert_raises(DatumNotFound, retrieve, 'aardvark')
+
+
+def test_non_unique_fail():
+    shape = (25, 32)
+    fb = insert_resource('syn-mod', None, {'shape': shape})
+    r_id = str(uuid.uuid4())
+    insert_datum(str(fb['id']), r_id, {'n': 0})
+    assert_raises(pymongo.errors.DuplicateKeyError,
+                  insert_datum, str(fb['id']), r_id, {'n': 1})
