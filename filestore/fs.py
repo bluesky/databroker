@@ -9,7 +9,10 @@ import logging
 import boltons.cacheutils
 from .handlers_base import HandlerRegistry, DuplicateHandler
 
-from .core import get_datum as _get_datum
+from .core import (bulk_insert_datum as _bulk_insert_datum,
+                   insert_datum as _insert_datum,
+                   insert_resource as _insert_resource,
+                   get_datum as _get_datum)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,7 @@ class FileStoreRO(object):
         self.__conn = None
         self.__datum_col = None
         self.__res_col = None
+        self.known_spec = {}
 
     def disconnect(self):
         self.__db = None
@@ -155,7 +159,10 @@ class FileStoreRO(object):
 
 class FileStore(FileStoreRO):
     def insert_resource(self, spec, resource_path, resource_kwargs):
-        pass
+        col = self._resource_col
+
+        return _insert_resource(col, spec, resource_path, resource_kwargs,
+                                self.known_spec)
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
         pass

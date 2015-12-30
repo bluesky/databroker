@@ -11,8 +11,7 @@ from functools import wraps
 from .odm_templates import known_spec
 
 from .core import (bulk_insert_datum as _bulk_insert_datum,
-                   insert_datum as _insert_datum,
-                   insert_resource as _insert_resource)
+                   insert_datum as _insert_datum)
 
 
 def _ensure_connection(func):
@@ -41,7 +40,6 @@ def db_connect(database, host, port):
     return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
-@_ensure_connection
 def insert_resource(spec, resource_path, resource_kwargs=None):
     """
     Parameters
@@ -59,15 +57,8 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
         passed to the handler to open this resource.
 
     """
-    col = Resource._get_collection()
-
-    if resource_path is None:
-        resource_path = ''
-    if resource_kwargs is None:
-        resource_kwargs = {}
-
-    return _insert_resource(col, spec, resource_path, resource_kwargs,
-                            known_spec)
+    resource_kwargs = resource_kwargs if resource_kwargs is not None else {}
+    return _FS_SINGLETON.insert_resource(spec, resource_path, resource_kwargs)
 
 
 @_ensure_connection
