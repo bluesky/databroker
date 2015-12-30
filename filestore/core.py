@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 from document import Document
 from jsonschema import validate as js_validate
+from bson import ObjectId
 
 
 class DatumNotFound(Exception):
@@ -40,13 +41,13 @@ def get_datum(col, eid, _DATUM_CACHE, get_spec_handler, logger):
 
 def bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list):
 
-    resource_id = resource['id']
+    resource_id = ObjectId(resource['id'])
 
     def datum_factory():
         for d_id, d_kwargs in zip(datum_ids, datum_kwarg_list):
             datum = dict(resource=resource_id,
-                         datum_id=d_id,
-                         datum_kwargs=d_kwargs)
+                         datum_id=str(d_id),
+                         datum_kwargs=dict(d_kwargs))
             yield datum
 
     bulk = col.initialize_ordered_bulk_op()
@@ -60,8 +61,9 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec):
     spec = resource['spec']
     if spec in known_spec:
         js_validate(datum_kwargs, known_spec[spec]['datum'])
-    datum = dict(resource=resource['id'], datum_id=datum_id,
-                 datum_kwargs=datum_kwargs)
+    datum = dict(resource=ObjectId(resource['id']),
+                 datum_id=str(datum_id),
+                 datum_kwargs=dict(datum_kwargs))
 
     col.insert_one(datum)
     # do not leak mongo objectID
@@ -72,10 +74,12 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec):
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
                     known_spec):
+    resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
 
-    resource_object = dict(spec=spec, resource_path=resource_path,
+    resource_object = dict(spec=str(spec),
+                           resource_path=str(resource_path),
                            resource_kwargs=resource_kwargs)
 
     col.insert_one(resource_object)
