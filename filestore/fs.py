@@ -45,7 +45,7 @@ class FileStoreRO(object):
         return col.find_one({'_id': k})
 
     def get_datum(self, eid):
-        return _get_datum(self._datum_col, eid, self.handler_reg,
+        return _get_datum(self._datum_col, eid,
                           self._datum_cache, self.get_spec_handler,
                           logger)
 
@@ -114,7 +114,7 @@ class FileStoreRO(object):
                                       self.config.get('port', None))
         return self.__conn
 
-    def get_spec_handler(self, resource, hr=None):
+    def get_spec_handler(self, resource):
         """
         Given a document from the base FS collection return
         the proper Handler
@@ -135,8 +135,7 @@ class FileStoreRO(object):
             document returns the externally stored data
 
         """
-        if hr is None:
-            hr = self.handler_reg
+        hr = self.handler_reg
 
         handle_registry = hr
 

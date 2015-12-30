@@ -10,8 +10,7 @@ class DatumNotFound(Exception):
     pass
 
 
-def get_datum(col, eid, handle_registry, _DATUM_CACHE,
-              get_spec_handler, logger):
+def get_datum(col, eid, _DATUM_CACHE, get_spec_handler, logger):
     try:
         datum = _DATUM_CACHE[eid]
     except KeyError:
@@ -35,7 +34,7 @@ def get_datum(col, eid, handle_registry, _DATUM_CACHE,
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
-    handler = get_spec_handler(datum['resource'], handle_registry)
+    handler = get_spec_handler(datum['resource'])
     return handler(**datum['datum_kwargs'])
 
 
