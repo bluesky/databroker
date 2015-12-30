@@ -4,7 +4,7 @@ from mongoengine import connect
 import mongoengine.connection
 from bson import ObjectId
 from .odm_templates import Resource, Datum, ALIAS
-from .retrieve import get_data as _get_data
+from .retrieve import get_data as _get_data, _FS_SINGLETON
 from . import conf
 from functools import wraps
 
@@ -30,9 +30,14 @@ def db_disconnect():
     mongoengine.connection.disconnect(ALIAS)
     Datum._collection = None
     Resource._collection = None
+    _FS_SINGLETON.disconnect()
 
 
 def db_connect(database, host, port):
+    _FS_SINGLETON.reconfigure(dict(database=database,
+                                   host=host,
+                                   port=port))
+    assert _FS_SINGLETON.config['database'] == database
     return connect(db=database, host=host, port=port, alias=ALIAS)
 
 
@@ -106,7 +111,6 @@ def bulk_insert_datum(resource, datum_ids, datum_kwarg_list):
     return _bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list)
 
 
-@_ensure_connection
 def retrieve(eid):
     """
     Given a resource identifier return the data.

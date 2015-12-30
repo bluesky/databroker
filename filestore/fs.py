@@ -2,13 +2,16 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-
+from pymongo import MongoClient
 from contextlib import contextmanager
+import logging
 
 import boltons.cacheutils
 from .handlers_base import HandlerRegistry, DuplicateHandler
 
-from .odm_templates import Resource
+from .core import get_datum as _get_datum
+
+logger = logging.getLogger(__name__)
 
 
 class FileStoreRO(object):
@@ -21,13 +24,30 @@ class FileStoreRO(object):
         self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
         self._handler_cache = boltons.cacheutils.LRU()
         self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
+        self.__db = None
+        self.__conn = None
+        self.__datum_col = None
+        self.__res_col = None
+
+    def disconnect(self):
+        self.__db = None
+        self.__conn = None
+        self.__datum_col = None
+        self.__res_col = None
+
+    def reconfigure(self, config):
+        self.disconnect()
+        self.config = config
+        print(config)
 
     def _r_on_miss(self, k):
         col = self._resource_col
         return col.find_one({'_id': k})
 
-    def get_data(self, eid):
-        pass
+    def get_datum(self, eid):
+        return _get_datum(self._datum_col, eid, self.handler_reg,
+                          self._datum_cache, self.get_spec_handler,
+                          logger)
 
     def register_handler(self, key, handler, overwrite=False):
         try:
@@ -67,9 +87,71 @@ class FileStoreRO(object):
             self.register_handler(k, v)
 
     @property
+    def _db(self):
+        if self.__db is None:
+            conn = self._connection
+            self.__db = conn.get_database(self.config['database'])
+        return self.__db
+
+    @property
     def _resource_col(self):
-        # TODO NUKE THIS!
-        return Resource._get_collection()
+        if self.__res_col is None:
+            self.__res_col = self._db.get_collection('resource')
+
+        return self.__res_col
+
+    @property
+    def _datum_col(self):
+        if self.__datum_col is None:
+            self.__datum_col = self._db.get_collection('datum')
+
+        return self.__datum_col
+
+    @property
+    def _connection(self):
+        if self.__conn is None:
+            self.__conn = MongoClient(self.config['host'],
+                                      self.config.get('port', None))
+        return self.__conn
+
+    def get_spec_handler(self, resource, hr=None):
+        """
+        Given a document from the base FS collection return
+        the proper Handler
+
+        This should get memozied or shoved into a class eventually
+        to minimize open/close thrashing.
+
+        Parameters
+        ----------
+        resource : ObjectId
+            ObjectId of a resource document
+
+        Returns
+        -------
+
+        handler : callable
+            An object that when called with the values in the event
+            document returns the externally stored data
+
+        """
+        if hr is None:
+            hr = self.handler_reg
+
+        handle_registry = hr
+
+        resource = self._resource_cache[resource]
+        h_cache = self._handler_cache
+        spec = resource['spec']
+        handler = handle_registry[spec]
+        key = (str(resource['_id']), handler.__name__)
+        if key in h_cache:
+            return h_cache[key]
+        kwargs = resource['resource_kwargs']
+        rpath = resource['resource_path']
+        ret = handler(rpath, **kwargs)
+        h_cache[key] = ret
+        return ret
 
 
 class FileStore(FileStoreRO):

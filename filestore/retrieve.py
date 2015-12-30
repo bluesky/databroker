@@ -6,21 +6,17 @@ import logging
 from contextlib import contextmanager
 
 from .fs import FileStore
-from .odm_templates import Datum
 
 # needed for API
 from .core import DatumNotFound
 from .handlers_base import HandlerBase, HandlerRegistry, DuplicateHandler
 
-from .core import get_datum as _get_datum
-
+from .conf import connection_config
 logger = logging.getLogger(__name__)
 
 
-_FS_SINGLETON = FileStore({})
-_DATUM_CACHE = _FS_SINGLETON._datum_cache
+_FS_SINGLETON = FileStore(connection_config)
 _HANDLER_CACHE = _FS_SINGLETON._handler_cache
-_RESOURCE_CACHE = _FS_SINGLETON._resource_cache
 
 
 @contextmanager
@@ -120,21 +116,9 @@ def get_spec_handler(resource, handle_registry=None):
         document returns the externally stored data
 
     """
-    if handle_registry is None:
-        handle_registry = _FS_SINGLETON.handler_reg
-
-    resource = _RESOURCE_CACHE[resource]
-
-    spec = resource['spec']
-    handler = handle_registry[spec]
-    key = (str(resource['_id']), handler.__name__)
-    if key in _HANDLER_CACHE:
-        return _HANDLER_CACHE[key]
-    kwargs = resource['resource_kwargs']
-    rpath = resource['resource_path']
-    ret = handler(rpath, **kwargs)
-    _HANDLER_CACHE[key] = ret
-    return ret
+    handle_registry = handle_registry if handle_registry is not None else {}
+    with _FS_SINGLETON.handler_context(handle_registry) as fs:
+        return fs.get_spec_handler(resource)
 
 
 def get_data(eid, handle_registry=None):
@@ -159,7 +143,7 @@ def get_data(eid, handle_registry=None):
     data : ndarray
         The data in ndarray form.
     """
-    col = Datum._get_collection()
-
-    return _get_datum(col, eid, handle_registry, _DATUM_CACHE,
-                      get_spec_handler, logger)
+    if handle_registry is None:
+        handle_registry = {}
+    with _FS_SINGLETON.handler_context(handle_registry) as fs:
+        return fs.get_datum(eid)
