@@ -23,7 +23,7 @@ install:
   - conda update conda --yes
   - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema
   - source activate testenv
-  - pip install coveralls mongoengine boltons pims
+  - pip install coveralls boltons pims
   - 'pip install https://github.com/tacaswell/document/zipball/master#egg=document'
   - python setup.py install
 
