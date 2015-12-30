@@ -3,6 +3,8 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 from pymongo import MongoClient
+from bson import ObjectId
+
 from contextlib import contextmanager
 import logging
 
@@ -165,7 +167,19 @@ class FileStore(FileStoreRO):
                                 self.known_spec)
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
-        pass
+        col = self._datum_col
+
+        try:
+            resource['spec']
+        except (AttributeError, TypeError):
+            res_col = self._resource_col
+            resource = res_col.find_one({'_id': ObjectId(resource)})
+            resource['id'] = resource['_id']
+        if datum_kwargs is None:
+            datum_kwargs = {}
+
+        return _insert_datum(col, resource, datum_id, datum_kwargs,
+                             self.known_spec)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         pass

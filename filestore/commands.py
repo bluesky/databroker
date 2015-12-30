@@ -2,16 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 from mongoengine import connect
 import mongoengine.connection
-from bson import ObjectId
-from .odm_templates import Resource, Datum, ALIAS
+
+from .odm_templates import Datum, ALIAS
 from .retrieve import get_data as _get_data, _FS_SINGLETON
 from . import conf
 from functools import wraps
 
-from .odm_templates import known_spec
-
-from .core import (bulk_insert_datum as _bulk_insert_datum,
-                   insert_datum as _insert_datum)
+from .core import (bulk_insert_datum as _bulk_insert_datum)
 
 
 def _ensure_connection(func):
@@ -28,7 +25,6 @@ def _ensure_connection(func):
 def db_disconnect():
     mongoengine.connection.disconnect(ALIAS)
     Datum._collection = None
-    Resource._collection = None
     _FS_SINGLETON.disconnect()
 
 
@@ -61,7 +57,6 @@ def insert_resource(spec, resource_path, resource_kwargs=None):
     return _FS_SINGLETON.insert_resource(spec, resource_path, resource_kwargs)
 
 
-@_ensure_connection
 def insert_datum(resource, datum_id, datum_kwargs=None):
     """
 
@@ -81,19 +76,8 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
         resource.
 
     """
-    col = Datum._get_collection()
-
-    try:
-        resource['spec']
-    except (AttributeError, TypeError):
-        res_col = Resource._get_collection()
-        resource = res_col.find_one({'_id': ObjectId(resource)})
-        resource['id'] = resource['_id']
-    if datum_kwargs is None:
-        datum_kwargs = {}
-
-    return _insert_datum(col, resource, datum_id, datum_kwargs,
-                         known_spec)
+    datum_kwargs = datum_kwargs if datum_kwargs is not None else {}
+    return _FS_SINGLETON.insert_datum(resource, datum_id, datum_kwargs)
 
 
 @_ensure_connection
