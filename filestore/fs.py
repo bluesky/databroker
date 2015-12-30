@@ -2,15 +2,17 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
+from pkg_resources import resource_filename
+from contextlib import contextmanager
+import json
+import logging
+
 from pymongo import MongoClient
 from bson import ObjectId
 
-from contextlib import contextmanager
-import logging
-
 import boltons.cacheutils
-from .handlers_base import HandlerRegistry, DuplicateHandler
 
+from .handlers_base import HandlerRegistry, DuplicateHandler
 from .core import (bulk_insert_datum as _bulk_insert_datum,
                    insert_datum as _insert_datum,
                    insert_resource as _insert_resource,
@@ -20,6 +22,19 @@ logger = logging.getLogger(__name__)
 
 
 class FileStoreRO(object):
+
+    KNOWN_SPEC = dict()
+    # load the built-in schema
+    for spec_name in ['AD_HDF5', 'AD_SPE']:
+        tmp_dict = {}
+        resource_name = 'json/{}_resource.json'.format(spec_name)
+        datum_name = 'json/{}_datum.json'.format(spec_name)
+        with open(resource_filename('filestore', resource_name), 'r') as fin:
+            tmp_dict['resource'] = json.load(fin)
+        with open(resource_filename('filestore', datum_name), 'r') as fin:
+            tmp_dict['datum'] = json.load(fin)
+        KNOWN_SPEC[spec_name] = tmp_dict
+
     def __init__(self, config, handler_reg=None):
         self.config = config
 
@@ -33,7 +48,7 @@ class FileStoreRO(object):
         self.__conn = None
         self.__datum_col = None
         self.__res_col = None
-        self.known_spec = {}
+        self.known_spec = dict(self.KNOWN_SPEC)
 
     def disconnect(self):
         self.__db = None

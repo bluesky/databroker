@@ -4,24 +4,8 @@ from mongoengine import (Document, StringField, DictField, ReferenceField,
                          DENY)
 
 import logging
-import json
-from pkg_resources import resource_filename
 
 logger = logging.getLogger(__name__)
-
-# module-level global dict to store the schema for know file formats (spec)
-known_spec = dict()
-
-# load the built-in schema
-for spec_name in ['AD_HDF5', 'AD_SPE']:
-    tmp_dict = {}
-    resource_name = 'json/{}_resource.json'.format(spec_name)
-    datum_name = 'json/{}_datum.json'.format(spec_name)
-    with open(resource_filename('filestore', resource_name), 'r') as fin:
-        tmp_dict['resource'] = json.load(fin)
-    with open(resource_filename('filestore', datum_name), 'r') as fin:
-        tmp_dict['datum'] = json.load(fin)
-    known_spec[spec_name] = tmp_dict
 
 ALIAS = 'fs'
 
