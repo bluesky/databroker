@@ -182,4 +182,5 @@ class FileStore(FileStoreRO):
                              self.known_spec)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
-        pass
+        col = self._datum_col
+        return _bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list)

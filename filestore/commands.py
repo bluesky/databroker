@@ -80,10 +80,9 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
     return _FS_SINGLETON.insert_datum(resource, datum_id, datum_kwargs)
 
 
-@_ensure_connection
 def bulk_insert_datum(resource, datum_ids, datum_kwarg_list):
-    col = Datum._get_collection()
-    return _bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list)
+    return _FS_SINGLETON.bulk_insert_datum(resource, datum_ids,
+                                           datum_kwarg_list)
 
 
 def retrieve(eid):
