@@ -62,6 +62,3 @@ def load_configuration(name, prefix, fields):
 
 connection_config = load_configuration('metadataclient', 'MDS',
                                        ['host', 'port', 'protocol'])
-_server_path = connection_config['protocol'] + '://' \
-               + connection_config['host'] + ':' \
-               + str(connection_config['port'])

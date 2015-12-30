@@ -5,7 +5,6 @@ import six
 from functools import wraps
 import ujson
 from metadataclient import (conf, utils)
-from metadataclient.conf import _server_path
 
 
 def server_connect(host, port, protocol='http'):
@@ -27,6 +26,7 @@ def server_connect(host, port, protocol='http'):
         Full server path that is set globally. Useful for monkeypatching
         overwrites config and updates this global server path.
     """
+    global _server_path
     _server_path = protocol + '://' + host + ':' + str(port)
     return str(_server_path)
 
@@ -253,10 +253,6 @@ def descriptors_by_start(run_start):
     if not e_descs:
         raise NoEventDescriptors("No EventDescriptors exists "
                                  "for {!r}".format(run_start))
-    # temp solution to get databroker working with this.
-    # if len(e_descs) == 1:
-    #     return e_descs[0]
-    # else:
     return e_descs
 
 
@@ -406,7 +402,7 @@ def find_run_starts(**kwargs):
         for c in content:
             yield utils.Document('RunStart', c)
 
-
+@_ensure_connection
 def find_last(num=1):
     """Return the last 'num' many headers"""
     query = dict(num=num)
@@ -625,13 +621,11 @@ def get_events_generator(descriptor):
         newest
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
-    print(descriptor_uid)
-
     ev_cur = find_events(descriptor=descriptor_uid)
-    print(ev_cur)
+    desc = next(find_descriptors(uid=descriptor_uid))
     for ev in ev_cur:
-        # ev = dict(ev)
-        # ev['descriptor'] = next(find_descriptors(uid=descriptor_uid))
+        ev = dict(ev)
+        ev['descriptor'] = desc
         yield utils.Document('Event', ev)
 
 
