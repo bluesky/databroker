@@ -8,11 +8,10 @@ import tempfile
 import uuid
 
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler, deregister_handler, db_disconnect,
-                           db_connect)
+                           register_handler, deregister_handler)
 
 import filestore.retrieve as fsr
-
+from filestore.utils.testing import fs_setup, fs_teardown
 from filestore.handlers import AreaDetectorHDF5Handler
 from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
@@ -30,19 +29,14 @@ conn = None
 
 
 def setup():
-    global conn
-    db_disconnect()
-    db_connect(db_name, 'localhost', 27017)
+    fs_setup()
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
 
 
 def teardown():
+    fs_teardown()
     deregister_handler('AD_HDF5')
-    db_disconnect()
-    # if we know about a connection, drop the database
-    if conn:
-        conn.drop_database(db_name)
 
 
 class _with_file(object):

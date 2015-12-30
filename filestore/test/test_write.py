@@ -45,7 +45,7 @@ import filestore.retrieve as fsr
 import filestore.commands as fsc
 import filestore.file_writers as fs_write
 import filestore.handlers as fs_read
-from filestore.api import (db_disconnect, db_connect)
+from filestore.utils.testing import fs_setup, fs_teardown
 
 import uuid
 from numpy.testing import assert_array_equal
@@ -67,19 +67,14 @@ conn = None
 
 
 def setup():
-    global conn
-    db_disconnect()
-    db_connect(db_name, 'localhost', 27017)
+    fs_setup()
 
     global BASE_PATH
     BASE_PATH = tempfile.mkdtemp()
 
 
 def teardown():
-    db_disconnect()
-    # if we know about a connection, drop the database
-    if conn:
-        conn.drop_database(db_name)
+    fs_teardown()
     if CLEAN_FILES:
         shutil.rmtree(BASE_PATH)
 
