@@ -1,30 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-from mongoengine import connect
-import mongoengine.connection
 
-from .odm_templates import Datum, ALIAS
 from .retrieve import get_data as _get_data, _FS_SINGLETON
-from . import conf
-from functools import wraps
-
-from .core import (bulk_insert_datum as _bulk_insert_datum)
-
-
-def _ensure_connection(func):
-    @wraps(func)
-    def inner(*args, **kwargs):
-        database = conf.connection_config['database']
-        host = conf.connection_config['host']
-        port = int(conf.connection_config['port'])
-        db_connect(database=database, host=host, port=port)
-        return func(*args, **kwargs)
-    return inner
 
 
 def db_disconnect():
-    mongoengine.connection.disconnect(ALIAS)
-    Datum._collection = None
     _FS_SINGLETON.disconnect()
 
 
@@ -33,7 +13,7 @@ def db_connect(database, host, port):
                                    host=host,
                                    port=port))
     assert _FS_SINGLETON.config['database'] == database
-    return connect(db=database, host=host, port=port, alias=ALIAS)
+    return _FS_SINGLETON._connection
 
 
 def insert_resource(spec, resource_path, resource_kwargs=None):
