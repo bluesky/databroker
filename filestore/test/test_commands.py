@@ -6,9 +6,9 @@ import numpy as np
 import uuid
 import itertools
 
-import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler, deregister_handler)
+                           register_handler, deregister_handler,
+                           bulk_insert_datum)
 from filestore.core import DatumNotFound
 from filestore.utils.testing import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
@@ -43,10 +43,10 @@ def _insert_syn_data(f_type, shape, count):
 
 
 def _insert_syn_data_bulk(f_type, shape, count):
-    fb = filestore.commands.insert_resource(f_type, None, {'shape': shape})
+    fb = insert_resource(f_type, None, {'shape': shape})
     d_uid = [str(uuid.uuid4()) for k in range(count)]
     d_kwargs = [{'n': k + 1} for k in range(count)]
-    filestore.commands.bulk_insert_datum(fb, d_uid, d_kwargs)
+    bulk_insert_datum(fb, d_uid, d_kwargs)
 
     return d_uid
 

@@ -1,3 +1,7 @@
+import filestore
 
-# test analysis api import
-from filestore.api import *
+
+def test_top_level_imports():
+    filestore.FileStore
+    filestore.FileStoreRO
+    filestore.DatumNotFound

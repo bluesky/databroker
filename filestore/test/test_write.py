@@ -41,8 +41,7 @@ import logging
 
 import numpy as np
 from itertools import chain, repeat
-import filestore.retrieve as fsr
-import filestore.commands as fsc
+import filestore.api as fsa
 import filestore.file_writers as fs_write
 import filestore.handlers as fs_read
 from filestore.utils.testing import fs_setup, fs_teardown
@@ -81,8 +80,8 @@ def teardown():
 
 def _npsave_helper(dd, base_path):
     eid = fs_write.save_ndarray(dd, base_path)
-    with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve(eid)
+    with fsa.handler_context({'npy': fs_read.NpyHandler}):
+        ret = fsa.retrieve(eid)
 
     assert_array_equal(dd, ret)
 
@@ -144,7 +143,7 @@ def test_custom():
     dd = np.random.rand(500, 500)
     with fs_write.NpyWriter(test_path, resource_kwargs={'mmap_mode': 'r'}) as f:
         eid = f.add_data(dd)
-    with fsr.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsc.retrieve(eid)
+    with fsa.handler_context({'npy': fs_read.NpyHandler}):
+        ret = fsa.retrieve(eid)
 
     assert_array_equal(dd, ret)
