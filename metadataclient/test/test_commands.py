@@ -403,8 +403,9 @@ def test_run_stop_by_run_start():
 
     ev_desc2 = mdsc.descriptors_by_start(run_start)
     ev_desc3 = mdsc.descriptors_by_start(run_start_uid)
-    assert_equal(ev_desc, ev_desc2)
-    assert_equal(ev_desc, ev_desc3)
+    # descriptors_by_start returns a list
+    assert_equal(ev_desc, ev_desc2[0])
+    assert_equal(ev_desc, ev_desc3[0])
 
 #
 @raises(mdsc.NoEventDescriptors)
@@ -454,8 +455,26 @@ def test_double_run_stop():
  
 def test_find_last_for_smoke():
     last = mdsc.find_last()
- 
- 
+
+    
+def test_find_last():
+    last = next(mdsc.find_last(num=1))
+
+
+def test_find_last_mult():
+    hdr = 4
+    last_mult = mdsc.find_last(num=hdr)
+    res = [c for c in last_mult]
+    assert_equal(len(res), hdr)    
+
+
+@raises(StopIteration)       
+def test_find_last_err():
+    last_mult = mdsc.find_last(num=4)
+    res = [c for c in last_mult]
+    r = next(last_mult)
+
+        
 @raises(ValueError)
 def test_bad_event_desc():
  
