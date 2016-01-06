@@ -11,9 +11,9 @@ class DatumNotFound(Exception):
     pass
 
 
-def get_datum(col, eid, _DATUM_CACHE, get_spec_handler, logger):
+def get_datum(col, eid, datum_cache, get_spec_handler, logger):
     try:
-        datum = _DATUM_CACHE[eid]
+        datum = datum_cache[eid]
     except KeyError:
         keys = ['datum_kwargs', 'resource']
         # find the current document
@@ -29,9 +29,9 @@ def get_datum(col, eid, _DATUM_CACHE, get_spec_handler, logger):
         for dd in col.find({'resource': res}):
             count += 1
             d_id = dd['datum_id']
-            if d_id not in _DATUM_CACHE:
-                _DATUM_CACHE[d_id] = {k: dd[k] for k in keys}
-        if count > _DATUM_CACHE.max_size:
+            if d_id not in datum_cache:
+                datum_cache[d_id] = {k: dd[k] for k in keys}
+        if count > datum_cache.max_size:
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
