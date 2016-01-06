@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-from .retrieve import HandlerBase
+from .handlers_base import HandlerBase
 
 import errno
 import six
@@ -11,7 +11,7 @@ import os
 import os.path as op
 import datetime
 
-import filestore.commands as fsc
+import filestore.api as fsc
 
 logger = logging.getLogger(__name__)
 

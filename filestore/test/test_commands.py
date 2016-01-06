@@ -4,16 +4,18 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import numpy as np
 import uuid
+import itertools
 
-import filestore.retrieve
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler)
-from filestore.odm_templates import Datum
+                           register_handler, deregister_handler,
+                           bulk_insert_datum)
+from filestore.core import DatumNotFound
 from filestore.utils.testing import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
 from .t_utils import SynHandlerMod
+import pymongo.errors
 
 
 def setup():
@@ -24,25 +26,27 @@ def setup():
 
 def teardown():
     fs_teardown()
-
-    del filestore.retrieve._h_registry['syn-mod']
+    deregister_handler('syn-mod')
 
 
 def _insert_syn_data(f_type, shape, count):
     fb = insert_resource(f_type, None, {'shape': shape})
     ret = []
-    for k in range(count):
+    res_map_cycle = itertools.cycle((lambda x: x,
+                                     lambda x: x['id'],
+                                     lambda x: str(x['id'])))
+    for k, rmap in zip(range(count), res_map_cycle):
         r_id = str(uuid.uuid4())
-        insert_datum(str(fb.id), r_id, {'n': k + 1})
+        insert_datum(rmap(fb), r_id, {'n': k + 1})
         ret.append(r_id)
     return ret
 
 
 def _insert_syn_data_bulk(f_type, shape, count):
-    fb = filestore.commands.insert_resource(f_type, None, {'shape': shape})
+    fb = insert_resource(f_type, None, {'shape': shape})
     d_uid = [str(uuid.uuid4()) for k in range(count)]
     d_kwargs = [{'n': k + 1} for k in range(count)]
-    filestore.commands.bulk_insert_datum(fb, d_uid, d_kwargs)
+    bulk_insert_datum(fb, d_uid, d_kwargs)
 
     return d_uid
 
@@ -63,4 +67,13 @@ def test_round_trip():
 
 
 def test_non_exist():
-    assert_raises(Datum.DoesNotExist, retrieve, 'aardvark')
+    assert_raises(DatumNotFound, retrieve, 'aardvark')
+
+
+def test_non_unique_fail():
+    shape = (25, 32)
+    fb = insert_resource('syn-mod', None, {'shape': shape})
+    r_id = str(uuid.uuid4())
+    insert_datum(str(fb['id']), r_id, {'n': 0})
+    assert_raises(pymongo.errors.DuplicateKeyError,
+                  insert_datum, str(fb['id']), r_id, {'n': 1})

@@ -70,9 +70,9 @@ def load_configuration(name, prefix, fields, fname=None):
     missing = [k for k, v in config.items() if v is None]
     if missing:
         raise KeyError("The configuration field(s) {0} were not found in any "
-                           "file or environmental variable.".format(missing))
+                       "file or environmental variable.".format(missing))
 
     return config
 
 connection_config = load_configuration('filestore', 'FS',
-    ['host', 'database', 'port'])
+                                       ['host', 'database', 'port'])

@@ -8,11 +8,10 @@ import tempfile
 import uuid
 
 from filestore.api import (insert_resource, insert_datum, retrieve,
-                           register_handler, deregister_handler, db_disconnect,
-                           db_connect)
+                           register_handler, deregister_handler)
 
-import filestore.retrieve as fsr
-
+from  filestore.api import handler_context
+from filestore.utils.testing import fs_setup, fs_teardown
 from filestore.handlers import AreaDetectorHDF5Handler
 from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
@@ -30,19 +29,14 @@ conn = None
 
 
 def setup():
-    global conn
-    db_disconnect()
-    db_connect(db_name, 'localhost', 27017)
+    fs_setup()
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
 
 
 def teardown():
+    fs_teardown()
     deregister_handler('AD_HDF5')
-    db_disconnect()
-    # if we know about a connection, drop the database
-    if conn:
-        conn.drop_database(db_name)
 
 
 class _with_file(object):
@@ -76,7 +70,7 @@ class test_np_FW(_with_file):
             insert_datum(resource_id, datum_id, dict(frame_no=i))
 
     def test_retrival(self):
-        with fsr.handler_context({'npy_FRAMEWISE': NpyFrameWise}):
+        with handler_context({'npy_FRAMEWISE': NpyFrameWise}):
             for i, datum_id in enumerate(self.datum_ids):
                 data = retrieve(datum_id)
                 known_data = i * np.ones((9, 8))
@@ -170,7 +164,7 @@ class test_maps_hdf5(_with_file):
     def test_maps_spectrum_round_trip(self):
         sn = np.sin(self.th)
 
-        with fsr.handler_context({'hdf5_maps': HDFM}):
+        with handler_context({'hdf5_maps': HDFM}):
             for eid, sc in zip(self.eids_spectrum, self.scale):
                 print(eid)
                 data = retrieve(eid)
@@ -178,7 +172,7 @@ class test_maps_hdf5(_with_file):
 
     def test_maps_plane_round_trip(self):
         base = self.scale.reshape(self.N, self.M)
-        with fsr.handler_context({'hdf5_planes': HDFE}):
+        with handler_context({'hdf5_planes': HDFE}):
             for eid, v in zip(self.eids_planes, np.sin(self.th)):
                 data = retrieve(eid)
                 assert_array_equal(data, base * v)

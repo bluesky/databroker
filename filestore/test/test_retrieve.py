@@ -39,8 +39,8 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import logging
 
-import filestore.retrieve as fsr
-import filestore.commands as fsc
+
+import filestore.api as fsa
 from filestore.utils.testing import fs_setup, fs_teardown
 import numpy as np
 from nose.tools import (assert_true, assert_raises, assert_false,
@@ -61,36 +61,37 @@ def teardown():
 
 
 def test_get_handler_global():
-
+    h_cache = fsa._FS_SINGLETON._handler_cache
     mock_base = dict(spec='syn-mod',
                      resource_path='',
                      resource_kwargs={'shape': (5, 7)})
 
-    res = fsc.insert_resource(**mock_base)
-    cache_key = (str(res.id), SynHandlerMod.__name__)
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
+    res = fsa.insert_resource(**mock_base)
+    cache_key = (str(res['id']), SynHandlerMod.__name__)
+    with fsa.handler_context({'syn-mod': SynHandlerMod}):
 
-        handle = fsr.get_spec_handler(res.id)
+        handle = fsa.get_spec_handler(res['id'])
 
         assert_true(isinstance(handle, SynHandlerMod))
-        assert_in(cache_key, fsr._HANDLER_CACHE)
+        assert_in(cache_key, h_cache)
 
-    assert_not_in(cache_key, fsr._HANDLER_CACHE)
+    assert_not_in(cache_key, h_cache)
 
 
 def test_overwrite_global():
+    h_cache = fsa._FS_SINGLETON._handler_cache
     mock_base = dict(spec='syn-mod',
                      resource_path='',
                      resource_kwargs={'shape': (5, 7)})
 
-    res = fsc.insert_resource(**mock_base)
+    res = fsa.insert_resource(**mock_base)
 
-    cache_key = (str(res.id), SynHandlerMod.__name__)
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
-        fsr.get_spec_handler(res.id)
-        assert_in(cache_key, fsr._HANDLER_CACHE)
-        fsr.register_handler('syn-mod', SynHandlerEcho, overwrite=True)
-        assert_not_in(cache_key, fsr._HANDLER_CACHE)
+    cache_key = (str(res['id']), SynHandlerMod.__name__)
+    with fsa.handler_context({'syn-mod': SynHandlerMod}):
+        fsa.get_spec_handler(res['id'])
+        assert_in(cache_key, h_cache)
+        fsa.register_handler('syn-mod', SynHandlerEcho, overwrite=True)
+        assert_not_in(cache_key, h_cache)
 
 
 def test_context():
@@ -100,27 +101,29 @@ def test_context():
 
 
 def test_register_fail():
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
+    with fsa.handler_context({'syn-mod': SynHandlerMod}):
         # shouldn't raise, it is a no-op as it is regiristering
         # the same class with the same name
-        fsr.register_handler('syn-mod', SynHandlerMod)
+        fsa.register_handler('syn-mod', SynHandlerMod)
         # should raise as it is trying to change the registered class
-        assert_raises(RuntimeError, fsr.register_handler,
+        assert_raises(RuntimeError, fsa.register_handler,
                       'syn-mod', SynHandlerEcho)
 
 
 def test_context_manager_replace():
-    with fsr.handler_context({'syn-mod': SynHandlerMod}):
-        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
-        with fsr.handler_context({'syn-mod': SynHandlerEcho}):
-            assert_true(fsr._h_registry['syn-mod'] is SynHandlerEcho)
-        assert_true(fsr._h_registry['syn-mod'] is SynHandlerMod)
-    assert_false('syn-mod' in fsr._h_registry)
+    test_reg = fsa._FS_SINGLETON.handler_reg
+    with fsa.handler_context({'syn-mod': SynHandlerMod}):
+        assert_true(test_reg['syn-mod'] is SynHandlerMod)
+        with fsa.handler_context({'syn-mod': SynHandlerEcho}):
+            assert_true(test_reg['syn-mod'] is SynHandlerEcho)
+        assert_true(test_reg['syn-mod'] is SynHandlerMod)
+    assert_false('syn-mod' in test_reg)
 
 
 def test_deregister():
+    test_reg = fsa._FS_SINGLETON.handler_reg
     test_spec_name = str(uuid.uuid4())
-    fsr.register_handler(test_spec_name, SynHandlerMod)
-    assert_true(fsr._h_registry[test_spec_name] is SynHandlerMod)
-    fsr.deregister_handler(test_spec_name)
-    assert_false(test_spec_name in fsr._h_registry)
+    fsa.register_handler(test_spec_name, SynHandlerMod)
+    assert_true(test_reg[test_spec_name] is SynHandlerMod)
+    fsa.deregister_handler(test_spec_name)
+    assert_false(test_spec_name in test_reg)

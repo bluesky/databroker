@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 
-from filestore.retrieve import HandlerBase
+from filestore.handlers_base import HandlerBase
 import numpy as np
 
 
