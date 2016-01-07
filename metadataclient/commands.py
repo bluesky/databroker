@@ -837,9 +837,10 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     params = dict(time=time, uid=uid, exit_status=exit_status,
                   reason=reason)
     params['run_start'] = doc_or_uid_to_uid(run_start)
-    if kwargs:
+    custom = kwargs.pop('custom', None)
+    if custom:
         z = params.copy()
-        z.update(kwargs)
+        z.update(custom)
         payload = ujson.dumps(z)
     else:
         payload = ujson.dumps(params)
