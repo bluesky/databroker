@@ -773,7 +773,7 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     # get the ObjectID so for reference field
     desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
     # create the Event document
-    event = Event(descriptor_id=desc_oid, uid=uid,
+    event = Event(descriptor=desc_oid, uid=uid,
                   data=val_ts_tuple, time=time, seq_num=seq_num)
 
     event.save(validate=True, write_concern={"w": 1})

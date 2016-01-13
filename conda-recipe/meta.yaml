@@ -22,8 +22,8 @@ requirements:
 
   run:
     - python
-    - mongoengine ==0.8.7
-    - pymongo ==2.9
+    - mongoengine
+    - pymongo
     - six
     - pyyaml
     - prettytable
