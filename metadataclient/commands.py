@@ -4,6 +4,7 @@ import pytz
 import six
 from functools import wraps
 import ujson
+from doct import Document
 from metadataclient import (conf, utils)
 
 
@@ -101,7 +102,7 @@ def runstart_given_uid(uid):
 
     Returns
     -------
-    run_start : metadataservice.utils.Document
+    run_start : doct.Document
         The RunStart document.
     """
     # TODO: Add capped collection caching lookup
@@ -131,13 +132,13 @@ def runstop_given_uid(uid):
 
     Returns
     -------
-    run_stop : utils.Document
+    run_stop : doct.Document
         The RunStop document fully de-referenced
     """
     run_stop = dict(next(find_run_stops(uid=uid)))
     start_oid = run_stop.pop('run_start_id')
     run_stop['run_start'] = _run_start_given_oid(start_oid)
-    return utils.Document('RunStop', run_stop)
+    return Document('RunStop', run_stop)
 
 
 @_ensure_connection
@@ -151,11 +152,11 @@ def run_start_given_uid(uid):
 
     Returns
     -------
-    run_start : utils.Document
+    run_start : doct.Document
         The RunStart document.
 
     """
-    return utils.Document('RunStart', next(find_run_starts(uid=uid)))
+    return Document('RunStart', next(find_run_starts(uid=uid)))
 
 
 @_ensure_connection
@@ -169,7 +170,7 @@ def run_stop_given_uid(uid):
 
     Returns
     -------
-    run_stop : utils.Document
+    run_stop : doct.Document
         The RunStop document fully de-referenced
 
     """
@@ -187,11 +188,11 @@ def descriptor_given_uid(uid):
 
     Returns
     -------
-    EventDescriptor : utils.Document
+    EventDescriptor : doct.Document
         The EventDescriptor document fully de-referenced
     """
 
-    return utils.Document('EventDescriptor',
+    return Document('EventDescriptor',
                           next(find_descriptors(uid=uid)))
 
 
@@ -202,13 +203,13 @@ def stop_by_start(run_start):
 
     Parameters
     ----------
-    run_start : utils.Document or dict or str
+    run_start : doct.Document or dict or str
         The RunStart to get the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string.
 
     Returns
     -------
-    run_stop : utils.Document
+    run_stop : doct.Document
         The RunStop document
 
     Raises
@@ -219,7 +220,7 @@ def stop_by_start(run_start):
     rstart = doc_or_uid_to_uid(run_start)
     try:
         run_stop = next(find_run_stops(run_start=rstart))
-        return utils.Document('RunStop', run_stop)
+        return Document('RunStop', run_stop)
     except StopIteration:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
@@ -232,7 +233,7 @@ def descriptors_by_start(run_start):
 
     Parameters
     ----------
-    run_start : utils.Document or dict or str
+    run_start : doct.Document or dict or str
         The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -248,7 +249,7 @@ def descriptors_by_start(run_start):
     """
     run_start_id = doc_or_uid_to_uid(run_start)
     res = find_descriptors(run_start=run_start_id)
-    e_descs = [utils.Document('EventDescriptor', r) for r in res]
+    e_descs = [Document('EventDescriptor', r) for r in res]
 
     if not e_descs:
         raise NoEventDescriptors("No EventDescriptors exists "
@@ -262,13 +263,13 @@ def fetch_events_generator(descriptor):
 
     Parameters
     ----------
-    descriptor : doc.Document or dict or str
+    descriptor : doct.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
     Yields
     ------
-    event : utils.Document
+    event : doct.Document
         All events for the given EventDescriptor from oldest to
         newest
     """
@@ -276,7 +277,7 @@ def fetch_events_generator(descriptor):
     raw_ev_gen = find_events(descriptor_id=str(desc['_id']))
     for ev in raw_ev_gen:
         ev['descriptor'] = dict(desc)
-        yield utils.Document('Event', ev)
+        yield Document('Event', ev)
 
 
 def _transpose(in_data, keys, field):
@@ -320,7 +321,7 @@ def fetch_events_table(descriptor):
 
     Returns
     -------
-    descriptor : doc.Document
+    descriptor : doct.Document
         EventDescriptor document
     data_table : dict
         dict of lists of the transposed data
@@ -368,14 +369,16 @@ def find_run_starts(**kwargs):
         Integer scan identifier
     uid : str, optional
         Globally unique id string provided to metadatastore
-    
-    Yields utils.Document
-    -------
+
+    Yields
+    ------
+
+    doct.Document
         RunStart documents if query returned something
 
     Note
     ----
-    All documents that the RunStart Document points to are dereferenced.
+    All documents that the RunStart `doct.Document` points to are dereferenced.
     These include RunStop, BeamlineConfig, and Sample.
 
     Examples
@@ -400,7 +403,7 @@ def find_run_starts(**kwargs):
         return None
     else:
         for c in content:
-            yield utils.Document('RunStart', c)
+            yield Document('RunStart', c)
 
 @_ensure_connection
 def find_last(num=1):
@@ -415,14 +418,14 @@ def find_last(num=1):
         return None
     else:
         for c in content:
-            yield utils.Document('RunStart', c)
+            yield Document('RunStart', c)
 
 @_ensure_connection
 def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, query for RunStop Documents.
     Parameters
     ----------
-    run_start : utils.Document or str, optional
+    run_start : doct.Document or str, optional
         The metadatastore run start document or the metadatastore uid to get
         the corresponding run end for
     start_time : time-like, optional
@@ -443,9 +446,10 @@ def find_run_stops(run_start=None, **kwargs):
         Long-form description of why the run was terminated.
     uid : str, optional
         Globally unique id string provided to metadatastore
-    
-    Yields utils.Document
+
+    Yields
     ------
+    doct.Document
         RunStop documents if found in the query
     """
     _format_time(kwargs)
@@ -466,8 +470,8 @@ def find_run_stops(run_start=None, **kwargs):
             if rstart is None:
                 rstart = next(find_run_starts(uid=c['run_start']))
             c['run_start'] = rstart
-            yield utils.Document('RunStop',c)
-        
+            yield Document('RunStop',c)
+
 @_ensure_connection
 def find_events(descriptor=None, **kwargs):
     """
@@ -485,13 +489,13 @@ def find_events(descriptor=None, **kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
-    descriptor : doc.Document or str, optional
+    descriptor : doct.Document or str, optional
        Find events for a given EventDescriptor
     uid : str, optional
         Globally unique id string provided to metadatastore
     Yields
     -------
-    events : iterable of utils.Document objects
+    events : iterable of Document objects
     """
     # TODO: Add more tests!!! Make sure descriptor is returned for each event
 
@@ -519,7 +523,7 @@ def find_events(descriptor=None, **kwargs):
                 # Fix using local caching!!!!
                 desc = next(find_descriptors(uid=c['descriptor']))
             c['descriptor'] = desc
-            yield utils.Document('Event', c)
+            yield Document('Event', c)
 
 
 @_ensure_connection
@@ -528,7 +532,7 @@ def find_descriptors(run_start=None, **kwargs):
 
     Parameters
     ----------
-    run_start : metadatastore.document.Document or uid, optional
+    run_start : doct.Document or uid, optional
         The metadatastore run start document or the metadatastore uid to get
         the corresponding run end for
     run_start_uid : str
@@ -548,7 +552,7 @@ def find_descriptors(run_start=None, **kwargs):
         docs for `start_time` for examples.
     uid : str, optional
         Globally unique id string provided to metadatastore
-    
+
     Returns
     -------
     content : iterable of list of json documents
@@ -563,7 +567,7 @@ def find_descriptors(run_start=None, **kwargs):
         try:
             rstart = next(find_run_starts(uid=query['run_start']))
         except StopIteration:
-            raise NoRunStart()    
+            raise NoRunStart()
     r = requests.get(_server_path + "/event_descriptor",
                      params=ujson.dumps(query))
     if r.status_code != 200:
@@ -572,14 +576,14 @@ def find_descriptors(run_start=None, **kwargs):
         content = ujson.loads(r.text)
         if not content:
             return None
-        else:    
+        else:
             for c in content:
                 if rstart is None:
                     rstart = next(find_run_starts(uid=c['run_start']))
                 c['run_start'] = rstart
-                yield utils.Document('EventDescriptor',c)
-        
-                
+                yield Document('EventDescriptor',c)
+
+
 
 @_ensure_connection
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):
@@ -611,12 +615,12 @@ def get_events_generator(descriptor):
     """A generator which yields all events from the event stream
     Parameters
     ----------
-    descriptor : doc.Document or dict or str
+    descriptor : doct.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     Yields
     ------
-    event : utils.Document
+    event : doct.Document
         All events for the given EventDescriptor from oldest to
         newest
     """
@@ -626,7 +630,7 @@ def get_events_generator(descriptor):
     for ev in ev_cur:
         ev = dict(ev)
         ev['descriptor'] = desc
-        yield utils.Document('Event', ev)
+        yield Document('Event', ev)
 
 
 @_ensure_connection
@@ -639,7 +643,7 @@ def get_events_table(descriptor):
         a Document/dict with a 'uid' key or a uid string
     Returns
     -------
-    descriptor : doc.Document
+    descriptor : doct.Document
         EventDescriptor document
     data_table : dict
         dict of lists of the transposed data
@@ -677,7 +681,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     """Bulk insert many events
     Parameters
     ----------
-    event_descriptor : doc.Document or dict or str
+    event_descriptor : doct.Document or dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     events : iterable
@@ -726,7 +730,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
 
     Parameters
     ----------
-    run_start : metadatastore.documents.Document or str
+    run_start : doct.Document or str
         if Document:
             The metadatastore RunStart document
         if str:
@@ -753,7 +757,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
                    time=time, uid=uid, custom=custom)
     rs_uid = doc_or_uid_to_uid(run_start)
     payload['run_start'] = rs_uid
-    r = requests.post(_server_path + '/event_descriptor', 
+    r = requests.post(_server_path + '/event_descriptor',
                       data=ujson.dumps(payload))
     if r.status_code != 200:
         raise ValueError('Bad event descriptor')
@@ -775,9 +779,9 @@ def insert_run_start(time, scan_id, beamline_id, uid,
         Unique scan identifier visible to the user and data analysis
     beamline_id : str
         Beamline String identifier. Not unique, just an indicator of
-        beamline code for multiple beamline systems 
+        beamline code for multiple beamline systems
     uid : str
-        Globally unique id string provided to metadatastore   
+        Globally unique id string provided to metadatastore
     owner : str, optional
         A username associated with the entry
     group : str, optional
@@ -788,11 +792,11 @@ def insert_run_start(time, scan_id, beamline_id, uid,
         Any additional information that data acquisition code/user wants
         to append to the Header at the start of the run. These are not unpacked to avoid
         confusion. Data on the way in should be identical to data retrieved for consistency(any data
-        science book, chapter 1. Read CAP theorem for more info). 
-        
+        science book, chapter 1. Read CAP theorem for more info).
+
     Returns
     ----------
-    utils.Document
+    Document
         The run_start document that is successfully saved in mongo
 
     """
@@ -820,7 +824,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
 
     Parameters
     ----------
-    run_start : metadatastore.documents.Document or str
+    run_start : doct.Document or str
         if Document:
             The metadatastore RunStart document
         if str:
@@ -889,7 +893,7 @@ def monitor_run_start():
     raise NotImplementedError('Not this cycle. Code works, needs capped collection support')
     r = requests.get(_server_path + '/run_start_capped')
     content = ujson.loads(r.text)
-    yield utils.Document('RunStart', content)
+    yield Document('RunStart', content)
 
 
 def _insert2cappedstart(time, scan_id, config, beamline_id, beamline_config={}, uid=None,
@@ -920,7 +924,7 @@ def _insert2cappedstop(run_start, time, uid=None, config={}, exit_status='succes
 def monitor_run_stop():
     r = requests.get(_server_path + '/run_stop_capped')
     content = ujson.loads(r.text)
-    yield utils.Document('RunStop', content)
+    yield Document('RunStop', content)
 
 
 def _normalize_human_friendly_time(val):
