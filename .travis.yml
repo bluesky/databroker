@@ -31,7 +31,7 @@ install:
 script:
 - python run_tests.py -v
 - git fetch --unshallow
-- conda install -n root conda-build jinja2 anaconda-client
+- conda install -n root conda-build==1.18.1 jinja2 anaconda-client
 - export CONDA_BUILD_COMMAND="conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION"
 - "$CONDA_BUILD_COMMAND"
 after_success:
