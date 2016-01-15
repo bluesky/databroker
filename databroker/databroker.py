@@ -4,15 +4,11 @@ import six  # noqa
 from collections import deque
 import pandas as pd
 import tzlocal
-from metadataclient.commands import (find_last, find_run_starts,
-                                     find_descriptors,
-                                     get_events_generator, get_events_table)
 import doct as doc
-import metadatastore.commands as mc
 import filestore.api as fs
 import logging
 import numbers
-
+import metadataclient.commands as mds
 
 try:
     from functools import singledispatch
@@ -38,7 +34,7 @@ TZ = str(tzlocal.get_localzone())
 
 
 @singledispatch
-def search(key):
+def search(key, MD):
     logger.info('Using default search for key = %s' % key)
     raise ValueError("Must give an integer scan ID like [6], a slice "
                      "into past scans like [-5], [-5:], or [-5:-9:2], "
@@ -48,7 +44,7 @@ def search(key):
 
 
 @search.register(slice)
-def _(key):
+def _search_slice(key, MD):
     # Interpret key as a slice into previous scans.
     logger.info('Interpreting key = %s as a slice' % key)
     if key.start is not None and key.start > -1:
@@ -69,33 +65,33 @@ def _(key):
                          "the size of the result is non-deterministic "
                          "and could become too large.")
     start = -key.start
-    result = list(find_last(start))[stop::key.step]
-    header = [Header.from_run_start(h) for h in result]
+    result = list(MD.find_last(start))[stop::key.step]
+    header = [Header.from_run_start(MD, h) for h in result]
     return header
 
 
 @search.register(numbers.Integral)
-def _(key):
+def _search_int(key, MD):
     logger.info('Interpreting key = %s as an integer' % key)
     if key > -1:
         # Interpret key as a scan_id.
-        gen = find_run_starts(scan_id=key)
+        gen = MD.find_run_starts(scan_id=key)
         try:
             result = next(gen)  # most recent match
         except StopIteration:
             raise ValueError("No such run found for key=%s which is "
                              "being interpreted as a scan id." % key)
-        header = Header.from_run_start(result)
+        header = Header.from_run_start(MD, result)
     else:
         # Interpret key as the Nth last scan.
-        gen = find_last(-key)
+        gen = MD.find_last(-key)
         for i in range(-key):
             try:
                 result = next(gen)
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-        header = Header.from_run_start(result)
+        header = Header.from_run_start(MD, result)
     return header
 
 
@@ -105,19 +101,19 @@ def _(key):
 # py3: six.string_types = (str,)
 # so we need to just grab the only element out of this
 @search.register(six.string_types,)
-def _(key):
+def _search_string(key, MD):
     logger.info('Interpreting key = %s as a str' % key)
     results = None
     if len(key) >= 36:
         # Interpret key as a uid (or the few several characters of one).
         logger.debug('Treating %s as a full uuid' % key)
-        results = list(find_run_starts(uid=key))
+        results = list(MD.find_run_starts(uid=key))
         logger.debug('%s runs found for key=%s treated as a full uuid'
                      % (len(results), key))
     if not results == 0:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
-        gen = find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        gen = MD.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
@@ -126,29 +122,45 @@ def _(key):
         raise ValueError("key=%s  matches %s runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    header = Header.from_run_start(result)
+    header = Header.from_run_start(MD, result)
     return header
 
 
 @search.register(set)
 @search.register(tuple)
 @search.register(MutableSequence)
-def _(key):
+def _search_iterable(key, MD):
     logger.info('Interpreting key = {} as a set, tuple or MutableSequence'
                 ''.format(key))
-    return [search(k) for k in key]
+    return [search(k, MD) for k in key]
 
 
 class _DataBrokerClass(object):
-    # A singleton is instantiated in broker/__init__.py.
-    # You probably do not want to instantiate this; use
-    # broker.DataBroker instead.
+    """
+    A singleton is instantiated in broker/__init__.py.
+    You probably do not want to instantiate this; use
+    databroker.DataBroker instead.
+    """
+
+    def __init__(self, MD):
+        """Container to manage a set of Metadatastore and Filestore instances
+
+        Parameters
+        ----------
+        MD : object or Module
+            Must have the following methods :
+
+             - find_run_starts
+             - find_last
+        """
+        self._MD = MD
+
     def __getitem__(self, key):
         """DWIM slicing
 
         Some more docs go here
         """
-        return search(key)
+        return search(key, self._MD)
 
     def __call__(self, **kwargs):
         """Given search criteria, find Headers describing runs.
@@ -196,20 +208,19 @@ class _DataBrokerClass(object):
         >>> DataBroker(data_key='motor1')
         >>> DataBroker(data_key='motor1', start_time='2015-03-05')
         """
+        MD = self._MD
         data_key = kwargs.pop('data_key', None)
-        run_start = find_run_starts(**kwargs)
+        run_start = MD.find_run_starts(**kwargs)
         if data_key is not None:
             node_name = 'data_keys.{0}'.format(data_key)
 
             query = {node_name: {'$exists': True}}
             descriptors = []
             for rs in run_start:
-                descriptor = find_descriptors(run_start=rs, **query)
+                descriptor = MD.find_descriptors(run_start=rs, **query)
                 for d in descriptor:
                     descriptors.append(d)
-            # query = {node_name: {'$exists': True},
-            #          'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
-            # descriptors = find_descriptors(**query)
+
             result = []
             known_uids = deque()
             for descriptor in descriptors:
@@ -220,7 +231,7 @@ class _DataBrokerClass(object):
             run_start = result
         result = []
         for rs in run_start:
-            result.append(Header.from_run_start(rs))
+            result.append(Header.from_run_start(MD, rs))
         return result
 
     def find_headers(self, **kwargs):
@@ -232,11 +243,11 @@ class _DataBrokerClass(object):
     def fetch_events(self, headers, fill=True):
         "This function is deprecated. Use top-level function get_events."
         warnings.warn("Use top-level function "
-                                   "get_events() instead.", UserWarning)
+                      "get_events() instead.", UserWarning)
         return get_events(headers, None, fill)
 
 
-DataBroker = _DataBrokerClass()  # singleton, used by pims_readers import below
+DataBroker = _DataBrokerClass(mds)  # singleton, used by pims_readers import below
 
 
 def _inspect_descriptor(descriptor):
@@ -267,7 +278,7 @@ class Header(doc.Document):
     """A dictionary-like object summarizing metadata for a run."""
 
     @classmethod
-    def from_run_start(cls, run_start, verify_integrity=False):
+    def from_run_start(cls, MD, run_start, verify_integrity=False):
         """
         Build a Header from a RunStart Document.
 
@@ -280,20 +291,20 @@ class Header(doc.Document):
         -------
         header : databroker.broker.Header
         """
-        run_start_uid = mc.doc_or_uid_to_uid(run_start)
-        run_start = mc.run_start_given_uid(run_start_uid)
+        run_start_uid = MD.doc_or_uid_to_uid(run_start)
+        run_start = MD.run_start_given_uid(run_start_uid)
 
         try:
-            run_stop = doc.ref_doc_to_uid(mc.stop_by_start(run_start_uid),
-                                          'run_start')
-        except mc.NoRunStop:
+            run_stop = doc.ref_doc_to_uid(
+                MD.stop_by_start(run_start_uid), 'run_start')
+        except MD.NoRunStop:
             run_stop = None
 
         try:
             ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
                         for ev_desc in
-                        mc.descriptors_by_start(run_start_uid)]
-        except mc.NoEventDescriptors:
+                        MD.descriptors_by_start(run_start_uid)]
+        except MD.NoEventDescriptors:
             ev_descs = []
 
         d = {'start': run_start, 'stop': run_stop, 'descriptors': ev_descs}
@@ -332,9 +343,10 @@ def get_events(headers, fields=None, fill=True):
     if fields is None:
         fields = []
     fields = set(fields)
-
+    # sketchy as all get out injection of metadata reference
+    MD = DataBroker._MD
     for header in headers:
-        descriptors = find_descriptors(header['start']['uid'])
+        descriptors = MD.find_descriptors(header['start']['uid'])
         for descriptor in descriptors:
             all_fields = set(descriptor['data_keys'])
             if fields:
@@ -343,7 +355,7 @@ def get_events(headers, fields=None, fill=True):
                 discard_fields = []
             if discard_fields == all_fields:
                 continue
-            for event in get_events_generator(descriptor):
+            for event in MD.get_events_generator(descriptor):
                 for field in discard_fields:
                     del event.data[field]
                     del event.timestamps[field]
@@ -386,10 +398,11 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
     if fields is None:
         fields = []
     fields = set(fields)
-
+    # sketchy as all get out injection of metadata
+    MD = DataBroker._MD
     dfs = []
     for header in headers:
-        descriptors = find_descriptors(header['start']['uid'])
+        descriptors = MD.find_descriptors(header['start']['uid'])
         for descriptor in descriptors:
             all_fields = set(descriptor['data_keys'])
             if fields:
@@ -400,7 +413,7 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                 continue
             is_external = _inspect_descriptor(descriptor)
 
-            payload = get_events_table(descriptor)
+            payload = MD.get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
             if convert_times:
