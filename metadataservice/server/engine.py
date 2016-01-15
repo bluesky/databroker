@@ -170,6 +170,8 @@ class EventDescriptorHandler(DefaultHandler):
                                         status='Unable to insert the document')
         database.event_descriptor.create_index([('run_start', pymongo.DESCENDING)],
                                                unique=False)
+        database.event_descriptor.create_index([('uid', pymongo.DESCENDING)],
+                                               unique=True)
         database.event_descriptor.create_index([('time', pymongo.DESCENDING)],
                                                unique=False)
         if not result:
@@ -232,8 +234,10 @@ class RunStopHandler(DefaultHandler):
         except perr.PyMongoError:
             raise tornado.web.HTTPError(500,
                                         status='Unable to insert the document')
-
-        database.run_stop.create_index([('run_start', pymongo.DESCENDING), ('time', pymongo.DESCENDING)],
+        database.run_stop.create_index([('run_start', pymongo.DESCENDING),
+                                        ('uid', pymongo.DESCENDING)],
+                                       unique=True)
+        database.run_stop.create_index([('time', pymongo.DESCENDING)],
                                        unique=False)
         if not result:
             raise tornado.web.HTTPError(500)
@@ -303,6 +307,7 @@ class EventHandler(DefaultHandler):
                 raise tornado.web.HTTPError(500, str(err))
             database.event.create_index([('time', pymongo.DESCENDING),
                                          ('descriptor', pymongo.DESCENDING)])
+            database.event.create_index([('time', pymongo.DESCENDING)], unique=True)
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = database.event.insert(data)
