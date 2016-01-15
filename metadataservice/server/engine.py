@@ -307,7 +307,7 @@ class EventHandler(DefaultHandler):
                 raise tornado.web.HTTPError(500, str(err))
             database.event.create_index([('time', pymongo.DESCENDING),
                                          ('descriptor', pymongo.DESCENDING)])
-            database.event.create_index([('time', pymongo.DESCENDING)], unique=True)
+            database.event.create_index([('uid', pymongo.DESCENDING)], unique=True)
         else:
             jsonschema.validate(data, utils.schemas['event'])
             result = database.event.insert(data)
