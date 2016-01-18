@@ -2,7 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-from functools import wraps
+import warnings
 from itertools import count
 
 import datetime
@@ -11,14 +11,14 @@ import logging
 import boltons.cacheutils
 import pytz
 
+import pymongo
+from pymongo import MongoClient
+from bson import ObjectId
+
 from bson.dbref import DBRef
 
-from mongoengine import connect
-import mongoengine.connection
-
 from . import conf
-from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
-                            ALIAS)
+
 import doct as doc
 
 
@@ -28,14 +28,114 @@ logger = logging.getLogger(__name__)
 # process local caches of 'header' documents these are storing object indexed
 # on ObjectId because that is how the reference fields are implemented.
 # Should move to uids asap
-_RUNSTART_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
-_RUNSTOP_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
-_DESCRIPTOR_CACHE_OID = boltons.cacheutils.LRU(max_size=1000)
+_RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
+_RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
+_DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
 
-# never drop these
-_RUNSTART_UID_to_OID_MAP = dict()
-_RUNSTOP_UID_to_OID_MAP = dict()
-_DESCRIPTOR_UID_to_OID_MAP = dict()
+
+class _DBManager(object):
+    def __init__(self, config):
+        self.config = config
+
+        self.__conn = None
+
+        self.__db = None
+
+        self.__event_col = None
+        self.__descriptor_col = None
+        self.__runstart_col = None
+        self.__runstop_col = None
+
+    def disconnect(self):
+
+        self.__conn = None
+
+        self.__db = None
+
+        self.__event_col = None
+        self.__descriptor_col = None
+        self.__runstart_col = None
+        self.__runstop_col = None
+
+    def reconfigure(self, config):
+        self.disconnect()
+        self._config = config
+
+    @property
+    def _connection(self):
+        if self.__conn is None:
+            self.__conn = MongoClient(self.config['host'],
+                                      self.config.get('port', None))
+        return self.__conn
+
+    @property
+    def _db(self):
+        if self.__db is None:
+            conn = self._connection
+            self.__db = conn.get_database(self.config['database'])
+        return self.__db
+
+    @property
+    def _runstart_col(self):
+        if self.__runstart_col is None:
+            self.__runstart_col = self._db.get_collection('run_start')
+
+        self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
+                                         unique=True)
+        self.__runstart_col.create_index([('time', pymongo.DESCENDING),
+                                          ('scan_id', pymongo.DESCENDING)],
+                                         unique=False, background=True)
+
+        return self.__runstart_col
+
+    @property
+    def _runstop_col(self):
+        if self.__runstop_col is None:
+            self.__runstop_col = self._db.get_collection('run_stop')
+
+        self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
+                                        ('uid', pymongo.DESCENDING)],
+                                        unique=True)
+        self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
+                                        unique=False, background=True)
+
+        return self.__runstop_col
+
+    @property
+    def _descriptor_col(self):
+        if self.__descriptor_col is None:
+            self.__descriptor_col = self._db.get_collection('event_descriptor')
+
+        self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
+                                           unique=True)
+        self.__descriptor_col.create_index([('run_start', pymongo.DESCENDING),
+                                            ('time', pymongo.DESCENDING)],
+                                           unique=False, background=True)
+
+        return self.__descriptor_col
+
+    @property
+    def _event_col(self):
+        if self.__event_col is None:
+            self.__event_col = self._db.get_collection('event_event')
+
+        self.__event_col.create_index([('uid', pymongo.DESCENDING)],
+                                      unique=True)
+        self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
+                                       ('time', pymongo.DESCENDING)],
+                                      unique=False, background=True)
+
+        return self.__event_col
+
+    @property
+    def _datum_col(self):
+        if self.__datum_col is None:
+            self.__datum_col = self._db.get_collection('datum')
+            self.__datum_col.create_index('datum_id', unique=True)
+
+        return self.__datum_col
+
+_DB_SINGLETON = _DBManager(conf.connection_config)
 
 
 class NoRunStop(Exception):
@@ -68,20 +168,15 @@ def doc_or_uid_to_uid(doc_or_uid):
 
 def clear_process_cache():
     """Clear all local caches"""
-    _RUNSTART_CACHE_OID.clear()
-    _RUNSTOP_CACHE_OID.clear()
-    _DESCRIPTOR_CACHE_OID.clear()
-
-    _RUNSTART_UID_to_OID_MAP.clear()
-    _RUNSTOP_UID_to_OID_MAP.clear()
-    _DESCRIPTOR_UID_to_OID_MAP.clear()
+    _RUNSTART_CACHE.clear()
+    _RUNSTOP_CACHE.clear()
+    _DESCRIPTOR_CACHE.clear()
 
 
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
-    mongoengine.connection.disconnect(ALIAS)
-    for collection in [RunStart, RunStop, EventDescriptor, Event, DataKey]:
-        collection._collection = None
+    _DB_SINGLETON.disconnect()
+    clear_process_cache()
 
 
 def db_connect(database, host, port):
@@ -95,30 +190,9 @@ def db_connect(database, host, port):
        connection you must call `db_disconnect` before attempting to
        re-connect.
     """
-    return connect(db=database, host=host, port=port, alias=ALIAS)
-
-
-def _ensure_connection(func):
-    """Decorator to ensure that the DB connection is open
-
-    This uses the values in `conf.connection_config` to get connection
-    parameters.
-
-    .. warning
-
-       This has no effect if the connection already exists, simply changing
-       the values in `conf.connection_config` is not sufficient to change what
-       data base is being used.  Calling `db_disconnect()` will clear the
-       current connection, but you probably should not be doing this.
-    """
-    @wraps(func)
-    def inner(*args, **kwargs):
-        database = conf.connection_config['database']
-        host = conf.connection_config['host']
-        port = int(conf.connection_config['port'])
-        db_connect(database=database, host=host, port=port)
-        return func(*args, **kwargs)
-    return inner
+    clear_process_cache()
+    _DB_SINGLETON.reconfigure(dict(db=database, host=host, port=port))
+    return _DB_SINGLETON._connection
 
 
 def _cache_run_start(run_start):
@@ -146,14 +220,13 @@ def _cache_run_start(run_start):
     run_start.pop('beamline_config_id', None)
 
     # get the mongo ObjectID
-    oid = run_start.pop('_id')
+    run_start.pop('_id', None)
 
     # convert the remaining document to a Document object
     run_start = doc.Document('RunStart', run_start)
 
     # populate cache and set up uid->oid mapping
-    _RUNSTART_CACHE_OID[oid] = run_start
-    _RUNSTART_UID_to_OID_MAP[run_start['uid']] = oid
+    _RUNSTART_CACHE[run_start['uid']] = run_start
 
     return run_start
 
@@ -178,18 +251,16 @@ def _cache_run_stop(run_stop):
     """
     run_stop = dict(run_stop)
     # pop off the ObjectId of this document
-    oid = run_stop.pop('_id')
+    run_stop.pop('_id', None)
 
     # do the run-start de-reference
-    start_oid = run_stop.pop('run_start_id')
-    run_stop['run_start'] = _run_start_given_oid(start_oid)
+    run_stop['run_start'] = run_start_given_uid(run_stop['run_start'])
 
     # create the Document object
     run_stop = doc.Document('RunStop', run_stop)
 
     # update the cache and uid->oid mapping
-    _RUNSTOP_CACHE_OID[oid] = run_stop
-    _RUNSTOP_UID_to_OID_MAP[run_stop['uid']] = oid
+    _RUNSTOP_CACHE[run_stop['uid']] = run_stop
 
     return run_stop
 
@@ -214,82 +285,20 @@ def _cache_descriptor(descriptor):
     """
     descriptor = dict(descriptor)
     # pop the ObjectID
-    oid = descriptor.pop('_id')
+    descriptor.pop('_id', None)
 
     # do the run_start referencing
-    start_oid = descriptor.pop('run_start_id')
-    descriptor['run_start'] = _run_start_given_oid(start_oid)
+    descriptor['run_start'] = run_start_given_uid(descriptor['run_start'])
 
     # create the Document instance
     descriptor = doc.Document('EventDescriptor', descriptor)
 
     # update cache and setup uid->oid mapping
-    _DESCRIPTOR_CACHE_OID[oid] = descriptor
-    _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']] = oid
+    _DESCRIPTOR_CACHE[descriptor['uid']] = descriptor
 
     return descriptor
 
 
-@_ensure_connection
-def _run_start_given_oid(oid):
-    """Get RunStart document given an ObjectId
-
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-
-    When we migrate to using uid as the primary key this function
-    will be removed.
-
-    Parameters
-    ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
-
-    Returns
-    -------
-    run_start : doc.Document
-        The RunStart document.
-    """
-    try:
-        return _RUNSTART_CACHE_OID[oid]
-    except KeyError:
-        pass
-    rs = RunStart._get_collection().find_one({'_id': oid})
-    return _cache_run_start(rs)
-
-
-@_ensure_connection
-def _descriptor_given_oid(oid):
-    """Get EventDescriptor document given an ObjectId
-
-    This is an internal function as ObjectIds should not be
-    leaking out to user code.
-
-    When we migrate to using uid as the primary key this function
-    will be removed.
-
-    Parameters
-    ----------
-    oid : ObjectId
-        Mongo's unique identifier for the document.  This is currently
-        used to implement foreign keys
-
-    Returns
-    -------
-    descriptor : doc.Document
-        The EventDescriptor document.
-    """
-    try:
-        return _DESCRIPTOR_CACHE_OID[oid]
-    except KeyError:
-        pass
-
-    descriptor = EventDescriptor._get_collection().find_one({'_id': oid})
-    return _cache_descriptor(descriptor)
-
-
-@_ensure_connection
 def run_start_given_uid(uid):
     """Given a uid, return the RunStart document
 
@@ -305,15 +314,13 @@ def run_start_given_uid(uid):
 
     """
     try:
-        oid = _RUNSTART_UID_to_OID_MAP[uid]
-        return _RUNSTART_CACHE_OID[oid]
+        return _RUNSTART_CACHE[uid]
     except KeyError:
         pass
-    run_start = RunStart._get_collection().find_one({'uid': uid})
+    run_start = _DB_SINGLETON._runstart_col.find_one({'uid': uid})
     return _cache_run_start(run_start)
 
 
-@_ensure_connection
 def run_stop_given_uid(uid):
     """Given a uid, return the RunStop document
 
@@ -329,16 +336,14 @@ def run_stop_given_uid(uid):
 
     """
     try:
-        oid = _RUNSTOP_UID_to_OID_MAP[uid]
-        return _RUNSTOP_CACHE_OID[oid]
+        return _RUNSTOP_CACHE[uid]
     except KeyError:
         pass
     # get the raw run_stop
-    run_stop = RunStop._get_collection().find_one({'uid': uid})
+    run_stop = _DB_SINGLETON._runstop_col.find_one({'uid': uid})
     return _cache_run_stop(run_stop)
 
 
-@_ensure_connection
 def descriptor_given_uid(uid):
     """Given a uid, return the EventDescriptor document
 
@@ -353,16 +358,14 @@ def descriptor_given_uid(uid):
         The EventDescriptor document fully de-referenced
     """
     try:
-        oid = _DESCRIPTOR_UID_to_OID_MAP[uid]
-        return _DESCRIPTOR_CACHE_OID[oid]
+        return _DESCRIPTOR_CACHE[uid]
     except KeyError:
         pass
 
-    descriptor = EventDescriptor._get_collection().find_one({'uid': uid})
+    descriptor = _DB_SINGLETON._descriptor_col.find_one({'uid': uid})
     return _cache_descriptor(descriptor)
 
 
-@_ensure_connection
 def stop_by_start(run_start):
     """Given a RunStart return it's RunStop
 
@@ -385,12 +388,9 @@ def stop_by_start(run_start):
         If no RunStop document exists for the given RunStart
     """
     run_start_uid = doc_or_uid_to_uid(run_start)
-    # make sure the cache is actually populated
-    run_start_given_uid(run_start_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
 
-    run_stop = RunStop._get_collection().find_one(
-        {'run_start_id': oid})
+    run_stop = _DB_SINGLETON._runstop_col.find_one(
+        {'run_start': run_start_uid})
 
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
@@ -398,7 +398,6 @@ def stop_by_start(run_start):
     return _cache_run_stop(run_stop)
 
 
-@_ensure_connection
 def descriptors_by_start(run_start):
     """Given a RunStart return a list of it's descriptors
 
@@ -422,13 +421,11 @@ def descriptors_by_start(run_start):
     """
     # normalize the input and get the run_start oid
     run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start_given_uid(run_start_uid)
-    oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
 
     # query the database for any event descriptors which
     # refer to the given run_start
-    descriptors = EventDescriptor._get_collection().find(
-        {'run_start_id': oid})
+    descriptors = _DB_SINGLETON._descriptor_col.find(
+        {'run_start': run_start_uid})
 
     # loop over the found documents, cache, and dereference
     rets = [_cache_descriptor(descriptor) for descriptor in descriptors]
@@ -442,7 +439,6 @@ def descriptors_by_start(run_start):
     return rets
 
 
-@_ensure_connection
 def get_events_generator(descriptor):
     """A generator which yields all events from the event stream
 
@@ -460,18 +456,13 @@ def get_events_generator(descriptor):
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(descriptor_uid)
-
-    oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
-
-    col = Event._get_collection()
-    ev_cur = col.find({'descriptor_id': oid},
+    col = _DB_SINGLETON._event_col
+    ev_cur = col.find({'descriptor': descriptor_uid},
                       sort=[('time', 1)])
 
     for ev in ev_cur:
         # ditch the ObjectID
         del ev['_id']
-        # del the descriptor oid
-        del ev['descriptor_id']
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
         data = ev.pop('data')
@@ -513,7 +504,6 @@ def _transpose(in_data, keys, field):
     return out
 
 
-@_ensure_connection
 def get_events_table(descriptor):
     """All event data as tables
 
@@ -567,9 +557,8 @@ def get_events_table(descriptor):
 
 # database INSERTION ###################################################
 
-@_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
-                    project='', custom=None):
+                     project='', **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
@@ -602,24 +591,28 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         the full document.
 
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
 
-    run_start = RunStart(time=time, scan_id=scan_id, uid=uid,
-                        beamline_id=beamline_id, owner=owner, group=group,
-                        project=project, **custom)
+    col = _DB_SINGLETON._runstart_col
+    run_start = dict(time=time, scan_id=scan_id, uid=uid,
+                     beamline_id=beamline_id, owner=owner, group=group,
+                     project=project, **kwargs)
 
-    run_start = run_start.save(validate=True, write_concern={"w": 1})
+    col.insert_one(run_start)
 
-    _cache_run_start(run_start.to_mongo().to_dict())
-    logger.debug('Inserted RunStart with uid %s', run_start.uid)
+    _cache_run_start(run_start)
+    logger.debug('Inserted RunStart with uid %s', run_start['uid'])
 
     return uid
 
 
-@_ensure_connection
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
-                   custom=None):
+                    custom=None):
     """Insert RunStop document into database
 
     Parameters
@@ -661,26 +654,21 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
         pass
     else:
         raise RuntimeError("Runstop already exits for {!r}".format(run_start))
-    # look up the oid
-    run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
-    # create a reference field
-    rs_ref = DBRef('RunStart', run_start_oid)
 
-    run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
-                      uid=uid,
-                      exit_status=exit_status, **custom)
+    col = _DB_SINGLETON._runstop_col
+    run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
+                    uid=uid,
+                    exit_status=exit_status, **custom)
 
-    run_stop = run_stop.save(validate=True, write_concern={"w": 1})
-    _cache_run_stop(run_stop.to_mongo().to_dict())
+    col.insert_one(run_stop)
+    _cache_run_stop(run_stop)
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop.uid, run_start['uid'])
+                 " with uid %s", run_stop['uid'], run_start['uid'])
 
     return uid
 
 
-@_ensure_connection
-def insert_descriptor(run_start, data_keys, time, uid,
-                      custom=None):
+def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
     """Insert an EventDescriptor document in to database.
 
     Parameters
@@ -697,37 +685,34 @@ def insert_descriptor(run_start, data_keys, time, uid,
         descriptor is created.
     uid : str
         Globally unique id string provided to metadatastore
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the EventDescriptor.  These keys will be unpacked into
-        the top level of the EventDescriptor that is inserted into the
-        database.
 
     Returns
     -------
     descriptor : str
         uid of inserted Document
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
 
     for k in data_keys:
         if '.' in k:
             raise ValueError("Key names can not contain '.' (period).")
-    # needed to make ME happy
-    data_keys = {k: DataKey(**v) for k, v in data_keys.items()}
 
+    data_keys = {k: dict(v) for k, v in data_keys.items()}
     run_start_uid = doc_or_uid_to_uid(run_start)
-    # get document to make sure it is in the cache
-    run_start_given_uid(run_start_uid)
-    run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
-    rs_ref = DBRef('RunStart', run_start_oid)
-    descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
-                                 time=time, uid=uid, **custom)
 
-    descriptor = descriptor.save(validate=True, write_concern={"w": 1})
+    col = _DB_SINGLETON._descriptor_col
 
-    descriptor = _cache_descriptor(descriptor.to_mongo().to_dict())
+    descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
+                      time=time, uid=uid, **kwargs)
+    # TODO validation
+    col.insert_one(descriptor)
+
+    descriptor = _cache_descriptor(descriptor)
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
                  "RunStart with uid %s", descriptor['uid'], run_start_uid)
@@ -736,7 +721,6 @@ def insert_descriptor(run_start, data_keys, time, uid,
 insert_event_descriptor = insert_descriptor
 
 
-@_ensure_connection
 def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     """Create an event in metadatastore database backend
 
@@ -768,18 +752,16 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     val_ts_tuple = _transform_data(data, timestamps)
     # make sure we really have a uid
     descriptor_uid = doc_or_uid_to_uid(descriptor)
-    # get descriptor to make sure it is in the cache
-    descriptor = descriptor_given_uid(descriptor_uid)
-    # get the ObjectID so for reference field
-    desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor_uid]
-    # create the Event document
-    event = Event(descriptor=desc_oid, uid=uid,
-                  data=val_ts_tuple, time=time, seq_num=seq_num)
 
-    event.save(validate=True, write_concern={"w": 1})
+    col = _DB_SINGLETON._event_col
+
+    event = dict(descriptor=descriptor_uid, uid=uid,
+                 data=val_ts_tuple, time=time, seq_num=seq_num)
+
+    col.insert_one(event)
 
     logger.debug("Inserted Event with uid %s referencing "
-                 "EventDescriptor with uid %s", event.uid,
+                 "EventDescriptor with uid %s", event['uid'],
                  descriptor_uid)
     return uid
 
@@ -787,7 +769,6 @@ BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
 'timestamps do not match:\n data: {}\ntimestamps:{}"""
 
 
-@_ensure_connection
 def bulk_insert_events(event_descriptor, events, validate=False):
     """Bulk insert many events
 
@@ -808,9 +789,6 @@ def bulk_insert_events(event_descriptor, events, validate=False):
         dictionary of details about the insertion
     """
     descriptor_uid = doc_or_uid_to_uid(event_descriptor)
-    descriptor = descriptor_given_uid(descriptor_uid)
-
-    desc_oid = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
 
     def event_factory():
         for ev in events:
@@ -823,12 +801,12 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
             # transform the data to the storage format
             val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
-            ev_out = dict(descriptor_id=desc_oid, uid=ev['uid'],
+            ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
                           data=val_ts_tuple, time=ev['time'],
                           seq_num=ev['seq_num'])
             yield ev_out
 
-    bulk = Event._get_collection().initialize_ordered_bulk_op()
+    bulk = _DB_SINGLETON._event_col.initialize_ordered_bulk_op()
     for ev in event_factory():
         bulk.insert(ev)
 
@@ -946,7 +924,6 @@ _normalize_human_friendly_time.__doc__ = (
     )
 
 
-@_ensure_connection
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
 
@@ -991,14 +968,13 @@ def find_run_starts(**kwargs):
     """
     # now try rest of formatting
     _format_time(kwargs)
+    col = _DB_SINGLETON._runstart_col
+    rs_objects = col.find(kwargs)
 
-    rs_objects = RunStart.objects(__raw__=kwargs).as_pymongo()
-
-    return (_cache_run_start(rs) for rs in rs_objects.order_by('-time'))
+    return (_cache_run_start(rs) for rs in rs_objects)
 find_run_starts = find_run_starts
 
 
-@_ensure_connection
 def find_run_stops(run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
@@ -1034,17 +1010,15 @@ def find_run_stops(run_start=None, **kwargs):
     # normalize the input and get the run_start oid
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
-        run_start_given_uid(run_start_uid)
-        oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
-        kwargs['run_start_id'] = oid
+        kwargs['run_start'] = run_start_uid
     _format_time(kwargs)
-    run_stop = RunStop.objects(__raw__=kwargs).as_pymongo()
+    col = _DB_SINGLETON._runstop_col
+    run_stop = col.find(kwargs)
 
-    return (_cache_run_stop(rs) for rs in run_stop.order_by('-time'))
+    return (_cache_run_stop(rs) for rs in run_stop)
 find_run_stops = find_run_stops
 
 
-@_ensure_connection
 def find_descriptors(run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
@@ -1073,24 +1047,21 @@ def find_descriptors(run_start=None, **kwargs):
         The requested EventDescriptor
     """
     if run_start:
-        run_start = doc_or_uid_to_uid(run_start)
-        run_start = run_start_given_uid(run_start)
-        run_start = _RUNSTART_UID_to_OID_MAP[run_start['uid']]
-        kwargs['run_start_id'] = run_start
+        run_start_uid = doc_or_uid_to_uid(run_start)
+        kwargs['run_start'] = run_start_uid
 
     _format_time(kwargs)
 
-    event_descriptor_objects = EventDescriptor.objects(__raw__=kwargs)
+    col = _DB_SINGLETON._descriptor_col
+    event_descriptor_objects = col.find(kwargs)
 
-    event_descriptor_objects = event_descriptor_objects.as_pymongo()
-    for event_descriptor in event_descriptor_objects.order_by('-time'):
+    for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor)
 
 # TODO properly mark this as deprecated
 find_event_descriptors = find_descriptors
 
 
-@_ensure_connection
 def find_events(descriptor=None, **kwargs):
     """Given search criteria, locate Event Documents.
 
@@ -1122,22 +1093,19 @@ def find_events(descriptor=None, **kwargs):
         raise ValueError("Use 'descriptor', not 'event_descriptor'.")
 
     if descriptor:
-        descriptor = doc_or_uid_to_uid(descriptor)
-        descriptor = descriptor_given_uid(descriptor)
-        descriptor = _DESCRIPTOR_UID_to_OID_MAP[descriptor['uid']]
-        kwargs['descriptor_id'] = descriptor
+        descriptor_uid = doc_or_uid_to_uid(descriptor)
+        kwargs['descriptor'] = descriptor_uid
 
     _format_time(kwargs)
-
-    events = Event.objects(__raw__=kwargs).order_by('time')
-    events = events.as_pymongo()
+    col = _DB_SINGLETON._event_col
+    events = col.find(kwargs)
 
     for ev in events:
-        del ev['_id']
+        ev.pop('_id', None)
         # pop the descriptor oid
-        desc_oid = ev.pop('descriptor_id')
+        desc_uid = ev.pop('descriptor')
         # replace it with the defererenced descriptor
-        ev['descriptor'] = _descriptor_given_oid(desc_oid)
+        ev['descriptor'] = descriptor_given_uid(desc_uid)
         data = ev.pop('data')
         # re-format the data
         ev['timestamps'] = {k: v[1] for k, v in data.items()}
@@ -1147,7 +1115,6 @@ def find_events(descriptor=None, **kwargs):
         yield ev
 
 
-@_ensure_connection
 def find_last(num=1):
     """Locate the last `num` RunStart Documents
 
@@ -1161,8 +1128,6 @@ def find_last(num=1):
     run_start doc.Document
        The requested RunStart documents
     """
-    c = count()
-    for rs in RunStart.objects.as_pymongo().order_by('-time'):
-        if next(c) == num:
-            raise StopIteration
+    col = _DB_SINGLETON._runstart_col
+    for rs in col.find().sort('time', -1).limit(num):
         yield _cache_run_start(rs)
