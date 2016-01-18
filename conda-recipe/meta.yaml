@@ -32,6 +32,7 @@ requirements:
     - pytz
     - jinja2
     - boltons
+    - doct
 
 test:
   requires:

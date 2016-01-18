@@ -19,7 +19,7 @@ import mongoengine.connection
 from . import conf
 from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
                             ALIAS)
-from . import doc
+import doct as doc
 
 
 logger = logging.getLogger(__name__)
