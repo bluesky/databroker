@@ -43,8 +43,6 @@ test:
     - metadatastore.api
     - metadatastore.commands
     - metadatastore.conf
-    - metadatastore.doc
-    - metadatastore.odm_templates
     - metadatastore.examples
     - metadatastore.examples.sample_data
     - metadatastore.examples.sample_data.common
