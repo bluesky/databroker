@@ -51,6 +51,6 @@ after_success:
   - coveralls
   # upload the conda package to the $ANACONDA_CHANNEL in $ANACONDA_USER
   - . ~/scripts/anaconda-upload.sh
-
+  - env
 after_failure:
   - . ~/scripts/debug.sh
