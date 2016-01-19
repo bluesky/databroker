@@ -117,7 +117,7 @@ class _DBManager(object):
     @property
     def _event_col(self):
         if self.__event_col is None:
-            self.__event_col = self._db.get_collection('event_event')
+            self.__event_col = self._db.get_collection('event')
 
         self.__event_col.create_index([('uid', pymongo.DESCENDING)],
                                       unique=True)
