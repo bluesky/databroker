@@ -1,4 +1,16 @@
 language: python
+env:
+  global:
+    - ANACONDA_USER=lightsource2
+    # if ANACONDA_CHANNEL is not defined then the conda package will be
+    # uploaded to the main channel.
+    - ANACONDA_CHANNEL="development"
+    - UPLOAD_ONLY_IF_BRANCH_IS="auto-build-on-travis"
+    - secure: "URtCilMlIxGqUBaP4YHsLwBZO0ypNjl0g72dd7fXbPcJNhpHTEJy1K4MU7FP36ZCGx9RoRI60yjYVYmY/gp7Nw/SssZ75v1I+KMubtZ18LvRi9euurIPwxxsQAlY4ECn/baNgCl75zKFFtssUScuFX/i/zuPmkZMTBytXD6WMRc="
+
+git:
+  # hack around git fetch --unshallow failing and nuking the whole CI
+  depth: 9999999
 
 services:
   - mongodb
@@ -9,9 +21,11 @@ python:
   - 3.5
 
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh; fi
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b -p /home/travis/mc
+  # clone conda install/build/upload helper scripts and make them executable
+  - git clone https://gist.github.com/613e015ad558b9149d33.git ~/scripts
+  - chmod +x ~/scripts/*.sh
+  # install miniconda/anaconda-client/conda-build
+  - . ~/scripts/install-miniconda.sh
   - export PATH=/home/travis/mc/bin:$PATH
   - export FS_HOST=localhost
   - export FS_DATABASE=test
@@ -30,6 +44,10 @@ install:
 
 script:
   - python run_tests.py
+  # build the conda package on travis
+  - . ~/scripts/conda-build.sh
 
 after_success:
-  coveralls
+  - coveralls
+  # upload the conda package to the $ANACONDA_CHANNEL in $ANACONDA_USER
+  - . ~/scripts/anaconda-upload.sh
