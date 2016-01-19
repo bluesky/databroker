@@ -40,15 +40,15 @@ test:
     - filestore.api
     - filestore.commands
     - filestore.conf
+    - filestore.core
     - filestore.file_writers
+    - filestore.fs
+    - filestore.handlers_base
     - filestore.handlers
-    - filestore.odm_templates
     - filestore.path_only_handlers
     - filestore.retrieve
     - filestore.readers
     - filestore.readers.spe
-    - filestore.utils
-    - filestore.utils.testing
 
 about:
   home: https://github.com/NSLS-II/filestore
