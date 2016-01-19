@@ -26,18 +26,15 @@ before_install:
   - chmod +x ~/scripts/*.sh
   # install miniconda/anaconda-client/conda-build
   - . ~/scripts/install-miniconda.sh
-  - export PATH=/home/travis/mc/bin:$PATH
-  - export FS_HOST=localhost
-  - export FS_DATABASE=test
-  - mkdir -p /home/travis/.config/filestore
-  - 'echo ''port: 27017'' > /home/travis/.config/filestore/connection.yml'
+  - . ~/scripts/init-filestore.sh
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda update conda --yes
-  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema
+  - conda update conda
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons
   - source activate testenv
-  - pip install coveralls boltons pims
+  - conda install -c soft-matter pims
+  - pip install coveralls
   - 'pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct'
   - python setup.py install
 
