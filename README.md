@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/NSLS-II/filestore.svg?branch=master)](https://travis-ci.org/NSLS-II/filestore)
 [![Coverage Status](https://coveralls.io/repos/NSLS-II/filestore/badge.svg)](https://coveralls.io/r/NSLS-II/filestore)
+[![Anaconda-Server Badge](https://anaconda.org/lightsource2/filestore/badges/version.svg)](https://anaconda.org/lightsource2/filestore)
 [![Code Health](https://landscape.io/github/NSLS-II/filestore/master/landscape.svg?style=flat)](https://landscape.io/github/NSLS-II/filestore/master)
 
 # filestore
@@ -8,27 +9,27 @@ filestore prototype
 ##important bits
 - `filestore` does not manage files on disk for you.
 - `filestore` relies on you (the user!) to know the mapping between your file
-  spec and the handler that can open it. If you do not have the handler that 
+  spec and the handler that can open it. If you do not have the handler that
   you need, you must write it yourself!
-- `filestore` 
+- `filestore`
 
 ##Using filestore with pickled numpy files `(*.npy)`
 
-In this example you will see 
+In this example you will see
 
 1. Creating some synthetic data (a noisy sine)
 2. Writing it to disk
-3. Inserting some information about the files I wrote to disk into filestore 
-4. Loading it back from disk with filestore 
+3. Inserting some information about the files I wrote to disk into filestore
+4. Loading it back from disk with filestore
 5. Ploting it with matplotlib
 
-**It is important to note that only points 4 and 5 are what filestore is 
+**It is important to note that only points 4 and 5 are what filestore is
 written to do.**
 
-If you would like to see this example as a jupyter notebook then [go here] 
+If you would like to see this example as a jupyter notebook then [go here]
 (http://nbviewer.ipython.org/bbcd99efa5faac57972c)
 
-Otherwise, have a look at this script. The code between the two lines of 
+Otherwise, have a look at this script. The code between the two lines of
 hashes (####) indicate the parts of this script that are actually relevant to
 the operation of filestore. The rest is data generation and plotting.
 
@@ -67,7 +68,7 @@ y_uid = str(uuid.uuid4())
 ###################################################################
 ###################################################################
 
-# Insert the filestore records that know about these files 
+# Insert the filestore records that know about these files
 import filestore.api as fsapi
 from filestore.handlers import NpyHandler
 # spec is the identifier that will be used later to link
@@ -109,5 +110,5 @@ plt.show()
 ```
 
 ##Using filestore with other filetypes
-For retrieving from more complex file types (looking at you hdf!), see some 
+For retrieving from more complex file types (looking at you hdf!), see some
 of the built-in writers that are shipped with filestore in `filestore.handlers`

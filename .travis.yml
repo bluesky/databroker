@@ -5,7 +5,7 @@ env:
     # if ANACONDA_CHANNEL is not defined then the conda package will be
     # uploaded to the main channel.
     - ANACONDA_CHANNEL="development"
-    - UPLOAD_ONLY_IF_BRANCH_IS="auto-build-on-travis"
+    - UPLOAD_ONLY_IF_BRANCH_IS="master"
     - secure: "URtCilMlIxGqUBaP4YHsLwBZO0ypNjl0g72dd7fXbPcJNhpHTEJy1K4MU7FP36ZCGx9RoRI60yjYVYmY/gp7Nw/SssZ75v1I+KMubtZ18LvRi9euurIPwxxsQAlY4ECn/baNgCl75zKFFtssUScuFX/i/zuPmkZMTBytXD6WMRc="
 
 git:
