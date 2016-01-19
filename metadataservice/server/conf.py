@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def load_configuration(name, prefix, fields):
+def load_configuration(name, prefix, fields, allow_missing=False):
     """
     Load configuration data form a cascading series of locations.
 
@@ -53,10 +53,7 @@ def load_configuration(name, prefix, fields):
         config[field] = os.environ.get(var_name, config.get(field, None))
 
     missing = [k for k, v in config.items() if v is None]
-    if missing:
+    if not allow_missing and missing:
         raise KeyError("The configuration field(s) {0} were not found in any "
                        "file or environmental variable.".format(missing))
     return config
-
-connection_config = load_configuration('metadataservice', 'MDS',
-                                       ['host', 'port', 'timezone'])
