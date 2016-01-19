@@ -1,6 +1,5 @@
 from filestore.api import register_handler
-from filestore import handlers
-from filestore.retrieve import HandlerBase
+from filestore import handlers, HandlerBase
 import logging
 
 
