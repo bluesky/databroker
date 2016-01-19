@@ -30,6 +30,7 @@ requirements:
     - pims
     - boltons
     - pymongo
+    - doct
 
 test:
   requires:
