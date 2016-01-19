@@ -725,7 +725,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
 @_ensure_connection
 def insert_descriptor(run_start, data_keys, time, uid,
-                      custom=None):
+                      **kwargs):
     """ Create an event_descriptor in metadatastore server backend
 
     Parameters
@@ -743,9 +743,6 @@ def insert_descriptor(run_start, data_keys, time, uid,
         descriptor is created.
     uid : str, optional
         Globally unique id string provided to metadatastore
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the EventDescriptor.Again, custom not unpacked.
 
     Returns
     -------
@@ -754,7 +751,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
 
     """
     payload = dict(data_keys=data_keys,
-                   time=time, uid=uid, custom=custom)
+                   time=time, uid=uid, **kwargs)
     rs_uid = doc_or_uid_to_uid(run_start)
     payload['run_start'] = rs_uid
     r = requests.post(_server_path + '/event_descriptor',
@@ -766,7 +763,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
 
 @_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, uid,
-                    owner=None, group=None, project=None, custom=None):
+                     owner=None, group=None, project=None, **kwargs):
     """Provide a head for a sequence of events. Entry point for an
     experiment's run.
 
@@ -788,28 +785,24 @@ def insert_run_start(time, scan_id, beamline_id, uid,
         A group (e.g., UNIX group) associated with the entry
     project : str, optional
         Any project name to help users locate the data
-    custom: dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the Header at the start of the run. These are not unpacked to avoid
-        confusion. Data on the way in should be identical to data retrieved for consistency(any data
-        science book, chapter 1. Read CAP theorem for more info).
-
     Returns
     ----------
     Document
         The run_start document that is successfully saved in mongo
 
     """
+    # boiler plate
     data = dict(time=time, scan_id=scan_id, beamline_id=beamline_id, uid=uid,
-                 owner=owner, group=group, project=project)
+                 owner=owner, group=group, project=project, **kwargs)
     data = {k: v if v is not None else '' for k,v in data.items()}
-
+    custom = kwargs.pop('custom', None)
+    
+    # just in case custom gets leaked in. deal with it in a similar fashion to before
     if custom:
         z = data.copy()
         z.update(custom)
         payload = ujson.dumps(z)
     else:
-        data['custom'] = {}
         payload = ujson.dumps(data)
     r = requests.post(_server_path + '/run_start', data=payload)
     r.raise_for_status()
@@ -818,7 +811,7 @@ def insert_run_start(time, scan_id, beamline_id, uid,
 
 @_ensure_connection
 def insert_run_stop(run_start, time, uid, exit_status='success',
-                    reason='', custom=None):
+                    reason='', **kwargs):
     """ Provide an end to a sequence of events. Exit point for an
     experiment's run.
 
@@ -838,9 +831,6 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
         indicating reason run stopped, 'success' by default
     reason : str, optional
         more detailed exit status (stack trace, user remark, etc.)
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the Header at the end of the run.
 
     Returns
     -------
@@ -850,12 +840,12 @@ def insert_run_stop(run_start, time, uid, exit_status='success',
     params = dict(time=time, uid=uid, exit_status=exit_status,
                   reason=reason)
     params['run_start'] = doc_or_uid_to_uid(run_start)
+    custom = kwargs.pop('custom', None)
     if custom:
         z = params.copy()
         z.update(custom)
         payload = ujson.dumps(z)
     else:
-        params['custom'] = {}
         payload = ujson.dumps(params)
     r = requests.post(_server_path + '/run_stop', data=payload)
     if r.status_code == 500:
