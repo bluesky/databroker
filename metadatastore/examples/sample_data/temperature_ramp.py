@@ -28,13 +28,13 @@ def run(run_start_uid=None, sleep=0):
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
     ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
-                                           data_keys=data_keys1,
-                                           time=common.get_time(),
-                                           uid=str(uuid.uuid4()))
+                                     data_keys=data_keys1,
+                                     time=common.get_time(),
+                                     uid=str(uuid.uuid4()))
     ev_desc2_uid = insert_descriptor(run_start=run_start_uid,
-                                           data_keys=data_keys2,
-                                           time=common.get_time(),
-                                           uid=str(uuid.uuid4()))
+                                     data_keys=data_keys2,
+                                     time=common.get_time(),
+                                     uid=str(uuid.uuid4()))
 
     # Create Events.
     events = []
