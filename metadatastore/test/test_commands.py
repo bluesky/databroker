@@ -138,7 +138,6 @@ def test_custom_warn():
             owner='Al the Aardvark', group='Orycteropus',
             project='Nikea', time=document_insertion_time,
             uid=run_start_uid, custom={'order': 'Tubulidentata'})
-
         assert len(w) == 1
 
     rs = next(mdsc.find_run_starts(order='Tubulidentata'))
@@ -153,6 +152,16 @@ def test_custom_warn():
         assert len(w) == 1
     ed = mdsc.descriptor_given_uid(ev_desc_uid)
     assert ed['food'] == 'ants'
+
+    with warnings.catch_warnings(record=True) as w:
+        stop_uid = str(uuid.uuid4())
+        mdsc.insert_run_stop(run_start_uid, ttime.time(),
+                             stop_uid, custom={'navy': 'VF-114'})
+
+        assert len(w) == 1
+
+    run_stop = mdsc.run_stop_given_uid(stop_uid)
+    assert run_stop['navy'] == 'VF-114'
 
 
 def test_insert_run_start():

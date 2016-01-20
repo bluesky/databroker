@@ -575,11 +575,6 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         An experimental group associated with the RunStart
     project : str, optional
         Any project name to help users locate the data
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the RunStart at the start of the run. These keys will be
-        unpacked into the top level of the RunStart that is inserted into the
-        database.
 
     Returns
     -------
@@ -609,7 +604,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
 
 
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
-                    custom=None):
+                    **kwargs):
     """Insert RunStop document into database
 
     Parameters
@@ -625,11 +620,6 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
         indicating reason run stopped, 'success' by default
     reason : str, optional
         more detailed exit status (stack trace, user remark, etc.)
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the Header at the end of the run.  These keys will be
-        unpacked into the top level of the RunStop that is inserted
-        into the database.
 
     Returns
     -------
@@ -641,8 +631,13 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
     RuntimeError
         Only one RunStop per RunStart, raises if you try to insert a second
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
+
     run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = run_start_given_uid(run_start_uid)
     try:
@@ -655,7 +650,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
     col = _DB_SINGLETON._runstop_col
     run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
                     uid=uid,
-                    exit_status=exit_status, **custom)
+                    exit_status=exit_status, **kwargs)
 
     col.insert_one(run_stop)
     _cache_run_stop(run_stop)
