@@ -59,7 +59,7 @@ class _DBManager(object):
 
     def reconfigure(self, config):
         self.disconnect()
-        self._config = config
+        self.config = config
 
     @property
     def _connection(self):
@@ -191,7 +191,7 @@ def db_connect(database, host, port):
        re-connect.
     """
     clear_process_cache()
-    _DB_SINGLETON.reconfigure(dict(db=database, host=host, port=port))
+    _DB_SINGLETON.reconfigure(dict(database=database, host=host, port=port))
     return _DB_SINGLETON._connection
 
 
