@@ -23,6 +23,7 @@ requirements:
     - six
     - tzlocal
     - singledispatch [py27]
+    - doct
 
 test:
   requires:

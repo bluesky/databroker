@@ -1,34 +1,34 @@
+.. _usage:
+
 .. ipython:: python
    :suppress:
 
+   import matplotlib
+   matplotlib.use('agg')
    # Do this so Quick Start does not include example-generation.
+   import uuid
+   import numpy as np
+   import time as ttime
    from metadatastore.utils.testing import mds_setup
    from filestore.utils.testing import fs_setup
    mds_setup()
    fs_setup()
    from databroker.examples.sample_data import temperature_ramp
-   from metadatastore.api import insert_run_start, insert_beamline_config
+   from metadatastore.api import insert_run_start
+   uid = str(uuid.uuid4())
+   rs_uid = insert_run_start(time=ttime.time(), scan_id=1, uid=uid, owner='nedbrainard', beamline_id='example')
+   temperature_ramp.run(run_start_uid=rs_uid)
+   rs_uid = insert_run_start(time=ttime.time(), scan_id=2, uid=str(uuid.uuid4()), owner='nedbrainard', beamline_id='example')
+   temperature_ramp.run(run_start_uid=rs_uid)
 
-   rs_uid = insert_run_start(time=0., scan_id=1, uid='a5fbde',
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start_uid=rs)
-   rs_uid = insert_run_start(time=1., scan_id=2,
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start_uid=rs)
-   rs_uid = insert_run_start(time=2., scan_id=3,
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start_uid=rs)
-   rs_uid = insert_run_start(time=3., scan_id=4,
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start_uid=rs)
-   rs_uid = insert_run_start(time=4., scan_id=5,
-                         owner='nedbrainard', beamline_id='example',
-                         beamline_config=insert_beamline_config({}, time=0.))
-   temperature_ramp.run(run_start_uid=rs)
+   rs_uid = insert_run_start(time=ttime.time(), scan_id=3, uid=str(uuid.uuid4()), owner='nedbrainard', beamline_id='example')
+   temperature_ramp.run(run_start_uid=rs_uid)
+
+   rs_uid = insert_run_start(time=ttime.time(), scan_id=4, uid=str(uuid.uuid4()), owner='nedbrainard', beamline_id='example')
+   temperature_ramp.run(run_start_uid=rs_uid)
+
+   rs_uid = insert_run_start(time=ttime.time(), scan_id=5, uid=str(uuid.uuid4()), owner='nedbrainard', beamline_id='example')
+   temperature_ramp.run(run_start_uid=rs_uid)
 
 *****************
 DataBroker Basics
@@ -52,11 +52,11 @@ is being done, read the next section.
 
 .. ipython:: python
 
-   from databroker.broker import DataBroker
-   from databroker.muxer import DataMuxer
+   from databroker import DataBroker, get_events
+   from datamuxer import DataMuxer
 
    header = DataBroker[-1]  # get most recent run
-   events = DataBroker.fetch_events(header)
+   events = get_events(header)
    dm = DataMuxer.from_events(events)
    dm.sources  # to review list of data sources
 
@@ -64,6 +64,7 @@ You can plot individual data sources against time...
 
 .. ipython:: python
 
+   @savefig plot_simple.png width=4in
    dm['Tsam'].plot()  # or the name of any data source
 
 Or bin the data to plot sources against each other...
@@ -93,7 +94,7 @@ type ``DataBroker[-N]``.
 
 .. ipython:: python
 
-   from databroker.broker import DataBroker
+   from databroker import DataBroker
 
    header = DataBroker[-1]
 
@@ -109,19 +110,19 @@ We can view its complete contents with ``print`` or, equivalently,
 
 .. ipython:: python
 
-   print header
+   print(header)
 
 You can access the contents like a Python dictionary
 
 .. ipython:: python
 
-   header['owner']
+   header['start']['owner']
 
 or, equivalently, an attribute. In IPython, use tab-completion to explore.
 
 .. ipython:: python
 
-   header.owner
+   header.start.owner
 
 Getting the Data in its Rawest Form
 -----------------------------------
@@ -131,7 +132,7 @@ the data itself, pass ``header`` (or a list of several Headers) to ``fetch_event
 
 .. ipython:: python
 
-   events = DataBroker.fetch_events(header)
+   events = get_events(header)
 
 The result is a list of Events, each one representing a measurement or
 measurements that took place at a given time. (Exactly what we mean
@@ -151,7 +152,7 @@ like so:
 
 .. ipython:: python
 
-   from databroker.muxer import DataMuxer
+   from datamuxer import DataMuxer
    dm = DataMuxer.from_events(events)
 
 The ``events`` can be from one scan or from many scans together. Then, the
@@ -163,7 +164,7 @@ temperature.
 
    dm['Tsam']
 
-Incidentally, to save a litte typing, ``dm.Tsam`` accomplishes the same thing.
+Incidentally, to save a little typing, ``dm.Tsam`` accomplishes the same thing.
 At any rate, the output gives the measured data at each time.
 
 Next, let's obtain a table showing data from multiple sources. Strictly
@@ -264,11 +265,11 @@ indexing from the end of a list.
 .. ipython:: python
 
    header = DataBroker[-1]  # most recent scan
-   header.scan_id
+   header.start.scan_id
    header = DataBroker[-2]  # next to last scan
-   header.scan_id
+   header.start.scan_id
    headers = DataBroker[-5:]  # all of the last five scans
-   [h.scan_id for h in headers]
+   [h.start.scan_id for h in headers]
    headers = DataBroker[-1000::100]  # sample every 100th of the last (up to) 1000 scans
 
 Or give the scan ID, which is always a positive integer.
@@ -276,14 +277,15 @@ Or give the scan ID, which is always a positive integer.
 .. ipython:: python
 
    header = DataBroker[4]  # scan ID 4
-   header.scan_id
+   header.start.scan_id
 
 If you know the unique id (uid) of a Header, you can use the first few
 characters to find it.
 
 .. ipython:: python
 
-   header = DataBroker['a5fbde']
+   uid[:6]
+   DataBroker[uid[:6]].start.uid
 
 For advanced searches, use ``find_headers``.
 

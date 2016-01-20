@@ -6,14 +6,18 @@
 DataBroker
 ==========
 
-Data Broker
------------
-
 Data Broker is a Python package that provdies a simple, user-friendly interface
 for retireving stored data and metadata. It retrieves data into memory as
 built-in Python data types and numpy arrays.
 
 Both simple and complex searches are supported. Convenience fucntions
 provide a simple way to handle tabular data and image sequences.
-  
+
 See the :ref:`api` for details.
+
+
+.. toctree::
+
+   api
+   usage
+   whats_new

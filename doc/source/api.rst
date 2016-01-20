@@ -4,23 +4,6 @@
 API reference
 =============
 
-.. currentmodule:: databroker.broker
-
-Data Broker
------------
-
-Quick Reference
-+++++++++++++++
-
-.. autosummary::
-   :toctree: generated/
-
-    Header
-    get_events
-    get_table
-    get_images
-    DataBroker.__call__
-    DataBroker.__getitem__
 
 Searching by ID or Recency
 ++++++++++++++++++++++++++
@@ -49,6 +32,19 @@ syntax                                                          meaning
 ``DataBroker(start_time='2015-01')``                            all headers from January 2015 or later
 ``DataBroker(start_time='2015-01-05', end_time='2015-01-010')`` between January 5 and 10
 =============================================================== ======================================
+
+
+Event Retrieval
++++++++++++++++
+
+.. autosummary::
+   :toctree: generated/
+
+   ~databroker.databroker.get_events
+   ~databroker.databroker.get_table
+   ~databroker.pims_readers.get_images
+
+
 
 Complex Queries
 +++++++++++++++
