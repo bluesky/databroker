@@ -6,3 +6,5 @@ del get_versions
 
 from .fs import FileStore, FileStoreRO
 from .core import DatumNotFound
+
+from .handlers_base import HandlerBase
