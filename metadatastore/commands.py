@@ -465,9 +465,6 @@ def get_events_generator(descriptor):
         del ev['_id']
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
-        data = ev.pop('data')
-        ev['timestamps'] = {k: v[1] for k, v in data.items()}
-        ev['data'] = {k: v[0] for k, v in data.items()}
 
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
@@ -749,14 +746,14 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
         Globally unique id string provided to metadatastore
     """
     # convert data to storage format
-    val_ts_tuple = _transform_data(data, timestamps)
     # make sure we really have a uid
     descriptor_uid = doc_or_uid_to_uid(descriptor)
 
     col = _DB_SINGLETON._event_col
 
     event = dict(descriptor=descriptor_uid, uid=uid,
-                 data=val_ts_tuple, time=time, seq_num=seq_num)
+                 data=data, timestamps=timestamps, time=time,
+                 seq_num=seq_num)
 
     col.insert_one(event)
 
@@ -799,10 +796,9 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                         BAD_KEYS_FMT.format(ev['data'].keys(),
                                             ev['timestamps'].keys()))
 
-            # transform the data to the storage format
-            val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
             ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=val_ts_tuple, time=ev['time'],
+                          data=ev['data'], timestamps=ev['timestamps'],
+                          time=ev['time'],
                           seq_num=ev['seq_num'])
             yield ev_out
 
@@ -1106,10 +1102,7 @@ def find_events(descriptor=None, **kwargs):
         desc_uid = ev.pop('descriptor')
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor_given_uid(desc_uid)
-        data = ev.pop('data')
-        # re-format the data
-        ev['timestamps'] = {k: v[1] for k, v in data.items()}
-        ev['data'] = {k: v[0] for k, v in data.items()}
+
         # wrap it our fancy dict
         ev = doc.Document('Event', ev)
         yield ev
