@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import warnings
 import six
 from functools import wraps
 from itertools import count
@@ -566,10 +566,9 @@ def get_events_table(descriptor):
 
 
 # database INSERTION ###################################################
-
 @_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
-                    project='', custom=None):
+                     project='', **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
@@ -597,12 +596,16 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         the full document.
 
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
 
     run_start = RunStart(time=time, scan_id=scan_id, uid=uid,
                         beamline_id=beamline_id, owner=owner, group=group,
-                        project=project, **custom)
+                         project=project, **kwargs)
 
     run_start = run_start.save(validate=True, write_concern={"w": 1})
 
@@ -674,8 +677,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
 
 
 @_ensure_connection
-def insert_descriptor(run_start, data_keys, time, uid,
-                      custom=None):
+def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
     """Insert an EventDescriptor document in to database.
 
     Parameters
@@ -692,19 +694,18 @@ def insert_descriptor(run_start, data_keys, time, uid,
         descriptor is created.
     uid : str
         Globally unique id string provided to metadatastore
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the EventDescriptor.  These keys will be unpacked into
-        the top level of the EventDescriptor that is inserted into the
-        database.
 
     Returns
     -------
     descriptor : str
         uid of inserted Document
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
 
     for k in data_keys:
         if '.' in k:
@@ -718,7 +719,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
     run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
     rs_ref = DBRef('RunStart', run_start_oid)
     descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
-                                 time=time, uid=uid, **custom)
+                                 time=time, uid=uid, **kwargs)
 
     descriptor = descriptor.save(validate=True, write_concern={"w": 1})
 
