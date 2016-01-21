@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import warnings
 import six
 from functools import wraps
 from itertools import count
@@ -19,7 +19,7 @@ import mongoengine.connection
 from . import conf
 from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
                             ALIAS)
-from . import doc
+import doct as doc
 
 
 logger = logging.getLogger(__name__)
@@ -566,10 +566,9 @@ def get_events_table(descriptor):
 
 
 # database INSERTION ###################################################
-
 @_ensure_connection
 def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
-                    project='', custom=None):
+                     project='', **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
@@ -589,11 +588,6 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         An experimental group associated with the RunStart
     project : str, optional
         Any project name to help users locate the data
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the RunStart at the start of the run. These keys will be
-        unpacked into the top level of the RunStart that is inserted into the
-        database.
 
     Returns
     -------
@@ -602,12 +596,16 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         the full document.
 
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
 
     run_start = RunStart(time=time, scan_id=scan_id, uid=uid,
                         beamline_id=beamline_id, owner=owner, group=group,
-                        project=project, **custom)
+                         project=project, **kwargs)
 
     run_start = run_start.save(validate=True, write_concern={"w": 1})
 
@@ -619,7 +617,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
 
 @_ensure_connection
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
-                   custom=None):
+                    **kwargs):
     """Insert RunStop document into database
 
     Parameters
@@ -635,11 +633,6 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
         indicating reason run stopped, 'success' by default
     reason : str, optional
         more detailed exit status (stack trace, user remark, etc.)
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the Header at the end of the run.  These keys will be
-        unpacked into the top level of the RunStop that is inserted
-        into the database.
 
     Returns
     -------
@@ -651,8 +644,13 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
     RuntimeError
         Only one RunStop per RunStart, raises if you try to insert a second
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
+
     run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = run_start_given_uid(run_start_uid)
     try:
@@ -667,8 +665,8 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
     rs_ref = DBRef('RunStart', run_start_oid)
 
     run_stop = RunStop(run_start=rs_ref, reason=reason, time=time,
-                      uid=uid,
-                      exit_status=exit_status, **custom)
+                       uid=uid,
+                       exit_status=exit_status, **kwargs)
 
     run_stop = run_stop.save(validate=True, write_concern={"w": 1})
     _cache_run_stop(run_stop.to_mongo().to_dict())
@@ -679,8 +677,7 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
 
 
 @_ensure_connection
-def insert_descriptor(run_start, data_keys, time, uid,
-                      custom=None):
+def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
     """Insert an EventDescriptor document in to database.
 
     Parameters
@@ -697,19 +694,18 @@ def insert_descriptor(run_start, data_keys, time, uid,
         descriptor is created.
     uid : str
         Globally unique id string provided to metadatastore
-    custom : dict, optional
-        Any additional information that data acquisition code/user wants
-        to append to the EventDescriptor.  These keys will be unpacked into
-        the top level of the EventDescriptor that is inserted into the
-        database.
 
     Returns
     -------
     descriptor : str
         uid of inserted Document
     """
-    if custom is None:
-        custom = {}
+    if 'custom' in kwargs:
+        warnings.warn("custom kwarg is deprecated")
+        custom = kwargs.pop('custom')
+        if any(k in kwargs for k in custom):
+            raise TypeError("duplicate keys in kwargs and custom")
+        kwargs.update(custom)
 
     for k in data_keys:
         if '.' in k:
@@ -723,7 +719,7 @@ def insert_descriptor(run_start, data_keys, time, uid,
     run_start_oid = _RUNSTART_UID_to_OID_MAP[run_start_uid]
     rs_ref = DBRef('RunStart', run_start_oid)
     descriptor = EventDescriptor(run_start=rs_ref, data_keys=data_keys,
-                                 time=time, uid=uid, **custom)
+                                 time=time, uid=uid, **kwargs)
 
     descriptor = descriptor.save(validate=True, write_concern={"w": 1})
 

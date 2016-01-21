@@ -25,11 +25,10 @@ try:
 except (IndexError, TypeError):
     scan_id = 1
 
-custom = {}
 # Create a BeginRunEvent that serves as entry point for a run
 run_start = insert_run_start(scan_id=scan_id, beamline_id='csx',
-                           time=time.time(), custom=custom,
-                           uid=str(uuid.uuid4()))
+                             time=time.time(),
+                             uid=str(uuid.uuid4()), function='cos')
 
 # Create an EventDescriptor that indicates the data
 # keys and serves as header for set of Event(s)

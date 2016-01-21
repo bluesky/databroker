@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import warnings
 from collections import deque
 import time as ttime
 import datetime
@@ -33,12 +34,12 @@ def setup():
     temperature_ramp.run()
 
     run_start_uid = mdsc.insert_run_start(scan_id=3022013,
-                                        beamline_id='testbed',
-                                        owner='tester',
-                                        group='awesome-devs',
-                                        project='Nikea',
-                                        time=document_insertion_time,
-                                        uid=str(uuid.uuid4()))
+                                          beamline_id='testbed',
+                                          owner='tester',
+                                          group='awesome-devs',
+                                          project='Nikea',
+                                          time=document_insertion_time,
+                                          uid=str(uuid.uuid4()))
 
 # ### Helper functions ########################################################
 
@@ -54,8 +55,9 @@ def setup_syn(custom=None):
 
     # Create a BeginRunEvent that serves as entry point for a run
     rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
-                              time=ttime.time(),
-                              custom=custom, uid=str(uuid.uuid4()))
+                               time=ttime.time(),
+                               uid=str(uuid.uuid4()),
+                               **custom)
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
@@ -66,6 +68,7 @@ def setup_syn(custom=None):
 
 
 def syn_data(data_keys, count):
+
     all_data = deque()
     for seq_num in range(count):
         data = {k: float(seq_num) for k in data_keys}
@@ -125,6 +128,42 @@ def test_event_descriptor_insertion():
                          data_keys[k][ik])
 
 
+def test_custom_warn():
+
+    run_start_uid = str(uuid.uuid4())
+
+    with warnings.catch_warnings(record=True) as w:
+        run_start_uid = mdsc.insert_run_start(
+            scan_id=30220, beamline_id='testbed',
+            owner='Al the Aardvark', group='Orycteropus',
+            project='Nikea', time=document_insertion_time,
+            uid=run_start_uid, custom={'order': 'Tubulidentata'})
+        assert len(w) == 1
+
+    rs = next(mdsc.find_run_starts(order='Tubulidentata'))
+    assert rs['uid'] == run_start_uid
+
+    with warnings.catch_warnings(record=True) as w:
+        ev_desc_uid = mdsc.insert_descriptor(
+            run_start_uid,
+            {'a': {'source': 'zoo', 'shape': [], 'dtype': 'number'}},
+            ttime.time(), str(uuid.uuid4()), custom={'food': 'ants'})
+
+        assert len(w) == 1
+    ed = mdsc.descriptor_given_uid(ev_desc_uid)
+    assert ed['food'] == 'ants'
+
+    with warnings.catch_warnings(record=True) as w:
+        stop_uid = str(uuid.uuid4())
+        mdsc.insert_run_stop(run_start_uid, ttime.time(),
+                             stop_uid, custom={'navy': 'VF-114'})
+
+        assert len(w) == 1
+
+    run_stop = mdsc.run_stop_given_uid(stop_uid)
+    assert run_stop['navy'] == 'VF-114'
+
+
 def test_insert_run_start():
     time = ttime.time()
     beamline_id = 'sample_beamline'
@@ -133,7 +172,7 @@ def test_insert_run_start():
               'aardvark': ['ants', 3.14]}
     run_start_uid = mdsc.insert_run_start(
         time, beamline_id=beamline_id,
-        scan_id=scan_id, custom=custom, uid=str(uuid.uuid4()))
+        scan_id=scan_id, uid=str(uuid.uuid4()), **custom)
 
     run_start_mds, = mdsc.find_run_starts(uid=run_start_uid)
 
@@ -158,8 +197,8 @@ def test_run_stop_insertion():
     reason = 'uh, because this is testing and it better be a success?'
     # insert the document
     run_stop_uid = mdsc.insert_run_stop(run_start_uid, time,
-                                       exit_status=exit_status,
-                                       reason=reason, uid=str(uuid.uuid4()))
+                                        exit_status=exit_status,
+                                        reason=reason, uid=str(uuid.uuid4()))
 
     # get the sanitized run_stop document from metadatastore
     run_stop, = mdsc.find_run_stops(uid=run_stop_uid)
@@ -188,17 +227,17 @@ def test_find_events_smoke():
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
     mdsc.clear_process_cache()
-    
+
     # make sure the uid works
     next(mdsc.find_events(descriptor=e_desc))
-    
+
     mdsc.clear_process_cache()
     descriptor, = mdsc.find_descriptors(uid=e_desc)
-    
+
     mdsc.clear_process_cache()
     # make sure that searching by descriptor document works
     next(mdsc.find_events(descriptor=descriptor))
-    
+
 @raises(ValueError)
 def test_find_events_ValueError():
     list(mdsc.find_events(event_descriptor='cat'))
