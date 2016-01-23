@@ -3,7 +3,7 @@ import six
 import uuid
 import logging
 import time as ttime
-from databroker import DataBroker as db, get_events, get_table
+from databroker import DataBroker as db, get_events, get_table, stream
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -242,3 +242,22 @@ def test_raise_conditions():
     ]
     for raiser in raising_keys:
         yield _raiser_helper, raiser
+
+
+def test_stream():
+    s = stream(db[-1])
+    name, doc = next(s)
+    assert name == 'start'
+    assert 'owner' in doc
+    name, doc = next(s)
+    assert name == 'descriptor'
+    assert 'data_keys' in doc
+    last_item  = 'event', {'data'}  # fake Event to prime loop
+    for item in s:
+        name, doc = last_item
+        assert name == 'event'
+        assert 'data' in doc  # Event
+        last_item = item
+    name, doc = last_item
+    assert name == 'stop'
+    assert 'exit_status' in doc # Stop
