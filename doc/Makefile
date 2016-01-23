@@ -10,11 +10,7 @@ BUILDDIR      = build
 # For auto gh-pages
 GH_PAGES_SOURCES = Makefile source
 UNAME := $(shell uname)
-ifeq ($(UNAME), Darwin)
-	GH_DIR := $(shell mktemp -dt foobar)
-else
-	GH_DIR := $(shell mktemp -d)
-endif
+GH_DIR := $(shell mktemp -d)
 GH_URL = git@github.com:NSLS-II/databroker
 
 

@@ -1,9 +1,5 @@
-.. _api:
-
-
-API reference
-=============
-
+Searching for Data
+******************
 
 Searching by ID or Recency
 ++++++++++++++++++++++++++
@@ -21,6 +17,20 @@ syntax                          meaning
 ``DataBroker['acsf3rf']``       header with unique ID (uid) beginning with ``acsf3rf``
 =============================== ==========================================================
 
+Scan ID vs. Unique ID
++++++++++++++++++++++
+
+Notice that there are two IDs in play: the "scan ID" and the "unique ID." The
+scan ID is a counting number. Some users reset it to 1 between experiments, 
+so it is not a good unique identifier for data --- it is just a convenience.
+In the case of duplicates, DataBroker returns the most recent match.
+
+The unique ID is randomly-generated hash that is statistically guaranteed to
+uniquely identify a dataset forever. The DataBroker accepts a partial unique
+ID --- the first 6-8 charachters are virtually always enough to identify a
+data set. If they are not, the DataBroker will raise an error and request
+the full unique ID, or at least more characters of it.
+
 Time-based Queries
 ++++++++++++++++++
 
@@ -32,18 +42,6 @@ syntax                                                          meaning
 ``DataBroker(start_time='2015-01')``                            all headers from January 2015 or later
 ``DataBroker(start_time='2015-01-05', end_time='2015-01-010')`` between January 5 and 10
 =============================================================== ======================================
-
-
-Event Retrieval
-+++++++++++++++
-
-.. autosummary::
-   :toctree: generated/
-
-   ~databroker.databroker.get_events
-   ~databroker.databroker.get_table
-   ~databroker.pims_readers.get_images
-
 
 
 Complex Queries
