@@ -13,6 +13,12 @@ import filestore.api as fs
 import logging
 import numbers
 
+# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
+try:
+    from cytoolz.dicttoolz import merge
+except ImportError:
+    from toolz.dicttoolz import merge
+
 
 try:
     from functools import singledispatch
@@ -347,18 +353,43 @@ def get_events(headers, fields=None, fill=True):
                                  format(k, header['run_star']))
 
     for header in headers:
-        for descriptor in header.descriptors:
-            all_fields = set(descriptor['data_keys'])
+        # cache these attribute look-ups for performance
+        start = header['start']
+        stop = header['stop']
+        start_time = start['time']
+        stop_time = stop['time']
+        for descriptor in header['descriptors']:
+            try:
+                objs_config = descriptor['configuration'].values()
+            except KeyError:
+                objs_config = {}  # for back-compat
+            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+            config_ts = merge(obj_conf['timestamps']
+                              for obj_conf in objs_config)
+            discard_fields = set()
+            extra_fields = set()
             if fields:
-                discard_fields = all_fields - fields
-            else:
-                discard_fields = []
-            if discard_fields == all_fields:
-                continue
+                event_fields = set(descriptor['data_keys'])
+                discard_fields = event_fields - fields
+                extra_fields = fields - event_fields
             for event in get_events_generator(descriptor):
+                event_data = event.data  # cache for perf
+                event_timestamps = event.timestamps
                 for field in discard_fields:
-                    del event.data[field]
-                    del event.timestamps[field]
+                    del event_data[field]
+                    del event_timestamps[field]
+                for field in extra_fields:
+                    # Look in the descriptor, then start, then stop.
+                    if field in config_data:
+                        event_data[field] = config_data[field]
+                        event_timestamps[field] = config_ts[field]
+                    elif field in start:
+                        event_data[field] = start[field]
+                        event_timestamps[field] = start_time
+                    elif field in stop:
+                        event_data[field] = stop[field]
+                        event_timestamps[field] = stop_time
+                    # (else omit it from the events of this descriptor)
                 if fill:
                     fill_event(event)
                 yield event
@@ -401,17 +432,23 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
 
     dfs = []
     for header in headers:
-        descriptors = find_descriptors(header['start']['uid'])
-        for descriptor in descriptors:
-            all_fields = set(descriptor['data_keys'])
-            if fields:
-                discard_fields = all_fields - fields
-            else:
-                discard_fields = []
-            if discard_fields == all_fields:
-                continue
+        # cache these attribute look-ups for performance
+        start = header['start']
+        stop = header['stop']
+        for descriptor in header['descriptors']:
             is_external = _inspect_descriptor(descriptor)
-
+            is_external['time'] = False
+            try:
+                objs_config = descriptor['configuration'].values()
+            except KeyError:
+                objs_config = {}  # for back-compat
+            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+            discard_fields = set()
+            extra_fields = set()
+            if fields:
+                event_fields = set(descriptor['data_keys'])
+                discard_fields = event_fields - fields
+                extra_fields = fields - event_fields
             payload = get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
@@ -420,15 +457,26 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                     pd.Series(times, index=seq_nums),
                     unit='s', utc=True).dt.tz_localize(TZ)
             df['time'] = times
-            for field, values in six.iteritems(data):
-                if field in discard_fields:
-                    logger.debug('Discarding field %s', field)
-                    continue
+            for field in discard_fields:
+                logger.debug('Discarding field %s', field)
+                del df[field]
+            for field in df.columns:
                 if is_external[field] and fill:
                     logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk retrieve in FS
-                    values = [fs.retrieve(value) for value in values]
-                df[field] = values
+                    datum_uids = df[field]
+                    values = [fs.retrieve(value) for value in datum_uids]
+                    df[field] = values
+            for field in extra_fields:
+                # Look in the descriptor, then start, then stop.
+                # Broadcast any values through the whole df.
+                if field in config_data:
+                    df[field] = config_data[field]
+                elif field in start:
+                    df[field] = start[field]
+                elif field in stop:
+                    df[field] = stop[field]
+                # (else omit it from the events of this descriptor)
             dfs.append(df)
     if dfs:
         return pd.concat(dfs)
