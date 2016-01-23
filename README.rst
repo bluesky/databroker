@@ -20,3 +20,6 @@ Planned:
 
 .. image:: https://codecov.io/github/NSLS-II/databroker/coverage.svg?branch=master
     :target: https://codecov.io/github/NSLS-II/databroker?branch=master
+
+.. image:: https://anaconda.org/lightsource2/databroker/badges/version.svg
+    :target: https://anaconda.org/lightsource2/databroker
