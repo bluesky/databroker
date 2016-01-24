@@ -12,6 +12,9 @@ Planned:
 
 - channelarchiver
 
+`Databroker documentation <http://nsls-ii.github.io/databroker/>`_
+
+`NSLS2 software overview <http://nsls-ii.github.io>`_
 
 ---------------
 
