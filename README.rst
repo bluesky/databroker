@@ -12,11 +12,17 @@ Planned:
 
 - channelarchiver
 
+`Databroker documentation <http://nsls-ii.github.io/databroker/>`_
+
+`NSLS2 software overview <http://nsls-ii.github.io>`_
 
 ---------------
 
-[![Build Status](https://travis-ci.org/NSLS-II/databroker.svg?branch=master)](https://travis-ci.org/NSLS-II/databroker)Is it passing?
+.. image:: https://travis-ci.org/NSLS-II/databroker.svg?branch=master
+    :target: https://travis-ci.org/NSLS-II/databroker
 
-[![Coverage Status](https://coveralls.io/repos/NSLS-II/databroker/badge.svg)](https://coveralls.io/r/NSLS-II/databroker)How does this other service think our coverage is?
+.. image:: https://codecov.io/github/NSLS-II/databroker/coverage.svg?branch=master
+    :target: https://codecov.io/github/NSLS-II/databroker?branch=master
 
-[![codecov.io](http://codecov.io/github/NSLS-II/databroker/coverage.svg?branch=master)](http://codecov.io/github/NSLS-II/databroker?branch=master)How's our coverage?
+.. image:: https://anaconda.org/lightsource2/databroker/badges/version.svg
+    :target: https://anaconda.org/lightsource2/databroker
