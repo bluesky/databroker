@@ -666,7 +666,7 @@ def get_events_table(descriptor):
 
 
 @_ensure_connection
-def bulk_insert_events(event_descriptor, events, validate=False):
+def bulk_insert_events(event_descriptor, events, validate=False, chunk_size = 500):
     """Bulk insert many events
     Parameters
     ----------
@@ -701,7 +701,6 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                   time=ev['time'], seq_num=ev['seq_num'])
             ev = ev_out
 
-    chunk_size = 500
     data_len = len(events)
     chunk_count = data_len // chunk_size + bool(data_len % chunk_size)
     chunks = utils.grouper(events, chunk_count)
