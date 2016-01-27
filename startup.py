@@ -1,7 +1,8 @@
 """ Startup script for the server."""
 import argparse
-# TODO: Replace this with a better startup mechanism
+import sys
 import tornado.web
+import tornado.options
 from metadataservice.server.engine import (RunStartHandler, RunStopHandler,
                                            EventDescriptorHandler,
                                            EventHandler, loop, db_connect)
@@ -40,7 +41,11 @@ if __name__ == "__main__":
     db = db_connect(config['database'],
                     config['host'],
                     config['port'])
-    print(db)
+    print('Connecting to mongodb...', db)
+    args = sys.argv
+    args.append("--log_file_prefix=/tmp/metadataservice.log")
+    tornado.options.parse_command_line(args)
+    
     application = tornado.web.Application([
         (r'/run_start', RunStartHandler), (r'/run_stop', RunStopHandler),
         (r'/event_descriptor', EventDescriptorHandler),
