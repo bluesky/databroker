@@ -599,17 +599,6 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     return uid
 
 
-def _transform_data(data, timestamps):
-    """
-    Transform from Document spec:
-        {'data': {'key': <value>},
-         'timestamps': {'key': <timestamp>}}
-    to storage format:
-        {'data': {<key>: (<value>, <timestamp>)}.
-    """
-    return {k: (data[k], timestamps[k]) for k in data}
-
-
 @_ensure_connection
 def get_events_generator(descriptor):
     """A generator which yields all events from the event stream
@@ -706,10 +695,10 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                                         ev['timestamps'].keys()))
 
             # transform the data to the storage format
-            val_ts_tuple = _transform_data(ev['data'], ev['timestamps'])
+
             ev_out = dict(descriptor=desc_id, uid=ev['uid'],
-                  data=val_ts_tuple, time=ev['time'],
-                  seq_num=ev['seq_num'])
+                  data=ev['data'], timestamps=ev['timestamps'],
+                  time=ev['time'], seq_num=ev['seq_num'])
             ev = ev_out
 
     chunk_size = 500
