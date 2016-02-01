@@ -347,7 +347,7 @@ def get_events(headers, fields=None, fill=True):
                                  format(k, header['run_star']))
 
     for header in headers:
-        for descriptor in header.desriptors:
+        for descriptor in header.descriptors:
             all_fields = set(descriptor['data_keys'])
             if fields:
                 discard_fields = all_fields - fields
