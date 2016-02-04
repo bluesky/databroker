@@ -1,6 +1,6 @@
 package:
   name: databroker
-  version: {{ environ.get('GIT_DESCRIBE_TAG', 'GIT_STUB') }}.post{{ environ.get('GIT_DESCRIBE_NUMBER', 'inf') }}
+  version: {{ environ.get('GIT_DESCRIBE_TAG', 'GIT_STUB')[1:] }}.post{{ environ.get('GIT_DESCRIBE_NUMBER', 'inf') }}
 
 source:
   git_url: ../
