@@ -247,7 +247,7 @@ class _DataBrokerClass(object):
         return get_events(headers, None, fill)
 
 
-DataBroker = _DataBrokerClass(mds)  # singleton, used by pims_readers import below
+DataBroker = _DataBrokerClass(mds)
 
 
 def _inspect_descriptor(descriptor):

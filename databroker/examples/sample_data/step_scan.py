@@ -1,7 +1,6 @@
 from __future__ import division
 import uuid
-from metadataclient.api import (insert_event, insert_descriptor,
-                               find_events)
+from databroker import mds
 import numpy as np
 from metadataclient.sample_data import common
 
