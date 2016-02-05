@@ -35,6 +35,7 @@ def watermark():
     result['python'] = _make_version_string(version_info)
     return result
 
+
 def _make_version_string(version_info):
     version_string = '.'.join(map(str, [version_info[0], version_info[1],
                                   version_info[2]]))

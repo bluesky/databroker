@@ -9,8 +9,10 @@ import numpy as np
 from nose.tools import assert_equal
 from numpy.testing.utils import assert_array_equal
 
+
 def test_watermark():
     watermark()
+
 
 def test_pims_images_old_api():
     header = db[-1]
@@ -34,6 +36,7 @@ def setup():
     mds_setup()
     fs_setup()
     image_and_scalar.run()
+
 
 def teardown():
     mds_teardown()
