@@ -960,7 +960,7 @@ def find_run_starts(**kwargs):
     # now try rest of formatting
     _format_time(kwargs)
     col = _DB_SINGLETON._runstart_col
-    rs_objects = col.find(kwargs)
+    rs_objects = col.find(kwargs).sort('time', pymongo.DESCENDING)
 
     return (_cache_run_start(rs) for rs in rs_objects)
 find_run_starts = find_run_starts
@@ -1004,7 +1004,7 @@ def find_run_stops(run_start=None, **kwargs):
         kwargs['run_start'] = run_start_uid
     _format_time(kwargs)
     col = _DB_SINGLETON._runstop_col
-    run_stop = col.find(kwargs)
+    run_stop = col.find(kwargs).sort('time', pymongo.DESCENDING)
 
     return (_cache_run_stop(rs) for rs in run_stop)
 find_run_stops = find_run_stops
@@ -1089,7 +1089,7 @@ def find_events(descriptor=None, **kwargs):
 
     _format_time(kwargs)
     col = _DB_SINGLETON._event_col
-    events = col.find(kwargs)
+    events = col.find(kwargs).sort('time', pymongo.ASCENDING)
 
     for ev in events:
         ev.pop('_id', None)
