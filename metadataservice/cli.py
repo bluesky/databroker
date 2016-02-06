@@ -25,7 +25,9 @@ def start_server():
     parser.add_argument('--timezone', dest='timezone', type=str,
                         help='Local timezone')
     parser.add_argument('--port', dest='port', type=int,
-                        help='port to use')
+                        help='port to use to talk to mongo')
+    parser.add_argument('--service-port', dest='service_port', type=int,
+                        help='port listen to for clients')
     args = parser.parse_args()
     if args.database is not None:
         config['database'] = args.database
@@ -35,6 +37,9 @@ def start_server():
         config['timezone'] = args.timezone
     if args.port is not None:
         config['port'] = args.port
+    service_port = args.service_port
+    if service_port is None:
+        service_port = 7770
 
     db = db_connect(config['database'],
                     config['host'],
@@ -45,5 +50,5 @@ def start_server():
         (r'/event_descriptor', EventDescriptorHandler),
         (r'/event', EventHandler)
          ], db=db)
-    application.listen(7770)
+    application.listen(service_port)
     loop.start()
