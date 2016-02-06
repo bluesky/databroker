@@ -33,7 +33,6 @@ install:
   - python setup.py install
 
 script:
-  - start_mdservice --database='testdb' --host='127.0.0.1' --port=27017 &
   - python run_tests.py -v
 
 after_success:
