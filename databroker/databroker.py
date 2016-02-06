@@ -1,6 +1,9 @@
 from __future__ import print_function
 import warnings
 import six  # noqa
+
+import boltons.cacheutils
+
 from collections import deque
 import pandas as pd
 import tzlocal
@@ -250,7 +253,7 @@ class _DataBrokerClass(object):
 DataBroker = _DataBrokerClass(mds)
 
 
-def _external_keys(descriptor):
+def _external_keys(descriptor, _cache=boltons.cacheutils.LRU(max_size=500)):
     """Which data keys are stored externally
 
     Parameters
@@ -264,9 +267,13 @@ def _external_keys(descriptor):
         Maps data key -> the value of external field or None if the
         field does not exist.
     """
-    # TODO memoize to cache these results
-    data_keys = descriptor.data_keys
-    return {k: v.get('external', None) for k, v in data_keys.items()}
+    try:
+        ek = _cache[descriptor['uid']]
+    except KeyError:
+        data_keys = descriptor.data_keys
+        ek = {k: v.get('external', None) for k, v in data_keys.items()}
+        _cache[descriptor['uid']] = ek
+    return ek
 
 
 def fill_event(event):
