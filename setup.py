@@ -23,6 +23,11 @@ setup(
     packages=['metadataservice',
               'metadataservice.server'
               ],
+    entry_points={
+        'console_scripts': [
+            'start_mdservice = metadataservice.cli:start_server'
+            ]
+        },
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: BSD License",
