@@ -250,26 +250,40 @@ class _DataBrokerClass(object):
 DataBroker = _DataBrokerClass(mds)
 
 
-def _inspect_descriptor(descriptor):
-    """
-    Return a dict with the data keys mapped to boolean answering whether
-    data is external.
+def _external_keys(descriptor):
+    """Which data keys are stored externally
+
+    Parameters
+    ----------
+    descriptor : Doct
+        The descriptor
+
+    Returns
+    -------
+    external_keys : dict
+        Maps data key -> the value of external field or None if the
+        field does not exist.
     """
     # TODO memoize to cache these results
     data_keys = descriptor.data_keys
-    is_external = dict()
-    for data_key, data_key_dict in data_keys.items():
-        is_external[data_key] = data_key_dict.get('external', False)
-    return is_external
+    return {k: v.get('external', None) for k, v in data_keys.items()}
 
 
 def fill_event(event):
+    """Populate event with externally stored data.
+
+    Parameters
+    ----------
+    event : Doct
+        The event to fill
+
+    .. warning
+
+       This mutates the event's ``data`` field in-place
     """
-    Populate events with externally stored data.
-    """
-    is_external = _inspect_descriptor(event.descriptor)
+    is_external = _external_keys(event.descriptor)
     for data_key, value in six.iteritems(event.data):
-        if is_external[data_key]:
+        if is_external[data_key] is not None:
             # Retrieve a numpy array from filestore
             event.data[data_key] = fs.retrieve(value)
 
@@ -411,7 +425,7 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                 discard_fields = []
             if discard_fields == all_fields:
                 continue
-            is_external = _inspect_descriptor(descriptor)
+            is_external = _external_keys(descriptor)
 
             payload = MD.get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
@@ -425,7 +439,7 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                 if field in discard_fields:
                     logger.debug('Discarding field %s', field)
                     continue
-                if is_external[field] and fill:
+                if is_external[field] is not None and fill:
                     logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk retrieve in FS
                     values = [fs.retrieve(value) for value in values]
