@@ -15,7 +15,8 @@ SCHEMA_NAMES = {'run_start': 'run_start.json',
 fn = '{}/{{}}'.format(SCHEMA_PATH)
 schemas = {}
 for name, filename in SCHEMA_NAMES.items():
-    with open(rs_fn('metadataservice', resource_name=fn.format(filename))) as fin:
+    with open(rs_fn('metadataservice',
+                    resource_name=fn.format(filename))) as fin:
         schemas[name] = ujson.load(fin)
 
 
@@ -48,12 +49,12 @@ def return2client(handler, payload):
         Information to be sent to the client
     """
 
-    
+
     if isinstance(payload, pymongo.cursor.Cursor):
             l = []
             for p in payload:
                 del(p['_id'])
-                l.append(p)           
+                l.append(p)
             handler.write(ujson.dumps(l))
     elif isinstance(payload, dict):
         del(payload['_id'])
