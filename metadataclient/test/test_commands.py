@@ -15,7 +15,6 @@ document_insertion_time = None
 
 
 def teardown():
-    pass
     mds_teardown()
 
 
@@ -436,27 +435,27 @@ def test_find_run_stop():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
     run_stop_uid = mdsc.insert_run_stop(run_start_uid, ttime.time(),
                                        uid=str(uuid.uuid4()))
- 
+
     run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.run_stop_given_uid(run_stop_uid)
- 
+
     run_stop2, = list(mdsc.find_run_stops(run_start=run_start_uid))
     run_stop3, = list(mdsc.find_run_stops(run_start=run_start))
     assert_equal(run_stop, run_stop2)
     assert_equal(run_stop, run_stop3)
- 
- 
+
+
 @raises(RuntimeError)
 def test_double_run_stop():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
- 
- 
+
+
 def test_find_last_for_smoke():
     last = mdsc.find_last()
 
-    
+
 def test_find_last():
     last = next(mdsc.find_last(num=1))
 
@@ -465,30 +464,30 @@ def test_find_last_mult():
     hdr = 4
     last_mult = mdsc.find_last(num=hdr)
     res = [c for c in last_mult]
-    assert_equal(len(res), hdr)    
+    assert_equal(len(res), hdr)
 
 
-@raises(StopIteration)       
+@raises(StopIteration)
 def test_find_last_err():
     last_mult = mdsc.find_last(num=4)
     res = [c for c in last_mult]
     r = next(last_mult)
 
-        
+
 @raises(ValueError)
 def test_bad_event_desc():
- 
+
     data_keys = {k:  {'source': k,
                       'dtype': 'number',
                       'shape': None} for k in ['foo', 'foo.bar']
                  }
     scan_id = 1
- 
+
     # Create a BeginRunEvent that serves as entry point for a run
     rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
                               time=ttime.time(),
                               uid=str(uuid.uuid4()))
- 
+
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
     mdsc.insert_descriptor(data_keys=data_keys,
