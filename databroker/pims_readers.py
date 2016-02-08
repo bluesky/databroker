@@ -1,9 +1,13 @@
-"""This module contains "PIMS readers" (see github.com/soft-matter/pims) that
-take in headers and detector aliases and return a sliceable generator of arrays."""
+"""This module contains "PIMS readers" (see
+github.com/soft-matter/pims) that take in headers and detector aliases
+and return a sliceable generator of arrays.
+
+"""
 
 from pims import FramesSequence, Frame
 from . import get_events
 from filestore.api import retrieve
+
 
 def get_images(headers, name):
     """

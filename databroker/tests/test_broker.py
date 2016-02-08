@@ -4,20 +4,22 @@ import uuid
 import logging
 import time as ttime
 from databroker import DataBroker as db, get_events, get_table
-from ..examples.sample_data import (temperature_ramp, image_and_scalar,
-                                    step_scan)
+from databroker.examples.sample_data import (temperature_ramp,
+                                             image_and_scalar,
+                                             step_scan)
+import databroker.databroker
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
 
-
-from metadatastore.api import (insert_run_start, insert_descriptor,
-                               find_run_starts)
+from databroker import mds
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
 
 blc = None
+# because tzlocal is flaky
+databroker.databroker.TZ = 'America/New_York'
 
 
 def setup():
@@ -26,16 +28,16 @@ def setup():
 
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
-    rs = insert_run_start(time=ttime.time(), scan_id=105,
-                          owner='stepper', beamline_id='example',
-                          uid=str(uuid.uuid4()))
+    rs = mds.insert_run_start(time=ttime.time(), scan_id=105,
+                              owner='stepper', beamline_id='example',
+                              uid=str(uuid.uuid4()))
     step_scan.run(run_start_uid=rs)
     for owner in owners:
         for i in range(num_entries):
             logger.debug('{}: {} of {}'.format(owner, i+1, num_entries))
-            rs = insert_run_start(time=ttime.time(), scan_id=i + 1,
-                                  owner=owner, beamline_id='example',
-                                  uid=str(uuid.uuid4()))
+            rs = mds.insert_run_start(time=ttime.time(), scan_id=i + 1,
+                                      owner=owner, beamline_id='example',
+                                      uid=str(uuid.uuid4()))
             # insert some events into mds
             temperature_ramp.run(run_start_uid=rs, make_run_stop=(i != 0))
             if i == 0:
@@ -50,9 +52,9 @@ def teardown():
 
 def test_basic_usage():
     for i in range(5):
-        insert_run_start(time=float(i), scan_id=i + 1,
-                         owner='nedbrainard', beamline_id='example',
-                         uid=str(uuid.uuid4()))
+        mds.insert_run_start(time=float(i), scan_id=i + 1,
+                             owner='nedbrainard', beamline_id='example',
+                             uid=str(uuid.uuid4()))
     header_1 = db[-1]
 
     header_ned = db(owner='nedbrainard')
@@ -76,11 +78,12 @@ def test_basic_usage():
     table = get_table(db[105])
     assert_true(table.notnull().all().all())
 
+
 def test_indexing():
     for i in range(5):
-        insert_run_start(time=float(i), scan_id=i + 1,
-                         owner='nedbrainard', beamline_id='example',
-                         uid=str(uuid.uuid4()))
+        mds.insert_run_start(time=float(i), scan_id=i + 1,
+                             owner='nedbrainard', beamline_id='example',
+                             uid=str(uuid.uuid4()))
 
     header = db[-1]
     is_list = isinstance(header, list)
@@ -140,29 +143,30 @@ def test_indexing():
 
 
 def test_scan_id_lookup():
-    rd1 = [insert_run_start(time=float(i), scan_id=i + 1 + 314159,
-                            owner='docbrown', beamline_id='example',
-                            uid=str(uuid.uuid4())) for i in range(5)]
+    rd1 = [mds.insert_run_start(time=float(i), scan_id=i + 1 + 314159,
+                                owner='docbrown', beamline_id='example',
+                                uid=str(uuid.uuid4())) for i in range(5)]
 
-    rd2 = [insert_run_start(time=float(i)+1, scan_id=i + 1 + 314159,
-                            owner='nedbrainard', beamline_id='example',
-                            uid=str(uuid.uuid4())) for i in range(5)]
+    rd2 = [mds.insert_run_start(time=float(i)+1, scan_id=i + 1 + 314159,
+                                owner='nedbrainard', beamline_id='example',
+                                uid=str(uuid.uuid4())) for i in range(5)]
     header = db[3 + 314159]
     scan_id = header['start']['scan_id']
     owner = header['start']['owner']
     assert_equal(scan_id, 3 + 314159)
     assert_equal(rd2[2], header['start']['uid'])
     # This should be the most *recent* Scan 3 + 314159. There is ambiguity.
+    assert header['start']['uid'] not in rd1
     assert_equal(owner, 'nedbrainard')
 
 
 def test_uid_lookup():
     uid = str(uuid.uuid4())
     uid2 = uid[0] + str(uuid.uuid4())[1:]  # same first character as uid
-    rs1 = insert_run_start(time=100., scan_id=1, uid=uid,
-                           owner='drstrangelove', beamline_id='example')
-    insert_run_start(time=100., scan_id=1, uid=uid2,
-                     owner='drstrangelove', beamline_id='example')
+    rs1 = mds.insert_run_start(time=100., scan_id=1, uid=uid,
+                               owner='drstrangelove', beamline_id='example')
+    mds.insert_run_start(time=100., scan_id=1, uid=uid2,
+                         owner='drstrangelove', beamline_id='example')
     # using full uid
     actual_uid = db[uid]['start']['uid']
     assert_equal(actual_uid, uid)
@@ -178,28 +182,27 @@ def test_uid_lookup():
 
 
 def test_data_key():
-    rs1_uid = insert_run_start(time=100., scan_id=1,
-                               owner='nedbrainard', beamline_id='example',
-                               uid=str(uuid.uuid4()))
-    rs2_uid = insert_run_start(time=200., scan_id=2,
-                               owner='nedbrainard', beamline_id='example',
-                               uid=str(uuid.uuid4()))
-    rs1, = find_run_starts(uid=rs1_uid)
-    rs2, = find_run_starts(uid=rs2_uid)
-    data_keys = {'fork': {'source': '_', 'dtype': 'number'},
-                 'spoon': {'source': '_', 'dtype': 'number'}}
-    insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
-                            time=100.,
-                            uid=str(uuid.uuid4()))
-    insert_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
-                            uid=str(uuid.uuid4()))
+    rs1_uid = mds.insert_run_start(time=100., scan_id=1,
+                                   owner='nedbrainard', beamline_id='example',
+                                   uid=str(uuid.uuid4()))
+    rs2_uid = mds.insert_run_start(time=200., scan_id=2,
+                                   owner='nedbrainard', beamline_id='example',
+                                   uid=str(uuid.uuid4()))
+    rs1, = mds.find_run_starts(uid=rs1_uid)
+    rs2, = mds.find_run_starts(uid=rs2_uid)
+    data_keys = {'fork': {'source': '_', 'dtype': 'number', 'shape': []},
+                 'spoon': {'source': '_', 'dtype': 'number', 'shape': []}}
+    mds.insert_descriptor(run_start=rs1_uid, data_keys=data_keys,
+                          time=100.,
+                          uid=str(uuid.uuid4()))
+    mds.insert_descriptor(run_start=rs2_uid, data_keys=data_keys, time=200.,
+                          uid=str(uuid.uuid4()))
     result1 = db(data_key='fork')
     result2 = db(data_key='fork', start_time=150)
     assert_equal(len(result1), 2)
     assert_equal(len(result2), 1)
     actual = result2[0]['start']['uid']
     assert_equal(actual, str(rs2.uid))
-
 
 
 def _search_helper(query):
@@ -234,11 +237,16 @@ def _raiser_helper(key):
 
 def test_raise_conditions():
     raising_keys = [
-        slice(1, None, None), # raise because trying to slice by scan id
-        slice(-1, 2, None),  # raise because slice stop value is > 0
-        slice(None, None, None), # raise because slice has slice.start == None
-        4500,  # raise on not finding a header by a scan id
-        str(uuid.uuid4()),  # raise on not finding a header by uuid
+        # raise because trying to slice by scan id
+        slice(1, None, None),
+        # raise because slice stop value is > 0
+        slice(-1, 2, None),
+        # raise because slice has slice.start == None
+        slice(None, None, None),
+        # raise on not finding a header by a scan id
+        4500,
+        # raise on not finding a header by uuid
+        str(uuid.uuid4()),
     ]
     for raiser in raising_keys:
         yield _raiser_helper, raiser
