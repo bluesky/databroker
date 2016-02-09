@@ -2,12 +2,12 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-__all__ = ['DataBroker', 'get_images', 'get_events', 'get_table']
+__all__ = ['DataBroker', 'get_images', 'get_events', 'get_table', 'stream']
 
 
 # generally useful imports
 from .databroker import (DataBroker, DataBroker as db,
-                         get_events, get_table, search)
+                         get_events, get_table, search, stream)
 from .pims_readers import get_images
 from .handler_registration import register_builtin_handlers
 

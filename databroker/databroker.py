@@ -423,3 +423,45 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
     else:
         # edge case: no data
         return pd.DataFrame()
+
+
+def stream(headers, fields=None, fill=True):
+    """
+    Get all Documents from given run(s).
+
+
+    Parameters
+    ----------
+    headers : Header or iterable of Headers
+        The headers to fetch the events for
+    fields : list, optional
+        whitelist of field names of interest; if None, all are returned
+    fill : bool, optional
+        Whether externally-stored data should be filled in. Defaults to True
+
+    Yields
+    ------
+    name, doc : tuple
+        string name of the Document type and the Document itself.
+        Example: ('start', {'time': ..., ...})
+
+    Note
+    ----
+    This output can be used as a drop-in replacement for the output of the
+    bluesky Run Engine.
+    """
+    try:
+        headers.items()
+    except AttributeError:
+        pass
+    else:
+        headers = [headers]
+
+    for header in headers:
+        yield 'start', header['start']
+        for descriptor in header['descriptors']:
+            yield 'descriptor', descriptor
+        # When py2 compatibility is dropped, use yield from.
+        for event in get_events(header, fields=fields, fill=fill):
+            yield 'event', event
+        yield 'stop', header['stop']
