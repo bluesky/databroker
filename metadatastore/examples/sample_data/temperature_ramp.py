@@ -81,5 +81,4 @@ if __name__ == '__main__':
                                           time=common.get_time(),
                                           uid=str(uuid.uuid4()))
 
-    print('run_start_uid = %s' % run_start_uid)
     run(run_start_uid)
