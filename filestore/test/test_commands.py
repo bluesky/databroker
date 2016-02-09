@@ -77,3 +77,14 @@ def test_non_unique_fail():
     insert_datum(str(fb['id']), r_id, {'n': 0})
     assert_raises(pymongo.errors.DuplicateKeyError,
                   insert_datum, str(fb['id']), r_id, {'n': 1})
+
+
+def test_index():
+    import filestore.api
+    fs = filestore.api._FS_SINGLETON
+
+    indx = fs._datum_col.index_information()
+
+    assert len(indx) == 3
+    index_fields = set(v['key'][0][0] for v in indx.values())
+    assert index_fields == {'_id', 'datum_id', 'resource'}

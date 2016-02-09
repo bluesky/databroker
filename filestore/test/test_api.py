@@ -16,3 +16,5 @@ def test_import_warnings():
         import filestore.commands
         import filestore.retrieve
         assert len(w) == 2
+        del filestore.commands
+        del filestore.retrieve
