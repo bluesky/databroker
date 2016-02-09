@@ -126,6 +126,7 @@ class FileStoreRO(object):
         if self.__datum_col is None:
             self.__datum_col = self._db.get_collection('datum')
             self.__datum_col.create_index('datum_id', unique=True)
+            self.__datum_col.create_index('resource')
 
         return self.__datum_col
 
