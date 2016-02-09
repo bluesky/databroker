@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import warnings
-from itertools import count
 
 import datetime
 import logging
@@ -13,9 +12,6 @@ import pytz
 
 import pymongo
 from pymongo import MongoClient
-from bson import ObjectId
-
-from bson.dbref import DBRef
 
 from . import conf
 
