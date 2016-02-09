@@ -245,7 +245,11 @@ def test_raise_conditions():
 
 
 def test_stream():
-    s = stream(db[-1])
+    rs = insert_run_start(time=ttime.time(), scan_id=105,
+                          owner='stepper', beamline_id='example',
+                          uid=str(uuid.uuid4()))
+    step_scan.run(run_start_uid=rs)
+    s = stream(db[rs])
     name, doc = next(s)
     assert name == 'start'
     assert 'owner' in doc
