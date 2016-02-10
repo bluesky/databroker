@@ -54,11 +54,11 @@ class _DBManager(object):
         if self.__runstart_col is None:
             self.__runstart_col = self._db.get_collection('run_start')
 
-        self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
-                                         unique=True)
-        self.__runstart_col.create_index([('time', pymongo.DESCENDING),
-                                          ('scan_id', pymongo.DESCENDING)],
-                                         unique=False, background=True)
+            self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
+                                             unique=True)
+            self.__runstart_col.create_index([('time', pymongo.DESCENDING),
+                                              ('scan_id', pymongo.DESCENDING)],
+                                             unique=False, background=True)
 
         return self.__runstart_col
 
@@ -67,11 +67,11 @@ class _DBManager(object):
         if self.__runstop_col is None:
             self.__runstop_col = self._db.get_collection('run_stop')
 
-        self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
-                                        ('uid', pymongo.DESCENDING)],
-                                        unique=True)
-        self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
-                                        unique=False, background=True)
+            self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
+                                            ('uid', pymongo.DESCENDING)],
+                                            unique=True)
+            self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
+                                            unique=False, background=True)
 
         return self.__runstop_col
 
@@ -80,11 +80,12 @@ class _DBManager(object):
         if self.__descriptor_col is None:
             self.__descriptor_col = self._db.get_collection('event_descriptor')
 
-        self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
-                                           unique=True)
-        self.__descriptor_col.create_index([('run_start', pymongo.DESCENDING),
-                                            ('time', pymongo.DESCENDING)],
-                                           unique=False, background=True)
+            self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
+                                               unique=True)
+            self.__descriptor_col.create_index(
+                [('run_start', pymongo.DESCENDING),
+                 ('time', pymongo.DESCENDING)],
+                unique=False, background=True)
 
         return self.__descriptor_col
 
@@ -93,11 +94,11 @@ class _DBManager(object):
         if self.__event_col is None:
             self.__event_col = self._db.get_collection('event')
 
-        self.__event_col.create_index([('uid', pymongo.DESCENDING)],
-                                      unique=True)
-        self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                       ('time', pymongo.DESCENDING)],
-                                      unique=False, background=True)
+            self.__event_col.create_index([('uid', pymongo.DESCENDING)],
+                                          unique=True)
+            self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
+                                           ('time', pymongo.DESCENDING)],
+                                          unique=False, background=True)
 
         return self.__event_col
 
