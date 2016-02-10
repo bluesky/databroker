@@ -445,6 +445,15 @@ def stream(headers, fields=None, fill=True):
         string name of the Document type and the Document itself.
         Example: ('start', {'time': ..., ...})
 
+    Example
+    -------
+    >>> def f(name, doc):
+    ...     # do something
+    ...
+    >>> h = DataBroker[-1]  # most recent header
+    >>> for name, doc in stream(h):
+    ...     f(name, doc)
+
     Note
     ----
     This output can be used as a drop-in replacement for the output of the
@@ -465,3 +474,22 @@ def stream(headers, fields=None, fill=True):
         for event in get_events(header, fields=fields, fill=fill):
             yield 'event', event
         yield 'stop', header['stop']
+
+
+def get_fields(header):
+    """
+    Return the set of all field names (a.k.a "data keys") in a header.
+
+    Parameters
+    ----------
+    header : Header
+
+    Returns
+    -------
+    fields : set
+    """
+    fields = set()
+    for desc in header['descriptors']:
+        for field in desc['data_keys'].keys():
+            fields.add(field)
+    return fields
