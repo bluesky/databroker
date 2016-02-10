@@ -500,8 +500,4 @@ def get_fields(header):
     -------
     fields : set
     """
-    fields = set()
-    for desc in header['descriptors']:
-        for field in desc['data_keys'].keys():
-            fields.add(field)
-    return fields
+    return set(chain(d['data_keys'].keys() for d in header['descriptors']))
