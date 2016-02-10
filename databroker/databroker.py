@@ -445,6 +445,15 @@ def stream(headers, fields=None, fill=True):
         string name of the Document type and the Document itself.
         Example: ('start', {'time': ..., ...})
 
+    Example
+    -------
+    >>> def f(name, doc):
+    ...     # do something
+    ...
+    >>> h = DataBroker[-1]  # most recent header
+    >>> for name, doc in stream(h):
+    ...     f(name, doc)
+
     Note
     ----
     This output can be used as a drop-in replacement for the output of the
