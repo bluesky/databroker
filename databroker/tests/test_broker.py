@@ -3,7 +3,8 @@ import six
 import uuid
 import logging
 import time as ttime
-from databroker import DataBroker as db, get_events, get_table, stream
+from databroker import (DataBroker as db, get_events, get_table, stream,
+                        get_fields)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -265,3 +266,13 @@ def test_stream():
     name, doc = last_item
     assert name == 'stop'
     assert 'exit_status' in doc # Stop
+
+
+def test_get_fields():
+    rs = insert_run_start(time=ttime.time(), scan_id=105,
+                          owner='stepper', beamline_id='example',
+                          uid=str(uuid.uuid4()))
+    step_scan.run(run_start_uid=rs)
+    h = db[rs]
+    actual = get_fields(h)
+    assert actual == set(['Tsam', 'point_det'])

@@ -474,3 +474,22 @@ def stream(headers, fields=None, fill=True):
         for event in get_events(header, fields=fields, fill=fill):
             yield 'event', event
         yield 'stop', header['stop']
+
+
+def get_fields(header):
+    """
+    Return the set of all field names (a.k.a "data keys") in a header.
+
+    Parameters
+    ----------
+    header : Header
+
+    Returns
+    -------
+    fields : set
+    """
+    fields = set()
+    for desc in header['descriptors']:
+        for field in desc['data_keys'].keys():
+            fields.add(field)
+    return fields
