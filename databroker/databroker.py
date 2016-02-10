@@ -317,6 +317,10 @@ def get_events(headers, fields=None, fill=True):
     ------
     event : Event
         The event, optionally with non-scalar data filled in
+
+    Raises
+    ------
+    ValueError if any key in `fields` is not in at least one descriptor pre header.
     """
     # A word about the 'fields' argument:
     # Notice that we assume that the same field name cannot occur in
@@ -332,10 +336,18 @@ def get_events(headers, fields=None, fill=True):
     if fields is None:
         fields = []
     fields = set(fields)
+    for k in fields:
+        for header in headers:
+            for descriptor in header['descriptors']:
+                if k in descriptor['data_keys']:
+                    break
+            else:
+                raise ValueError(('{!r} field is not in any descriptor '
+                                  'of run start {rs.uid}').
+                                 format(k, header['run_star']))
 
     for header in headers:
-        descriptors = find_descriptors(header['start']['uid'])
-        for descriptor in descriptors:
+        for descriptor in header.descriptors:
             all_fields = set(descriptor['data_keys'])
             if fields:
                 discard_fields = all_fields - fields
