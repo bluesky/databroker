@@ -45,6 +45,8 @@ class Images(FramesSequence):
         """
         events = get_events(headers, [name], fill=False)
         self._datum_uids = [event.data[name] for event in events]
+        if not self._datum_uids:
+            raise KeyError("No Events contain the key %r" % name)
         self._len = len(self._datum_uids)
         example_frame = retrieve(self._datum_uids[0])
         self._dtype = example_frame.dtype

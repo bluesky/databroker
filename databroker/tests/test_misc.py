@@ -6,7 +6,7 @@ from metadatastore.utils.testing import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 import numpy as np
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_raises
 from numpy.testing.utils import assert_array_equal
 
 def test_watermark():
@@ -28,6 +28,8 @@ def test_pims_images():
     assert_equal(images.pixel_type, np.float64)
     assert_array_equal(images.frame_shape, images[0].shape)
     assert_equal(len(images), image_and_scalar.num1)
+    with assert_raises(KeyError):
+        get_images(header, 'nonexistent_key')
 
 
 def setup():
