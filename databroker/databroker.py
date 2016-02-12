@@ -344,7 +344,7 @@ def get_events(headers, fields=None, fill=True):
             else:
                 raise ValueError(('{!r} field is not in any descriptor '
                                   'of run start {rs.uid}').
-                                 format(k, header['run_star']))
+                                 format(k, header['run_start']))
 
     for header in headers:
         for descriptor in header.descriptors:
