@@ -16,6 +16,7 @@ requirements:
   run:
     - python
     - pandas
+    - cytoolz
     - pims
     - metadatastore >=v0.2.0
     - filestore >=v0.2.0
