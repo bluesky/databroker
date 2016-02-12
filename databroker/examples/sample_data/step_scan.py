@@ -22,9 +22,14 @@ def run(run_start=None, sleep=0):
     # Create Event Descriptors
     data_keys = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                  'point_det': dict(source='PV:ES:point_det', dtype='number')}
+    conf = {'point_det': {'data_keys': {'exposure_time':
+                                        {'source': 'PS:ES:point_det_exp'}},
+                          'data': {'exposure_time': 5},
+                          'timestamps': {'exposure_time': 0.}}}
     ev_desc = insert_descriptor(run_start=run_start,
-                                      data_keys=data_keys, time=0.,
-                                      uid=str(uuid.uuid4()))
+                                data_keys=data_keys, time=0.,
+                                uid=str(uuid.uuid4()),
+                                configuration=conf)
 
     # Create Events.
     events = []

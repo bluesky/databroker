@@ -44,7 +44,8 @@ class Images(FramesSequence):
                 # do something
         """
         events = get_events(headers, [name], fill=False)
-        self._datum_uids = [event.data[name] for event in events]
+        self._datum_uids = [event.data[name] for event in events
+                            if name in event.data]
         self._len = len(self._datum_uids)
         example_frame = retrieve(self._datum_uids[0])
         self._dtype = example_frame.dtype

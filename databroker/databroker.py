@@ -2,6 +2,7 @@ from __future__ import print_function
 import warnings
 import six  # noqa
 from collections import deque
+from itertools import chain
 import pandas as pd
 import tzlocal
 from metadatastore.commands import (find_last, find_run_starts,
@@ -12,6 +13,12 @@ import metadatastore.commands as mc
 import filestore.api as fs
 import logging
 import numbers
+
+# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
+try:
+    from cytoolz.dicttoolz import merge
+except ImportError:
+    from toolz.dicttoolz import merge
 
 
 try:
@@ -258,7 +265,7 @@ def fill_event(event):
     """
     is_external = _inspect_descriptor(event.descriptor)
     for data_key, value in six.iteritems(event.data):
-        if is_external[data_key]:
+        if is_external.get(data_key, False):
             # Retrieve a numpy array from filestore
             event.data[data_key] = fs.retrieve(value)
 
@@ -336,29 +343,43 @@ def get_events(headers, fields=None, fill=True):
     if fields is None:
         fields = []
     fields = set(fields)
-    for k in fields:
-        for header in headers:
-            for descriptor in header['descriptors']:
-                if k in descriptor['data_keys']:
-                    break
-            else:
-                raise ValueError(('{!r} field is not in any descriptor '
-                                  'of run start {rs.uid}').
-                                 format(k, header['run_star']))
+    _check_fields_exist(fields, headers)
 
     for header in headers:
-        for descriptor in header.descriptors:
-            all_fields = set(descriptor['data_keys'])
+        # cache these attribute look-ups for performance
+        start = header['start']
+        stop = header['stop']
+        if stop is None:
+            stop = {}
+        for descriptor in header['descriptors']:
+            objs_config = descriptor.get('configuration', {}).values()
+            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+            config_ts = merge(obj_conf['timestamps']
+                              for obj_conf in objs_config)
+            discard_fields = set()
+            extra_fields = set()
             if fields:
-                discard_fields = all_fields - fields
-            else:
-                discard_fields = []
-            if discard_fields == all_fields:
-                continue
+                event_fields = set(descriptor['data_keys'])
+                discard_fields = event_fields - fields
+                extra_fields = fields - event_fields
             for event in get_events_generator(descriptor):
+                event_data = event.data  # cache for perf
+                event_timestamps = event.timestamps
                 for field in discard_fields:
-                    del event.data[field]
-                    del event.timestamps[field]
+                    del event_data[field]
+                    del event_timestamps[field]
+                for field in extra_fields:
+                    # Look in the descriptor, then start, then stop.
+                    if field in config_data:
+                        event_data[field] = config_data[field]
+                        event_timestamps[field] = config_ts[field]
+                    elif field in start:
+                        event_data[field] = start[field]
+                        event_timestamps[field] = start['time']
+                    elif field in stop:
+                        event_data[field] = stop[field]
+                        event_timestamps[field] = stop['time']
+                    # (else omit it from the events of this descriptor)
                 if fill:
                     fill_event(event)
                 yield event
@@ -398,20 +419,25 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
     if fields is None:
         fields = []
     fields = set(fields)
+    _check_fields_exist(fields, headers)
 
     dfs = []
     for header in headers:
-        descriptors = find_descriptors(header['start']['uid'])
-        for descriptor in descriptors:
-            all_fields = set(descriptor['data_keys'])
-            if fields:
-                discard_fields = all_fields - fields
-            else:
-                discard_fields = []
-            if discard_fields == all_fields:
-                continue
+        # cache these attribute look-ups for performance
+        start = header['start']
+        stop = header['stop']
+        if stop is None:
+            stop = {}
+        for descriptor in header['descriptors']:
             is_external = _inspect_descriptor(descriptor)
-
+            objs_config = descriptor.get('configuration', {}).values()
+            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+            discard_fields = set()
+            extra_fields = set()
+            if fields:
+                event_fields = set(descriptor['data_keys'])
+                discard_fields = event_fields - fields
+                extra_fields = fields - event_fields
             payload = get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
@@ -420,15 +446,26 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                     pd.Series(times, index=seq_nums),
                     unit='s', utc=True).dt.tz_localize(TZ)
             df['time'] = times
-            for field, values in six.iteritems(data):
-                if field in discard_fields:
-                    logger.debug('Discarding field %s', field)
-                    continue
-                if is_external[field] and fill:
+            for field in discard_fields:
+                logger.debug('Discarding field %s', field)
+                del df[field]
+            for field in df.columns:
+                if is_external.get(field) and fill:
                     logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk retrieve in FS
-                    values = [fs.retrieve(value) for value in values]
-                df[field] = values
+                    datum_uids = df[field]
+                    values = [fs.retrieve(value) for value in datum_uids]
+                    df[field] = values
+            for field in extra_fields:
+                # Look in the descriptor, then start, then stop.
+                # Broadcast any values through the whole df.
+                if field in config_data:
+                    df[field] = config_data[field]
+                elif field in start:
+                    df[field] = start[field]
+                elif field in stop:
+                    df[field] = stop[field]
+                # (else omit it from the events of this descriptor)
             dfs.append(df)
     if dfs:
         return pd.concat(dfs)
@@ -505,3 +542,19 @@ def get_fields(header):
         for field in desc['data_keys'].keys():
             fields.add(field)
     return fields
+
+def _check_fields_exist(fields, headers):
+    all_fields = set()
+    for header in headers:
+        all_fields.update(header['start'])
+        stop = header['stop']
+        if stop is not None:
+            all_fields.update(header['stop'])
+        for descriptor in header['descriptors']:
+            all_fields.update(descriptor['data_keys'])
+            objs_conf = descriptor.get('configuration', {})
+            config_fields = [obj_conf['data'] for obj_conf in objs_conf.values()]
+            all_fields.update(chain(*config_fields))
+    missing = fields - all_fields
+    if missing:
+        raise ValueError("The fields %r were not found." % missing)

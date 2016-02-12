@@ -64,14 +64,13 @@ def test_basic_usage():
     db.fetch_events(header_ned)
     db.fetch_events(header_null)
     list(get_events(header_1))
-    list(get_events(header_ned))
     list(get_events(header_null))
     get_table(header_1)
     get_table(header_ned)
     get_table(header_null)
 
     # get events for multiple headers
-    list(get_events([header_1, header_ned]))
+    list(get_events(db[-2:]))
 
     # test time shift issue GH9
     table = get_table(db[105])
@@ -284,3 +283,30 @@ def test_get_fields():
     h = db[rs]
     actual = get_fields(h)
     assert actual == set(['Tsam', 'point_det'])
+
+
+def test_configuration():
+    rs = insert_run_start(time=ttime.time(), scan_id=105,
+                          owner='stepper', beamline_id='example',
+                          uid=str(uuid.uuid4()), cat='meow')
+    step_scan.run(run_start_uid=rs)
+    h = db[rs]
+    # check that config is not included by default
+    ev = next(get_events(h))
+    assert set(ev['data'].keys()) == set(['Tsam', 'point_det'])
+    # find config in descriptor['configuration']
+    ev = next(get_events(h, fields=['Tsam', 'exposure_time']))
+    assert 'exposure_time' in ev['data']
+    assert ev['data']['exposure_time'] == 5
+    assert 'exposure_time' in ev['timestamps']
+    assert ev['timestamps']['exposure_time'] == 0.
+    # find config in start doc
+    ev = next(get_events(h, fields=['Tsam', 'cat']))
+    assert 'cat' in ev['data']
+    assert ev['data']['cat'] == 'meow'
+    assert 'cat' in ev['timestamps']
+    # find config in stop doc
+    ev = next(get_events(h, fields=['Tsam', 'exit_status']))
+    assert 'exit_status' in ev['data']
+    assert ev['data']['exit_status'] == 'success'
+    assert 'exit_status' in ev['timestamps']
