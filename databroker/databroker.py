@@ -450,7 +450,7 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                 logger.debug('Discarding field %s', field)
                 del df[field]
             for field in df.columns:
-                if is_external.get(field, False) and fill:
+                if is_external.get(field) and fill:
                     logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk retrieve in FS
                     datum_uids = df[field]
