@@ -64,7 +64,6 @@ def test_basic_usage():
     db.fetch_events(header_ned)
     db.fetch_events(header_null)
     list(get_events(header_1))
-    list(get_events(header_ned))
     list(get_events(header_null))
     get_table(header_1)
     get_table(header_ned)
