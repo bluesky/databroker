@@ -78,6 +78,7 @@ def test_basic_usage():
     assert_true(table.notnull().all().all())
 
 
+@raises(ValueError)
 def test_get_events_bad_key():
     hdr = db[-1]
 
