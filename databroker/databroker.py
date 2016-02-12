@@ -2,7 +2,6 @@ from __future__ import print_function
 import warnings
 import six  # noqa
 from collections import deque
-from itertools import chain
 import pandas as pd
 import tzlocal
 from metadatastore.commands import (find_last, find_run_starts,
