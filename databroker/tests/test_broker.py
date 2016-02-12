@@ -71,7 +71,7 @@ def test_basic_usage():
     get_table(header_null)
 
     # get events for multiple headers
-    list(get_events([header_1, header_ned]))
+    list(get_events(db[-2:]))
 
     # test time shift issue GH9
     table = get_table(db[105])
