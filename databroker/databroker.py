@@ -500,4 +500,4 @@ def get_fields(header):
     -------
     fields : set
     """
-    return set([key for desc in h['descriptors'] for key in desc['data_keys']])
+    return set([k for desc in header['descriptors'] for k in desc['data_keys']])
