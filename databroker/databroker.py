@@ -501,4 +501,4 @@ def get_fields(header):
     -------
     fields : set
     """
-    return set(chain(list(d['data_keys'].keys()) for d in header['descriptors']))
+    return set([key for desc in h['descriptors'] for key in desc['data_keys']])
