@@ -63,19 +63,27 @@ def test_basic_usage():
     db.fetch_events(header_1)
     db.fetch_events(header_ned)
     db.fetch_events(header_null)
-    get_events(header_1)
-    get_events(header_ned)
-    get_events(header_null)
+    list(get_events(header_1))
+    list(get_events(header_ned))
+    list(get_events(header_null))
     get_table(header_1)
     get_table(header_ned)
     get_table(header_null)
 
     # get events for multiple headers
-    get_events([header_1, header_ned])
+    list(get_events([header_1, header_ned]))
 
     # test time shift issue GH9
     table = get_table(db[105])
     assert_true(table.notnull().all().all())
+
+
+@raises(ValueError)
+def test_get_events_bad_key():
+    hdr = db[-1]
+
+    list(get_events(hdr, fields=['abcd123']))
+
 
 def test_indexing():
     for i in range(5):
