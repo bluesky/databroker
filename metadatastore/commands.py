@@ -20,7 +20,7 @@ from . import conf
 from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
                             ALIAS)
 import doct as doc
-
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -839,6 +839,11 @@ def _transform_data(data, timestamps):
     to storage format:
         {'data': {<key>: (<value>, <timestamp>)}.
     """
+    # shallow copy so we can do some norrmalization
+    data = dict(data)
+    for k, v in data.items():
+        if isinstance(v, np.ndarray):
+            data[k] = v.tolist()
     return {k: (data[k], timestamps[k]) for k in data}
 
 
