@@ -478,7 +478,7 @@ def get_events_generator(descriptor):
         ev['timestamps'] = {k: v[1] for k, v in data.items()}
         ev['data'] = {k: v[0] for k, v in data.items()}
         for k, v in ev['data'].items():
-            if descriptor['data_key'][k]['dtype'] == 'array':
+            if descriptor['data_keys'][k]['dtype'] == 'array':
                 ev['data'][k] = np.asarray(ev['data'][k])
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
