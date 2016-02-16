@@ -14,6 +14,7 @@ import pymongo
 from pymongo import MongoClient
 
 from . import conf
+from . import mds
 
 import doct as doc
 
@@ -21,127 +22,22 @@ import doct as doc
 logger = logging.getLogger(__name__)
 
 
-class _GS:
-    MDS = None
+# class _GS:
+#     MDS = None
 
-    @classmethod
-    def gcm(cls):
-        if cls.MDS is None:
-            cls.MDS =
-        return cls.MDS
+#     @classmethod
+#     def gcm(cls):
+#         if cls.MDS is None:
+#             cls.MDS =
+#         return cls.MDS
 
-
+_DB_SINGLETON = mds.MDSRO(conf.connection_config)
 # process local caches of 'header' documents these are storing object indexed
 # on ObjectId because that is how the reference fields are implemented.
 # Should move to uids asap
-_RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
-_RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
-_DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
-
-
-class _DBManager(object):
-    def __init__(self, config):
-        self.config = config
-
-        self.__conn = None
-
-        self.__db = None
-
-        self.__event_col = None
-        self.__descriptor_col = None
-        self.__runstart_col = None
-        self.__runstop_col = None
-
-    def disconnect(self):
-
-        self.__conn = None
-
-        self.__db = None
-
-        self.__event_col = None
-        self.__descriptor_col = None
-        self.__runstart_col = None
-        self.__runstop_col = None
-
-    def reconfigure(self, config):
-        self.disconnect()
-        self.config = config
-
-    @property
-    def _connection(self):
-        if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
-        return self.__conn
-
-    @property
-    def _db(self):
-        if self.__db is None:
-            conn = self._connection
-            self.__db = conn.get_database(self.config['database'])
-        return self.__db
-
-    @property
-    def _runstart_col(self):
-        if self.__runstart_col is None:
-            self.__runstart_col = self._db.get_collection('run_start')
-
-        self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
-                                         unique=True)
-        self.__runstart_col.create_index([('time', pymongo.DESCENDING),
-                                          ('scan_id', pymongo.DESCENDING)],
-                                         unique=False, background=True)
-
-        return self.__runstart_col
-
-    @property
-    def _runstop_col(self):
-        if self.__runstop_col is None:
-            self.__runstop_col = self._db.get_collection('run_stop')
-
-        self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
-                                        ('uid', pymongo.DESCENDING)],
-                                        unique=True)
-        self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
-                                        unique=False, background=True)
-
-        return self.__runstop_col
-
-    @property
-    def _descriptor_col(self):
-        if self.__descriptor_col is None:
-            self.__descriptor_col = self._db.get_collection('event_descriptor')
-
-        self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
-                                           unique=True)
-        self.__descriptor_col.create_index([('run_start', pymongo.DESCENDING),
-                                            ('time', pymongo.DESCENDING)],
-                                           unique=False, background=True)
-
-        return self.__descriptor_col
-
-    @property
-    def _event_col(self):
-        if self.__event_col is None:
-            self.__event_col = self._db.get_collection('event')
-
-        self.__event_col.create_index([('uid', pymongo.DESCENDING)],
-                                      unique=True)
-        self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                       ('time', pymongo.DESCENDING)],
-                                      unique=False, background=True)
-
-        return self.__event_col
-
-    @property
-    def _datum_col(self):
-        if self.__datum_col is None:
-            self.__datum_col = self._db.get_collection('datum')
-            self.__datum_col.create_index('datum_id', unique=True)
-
-        return self.__datum_col
-
-_DB_SINGLETON = _DBManager(conf.connection_config)
+_RUNSTART_CACHE = _DB_SINGLETON._RUNSTART_CACHE
+_RUNSTOP_CACHE = _DB_SINGLETON._RUNSTOP_CACHE
+_DESCRIPTOR_CACHE = _DB_SINGLETON._DESCRIPTOR_CACHE
 
 
 class NoRunStop(Exception):
@@ -174,15 +70,12 @@ def doc_or_uid_to_uid(doc_or_uid):
 
 def clear_process_cache():
     """Clear all local caches"""
-    _RUNSTART_CACHE.clear()
-    _RUNSTOP_CACHE.clear()
-    _DESCRIPTOR_CACHE.clear()
+    _DB_SINGLETON.clear_process_cache()
 
 
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     _DB_SINGLETON.disconnect()
-    clear_process_cache()
 
 
 def db_connect(database, host, port):
@@ -196,9 +89,7 @@ def db_connect(database, host, port):
        connection you must call `db_disconnect` before attempting to
        re-connect.
     """
-    clear_process_cache()
-    _DB_SINGLETON.reconfigure(dict(database=database, host=host, port=port))
-    return _DB_SINGLETON._connection
+    return _DB_SINGLETON.db_connect(database=database, host=host, port=port)
 
 
 def _cache_run_start(run_start):
@@ -319,12 +210,7 @@ def run_start_given_uid(uid):
         The RunStart document.
 
     """
-    try:
-        return _RUNSTART_CACHE[uid]
-    except KeyError:
-        pass
-    run_start = _DB_SINGLETON._runstart_col.find_one({'uid': uid})
-    return _cache_run_start(run_start)
+    return _DB_SINGLETON.run_start_given_uid(uid)
 
 
 def run_stop_given_uid(uid):
@@ -341,13 +227,7 @@ def run_stop_given_uid(uid):
         The RunStop document fully de-referenced
 
     """
-    try:
-        return _RUNSTOP_CACHE[uid]
-    except KeyError:
-        pass
-    # get the raw run_stop
-    run_stop = _DB_SINGLETON._runstop_col.find_one({'uid': uid})
-    return _cache_run_stop(run_stop)
+    _DB_SINGLETON.run_stop_given_uid(uid)
 
 
 def descriptor_given_uid(uid):
@@ -363,13 +243,7 @@ def descriptor_given_uid(uid):
     descriptor : doc.Document
         The EventDescriptor document fully de-referenced
     """
-    try:
-        return _DESCRIPTOR_CACHE[uid]
-    except KeyError:
-        pass
-
-    descriptor = _DB_SINGLETON._descriptor_col.find_one({'uid': uid})
-    return _cache_descriptor(descriptor)
+    _DB_SINGLETON.descriptor_given_uid(uid)
 
 
 def stop_by_start(run_start):
@@ -393,15 +267,7 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    run_stop = _DB_SINGLETON._runstop_col.find_one(
-        {'run_start': run_start_uid})
-
-    if run_stop is None:
-        raise NoRunStop("No run stop exists for {!r}".format(run_start))
-
-    return _cache_run_stop(run_stop)
+    return _DB_SINGLETON.stop_by_start(run_start)
 
 
 def descriptors_by_start(run_start):

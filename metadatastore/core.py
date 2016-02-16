@@ -50,7 +50,7 @@ def doc_or_uid_to_uid(doc_or_uid):
     return doc_or_uid
 
 
-def _cache_run_start(run_start, cache):
+def _cache_run_start(run_start, run_start_cache):
     """De-reference and cache a RunStart document
 
     The de-referenced Document is cached against the
@@ -80,7 +80,7 @@ def _cache_run_start(run_start, cache):
     # convert the remaining document to a Document object
     run_start = doc.Document('RunStart', run_start)
 
-    cache[run_start['uid']] = run_start
+    run_start_cache[run_start['uid']] = run_start
 
     return run_start
 
@@ -110,8 +110,8 @@ def _cache_run_stop(run_stop, run_stop_cache,
 
     # do the run-start de-reference
     run_stop['run_start'] = run_start_given_uid(run_stop['run_start'],
-                                                  run_start_col,
-                                                  run_start_cache)
+                                                run_start_col,
+                                                run_start_cache)
 
     # create the Document object
     run_stop = doc.Document('RunStop', run_stop)
@@ -185,7 +185,8 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
     return _cache_run_start(run_start, run_start_cache)
 
 
-def run_stop_given_uid(uid, run_stop_col, run_stop_cache):
+def run_stop_given_uid(uid, run_stop_col, run_stop_cache,
+                       run_start_col, run_start_cache):
     """Given a uid, return the RunStop document
 
     Parameters
@@ -211,10 +212,12 @@ def run_stop_given_uid(uid, run_stop_col, run_stop_cache):
         pass
     # get the raw run_stop
     run_stop = run_stop_col.find_one({'uid': uid})
-    return _cache_run_stop(run_stop, run_stop_cache)
+    return _cache_run_stop(run_stop, run_stop_cache,
+                           run_start_col, run_start_cache)
 
 
-def descriptor_given_uid(uid, descriptor_col, descriptor_cache):
+def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
+                         run_start_col, run_start_cache):
     """Given a uid, return the EventDescriptor document
 
     Parameters
@@ -239,10 +242,12 @@ def descriptor_given_uid(uid, descriptor_col, descriptor_cache):
         pass
 
     descriptor = descriptor_col.find_one({'uid': uid})
-    return _cache_descriptor(descriptor, descriptor_cache)
+    return _cache_descriptor(descriptor, descriptor_cache, run_start_col,
+                             run_start_cache)
 
 
-def stop_by_start(run_start):
+def stop_by_start(run_start, run_stop_col, run_stop_cache,
+                  run_start_col, run_start_cache):
     """Given a RunStart return it's RunStop
 
     Raises if no RunStop exists.
@@ -265,16 +270,17 @@ def stop_by_start(run_start):
     """
     run_start_uid = doc_or_uid_to_uid(run_start)
 
-    run_stop = _DB_SINGLETON._runstop_col.find_one(
-        {'run_start': run_start_uid})
+    run_stop = run_stop_col.find_one({'run_start': run_start_uid})
 
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
-    return _cache_run_stop(run_stop)
+    return _cache_run_stop(run_stop, run_stop_cache,
+                           run_start_col, run_start_cache)
 
 
-def descriptors_by_start(run_start):
+def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
+                         run_start_col, run_start_cache):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
@@ -300,11 +306,12 @@ def descriptors_by_start(run_start):
 
     # query the database for any event descriptors which
     # refer to the given run_start
-    descriptors = _DB_SINGLETON._descriptor_col.find(
-        {'run_start': run_start_uid})
+    descriptors = descriptor_col.find({'run_start': run_start_uid})
 
     # loop over the found documents, cache, and dereference
-    rets = [_cache_descriptor(descriptor) for descriptor in descriptors]
+    rets = [_cache_descriptor(descriptor, descriptor_cache,
+                              run_start_col, run_start_cache)
+            for descriptor in descriptors]
 
     # if nothing found, raise
     if not rets:
@@ -315,7 +322,9 @@ def descriptors_by_start(run_start):
     return rets
 
 
-def get_events_generator(descriptor):
+def get_events_generator(descriptor, event_col, descriptor_col,
+                         descriptor_cache, run_start_col,
+                         run_start_cache):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -331,10 +340,11 @@ def get_events_generator(descriptor):
         newest
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(descriptor_uid)
-    col = _DB_SINGLETON._event_col
-    ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('time', 1)])
+    descriptor = descriptor_given_uid(descriptor_uid, descriptor_col,
+                                      descriptor_cache, run_start_col,
+                                      run_start_cache)
+    col = event_col
+    ev_cur = col.find({'descriptor': descriptor_uid}, sort=[('time', 1)])
 
     for ev in ev_cur:
         # ditch the ObjectID
@@ -377,7 +387,8 @@ def _transpose(in_data, keys, field):
     return out
 
 
-def get_events_table(descriptor):
+def get_events_table(descriptor, event_col, descriptor_col,
+                     descriptor_cache, run_start_col, run_start_cache):
     """All event data as tables
 
     Parameters
@@ -403,9 +414,15 @@ def get_events_table(descriptor):
         keys as `data_table`.
     """
     desc_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(desc_uid)
+    descriptor = descriptor_given_uid(desc_uid, descriptor_col,
+                                      descriptor_cache, run_start_col,
+                                      run_start_cache)
     # this will get more complicated once transpose caching layer is in place
-    all_events = list(get_events_generator(desc_uid))
+    all_events = list(get_events_generator(desc_uid, event_col,
+                                           descriptor_col,
+                                           descriptor_cache,
+                                           run_start_col,
+                                           run_start_cache))
 
     # get event sequence numbers
     seq_nums = [ev['seq_num'] for ev in all_events]
@@ -473,7 +490,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
 
     col.insert_one(run_start)
 
-    _cache_run_start(run_start)
+    _cache_run_start(run_start, run_start_cache)
     logger.debug('Inserted RunStart with uid %s', run_start['uid'])
 
     return uid

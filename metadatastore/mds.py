@@ -7,8 +7,12 @@ from pymongo import MongoClient
 import boltons.cacheutils
 from . import core
 
-class _DBManager(object):
+class MDSRO(object):
     def __init__(self, config):
+        self._RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
+        self._RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
+        self._DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
+
         self.config = config
 
         self.__conn = None
@@ -102,14 +106,6 @@ class _DBManager(object):
 
         return self.__event_col
 
-
-class MDSRO(object):
-    def __init__(self, config):
-        self._DB = _DBManager(config)
-        self._RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
-        self._RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
-        self._DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
-
     def clear_process_cache(self):
         """Clear all local caches"""
         self._RUNSTART_CACHE.clear()
@@ -118,7 +114,7 @@ class MDSRO(object):
 
     def db_disconnect(self):
         """Helper function to deal with stateful connections to mongoengine"""
-        self._DB.disconnect()
+        self.disconnect()
         self.clear_process_cache()
 
     def db_connect(self, database, host, port):
@@ -133,9 +129,9 @@ class MDSRO(object):
            re-connect.
         """
         self.clear_process_cache()
-        self._DB.reconfigure(dict(database=database,
-                                            host=host, port=port))
-        return self._DB._connection
+        self.reconfigure(dict(database=database,
+                              host=host, port=port))
+        return self._connection
 
     def run_start_given_uid(self, uid):
         """Given a uid, return the RunStart document
@@ -151,8 +147,28 @@ class MDSRO(object):
             The RunStart document.
 
         """
-        return core.run_start_given_uid(uid, self._DB._runstop_col,
-                                        self._RUNSTOP_CACHE)
+        return core.run_start_given_uid(uid, self._runstart_col,
+                                        self._RUNSTART_CACHE)
+
+    def run_stop_given_uid(self, uid):
+        """Given a uid, return the RunStop document
+
+        Parameters
+        ----------
+        uid : str
+            The uid
+
+        Returns
+        -------
+        run_stop : doc.Document
+            The RunStop document.
+
+        """
+        return core.run_stop_given_uid(uid,
+                                       self._runstop_col,
+                                       self._RUNSTOP_CACHE,
+                                       self._runstart_col,
+                                       self._RUNSTART_CACHE)
 
     def descriptor_given_uid(self, uid):
         """Given a uid, return the EventDescriptor document
@@ -167,5 +183,118 @@ class MDSRO(object):
         descriptor : doc.Document
             The EventDescriptor document fully de-referenced
         """
-        return core.descriptor_given_uid(uid, self._DB._descriptor_col,
-                                         self._DESCRIPTOR_CACHE)
+        return core.descriptor_given_uid(uid, self._descriptor_col,
+                                         self._DESCRIPTOR_CACHE,
+                                         self._runstart_col,
+                                         self._RUNSTART_CACHE)
+
+    def stop_by_start(self, run_start):
+        """Given a RunStart return it's RunStop
+
+        Raises if no RunStop exists.
+
+        Parameters
+        ----------
+        run_start : doc.Document or dict or str
+            The RunStart to get the RunStop for.  Can be either
+            a Document/dict with a 'uid' key or a uid string
+
+        Returns
+        -------
+        run_stop : doc.Document
+            The RunStop document
+
+        Raises
+        ------
+        NoRunStop
+            If no RunStop document exists for the given RunStart
+        """
+        return core.stop_by_start(run_start,
+                                  self._runstop_col,
+                                  self._RUNSTOP_CACHE,
+                                  self._runstart_col,
+                                  self._RUNSTART_CACHE)
+
+    def descriptors_by_start(self, run_start):
+        """Given a RunStart return a list of it's descriptors
+
+        Raises if no EventDescriptors exist.
+
+        Parameters
+        ----------
+        run_start : doc.Document or dict or str
+            The RunStart to get the EventDescriptors for.  Can be either
+            a Document/dict with a 'uid' key or a uid string
+
+        Returns
+        -------
+        event_descriptors : list
+            A list of EventDescriptor documents
+
+        Raises
+        ------
+        NoEventDescriptors
+            If no EventDescriptor documents exist for the given RunStart
+        """
+        return core.descriptors_by_start(run_start,
+                                         self._descriptor_col,
+                                         self._DESCRIPTOR_CACHE,
+                                         self._runstart_col,
+                                         self._RUNSTART_CACHE)
+
+    def get_events_generator(self, descriptor):
+        """A generator which yields all events from the event stream
+
+        Parameters
+        ----------
+        descriptor : doc.Document or dict or str
+            The EventDescriptor to get the Events for.  Can be either
+            a Document/dict with a 'uid' key or a uid string
+
+        Yields
+        ------
+        event : doc.Document
+            All events for the given EventDescriptor from oldest to
+            newest
+        """
+        evs = core.get_events_generator(descriptor,
+                                        self._event_col,
+                                        self._descriptor_col,
+                                        self._DESCRIPTOR_CACHE,
+                                        self._runstart_col,
+                                        self._RUNSTART_CACHE)
+        # when we drop 2.7, this can be
+        # yield from evs
+        for ev in evs:
+            yield ev
+
+    def get_events_table(self, descriptor):
+        """All event data as tables
+
+        Parameters
+        ----------
+        descriptor : dict or str
+            The EventDescriptor to get the Events for.  Can be either
+            a Document/dict with a 'uid' key or a uid string
+
+        Returns
+        -------
+        descriptor : doc.Document
+            EventDescriptor document
+        data_table : dict
+            dict of lists of the transposed data
+        seq_nums : list
+            The sequence number of each event.
+        times : list
+            The time of each event.
+        uids : list
+            The uid of each event.
+        timestamps_table : dict
+            The timestamps of each of the measurements as dict of lists.  Same
+            keys as `data_table`.
+        """
+        return core.get_events_table(descriptor, self._event_col,
+                                     self._descriptor_col,
+                                     self._DESCRIPTOR_CACHE,
+                                     self._runstart_col,
+                                     self._RUNSTART_CACHE)
