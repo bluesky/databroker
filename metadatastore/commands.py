@@ -841,7 +841,7 @@ def _transform_data(data, timestamps):
     to storage format:
         {'data': {<key>: (<value>, <timestamp>)}.
     """
-    # shallow copy so we can do some norrmalization
+    # shallow copy so we can do some normalization
     data = dict(data)
     for k, v in data.items():
         if isinstance(v, np.ndarray):
