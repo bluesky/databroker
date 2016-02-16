@@ -20,7 +20,7 @@ from . import conf
 from .odm_templates import (RunStart, RunStop, EventDescriptor, Event, DataKey,
                             ALIAS)
 import doct as doc
-
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -477,7 +477,9 @@ def get_events_generator(descriptor):
         data = ev.pop('data')
         ev['timestamps'] = {k: v[1] for k, v in data.items()}
         ev['data'] = {k: v[0] for k, v in data.items()}
-
+        for k, v in ev['data'].items():
+            if descriptor['data_keys'][k]['dtype'] == 'array':
+                ev['data'][k] = np.asarray(ev['data'][k])
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
 
@@ -839,6 +841,11 @@ def _transform_data(data, timestamps):
     to storage format:
         {'data': {<key>: (<value>, <timestamp>)}.
     """
+    # shallow copy so we can do some normalization
+    data = dict(data)
+    for k, v in data.items():
+        if isinstance(v, np.ndarray):
+            data[k] = v.tolist()
     return {k: (data[k], timestamps[k]) for k in data}
 
 

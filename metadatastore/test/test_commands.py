@@ -7,12 +7,13 @@ import time as ttime
 import datetime
 
 import pytz
-from nose.tools import assert_equal, assert_raises, raises, assert_true
-
+from nose.tools import assert_raises, raises, assert_true
+from numpy.testing import assert_equal
 import metadatastore.commands as mdsc
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 import uuid
+import numpy as np
 
 # some useful globals
 run_start_uid = None
@@ -51,6 +52,10 @@ def setup_syn(custom=None):
                      'dtype': 'number',
                      'shape': None} for k in 'ABCEDEFGHIJKL'
                  }
+    data_keys['ar'] = {'source': 'ar',
+                       'dtype': 'array',
+                       'shape': [30,]}
+
     scan_id = 1
 
     # Create a BeginRunEvent that serves as entry point for a run
@@ -72,6 +77,7 @@ def syn_data(data_keys, count):
     all_data = deque()
     for seq_num in range(count):
         data = {k: float(seq_num) for k in data_keys}
+        data['ar'] = np.ones(30) * seq_num
         timestamps = {k: ttime.time() for k in data_keys}
 
         _time = ttime.time()
@@ -79,6 +85,7 @@ def syn_data(data_keys, count):
         all_data.append({'data': data, 'timestamps': timestamps,
                          'seq_num': seq_num, 'time': _time,
                          'uid': uid})
+
     return all_data
 
 
@@ -425,11 +432,15 @@ def test_bulk_table():
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+    desc = mdsc.descriptor_given_uid(e_desc)
     ret = mdsc.get_events_table(e_desc)
     descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
-    for vals in data_table.values():
-        assert_true(all(s == v for s, v in zip(seq_nums, vals)))
+    for k, vals in data_table.items():
+        if desc['data_keys'][k]['dtype'] != 'array':
+            assert_true(all(s == v for s, v in zip(seq_nums, vals)))
+        else:
+            assert_true(all((s == v).all() for s, v in zip(seq_nums, vals)))
 
 
 def test_cache_clear_lookups():
