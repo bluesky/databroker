@@ -3,12 +3,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 __all__ = ['DataBroker', 'get_images', 'get_events', 'get_table', 'stream',
-           'get_fields']
+           'get_fields', 'restream', 'process']
 
 
 # generally useful imports
 from .databroker import (DataBroker, DataBroker as db,
-                         get_events, get_table, search, stream, get_fields)
+                         get_events, get_table, search, stream, get_fields,
+                         restream, process)
 from .pims_readers import get_images
 from .handler_registration import register_builtin_handlers
 

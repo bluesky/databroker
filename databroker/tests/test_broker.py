@@ -2,9 +2,10 @@ from __future__ import absolute_import, division, print_function
 import six
 import uuid
 import logging
+from itertools import count
 import time as ttime
 from databroker import (DataBroker as db, get_events, get_table, stream,
-                        get_fields)
+                        get_fields, restream, process)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -253,11 +254,16 @@ def test_raise_conditions():
 
 
 def test_stream():
+    _stream(restream)
+    _stream(stream)  # old name
+
+
+def _stream(func):
     rs = insert_run_start(time=ttime.time(), scan_id=105,
                           owner='stepper', beamline_id='example',
                           uid=str(uuid.uuid4()))
     step_scan.run(run_start_uid=rs)
-    s = stream(db[rs])
+    s = func(db[rs])
     name, doc = next(s)
     assert name == 'start'
     assert 'owner' in doc
@@ -273,6 +279,19 @@ def test_stream():
     name, doc = last_item
     assert name == 'stop'
     assert 'exit_status' in doc # Stop
+
+
+def test_process():
+    rs = insert_run_start(time=ttime.time(), scan_id=105,
+                          owner='stepper', beamline_id='example',
+                          uid=str(uuid.uuid4()))
+    step_scan.run(run_start_uid=rs)
+    c = count()
+    def f(name, doc):
+        next(c)
+
+    process(db[rs], f)
+    assert next(c) == len(list(restream(db[rs])))
 
 
 def test_get_fields():

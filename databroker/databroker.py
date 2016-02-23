@@ -474,15 +474,14 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
         return pd.DataFrame()
 
 
-def stream(headers, fields=None, fill=True):
+def restream(headers, fields=None, fill=True):
     """
     Get all Documents from given run(s).
-
 
     Parameters
     ----------
     headers : Header or iterable of Headers
-        The headers to fetch the events for
+        header or headers to fetch the documents for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
     fill : bool, optional
@@ -500,13 +499,17 @@ def stream(headers, fields=None, fill=True):
     ...     # do something
     ...
     >>> h = DataBroker[-1]  # most recent header
-    >>> for name, doc in stream(h):
+    >>> for name, doc in restream(h):
     ...     f(name, doc)
 
     Note
     ----
     This output can be used as a drop-in replacement for the output of the
     bluesky Run Engine.
+
+    See Also
+    --------
+    process
     """
     try:
         headers.items()
@@ -523,6 +526,46 @@ def stream(headers, fields=None, fill=True):
         for event in get_events(header, fields=fields, fill=fill):
             yield 'event', event
         yield 'stop', header['stop']
+
+
+stream = restream  # compat
+
+
+def process(headers, func, fields=None, fill=True):
+    """
+    Get all Documents from given run to a callback.
+
+    Parameters
+    ----------
+    headers : Header or iterable of Headers
+        header or headers to process documents from
+    func : callable
+        function with the signature `f(name, doc)`
+        where `name` is a string and `doc` is a dict
+    fields : list, optional
+        whitelist of field names of interest; if None, all are returned
+    fill : bool, optional
+        Whether externally-stored data should be filled in. Defaults to True
+
+    Example
+    -------
+    >>> def f(name, doc):
+    ...     # do something
+    ...
+    >>> h = DataBroker[-1]  # most recent header
+    >>> process(h, f)
+
+    Note
+    ----
+    This output can be used as a drop-in replacement for the output of the
+    bluesky Run Engine.
+
+    See Also
+    --------
+    restream
+    """
+    for name, doc in restream(headers, fields, fill):
+        func(name, doc)
 
 
 def get_fields(header):
