@@ -20,32 +20,45 @@ from .core import (bulk_insert_datum as _bulk_insert_datum,
 
 logger = logging.getLogger(__name__)
 
-class _ChainMap(object):
-    def __init__(self, fallback, primary):
-        self.fallback = fallback
-        self.primary = primary
+try:
+    from collections import ChainMap as _ChainMap
+except ImportError:
+    class _ChainMap(object):
+        def __init__(self, primary, fallback):
+            self.fallback = fallback
+            self.primary = primary
 
-    def __getitem__(self, k):
-        try:
-            return self.primary[k]
-        except KeyError:
-            return self.fallback[k]
+        def __getitem__(self, k):
+            try:
+                return self.primary[k]
+            except KeyError:
+                return self.fallback[k]
 
-    def __setitem__(self, k, v):
-        self.primary[k] = v
+        def __setitem__(self, k, v):
+            self.primary[k] = v
 
-    def __contains__(self, k):
-        return k in self.primary or k in self.fallback
+        def __contains__(self, k):
+            return k in self.primary or k in self.fallback
 
-    def __delitem__(self, k):
-        del self.primary[k]
+        def __delitem__(self, k):
+            del self.primary[k]
 
-    def pop(self, k, v):
-        return self.primary.pop(k, v)
+        def pop(self, k, v):
+            return self.primary.pop(k, v)
 
-    @property
-    def maps(self):
-        return [self.primary, self.fallback]
+        @property
+        def maps(self):
+            return [self.primary, self.fallback]
+
+        @property
+        def parents(self):
+            return self.fallback
+
+        def new_child(self, m=None):
+            if m is None:
+                m = {}
+
+            return _ChainMap(self, m)
 
 
 class FileStoreRO(object):
@@ -121,7 +134,7 @@ class FileStoreRO(object):
     @contextmanager
     def handler_context(self, temp_handlers):
         stash = self.handler_reg
-        self.handler_reg = _ChainMap(self.handler_reg, temp_handlers)
+        self.handler_reg = _ChainMap(temp_handlers, self.handler_reg)
         try:
             yield self
         finally:
