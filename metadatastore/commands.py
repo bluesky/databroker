@@ -2,22 +2,19 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-import warnings
 
 import datetime
 import logging
 
-import boltons.cacheutils
 import pytz
-
-import pymongo
-from pymongo import MongoClient
 
 from . import conf
 from . import mds
 
 import doct as doc
+# API compatibility imports
 
+from .core import NoEventDescriptors, NoRunStop
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +35,6 @@ _DB_SINGLETON = mds.MDSRO(conf.connection_config)
 _RUNSTART_CACHE = _DB_SINGLETON._RUNSTART_CACHE
 _RUNSTOP_CACHE = _DB_SINGLETON._RUNSTOP_CACHE
 _DESCRIPTOR_CACHE = _DB_SINGLETON._DESCRIPTOR_CACHE
-
-
-class NoRunStop(Exception):
-    pass
-
-
-class NoEventDescriptors(Exception):
-    pass
 
 
 def doc_or_uid_to_uid(doc_or_uid):
@@ -78,7 +67,7 @@ def db_disconnect():
     _DB_SINGLETON.disconnect()
 
 
-def db_connect(database, host, port):
+def db_connect(database, host, port, timezone='US/Eastern', **kwargs):
     """Helper function to deal with stateful connections to mongoengine
 
     .. warning
@@ -89,7 +78,8 @@ def db_connect(database, host, port):
        connection you must call `db_disconnect` before attempting to
        re-connect.
     """
-    return _DB_SINGLETON.db_connect(database=database, host=host, port=port)
+    return _DB_SINGLETON.db_connect(database=database, host=host, port=port,
+                                    timezone=timezone, **kwargs)
 
 
 def _cache_run_start(run_start):
@@ -227,7 +217,7 @@ def run_stop_given_uid(uid):
         The RunStop document fully de-referenced
 
     """
-    _DB_SINGLETON.run_stop_given_uid(uid)
+    return _DB_SINGLETON.run_stop_given_uid(uid)
 
 
 def descriptor_given_uid(uid):
@@ -243,7 +233,7 @@ def descriptor_given_uid(uid):
     descriptor : doc.Document
         The EventDescriptor document fully de-referenced
     """
-    _DB_SINGLETON.descriptor_given_uid(uid)
+    return _DB_SINGLETON.descriptor_given_uid(uid)
 
 
 def stop_by_start(run_start):
@@ -291,24 +281,7 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    # normalize the input and get the run_start oid
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    # query the database for any event descriptors which
-    # refer to the given run_start
-    descriptors = _DB_SINGLETON._descriptor_col.find(
-        {'run_start': run_start_uid})
-
-    # loop over the found documents, cache, and dereference
-    rets = [_cache_descriptor(descriptor) for descriptor in descriptors]
-
-    # if nothing found, raise
-    if not rets:
-        raise NoEventDescriptors("No EventDescriptors exists "
-                                 "for {!r}".format(run_start))
-
-    # return the list of event descriptors
-    return rets
+    return _DB_SINGLETON.descriptors_by_start(run_start)
 
 
 def get_events_generator(descriptor):
@@ -326,51 +299,11 @@ def get_events_generator(descriptor):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    descriptor_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(descriptor_uid)
-    col = _DB_SINGLETON._event_col
-    ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('time', 1)])
-
-    for ev in ev_cur:
-        # ditch the ObjectID
-        del ev['_id']
-        # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor
-
-        # wrap it in our fancy dict
-        ev = doc.Document('Event', ev)
-
-        yield ev
-
-
-def _transpose(in_data, keys, field):
-    """Turn a list of dicts into dict of lists
-
-    Parameters
-    ----------
-    in_data : list
-        A list of dicts which contain at least one dict.
-        All of the inner dicts must have at least the keys
-        in `keys`
-
-    keys : list
-        The list of keys to extract
-
-    field : str
-        The field in the outer dict to use
-
-    Returns
-    -------
-    transpose : dict
-        The transpose of the data
-    """
-    out = {k: [None] * len(in_data) for k in keys}
-    for j, ev in enumerate(in_data):
-        dd = ev[field]
-        for k in keys:
-            out[k][j] = dd[k]
-    return out
+    if six.PY2:
+        for ev in _DB_SINGLETON.get_events_generator(descriptor):
+            yield ev
+    else:
+        yield from _DB_SINGLETON.get_events_generator(descriptor)
 
 
 def get_events_table(descriptor):
@@ -398,30 +331,7 @@ def get_events_table(descriptor):
         The timestamps of each of the measurements as dict of lists.  Same
         keys as `data_table`.
     """
-    desc_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(desc_uid)
-    # this will get more complicated once transpose caching layer is in place
-    all_events = list(get_events_generator(desc_uid))
-
-    # get event sequence numbers
-    seq_nums = [ev['seq_num'] for ev in all_events]
-
-    # get event times
-    times = [ev['time'] for ev in all_events]
-
-    # get uids
-    uids = [ev['uid'] for ev in all_events]
-
-    keys = list(descriptor['data_keys'])
-
-    # get data values
-    data_table = _transpose(all_events, keys, 'data')
-
-    # get timestamps
-    timestamps_table = _transpose(all_events, keys, 'timestamps')
-
-    # return the whole lot
-    return descriptor, data_table, seq_nums, times, uids, timestamps_table
+    return _DB_SINGLETON.get_events_table(descriptor)
 
 
 # database INSERTION ###################################################
@@ -455,24 +365,10 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         the full document.
 
     """
-    if 'custom' in kwargs:
-        warnings.warn("custom kwarg is deprecated")
-        custom = kwargs.pop('custom')
-        if any(k in kwargs for k in custom):
-            raise TypeError("duplicate keys in kwargs and custom")
-        kwargs.update(custom)
-
-    col = _DB_SINGLETON._runstart_col
-    run_start = dict(time=time, scan_id=scan_id, uid=uid,
-                     beamline_id=beamline_id, owner=owner, group=group,
-                     project=project, **kwargs)
-
-    col.insert_one(run_start)
-
-    _cache_run_start(run_start)
-    logger.debug('Inserted RunStart with uid %s', run_start['uid'])
-
-    return uid
+    return _DB_SINGLETON.insert_run_start(time=time, scan_id=scan_id,
+                                          beamline_id=beamline_id, uid=uid,
+                                          owner=owner, group=group,
+                                          project=project, **kwargs)
 
 
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
@@ -503,33 +399,9 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
     RuntimeError
         Only one RunStop per RunStart, raises if you try to insert a second
     """
-    if 'custom' in kwargs:
-        warnings.warn("custom kwarg is deprecated")
-        custom = kwargs.pop('custom')
-        if any(k in kwargs for k in custom):
-            raise TypeError("duplicate keys in kwargs and custom")
-        kwargs.update(custom)
-
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = run_start_given_uid(run_start_uid)
-    try:
-        stop_by_start(run_start_uid)
-    except NoRunStop:
-        pass
-    else:
-        raise RuntimeError("Runstop already exits for {!r}".format(run_start))
-
-    col = _DB_SINGLETON._runstop_col
-    run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
-                    uid=uid,
-                    exit_status=exit_status, **kwargs)
-
-    col.insert_one(run_stop)
-    _cache_run_stop(run_stop)
-    logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop['uid'], run_start['uid'])
-
-    return uid
+    return _DB_SINGLETON.insert_run_stop(run_start, time, uid,
+                                         exit_status=exit_status,
+                                         reason=reason, **kwargs)
 
 
 def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
@@ -555,33 +427,10 @@ def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
     descriptor : str
         uid of inserted Document
     """
-    if 'custom' in kwargs:
-        warnings.warn("custom kwarg is deprecated")
-        custom = kwargs.pop('custom')
-        if any(k in kwargs for k in custom):
-            raise TypeError("duplicate keys in kwargs and custom")
-        kwargs.update(custom)
+    return _DB_SINGLETON.insert_descriptor(run_start, data_keys,
+                                           time, uid, **kwargs)
 
-    for k in data_keys:
-        if '.' in k:
-            raise ValueError("Key names can not contain '.' (period).")
 
-    data_keys = {k: dict(v) for k, v in data_keys.items()}
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    col = _DB_SINGLETON._descriptor_col
-
-    descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
-                      time=time, uid=uid, **kwargs)
-    # TODO validation
-    col.insert_one(descriptor)
-
-    descriptor = _cache_descriptor(descriptor)
-
-    logger.debug("Inserted EventDescriptor with uid %s referencing "
-                 "RunStart with uid %s", descriptor['uid'], run_start_uid)
-
-    return uid
 insert_event_descriptor = insert_descriptor
 
 
@@ -612,25 +461,8 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     uid : str
         Globally unique id string provided to metadatastore
     """
-    # convert data to storage format
-    # make sure we really have a uid
-    descriptor_uid = doc_or_uid_to_uid(descriptor)
-
-    col = _DB_SINGLETON._event_col
-
-    event = dict(descriptor=descriptor_uid, uid=uid,
-                 data=data, timestamps=timestamps, time=time,
-                 seq_num=seq_num)
-
-    col.insert_one(event)
-
-    logger.debug("Inserted Event with uid %s referencing "
-                 "EventDescriptor with uid %s", event['uid'],
-                 descriptor_uid)
-    return uid
-
-BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
-'timestamps do not match:\n data: {}\ntimestamps:{}"""
+    return _DB_SINGLETON.insert_event(descriptor, time, seq_num,
+                                      data, timestamps, uid)
 
 
 def bulk_insert_events(event_descriptor, events, validate=False):
@@ -652,39 +484,8 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     ret : dict
         dictionary of details about the insertion
     """
-    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
-
-    def event_factory():
-        for ev in events:
-            # check keys, this could be expensive
-            if validate:
-                if ev['data'].keys() != ev['timestamps'].keys():
-                    raise ValueError(
-                        BAD_KEYS_FMT.format(ev['data'].keys(),
-                                            ev['timestamps'].keys()))
-
-            ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=ev['data'], timestamps=ev['timestamps'],
-                          time=ev['time'],
-                          seq_num=ev['seq_num'])
-            yield ev_out
-
-    bulk = _DB_SINGLETON._event_col.initialize_ordered_bulk_op()
-    for ev in event_factory():
-        bulk.insert(ev)
-
-    return bulk.execute()
-
-
-def _transform_data(data, timestamps):
-    """
-    Transform from Document spec:
-        {'data': {'key': <value>},
-         'timestamps': {'key': <timestamp>}}
-    to storage format:
-        {'data': {<key>: (<value>, <timestamp>)}.
-    """
-    return {k: (data[k], timestamps[k]) for k in data}
+    return _DB_SINGLETON.bulk_insert_events(descriptor=event_descriptor,
+                                            events=events, validate=validate)
 
 
 # DATABASE RETRIEVAL ##########################################################
@@ -784,7 +585,7 @@ def _normalize_human_friendly_time(val):
 # fill in the placeholder we left in the previous docstring
 _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-    )
+)
 
 
 def find_run_starts(**kwargs):
@@ -829,13 +630,8 @@ def find_run_starts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    # now try rest of formatting
-    _format_time(kwargs)
-    col = _DB_SINGLETON._runstart_col
-    rs_objects = col.find(kwargs).sort('time', pymongo.DESCENDING)
-
-    return (_cache_run_start(rs) for rs in rs_objects)
-find_run_starts = find_run_starts
+    return _DB_SINGLETON.find_run_starts(**kwargs)
+find_runstarts = find_run_starts
 
 
 def find_run_stops(run_start=None, **kwargs):
@@ -869,17 +665,8 @@ def find_run_stops(run_start=None, **kwargs):
     run_stop : doc.Document
         The requested RunStop documents
     """
-    # if trying to find by run_start, there can be only one
-    # normalize the input and get the run_start oid
-    if run_start:
-        run_start_uid = doc_or_uid_to_uid(run_start)
-        kwargs['run_start'] = run_start_uid
-    _format_time(kwargs)
-    col = _DB_SINGLETON._runstop_col
-    run_stop = col.find(kwargs).sort('time', pymongo.DESCENDING)
-
-    return (_cache_run_stop(rs) for rs in run_stop)
-find_run_stops = find_run_stops
+    return _DB_SINGLETON.find_run_stops(run_start=run_start, **kwargs)
+find_runstops = find_run_stops
 
 
 def find_descriptors(run_start=None, **kwargs):
@@ -909,17 +696,13 @@ def find_descriptors(run_start=None, **kwargs):
     descriptor : doc.Document
         The requested EventDescriptor
     """
-    if run_start:
-        run_start_uid = doc_or_uid_to_uid(run_start)
-        kwargs['run_start'] = run_start_uid
+    if six.PY2:
+        for d in _DB_SINGLETON.find_descriptors(run_start=run_start, **kwargs):
+            yield d
+    else:
+        yield from _DB_SINGLETON.find_descriptors(
+            run_start=run_start, **kwargs)
 
-    _format_time(kwargs)
-
-    col = _DB_SINGLETON._descriptor_col
-    event_descriptor_objects = col.find(kwargs)
-
-    for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor)
 
 # TODO properly mark this as deprecated
 find_event_descriptors = find_descriptors
@@ -951,28 +734,11 @@ def find_events(descriptor=None, **kwargs):
     -------
     events : iterable of doc.Document objects
     """
-    # Some user-friendly error messages for an easy mistake to make
-    if 'event_descriptor' in kwargs:
-        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
-
-    if descriptor:
-        descriptor_uid = doc_or_uid_to_uid(descriptor)
-        kwargs['descriptor'] = descriptor_uid
-
-    _format_time(kwargs)
-    col = _DB_SINGLETON._event_col
-    events = col.find(kwargs).sort('time', pymongo.ASCENDING)
-
-    for ev in events:
-        ev.pop('_id', None)
-        # pop the descriptor oid
-        desc_uid = ev.pop('descriptor')
-        # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor_given_uid(desc_uid)
-
-        # wrap it our fancy dict
-        ev = doc.Document('Event', ev)
-        yield ev
+    if six.PY2:
+        for ev in _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs):
+            yield ev
+    else:
+        yield from _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs)
 
 
 def find_last(num=1):

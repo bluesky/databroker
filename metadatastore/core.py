@@ -447,8 +447,8 @@ def get_events_table(descriptor, event_col, descriptor_col,
 
 # database INSERTION ###################################################
 
-def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
-                     project='', **kwargs):
+def insert_run_start(run_start_col, run_start_cache,
+                     time, scan_id, beamline_id, uid, **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
@@ -460,14 +460,6 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         a unique identifier.
     beamline_id : str
         Beamline String identifier.
-    uid : str
-        Globally unique id to identify this RunStart
-    owner : str, optional
-        A username associated with the RunStart
-    group : str, optional
-        An experimental group associated with the RunStart
-    project : str, optional
-        Any project name to help users locate the data
 
     Returns
     -------
@@ -483,10 +475,9 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
             raise TypeError("duplicate keys in kwargs and custom")
         kwargs.update(custom)
 
-    col = _DB_SINGLETON._runstart_col
+    col = run_start_col
     run_start = dict(time=time, scan_id=scan_id, uid=uid,
-                     beamline_id=beamline_id, owner=owner, group=group,
-                     project=project, **kwargs)
+                     beamline_id=beamline_id, **kwargs)
 
     col.insert_one(run_start)
 
@@ -496,7 +487,9 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
     return uid
 
 
-def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
+def insert_run_stop(run_start_col, run_start_cache,
+                    run_stop_col, run_stop_cache,
+                    run_start, time, uid, exit_status, reason,
                     **kwargs):
     """Insert RunStop document into database
 
@@ -532,28 +525,33 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
         kwargs.update(custom)
 
     run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = run_start_given_uid(run_start_uid)
+    run_start = run_start_given_uid(run_start_uid, run_start_col,
+                                    run_start_cache)
     try:
-        stop_by_start(run_start_uid)
+        stop_by_start(run_start_uid,
+                      run_stop_col, run_stop_cache,
+                      run_start_col, run_start_cache)
     except NoRunStop:
         pass
     else:
         raise RuntimeError("Runstop already exits for {!r}".format(run_start))
 
-    col = _DB_SINGLETON._runstop_col
+    col = run_stop_col
     run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
                     uid=uid,
                     exit_status=exit_status, **kwargs)
 
     col.insert_one(run_stop)
-    _cache_run_stop(run_stop)
+    _cache_run_stop(run_stop, run_stop_cache, run_start_col, run_start_cache)
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
                  " with uid %s", run_stop['uid'], run_start['uid'])
 
     return uid
 
 
-def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
+def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
+                      descriptor_cache, run_start, data_keys, time, uid,
+                      **kwargs):
     """Insert an EventDescriptor document in to database.
 
     Parameters
@@ -590,14 +588,15 @@ def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
     data_keys = {k: dict(v) for k, v in data_keys.items()}
     run_start_uid = doc_or_uid_to_uid(run_start)
 
-    col = _DB_SINGLETON._descriptor_col
+    col = descriptor_col
 
     descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
                       time=time, uid=uid, **kwargs)
     # TODO validation
     col.insert_one(descriptor)
 
-    descriptor = _cache_descriptor(descriptor)
+    descriptor = _cache_descriptor(descriptor, descriptor_cache,
+                                   run_start_col, run_start_cache)
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
                  "RunStart with uid %s", descriptor['uid'], run_start_uid)
@@ -606,7 +605,8 @@ def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
 insert_event_descriptor = insert_descriptor
 
 
-def insert_event(descriptor, time, seq_num, data, timestamps, uid):
+def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
+                 validate):
     """Create an event in metadatastore database backend
 
     .. warning
@@ -633,11 +633,13 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     uid : str
         Globally unique id string provided to metadatastore
     """
+    if validate:
+        raise NotImplementedError("insert event validation not written yet")
     # convert data to storage format
     # make sure we really have a uid
     descriptor_uid = doc_or_uid_to_uid(descriptor)
 
-    col = _DB_SINGLETON._event_col
+    col = event_col
 
     event = dict(descriptor=descriptor_uid, uid=uid,
                  data=data, timestamps=timestamps, time=time,
@@ -654,7 +656,7 @@ BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
 'timestamps do not match:\n data: {}\ntimestamps:{}"""
 
 
-def bulk_insert_events(event_descriptor, events, validate=False):
+def bulk_insert_events(event_col, descriptor, events, validate):
     """Bulk insert many events
 
     Parameters
@@ -664,7 +666,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
         a Document/dict with a 'uid' key or a uid string
     events : iterable
        iterable of dicts matching the bs.Event schema
-    validate : bool, optional
+    validate : bool
        If it should be checked that each pair of data/timestamps
        dicts has identical keys
 
@@ -673,7 +675,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     ret : dict
         dictionary of details about the insertion
     """
-    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
 
     def event_factory():
         for ev in events:
@@ -690,7 +692,7 @@ def bulk_insert_events(event_descriptor, events, validate=False):
                           seq_num=ev['seq_num'])
             yield ev_out
 
-    bulk = _DB_SINGLETON._event_col.initialize_ordered_bulk_op()
+    bulk = event_col.initialize_ordered_bulk_op()
     for ev in event_factory():
         bulk.insert(ev)
 
@@ -710,7 +712,7 @@ def _transform_data(data, timestamps):
 
 # DATABASE RETRIEVAL ##########################################################
 
-def _format_time(search_dict):
+def _format_time(search_dict, tz):
     """Helper function to format the time arguments in a search dict
 
     Expects 'start_time' and 'stop_time'
@@ -721,9 +723,9 @@ def _format_time(search_dict):
     start_time = search_dict.pop('start_time', None)
     stop_time = search_dict.pop('stop_time', None)
     if start_time:
-        time_dict['$gte'] = _normalize_human_friendly_time(start_time)
+        time_dict['$gte'] = _normalize_human_friendly_time(start_time, tz)
     if stop_time:
-        time_dict['$lte'] = _normalize_human_friendly_time(stop_time)
+        time_dict['$lte'] = _normalize_human_friendly_time(stop_time, tz)
     if time_dict:
         search_dict['time'] = time_dict
 
@@ -742,7 +744,7 @@ _TS_FORMATS = [
 _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 
 
-def _normalize_human_friendly_time(val):
+def _normalize_human_friendly_time(val, tz):
     """Given one of :
     - string (in one of the formats below)
     - datetime (eg. datetime.datetime.now()), with or without tzinfo)
@@ -756,7 +758,6 @@ def _normalize_human_friendly_time(val):
     """
     # {} is placeholder for formats; filled in after def...
 
-    tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
     zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
     epoch = pytz.UTC.localize(datetime.datetime(1970, 1, 1))
     check = True
@@ -808,7 +809,7 @@ _normalize_human_friendly_time.__doc__ = (
     )
 
 
-def find_run_starts(**kwargs):
+def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     """Given search criteria, locate RunStart Documents.
 
     Parameters
@@ -851,15 +852,16 @@ def find_run_starts(**kwargs):
 
     """
     # now try rest of formatting
-    _format_time(kwargs)
-    col = _DB_SINGLETON._runstart_col
-    rs_objects = col.find(kwargs)
+    _format_time(kwargs, tz)
+    rs_objects = run_start_col.find(kwargs)
 
-    return (_cache_run_start(rs) for rs in rs_objects)
+    return (_cache_run_start(rs, run_start_cache) for rs in rs_objects)
 find_run_starts = find_run_starts
 
 
-def find_run_stops(run_start=None, **kwargs):
+def find_run_stops(start_col, start_cache,
+                   stop_col, stop_cache, tz,
+                   run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
     Parameters
@@ -895,15 +897,19 @@ def find_run_stops(run_start=None, **kwargs):
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
         kwargs['run_start'] = run_start_uid
-    _format_time(kwargs)
-    col = _DB_SINGLETON._runstop_col
+    _format_time(kwargs, tz)
+    col = stop_col
     run_stop = col.find(kwargs)
 
-    return (_cache_run_stop(rs) for rs in run_stop)
+    return (_cache_run_stop(rs, stop_cache, start_col, start_cache)
+            for rs in run_stop)
 find_run_stops = find_run_stops
 
 
-def find_descriptors(run_start=None, **kwargs):
+def find_descriptors(start_col, start_cache,
+                     descriptor_col, descriptor_cache,
+                     tz,
+                     run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -934,19 +940,22 @@ def find_descriptors(run_start=None, **kwargs):
         run_start_uid = doc_or_uid_to_uid(run_start)
         kwargs['run_start'] = run_start_uid
 
-    _format_time(kwargs)
+    _format_time(kwargs, tz)
 
-    col = _DB_SINGLETON._descriptor_col
+    col = descriptor_col
     event_descriptor_objects = col.find(kwargs)
 
     for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor)
+        yield _cache_descriptor(event_descriptor, descriptor_cache,
+                                start_col, start_cache)
 
 # TODO properly mark this as deprecated
 find_event_descriptors = find_descriptors
 
 
-def find_events(descriptor=None, **kwargs):
+def find_events(start_col, start_cache,
+                descriptor_col, descriptor_cache,
+                event_col, tz, descriptor=None, **kwargs):
     """Given search criteria, locate Event Documents.
 
     Parameters
@@ -980,8 +989,8 @@ def find_events(descriptor=None, **kwargs):
         descriptor_uid = doc_or_uid_to_uid(descriptor)
         kwargs['descriptor'] = descriptor_uid
 
-    _format_time(kwargs)
-    col = _DB_SINGLETON._event_col
+    _format_time(kwargs, tz)
+    col = event_col
     events = col.find(kwargs)
 
     for ev in events:
@@ -989,7 +998,9 @@ def find_events(descriptor=None, **kwargs):
         # pop the descriptor oid
         desc_uid = ev.pop('descriptor')
         # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor_given_uid(desc_uid)
+        ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
+                                                descriptor_cache,
+                                                start_col, start_cache)
 
         # wrap it our fancy dict
         ev = doc.Document('Event', ev)
