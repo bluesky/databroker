@@ -1,7 +1,7 @@
 from __future__ import print_function
 import warnings
 import six  # noqa
-from collections import deque
+from collections import deque, defaultdict
 from itertools import chain
 import pandas as pd
 import tzlocal
@@ -259,15 +259,30 @@ def _inspect_descriptor(descriptor):
     return is_external
 
 
-def fill_event(event):
+def fill_event(event, handler_registry=None, handler_overrides=None):
     """
     Populate events with externally stored data.
+
+    Parameters
+    ----------
+    event : document
+    handler_registry : dict, optional
+        mapping spec names (strings) to handlers (callable classes)
+    handler_overrides : dict, optional
+        mapping data keys (strings) to handlers (callable classes)
     """
+    if handler_overrides is None:
+        handler_overrides = {}
     is_external = _inspect_descriptor(event.descriptor)
+    mock_registries = {data_key: defaultdict(lambda: handler)
+                       for data_key, handler in handler_overrides.items()}
     for data_key, value in six.iteritems(event.data):
         if is_external.get(data_key, False):
-            # Retrieve a numpy array from filestore
-            event.data[data_key] = fs.retrieve(value)
+            if data_key not in handler_overrides:
+                event.data[data_key] = fs.retrieve(value, handler_registry)
+            else:
+                mock_registry = mock_registries[data_key]
+                event.data[data_key] = fs.retrieve(value, mock_registry)
 
 
 class Header(doc.Document):
@@ -307,7 +322,8 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-def get_events(headers, fields=None, fill=True):
+def get_events(headers, fields=None, fill=True, handler_registry=None,
+               handler_overrides=None):
     """
     Get Events from given run(s).
 
@@ -319,6 +335,10 @@ def get_events(headers, fields=None, fill=True):
         whitelist of field names of interest; if None, all are returned
     fill : bool, optional
         Whether externally-stored data should be filled in. Defaults to True
+    handler_registry : dict, optional
+        mapping filestore specs (strings) to handlers (callable classes)
+    handler_overrides : dict, optional
+        mapping data keys (strings) to handlers (callable classes)
 
     Yields
     ------
@@ -381,11 +401,12 @@ def get_events(headers, fields=None, fill=True):
                         event_timestamps[field] = stop['time']
                     # (else omit it from the events of this descriptor)
                 if fill:
-                    fill_event(event)
+                    fill_event(event, handler_registry, handler_overrides)
                 yield event
 
 
-def get_table(headers, fields=None, fill=True, convert_times=True):
+def get_table(headers, fields=None, fill=True, convert_times=True,
+              handler_registry=None, handler_overrides=None):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -400,6 +421,10 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
     convert_times : bool, optional
         Whether to convert times from float (seconds since 1970) to
         numpy datetime64, using pandas. True by default.
+    handler_registry : dict, optional
+        mapping filestore specs (strings) to handlers (callable classes)
+    handler_overrides : dict, optional
+        mapping data keys (strings) to handlers (callable classes)
 
     Returns
     -------
@@ -415,6 +440,9 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
         pass
     else:
         headers = [headers]
+
+    if handler_overrides is None:
+        handler_overrides = {}
 
     if fields is None:
         fields = []
@@ -454,7 +482,13 @@ def get_table(headers, fields=None, fill=True, convert_times=True):
                     logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk retrieve in FS
                     datum_uids = df[field]
-                    values = [fs.retrieve(value) for value in datum_uids]
+                    if field not in handler_overrides:
+                        values = [fs.retrieve(value) for value in datum_uids]
+                    else:
+                        handler = handler_overrides[field]
+                        mock_registry = defaultdict(lambda: handler)
+                        values = [fs.retrieve(value, mock_registry)
+                                  for value in datum_uids]
                     df[field] = values
             for field in extra_fields:
                 # Look in the descriptor, then start, then stop.
