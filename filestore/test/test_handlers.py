@@ -17,7 +17,8 @@ from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from filestore.handlers import HDFMapsEnergyHandler as HDFE
 from filestore.handlers import NpyFrameWise
-from filestore.path_only_handlers import AreaDetectorTiffPathOnlyHandler
+from filestore.path_only_handlers import (AreaDetectorTiffPathOnlyHandler,
+                                          RawHandler)
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
@@ -213,3 +214,8 @@ def _test_tiff_path_only(path, fname, fpp):
 def test_tiff_path_handler():
     yield _test_tiff_path_only, '/foo/', 'baz', 1
     yield _test_tiff_path_only, '/foo/', 'baz', 5
+
+def test_raw_handler():
+    h = RawHandler(a=1)
+    result = h(b=2)
+    assert_equal(result, ({'a': 1}, {'b': 2}))

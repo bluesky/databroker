@@ -23,3 +23,16 @@ class AreaDetectorTiffPathOnlyHandler(HandlerBase):
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
         return [self._template % (self._path, self._filename, n)
                 for n in range(start, stop)]
+
+
+class RawHandler(HandlerBase):
+    "Return (resoruce_dict, datum_dict) for debugging."
+    def __init__(self, *args, **kwargs):
+        if len(args) > 0:
+            raise ValueError("This handler does not accept positional args.")
+        self.resource_kwargs = kwargs
+
+    def __call__(self, *args, **kwargs):
+        if len(args) > 0:
+            raise ValueError("This handler does not accept positional args.")
+        return self.resource_kwargs, kwargs
