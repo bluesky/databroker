@@ -29,8 +29,8 @@ def db_connect(database, host, port):
 @contextmanager
 def handler_context(temp_handlers):
     """
-    Context manager for temporarily updating the global HandlerRegistry.
-    This is an alternative to passing HandlerRegistry objects in
+    Context manager for temporarily updating the global handler registry.
+    This is an alternative to passing a registry in
     as a kwarg.  The global registry is returned to it's prior state
     after the context manager exits.
 

@@ -111,13 +111,13 @@ def test_register_fail():
 
 
 def test_context_manager_replace():
-    test_reg = fsa._FS_SINGLETON.handler_reg
     with fsa.handler_context({'syn-mod': SynHandlerMod}):
-        assert_true(test_reg['syn-mod'] is SynHandlerMod)
+        assert_true(fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerMod)
         with fsa.handler_context({'syn-mod': SynHandlerEcho}):
-            assert_true(test_reg['syn-mod'] is SynHandlerEcho)
-        assert_true(test_reg['syn-mod'] is SynHandlerMod)
-    assert_false('syn-mod' in test_reg)
+            assert_true(fsa._FS_SINGLETON.handler_reg['syn-mod']
+                        is SynHandlerEcho)
+        assert_true(fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerMod)
+    assert_false('syn-mod' in fsa._FS_SINGLETON.handler_reg)
 
 
 def test_deregister():
