@@ -483,7 +483,8 @@ def get_table(headers, fields=None, fill=True, convert_times=True,
                     # TODO someday we will have bulk retrieve in FS
                     datum_uids = df[field]
                     if field not in handler_overrides:
-                        values = [fs.retrieve(value) for value in datum_uids]
+                        values = [fs.retrieve(value, handler_registry)
+                                  for value in datum_uids]
                     else:
                         handler = handler_overrides[field]
                         mock_registry = defaultdict(lambda: handler)
