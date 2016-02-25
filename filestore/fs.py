@@ -24,7 +24,9 @@ try:
     from collections import ChainMap as _ChainMap
 except ImportError:
     class _ChainMap(object):
-        def __init__(self, primary, fallback):
+        def __init__(self, primary, fallback=None):
+            if fallback is None:
+                fallback = {}
             self.fallback = fallback
             self.primary = primary
 
@@ -58,7 +60,7 @@ except ImportError:
             if m is None:
                 m = {}
 
-            return _ChainMap(self, m)
+            return _ChainMap(m, self)
 
 
 class FileStoreRO(object):
@@ -81,7 +83,7 @@ class FileStoreRO(object):
         if handler_reg is None:
             handler_reg = {}
 
-        self.handler_reg = handler_reg
+        self.handler_reg = _ChainMap(handler_reg)
 
         self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
         self._handler_cache = boltons.cacheutils.LRU()
@@ -134,7 +136,7 @@ class FileStoreRO(object):
     @contextmanager
     def handler_context(self, temp_handlers):
         stash = self.handler_reg
-        self.handler_reg = _ChainMap(temp_handlers, self.handler_reg)
+        self.handler_reg = self.handler_reg.new_child(temp_handlers)
         try:
             yield self
         finally:
