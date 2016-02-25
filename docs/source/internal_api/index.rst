@@ -16,7 +16,6 @@ Handler Management
 .. autosummary::
     :toctree: generated/
 
-   HandlerRegistry
    get_spec_handler
 
 Data Retrieval

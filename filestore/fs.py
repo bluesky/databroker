@@ -12,13 +12,40 @@ from bson import ObjectId
 
 import boltons.cacheutils
 
-from .handlers_base import HandlerRegistry, DuplicateHandler
+from .handlers_base import DuplicateHandler
 from .core import (bulk_insert_datum as _bulk_insert_datum,
                    insert_datum as _insert_datum,
                    insert_resource as _insert_resource,
                    get_datum as _get_datum)
 
 logger = logging.getLogger(__name__)
+
+class _ChainMap(object):
+    def __init__(self, fallback, primary):
+        self.fallback = fallback
+        self.primary = primary
+
+    def __getitem__(self, k):
+        try:
+            return self.primary[k]
+        except KeyError:
+            return self.fallback[k]
+
+    def __setitem__(self, k, v):
+        self.primary[k] = v
+
+    def __contains__(self, k):
+        return k in self.primary or k in self.fallback
+
+    def __delitem__(self, k):
+        del self.primary[k]
+
+    def pop(self, k, v):
+        return self.primary.pop(k, v)
+
+    @property
+    def maps(self):
+        return [self.primary, self.fallback]
 
 
 class FileStoreRO(object):
@@ -38,8 +65,10 @@ class FileStoreRO(object):
     def __init__(self, config, handler_reg=None):
         self.config = config
 
-        self.handler_reg = HandlerRegistry(
-            handler_reg if handler_reg is not None else {})
+        if handler_reg is None:
+            handler_reg = {}
+
+        self.handler_reg = handler_reg
 
         self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
         self._handler_cache = boltons.cacheutils.LRU()
@@ -71,17 +100,18 @@ class FileStoreRO(object):
                           logger)
 
     def register_handler(self, key, handler, overwrite=False):
-        try:
-            self.handler_reg.register_handler(key, handler)
-        except DuplicateHandler:
-            if overwrite:
-                self.deregister_handler(key)
-                self.register_handler(key, handler)
-            else:
-                raise
+        if (not overwrite) and (key in self.handler_reg):
+            if self.handler_reg[key] is handler:
+                return
+            raise DuplicateHandler(
+                "You are trying to register a second handler "
+                "for spec {}, {}".format(key, self))
+
+        self.deregister_handler(key)
+        self.handler_reg[key] = handler
 
     def deregister_handler(self, key):
-        handler = self.handler_reg.deregister_handler(key)
+        handler = self.handler_reg.pop(key, None)
         if handler is not None:
             name = handler.__name__
             for k in list(self._handler_cache):
@@ -90,22 +120,18 @@ class FileStoreRO(object):
 
     @contextmanager
     def handler_context(self, temp_handlers):
-        remove_list = []
-        replace_list = []
-        for k, v in six.iteritems(temp_handlers):
-            if k not in self.handler_reg:
-                remove_list.append(k)
-            else:
-                old_h = self.handler_reg.pop(k)
-                replace_list.append((k, old_h))
-            self.register_handler(k, v)
-
-        yield self
-        for k in remove_list:
-            self.deregister_handler(k)
-        for k, v in replace_list:
-            self.deregister_handler(k)
-            self.register_handler(k, v)
+        stash = self.handler_reg
+        self.handler_reg = _ChainMap(self.handler_reg, temp_handlers)
+        try:
+            yield self
+        finally:
+            poped_reg = self.handler_reg.maps[0]
+            self.handler_reg = stash
+            for handler in poped_reg.values():
+                name = handler.__name__
+                for k in list(self._handler_cache):
+                    if k[1] == name:
+                        del self._handler_cache[k]
 
     @property
     def _db(self):
@@ -158,17 +184,19 @@ class FileStoreRO(object):
             document returns the externally stored data
 
         """
-        hr = self.handler_reg
-
-        handle_registry = hr
-
         resource = self._resource_cache[resource]
+
         h_cache = self._handler_cache
+
         spec = resource['spec']
-        handler = handle_registry[spec]
+        handler = self.handler_reg[spec]
         key = (str(resource['_id']), handler.__name__)
-        if key in h_cache:
+
+        try:
             return h_cache[key]
+        except KeyError:
+            pass
+
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
         ret = handler(rpath, **kwargs)
