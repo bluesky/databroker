@@ -14,16 +14,13 @@ import numpy as np
 
 import doct as doc
 
+from .core import NoRunStop, NoEventDescriptors
 
 logger = logging.getLogger(__name__)
 
-
-class NoRunStop(Exception):
-    pass
-
-
-class NoEventDescriptors(Exception):
-    pass
+# put back in some global state to support the old schema without
+# having to re-implement everything to take two caches + a version
+_UID_TO_OID_MAP = dict()
 
 
 def doc_or_uid_to_uid(doc_or_uid):
@@ -42,7 +39,10 @@ def doc_or_uid_to_uid(doc_or_uid):
 
     """
     if not isinstance(doc_or_uid, six.string_types):
-        doc_or_uid = doc_or_uid['uid']
+        try:
+            doc_or_uid = doc_or_uid['uid']
+        except AttributeError:
+            return doc_or_uid
     return doc_or_uid
 
 
@@ -78,6 +78,7 @@ def _cache_run_start(run_start, run_start_cache):
 
     run_start_cache[run_start['uid']] = run_start
     run_start_cache[oid] = run_start
+    _UID_TO_OID_MAP[run_start['uid']] = oid
     return run_start
 
 
@@ -117,6 +118,7 @@ def _cache_run_stop(run_stop, run_stop_cache,
 
     run_stop_cache[run_stop['uid']] = run_stop
     run_stop_cache[oid] = run_stop
+    _UID_TO_OID_MAP[run_stop['uid']] = oid
 
     return run_stop
 
@@ -158,6 +160,7 @@ def _cache_descriptor(descriptor, descritor_cache,
 
     descritor_cache[descriptor['uid']] = descriptor
     descritor_cache[oid] = descriptor
+    _UID_TO_OID_MAP[descriptor['uid']] = oid
 
     return descriptor
 
@@ -186,7 +189,10 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
         return run_start_cache[uid]
     except KeyError:
         pass
-    run_start = run_start_col.find_one({'uid': uid})
+    if isinstance(uid, six.string_types):
+        run_start = run_start_col.find_one({'uid': uid})
+    else:
+        run_start = run_start_col.find_one({'_id': uid})
     return _cache_run_start(run_start, run_start_cache)
 
 
@@ -216,8 +222,10 @@ def run_stop_given_uid(uid, run_stop_col, run_stop_cache,
     except KeyError:
         pass
     # get the raw run_stop
-    run_stop = run_stop_col.find_one({'uid': uid})
-
+    if isinstance(uid, six.string_types):
+        run_stop = run_stop_col.find_one({'uid': uid})
+    else:
+        run_stop = run_stop_col.find_one({'_id': uid})
     return _cache_run_stop(run_stop, run_stop_cache,
                            run_start_col, run_start_cache)
 
@@ -246,8 +254,10 @@ def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
         return descriptor_cache[uid]
     except KeyError:
         pass
-    descriptor = descriptor_col.find_one({'uid': uid})
-
+    if isinstance(uid, six.string_types):
+        descriptor = descriptor_col.find_one({'uid': uid})
+    else:
+        descriptor = descriptor_col.find_one({'_id': uid})
     return _cache_descriptor(descriptor, descriptor_cache, run_start_col,
                              run_start_cache)
 
@@ -275,7 +285,10 @@ def stop_by_start(run_start, run_stop_col, run_stop_cache,
         If no RunStop document exists for the given RunStart
     """
     run_start_uid = doc_or_uid_to_uid(run_start)
-    run_stop = run_stop_col.find_one({'run_start': run_start_uid})
+    run_start = run_start_given_uid(run_start_uid, run_start_col,
+                                    run_start_cache)
+    oid = _UID_TO_OID_MAP[run_start_uid]
+    run_stop = run_stop_col.find_one({'run_start_id': oid})
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
@@ -310,7 +323,11 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
 
     # query the database for any event descriptors which
     # refer to the given run_start
-    descriptors = descriptor_col.find({'run_start': run_start_uid})
+    run_start = run_start_given_uid(run_start_uid, run_start_col,
+                                    run_start_cache)
+    oid = _UID_TO_OID_MAP[run_start_uid]
+    descriptors = descriptor_col.find({'run_start_id': oid})
+
     # loop over the found documents, cache, and dereference
     rets = [_cache_descriptor(descriptor, descriptor_cache,
                               run_start_col, run_start_cache)
@@ -347,14 +364,19 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       descriptor_cache, run_start_col,
                                       run_start_cache)
     col = event_col
-    ev_cur = col.find({'descriptor': descriptor_uid}, sort=[('time', 1)])
+    oid = _UID_TO_OID_MAP[descriptor_uid]
+    ev_cur = col.find({'descriptor_id': oid}, sort=[('time', 1)])
 
     data_keys = descriptor['data_keys']
     for ev in ev_cur:
         # ditch the ObjectID
         del ev['_id']
-
-        # replace descriptor with the defererenced descriptor
+        # maybe ditch the descriptor oid
+        del ev['descriptor_id']
+        data = ev.pop('data')
+        ev['timestamps'] = {k: v[1] for k, v in data.items()}
+        ev['data'] = {k: v[0] for k, v in data.items()}
+        # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
         for k, v in ev['data'].items():
             _dk = data_keys[k]
@@ -539,7 +561,8 @@ def insert_run_stop(run_start_col, run_start_cache,
     try:
         stop_by_start(run_start_uid,
                       run_stop_col, run_stop_cache,
-                      run_start_col, run_start_cache)
+                      run_start_col, run_start_cache,
+                      ver=1)
     except NoRunStop:
         pass
     else:
@@ -862,7 +885,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     """
     # now try rest of formatting
     _format_time(kwargs, tz)
-    rs_objects = run_start_col.find(kwargs, sort=[('time', 1)])
+    rs_objects = run_start_col.find(kwargs)
 
     for rs in rs_objects:
         yield _cache_run_start(rs, run_start_cache)
@@ -905,11 +928,13 @@ def find_run_stops(start_col, start_cache,
     # normalize the input and get the run_start oid
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
-        kwargs['run_start'] = run_start_uid
+        run_start_given_uid(run_start_uid)
+        oid = _UID_TO_OID_MAP[run_start_uid]
+        kwargs['run_start_id'] = oid
 
     _format_time(kwargs, tz)
     col = stop_col
-    run_stop = col.find(kwargs, sort=[('time', 1)])
+    run_stop = col.find(kwargs)
 
     for rs in run_stop:
         yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
@@ -917,8 +942,7 @@ def find_run_stops(start_col, start_cache,
 
 def find_descriptors(start_col, start_cache,
                      descriptor_col, descriptor_cache,
-                     tz,
-                     run_start=None, **kwargs):
+                     tz, run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
 
     Parameters
@@ -947,12 +971,13 @@ def find_descriptors(start_col, start_cache,
     """
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
-        kwargs['run_start'] = run_start_uid
-
+        run_start_given_uid(run_start_uid)
+        oid = _UID_TO_OID_MAP[run_start_uid]
+        kwargs['run_start_id'] = oid
     _format_time(kwargs, tz)
 
     col = descriptor_col
-    event_descriptor_objects = col.find(kwargs, sort=[('time', 1)])
+    event_descriptor_objects = col.find(kwargs)
 
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache,
@@ -993,7 +1018,11 @@ def find_events(start_col, start_cache,
 
     if descriptor:
         descriptor_uid = doc_or_uid_to_uid(descriptor)
-        kwargs['descriptor'] = descriptor_uid
+        descriptor_given_uid(descriptor_uid, descriptor_col,
+                             descriptor_cache, start_col,
+                             start_cache)
+        oid = _UID_TO_OID_MAP[descriptor_uid]
+        kwargs['descriptor_id'] = oid
 
     _format_time(kwargs, tz)
     col = event_col
@@ -1002,7 +1031,7 @@ def find_events(start_col, start_cache,
     for ev in events:
         ev.pop('_id', None)
         # pop the descriptor oid
-        desc_uid = ev.pop('descriptor')
+        desc_uid = ev.pop('descriptor_id')
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
                                                 descriptor_cache,

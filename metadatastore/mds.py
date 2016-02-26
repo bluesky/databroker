@@ -6,6 +6,10 @@ import pymongo
 from pymongo import MongoClient
 import boltons.cacheutils
 from . import core
+from . import core_v0
+
+_API_MAP = {0: core_v0,
+            1: core}
 
 
 class MDSRO(object):
@@ -24,7 +28,19 @@ class MDSRO(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
+        self._api = None
         self.version = version
+
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, val):
+        if self._api is not None:
+            raise RuntimeError("Can not change api version at runtime")
+        self._api = _API_MAP[val]
+        self._version = val
 
     def disconnect(self):
 
@@ -149,8 +165,8 @@ class MDSRO(object):
             The RunStart document.
 
         """
-        return core.run_start_given_uid(uid, self._runstart_col,
-                                        self._RUNSTART_CACHE)
+        return self._api.run_start_given_uid(uid, self._runstart_col,
+                                             self._RUNSTART_CACHE)
 
     def run_stop_given_uid(self, uid):
         """Given a uid, return the RunStop document
@@ -166,11 +182,11 @@ class MDSRO(object):
             The RunStop document.
 
         """
-        return core.run_stop_given_uid(uid,
-                                       self._runstop_col,
-                                       self._RUNSTOP_CACHE,
-                                       self._runstart_col,
-                                       self._RUNSTART_CACHE)
+        return self._api.run_stop_given_uid(uid,
+                                            self._runstop_col,
+                                            self._RUNSTOP_CACHE,
+                                            self._runstart_col,
+                                            self._RUNSTART_CACHE)
 
     def descriptor_given_uid(self, uid):
         """Given a uid, return the EventDescriptor document
@@ -185,10 +201,10 @@ class MDSRO(object):
         descriptor : doc.Document
             The EventDescriptor document fully de-referenced
         """
-        return core.descriptor_given_uid(uid, self._descriptor_col,
-                                         self._DESCRIPTOR_CACHE,
-                                         self._runstart_col,
-                                         self._RUNSTART_CACHE)
+        return self._api.descriptor_given_uid(uid, self._descriptor_col,
+                                              self._DESCRIPTOR_CACHE,
+                                              self._runstart_col,
+                                              self._RUNSTART_CACHE)
 
     def stop_by_start(self, run_start):
         """Given a RunStart return it's RunStop
@@ -211,12 +227,11 @@ class MDSRO(object):
         NoRunStop
             If no RunStop document exists for the given RunStart
         """
-        return core.stop_by_start(run_start,
-                                  self._runstop_col,
-                                  self._RUNSTOP_CACHE,
-                                  self._runstart_col,
-                                  self._RUNSTART_CACHE,
-                                  self.version)
+        return self._api.stop_by_start(run_start,
+                                       self._runstop_col,
+                                       self._RUNSTOP_CACHE,
+                                       self._runstart_col,
+                                       self._RUNSTART_CACHE)
 
     def descriptors_by_start(self, run_start):
         """Given a RunStart return a list of it's descriptors
@@ -239,12 +254,11 @@ class MDSRO(object):
         NoEventDescriptors
             If no EventDescriptor documents exist for the given RunStart
         """
-        return core.descriptors_by_start(run_start,
-                                         self._descriptor_col,
-                                         self._DESCRIPTOR_CACHE,
-                                         self._runstart_col,
-                                         self._RUNSTART_CACHE,
-                                         self.version)
+        return self._api.descriptors_by_start(run_start,
+                                              self._descriptor_col,
+                                              self._DESCRIPTOR_CACHE,
+                                              self._runstart_col,
+                                              self._RUNSTART_CACHE)
 
     def get_events_generator(self, descriptor):
         """A generator which yields all events from the event stream
@@ -261,13 +275,13 @@ class MDSRO(object):
             All events for the given EventDescriptor from oldest to
             newest
         """
-        evs = core.get_events_generator(descriptor,
-                                        self._event_col,
-                                        self._descriptor_col,
-                                        self._DESCRIPTOR_CACHE,
-                                        self._runstart_col,
-                                        self._RUNSTART_CACHE,
-                                        self.version)
+        evs = self._api.get_events_generator(descriptor,
+                                             self._event_col,
+                                             self._descriptor_col,
+                                             self._DESCRIPTOR_CACHE,
+                                             self._runstart_col,
+                                             self._RUNSTART_CACHE)
+
         # when we drop 2.7, this can be
         # yield from evs
         for ev in evs:
@@ -298,12 +312,12 @@ class MDSRO(object):
             The timestamps of each of the measurements as dict of lists.  Same
             keys as `data_table`.
         """
-        return core.get_events_table(descriptor, self._event_col,
-                                     self._descriptor_col,
-                                     self._DESCRIPTOR_CACHE,
-                                     self._runstart_col,
-                                     self._RUNSTART_CACHE,
-                                     self.version)
+        return self._api.get_events_table(descriptor,
+                                          self._event_col,
+                                          self._descriptor_col,
+                                          self._DESCRIPTOR_CACHE,
+                                          self._runstart_col,
+                                          self._RUNSTART_CACHE)
 
     def find_run_starts(self, **kwargs):
         """Given search criteria, locate RunStart Documents.
@@ -347,10 +361,10 @@ class MDSRO(object):
         ...                stop_time=time.time())
 
         """
-        gen = core.find_run_starts(self._runstart_col,
-                                   self._RUNSTART_CACHE,
-                                   self.config['timezone'],
-                                   **kwargs)
+        gen = self._api.find_run_starts(self._runstart_col,
+                                        self._RUNSTART_CACHE,
+                                        self.config['timezone'],
+                                        **kwargs)
         for rs in gen:
             yield rs
 
@@ -385,13 +399,12 @@ class MDSRO(object):
         run_stop : doc.Document
             The requested RunStop documents
         """
-        gen = core.find_run_stops(self._runstart_col,
-                                  self._RUNSTART_CACHE,
-                                  self._runstop_col,
-                                  self._RUNSTOP_CACHE,
-                                  self.config['timezone'],
-                                  self.version,
-                                  **kwargs)
+        gen = self._api.find_run_stops(self._runstart_col,
+                                       self._RUNSTART_CACHE,
+                                       self._runstop_col,
+                                       self._RUNSTOP_CACHE,
+                                       self.config['timezone'],
+                                       **kwargs)
         for rs in gen:
             yield rs
 
@@ -422,13 +435,12 @@ class MDSRO(object):
         descriptor : doc.Document
             The requested EventDescriptor
         """
-        gen = core.find_descriptors(self._runstart_col,
-                                    self._RUNSTART_CACHE,
-                                    self._descriptor_col,
-                                    self._DESCRIPTOR_CACHE,
-                                    self.config['timezone'],
-                                    self.version,
-                                    **kwargs)
+        gen = self._api.find_descriptors(self._runstart_col,
+                                         self._RUNSTART_CACHE,
+                                         self._descriptor_col,
+                                         self._DESCRIPTOR_CACHE,
+                                         self.config['timezone'],
+                                         **kwargs)
         for desc in gen:
             yield desc
 
@@ -458,14 +470,13 @@ class MDSRO(object):
         -------
         events : iterable of doc.Document objects
         """
-        gen = core.find_events(self._runstart_col,
-                               self._RUNSTART_CACHE,
-                               self._descriptor_col,
-                               self._DESCRIPTOR_CACHE,
-                               self._event_col,
-                               self.config['timezone'],
-                               self.version,
-                               **kwargs)
+        gen = self._api.find_events(self._runstart_col,
+                                    self._RUNSTART_CACHE,
+                                    self._descriptor_col,
+                                    self._DESCRIPTOR_CACHE,
+                                    self._event_col,
+                                    self.config['timezone'],
+                                    **kwargs)
         for ev in gen:
             yield ev
 
@@ -483,9 +494,9 @@ class MDSRO(object):
            The requested RunStart documents
         """
 
-        for ev in core.find_last(self._runstart_col,
-                                 self._RUNSTART_CACHE,
-                                 num=num):
+        for ev in self._api.find_last(self._runstart_col,
+                                      self._RUNSTART_CACHE,
+                                      num=num):
             yield ev
 
 
@@ -521,6 +532,8 @@ class MDS(MDSRO):
             uid of the inserted document.  Use `run_start_given_uid` to get
             the full document.
         '''
+        if self.version == 0:
+            raise NotImplementedError("Can not create documents of v0 schema")
         return core.insert_run_start(self._runstart_col,
                                      self._RUNSTART_CACHE,
                                      time, scan_id=scan_id,
@@ -559,6 +572,8 @@ class MDS(MDSRO):
         RuntimeError
             Only one RunStop per RunStart, raises if you try to insert a second
         """
+        if self.version == 0:
+            raise NotImplementedError("Can not create documents of v0 schema")
         return core.insert_run_stop(self._runstart_col,
                                     self._RUNSTART_CACHE,
                                     self._runstop_col,
@@ -591,6 +606,8 @@ class MDS(MDSRO):
         descriptor : str
             uid of inserted Document
         """
+        if self.version == 0:
+            raise NotImplementedError("Can not create documents of v0 schema")
         return core.insert_descriptor(self._runstart_col,
                                       self._RUNSTART_CACHE,
                                       self._descriptor_col,
@@ -628,6 +645,8 @@ class MDS(MDSRO):
         uid : str
             Globally unique id string provided to metadatastore
         """
+        if self.version == 0:
+            raise NotImplementedError("Can not create documents of v0 schema")
         return core.insert_event(self._event_col,
                                  descriptor=descriptor,
                                  time=time, seq_num=seq_num,
@@ -637,6 +656,8 @@ class MDS(MDSRO):
                                  validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate):
+        if self.version == 0:
+            raise NotImplementedError("Can not create documents of v0 schema")
         return core.bulk_insert_events(self._event_col,
                                        descriptor=descriptor,
                                        events=events,
