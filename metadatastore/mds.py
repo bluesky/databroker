@@ -346,11 +346,8 @@ class MDSRO(object):
                                    self._RUNSTART_CACHE,
                                    self.config['timezone'],
                                    **kwargs)
-        if six.PY2:
-            for rs in gen:
-                yield gen
-        else:
-            yield from gen
+        for rs in gen:
+            yield rs
 
     def find_run_stops(self, **kwargs):
         """Given search criteria, locate RunStop Documents.
@@ -389,11 +386,8 @@ class MDSRO(object):
                                   self._RUNSTOP_CACHE,
                                   self.config['timezone'],
                                   **kwargs)
-        if six.PY2:
-            for rs in gen:
-                yield rs
-        else:
-            yield from gen
+        for rs in gen:
+            yield rs
 
     def find_descriptors(self, **kwargs):
         """Given search criteria, locate EventDescriptor Documents.
@@ -428,11 +422,8 @@ class MDSRO(object):
                                     self._DESCRIPTOR_CACHE,
                                     self.config['timezone'],
                                     **kwargs)
-        if six.PY2:
-            for desc in gen:
-                yield desc
-        else:
-            yield from gen
+        for desc in gen:
+            yield desc
 
     def find_events(self, **kwargs):
         """Given search criteria, locate Event Documents.
@@ -467,11 +458,8 @@ class MDSRO(object):
                                self._event_col,
                                self.config['timezone'],
                                **kwargs)
-        if six.PY2:
-            for ev in gen:
-                yield ev
-        else:
-            yield from gen
+        for ev in gen:
+            yield ev
 
     def find_last(self, num=1):
         """Locate the last `num` RunStart Documents
@@ -486,15 +474,11 @@ class MDSRO(object):
         run_start doc.Document
            The requested RunStart documents
         """
-        if six.PY2:
-            for ev in core.find_last(self._runstart_col,
-                                     self._RUNSTART_CACHE,
-                                     num=num):
-                yield ev
-        else:
-            yield from core.find_last(self._runstart_col,
-                                      self._RUNSTART_CACHE,
-                                      num=num)
+
+        for ev in core.find_last(self._runstart_col,
+                                 self._RUNSTART_CACHE,
+                                 num=num):
+            yield ev
 
 
 class MDS(MDSRO):

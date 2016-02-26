@@ -178,11 +178,8 @@ def get_events_generator(descriptor):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    if six.PY2:
-        for ev in _DB_SINGLETON.get_events_generator(descriptor):
-            yield ev
-    else:
-        yield from _DB_SINGLETON.get_events_generator(descriptor)
+    for ev in _DB_SINGLETON.get_events_generator(descriptor):
+        yield ev
 
 
 def get_events_table(descriptor):
@@ -412,11 +409,9 @@ def find_run_starts(**kwargs):
 
     """
     gen = _DB_SINGLETON.find_run_starts(**kwargs)
-    if six.PY2:
-        for rs in gen:
-            yield rs
-    else:
-        yield from gen
+
+    for rs in gen:
+        yield rs
 find_runstarts = find_run_starts
 
 
@@ -452,11 +447,8 @@ def find_run_stops(run_start=None, **kwargs):
         The requested RunStop documents
     """
     gen = _DB_SINGLETON.find_run_stops(run_start=run_start, **kwargs)
-    if six.PY2:
-        for rs in gen:
-            yield rs
-    else:
-        yield from gen
+    for rs in gen:
+        yield rs
 find_runstops = find_run_stops
 
 
@@ -487,12 +479,8 @@ def find_descriptors(run_start=None, **kwargs):
     descriptor : doc.Document
         The requested EventDescriptor
     """
-    if six.PY2:
-        for d in _DB_SINGLETON.find_descriptors(run_start=run_start, **kwargs):
-            yield d
-    else:
-        yield from _DB_SINGLETON.find_descriptors(
-            run_start=run_start, **kwargs)
+    for d in _DB_SINGLETON.find_descriptors(run_start=run_start, **kwargs):
+        yield d
 
 
 # TODO properly mark this as deprecated
@@ -527,11 +515,8 @@ def find_events(descriptor=None, **kwargs):
     """
     gen = _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs)
 
-    if six.PY2:
-        for ev in gen:
-            yield ev
-    else:
-        yield from gen
+    for ev in gen:
+        yield ev
 
 
 def find_last(num=1):
@@ -547,8 +532,5 @@ def find_last(num=1):
     run_start doc.Document
        The requested RunStart documents
     """
-    if six.PY2:
-        for ev in _DB_SINGLETON.find_last(num):
-            yield ev
-    else:
-        yield from _DB_SINGLETON.find_last(num)
+    for ev in _DB_SINGLETON.find_last(num):
+        yield ev
