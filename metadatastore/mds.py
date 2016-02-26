@@ -9,7 +9,7 @@ from . import core
 
 
 class MDSRO(object):
-    def __init__(self, config):
+    def __init__(self, config, version=1):
         self._RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
         self._RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
         self._DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
@@ -24,7 +24,7 @@ class MDSRO(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
-        self.version = 1
+        self.version = version
 
     def disconnect(self):
 
