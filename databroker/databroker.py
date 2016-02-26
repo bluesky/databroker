@@ -474,9 +474,14 @@ def get_table(headers, fields=None, fill=True, convert_times=True,
                     pd.Series(times, index=seq_nums),
                     unit='s', utc=True).dt.tz_localize(TZ)
             df['time'] = times
-            for field in discard_fields:
-                logger.debug('Discarding field %s', field)
-                del df[field]
+            for field, values in six.iteritems(data):
+                if field in discard_fields:
+                    logger.debug('Discarding field %s', field)
+                    continue
+                df[field] = values
+            if list(df.columns) == ['time']:
+                # no content
+                continue
             for field in df.columns:
                 if is_external.get(field) and fill:
                     logger.debug('filling data for %s', field)
