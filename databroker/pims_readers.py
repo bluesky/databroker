@@ -65,8 +65,16 @@ class Images(FramesSequence):
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
         example_frame = retrieve(first_uid, self.handler_registry)
-        self._dtype = example_frame.dtype
-        self._shape = example_frame.shape
+        # Try to duck-type as a numpy array, but fall back as a general
+        # Python object.
+        try:
+            self._dtype = example_frame.dtype
+        except AttributeError:
+            self._dtype = type(example_frame)
+        try:
+            self._shape = example_frame.shape
+        except AttributeError:
+            self._shape = None  # as in, unknown
 
     @property
     def pixel_type(self):
@@ -81,4 +89,8 @@ class Images(FramesSequence):
 
     def get_frame(self, i):
         img = retrieve(self._datum_uids[i], self.handler_registry)
-        return Frame(img, frame_no=i)
+        if hasattr(img, '__array__'):
+            return Frame(img, frame_no=i)
+        else:
+            # some non-numpy-like type
+            return img
