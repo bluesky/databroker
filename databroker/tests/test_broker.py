@@ -197,6 +197,14 @@ def test_uid_lookup():
     assert_raises(ValueError, lambda: db[uid[0]])
 
 
+def test_find():
+    insert_run_start(time=100., scan_id=1,
+                     owner='nedbrainard', beamline_id='example',
+                     uid=str(uuid.uuid4()))
+    result = db(start_time=0, stop_time=ttime.time())
+    assert len(list(result)) > 0
+
+
 def test_data_key():
     rs1_uid = insert_run_start(time=100., scan_id=1,
                                owner='nedbrainard', beamline_id='example',
