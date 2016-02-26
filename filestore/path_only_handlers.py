@@ -26,13 +26,12 @@ class AreaDetectorTiffPathOnlyHandler(HandlerBase):
 
 
 class RawHandler(HandlerBase):
-    "Return (resoruce_dict, datum_dict) for debugging."
-    def __init__(self, *args, **kwargs):
-        if len(args) > 0:
-            raise ValueError("This handler does not accept positional args.")
+    "Return (filepath, resource_dict, datum_dict) for debugging."
+    def __init__(self, fpath, **kwargs):
+        self.fpath = fpath
         self.resource_kwargs = kwargs
 
     def __call__(self, *args, **kwargs):
         if len(args) > 0:
             raise ValueError("This handler does not accept positional args.")
-        return self.resource_kwargs, kwargs
+        return self.fpath, self.resource_kwargs, kwargs
