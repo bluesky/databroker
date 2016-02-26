@@ -5,7 +5,7 @@ import logging
 from itertools import count
 import time as ttime
 from databroker import (DataBroker as db, get_events, get_table, stream,
-                        get_fields, restream, process)
+                        get_fields, restream, process, get_images)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -19,12 +19,22 @@ from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
 
+class DummyHandler(object):
+    def __init__(*args, **kwargs):
+        pass
+
+    def __call__(*args, **kwrags):
+        return 'dummy'
+
+
 blc = None
+image_example_uid = None
 
 
 def setup():
     mds_setup()
     fs_setup()
+    global image_example_uid
 
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
@@ -42,6 +52,7 @@ def setup():
             temperature_ramp.run(run_start_uid=rs, make_run_stop=(i != 0))
             if i == 0:
                 # only need to do images once, it takes a while...
+                image_example_uid = rs
                 image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
 
 
@@ -329,3 +340,26 @@ def test_configuration():
     assert 'exit_status' in ev['data']
     assert ev['data']['exit_status'] == 'success'
     assert 'exit_status' in ev['timestamps']
+
+
+def test_handler_options():
+    h = db[image_example_uid]
+    list(get_events(h))
+    list(get_table(h))
+    list(get_images(h, 'img'))
+    res = list(get_events(h, fields=['img'],
+                          handler_registry={'npy': DummyHandler}))
+    res = [ev for ev in res if 'img' in ev['data']]
+    res[0]['data']['img'] == 'dummy'
+    res = list(get_events(h, fields=['img'],
+                          handler_overrides={'image': DummyHandler}))
+    res = [ev for ev in res if 'img' in ev['data']]
+    res[0]['data']['img'] == 'dummy'
+    res = get_table(h, ['img'], handler_registry={'npy': DummyHandler})
+    assert res['img'].iloc[0] == 'dummy'
+    res = get_table(h, ['img'], handler_overrides={'img': DummyHandler})
+    assert res['img'].iloc[0] == 'dummy'
+    res = get_images(h, 'img', handler_registry={'npy': DummyHandler})
+    assert res[0] == 'dummy'
+    res = get_images(h, 'img', handler_override=DummyHandler)
+    assert res[0] == 'dummy'
