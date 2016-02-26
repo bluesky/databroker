@@ -216,6 +216,6 @@ def test_tiff_path_handler():
     yield _test_tiff_path_only, '/foo/', 'baz', 5
 
 def test_raw_handler():
-    h = RawHandler(a=1)
+    h = RawHandler('path', a=1)
     result = h(b=2)
-    assert_equal(result, ({'a': 1}, {'b': 2}))
+    assert_equal(result, ('path', {'a': 1}, {'b': 2}))
