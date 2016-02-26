@@ -300,6 +300,204 @@ class MDSRO(object):
                                      self._runstart_col,
                                      self._RUNSTART_CACHE)
 
+    def find_run_starts(self, **kwargs):
+        """Given search criteria, locate RunStart Documents.
+
+        Parameters
+        ----------
+        start_time : time-like, optional
+            time-like representation of the earliest time that a RunStart
+            was created. Valid options are:
+               - timestamps --> time.time()
+               - '2015'
+               - '2015-01'
+               - '2015-01-30'
+               - '2015-03-30 03:00:00'
+               - datetime.datetime.now()
+        stop_time : time-like, optional
+            timestamp of the latest time that a RunStart was created. See
+            docs for `start_time` for examples.
+        beamline_id : str, optional
+            String identifier for a specific beamline
+        project : str, optional
+            Project name
+        owner : str, optional
+            The username of the logged-in user when the scan was performed
+        scan_id : int, optional
+            Integer scan identifier
+
+        Returns
+        -------
+        rs_objects : iterable of doc.Document objects
+
+
+        Examples
+        --------
+        >>> find_run_starts(scan_id=123)
+        >>> find_run_starts(owner='arkilic')
+        >>> find_run_starts(start_time=1421176750, stop_time=time.time()})
+        >>> find_run_starts(start_time=1421176750, stop_time=time.time())
+
+        >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
+        ...                stop_time=time.time())
+
+        """
+        gen = core.find_run_starts(self._runstart_col,
+                                   self._RUNSTART_CACHE,
+                                   self.config['timezone'],
+                                   **kwargs)
+        if six.PY2:
+            for rs in gen:
+                yield gen
+        else:
+            yield from gen
+
+    def find_run_stops(self, **kwargs):
+        """Given search criteria, locate RunStop Documents.
+
+        Parameters
+        ----------
+        run_start : doc.Document or str, optional
+            The RunStart document or uid to get the corresponding run end for
+        start_time : time-like, optional
+            time-like representation of the earliest time that a RunStop
+            was created. Valid options are:
+               - timestamps --> time.time()
+               - '2015'
+               - '2015-01'
+               - '2015-01-30'
+               - '2015-03-30 03:00:00'
+               - datetime.datetime.now()
+        stop_time : time-like, optional
+            timestamp of the latest time that a RunStop was created. See
+            docs for `start_time` for examples.
+        exit_status : {'success', 'fail', 'abort'}, optional
+            provides information regarding the run success.
+        reason : str, optional
+            Long-form description of why the run was terminated.
+        uid : str, optional
+            Globally unique id string provided to metadatastore
+
+        Yields
+        ------
+        run_stop : doc.Document
+            The requested RunStop documents
+        """
+        gen = core.find_run_stops(self._runstart_col,
+                                  self._RUNSTART_CACHE,
+                                  self._runstop_col,
+                                  self._RUNSTOP_CACHE,
+                                  self.config['timezone'],
+                                  **kwargs)
+        if six.PY2:
+            for rs in gen:
+                yield rs
+        else:
+            yield from gen
+
+    def find_descriptors(self, **kwargs):
+        """Given search criteria, locate EventDescriptor Documents.
+
+        Parameters
+        ----------
+        run_start : doc.Document or str, optional
+            The RunStart document or uid to get the corresponding run end for
+        start_time : time-like, optional
+            time-like representation of the earliest time that an
+            EventDescriptor was created. Valid options are:
+               - timestamps --> time.time()
+               - '2015'
+               - '2015-01'
+               - '2015-01-30'
+               - '2015-03-30 03:00:00'
+               - datetime.datetime.now()
+        stop_time : time-like, optional
+            timestamp of the latest time that an EventDescriptor was created.
+            See docs for `start_time` for examples.
+        uid : str, optional
+            Globally unique id string provided to metadatastore
+
+        Yields
+        -------
+        descriptor : doc.Document
+            The requested EventDescriptor
+        """
+        gen = core.find_descriptors(self._runstart_col,
+                                    self._RUNSTART_CACHE,
+                                    self._descriptor_col,
+                                    self._DESCRIPTOR_CACHE,
+                                    self.config['timezone'],
+                                    **kwargs)
+        if six.PY2:
+            for desc in gen:
+                yield desc
+        else:
+            yield from gen
+
+    def find_events(self, **kwargs):
+        """Given search criteria, locate Event Documents.
+
+        Parameters
+        -----------
+        start_time : time-like, optional
+            time-like representation of the earliest time that an Event
+            was created. Valid options are:
+               - timestamps --> time.time()
+               - '2015'
+               - '2015-01'
+               - '2015-01-30'
+               - '2015-03-30 03:00:00'
+               - datetime.datetime.now()
+        stop_time : time-like, optional
+            timestamp of the latest time that an Event was created. See
+            docs for `start_time` for examples.
+        descriptor : doc.Document or str, optional
+           Find events for a given EventDescriptor
+        uid : str, optional
+            Globally unique id string provided to metadatastore
+
+        Returns
+        -------
+        events : iterable of doc.Document objects
+        """
+        gen = core.find_events(self._runstart_col,
+                               self._RUNSTART_CACHE,
+                               self._descriptor_col,
+                               self._DESCRIPTOR_CACHE,
+                               self._event_col,
+                               self.config['timezone'],
+                               **kwargs)
+        if six.PY2:
+            for ev in gen:
+                yield ev
+        else:
+            yield from gen
+
+    def find_last(self, num=1):
+        """Locate the last `num` RunStart Documents
+
+        Parameters
+        ----------
+        num : integer, optional
+            number of RunStart documents to return, default 1
+
+        Yields
+        ------
+        run_start doc.Document
+           The requested RunStart documents
+        """
+        if six.PY2:
+            for ev in core.find_last(self._runstart_col,
+                                     self._RUNSTART_CACHE,
+                                     num=num):
+                yield ev
+        else:
+            yield from core.find_last(self._runstart_col,
+                                      self._RUNSTART_CACHE,
+                                      num=num)
+
+
+class MDS(MDSRO):
     def insert_run_start(self, time, scan_id, beamline_id, uid,
                          owner='', group='', project='', **kwargs):
         '''Insert a Start document
@@ -451,156 +649,3 @@ class MDSRO(object):
                                        descriptor=descriptor,
                                        events=events,
                                        validate=validate)
-
-    def find_run_starts(self, **kwargs):
-        """Given search criteria, locate RunStart Documents.
-
-        Parameters
-        ----------
-        start_time : time-like, optional
-            time-like representation of the earliest time that a RunStart
-            was created. Valid options are:
-               - timestamps --> time.time()
-               - '2015'
-               - '2015-01'
-               - '2015-01-30'
-               - '2015-03-30 03:00:00'
-               - datetime.datetime.now()
-        stop_time : time-like, optional
-            timestamp of the latest time that a RunStart was created. See
-            docs for `start_time` for examples.
-        beamline_id : str, optional
-            String identifier for a specific beamline
-        project : str, optional
-            Project name
-        owner : str, optional
-            The username of the logged-in user when the scan was performed
-        scan_id : int, optional
-            Integer scan identifier
-
-        Returns
-        -------
-        rs_objects : iterable of doc.Document objects
-
-
-        Examples
-        --------
-        >>> find_run_starts(scan_id=123)
-        >>> find_run_starts(owner='arkilic')
-        >>> find_run_starts(start_time=1421176750, stop_time=time.time()})
-        >>> find_run_starts(start_time=1421176750, stop_time=time.time())
-
-        >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
-        ...                stop_time=time.time())
-
-        """
-        return core.find_run_starts(self._runstart_col,
-                                    self._RUNSTART_CACHE,
-                                    self.config['timezone'],
-                                    **kwargs)
-
-    def find_run_stops(self, **kwargs):
-        """Given search criteria, locate RunStop Documents.
-
-        Parameters
-        ----------
-        run_start : doc.Document or str, optional
-            The RunStart document or uid to get the corresponding run end for
-        start_time : time-like, optional
-            time-like representation of the earliest time that a RunStop
-            was created. Valid options are:
-               - timestamps --> time.time()
-               - '2015'
-               - '2015-01'
-               - '2015-01-30'
-               - '2015-03-30 03:00:00'
-               - datetime.datetime.now()
-        stop_time : time-like, optional
-            timestamp of the latest time that a RunStop was created. See
-            docs for `start_time` for examples.
-        exit_status : {'success', 'fail', 'abort'}, optional
-            provides information regarding the run success.
-        reason : str, optional
-            Long-form description of why the run was terminated.
-        uid : str, optional
-            Globally unique id string provided to metadatastore
-
-        Yields
-        ------
-        run_stop : doc.Document
-            The requested RunStop documents
-        """
-        return core.find_run_stops(self._runstart_col,
-                                   self._RUNSTART_CACHE,
-                                   self._runstop_col,
-                                   self._RUNSTOP_CACHE,
-                                   self.config['timezone'],
-                                   **kwargs)
-
-    def find_descriptors(self, **kwargs):
-        """Given search criteria, locate EventDescriptor Documents.
-
-        Parameters
-        ----------
-        run_start : doc.Document or str, optional
-            The RunStart document or uid to get the corresponding run end for
-        start_time : time-like, optional
-            time-like representation of the earliest time that an
-            EventDescriptor was created. Valid options are:
-               - timestamps --> time.time()
-               - '2015'
-               - '2015-01'
-               - '2015-01-30'
-               - '2015-03-30 03:00:00'
-               - datetime.datetime.now()
-        stop_time : time-like, optional
-            timestamp of the latest time that an EventDescriptor was created.
-            See docs for `start_time` for examples.
-        uid : str, optional
-            Globally unique id string provided to metadatastore
-
-        Yields
-        -------
-        descriptor : doc.Document
-            The requested EventDescriptor
-        """
-        return core.find_descriptors(self._runstart_col,
-                                     self._RUNSTART_CACHE,
-                                     self._descriptor_col,
-                                     self._DESCRIPTOR_CACHE,
-                                     self.config['timezone'],
-                                     **kwargs)
-
-    def find_events(self, **kwargs):
-        """Given search criteria, locate Event Documents.
-
-        Parameters
-        -----------
-        start_time : time-like, optional
-            time-like representation of the earliest time that an Event
-            was created. Valid options are:
-               - timestamps --> time.time()
-               - '2015'
-               - '2015-01'
-               - '2015-01-30'
-               - '2015-03-30 03:00:00'
-               - datetime.datetime.now()
-        stop_time : time-like, optional
-            timestamp of the latest time that an Event was created. See
-            docs for `start_time` for examples.
-        descriptor : doc.Document or str, optional
-           Find events for a given EventDescriptor
-        uid : str, optional
-            Globally unique id string provided to metadatastore
-
-        Returns
-        -------
-        events : iterable of doc.Document objects
-        """
-        return core.find_events(self._runstart_col,
-                                self._RUNSTART_CACHE,
-                                self._descriptor_col,
-                                self._DESCRIPTOR_CACHE,
-                                self._event_col,
-                                self.config['timezone'],
-                                **kwargs)

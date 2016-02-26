@@ -11,30 +11,13 @@ import pytz
 from . import conf
 from . import mds
 
-import doct as doc
 # API compatibility imports
-
 from .core import NoEventDescriptors, NoRunStop
 
 logger = logging.getLogger(__name__)
 
 
-# class _GS:
-#     MDS = None
-
-#     @classmethod
-#     def gcm(cls):
-#         if cls.MDS is None:
-#             cls.MDS =
-#         return cls.MDS
-
-_DB_SINGLETON = mds.MDSRO(conf.connection_config)
-# process local caches of 'header' documents these are storing object indexed
-# on ObjectId because that is how the reference fields are implemented.
-# Should move to uids asap
-_RUNSTART_CACHE = _DB_SINGLETON._RUNSTART_CACHE
-_RUNSTOP_CACHE = _DB_SINGLETON._RUNSTOP_CACHE
-_DESCRIPTOR_CACHE = _DB_SINGLETON._DESCRIPTOR_CACHE
+_DB_SINGLETON = mds.MDS(conf.connection_config)
 
 
 def doc_or_uid_to_uid(doc_or_uid):
@@ -80,110 +63,6 @@ def db_connect(database, host, port, timezone='US/Eastern', **kwargs):
     """
     return _DB_SINGLETON.db_connect(database=database, host=host, port=port,
                                     timezone=timezone, **kwargs)
-
-
-def _cache_run_start(run_start):
-    """De-reference and cache a RunStart document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
-
-    Parameters
-    ----------
-    run_start : dict
-        raw pymongo dictionary. This is expected to have
-        an entry `_id` with the ObjectId used by mongo.
-
-    Returns
-    -------
-    run_start : doc.Document
-        Document instance for this RunStart document.
-        The ObjectId has been stripped.
-    """
-    run_start = dict(run_start)
-    # TODO actually do this de-reference for documents that have it
-    # There is no known actually usage of this document and it is not being
-    # created going forward
-    run_start.pop('beamline_config_id', None)
-
-    # get the mongo ObjectID
-    run_start.pop('_id', None)
-
-    # convert the remaining document to a Document object
-    run_start = doc.Document('RunStart', run_start)
-
-    # populate cache and set up uid->oid mapping
-    _RUNSTART_CACHE[run_start['uid']] = run_start
-
-    return run_start
-
-
-def _cache_run_stop(run_stop):
-    """De-reference and cache a RunStop document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
-
-    Parameters
-    ----------
-    run_stop : dict
-        raw pymongo dictionary. This is expected to have
-        an entry `_id` with the ObjectId used by mongo.
-
-    Returns
-    -------
-    run_stop : doc.Document
-        Document instance for this RunStop document.
-        The ObjectId has been stripped.
-    """
-    run_stop = dict(run_stop)
-    # pop off the ObjectId of this document
-    run_stop.pop('_id', None)
-
-    # do the run-start de-reference
-    run_stop['run_start'] = run_start_given_uid(run_stop['run_start'])
-
-    # create the Document object
-    run_stop = doc.Document('RunStop', run_stop)
-
-    # update the cache and uid->oid mapping
-    _RUNSTOP_CACHE[run_stop['uid']] = run_stop
-
-    return run_stop
-
-
-def _cache_descriptor(descriptor):
-    """De-reference and cache a RunStop document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
-
-    Parameters
-    ----------
-    descriptor : dict
-        raw pymongo dictionary. This is expected to have
-        an entry `_id` with the ObjectId used by mongo.
-
-    Returns
-    -------
-    descriptor : doc.Document
-        Document instance for this EventDescriptor document.
-        The ObjectId has been stripped.
-    """
-    descriptor = dict(descriptor)
-    # pop the ObjectID
-    descriptor.pop('_id', None)
-
-    # do the run_start referencing
-    descriptor['run_start'] = run_start_given_uid(descriptor['run_start'])
-
-    # create the Document instance
-    descriptor = doc.Document('EventDescriptor', descriptor)
-
-    # update cache and setup uid->oid mapping
-    _DESCRIPTOR_CACHE[descriptor['uid']] = descriptor
-
-    return descriptor
 
 
 def run_start_given_uid(uid):
@@ -490,104 +369,6 @@ def bulk_insert_events(event_descriptor, events, validate=False):
 
 # DATABASE RETRIEVAL ##########################################################
 
-def _format_time(search_dict):
-    """Helper function to format the time arguments in a search dict
-
-    Expects 'start_time' and 'stop_time'
-
-    ..warning: Does in-place mutation of the search_dict
-    """
-    time_dict = {}
-    start_time = search_dict.pop('start_time', None)
-    stop_time = search_dict.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = _normalize_human_friendly_time(start_time)
-    if stop_time:
-        time_dict['$lte'] = _normalize_human_friendly_time(stop_time)
-    if time_dict:
-        search_dict['time'] = time_dict
-
-
-# human friendly timestamp formats we'll parse
-_TS_FORMATS = [
-    '%Y-%m-%d %H:%M:%S',
-    '%Y-%m-%d %H:%M',  # these 2 are not as originally doc'd,
-    '%Y-%m-%d %H',     # but match previous pandas behavior
-    '%Y-%m-%d',
-    '%Y-%m',
-    '%Y']
-
-# build a tab indented, '-' bulleted list of supported formats
-# to append to the parsing function docstring below
-_doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
-
-
-def _normalize_human_friendly_time(val):
-    """Given one of :
-    - string (in one of the formats below)
-    - datetime (eg. datetime.datetime.now()), with or without tzinfo)
-    - timestamp (eg. time.time())
-    return a timestamp (seconds since jan 1 1970 UTC).
-
-    Non string/datetime.datetime values are returned unaltered.
-    Leading/trailing whitespace is stripped.
-    Supported formats:
-    {}
-    """
-    # {} is placeholder for formats; filled in after def...
-
-    tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
-    zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
-    epoch = pytz.UTC.localize(datetime.datetime(1970, 1, 1))
-    check = True
-
-    if isinstance(val, six.string_types):
-        # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but
-        # doesn't get TZ?
-
-        # Could cleanup input a bit? remove leading/trailing [ :,-]?
-        # Yes, leading/trailing whitespace to match pandas behavior...
-        # Actually, pandas doesn't ignore trailing space, it assumes
-        # the *current* month/day if they're missing and there's
-        # trailing space, or the month is a single, non zero-padded digit.?!
-        val = val.strip()
-
-        for fmt in _TS_FORMATS:
-            try:
-                ts = datetime.datetime.strptime(val, fmt)
-                break
-            except ValueError:
-                pass
-
-        try:
-            if isinstance(ts, datetime.datetime):
-                val = ts
-                check = False
-            else:
-                # what else could the type be here?
-                raise TypeError('expected datetime.datetime,'
-                                ' got {:r}'.format(ts))
-
-        except NameError:
-            raise ValueError('failed to parse time: ' + repr(val))
-
-    if check and not isinstance(val, datetime.datetime):
-        return val
-
-    if val.tzinfo is None:
-        # is_dst=None raises NonExistent and Ambiguous TimeErrors
-        # when appropriate, same as pandas
-        val = zone.localize(val, is_dst=None)
-
-    return (val - epoch).total_seconds()
-
-
-# fill in the placeholder we left in the previous docstring
-_normalize_human_friendly_time.__doc__ = (
-    _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-)
-
-
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
 
@@ -630,7 +411,12 @@ def find_run_starts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    return _DB_SINGLETON.find_run_starts(**kwargs)
+    gen = _DB_SINGLETON.find_run_starts(**kwargs)
+    if six.PY2:
+        for rs in gen:
+            yield rs
+    else:
+        yield from gen
 find_runstarts = find_run_starts
 
 
@@ -665,7 +451,12 @@ def find_run_stops(run_start=None, **kwargs):
     run_stop : doc.Document
         The requested RunStop documents
     """
-    return _DB_SINGLETON.find_run_stops(run_start=run_start, **kwargs)
+    gen = _DB_SINGLETON.find_run_stops(run_start=run_start, **kwargs)
+    if six.PY2:
+        for rs in gen:
+            yield rs
+    else:
+        yield from gen
 find_runstops = find_run_stops
 
 
@@ -734,11 +525,13 @@ def find_events(descriptor=None, **kwargs):
     -------
     events : iterable of doc.Document objects
     """
+    gen = _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs)
+
     if six.PY2:
-        for ev in _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs):
+        for ev in gen:
             yield ev
     else:
-        yield from _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs)
+        yield from gen
 
 
 def find_last(num=1):
@@ -754,6 +547,8 @@ def find_last(num=1):
     run_start doc.Document
        The requested RunStart documents
     """
-    col = _DB_SINGLETON._runstart_col
-    for rs in col.find().sort('time', -1).limit(num):
-        yield _cache_run_start(rs)
+    if six.PY2:
+        for ev in _DB_SINGLETON.find_last(num):
+            yield ev
+    else:
+        yield from _DB_SINGLETON.find_last(num)

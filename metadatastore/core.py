@@ -901,8 +901,9 @@ def find_run_stops(start_col, start_cache,
     col = stop_col
     run_stop = col.find(kwargs)
 
-    return (_cache_run_stop(rs, stop_cache, start_col, start_cache)
-            for rs in run_stop)
+    for rs in run_stop:
+        yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
+
 find_run_stops = find_run_stops
 
 
@@ -1007,7 +1008,7 @@ def find_events(start_col, start_cache,
         yield ev
 
 
-def find_last(num=1):
+def find_last(start_col, start_cache, num):
     """Locate the last `num` RunStart Documents
 
     Parameters
@@ -1020,6 +1021,6 @@ def find_last(num=1):
     run_start doc.Document
        The requested RunStart documents
     """
-    col = _DB_SINGLETON._runstart_col
+    col = start_col
     for rs in col.find().sort('time', -1).limit(num):
-        yield _cache_run_start(rs)
+        yield _cache_run_start(rs, start_cache)
