@@ -806,7 +806,7 @@ def _normalize_human_friendly_time(val, tz):
 # fill in the placeholder we left in the previous docstring
 _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-    )
+)
 
 
 def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
@@ -855,8 +855,8 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     _format_time(kwargs, tz)
     rs_objects = run_start_col.find(kwargs)
 
-    return (_cache_run_start(rs, run_start_cache) for rs in rs_objects)
-find_run_starts = find_run_starts
+    for rs in rs_objects:
+        yield _cache_run_start(rs, run_start_cache)
 
 
 def find_run_stops(start_col, start_cache,
@@ -904,8 +904,6 @@ def find_run_stops(start_col, start_cache,
     for rs in run_stop:
         yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
 
-find_run_stops = find_run_stops
-
 
 def find_descriptors(start_col, start_cache,
                      descriptor_col, descriptor_cache,
@@ -949,9 +947,6 @@ def find_descriptors(start_col, start_cache,
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache,
                                 start_col, start_cache)
-
-# TODO properly mark this as deprecated
-find_event_descriptors = find_descriptors
 
 
 def find_events(start_col, start_cache,
