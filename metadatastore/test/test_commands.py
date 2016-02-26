@@ -10,6 +10,7 @@ import pytz
 from nose.tools import assert_equal, assert_raises, raises, assert_true
 
 import metadatastore.commands as mdsc
+import metadatastore.core as core
 from metadatastore.utils.testing import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 import uuid
@@ -333,14 +334,15 @@ def _normalize_human_friendly_time_tester(val, should_succeed, etype):
         (val, check_output) = val
 
     if should_succeed:
-        output = mdsc._normalize_human_friendly_time(val)
+        output = core._normalize_human_friendly_time(val, 'US/Eastern')
         assert(isinstance(output, float))
         try:
             assert_equal(output, check_output)
         except NameError:
             pass
     else:
-        assert_raises(etype, mdsc._normalize_human_friendly_time, val)
+        assert_raises(etype, core._normalize_human_friendly_time,
+                      val, 'US/Eastern')
 
 
 def test_normalize_human_friendly_time():
