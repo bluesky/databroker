@@ -10,6 +10,7 @@ import logging
 
 import pytz
 
+import numpy as np
 
 import doct as doc
 
@@ -345,13 +346,17 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       run_start_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid}, sort=[('time', 1)])
-
+    data_keys = descriptor['data_keys']
     for ev in ev_cur:
         # ditch the ObjectID
         del ev['_id']
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor
-
+        for k, v in ev['data'].items():
+            _dk = data_keys[k]
+            # convert any arrays stored directly in mds into ndarray
+            if _dk['dtype'] == 'array' and not _dk.get('external', False):
+                ev['data'][k] = np.asarray(ev['data'][k])
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
 
