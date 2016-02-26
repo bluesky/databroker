@@ -346,6 +346,7 @@ def test_handler_options():
     h = db[image_example_uid]
     list(get_events(h))
     list(get_table(h))
+    list(get_images(h, 'img'))
     res = list(get_events(h, fields=['img'],
                           handler_registry={'npy': DummyHandler}))
     res = [ev for ev in res if 'img' in ev['data']]
@@ -358,3 +359,7 @@ def test_handler_options():
     assert res['img'].iloc[0] == 'dummy'
     res = get_table(h, ['img'], handler_overrides={'img': DummyHandler})
     assert res['img'].iloc[0] == 'dummy'
+    res = get_images(h, 'img', handler_registry={'npy': DummyHandler})
+    assert res[0] == 'dummy'
+    res = get_images(h, 'img', handler_override=DummyHandler)
+    assert res[0] == 'dummy'
