@@ -24,6 +24,7 @@ class MDSRO(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
+        self.version = 1
 
     def disconnect(self):
 
@@ -214,7 +215,8 @@ class MDSRO(object):
                                   self._runstop_col,
                                   self._RUNSTOP_CACHE,
                                   self._runstart_col,
-                                  self._RUNSTART_CACHE)
+                                  self._RUNSTART_CACHE,
+                                  self.version)
 
     def descriptors_by_start(self, run_start):
         """Given a RunStart return a list of it's descriptors
@@ -241,7 +243,8 @@ class MDSRO(object):
                                          self._descriptor_col,
                                          self._DESCRIPTOR_CACHE,
                                          self._runstart_col,
-                                         self._RUNSTART_CACHE)
+                                         self._RUNSTART_CACHE,
+                                         self.version)
 
     def get_events_generator(self, descriptor):
         """A generator which yields all events from the event stream
@@ -263,7 +266,8 @@ class MDSRO(object):
                                         self._descriptor_col,
                                         self._DESCRIPTOR_CACHE,
                                         self._runstart_col,
-                                        self._RUNSTART_CACHE)
+                                        self._RUNSTART_CACHE,
+                                        self.version)
         # when we drop 2.7, this can be
         # yield from evs
         for ev in evs:
@@ -298,7 +302,8 @@ class MDSRO(object):
                                      self._descriptor_col,
                                      self._DESCRIPTOR_CACHE,
                                      self._runstart_col,
-                                     self._RUNSTART_CACHE)
+                                     self._RUNSTART_CACHE,
+                                     self.version)
 
     def find_run_starts(self, **kwargs):
         """Given search criteria, locate RunStart Documents.
@@ -385,6 +390,7 @@ class MDSRO(object):
                                   self._runstop_col,
                                   self._RUNSTOP_CACHE,
                                   self.config['timezone'],
+                                  self.version,
                                   **kwargs)
         for rs in gen:
             yield rs
@@ -421,6 +427,7 @@ class MDSRO(object):
                                     self._descriptor_col,
                                     self._DESCRIPTOR_CACHE,
                                     self.config['timezone'],
+                                    self.version,
                                     **kwargs)
         for desc in gen:
             yield desc
@@ -457,6 +464,7 @@ class MDSRO(object):
                                self._DESCRIPTOR_CACHE,
                                self._event_col,
                                self.config['timezone'],
+                               self.version,
                                **kwargs)
         for ev in gen:
             yield ev
