@@ -1050,7 +1050,9 @@ def find_events(start_col, start_cache,
         if ver > 0:
             kwargs['descriptor'] = descriptor_uid
         else:
-            descriptor_given_uid(descriptor_uid)
+            descriptor_given_uid(descriptor_uid, descriptor_col,
+                                descriptor_cache, start_col,
+                                start_cache)
             oid = _UID_TO_OID_MAP[descriptor_uid]
             kwargs['descriptor_id'] = oid
 
