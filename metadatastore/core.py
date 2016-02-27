@@ -907,7 +907,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     """
     # now try rest of formatting
     _format_time(kwargs, tz)
-    rs_objects = run_start_col.find(kwargs)
+    rs_objects = run_start_col.find(kwargs, sort=[('time', 1)])
 
     for rs in rs_objects:
         yield _cache_run_start(rs, run_start_cache)
@@ -959,7 +959,7 @@ def find_run_stops(start_col, start_cache,
 
     _format_time(kwargs, tz)
     col = stop_col
-    run_stop = col.find(kwargs)
+    run_stop = col.find(kwargs, sort=[('time', 1)])
 
     for rs in run_stop:
         yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
@@ -1006,7 +1006,7 @@ def find_descriptors(start_col, start_cache,
     _format_time(kwargs, tz)
 
     col = descriptor_col
-    event_descriptor_objects = col.find(kwargs)
+    event_descriptor_objects = col.find(kwargs, sort=[('time', 1)])
 
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache,
