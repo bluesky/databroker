@@ -20,8 +20,7 @@ def mds_setup():
     old_connection_info = deepcopy(conf.connection_config)
     conf.connection_config = testing_config
     db_disconnect()
-    conn = db_connect(testing_config['database'], testing_config['host'],
-                      testing_config['port'])
+    conn = db_connect(**testing_config)
 
 
 def mds_teardown():

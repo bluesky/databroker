@@ -2,148 +2,22 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-import warnings
-from itertools import count
 
 import datetime
 import logging
 
-import boltons.cacheutils
 import pytz
 
-import pymongo
-from pymongo import MongoClient
-from bson import ObjectId
-
-from bson.dbref import DBRef
-
 from . import conf
+from . import mds
 
-import doct as doc
-
+# API compatibility imports
+from .core import NoEventDescriptors, NoRunStop
 
 logger = logging.getLogger(__name__)
 
 
-# process local caches of 'header' documents these are storing object indexed
-# on ObjectId because that is how the reference fields are implemented.
-# Should move to uids asap
-_RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
-_RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
-_DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
-
-
-class _DBManager(object):
-    def __init__(self, config):
-        self.config = config
-
-        self.__conn = None
-
-        self.__db = None
-
-        self.__event_col = None
-        self.__descriptor_col = None
-        self.__runstart_col = None
-        self.__runstop_col = None
-
-    def disconnect(self):
-
-        self.__conn = None
-
-        self.__db = None
-
-        self.__event_col = None
-        self.__descriptor_col = None
-        self.__runstart_col = None
-        self.__runstop_col = None
-
-    def reconfigure(self, config):
-        self.disconnect()
-        self.config = config
-
-    @property
-    def _connection(self):
-        if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
-        return self.__conn
-
-    @property
-    def _db(self):
-        if self.__db is None:
-            conn = self._connection
-            self.__db = conn.get_database(self.config['database'])
-        return self.__db
-
-    @property
-    def _runstart_col(self):
-        if self.__runstart_col is None:
-            self.__runstart_col = self._db.get_collection('run_start')
-
-        self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
-                                         unique=True)
-        self.__runstart_col.create_index([('time', pymongo.DESCENDING),
-                                          ('scan_id', pymongo.DESCENDING)],
-                                         unique=False, background=True)
-
-        return self.__runstart_col
-
-    @property
-    def _runstop_col(self):
-        if self.__runstop_col is None:
-            self.__runstop_col = self._db.get_collection('run_stop')
-
-        self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
-                                        ('uid', pymongo.DESCENDING)],
-                                        unique=True)
-        self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
-                                        unique=False, background=True)
-
-        return self.__runstop_col
-
-    @property
-    def _descriptor_col(self):
-        if self.__descriptor_col is None:
-            self.__descriptor_col = self._db.get_collection('event_descriptor')
-
-        self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
-                                           unique=True)
-        self.__descriptor_col.create_index([('run_start', pymongo.DESCENDING),
-                                            ('time', pymongo.DESCENDING)],
-                                           unique=False, background=True)
-
-        return self.__descriptor_col
-
-    @property
-    def _event_col(self):
-        if self.__event_col is None:
-            self.__event_col = self._db.get_collection('event')
-
-        self.__event_col.create_index([('uid', pymongo.DESCENDING)],
-                                      unique=True)
-        self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                       ('time', pymongo.DESCENDING)],
-                                      unique=False, background=True)
-
-        return self.__event_col
-
-    @property
-    def _datum_col(self):
-        if self.__datum_col is None:
-            self.__datum_col = self._db.get_collection('datum')
-            self.__datum_col.create_index('datum_id', unique=True)
-
-        return self.__datum_col
-
-_DB_SINGLETON = _DBManager(conf.connection_config)
-
-
-class NoRunStop(Exception):
-    pass
-
-
-class NoEventDescriptors(Exception):
-    pass
+_DB_SINGLETON = mds.MDS(conf.connection_config)
 
 
 def doc_or_uid_to_uid(doc_or_uid):
@@ -168,18 +42,15 @@ def doc_or_uid_to_uid(doc_or_uid):
 
 def clear_process_cache():
     """Clear all local caches"""
-    _RUNSTART_CACHE.clear()
-    _RUNSTOP_CACHE.clear()
-    _DESCRIPTOR_CACHE.clear()
+    _DB_SINGLETON.clear_process_cache()
 
 
 def db_disconnect():
     """Helper function to deal with stateful connections to mongoengine"""
     _DB_SINGLETON.disconnect()
-    clear_process_cache()
 
 
-def db_connect(database, host, port):
+def db_connect(database, host, port, timezone='US/Eastern', **kwargs):
     """Helper function to deal with stateful connections to mongoengine
 
     .. warning
@@ -190,113 +61,8 @@ def db_connect(database, host, port):
        connection you must call `db_disconnect` before attempting to
        re-connect.
     """
-    clear_process_cache()
-    _DB_SINGLETON.reconfigure(dict(database=database, host=host, port=port))
-    return _DB_SINGLETON._connection
-
-
-def _cache_run_start(run_start):
-    """De-reference and cache a RunStart document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
-
-    Parameters
-    ----------
-    run_start : dict
-        raw pymongo dictionary. This is expected to have
-        an entry `_id` with the ObjectId used by mongo.
-
-    Returns
-    -------
-    run_start : doc.Document
-        Document instance for this RunStart document.
-        The ObjectId has been stripped.
-    """
-    run_start = dict(run_start)
-    # TODO actually do this de-reference for documents that have it
-    # There is no known actually usage of this document and it is not being
-    # created going forward
-    run_start.pop('beamline_config_id', None)
-
-    # get the mongo ObjectID
-    run_start.pop('_id', None)
-
-    # convert the remaining document to a Document object
-    run_start = doc.Document('RunStart', run_start)
-
-    # populate cache and set up uid->oid mapping
-    _RUNSTART_CACHE[run_start['uid']] = run_start
-
-    return run_start
-
-
-def _cache_run_stop(run_stop):
-    """De-reference and cache a RunStop document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
-
-    Parameters
-    ----------
-    run_stop : dict
-        raw pymongo dictionary. This is expected to have
-        an entry `_id` with the ObjectId used by mongo.
-
-    Returns
-    -------
-    run_stop : doc.Document
-        Document instance for this RunStop document.
-        The ObjectId has been stripped.
-    """
-    run_stop = dict(run_stop)
-    # pop off the ObjectId of this document
-    run_stop.pop('_id', None)
-
-    # do the run-start de-reference
-    run_stop['run_start'] = run_start_given_uid(run_stop['run_start'])
-
-    # create the Document object
-    run_stop = doc.Document('RunStop', run_stop)
-
-    # update the cache and uid->oid mapping
-    _RUNSTOP_CACHE[run_stop['uid']] = run_stop
-
-    return run_stop
-
-
-def _cache_descriptor(descriptor):
-    """De-reference and cache a RunStop document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
-
-    Parameters
-    ----------
-    descriptor : dict
-        raw pymongo dictionary. This is expected to have
-        an entry `_id` with the ObjectId used by mongo.
-
-    Returns
-    -------
-    descriptor : doc.Document
-        Document instance for this EventDescriptor document.
-        The ObjectId has been stripped.
-    """
-    descriptor = dict(descriptor)
-    # pop the ObjectID
-    descriptor.pop('_id', None)
-
-    # do the run_start referencing
-    descriptor['run_start'] = run_start_given_uid(descriptor['run_start'])
-
-    # create the Document instance
-    descriptor = doc.Document('EventDescriptor', descriptor)
-
-    # update cache and setup uid->oid mapping
-    _DESCRIPTOR_CACHE[descriptor['uid']] = descriptor
-
-    return descriptor
+    return _DB_SINGLETON.db_connect(database=database, host=host, port=port,
+                                    timezone=timezone, **kwargs)
 
 
 def run_start_given_uid(uid):
@@ -313,12 +79,7 @@ def run_start_given_uid(uid):
         The RunStart document.
 
     """
-    try:
-        return _RUNSTART_CACHE[uid]
-    except KeyError:
-        pass
-    run_start = _DB_SINGLETON._runstart_col.find_one({'uid': uid})
-    return _cache_run_start(run_start)
+    return _DB_SINGLETON.run_start_given_uid(uid)
 
 
 def run_stop_given_uid(uid):
@@ -335,13 +96,7 @@ def run_stop_given_uid(uid):
         The RunStop document fully de-referenced
 
     """
-    try:
-        return _RUNSTOP_CACHE[uid]
-    except KeyError:
-        pass
-    # get the raw run_stop
-    run_stop = _DB_SINGLETON._runstop_col.find_one({'uid': uid})
-    return _cache_run_stop(run_stop)
+    return _DB_SINGLETON.run_stop_given_uid(uid)
 
 
 def descriptor_given_uid(uid):
@@ -357,13 +112,7 @@ def descriptor_given_uid(uid):
     descriptor : doc.Document
         The EventDescriptor document fully de-referenced
     """
-    try:
-        return _DESCRIPTOR_CACHE[uid]
-    except KeyError:
-        pass
-
-    descriptor = _DB_SINGLETON._descriptor_col.find_one({'uid': uid})
-    return _cache_descriptor(descriptor)
+    return _DB_SINGLETON.descriptor_given_uid(uid)
 
 
 def stop_by_start(run_start):
@@ -387,15 +136,7 @@ def stop_by_start(run_start):
     NoRunStop
         If no RunStop document exists for the given RunStart
     """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    run_stop = _DB_SINGLETON._runstop_col.find_one(
-        {'run_start': run_start_uid})
-
-    if run_stop is None:
-        raise NoRunStop("No run stop exists for {!r}".format(run_start))
-
-    return _cache_run_stop(run_stop)
+    return _DB_SINGLETON.stop_by_start(run_start)
 
 
 def descriptors_by_start(run_start):
@@ -419,24 +160,7 @@ def descriptors_by_start(run_start):
     NoEventDescriptors
         If no EventDescriptor documents exist for the given RunStart
     """
-    # normalize the input and get the run_start oid
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    # query the database for any event descriptors which
-    # refer to the given run_start
-    descriptors = _DB_SINGLETON._descriptor_col.find(
-        {'run_start': run_start_uid})
-
-    # loop over the found documents, cache, and dereference
-    rets = [_cache_descriptor(descriptor) for descriptor in descriptors]
-
-    # if nothing found, raise
-    if not rets:
-        raise NoEventDescriptors("No EventDescriptors exists "
-                                 "for {!r}".format(run_start))
-
-    # return the list of event descriptors
-    return rets
+    return _DB_SINGLETON.descriptors_by_start(run_start)
 
 
 def get_events_generator(descriptor):
@@ -454,51 +178,8 @@ def get_events_generator(descriptor):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    descriptor_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(descriptor_uid)
-    col = _DB_SINGLETON._event_col
-    ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('time', 1)])
-
-    for ev in ev_cur:
-        # ditch the ObjectID
-        del ev['_id']
-        # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor
-
-        # wrap it in our fancy dict
-        ev = doc.Document('Event', ev)
-
+    for ev in _DB_SINGLETON.get_events_generator(descriptor):
         yield ev
-
-
-def _transpose(in_data, keys, field):
-    """Turn a list of dicts into dict of lists
-
-    Parameters
-    ----------
-    in_data : list
-        A list of dicts which contain at least one dict.
-        All of the inner dicts must have at least the keys
-        in `keys`
-
-    keys : list
-        The list of keys to extract
-
-    field : str
-        The field in the outer dict to use
-
-    Returns
-    -------
-    transpose : dict
-        The transpose of the data
-    """
-    out = {k: [None] * len(in_data) for k in keys}
-    for j, ev in enumerate(in_data):
-        dd = ev[field]
-        for k in keys:
-            out[k][j] = dd[k]
-    return out
 
 
 def get_events_table(descriptor):
@@ -526,30 +207,7 @@ def get_events_table(descriptor):
         The timestamps of each of the measurements as dict of lists.  Same
         keys as `data_table`.
     """
-    desc_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(desc_uid)
-    # this will get more complicated once transpose caching layer is in place
-    all_events = list(get_events_generator(desc_uid))
-
-    # get event sequence numbers
-    seq_nums = [ev['seq_num'] for ev in all_events]
-
-    # get event times
-    times = [ev['time'] for ev in all_events]
-
-    # get uids
-    uids = [ev['uid'] for ev in all_events]
-
-    keys = list(descriptor['data_keys'])
-
-    # get data values
-    data_table = _transpose(all_events, keys, 'data')
-
-    # get timestamps
-    timestamps_table = _transpose(all_events, keys, 'timestamps')
-
-    # return the whole lot
-    return descriptor, data_table, seq_nums, times, uids, timestamps_table
+    return _DB_SINGLETON.get_events_table(descriptor)
 
 
 # database INSERTION ###################################################
@@ -583,24 +241,10 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         the full document.
 
     """
-    if 'custom' in kwargs:
-        warnings.warn("custom kwarg is deprecated")
-        custom = kwargs.pop('custom')
-        if any(k in kwargs for k in custom):
-            raise TypeError("duplicate keys in kwargs and custom")
-        kwargs.update(custom)
-
-    col = _DB_SINGLETON._runstart_col
-    run_start = dict(time=time, scan_id=scan_id, uid=uid,
-                     beamline_id=beamline_id, owner=owner, group=group,
-                     project=project, **kwargs)
-
-    col.insert_one(run_start)
-
-    _cache_run_start(run_start)
-    logger.debug('Inserted RunStart with uid %s', run_start['uid'])
-
-    return uid
+    return _DB_SINGLETON.insert_run_start(time=time, scan_id=scan_id,
+                                          beamline_id=beamline_id, uid=uid,
+                                          owner=owner, group=group,
+                                          project=project, **kwargs)
 
 
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
@@ -631,33 +275,9 @@ def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
     RuntimeError
         Only one RunStop per RunStart, raises if you try to insert a second
     """
-    if 'custom' in kwargs:
-        warnings.warn("custom kwarg is deprecated")
-        custom = kwargs.pop('custom')
-        if any(k in kwargs for k in custom):
-            raise TypeError("duplicate keys in kwargs and custom")
-        kwargs.update(custom)
-
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = run_start_given_uid(run_start_uid)
-    try:
-        stop_by_start(run_start_uid)
-    except NoRunStop:
-        pass
-    else:
-        raise RuntimeError("Runstop already exits for {!r}".format(run_start))
-
-    col = _DB_SINGLETON._runstop_col
-    run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
-                    uid=uid,
-                    exit_status=exit_status, **kwargs)
-
-    col.insert_one(run_stop)
-    _cache_run_stop(run_stop)
-    logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop['uid'], run_start['uid'])
-
-    return uid
+    return _DB_SINGLETON.insert_run_stop(run_start, time, uid,
+                                         exit_status=exit_status,
+                                         reason=reason, **kwargs)
 
 
 def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
@@ -683,33 +303,10 @@ def insert_descriptor(run_start, data_keys, time, uid, **kwargs):
     descriptor : str
         uid of inserted Document
     """
-    if 'custom' in kwargs:
-        warnings.warn("custom kwarg is deprecated")
-        custom = kwargs.pop('custom')
-        if any(k in kwargs for k in custom):
-            raise TypeError("duplicate keys in kwargs and custom")
-        kwargs.update(custom)
+    return _DB_SINGLETON.insert_descriptor(run_start, data_keys,
+                                           time, uid, **kwargs)
 
-    for k in data_keys:
-        if '.' in k:
-            raise ValueError("Key names can not contain '.' (period).")
 
-    data_keys = {k: dict(v) for k, v in data_keys.items()}
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    col = _DB_SINGLETON._descriptor_col
-
-    descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
-                      time=time, uid=uid, **kwargs)
-    # TODO validation
-    col.insert_one(descriptor)
-
-    descriptor = _cache_descriptor(descriptor)
-
-    logger.debug("Inserted EventDescriptor with uid %s referencing "
-                 "RunStart with uid %s", descriptor['uid'], run_start_uid)
-
-    return uid
 insert_event_descriptor = insert_descriptor
 
 
@@ -740,25 +337,8 @@ def insert_event(descriptor, time, seq_num, data, timestamps, uid):
     uid : str
         Globally unique id string provided to metadatastore
     """
-    # convert data to storage format
-    # make sure we really have a uid
-    descriptor_uid = doc_or_uid_to_uid(descriptor)
-
-    col = _DB_SINGLETON._event_col
-
-    event = dict(descriptor=descriptor_uid, uid=uid,
-                 data=data, timestamps=timestamps, time=time,
-                 seq_num=seq_num)
-
-    col.insert_one(event)
-
-    logger.debug("Inserted Event with uid %s referencing "
-                 "EventDescriptor with uid %s", event['uid'],
-                 descriptor_uid)
-    return uid
-
-BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
-'timestamps do not match:\n data: {}\ntimestamps:{}"""
+    return _DB_SINGLETON.insert_event(descriptor, time, seq_num,
+                                      data, timestamps, uid)
 
 
 def bulk_insert_events(event_descriptor, events, validate=False):
@@ -780,140 +360,11 @@ def bulk_insert_events(event_descriptor, events, validate=False):
     ret : dict
         dictionary of details about the insertion
     """
-    descriptor_uid = doc_or_uid_to_uid(event_descriptor)
-
-    def event_factory():
-        for ev in events:
-            # check keys, this could be expensive
-            if validate:
-                if ev['data'].keys() != ev['timestamps'].keys():
-                    raise ValueError(
-                        BAD_KEYS_FMT.format(ev['data'].keys(),
-                                            ev['timestamps'].keys()))
-
-            ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=ev['data'], timestamps=ev['timestamps'],
-                          time=ev['time'],
-                          seq_num=ev['seq_num'])
-            yield ev_out
-
-    bulk = _DB_SINGLETON._event_col.initialize_ordered_bulk_op()
-    for ev in event_factory():
-        bulk.insert(ev)
-
-    return bulk.execute()
-
-
-def _transform_data(data, timestamps):
-    """
-    Transform from Document spec:
-        {'data': {'key': <value>},
-         'timestamps': {'key': <timestamp>}}
-    to storage format:
-        {'data': {<key>: (<value>, <timestamp>)}.
-    """
-    return {k: (data[k], timestamps[k]) for k in data}
+    return _DB_SINGLETON.bulk_insert_events(descriptor=event_descriptor,
+                                            events=events, validate=validate)
 
 
 # DATABASE RETRIEVAL ##########################################################
-
-def _format_time(search_dict):
-    """Helper function to format the time arguments in a search dict
-
-    Expects 'start_time' and 'stop_time'
-
-    ..warning: Does in-place mutation of the search_dict
-    """
-    time_dict = {}
-    start_time = search_dict.pop('start_time', None)
-    stop_time = search_dict.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = _normalize_human_friendly_time(start_time)
-    if stop_time:
-        time_dict['$lte'] = _normalize_human_friendly_time(stop_time)
-    if time_dict:
-        search_dict['time'] = time_dict
-
-
-# human friendly timestamp formats we'll parse
-_TS_FORMATS = [
-    '%Y-%m-%d %H:%M:%S',
-    '%Y-%m-%d %H:%M',  # these 2 are not as originally doc'd,
-    '%Y-%m-%d %H',     # but match previous pandas behavior
-    '%Y-%m-%d',
-    '%Y-%m',
-    '%Y']
-
-# build a tab indented, '-' bulleted list of supported formats
-# to append to the parsing function docstring below
-_doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
-
-
-def _normalize_human_friendly_time(val):
-    """Given one of :
-    - string (in one of the formats below)
-    - datetime (eg. datetime.datetime.now()), with or without tzinfo)
-    - timestamp (eg. time.time())
-    return a timestamp (seconds since jan 1 1970 UTC).
-
-    Non string/datetime.datetime values are returned unaltered.
-    Leading/trailing whitespace is stripped.
-    Supported formats:
-    {}
-    """
-    # {} is placeholder for formats; filled in after def...
-
-    tz = conf.connection_config['timezone']  # e.g., 'US/Eastern'
-    zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
-    epoch = pytz.UTC.localize(datetime.datetime(1970, 1, 1))
-    check = True
-
-    if isinstance(val, six.string_types):
-        # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but
-        # doesn't get TZ?
-
-        # Could cleanup input a bit? remove leading/trailing [ :,-]?
-        # Yes, leading/trailing whitespace to match pandas behavior...
-        # Actually, pandas doesn't ignore trailing space, it assumes
-        # the *current* month/day if they're missing and there's
-        # trailing space, or the month is a single, non zero-padded digit.?!
-        val = val.strip()
-
-        for fmt in _TS_FORMATS:
-            try:
-                ts = datetime.datetime.strptime(val, fmt)
-                break
-            except ValueError:
-                pass
-
-        try:
-            if isinstance(ts, datetime.datetime):
-                val = ts
-                check = False
-            else:
-                # what else could the type be here?
-                raise TypeError('expected datetime.datetime,'
-                                ' got {:r}'.format(ts))
-
-        except NameError:
-            raise ValueError('failed to parse time: ' + repr(val))
-
-    if check and not isinstance(val, datetime.datetime):
-        return val
-
-    if val.tzinfo is None:
-        # is_dst=None raises NonExistent and Ambiguous TimeErrors
-        # when appropriate, same as pandas
-        val = zone.localize(val, is_dst=None)
-
-    return (val - epoch).total_seconds()
-
-
-# fill in the placeholder we left in the previous docstring
-_normalize_human_friendly_time.__doc__ = (
-    _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-    )
-
 
 def find_run_starts(**kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -957,13 +408,11 @@ def find_run_starts(**kwargs):
     ...                stop_time=time.time())
 
     """
-    # now try rest of formatting
-    _format_time(kwargs)
-    col = _DB_SINGLETON._runstart_col
-    rs_objects = col.find(kwargs).sort('time', pymongo.DESCENDING)
+    gen = _DB_SINGLETON.find_run_starts(**kwargs)
 
-    return (_cache_run_start(rs) for rs in rs_objects)
-find_run_starts = find_run_starts
+    for rs in gen:
+        yield rs
+find_runstarts = find_run_starts
 
 
 def find_run_stops(run_start=None, **kwargs):
@@ -997,17 +446,10 @@ def find_run_stops(run_start=None, **kwargs):
     run_stop : doc.Document
         The requested RunStop documents
     """
-    # if trying to find by run_start, there can be only one
-    # normalize the input and get the run_start oid
-    if run_start:
-        run_start_uid = doc_or_uid_to_uid(run_start)
-        kwargs['run_start'] = run_start_uid
-    _format_time(kwargs)
-    col = _DB_SINGLETON._runstop_col
-    run_stop = col.find(kwargs).sort('time', pymongo.DESCENDING)
-
-    return (_cache_run_stop(rs) for rs in run_stop)
-find_run_stops = find_run_stops
+    gen = _DB_SINGLETON.find_run_stops(run_start=run_start, **kwargs)
+    for rs in gen:
+        yield rs
+find_runstops = find_run_stops
 
 
 def find_descriptors(run_start=None, **kwargs):
@@ -1037,17 +479,9 @@ def find_descriptors(run_start=None, **kwargs):
     descriptor : doc.Document
         The requested EventDescriptor
     """
-    if run_start:
-        run_start_uid = doc_or_uid_to_uid(run_start)
-        kwargs['run_start'] = run_start_uid
+    for d in _DB_SINGLETON.find_descriptors(run_start=run_start, **kwargs):
+        yield d
 
-    _format_time(kwargs)
-
-    col = _DB_SINGLETON._descriptor_col
-    event_descriptor_objects = col.find(kwargs)
-
-    for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor)
 
 # TODO properly mark this as deprecated
 find_event_descriptors = find_descriptors
@@ -1079,27 +513,9 @@ def find_events(descriptor=None, **kwargs):
     -------
     events : iterable of doc.Document objects
     """
-    # Some user-friendly error messages for an easy mistake to make
-    if 'event_descriptor' in kwargs:
-        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
+    gen = _DB_SINGLETON.find_events(descriptor=descriptor, **kwargs)
 
-    if descriptor:
-        descriptor_uid = doc_or_uid_to_uid(descriptor)
-        kwargs['descriptor'] = descriptor_uid
-
-    _format_time(kwargs)
-    col = _DB_SINGLETON._event_col
-    events = col.find(kwargs).sort('time', pymongo.ASCENDING)
-
-    for ev in events:
-        ev.pop('_id', None)
-        # pop the descriptor oid
-        desc_uid = ev.pop('descriptor')
-        # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor_given_uid(desc_uid)
-
-        # wrap it our fancy dict
-        ev = doc.Document('Event', ev)
+    for ev in gen:
         yield ev
 
 
@@ -1116,6 +532,5 @@ def find_last(num=1):
     run_start doc.Document
        The requested RunStart documents
     """
-    col = _DB_SINGLETON._runstart_col
-    for rs in col.find().sort('time', -1).limit(num):
-        yield _cache_run_start(rs)
+    for ev in _DB_SINGLETON.find_last(num):
+        yield ev
