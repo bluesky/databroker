@@ -62,6 +62,9 @@ def load_configuration(name, prefix, fields):
     for field in fields:
         var_name = prefix + '_' + field.upper().replace(' ', '_')
         config[field] = os.environ.get(var_name, config.get(field, None))
+        # Valid values for 'port' are None or castable to int.
+        if field == 'port' and config[field] is not None:
+            config[field] = int(config[field])
 
     missing = [k for k, v in config.items() if v is None]
     if missing:
