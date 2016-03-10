@@ -98,7 +98,7 @@ def deregister_handler(key):
     _FS_SINGLETON.deregister_handler(key)
 
 
-def get_spec_handler(resource, handle_registry=None):
+def get_spec_handler(resource, handler_registry=None):
     """
     Given a document from the base FS collection return
     the proper Handler
@@ -111,7 +111,7 @@ def get_spec_handler(resource, handle_registry=None):
     resource : ObjectId
         ObjectId of a resource document
 
-    handle_registry : HandleRegistry or dict, optional
+    handler_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
         module-level registry
 
@@ -123,12 +123,12 @@ def get_spec_handler(resource, handle_registry=None):
         document returns the externally stored data
 
     """
-    handle_registry = handle_registry if handle_registry is not None else {}
-    with _FS_SINGLETON.handler_context(handle_registry) as fs:
+    handler_registry = handler_registry if handler_registry is not None else {}
+    with _FS_SINGLETON.handler_context(handler_registry) as fs:
         return fs.get_spec_handler(resource)
 
 
-def get_data(eid, handle_registry=None):
+def get_data(eid, handler_registry=None):
     """
     Given a document from the events collection, get the externally
     stored data.
@@ -141,7 +141,7 @@ def get_data(eid, handle_registry=None):
     eid : str
         The datum ID (as stored in MDS)
 
-    handle_registry : HandleRegistry or dict, optional
+    handler_registry : HandleRegistry or dict, optional
         Mapping between spec <-> handler classes, if None, use
         module-level registry
 
@@ -150,9 +150,9 @@ def get_data(eid, handle_registry=None):
     data : ndarray
         The data in ndarray form.
     """
-    if handle_registry is None:
-        handle_registry = {}
-    with _FS_SINGLETON.handler_context(handle_registry) as fs:
+    if handler_registry is None:
+        handler_registry = {}
+    with _FS_SINGLETON.handler_context(handler_registry) as fs:
         return fs.get_datum(eid)
 
 
