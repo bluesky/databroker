@@ -59,6 +59,8 @@ def load_configuration(name, prefix, fields, fname=None):
         var_name = prefix + '_' + field.upper().replace(' ', '_')
 
         config[field] = os.environ.get(var_name, config.get(field, None))
+        if field == 'port' and config[field] is not None:
+            config[field] = int(config[field])
 
     if fname is not None:
         if os.path.isfile(fname):
