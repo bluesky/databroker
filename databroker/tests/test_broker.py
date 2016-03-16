@@ -198,11 +198,12 @@ def test_uid_lookup():
 
 
 def test_find():
-    insert_run_start(time=100., scan_id=1,
-                     owner='nedbrainard', beamline_id='example',
-                     uid=str(uuid.uuid4()))
-    result = db(start_time=0, stop_time=ttime.time())
-    assert len(list(result)) > 0
+    uid = insert_run_start(time=100., scan_id=1,
+                           owner='nedbrainard', beamline_id='example',
+                           uid=str(uuid.uuid4()))
+    result = db(start_time=99, stop_time=101)
+    uids = [hdr['start']['uid'] for hdr in result]
+    assert uid in uids
 
 
 def test_data_key():
