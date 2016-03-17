@@ -10,7 +10,7 @@ import uuid
 from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler)
 
-from  filestore.api import handler_context
+from filestore.api import handler_context
 from .utils import fs_setup, fs_teardown
 from filestore.handlers import AreaDetectorHDF5Handler
 from filestore.handlers import DummyAreaDetectorHandler
@@ -23,7 +23,7 @@ from numpy.testing import assert_array_equal
 import os
 from itertools import product
 import pytest
-
+import itertools
 from six.moves import range
 db_name = str(uuid.uuid4())
 conn = None
@@ -70,7 +70,7 @@ class Test_np_FW(_with_file):
         for i, datum_id in enumerate(self.datum_ids):
             insert_datum(resource_id, datum_id, dict(frame_no=i))
 
-    def test_retrival(self):
+    def test_retrieval(self):
         with handler_context({'npy_FRAMEWISE': NpyFrameWise}):
             for i, datum_id in enumerate(self.datum_ids):
                 data = retrieve(datum_id)
@@ -178,25 +178,19 @@ class Test_maps_hdf5(_with_file):
                 data = retrieve(eid)
                 assert_array_equal(data, base * v)
 
-    def test_closed_rasise(self):
+    def test_closed_raise(self):
         hand = HDFE(self.filename, 'mca_arr')
         hand.close()
         with pytest.raises(RuntimeError):
             hand(0)
 
 
-def _dummy_helper(n_pts, hand, kwargs):
-    target_data = (np.ones((n_pts, 10, 10)) * np.nan).squeeze()
 
-    assert_array_equal(target_data, hand(**kwargs))
-
-
-def test_ADDummy():
-
-    for n_pts in [1, 5]:
-        hand = DummyAreaDetectorHandler(None, frame_per_point=n_pts, aadvark=5)
-        for kw in [{}, {'a': 1}]:
-            yield _dummy_helper, n_pts, hand, kw
+@pytest.mark.parametrize('npts, kw', itertools.product((1, 5), ({}, {'a': 1})))
+def test_ADDummy(npts, kw):
+    hand = DummyAreaDetectorHandler(None, frame_per_point=npts, aadvark=5)
+    target_data = (np.ones((npts, 10, 10)) * np.nan).squeeze()
+    assert_array_equal(target_data, hand(**kw))
 
 
 def test_npyfw_fail():
@@ -204,7 +198,9 @@ def test_npyfw_fail():
          NpyFrameWise('aarvark_rises')
 
 
-def _test_tiff_path_only(path, fname, fpp):
+@pytest.mark.parametrize('path, fname, fpp',
+                         itertools.product(['/foo/'], ['baz'], (1, 5)))
+def test_tiff_path_only(path, fname, fpp):
     test = AreaDetectorTiffPathOnlyHandler(path, '%s%s_%6.6d.tiff', fname, fpp)
     template = '{}{}_{{:06d}}.tiff'.format(path, fname)
     for j in range(5):
@@ -212,10 +208,6 @@ def _test_tiff_path_only(path, fname, fpp):
         expected = [template.format(n) for n in range(j*fpp, (j+1)*fpp)]
         assert res == expected
 
-
-def test_tiff_path_handler():
-    yield _test_tiff_path_only, '/foo/', 'baz', 1
-    yield _test_tiff_path_only, '/foo/', 'baz', 5
 
 def test_raw_handler():
     h = RawHandler('path', a=1)
