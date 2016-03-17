@@ -40,7 +40,7 @@ Runs that took place sometime in a given time interval are also supported.
 syntax                                                          meaning
 =============================================================== ======================================
 ``DataBroker(start_time='2015-01')``                            all headers from January 2015 or later
-``DataBroker(start_time='2015-01-05', end_time='2015-01-010')`` between January 5 and 10
+``DataBroker(start_time='2015-01-05', stop_time='2015-01-10')`` between January 5 and 10
 =============================================================== ======================================
 
 
