@@ -10,13 +10,11 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler,
                            bulk_insert_datum)
 from filestore.core import DatumNotFound
-from .utils import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
-from nose.tools import assert_raises
 
-from .utils import SynHandlerMod
+from .utils import SynHandlerMod,  fs_setup, fs_teardown
 import pymongo.errors
-
+import pytest
 
 def setup_module():
     fs_setup()
@@ -51,6 +49,7 @@ def _insert_syn_data_bulk(f_type, shape, count):
     return d_uid
 
 
+@pytest.mark.parametrize('func', [_insert_syn_data, _insert_syn_data_bulk])
 def _rt_helper(func):
     shape = (25, 32)
     mod_ids = func('syn-mod', shape, 10)
@@ -61,13 +60,10 @@ def _rt_helper(func):
         assert_array_equal(data, known_data)
 
 
-def test_round_trip():
-    yield _rt_helper, _insert_syn_data
-    yield _rt_helper, _insert_syn_data_bulk
-
 
 def test_non_exist():
-    assert_raises(DatumNotFound, retrieve, 'aardvark')
+    with pytest.raises(DatumNotFound):
+        retrieve('aardvark')
 
 
 def test_non_unique_fail():
@@ -75,8 +71,8 @@ def test_non_unique_fail():
     fb = insert_resource('syn-mod', None, {'shape': shape})
     r_id = str(uuid.uuid4())
     insert_datum(str(fb['id']), r_id, {'n': 0})
-    assert_raises(pymongo.errors.DuplicateKeyError,
-                  insert_datum, str(fb['id']), r_id, {'n': 1})
+    with pytest.raises(pymongo.errors.DuplicateKeyError):
+        insert_datum(str(fb['id']), r_id, {'n': 1})
 
 
 def test_index():
