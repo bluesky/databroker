@@ -45,11 +45,10 @@ import filestore.api as fsa
 import filestore.file_writers as fs_write
 import filestore.handlers as fs_read
 from .utils import fs_setup, fs_teardown
-
+import pytest
 import uuid
 from numpy.testing import assert_array_equal
 
-from nose.tools import assert_raises, assert_equal
 import tempfile
 import shutil
 import os
@@ -100,26 +99,29 @@ def test_file_exist_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
     test_w.add_data(5)
-    assert_raises(IOError, fs_write.NpyWriter, test_path)
+    with pytest.raises(IOError):
+        fs_write.NpyWriter(test_path)
 
 
 def test_multi_write_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
     test_w.add_data(5)
-    assert_raises(RuntimeError, test_w.add_data, 6)
+    with pytest.raises(RuntimeError):
+        test_w.add_data(6)
 
 
 def test_event_custom_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     test_w = fs_write.NpyWriter(test_path)
-    assert_raises(ValueError, test_w.add_data, 6, None, {'aardvark': 3.14})
+    with pytest.raises(ValueError):
+        test_w.add_data(6, None, {'aardvark': 3.14})
 
 
 def test_file_custom_fail():
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
-    assert_raises(ValueError, fs_write.NpyWriter,
-                  test_path, {'aardvark': 3.14})
+    with pytest.raises(ValueError):
+        fs_write.NpyWriter(test_path, {'aardvark': 3.14})
 
 
 def test_sneaky_write_fail():
@@ -127,7 +129,8 @@ def test_sneaky_write_fail():
     test_w = fs_write.NpyWriter(test_path)
     with open(test_path, 'w') as fout:
         fout.write('aardvark')
-    assert_raises(IOError, test_w.add_data, 5)
+    with pytest.raises(IOError):
+        test_w.add_data(5)
 
 
 def test_give_uid():
@@ -135,7 +138,7 @@ def test_give_uid():
     uid = str(uuid.uuid4())
     with fs_write.NpyWriter(test_path) as fout:
         eid = fout.add_data([1, 2, 3], uid)
-    assert_equal(uid, eid)
+    assert uid == eid
 
 
 def test_custom():
