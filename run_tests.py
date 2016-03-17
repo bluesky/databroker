@@ -7,8 +7,6 @@ if __name__ == '__main__':
     args = ['-v']
     # show the message output for skipped and expected failure tests
     args.append('-rxs')
-    # compute coverage stats for bluesky
-    args.extend(['--cov', 'metadatastore'])
     # call pytest and exit with the return code from pytest so that
     # travis will fail correctly if tests fail
     sys.exit(pytest.main(args))
