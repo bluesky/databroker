@@ -10,7 +10,7 @@ from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
-
+from datetime import datetime
 
 from metadatastore.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
@@ -197,11 +197,26 @@ def test_uid_lookup():
     assert_raises(ValueError, lambda: db[uid[0]])
 
 
-def test_find():
+def test_find_by_float_time():
     uid = insert_run_start(time=100., scan_id=1,
                            owner='nedbrainard', beamline_id='example',
                            uid=str(uuid.uuid4()))
     result = db(start_time=99, stop_time=101)
+    uids = [hdr['start']['uid'] for hdr in result]
+    assert uid in uids
+
+def test_find_by_string_time():
+    uid = insert_run_start(time=ttime.time(), scan_id=1,
+                           owner='nedbrainard', beamline_id='example',
+                           uid=str(uuid.uuid4()))
+    today = datetime.today()
+    yesterday = '{}-{}-{}'.format(today.year,
+                                  str(today.month).zfill(2),
+                                  str(today.day-1).zfill(2))
+    tomorrow = '{}-{}-{}'.format(today.year,
+                                  str(today.month).zfill(2),
+                                  str(today.day+1).zfill(2))
+    result = db(start_time=yesterday, stop_time=tomorrow)
     uids = [hdr['start']['uid'] for hdr in result]
     assert uid in uids
 
