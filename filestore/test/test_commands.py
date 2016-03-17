@@ -50,7 +50,7 @@ def _insert_syn_data_bulk(f_type, shape, count):
 
 
 @pytest.mark.parametrize('func', [_insert_syn_data, _insert_syn_data_bulk])
-def _rt_helper(func):
+def test_insert_funcs(func):
     shape = (25, 32)
     mod_ids = func('syn-mod', shape, 10)
 
