@@ -10,7 +10,7 @@ import tempfile
 import pytest
 
 
-class test_read_connection_config_file(object):
+class Test_read_connection_config_file(object):
     @classmethod
     def setup(cls):
         # example contents of connection.yml
