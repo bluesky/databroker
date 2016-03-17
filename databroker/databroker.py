@@ -19,4 +19,9 @@ get_images = DataBroker.get_images
 restream = DataBroker.restream
 stream = DataBroker.stream
 process = DataBroker.process
-flll_event = DataBroker.fill_event
+
+
+def fill_event(*args, **kwargs):
+    return DataBroker.fill_event(*args, **kwargs)
+
+# flll_event = DataBroker.fill_event

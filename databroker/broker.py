@@ -17,7 +17,7 @@ from .core import (Header, _check_fields_exist, _inspect_descriptor,
                    get_events as _get_events,
                    get_table as _get_table,
                    restream as _restream,
-                   process as _process)
+                   process as _process, Images)
                   
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
@@ -83,7 +83,7 @@ def _(key, mds):
                          "and could become too large.")
     start = -key.start
     result = list(mds.find_last(start))[stop::key.step]
-    header = [Header.from_run_start(h) for h in result]
+    header = [Header.from_run_start(mds, h) for h in result]
     return header
 
 
@@ -98,7 +98,7 @@ def _(key, mds):
         except StopIteration:
             raise ValueError("No such run found for key=%s which is "
                              "being interpreted as a scan id." % key)
-        header = Header.from_run_start(result)
+        header = Header.from_run_start(mds, result)
     else:
         # Interpret key as the Nth last scan.
         gen = mds.find_last(-key)
@@ -108,7 +108,7 @@ def _(key, mds):
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-        header = Header.from_run_start(result)
+        header = Header.from_run_start(mds, result)
     return header
 
 
@@ -139,7 +139,7 @@ def _(key, mds):
         raise ValueError("key=%s  matches %s runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    header = Header.from_run_start(result)
+    header = Header.from_run_start(mds, result)
     return header
 
 
@@ -149,7 +149,7 @@ def _(key, mds):
 def _(key, mds):
     logger.info('Interpreting key = {} as a set, tuple or MutableSequence'
                 ''.format(key))
-    return [search(k) for k in key]
+    return [search(k, mds) for k in key]
 
 
 class Broker(object):
@@ -162,7 +162,7 @@ class Broker(object):
 
         Some more docs go here
         """
-        return search(key, self.mds, self.fs)
+        return search(key, self.mds)
 
     def __call__(self, **kwargs):
         """Given search criteria, find Headers describing runs.
@@ -234,7 +234,7 @@ class Broker(object):
             run_start = result
         result = []
         for rs in run_start:
-            result.append(Header.from_run_start(rs))
+            result.append(Header.from_run_start(self.mds, rs))
         return result
 
     def find_headers(self, **kwargs):
@@ -267,13 +267,12 @@ class Broker(object):
         for data_key, value in six.iteritems(event.data):
             if is_external.get(data_key, False):
                 if data_key not in handler_overrides:
-                    event.data[data_key] = self.fs.retrieve(value,
-                                                            handler_registry)
+                    with self.fs.handler_context(handler_registry) as fs:
+                        event.data[data_key] = fs.get_datum(value)
                 else:
                     mock_registry = mock_registries[data_key]
-                    event.data[data_key] = self.fs.retrieve(value,
-                                                            mock_registry)
-
+                    with self.fs.handler_context(mock_registry) as fs:
+                        event.data[data_key] = fs.get_datum(value)
 
     def get_events(self, headers, fields=None, fill=True,
                    handler_registry=None, handler_overrides=None):
@@ -365,7 +364,7 @@ class Broker(object):
         >>> for image in images:
                 # do something
         """
-        return Images(self.fs, headers, name, handler_registry,
+        return Images(self.mds, self.fs, headers, name, handler_registry,
                       handler_override)
 
 

@@ -42,10 +42,10 @@ def fill_event(fs, event, handler_registry=None, handler_overrides=None):
     for data_key, value in six.iteritems(event.data):
         if is_external.get(data_key, False):
             if data_key not in handler_overrides:
-                event.data[data_key] = fs.retrieve(value, handler_registry)
+                event.data[data_key] = fs.get_datum(value, handler_registry)
             else:
                 mock_registry = mock_registries[data_key]
-                event.data[data_key] = fs.retrieve(value, mock_registry)
+                event.data[data_key] = fs.get_datum(value, mock_registry)
 
 
 class Header(doc.Document):
@@ -59,14 +59,15 @@ class Header(doc.Document):
         Parameters
         ----------
         run_start : metadatastore.document.Document or str
-            RunStart Document or uid
+            RunStart Document
 
         Returns
         -------
         header : databroker.broker.Header
         """
-        run_start_uid = mds.doc_or_uid_to_uid(run_start)
-        run_start = mds.run_start_given_uid(run_start_uid)
+        if isinstance(run_start, six.string_types):
+            run_start = mds.run_start_given_uid(run_start)
+        run_start_uid = run_start['uid']
 
         try:
             run_stop = doc.ref_doc_to_uid(mds.stop_by_start(run_start_uid),
@@ -252,15 +253,15 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
             for field in df.columns:
                 if is_external.get(field) and fill:
                     logger.debug('filling data for %s', field)
-                    # TODO someday we will have bulk retrieve in FS
+                    # TODO someday we will have bulk get_datum in FS
                     datum_uids = df[field]
                     if field not in handler_overrides:
-                        values = [fs.retrieve(value, handler_registry)
+                        values = [fs.get_datum(value, handler_registry)
                                   for value in datum_uids]
                     else:
                         handler = handler_overrides[field]
                         mock_registry = defaultdict(lambda: handler)
-                        values = [fs.retrieve(value, mock_registry)
+                        values = [fs.get_datum(value, mock_registry)
                                   for value in datum_uids]
                     df[field] = values
             for field in extra_fields:
@@ -451,11 +452,11 @@ def get_images(fs, headers, name, handler_registry=None,
     >>> for image in images:
             # do something
     """
-    return Images(fs, headers, name, handler_registry, handler_override)
+    return Images(mds, fs, headers, name, handler_registry, handler_override)
 
 
 class Images(FramesSequence):
-    def __init__(self, fs, headers, name, handler_registry=None,
+    def __init__(self, mds, fs, headers, name, handler_registry=None,
                  handler_override=None):
         """
         Load images from a detector for given Header(s).
@@ -479,7 +480,7 @@ class Images(FramesSequence):
                 # do something
         """
         self.fs = fs
-        events = get_events(headers, [name], fill=False)
+        events = get_events(mds, fs, headers, [name], fill=False)
         self._datum_uids = [event.data[name] for event in events
                             if name in event.data]
         self._len = len(self._datum_uids)
@@ -489,7 +490,7 @@ class Images(FramesSequence):
         else:
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
-        example_frame = self.fs.retrieve(first_uid, self.handler_registry)
+        example_frame = self.fs.get_datum(first_uid, self.handler_registry)
         # Try to duck-type as a numpy array, but fall back as a general
         # Python object.
         try:
@@ -513,7 +514,8 @@ class Images(FramesSequence):
         return self._len
 
     def get_frame(self, i):
-        img = self.fs.retrieve(self._datum_uids[i], self.handler_registry)
+        with self.fs.handler_context(self.handler_registry) as fs:
+            img = fs.get_datum(self._datum_uids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
         else:
