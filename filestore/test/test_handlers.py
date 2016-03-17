@@ -22,7 +22,7 @@ from filestore.path_only_handlers import (AreaDetectorTiffPathOnlyHandler,
 from numpy.testing import assert_array_equal
 import os
 from itertools import product
-from nose.tools import assert_true, assert_raises, assert_equal
+import pytest
 
 from six.moves import range
 db_name = str(uuid.uuid4())
@@ -58,7 +58,7 @@ class _with_file(object):
         pass
 
 
-class test_np_FW(_with_file):
+class Test_np_FW(_with_file):
     def _make_data(self):
         N = 15
         filename = self.filename
@@ -78,7 +78,7 @@ class test_np_FW(_with_file):
                 assert_array_equal(data, known_data)
 
 
-class test_AD_hdf5_files(_with_file):
+class Test_AD_hdf5_files(_with_file):
     # test the HDF5 product emitted by the hdf5 plugin to area detector
     def _make_data(self):
         filename = self.filename
@@ -112,16 +112,16 @@ class test_AD_hdf5_files(_with_file):
     def test_open_close(self):
 
         hand = AreaDetectorHDF5Handler(self.filename)  # calls open()
-        assert_true(hand._file is not None)
+        assert hand._file is not None
         hand.close()
-        assert_true(hand._file is None)
+        assert hand._file is None
         hand.open()
-        assert_true(hand._file is not None)
+        assert hand._file is not None
         hand.close()
-        assert_true(hand._file is None)
+        assert hand._file is None
 
 
-class test_maps_hdf5(_with_file):
+class Test_maps_hdf5(_with_file):
     n_pts = 20
     N = 10
     M = 11
@@ -181,7 +181,8 @@ class test_maps_hdf5(_with_file):
     def test_closed_rasise(self):
         hand = HDFE(self.filename, 'mca_arr')
         hand.close()
-        assert_raises(RuntimeError, hand, 0)
+        with pytest.raises(RuntimeError):
+            hand(0)
 
 
 def _dummy_helper(n_pts, hand, kwargs):
@@ -199,7 +200,8 @@ def test_ADDummy():
 
 
 def test_npyfw_fail():
-    assert_raises(IOError, NpyFrameWise, 'aarvark_rises')
+    with pytest.raises(IOError):
+         NpyFrameWise('aarvark_rises')
 
 
 def _test_tiff_path_only(path, fname, fpp):
@@ -208,7 +210,7 @@ def _test_tiff_path_only(path, fname, fpp):
     for j in range(5):
         res = test(j)
         expected = [template.format(n) for n in range(j*fpp, (j+1)*fpp)]
-        assert_equal(res, expected)
+        assert res == expected
 
 
 def test_tiff_path_handler():
@@ -218,4 +220,4 @@ def test_tiff_path_handler():
 def test_raw_handler():
     h = RawHandler('path', a=1)
     result = h(b=2)
-    assert_equal(result, ('path', {'a': 1}, {'b': 2}))
+    assert result == ('path', {'a': 1}, {'b': 2})
