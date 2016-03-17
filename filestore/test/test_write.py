@@ -44,7 +44,7 @@ from itertools import chain, repeat
 import filestore.api as fsa
 import filestore.file_writers as fs_write
 import filestore.handlers as fs_read
-from filestore.utils.testing import fs_setup, fs_teardown
+from .utils import fs_setup, fs_teardown
 
 import uuid
 from numpy.testing import assert_array_equal

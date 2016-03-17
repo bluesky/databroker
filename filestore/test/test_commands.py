@@ -10,7 +10,7 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler,
                            bulk_insert_datum)
 from filestore.core import DatumNotFound
-from filestore.utils.testing import fs_setup, fs_teardown
+from .utils import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 

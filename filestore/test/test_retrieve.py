@@ -41,7 +41,7 @@ import logging
 
 
 import filestore.api as fsa
-from filestore.utils.testing import fs_setup, fs_teardown
+from .utils import fs_setup, fs_teardown
 import numpy as np
 from nose.tools import (assert_true, assert_raises, assert_false,
                         assert_in, assert_not_in)

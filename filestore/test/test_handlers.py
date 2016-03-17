@@ -11,7 +11,7 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler)
 
 from  filestore.api import handler_context
-from filestore.utils.testing import fs_setup, fs_teardown
+from .utils import fs_setup, fs_teardown
 from filestore.handlers import AreaDetectorHDF5Handler
 from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
