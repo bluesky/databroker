@@ -16,13 +16,13 @@ from .utils import SynHandlerMod,  fs_setup, fs_teardown
 import pymongo.errors
 import pytest
 
-def setup_module():
+def setup_module(module):
     fs_setup()
     # register the dummy handler to use
     register_handler('syn-mod', SynHandlerMod)
 
 
-def teardown_module():
+def teardown_module(module):
     fs_teardown()
     deregister_handler('syn-mod')
 

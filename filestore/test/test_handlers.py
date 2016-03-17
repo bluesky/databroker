@@ -29,13 +29,13 @@ db_name = str(uuid.uuid4())
 conn = None
 
 
-def setup_module():
+def setup_module(module):
     fs_setup()
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
 
 
-def teardown_module():
+def teardown_module(module):
     fs_teardown()
     deregister_handler('AD_HDF5')
 

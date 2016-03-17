@@ -52,11 +52,11 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-def setup_module():
+def setup_module(module):
     fs_setup()
 
 
-def teardown_module():
+def teardown_module(module):
     fs_teardown()
 
 
