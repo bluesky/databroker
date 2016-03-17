@@ -65,14 +65,14 @@ db_name = str(uuid.uuid4())
 conn = None
 
 
-def setup():
+def setup_module():
     fs_setup()
 
     global BASE_PATH
     BASE_PATH = tempfile.mkdtemp()
 
 
-def teardown():
+def teardown_module():
     fs_teardown()
     if CLEAN_FILES:
         shutil.rmtree(BASE_PATH)
