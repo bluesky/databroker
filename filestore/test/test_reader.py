@@ -40,10 +40,11 @@ import six
 import logging
 logger = logging.getLogger(__name__)
 import filestore.handlers as fs_read
-from nose.tools import assert_raises
+import pytest
 import uuid
 
 
 def test_npy_nofile_fail():
     path = str(uuid.uuid4())
-    assert_raises(IOError, fs_read.NpyHandler, path)
+    with pytest.raises(IOError):
+        fs_read.NpyHandler(path)
