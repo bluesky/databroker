@@ -14,7 +14,7 @@ from .utils import fs_setup, fs_teardown
 from numpy.testing import assert_array_equal
 from nose.tools import assert_raises
 
-from .t_utils import SynHandlerMod
+from .utils import SynHandlerMod
 import pymongo.errors
 
 

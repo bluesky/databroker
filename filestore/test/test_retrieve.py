@@ -46,7 +46,7 @@ import numpy as np
 from nose.tools import (assert_true, assert_raises, assert_false,
                         assert_in, assert_not_in)
 
-from filestore.test.t_utils import SynHandlerMod, SynHandlerEcho
+from .utils import SynHandlerMod, SynHandlerEcho
 import uuid
 
 logger = logging.getLogger(__name__)
