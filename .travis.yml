@@ -26,7 +26,7 @@ python:
 
 before_install:
   # clone conda install/build/upload helper scripts and make them executable
-  - git clone https://gist.github.com/613e015ad558b9149d33.git ~/scripts
+  - git clone https://github.com/NSLS-II/nsls2-ci ~/scripts
   - chmod +x ~/scripts/*.sh
   # install miniconda/anaconda-client/conda-build
   - . ~/scripts/install-miniconda.sh
