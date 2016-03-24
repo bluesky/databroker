@@ -12,7 +12,7 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
 from filestore.core import DatumNotFound
 from numpy.testing import assert_array_equal
 
-from .utils import SynHandlerMod,  fs_setup, fs_teardown
+from .utils import SynHandlerMod, fs_setup, fs_teardown
 import pymongo.errors
 import pytest
 
