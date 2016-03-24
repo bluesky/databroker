@@ -25,5 +25,5 @@ setuptools.setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
     ],
-    # requires=['h5py', 'numpy', 'mongoengine', 'jsonschema'],
+    install_requires=['h5py', 'numpy', 'mongoengine', 'jsonschema'],
 )
