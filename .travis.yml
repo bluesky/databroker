@@ -41,6 +41,10 @@ install:
   - pip install coveralls
   - 'pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct'
   - python setup.py install
+  # Need to clean the python build directory (and other cruft) or pytest is
+  # going to find the build directory and get confused why there are two sets
+  # of every test file
+  - git clean -xfd
 
 
 script:
