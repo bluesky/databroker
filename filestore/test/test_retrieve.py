@@ -114,7 +114,7 @@ def test_context_manager_replace():
         with fsa.handler_context({'syn-mod': SynHandlerEcho}):
             assert fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerEcho
         assert fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerMod
-    assert 'syn-mod' in fsa._FS_SINGLETON.handler_reg
+    assert 'syn-mod' not in fsa._FS_SINGLETON.handler_reg
 
 
 def test_deregister():
