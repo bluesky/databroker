@@ -12,7 +12,7 @@ def load_configuration(name, prefix, fields):
     The precedence order is (highest priority last):
 
     1. The conda environment
-       - CONDA_ENV/etc/{name}.yaml (if CONDA_ETC_env is defined)
+       - CONDA_ENV/etc/{name}.yaml (if CONDA_ETC_ is defined for the env)
     2. At the system level
        - /etc/{name}.yml
     3. In the user's home directory
