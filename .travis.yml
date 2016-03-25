@@ -35,16 +35,20 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda
-  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons
   - source activate testenv
   - conda install -c soft-matter pims
   - pip install coveralls
   - 'pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct'
   - python setup.py install
+  # Need to clean the python build directory (and other cruft) or pytest is
+  # going to find the build directory and get confused why there are two sets
+  # of every test file
+  - git clean -xfd
 
 
 script:
-  - python run_tests.py
+  - coverage run run_tests.py
   # build the conda package on travis
   - . ~/scripts/conda-build.sh
 

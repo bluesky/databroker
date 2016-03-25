@@ -56,3 +56,4 @@ target/
 
 # PyCharm
 .idea/
+.tags

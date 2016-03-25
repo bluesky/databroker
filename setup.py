@@ -1,11 +1,4 @@
-try:
-    from setuptools import setup
-except ImportError:
-    try:
-        from setuptools.core import setup
-    except ImportError:
-        from distutils.core import setup
-
+import setuptools
 import versioneer
 import os
 
@@ -17,13 +10,13 @@ import os
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-setup(
+setuptools.setup(
     name='filestore',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     license="BSD (3-clause)",
     url="https://github.com/NSLS-II/filestore",
-    packages=['filestore', 'filestore.utils', 'filestore.readers'],
+    packages=setuptools.find_packages(),
     package_data={'filestore': ['json/*.json']},
     long_description=read('README.md'),
     classifiers=[
@@ -32,5 +25,5 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
     ],
-    requires=['h5py', 'numpy', 'mongoengine', 'jsonschema']
+    install_requires=['h5py', 'numpy', 'mongoengine', 'jsonschema'],
 )
