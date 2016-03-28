@@ -140,9 +140,9 @@ class FileStoreRO(object):
         try:
             yield self
         finally:
-            poped_reg = self.handler_reg.maps[0]
+            popped_reg = self.handler_reg.maps[0]
             self.handler_reg = stash
-            for handler in poped_reg.values():
+            for handler in popped_reg.values():
                 name = handler.__name__
                 for k in list(self._handler_cache):
                     if k[1] == name:
