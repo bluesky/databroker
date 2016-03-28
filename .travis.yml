@@ -25,7 +25,6 @@ install:
 - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 boltons prettytable humanize doct
 - source activate testenv
 - pip install coveralls codecov
-- python setup.py install
 - git describe
 - python -c "import metadatastore; print(metadatastore.__version__)"
 # - git clean -xfd
