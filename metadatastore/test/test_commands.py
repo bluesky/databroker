@@ -7,11 +7,10 @@ import time as ttime
 import datetime
 
 import pytz
-from nose.tools import assert_equal, assert_raises, raises, assert_true
-
+import pytest
 import metadatastore.commands as mdsc
 import metadatastore.core as core
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from .utils import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 import uuid
 
@@ -23,12 +22,12 @@ document_insertion_time = None
 # ### Nose setup/teardown methods #############################################
 
 
-def teardown():
+def teardown_function(function):
     pass
     mds_teardown()
 
 
-def setup():
+def setup_function(function):
     mds_setup()
     global run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
@@ -537,8 +536,3 @@ def test_bad_event_desc():
     mdsc.insert_descriptor(data_keys=data_keys,
                            time=ttime.time(),
                            run_start=rs, uid=str(uuid.uuid4()))
-
-
-if __name__ == "__main__":
-    import nose
-    nose.runmodule(argv=['-s', '--with-doctest'], exit=False)
