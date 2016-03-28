@@ -1,11 +1,4 @@
-try:
-    from setuptools import setup
-except ImportError:
-    try:
-        from setuptools.core import setup
-    except ImportError:
-        from distutils.core import setup
-
+from setuptools import setup, find_packages
 import versioneer
 import os
 
@@ -19,8 +12,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     license="BSD (3-clause)",
     url="https://github.com/NSLS-II/metadatastore",
-    packages=['metadatastore', 'metadatastore.test', 'metadatastore.utils',
-              'metadatastore.examples', 'metadatastore.examples.sample_data'],
+    packages=find_packages(),
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: BSD License",
