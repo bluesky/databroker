@@ -28,7 +28,7 @@ install:
 - python setup.py install
 - git describe
 - python -c "import metadatastore; print(metadatastore.__version__)"
-- git clean -xfd
+# - git clean -xfd
 script:
 - coverage run run_tests.py
 - coverage report -m
