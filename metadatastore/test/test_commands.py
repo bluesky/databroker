@@ -43,7 +43,7 @@ def setup_function(function):
 
 # ### Helper functions ########################################################
 
-
+@pytest.fixture(scope='module')
 def setup_syn(custom=None):
     if custom is None:
         custom = {}
@@ -218,10 +218,10 @@ def test_run_stop_insertion():
         assert_equal(known_value, getattr(run_stop, attr))
 
 
-def test_find_events_smoke():
+def test_find_events_smoke(setup_syn):
 
     num = 50
-    rs, e_desc, data_keys = setup_syn()
+    rs, e_desc, data_keys = setup_syn
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
@@ -244,10 +244,10 @@ def test_find_events_ValueError():
 
 
 @raises(ValueError)
-def test_bad_bulk_insert_event_data():
+def test_bad_bulk_insert_event_data(setup_syn):
 
     num = 50
-    rs, e_desc, data_keys = setup_syn()
+    rs, e_desc, data_keys = setup_syn
     all_data = syn_data(data_keys, num)
 
     # remove one of the keys from the event data
@@ -256,10 +256,10 @@ def test_bad_bulk_insert_event_data():
 
 
 @raises(ValueError)
-def test_bad_bulk_insert_event_timestamp():
+def test_bad_bulk_insert_event_timestamp(setup_syn):
     """Test what happens when one event is missing a timestamp for one key"""
     num = 50
-    rs, e_desc, data_keys = setup_syn()
+    rs, e_desc, data_keys = setup_syn
     all_data = syn_data(data_keys, num)
     # remove one of the keys from the event timestamps
     del all_data[1]['timestamps']['F']
@@ -403,9 +403,9 @@ def test_normalize_human_friendly_time():
         yield _normalize_human_friendly_time_tester, val, False, ValueError
 
 
-def test_bulk_insert():
+def test_bulk_insert(setup_syn):
     num = 50
-    rs, e_desc, data_keys = setup_syn()
+    rs, e_desc, data_keys = setup_syn
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
@@ -419,9 +419,9 @@ def test_bulk_insert():
             assert_equal(ret[k], expt[k])
 
 
-def test_bulk_table():
+def test_bulk_table(setup_syn):
     num = 50
-    rs, e_desc, data_keys = setup_syn()
+    rs, e_desc, data_keys = setup_syn
     all_data = syn_data(data_keys, num)
 
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
@@ -433,8 +433,8 @@ def test_bulk_table():
         assert_true(all(s == v for s, v in zip(seq_nums, vals)))
 
 
-def test_cache_clear_lookups():
-    run_start_uid, e_desc_uid, data_keys = setup_syn()
+def test_cache_clear_lookups(setup_syn):
+    run_start_uid, e_desc_uid, data_keys = setup_syn
     run_stop_uid = mdsc.insert_run_stop(run_start_uid,
                                        ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
@@ -457,8 +457,8 @@ def test_cache_clear_lookups():
     assert_equal(ev_desc, ev_desc3)
 
 
-def test_run_stop_by_run_start():
-    run_start_uid, e_desc_uid, data_keys = setup_syn()
+def test_run_stop_by_run_start(setup_syn):
+    run_start_uid, e_desc_uid, data_keys = setup_syn
     run_stop_uid = mdsc.insert_run_stop(run_start_uid,
                                         ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
@@ -476,8 +476,8 @@ def test_run_stop_by_run_start():
     assert_equal(ev_desc, ev_desc3)
 
 
-def test_find_run_start():
-    run_start_uid, e_desc_uid, data_keys = setup_syn()
+def test_find_run_start(setup_syn):
+    run_start_uid, e_desc_uid, data_keys = setup_syn
     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
 
     run_start = mdsc.run_start_given_uid(run_start_uid)
@@ -487,8 +487,8 @@ def test_find_run_start():
     assert_equal(run_start, run_start2)
 
 
-def test_find_run_stop():
-    run_start_uid, e_desc_uid, data_keys = setup_syn()
+def test_find_run_stop(setup_syn):
+    run_start_uid, e_desc_uid, data_keys = setup_syn
     run_stop_uid = mdsc.insert_run_stop(run_start_uid, ttime.time(),
                                         uid=str(uuid.uuid4()))
 
@@ -502,8 +502,8 @@ def test_find_run_stop():
 
 
 @raises(RuntimeError)
-def test_double_run_stop():
-    run_start_uid, e_desc_uid, data_keys = setup_syn()
+def test_double_run_stop(setup_syn):
+    run_start_uid, e_desc_uid, data_keys = setup_syn
     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
     mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
 
