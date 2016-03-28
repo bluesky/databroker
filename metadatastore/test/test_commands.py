@@ -85,7 +85,6 @@ def syn_data(data_keys, count):
 # ### Testing metadatastore insertion functionality ###########################
 
 
-@raises(KeyError)
 def check_for_id(document):
     """Make sure that our documents do not have an id field
 
@@ -94,7 +93,8 @@ def check_for_id(document):
     document : metadatastore.document.Document
         A sanitized mongoengine document
     """
-    document['id']
+    with pytest.raises(KeyError):
+        document['id']
 
 
 def test_event_descriptor_insertion():
@@ -238,12 +238,11 @@ def test_find_events_smoke(setup_syn):
     # make sure that searching by descriptor document works
     next(mdsc.find_events(descriptor=descriptor))
 
-@raises(ValueError)
 def test_find_events_ValueError():
-    list(mdsc.find_events(event_descriptor='cat'))
+    with pytest.raises(ValueError):
+        list(mdsc.find_events(event_descriptor='cat'))
 
 
-@raises(ValueError)
 def test_bad_bulk_insert_event_data(setup_syn):
 
     num = 50
@@ -252,10 +251,10 @@ def test_bad_bulk_insert_event_data(setup_syn):
 
     # remove one of the keys from the event data
     del all_data[-1]['data']['E']
-    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+    with pytest.raises(ValueError):
+        mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
-@raises(ValueError)
 def test_bad_bulk_insert_event_timestamp(setup_syn):
     """Test what happens when one event is missing a timestamp for one key"""
     num = 50
@@ -263,21 +262,18 @@ def test_bad_bulk_insert_event_timestamp(setup_syn):
     all_data = syn_data(data_keys, num)
     # remove one of the keys from the event timestamps
     del all_data[1]['timestamps']['F']
-    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+    with pytest.raises(ValueError):
+        mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
-@raises(mdsc.NoEventDescriptors)
 def test_no_evdesc():
+    run_start_uid = mdsc.insert_run_start(
+        scan_id=42, beamline_id='testbed', owner='tester',
+        group='awesome-devs', project='Nikea', time=document_insertion_time,
+        uid=str(uuid.uuid4()))
 
-    run_start_uid = mdsc.insert_run_start(scan_id=42,
-                                        beamline_id='testbed',
-                                        owner='tester',
-                                        group='awesome-devs',
-                                        project='Nikea',
-                                        time=document_insertion_time,
-                                        uid=str(uuid.uuid4()))
-
-    mdsc.descriptors_by_start(run_start_uid)
+    with pytest.raises(mdsc.NoEventDescriptors):
+        mdsc.descriptors_by_start(run_start_uid)
 
 
 # ### Testing metadatastore find functionality ################################
@@ -340,8 +336,8 @@ def _normalize_human_friendly_time_tester(val, should_succeed, etype):
         except NameError:
             pass
     else:
-        assert_raises(etype, core._normalize_human_friendly_time,
-                      val, 'US/Eastern')
+        with pytest.raises(etype):
+            core._normalize_human_friendly_time(val, 'US/Eastern')
 
 
 def test_normalize_human_friendly_time():
@@ -501,23 +497,24 @@ def test_find_run_stop(setup_syn):
     assert_equal(run_stop, run_stop3)
 
 
-@raises(RuntimeError)
 def test_double_run_stop(setup_syn):
     run_start_uid, e_desc_uid, data_keys = setup_syn
-    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
-    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(),
+                         uid=str(uuid.uuid4()))
+    with pytest.raises(RuntimeError):
+        mdsc.insert_run_stop(run_start_uid, ttime.time(),
+                             uid=str(uuid.uuid4()))
 
 
 def test_find_last_for_smoke():
     last, = mdsc.find_last()
 
 
-@raises(mdsc.NoRunStart)
 def test_fail_runstart():
-    mdsc.run_start_given_uid('aardvark')
+    with pytest.raises(mdsc.NoRunStart):
+        mdsc.run_start_given_uid('aardvark')
 
 
-@raises(ValueError)
 def test_bad_event_desc():
 
     data_keys = {k: {'source': k,
@@ -533,6 +530,7 @@ def test_bad_event_desc():
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
-    mdsc.insert_descriptor(data_keys=data_keys,
-                           time=ttime.time(),
-                           run_start=rs, uid=str(uuid.uuid4()))
+    with pytest.raises(ValueError):
+        mdsc.insert_descriptor(data_keys=data_keys,
+                               time=ttime.time(),
+                               run_start=rs, uid=str(uuid.uuid4()))
