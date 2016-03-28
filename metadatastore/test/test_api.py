@@ -11,8 +11,3 @@ from metadatastore.api import insert_run_start
 from metadatastore.api import insert_run_stop
 from metadatastore.api import db_connect
 from metadatastore.api import db_disconnect
-
-
-if __name__ == "__main__":
-    import nose
-    nose.runmodule(argv=['-s', '--with-doctest'], exit=False)
