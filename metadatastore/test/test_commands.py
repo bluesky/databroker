@@ -22,12 +22,12 @@ document_insertion_time = None
 # ### Nose setup/teardown methods #############################################
 
 
-def teardown_function(function):
+def teardown_module(module):
     pass
     mds_teardown()
 
 
-def setup_function(function):
+def setup_module(module):
     mds_setup()
     global run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
@@ -119,13 +119,12 @@ def test_event_descriptor_insertion():
 
     # make sure the event descriptor is pointing to the correct run start
     referenced_run_start = ev_desc_mds['run_start']
-    assert_equal(referenced_run_start.uid, run_start_uid)
-    assert_equal(ev_desc_mds['time'], time)
+    assert referenced_run_start.uid == run_start_uid
+    assert ev_desc_mds['time'] == time
 
     for k in data_keys:
         for ik in data_keys[k]:
-            assert_equal(ev_desc_mds.data_keys[k][ik],
-                         data_keys[k][ik])
+            assert ev_desc_mds.data_keys[k][ik] == data_keys[k][ik]
 
 
 def test_custom_warn():
@@ -180,7 +179,7 @@ def test_insert_run_start():
     values = [time, beamline_id, scan_id] + list(custom.values())
 
     for name, val in zip(names, values):
-        assert_equal(getattr(run_start_mds, name), val)
+        assert getattr(run_start_mds, name) == val
 
     # make sure the metadatstore document raises properly
     check_for_id(run_start_mds)
@@ -207,7 +206,7 @@ def test_run_stop_insertion():
     check_for_id(run_stop)
     # make sure the run stop is pointing to the correct run start
     referenced_run_start = run_stop['run_start']
-    assert_equal(referenced_run_start.uid, run_start_uid)
+    assert referenced_run_start.uid == run_start_uid
 
     # check the remaining fields
     comparisons = {'time': time,
@@ -215,7 +214,7 @@ def test_run_stop_insertion():
                    'reason': reason,
                    'uid': run_stop_uid}
     for attr, known_value in comparisons.items():
-        assert_equal(known_value, getattr(run_stop, attr))
+        assert known_value == getattr(run_stop, attr)
 
 
 def test_find_events_smoke(setup_syn):
@@ -332,7 +331,7 @@ def _normalize_human_friendly_time_tester(val, should_succeed, etype):
         output = core._normalize_human_friendly_time(val, 'US/Eastern')
         assert(isinstance(output, float))
         try:
-            assert_equal(output, check_output)
+            assert output == check_output
         except NameError:
             pass
     else:
@@ -410,9 +409,9 @@ def test_bulk_insert(setup_syn):
     ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
-        assert_equal(ret['descriptor']['uid'], e_desc)
+        assert ret['descriptor']['uid'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
-            assert_equal(ret[k], expt[k])
+            assert ret[k] == expt[k]
 
 
 def test_bulk_table(setup_syn):
@@ -426,7 +425,7 @@ def test_bulk_table(setup_syn):
     descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
     for vals in data_table.values():
-        assert_true(all(s == v for s, v in zip(seq_nums, vals)))
+        assert all(s == v for s, v in zip(seq_nums, vals))
 
 
 def test_cache_clear_lookups(setup_syn):
@@ -447,10 +446,10 @@ def test_cache_clear_lookups(setup_syn):
     ev_desc2 = mdsc.descriptor_given_uid(e_desc_uid)
     ev_desc3 = mdsc.descriptor_given_uid(e_desc_uid)
 
-    assert_equal(run_start, run_start2)
-    assert_equal(run_stop, run_stop2)
-    assert_equal(ev_desc, ev_desc2)
-    assert_equal(ev_desc, ev_desc3)
+    assert run_start == run_start2
+    assert run_stop == run_stop2
+    assert ev_desc == ev_desc2
+    assert ev_desc == ev_desc3
 
 
 def test_run_stop_by_run_start(setup_syn):
@@ -463,13 +462,13 @@ def test_run_stop_by_run_start(setup_syn):
 
     run_stop2 = mdsc.stop_by_start(run_start)
     run_stop3 = mdsc.stop_by_start(run_start_uid)
-    assert_equal(run_stop, run_stop2)
-    assert_equal(run_stop, run_stop3)
+    assert run_stop == run_stop2
+    assert run_stop == run_stop3
 
     ev_desc2, = mdsc.descriptors_by_start(run_start)
     ev_desc3, = mdsc.descriptors_by_start(run_start_uid)
-    assert_equal(ev_desc, ev_desc2)
-    assert_equal(ev_desc, ev_desc3)
+    assert ev_desc == ev_desc2
+    assert ev_desc == ev_desc3
 
 
 def test_find_run_start(setup_syn):
@@ -480,7 +479,7 @@ def test_find_run_start(setup_syn):
 
     run_start2, = list(mdsc.find_run_starts(uid=run_start_uid))
 
-    assert_equal(run_start, run_start2)
+    assert run_start == run_start2
 
 
 def test_find_run_stop(setup_syn):
@@ -493,8 +492,8 @@ def test_find_run_stop(setup_syn):
 
     run_stop2, = list(mdsc.find_run_stops(run_start=run_start_uid))
     run_stop3, = list(mdsc.find_run_stops(run_start=run_start))
-    assert_equal(run_stop, run_stop2)
-    assert_equal(run_stop, run_stop3)
+    assert run_stop == run_stop2
+    assert run_stop == run_stop3
 
 
 def test_double_run_stop(setup_syn):
