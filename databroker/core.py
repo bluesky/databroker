@@ -42,10 +42,12 @@ def fill_event(fs, event, handler_registry=None, handler_overrides=None):
     for data_key, value in six.iteritems(event.data):
         if is_external.get(data_key, False):
             if data_key not in handler_overrides:
-                event.data[data_key] = fs.get_datum(value, handler_registry)
+                with fs.handler_context(handler_registry) as _fs:
+                    event.data[data_key] = _fs.get_datum(value)
             else:
                 mock_registry = mock_registries[data_key]
-                event.data[data_key] = fs.get_datum(value, mock_registry)
+                with fs.handler_context(mock_registry) as _fs:
+                    event.data[data_key] = _fs.get_datum(value)
 
 
 class Header(doc.Document):
@@ -258,13 +260,15 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
                     # TODO someday we will have bulk get_datum in FS
                     datum_uids = df[field]
                     if field not in handler_overrides:
-                        values = [fs.get_datum(value, handler_registry)
-                                  for value in datum_uids]
+                        with fs.handler_context(handler_registry) as _fs:
+                            values = [_fs.get_datum(value)
+                                      for value in datum_uids]
                     else:
                         handler = handler_overrides[field]
                         mock_registry = defaultdict(lambda: handler)
-                        values = [fs.get_datum(value, mock_registry)
-                                  for value in datum_uids]
+                        with fs.handler_context(mock_registry) as _fs:
+                            values = [_fs.get_datum(value)
+                                      for value in datum_uids]
                     df[field] = values
             for field in extra_fields:
                 # Look in the descriptor, then start, then stop.

@@ -1,4 +1,4 @@
-from .databroker import DataBroker, _mds_singleton, _fs_singleton
+from .databroker import DataBroker, _MDS_SINGLETON, _FS_SINGLETON
 from .core import Images as _Images
 
 
@@ -53,6 +53,6 @@ def Images(headers, name, handler_registry=None, handler_override=None):
     >>> for image in images:
             # do something
     """
-    return _Images(_mds_singleton, _fs_singleton, headers=headers, name=name,
+    return _Images(_MDS_SINGLETON, _FS_SINGLETON, headers=headers, name=name,
                    handler_registry=handler_registry,
                    handler_override=handler_override)

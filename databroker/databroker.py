@@ -2,17 +2,11 @@
 
 from .broker  import Broker
 from .core import get_fields  # unused, but here for API compat
-from metadatastore import conf as mds_conf, mds
-from filestore import conf as fs_conf, fs
+from metadatastore.commands import _DB_SINGLETON as _MDS_SINGLETON
+from filestore.api import _FS_SINGLETON
 
-_mds_singleton = mds.MDSRO(mds_conf.connection_config)
-_fs_singleton = fs.FileStoreRO(fs_conf.connection_config)
-del mds
-del mds_conf
-del fs
-del fs_conf
+DataBroker = Broker(_MDS_SINGLETON, _FS_SINGLETON)
 
-DataBroker = Broker(_mds_singleton, _fs_singleton)
 get_events = DataBroker.get_events
 get_table = DataBroker.get_table
 get_images = DataBroker.get_images
@@ -21,6 +15,7 @@ stream = DataBroker.stream
 process = DataBroker.process
 
 
+# TODO Add docstrings.
 def fill_event(*args, **kwargs):
     return DataBroker.fill_event(*args, **kwargs)
 
