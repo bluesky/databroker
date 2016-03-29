@@ -31,7 +31,7 @@ blc = None
 image_example_uid = None
 
 
-def setup():
+def setup_module():
     mds_setup()
     fs_setup()
     global image_example_uid
@@ -56,7 +56,7 @@ def setup():
                 image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
 
 
-def teardown():
+def teardown_module():
     fs_teardown()
     mds_teardown()
 
