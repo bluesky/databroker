@@ -2,23 +2,16 @@ from __future__ import print_function
 import warnings
 import six  # noqa
 from collections import deque, defaultdict
-from itertools import chain
-import pandas as pd
+
 import tzlocal
-from metadatastore.commands import (find_last, find_run_starts,
-                                    find_descriptors,
-                                    get_events_generator, get_events_table)
-import doct as doc
-import metadatastore.commands as mc
-import filestore.api as fs_api
 import logging
 import numbers
-from .core import (Header, _check_fields_exist, _inspect_descriptor,
+from .core import (Header, _inspect_descriptor,
                    get_events as _get_events,
                    get_table as _get_table,
                    restream as _restream,
                    process as _process, Images)
-                  
+
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -362,7 +355,7 @@ class Broker(object):
             mapping spec names (strings) to handlers (callable classes)
         handler_override : callable class, optional
             overrides registered handlers
-            
+
 
         Example
         -------

@@ -3,14 +3,16 @@ from databroker.pims_readers import Images, get_images
 from databroker import DataBroker as db
 from ..examples.sample_data import image_and_scalar
 from metadatastore.utils.testing import mds_setup, mds_teardown
-from filestore.utils.testing import fs_setup, fs_teardown
+from filestore.test.utils import fs_setup, fs_teardown
 import numpy as np
 
 from nose.tools import assert_equal
 from numpy.testing.utils import assert_array_equal
 
+
 def test_watermark():
     watermark()
+
 
 def test_pims_images_old_api():
     header = db[-1]
@@ -30,11 +32,12 @@ def test_pims_images():
     assert_equal(len(images), image_and_scalar.num1)
 
 
-def setup():
+def setup_module():
     mds_setup()
     fs_setup()
     image_and_scalar.run()
 
-def teardown():
+
+def teardown_module():
     mds_teardown()
     fs_teardown()
