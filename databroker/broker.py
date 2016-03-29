@@ -6,7 +6,7 @@ from collections import deque, defaultdict
 import tzlocal
 import logging
 import numbers
-from .core import (Header, _inspect_descriptor,
+from .core import (Header, _external_keys,
                    get_events as _get_events,
                    get_table as _get_table,
                    restream as _restream,

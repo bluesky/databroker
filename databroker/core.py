@@ -33,14 +33,18 @@ def fill_event(fs, event, handler_registry=None, handler_overrides=None):
         mapping spec names (strings) to handlers (callable classes)
     handler_overrides : dict, optional
         mapping data keys (strings) to handlers (callable classes)
+
+    .. warning
+
+       This mutates the event's ``data`` field in-place
     """
     if handler_overrides is None:
         handler_overrides = {}
-    is_external = _inspect_descriptor(event.descriptor)
+    is_external = _external_keys(event.descriptor)
     mock_registries = {data_key: defaultdict(lambda: handler)
                        for data_key, handler in handler_overrides.items()}
     for data_key, value in six.iteritems(event.data):
-        if is_external.get(data_key, False):
+        if is_external.get(data_key) is not None:
             if data_key not in handler_overrides:
                 with fs.handler_context(handler_registry) as _fs:
                     event.data[data_key] = _fs.get_datum(value)
@@ -229,7 +233,7 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
         if stop is None:
             stop = {}
         for descriptor in header['descriptors']:
-            is_external = _inspect_descriptor(descriptor)
+            is_external = _external_keys(descriptor)
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
             discard_fields = set()
@@ -255,7 +259,7 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
                 # no content
                 continue
             for field in df.columns:
-                if is_external.get(field) and fill:
+                if is_external.get(field) is not None and fill:
                     logger.debug('filling data for %s', field)
                     # TODO someday we will have bulk get_datum in FS
                     datum_uids = df[field]
@@ -530,14 +534,20 @@ class Images(FramesSequence):
             return img
 
 
-def _inspect_descriptor(descriptor):
-    """
-    Return a dict with the data keys mapped to boolean answering whether
-    data is external.
+def _external_keys(descriptor):
+    """Which data keys are stored externally
+
+    Parameters
+    ----------
+    descriptor : Doct
+        The descriptor
+
+    Returns
+    -------
+    external_keys : dict
+        Maps data key -> the value of external field or None if the
+        field does not exist.
     """
     # TODO memoize to cache these results
     data_keys = descriptor.data_keys
-    is_external = dict()
-    for data_key, data_key_dict in data_keys.items():
-        is_external[data_key] = data_key_dict.get('external', False)
-    return is_external
+    return {k: v.get('external', None) for k, v in data_keys.items()}
