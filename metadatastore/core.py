@@ -862,7 +862,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     """
     # now try rest of formatting
     _format_time(kwargs, tz)
-    rs_objects = run_start_col.find(kwargs, sort=[('time', 1)])
+    rs_objects = run_start_col.find(kwargs, sort=[('time', -1)])
 
     for rs in rs_objects:
         yield _cache_run_start(rs, run_start_cache)
