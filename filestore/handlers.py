@@ -6,7 +6,7 @@ import logging
 import h5py
 import numpy as np
 import os.path
-import pims
+import tifffile
 
 from .handlers_base import HandlerBase
 from .readers.spe import PrincetonSPEFile
@@ -53,22 +53,17 @@ class AreaDetectorTiffHandler(HandlerBase):
     def __init__(self, fpath, template, filename, frame_per_point=1):
         self._path = fpath
         self._fpp = frame_per_point
-        self._template = template.replace('_%6.6d', '*')
-        self._filename = self._template % (self._path,
-                                           filename)
-        self._image_sequence = pims.ImageSequence(self._filename)
+        self._template = template
+        self._filename = filename
 
     def __call__(self, point_number):
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
-        if stop > len(self._image_sequence):
-            # if asking for an image past the end, make sure we have an up to
-            # date list of the existing files
-            self._image_sequence = pims.ImageSequence(self._filename)
-        if stop > len(self._image_sequence):
-            # if we _still_ don't have enough files, raise
-            raise IntegrityError("Seeking Frame {0} out of {1} frames.".format(
-                stop, len(self._image_sequence)))
-        return np.asarray(list(self._image_sequence[start:stop])).squeeze()
+        ret = []
+        for j in range(start, stop):
+            fn = self._template % (self._path, self._filename, j)
+            with tifffile.TiffFile(fn) as tif:
+                ret.append(tif.asarray())
+        return np.array(ret).squeeze()
 
 
 class DummyAreaDetectorHandler(HandlerBase):
