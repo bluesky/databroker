@@ -496,7 +496,8 @@ class Images(FramesSequence):
         else:
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
-        example_frame = self.fs.get_datum(first_uid, self.handler_registry)
+        with self.fs.handler_context(self.handler_registry) as fs:
+            example_frame = fs.get_datum(first_uid)
         # Try to duck-type as a numpy array, but fall back as a general
         # Python object.
         try:
