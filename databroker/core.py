@@ -173,6 +173,10 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
                         event_data[field] = stop[field]
                         event_timestamps[field] = stop['time']
                     # (else omit it from the events of this descriptor)
+                if not event_data:
+                    # Skip events that are now empty because they had no
+                    # applicable fields.
+                    continue
                 if fill:
                     fill_event(fs, event, handler_registry, handler_overrides)
                 yield event
