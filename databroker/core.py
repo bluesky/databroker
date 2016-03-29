@@ -167,12 +167,12 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
                         event_timestamps[field] = stop['time']
                     # (else omit it from the events of this descriptor)
                 if fill:
-                    fill_event(event, handler_registry, handler_overrides)
+                    fill_event(fs, event, handler_registry, handler_overrides)
                 yield event
 
 
 def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
-              handler_registry=None, handler_overrides=None):
+              timezone=None, handler_registry=None, handler_overrides=None):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -189,6 +189,8 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
     convert_times : bool, optional
         Whether to convert times from float (seconds since 1970) to
         numpy datetime64, using pandas. True by default.
+    timezone : str, optional
+        e.g., 'US/Eastern'
     handler_registry : dict, optional
         mapping filestore specs (strings) to handlers (callable classes)
     handler_overrides : dict, optional
@@ -240,7 +242,7 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
             if convert_times:
                 times = pd.to_datetime(
                     pd.Series(times, index=seq_nums),
-                    unit='s', utc=True).dt.tz_localize(TZ)
+                    unit='s', utc=True).dt.tz_localize(timezone)
             df['time'] = times
             for field, values in six.iteritems(data):
                 if field in discard_fields:

@@ -310,7 +310,8 @@ class Broker(object):
 
 
     def get_table(self, headers, fields=None, fill=True, convert_times=True,
-                handler_registry=None, handler_overrides=None):
+                  timezone=None, handler_registry=None,
+                  handler_overrides=None):
         """
         Make a table (pandas.DataFrame) from given run(s).
 
@@ -325,6 +326,9 @@ class Broker(object):
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default.
+        timezone : str, optional
+            e.g., 'US/Eastern'; if None, use metadatastore configuration in
+            `self.mds.config['timezone']`
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
@@ -334,9 +338,11 @@ class Broker(object):
         -------
         table : pandas.DataFrame
         """
+        if timezone is None:
+            timezone = self.mds.config['timezone']
         res = _get_table(mds=self.mds, fs=self.fs, headers=headers,
                          fields=fields, fill=fill, convert_times=convert_times,
-                         handler_registry=handler_registry,
+                         timezone=timezone, handler_registry=handler_registry,
                          handler_overrides=handler_overrides)
         return res
 
