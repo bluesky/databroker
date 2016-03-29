@@ -121,22 +121,23 @@ def _(key, mds):
 def _(key, mds):
     logger.info('Interpreting key = %s as a str' % key)
     results = None
-    if len(key) >= 36:
-        # Interpret key as a uid (or the few several characters of one).
+    if len(key) == 36:
+        # Interpret key as a complete uid.
+        # (Try this first, for performance.)
         logger.debug('Treating %s as a full uuid' % key)
         results = list(mds.find_run_starts(uid=key))
         logger.debug('%s runs found for key=%s treated as a full uuid'
                      % (len(results), key))
-    if not results == 0:
+    if not results:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
         gen = mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
-        raise ValueError("No such run found for key=%s" % key)
+        raise ValueError("No such run found for key=%r" % key)
     if len(results) > 1:
-        raise ValueError("key=%s  matches %s runs. Provide "
+        raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
     header = Header.from_run_start(mds, result)
