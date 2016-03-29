@@ -15,7 +15,7 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 from metadatastore.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
 from metadatastore.utils.testing import mds_setup, mds_teardown
-from filestore.utils.testing import fs_setup, fs_teardown
+from filestore.test.utils import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
 
@@ -221,7 +221,6 @@ def test_data_key():
     assert_equal(actual, str(rs2.uid))
 
 
-
 def _search_helper(query):
     # basically assert that the search does not raise anything
     db[query]
@@ -244,7 +243,7 @@ def test_search_for_smoke():
         slice(-5, 0),
     ]
     for query in queries:
-        yield _search_helper, query
+        db[query]
 
 
 @raises(ValueError)
