@@ -169,9 +169,7 @@ class _HdfMapsHandlerBase(_HDF5HandlerBase):
 
         Provided as a stand alone function to allow re-opening of the handler
         """
-        if self._file:
-            return
-        self._file = h5py.File(self._filename, mode='r')
+        super(_HdfMapsHandlerBase, self).open()
         self._dset = self._file['/'.join(['MAPS', self._dset_path])]
 
     def __call__(self):
