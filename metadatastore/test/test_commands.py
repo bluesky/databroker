@@ -461,7 +461,7 @@ def test_cache_clear_lookups():
 def test_run_stop_by_run_start():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
     run_stop_uid = mdsc.insert_run_stop(run_start_uid,
-                                       ttime.time(), uid=str(uuid.uuid4()))
+                                        ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.run_stop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
@@ -491,7 +491,7 @@ def test_find_run_start():
 def test_find_run_stop():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
     run_stop_uid = mdsc.insert_run_stop(run_start_uid, ttime.time(),
-                                       uid=str(uuid.uuid4()))
+                                        uid=str(uuid.uuid4()))
 
     run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.run_stop_given_uid(run_stop_uid)
@@ -513,19 +513,24 @@ def test_find_last_for_smoke():
     last, = mdsc.find_last()
 
 
+@raises(mdsc.NoRunStart)
+def test_fail_runstart():
+    mdsc.run_start_given_uid('aardvark')
+
+
 @raises(ValueError)
 def test_bad_event_desc():
 
-    data_keys = {k:  {'source': k,
-                      'dtype': 'number',
-                      'shape': None} for k in ['foo', 'foo.bar']
+    data_keys = {k: {'source': k,
+                     'dtype': 'number',
+                     'shape': None} for k in ['foo', 'foo.bar']
                  }
     scan_id = 1
 
     # Create a BeginRunEvent that serves as entry point for a run
     rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
-                              time=ttime.time(),
-                              uid=str(uuid.uuid4()))
+                               time=ttime.time(),
+                               uid=str(uuid.uuid4()))
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)

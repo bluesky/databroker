@@ -12,7 +12,7 @@ from . import conf
 from . import mds
 
 # API compatibility imports
-from .core import NoEventDescriptors, NoRunStop
+from .core import NoEventDescriptors, NoRunStop, NoRunStart
 
 logger = logging.getLogger(__name__)
 
