@@ -3,7 +3,7 @@ from ..examples.sample_data import (temperature_ramp, multisource_event,
                                     image_and_scalar, step_scan)
 import six
 from filestore.utils.testing import fs_setup, fs_teardown
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore.test.utils import mds_setup, mds_teardown
 
 from ..testing.utils import Command
 
