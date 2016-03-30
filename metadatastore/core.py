@@ -22,6 +22,9 @@ class NoRunStop(Exception):
     pass
 
 
+class NoRunStart(Exception):
+    pass
+
 class NoEventDescriptors(Exception):
     pass
 
@@ -186,7 +189,11 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
         return run_start_cache[uid]
     except KeyError:
         pass
+
     run_start = run_start_col.find_one({'uid': uid})
+
+    if run_start is None:
+        raise NoRunStart("No runstart with uid {!r}".format(uid))
     return _cache_run_start(run_start, run_start_cache)
 
 
