@@ -7,11 +7,11 @@ import itertools
 import pytest
 
 
-def setup_function(function):
+def setup_module(module):
     mds_setup()
 
 
-def teardown_function(function):
+def teardown_module(module):
     mds_teardown()
 
 
