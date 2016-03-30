@@ -156,7 +156,10 @@ def run_start_given_uid(uid):
         The RunStart document.
 
     """
-    return Document('RunStart', next(find_run_starts(uid=uid)))
+    try:
+        return Document('RunStart', next(find_run_starts(uid=uid)))
+    except StopIteration:
+        raise NoRunStart()
 
 
 @_ensure_connection
