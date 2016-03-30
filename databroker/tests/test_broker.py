@@ -14,7 +14,7 @@ from nose.tools import (assert_equal, assert_raises, assert_true,
 
 from metadatastore.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore.test.utils import mds_setup, mds_teardown
 from filestore.utils.testing import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
