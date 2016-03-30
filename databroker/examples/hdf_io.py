@@ -34,7 +34,7 @@
 ########################################################################
 
 from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+                        )
 
 from metadatastore.api import (insert_run_start, insert_event,
                                insert_descriptor,
