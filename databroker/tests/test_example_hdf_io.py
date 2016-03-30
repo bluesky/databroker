@@ -1,5 +1,5 @@
 from ..examples.hdf_io import hdf_data_io
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from metadatastore.test.utils import mds_setup, mds_teardown
 from filestore.test.utils import fs_setup, fs_teardown
 from databroker import DataBroker as db, get_events
 from numpy.testing.utils import assert_array_equal
