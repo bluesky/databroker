@@ -7,11 +7,10 @@ import time as ttime
 import datetime
 
 import pytz
-from nose.tools import assert_equal, assert_raises, raises, assert_true
-
+import pytest
 import metadatastore.commands as mdsc
 import metadatastore.core as core
-from metadatastore.utils.testing import mds_setup, mds_teardown
+from .utils import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 import uuid
 
@@ -23,12 +22,12 @@ document_insertion_time = None
 # ### Nose setup/teardown methods #############################################
 
 
-def teardown():
+def teardown_module(module):
     pass
     mds_teardown()
 
 
-def setup():
+def setup_module(module):
     mds_setup()
     global run_start_uid, document_insertion_time
     document_insertion_time = ttime.time()
@@ -86,7 +85,6 @@ def syn_data(data_keys, count):
 # ### Testing metadatastore insertion functionality ###########################
 
 
-@raises(KeyError)
 def check_for_id(document):
     """Make sure that our documents do not have an id field
 
@@ -95,7 +93,8 @@ def check_for_id(document):
     document : metadatastore.document.Document
         A sanitized mongoengine document
     """
-    document['id']
+    with pytest.raises(KeyError):
+        document['id']
 
 
 def test_event_descriptor_insertion():
@@ -120,13 +119,12 @@ def test_event_descriptor_insertion():
 
     # make sure the event descriptor is pointing to the correct run start
     referenced_run_start = ev_desc_mds['run_start']
-    assert_equal(referenced_run_start.uid, run_start_uid)
-    assert_equal(ev_desc_mds['time'], time)
+    assert referenced_run_start.uid == run_start_uid
+    assert ev_desc_mds['time'] == time
 
     for k in data_keys:
         for ik in data_keys[k]:
-            assert_equal(ev_desc_mds.data_keys[k][ik],
-                         data_keys[k][ik])
+            assert ev_desc_mds.data_keys[k][ik] == data_keys[k][ik]
 
 
 def test_custom_warn():
@@ -181,7 +179,7 @@ def test_insert_run_start():
     values = [time, beamline_id, scan_id] + list(custom.values())
 
     for name, val in zip(names, values):
-        assert_equal(getattr(run_start_mds, name), val)
+        assert getattr(run_start_mds, name) == val
 
     # make sure the metadatstore document raises properly
     check_for_id(run_start_mds)
@@ -208,7 +206,7 @@ def test_run_stop_insertion():
     check_for_id(run_stop)
     # make sure the run stop is pointing to the correct run start
     referenced_run_start = run_stop['run_start']
-    assert_equal(referenced_run_start.uid, run_start_uid)
+    assert referenced_run_start.uid == run_start_uid
 
     # check the remaining fields
     comparisons = {'time': time,
@@ -216,7 +214,7 @@ def test_run_stop_insertion():
                    'reason': reason,
                    'uid': run_stop_uid}
     for attr, known_value in comparisons.items():
-        assert_equal(known_value, getattr(run_stop, attr))
+        assert known_value == getattr(run_stop, attr)
 
 
 def test_find_events_smoke():
@@ -239,24 +237,22 @@ def test_find_events_smoke():
     # make sure that searching by descriptor document works
     next(mdsc.find_events(descriptor=descriptor))
 
-@raises(ValueError)
 def test_find_events_ValueError():
-    list(mdsc.find_events(event_descriptor='cat'))
+    with pytest.raises(ValueError):
+        list(mdsc.find_events(event_descriptor='cat'))
 
 
-@raises(ValueError)
 def test_bad_bulk_insert_event_data():
-
     num = 50
     rs, e_desc, data_keys = setup_syn()
     all_data = syn_data(data_keys, num)
 
     # remove one of the keys from the event data
     del all_data[-1]['data']['E']
-    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+    with pytest.raises(ValueError):
+        mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
-@raises(ValueError)
 def test_bad_bulk_insert_event_timestamp():
     """Test what happens when one event is missing a timestamp for one key"""
     num = 50
@@ -264,21 +260,18 @@ def test_bad_bulk_insert_event_timestamp():
     all_data = syn_data(data_keys, num)
     # remove one of the keys from the event timestamps
     del all_data[1]['timestamps']['F']
-    mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+    with pytest.raises(ValueError):
+        mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
-@raises(mdsc.NoEventDescriptors)
 def test_no_evdesc():
+    run_start_uid = mdsc.insert_run_start(
+        scan_id=42, beamline_id='testbed', owner='tester',
+        group='awesome-devs', project='Nikea', time=document_insertion_time,
+        uid=str(uuid.uuid4()))
 
-    run_start_uid = mdsc.insert_run_start(scan_id=42,
-                                        beamline_id='testbed',
-                                        owner='tester',
-                                        group='awesome-devs',
-                                        project='Nikea',
-                                        time=document_insertion_time,
-                                        uid=str(uuid.uuid4()))
-
-    mdsc.descriptors_by_start(run_start_uid)
+    with pytest.raises(mdsc.NoEventDescriptors):
+        mdsc.descriptors_by_start(run_start_uid)
 
 
 # ### Testing metadatastore find functionality ################################
@@ -337,12 +330,12 @@ def _normalize_human_friendly_time_tester(val, should_succeed, etype):
         output = core._normalize_human_friendly_time(val, 'US/Eastern')
         assert(isinstance(output, float))
         try:
-            assert_equal(output, check_output)
+            assert output == check_output
         except NameError:
             pass
     else:
-        assert_raises(etype, core._normalize_human_friendly_time,
-                      val, 'US/Eastern')
+        with pytest.raises(etype):
+            core._normalize_human_friendly_time(val, 'US/Eastern')
 
 
 def test_normalize_human_friendly_time():
@@ -415,9 +408,9 @@ def test_bulk_insert():
     ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
-        assert_equal(ret['descriptor']['uid'], e_desc)
+        assert ret['descriptor']['uid'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
-            assert_equal(ret[k], expt[k])
+            assert ret[k] == expt[k]
 
 
 def test_bulk_table():
@@ -431,7 +424,7 @@ def test_bulk_table():
     descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
 
     for vals in data_table.values():
-        assert_true(all(s == v for s, v in zip(seq_nums, vals)))
+        assert all(s == v for s, v in zip(seq_nums, vals))
 
 
 def test_cache_clear_lookups():
@@ -452,10 +445,10 @@ def test_cache_clear_lookups():
     ev_desc2 = mdsc.descriptor_given_uid(e_desc_uid)
     ev_desc3 = mdsc.descriptor_given_uid(e_desc_uid)
 
-    assert_equal(run_start, run_start2)
-    assert_equal(run_stop, run_stop2)
-    assert_equal(ev_desc, ev_desc2)
-    assert_equal(ev_desc, ev_desc3)
+    assert run_start == run_start2
+    assert run_stop == run_stop2
+    assert ev_desc == ev_desc2
+    assert ev_desc == ev_desc3
 
 
 def test_run_stop_by_run_start():
@@ -468,13 +461,13 @@ def test_run_stop_by_run_start():
 
     run_stop2 = mdsc.stop_by_start(run_start)
     run_stop3 = mdsc.stop_by_start(run_start_uid)
-    assert_equal(run_stop, run_stop2)
-    assert_equal(run_stop, run_stop3)
+    assert run_stop == run_stop2
+    assert run_stop == run_stop3
 
     ev_desc2, = mdsc.descriptors_by_start(run_start)
     ev_desc3, = mdsc.descriptors_by_start(run_start_uid)
-    assert_equal(ev_desc, ev_desc2)
-    assert_equal(ev_desc, ev_desc3)
+    assert ev_desc == ev_desc2
+    assert ev_desc == ev_desc3
 
 
 def test_find_run_start():
@@ -485,7 +478,7 @@ def test_find_run_start():
 
     run_start2, = list(mdsc.find_run_starts(uid=run_start_uid))
 
-    assert_equal(run_start, run_start2)
+    assert run_start == run_start2
 
 
 def test_find_run_stop():
@@ -498,27 +491,28 @@ def test_find_run_stop():
 
     run_stop2, = list(mdsc.find_run_stops(run_start=run_start_uid))
     run_stop3, = list(mdsc.find_run_stops(run_start=run_start))
-    assert_equal(run_stop, run_stop2)
-    assert_equal(run_stop, run_stop3)
+    assert run_stop == run_stop2
+    assert run_stop == run_stop3
 
 
-@raises(RuntimeError)
 def test_double_run_stop():
     run_start_uid, e_desc_uid, data_keys = setup_syn()
-    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
-    mdsc.insert_run_stop(run_start_uid, ttime.time(), uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(run_start_uid, ttime.time(),
+                         uid=str(uuid.uuid4()))
+    with pytest.raises(RuntimeError):
+        mdsc.insert_run_stop(run_start_uid, ttime.time(),
+                             uid=str(uuid.uuid4()))
 
 
 def test_find_last_for_smoke():
     last, = mdsc.find_last()
 
 
-@raises(mdsc.NoRunStart)
 def test_fail_runstart():
-    mdsc.run_start_given_uid('aardvark')
+    with pytest.raises(mdsc.NoRunStart):
+        mdsc.run_start_given_uid('aardvark')
 
 
-@raises(ValueError)
 def test_bad_event_desc():
 
     data_keys = {k: {'source': k,
@@ -534,11 +528,7 @@ def test_bad_event_desc():
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
-    mdsc.insert_descriptor(data_keys=data_keys,
-                           time=ttime.time(),
-                           run_start=rs, uid=str(uuid.uuid4()))
-
-
-if __name__ == "__main__":
-    import nose
-    nose.runmodule(argv=['-s', '--with-doctest'], exit=False)
+    with pytest.raises(ValueError):
+        mdsc.insert_descriptor(data_keys=data_keys,
+                               time=ttime.time(),
+                               run_start=rs, uid=str(uuid.uuid4()))
