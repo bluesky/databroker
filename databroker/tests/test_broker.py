@@ -10,7 +10,7 @@ from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
                         assert_false, raises)
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 from metadatastore.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
@@ -210,13 +210,14 @@ def test_find_by_string_time():
                            owner='nedbrainard', beamline_id='example',
                            uid=str(uuid.uuid4()))
     today = datetime.today()
-    yesterday = '{}-{}-{}'.format(today.year,
+    tomorrow = date.today() + timedelta(days=1)
+    today_str = '{}-{}-{}'.format(today.year,
                                   str(today.month).zfill(2),
-                                  str(today.day-1).zfill(2))
-    tomorrow = '{}-{}-{}'.format(today.year,
-                                  str(today.month).zfill(2),
-                                  str(today.day+1).zfill(2))
-    result = db(start_time=yesterday, stop_time=tomorrow)
+                                  str(today.day).zfill(2))
+    tomorrow_str = '{}-{}-{}'.format(tomorrow.year,
+                                     str(tomorrow.month).zfill(2),
+                                     str(tomorrow.day+1).zfill(2))
+    result = db(start_time=today_str, stop_time=tomorrow_str)
     uids = [hdr['start']['uid'] for hdr in result]
     assert uid in uids
 
