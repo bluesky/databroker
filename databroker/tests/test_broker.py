@@ -211,12 +211,8 @@ def test_find_by_string_time():
                            uid=str(uuid.uuid4()))
     today = datetime.today()
     tomorrow = date.today() + timedelta(days=1)
-    today_str = '{}-{}-{}'.format(today.year,
-                                  str(today.month).zfill(2),
-                                  str(today.day).zfill(2))
-    tomorrow_str = '{}-{}-{}'.format(tomorrow.year,
-                                     str(tomorrow.month).zfill(2),
-                                     str(tomorrow.day+1).zfill(2))
+    today_str = today.strftime('%Y-%m-%d')
+    tomorrow_str = tomorrow.strftime('%Y-%m-%d')
     result = db(start_time=today_str, stop_time=tomorrow_str)
     uids = [hdr['start']['uid'] for hdr in result]
     assert uid in uids
