@@ -25,6 +25,7 @@ requirements:
     - tzlocal
     - singledispatch [py27]
     - doct
+    - boltons
 
 test:
   requires:

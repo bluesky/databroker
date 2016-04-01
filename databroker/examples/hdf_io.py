@@ -35,10 +35,9 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+from itertools import product
 from metadatastore.api import (insert_run_start, insert_event,
-                               insert_descriptor,
-                               find_events)
+                               insert_descriptor)
 from filestore.api import register_handler, insert_resource, insert_datum
 import filestore.file_writers as fw
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
@@ -95,7 +94,7 @@ def save_syn_data(eid, data, base_path=None):
     return fpath
 
 
-def get_data(ind_v, ind_h):
+def get_data(ind_v, ind_h, rows, cols):
     """
     Get data for given x, y index.
 
@@ -115,7 +114,7 @@ def get_data(ind_v, ind_h):
     uid = str(uuid.uuid1())
 
     # generate 3D random number with a given shape
-    syn_data = np.random.randn(20, 1, 10)
+    syn_data = np.ones((20, 1, 10)) * (ind_v * cols + ind_h)
     file_path = save_syn_data(uid, syn_data)
 
     custom = {'dset_path': 'mca_arr'}
@@ -125,7 +124,7 @@ def get_data(ind_v, ind_h):
     return evl.datum_id
 
 
-def hdf_data_io():
+def hdf_data_io(rows, cols):
     """
     Save data to db and run test when data is retrieved.
     """
@@ -133,10 +132,10 @@ def hdf_data_io():
                                      uid=str(uuid.uuid4()))
 
     # data keys entry
-    data_keys = {'x_pos': dict(source='MCA:pos_x', dtype='number'),
-                 'y_pos': dict(source='MCA:pos_y', dtype='number'),
+    data_keys = {'v_pos': dict(source='MCA:pos_y', dtype='number'),
+                 'h_pos': dict(source='MCA:pos_x', dtype='number'),
                  'xrf_spectrum': dict(source='MCA:spectrum', dtype='array',
-                                      #shape=(5,),
+                                      shape=(20, 1, 10),
                                       external='FILESTORE:')}
 
     # save the event descriptor
@@ -144,15 +143,10 @@ def hdf_data_io():
         run_start=run_start_uid, data_keys=data_keys, time=0.,
         uid=str(uuid.uuid4()))
 
-    # number of positions to record, basically along a horizontal line
-    num = 5
-
     events = []
-    for i in range(num):
-        v_pos = 0
-        h_pos = i
+    for i, (v_pos, h_pos) in enumerate(product(range(rows), range(cols))):
 
-        spectrum_uid = get_data(v_pos, h_pos)
+        spectrum_uid = get_data(v_pos, h_pos, rows, cols)
 
         # Put in actual ndarray data, as broker would do.
         data1 = {'xrf_spectrum': spectrum_uid,
@@ -164,7 +158,6 @@ def hdf_data_io():
                                  time=noisy(i), data=data1,
                                  uid=str(uuid.uuid4()),
                                  timestamps=timestamps1)
-        event, = find_events(uid=event_uid)
-        # test on retrieve data for all data sets
-        events.append(event)
-    return events
+        events.append(event_uid)
+
+    return run_start_uid, events
