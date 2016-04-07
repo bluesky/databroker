@@ -32,6 +32,8 @@ def server_connect(host, port, protocol='http'):
     return str(_server_path)
 
 
+
+
 def server_disconnect():
     """ Rolls back to default configuration from yaml file"""
     protocol = conf.connection_config['protocol']
@@ -89,6 +91,7 @@ class NoRunStart(Exception):
 
 class MetadataServiceError(Exception):
     pass
+
 
 
 @_ensure_connection
@@ -984,6 +987,14 @@ _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
+
+ins_dict = {'run_start': insert_run_start, 'run_stop': insert_run_stop,
+            'descriptor': insert_descriptor, 'event': insert_event,
+            'bulk_event': bulk_insert_events}
+
+def insert(name, doc):
+    ins_dict[name](**doc)   
+
 
 # TODO: Add when descriptor is None, use cached descriptor!
 # TODO: Fix descriptor replace (related to above)
