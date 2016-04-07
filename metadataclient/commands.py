@@ -994,7 +994,7 @@ ins_dict = {'run_start': insert_run_start, 'run_stop': insert_run_stop,
 
 def insert(name, doc):
     # if doc is a list, only valid option is bulk_insert_events, else single doc
-    if not isinstance(doc, list)
+    if not isinstance(doc, list):
         ins_dict[name](**doc)   
     else:
         ins_dict[name](doc)
