@@ -993,12 +993,8 @@ ins_dict = {'run_start': insert_run_start, 'run_stop': insert_run_stop,
             'bulk_event': bulk_insert_events}
 
 def insert(name, doc):
-    ins_dict[name](**doc)   
-
-
-# TODO: Add when descriptor is None, use cached descriptor!
-# TODO: Fix descriptor replace (related to above)
-# TODO: Add server_disconnect that rolls all config back to default
-# TODO: Add capped collection caching layer for the client
-# TODO: Add fast read/write capped collection, different than caching capped collection
-# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
+    # if doc is a list, only valid option is bulk_insert_events, else single doc
+    if not isinstance(doc, list)
+        ins_dict[name](**doc)   
+    else:
+        ins_dict[name](doc)
