@@ -1,16 +1,15 @@
-
 from __future__ import print_function
 import warnings
 import six  # noqa
 from collections import deque, defaultdict
 import uuid
-import datetime
+from datetime import datetime
 import tzlocal
 import pytz
 import logging
 import numbers
 import requests
-import doct
+from doct import Document
 from .core import (Header, _external_keys,
                    get_events as _get_events,
                    get_table as _get_table,
@@ -455,19 +454,6 @@ class Broker(object):
                  fields=fields, fill=fill)
 
 
-class ArchiverReference:
-    def __init__(self, host, timezone):
-        self.host = host
-        self.tz = pytz.timezone(timezone)
-
-        self.pv_list = []
-
-    def find(self, pv, start_time, end_time=None):
-        self.pv_list.append(pv)
-        if end_time is None:
-            end_time = datetime.datetime.now()
-
-
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
         """
@@ -519,7 +505,7 @@ class ArchiverPlugin(object):
             params = {'pv': pv, 'from': _from, 'to': _to}
             req = requests.get(self.archiver_addr, params=params, stream=True)
             req.raise_for_status()
-            raw, = req.text
+            raw, = req.json()
             timestamps = [x['secs'] for x in raw['data']]
             data = [x['val'] for x in raw['data']]
             # Roll these into an Event document.
@@ -532,12 +518,12 @@ class ArchiverPlugin(object):
                           'run_start': header['start'],
                           'external_query': params,
                           'external_url': self.url}
-            descriptor = doct(descriptor)
+            descriptor = Document('EventDescriptor', descriptor)
             for d, t in zip(data, timestamps):
                 doc = {'data': {name: d}, 'timestamps': {name: t}, 'time': t,
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'descriptor': descriptor}
-                yield doct('Event', doc)
+                yield Document('Event', doc)
 
 
 def _munge_time(t, timezone):
@@ -549,5 +535,11 @@ def _munge_time(t, timezone):
         POSIX (seconds since 1970)
     timezone : pytz object
         e.g. ``pytz.timezone('US/Eastern')``
+
+    Return
+    ------
+    time
+        as ISO-8601 format
     """
+    t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
