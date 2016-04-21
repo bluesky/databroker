@@ -32,6 +32,8 @@ def server_connect(host, port, protocol='http'):
     return str(_server_path)
 
 
+
+
 def server_disconnect():
     """ Rolls back to default configuration from yaml file"""
     protocol = conf.connection_config['protocol']
@@ -89,6 +91,7 @@ class NoRunStart(Exception):
 
 class MetadataServiceError(Exception):
     pass
+
 
 
 @_ensure_connection
@@ -985,9 +988,13 @@ _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
 
-# TODO: Add when descriptor is None, use cached descriptor!
-# TODO: Fix descriptor replace (related to above)
-# TODO: Add server_disconnect that rolls all config back to default
-# TODO: Add capped collection caching layer for the client
-# TODO: Add fast read/write capped collection, different than caching capped collection
-# TODO: Add timeouts to servers in order to stop ppl from abusing data sources
+ins_dict = {'run_start': insert_run_start, 'run_stop': insert_run_stop,
+            'descriptor': insert_descriptor, 'event': insert_event,
+            'bulk_event': bulk_insert_events}
+
+def insert(name, doc):
+    # if doc is a list, only valid option is bulk_insert_events, else single doc
+    if not isinstance(doc, list):
+        ins_dict[name](**doc)   
+    else:
+        ins_dict[name](doc)
