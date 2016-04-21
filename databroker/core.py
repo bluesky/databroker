@@ -94,7 +94,7 @@ class Header(doc.Document):
 
 
 def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
-               handler_overrides=None):
+               handler_overrides=None, plugins=None, **kwargs):
     """
     Get Events from given run(s).
 
@@ -112,6 +112,10 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
         mapping filestore specs (strings) to handlers (callable classes)
     handler_overrides : dict, optional
         mapping data keys (strings) to handlers (callable classes)
+    plugins : dict or None, optional
+        mapping keyword arguments (strings) to Plugins
+    kwargs
+        passed through to any plugins
 
     Yields
     ------
@@ -121,6 +125,7 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
     Raises
     ------
     ValueError if any key in `fields` is not in at least one descriptor pre header.
+    KeyError if a kwarg is passed without a corresponding plugin.
     """
     # A word about the 'fields' argument:
     # Notice that we assume that the same field name cannot occur in
@@ -137,6 +142,11 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
         fields = []
     fields = set(fields)
     _check_fields_exist(fields, headers)
+
+    for k in kwargs:
+        if k not in plugins:
+            raise KeyError("No plugin was found to handle the keyword "
+                           "argument %r" % k)
 
     for header in headers:
         # cache these attribute look-ups for performance
@@ -180,6 +190,10 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
                 if fill:
                     fill_event(fs, event, handler_registry, handler_overrides)
                 yield event
+        # Now yield any events from plugins.
+        for k, v in kwargs.items():
+            for ev in plugins[k].get_events(header, v):
+                yield ev
 
 
 def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,

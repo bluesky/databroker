@@ -2,10 +2,14 @@ from __future__ import print_function
 import warnings
 import six  # noqa
 from collections import deque, defaultdict
-
+import uuid
+from datetime import datetime
 import tzlocal
+import pytz
 import logging
 import numbers
+import requests
+from doct import Document
 from .core import (Header, _external_keys,
                    get_events as _get_events,
                    get_table as _get_table,
@@ -144,9 +148,23 @@ def _(key, mds):
 
 
 class Broker(object):
-    def __init__(self, mds, fs):
+    def __init__(self, mds, fs, plugins=None):
+        """
+        Unified interface to data sources
+
+        Parameters
+        ----------
+        mds : metadatastore or metadataclient
+        fs : filestore
+        plugins : dict or None, optional
+            mapping keyword argument name (string) to Plugin, an object
+            that should implement ``get_events``
+        """
         self.mds = mds
         self.fs = fs
+        if plugins is None:
+            plugins = {}
+        self.plugins = plugins
 
     def __getitem__(self, key):
         """DWIM slicing
@@ -254,7 +272,7 @@ class Broker(object):
                     handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, fill=True,
-                   handler_registry=None, handler_overrides=None):
+                   handler_registry=None, handler_overrides=None, **kwargs):
         """
         Get Events from given run(s).
 
@@ -270,6 +288,8 @@ class Broker(object):
             mapping filestore specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
+        kwargs
+            passed through the any plugins
 
         Yields
         ------
@@ -283,7 +303,8 @@ class Broker(object):
         res = _get_events(mds=self.mds, fs=self.fs, headers=headers,
                          fields=fields, fill=fill,
                          handler_registry=handler_registry,
-                         handler_overrides=handler_overrides)
+                         handler_overrides=handler_overrides,
+                         plugins=self.plugins, **kwargs)
         for event in res:
             yield event
 
@@ -431,3 +452,94 @@ class Broker(object):
         """
         _process(mds=self.mds, fs=self.fs, headers=headers, func=func,
                  fields=fields, fill=fill)
+
+
+class ArchiverPlugin(object):
+    def __init__(self, url, timezone):
+        """
+        DataBroker plugin
+
+        Parameters
+        ----------
+        url : string
+            e.g., 'http://host:port/'
+        timezone : string
+            e.g., 'US/Eastern'
+        
+        Example
+        -------
+        >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/') 
+        >>> db = Broker(mds, fs, plugins={'archiver_pvs': p})
+        >>> header = db[-1]
+        >>> db.get_events(header, archiver_pvs=['...'])
+        """
+        if not url.endswith('/'):
+            url += '/'
+        self.url = url
+        self.archiver_addr = self.url + "retrieval/data/getData.json"
+        self.tz = pytz.timezone(timezone)
+
+    def get_events(self, header, pvs):
+        """
+        Return results of an EPICS Archiver Appliance query in Event documents.
+
+        That is, mock Event documents so that data from Archiver can be
+        analyzed the same as data from metadatastore.
+
+        Parameters
+        ----------
+        header : Header
+        pvs : list or dict
+            a list of PVs or a dict mapping PVs to human-friendly names
+        """
+        if hasattr(pvs, 'items'):
+            # Interpret pvs as a dict mapping PVs to names.
+            pass
+        else:
+            # Interpret pvs as a list, and use PVs themselves as names.
+            pvs = {pv: pv for pv in pvs}
+        start_time, stop_time = header['start']['time'], header['stop']['time']
+        for pv, name in pvs.items():
+            _from = _munge_time(start_time, self.tz)
+            _to = _munge_time(stop_time, self.tz)
+            params = {'pv': pv, 'from': _from, 'to': _to}
+            req = requests.get(self.archiver_addr, params=params, stream=True)
+            req.raise_for_status()
+            raw, = req.json()
+            timestamps = [x['secs'] for x in raw['data']]
+            data = [x['val'] for x in raw['data']]
+            # Roll these into an Event document.
+            descriptor = {'time': start_time,
+                          'uid': 'ephemeral-' + str(uuid.uuid4()),
+                          'data_keys': {name: {'source': pv, 'shape': [],
+                                               'dtype': 'number'}},
+                          # TODO Mark this as 'external' once Broker stops
+                          # assuming that all external data in is filestore.
+                          'run_start': header['start'],
+                          'external_query': params,
+                          'external_url': self.url}
+            descriptor = Document('EventDescriptor', descriptor)
+            for d, t in zip(data, timestamps):
+                doc = {'data': {name: d}, 'timestamps': {name: t}, 'time': t,
+                       'uid': 'ephemeral-' + str(uuid.uuid4()),
+                       'descriptor': descriptor}
+                yield Document('Event', doc)
+
+
+def _munge_time(t, timezone):
+    """Close your eyes and trust @arkilic
+
+    Parameters
+    ----------
+    t : float
+        POSIX (seconds since 1970)
+    timezone : pytz object
+        e.g. ``pytz.timezone('US/Eastern')``
+
+    Return
+    ------
+    time
+        as ISO-8601 format
+    """
+    t = datetime.fromtimestamp(t)
+    return timezone.localize(t).replace(microsecond=0).isoformat()
