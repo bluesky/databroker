@@ -5,7 +5,7 @@ import logging
 from itertools import count
 import time as ttime
 from databroker import (DataBroker as db, get_events, get_table, stream,
-                        get_fields, restream, process, get_images)
+                        get_fields, restream, process, get_images, Broker)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 from nose.tools import (assert_equal, assert_raises, assert_true,
@@ -15,6 +15,8 @@ from datetime import datetime, date, timedelta
 from metadatastore.api import (insert_run_start, insert_descriptor,
                                find_run_starts)
 from metadatastore.test.utils import mds_setup, mds_teardown
+import metadatastore.commands
+import filestore.api
 from filestore.test.utils import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
@@ -383,3 +385,14 @@ def test_handler_options():
     assert res[0] == 'dummy'
     res = get_images(h, 'img', handler_override=DummyHandler)
     assert res[0] == 'dummy'
+
+
+def test_plugins():
+    class EchoPlugin:
+        def get_events(self, header, a):
+            yield a
+
+    b = Broker(metadatastore.commands, filestore.api, {'a': EchoPlugin()})
+    hdr = b[-1]
+    assert 'echo-plugin-test' in list(b.get_events(hdr, a='echo-plugin-test'))
+    assert 'echo-plugin-test' not in list(b.get_events(hdr))
