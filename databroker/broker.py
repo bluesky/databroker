@@ -468,7 +468,8 @@ class ArchiverPlugin(object):
         
         Example
         -------
-        >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/') 
+        >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/',
+        ...                    'US/Eastern')
         >>> db = Broker(mds, fs, plugins={'archiver_pvs': p})
         >>> header = db[-1]
         >>> db.get_events(header, archiver_pvs=['...'])
