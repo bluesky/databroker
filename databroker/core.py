@@ -266,7 +266,7 @@ def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
             stop = {}
 
         # shim for back-compat with old data that has no 'primary' descriptor
-        if not [d for d in descriptors if d.get('name') == 'primary']:
+        if not any(d for d in descriptors if d.get('name') == 'primary'):
             name = None
 
         for descriptor in descriptors:
