@@ -27,6 +27,6 @@ def test_hdf_io():
     rows, cols = 1, 5
     rs_uid, ev_uids = hdf_data_io(rows, cols)
     h = db[rs_uid]
-    for e in get_events(h):
+    for e in get_events(h, fill=True):
         _test_retrieve_data(e, rows, cols)
         assert e['uid'] in ev_uids

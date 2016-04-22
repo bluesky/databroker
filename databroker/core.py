@@ -93,8 +93,9 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
-               handler_overrides=None, plugins=None, **kwargs):
+def get_events(mds, fs, headers, fields=None, name=None, fill=False,
+               handler_registry=None, handler_overrides=None, plugins=None,
+               **kwargs):
     """
     Get Events from given run(s).
 
@@ -106,8 +107,11 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
+    name : string, optional
+        Get events from only one "event stream" with this name. If None
+        (default) get events from all event streams.
     fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to True
+        Whether externally-stored data should be filled in. Defaults to False.
     handler_registry : dict, optional
         mapping filestore specs (strings) to handlers (callable classes)
     handler_overrides : dict, optional
@@ -155,6 +159,8 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
         if stop is None:
             stop = {}
         for descriptor in header['descriptors']:
+            if name is not None and name != descriptor.get('name'):
+                continue
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
             config_ts = merge(obj_conf['timestamps']
@@ -196,8 +202,9 @@ def get_events(mds, fs, headers, fields=None, fill=True, handler_registry=None,
                 yield ev
 
 
-def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
-              timezone=None, handler_registry=None, handler_overrides=None):
+def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
+              convert_times=True, timezone=None, handler_registry=None,
+              handler_overrides=None):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -209,8 +216,13 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
+    name : string, optional
+        Get data from a single "event stream." To obtain one comprehensive
+        table with all streams, use `name=None`. The default name is
+        'primary', but if no event stream with that name is found, the
+        default reverts to `None` (for backward-compatibility).
     fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to True
+        Whether externally-stored data should be filled in. Defaults to False.
     convert_times : bool, optional
         Whether to convert times from float (seconds since 1970) to
         numpy datetime64, using pandas. True by default.
@@ -249,9 +261,17 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
         # cache these attribute look-ups for performance
         start = header['start']
         stop = header['stop']
+        descriptors = header['descriptors']
         if stop is None:
             stop = {}
-        for descriptor in header['descriptors']:
+
+        # shim for back-compat with old data that has no 'primary' descriptor
+        if not any(d for d in descriptors if d.get('name') == 'primary'):
+            name = None
+
+        for descriptor in descriptors:
+            if name is not None and name != descriptor.get('name'):
+                continue
             is_external = _external_keys(descriptor)
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
@@ -311,7 +331,7 @@ def get_table(mds, fs, headers, fields=None, fill=True, convert_times=True,
         return pd.DataFrame()
 
 
-def restream(mds, fs, headers, fields=None, fill=True):
+def restream(mds, fs, headers, fields=None, fill=False):
     """
     Get all Documents from given run(s).
 
@@ -324,7 +344,7 @@ def restream(mds, fs, headers, fields=None, fill=True):
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
     fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to True
+        Whether externally-stored data should be filled in. Defaults to False.
 
     Yields
     ------
@@ -370,7 +390,7 @@ def restream(mds, fs, headers, fields=None, fill=True):
 stream = restream  # compat
 
 
-def process(mds, fs, headers, func, fields=None, fill=True):
+def process(mds, fs, headers, func, fields=None, fill=False):
     """
     Get all Documents from given run to a callback.
 
@@ -386,7 +406,7 @@ def process(mds, fs, headers, func, fields=None, fill=True):
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
     fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to True
+        Whether externally-stored data should be filled in. Defaults to False.
 
     Example
     -------
@@ -421,21 +441,26 @@ def register_builtin_handlers(fs):
                 fs.register_handler(spec, cls)
 
 
-def get_fields(header):
+def get_fields(header, name=None):
     """
     Return the set of all field names (a.k.a "data keys") in a header.
 
     Parameters
     ----------
     header : Header
+    name : string, optional
+        Get field from only one "event stream" with this name. If None
+        (default) get fields from all event streams.
 
     Returns
     -------
     fields : set
     """
     fields = set()
-    for desc in header['descriptors']:
-        for field in desc['data_keys'].keys():
+    for descriptor in header['descriptors']:
+        if name is not None and name != descriptor.get('name'):
+            continue
+        for field in descriptor['data_keys'].keys():
             fields.add(field)
     return fields
 

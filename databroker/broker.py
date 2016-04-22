@@ -271,7 +271,7 @@ class Broker(object):
         _fill_event(self.fs, event, handler_registry=handler_registry,
                     handler_overrides=handler_overrides)
 
-    def get_events(self, headers, fields=None, fill=True,
+    def get_events(self, headers, fields=None, name=None, fill=False,
                    handler_registry=None, handler_overrides=None, **kwargs):
         """
         Get Events from given run(s).
@@ -284,6 +284,9 @@ class Broker(object):
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
             Whether externally-stored data should be filled in. Defaults to True
+        name : string, optional
+            Get events from only one "event stream" with this name. If None
+            (default) get events from all event streams.
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
@@ -301,7 +304,7 @@ class Broker(object):
         ValueError if any key in `fields` is not in at least one descriptor pre header.
         """
         res = _get_events(mds=self.mds, fs=self.fs, headers=headers,
-                         fields=fields, fill=fill,
+                         fields=fields, name=name, fill=fill,
                          handler_registry=handler_registry,
                          handler_overrides=handler_overrides,
                          plugins=self.plugins, **kwargs)
@@ -309,8 +312,8 @@ class Broker(object):
             yield event
 
 
-    def get_table(self, headers, fields=None, fill=True, convert_times=True,
-                  timezone=None, handler_registry=None,
+    def get_table(self, headers, fields=None, name='primary', fill=False,
+                  convert_times=True, timezone=None, handler_registry=None,
                   handler_overrides=None):
         """
         Make a table (pandas.DataFrame) from given run(s).
@@ -321,6 +324,11 @@ class Broker(object):
             The headers to fetch the events for
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
+        name : string, optional
+            Get data from a single "event stream." To obtain one comprehensive
+            table with all streams, use `name=None`. The default name is
+            'primary', but if no event stream with that name is found, the
+            default reverts to `None` (for backward-compatibility).
         fill : bool, optional
             Whether externally-stored data should be filled in. Defaults to True
         convert_times : bool, optional
@@ -341,7 +349,8 @@ class Broker(object):
         if timezone is None:
             timezone = self.mds.config['timezone']
         res = _get_table(mds=self.mds, fs=self.fs, headers=headers,
-                         fields=fields, fill=fill, convert_times=convert_times,
+                         fields=fields, name=name, fill=fill,
+                         convert_times=convert_times,
                          timezone=timezone, handler_registry=handler_registry,
                          handler_overrides=handler_overrides)
         return res
@@ -374,7 +383,7 @@ class Broker(object):
                       handler_override)
 
 
-    def restream(self, headers, fields=None, fill=True):
+    def restream(self, headers, fields=None, fill=False):
         """
         Get all Documents from given run(s).
 
@@ -385,7 +394,8 @@ class Broker(object):
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to True
+            Whether externally-stored data should be filled in. Defaults to
+            False.
 
         Yields
         ------
@@ -411,13 +421,13 @@ class Broker(object):
         --------
         process
         """
-        res = _restream(self.mds, self.fs, headers, fields=None, fill=True)
+        res = _restream(self.mds, self.fs, headers, fields=fields, fill=fill)
         for name_doc_pair in res:
             yield name_doc_pair
 
     stream = restream  # compat
 
-    def process(self, headers, func, fields=None, fill=True):
+    def process(self, headers, func, fields=None, fill=False):
         """
         Get all Documents from given run to a callback.
 
@@ -431,7 +441,8 @@ class Broker(object):
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to True
+            Whether externally-stored data should be filled in. Defaults to
+            False.
 
         Example
         -------

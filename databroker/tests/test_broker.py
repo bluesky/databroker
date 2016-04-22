@@ -369,17 +369,19 @@ def test_handler_options():
     list(get_events(h))
     list(get_table(h))
     list(get_images(h, 'img'))
-    res = list(get_events(h, fields=['img'],
+    res = list(get_events(h, fields=['img'], fill=True,
                           handler_registry={'npy': DummyHandler}))
     res = [ev for ev in res if 'img' in ev['data']]
     res[0]['data']['img'] == 'dummy'
-    res = list(get_events(h, fields=['img'],
+    res = list(get_events(h, fields=['img'], fill=True,
                           handler_overrides={'image': DummyHandler}))
     res = [ev for ev in res if 'img' in ev['data']]
     res[0]['data']['img'] == 'dummy'
-    res = get_table(h, ['img'], handler_registry={'npy': DummyHandler})
+    res = get_table(h, ['img'], fill=True,
+                    handler_registry={'npy': DummyHandler})
     assert res['img'].iloc[0] == 'dummy'
-    res = get_table(h, ['img'], handler_overrides={'img': DummyHandler})
+    res = get_table(h, ['img'], fill=True,
+                    handler_overrides={'img': DummyHandler})
     assert res['img'].iloc[0] == 'dummy'
     res = get_images(h, 'img', handler_registry={'npy': DummyHandler})
     assert res[0] == 'dummy'
