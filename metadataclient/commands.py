@@ -989,11 +989,11 @@ _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
 
-_INS_METHODS = {'start': 'insert_run_start',
-                'stop': 'insert_run_stop',
-                'descriptor': 'insert_descriptor',
-                'event': 'insert_event',
-                'bulk_events': 'bulk_insert_events'}
+_INS_METHODS = {'start': insert_run_start,
+                'stop': insert_run_stop,
+                'descriptor': insert_descriptor,
+                'event': insert_event,
+                'bulk_events': bulk_insert_events}
 
 
 def insert(name, doc):
