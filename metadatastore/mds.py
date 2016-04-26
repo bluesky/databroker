@@ -669,7 +669,7 @@ class MDS(MDSRO):
                                  uid=uid,
                                  validate=validate)
 
-    def bulk_insert_events(self, descriptor, events, validate):
+    def bulk_insert_events(self, descriptor, events, validate=False):
         if self.version == 0:
             raise NotImplementedError("Can not create documents of v0 schema")
         return core.bulk_insert_events(self._event_col,
