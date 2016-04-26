@@ -914,7 +914,8 @@ def monitor_run_stop():
 def _normalize_human_friendly_time(val):
     """Given one of :
     - string (in one of the formats below)
-    - datetime (eg. datetime.datetime.now()), with or without tzinfo)
+    - datetime (eg. datetime.datetime.now()), with or without tzinfo):w
+    
     - timestamp (eg. time.time())
     return a timestamp (seconds since jan 1 1970 UTC).
 
@@ -988,13 +989,19 @@ _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
 
-ins_dict = {'run_start': insert_run_start, 'run_stop': insert_run_stop,
-            'descriptor': insert_descriptor, 'event': insert_event,
-            'bulk_event': bulk_insert_events}
+_INS_METHODS = {'start': 'insert_run_start',
+                'stop': 'insert_run_stop',
+                'descriptor': 'insert_descriptor',
+                'event': 'insert_event',
+                'bulk_events': 'bulk_insert_events'}
+
 
 def insert(name, doc):
     # if doc is a list, only valid option is bulk_insert_events, else single doc
-    if not isinstance(doc, list):
-        ins_dict[name](**doc)   
+    if name != 'bulk_inserts':
+        _INS_METHODS[name](**doc)
     else:
-        ins_dict[name](doc)
+        for desc_uid, ev in doc.items():
+            if not events:
+                continue
+            bulk_insert_events(desc_uid, events, validate=True)
