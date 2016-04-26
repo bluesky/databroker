@@ -501,6 +501,15 @@ class MDSRO(object):
 
 
 class MDS(MDSRO):
+    def __init__(self, *args, **kwargs):
+        self.__doc__ = super().__init__.__doc__
+        super().__init__(*args, **kwargs)
+        self._INS_METHODS = {'start': self.insert_run_start,
+                             'stop': self.insert_run_stop,
+                             'descriptor': self.insert_descriptor,
+                             'event': self.insert_event,
+                             'bulk_events': self.bulk_insert_events}
+
     def insert_run_start(self, time, scan_id, beamline_id, uid,
                          owner='', group='', project='', **kwargs):
         '''Insert a Start document
@@ -662,3 +671,13 @@ class MDS(MDSRO):
                                        descriptor=descriptor,
                                        events=events,
                                        validate=validate)
+
+    def insert(self, name, doc, validate=False):
+        if name != 'bulk_events':
+            self._INS_METHODS[name](validate=validate, **doc)
+        else:
+            for desc_uid, events in doc.items():
+                # If events is empty, mongo chokes.
+                if not events:
+                    continue
+                self.bulk_insert_events(desc_uid, events, validate=validate)

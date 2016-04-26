@@ -212,6 +212,28 @@ def get_events_table(descriptor):
 
 # database INSERTION ###################################################
 
+
+def insert(name, doc, validate=False):
+    """
+    Insert a document or bulk event documents.
+
+    Dispatches to the other insert functions.
+
+    Parameters
+    ----------
+    name : {'start', 'stop', 'event', 'descriptor', 'bulk_events'}
+    doc : dict-like
+        either a document or, for bulk events, a dict mapping descriptor
+        uids to lists of event documents
+
+    Returns
+    -------
+    result : str or dict
+        See docstrings of other ``insert_*`` functions.
+    """
+    return _DB_SINGLETON.insert(name, doc, validate=validate)
+
+
 def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
                      project='', **kwargs):
     """Insert a RunStart document into the database.
