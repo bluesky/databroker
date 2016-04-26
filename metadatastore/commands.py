@@ -213,7 +213,7 @@ def get_events_table(descriptor):
 # database INSERTION ###################################################
 
 
-def insert(name, doc, validate=False):
+def insert(name, doc):
     """
     Insert a document or bulk event documents.
 
@@ -231,7 +231,7 @@ def insert(name, doc, validate=False):
     result : str or dict
         See docstrings of other ``insert_*`` functions.
     """
-    return _DB_SINGLETON.insert(name, doc, validate=validate)
+    return _DB_SINGLETON.insert(name, doc)
 
 
 def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',

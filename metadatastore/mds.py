@@ -669,12 +669,12 @@ class MDS(MDSRO):
                                        events=events,
                                        validate=validate)
 
-    def insert(self, name, doc, validate=False):
+    def insert(self, name, doc):
         if name != 'bulk_events':
-            getattr(self, self._INS_METHODS[name])(validate=validate, **doc)
+            getattr(self, self._INS_METHODS[name])(**doc)
         else:
             for desc_uid, events in doc.items():
                 # If events is empty, mongo chokes.
                 if not events:
                     continue
-                self.bulk_insert_events(desc_uid, events, validate=validate)
+                self.bulk_insert_events(desc_uid, events)
