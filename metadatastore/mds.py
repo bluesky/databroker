@@ -118,10 +118,18 @@ class MDSRO(object):
 
             self.__event_col.create_index([('uid', pymongo.DESCENDING)],
                                           unique=True)
-            self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                           ('time', pymongo.DESCENDING)],
-                                          unique=False, background=True)
-
+            if self.version == 1:
+                self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
+                                               ('time', pymongo.DESCENDING)],
+                                              unique=False, background=True)
+            elif self.version == 0:
+                self.__event_col.create_index([('descriptor_id',
+                                                pymongo.DESCENDING),
+                                               ('time', pymongo.DESCENDING)],
+                                              unique=False, background=True)
+            else:
+                raise RuntimeError("No rule for event index creation for "
+                                   " schema version {!r}".format(self.version))
         return self.__event_col
 
     def clear_process_cache(self):
@@ -661,7 +669,7 @@ class MDS(MDSRO):
                                  uid=uid,
                                  validate=validate)
 
-    def bulk_insert_events(self, descriptor, events, validate):
+    def bulk_insert_events(self, descriptor, events, validate=False):
         if self.version == 0:
             raise NotImplementedError("Can not create documents of v0 schema")
         return core.bulk_insert_events(self._event_col,
