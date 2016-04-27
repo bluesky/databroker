@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import pytest
 
+import os.path
 import uuid
 import itertools
 import numpy as np
@@ -87,3 +88,19 @@ def test_index(fs):
     assert len(indx) == 3
     index_fields = set(v['key'][0][0] for v in indx.values())
     assert index_fields == {'_id', 'datum_id', 'resource'}
+
+
+def test_chroot(fs):
+    print(fs._db)
+    res = fs.insert_resource('chroot-test', 'foo', {}, chroot='bar')
+    dm = fs.insert_datum(res, str(uuid.uuid4()), {})
+    if fs.version == 1:
+        assert res['chroot'] == 'bar'
+
+    def local_handler(rpath):
+        return lambda: rpath
+
+    with fs.handler_context({'chroot-test': local_handler}) as fs:
+        path = fs.get_datum(dm['datum_id'])
+
+    assert path == os.path.join('bar', 'foo')

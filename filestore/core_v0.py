@@ -82,8 +82,9 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
+
     if chroot:
-        os.path.join(chroot, resource_path)
+        resource_path = os.path.join(chroot, resource_path)
     resource_object = dict(spec=str(spec),
                            resource_path=str(resource_path),
                            resource_kwargs=resource_kwargs)
