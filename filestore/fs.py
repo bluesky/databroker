@@ -13,10 +13,12 @@ from bson import ObjectId
 import boltons.cacheutils
 
 from .handlers_base import DuplicateHandler
-from .core import (bulk_insert_datum as _bulk_insert_datum,
-                   insert_datum as _insert_datum,
-                   insert_resource as _insert_resource,
-                   get_datum as _get_datum)
+
+from . import core
+from . import core_v0
+
+_API_MAP = {0: core_v0,
+            1: core}
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +79,21 @@ class FileStoreRO(object):
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
-    def __init__(self, config, handler_reg=None):
-        self.config = config
+    @property
+    def version(self):
+        return self._version
 
+    @version.setter
+    def version(self, val):
+        if self._api is not None:
+            raise RuntimeError("Can not change api version at runtime")
+        self._api = _API_MAP[val]
+        self._version = val
+
+    def __init__(self, config, handler_reg=None, version=0):
+        self.config = config
+        self._api = None
+        self.version = version
         if handler_reg is None:
             handler_reg = {}
 
@@ -110,9 +124,9 @@ class FileStoreRO(object):
         return col.find_one({'_id': k})
 
     def get_datum(self, eid):
-        return _get_datum(self._datum_col, eid,
-                          self._datum_cache, self.get_spec_handler,
-                          logger)
+        return self._api.get_datum(self._datum_col, eid,
+                                   self._datum_cache, self.get_spec_handler,
+                                   logger)
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
@@ -159,6 +173,7 @@ class FileStoreRO(object):
     def _resource_col(self):
         if self.__res_col is None:
             self.__res_col = self._db.get_collection('resource')
+            self.__res_col.create_index('resource_id')
 
         return self.__res_col
 
@@ -223,8 +238,9 @@ class FileStore(FileStoreRO):
     def insert_resource(self, spec, resource_path, resource_kwargs):
         col = self._resource_col
 
-        return _insert_resource(col, spec, resource_path, resource_kwargs,
-                                self.known_spec)
+        return self._api.insert_resource(col, spec, resource_path,
+                                         resource_kwargs,
+                                         self.known_spec)
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
         col = self._datum_col
@@ -238,9 +254,10 @@ class FileStore(FileStoreRO):
         if datum_kwargs is None:
             datum_kwargs = {}
 
-        return _insert_datum(col, resource, datum_id, datum_kwargs,
-                             self.known_spec)
+        return self._api.insert_datum(col, resource, datum_id, datum_kwargs,
+                                      self.known_spec)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         col = self._datum_col
-        return _bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list)
+        return self._api.bulk_insert_datum(col, resource, datum_ids,
+                                           datum_kwarg_list)
