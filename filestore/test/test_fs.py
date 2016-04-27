@@ -37,7 +37,7 @@ def _insert_syn_data_bulk(fs, f_type, shape, count):
     return d_uid
 
 
-@pytest.fixture(params=[0, 1])
+@pytest.fixture(params=[0, 1], scope='function')
 def fs(request):
     db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
     test_conf = dict(database=db_name, host='localhost',
