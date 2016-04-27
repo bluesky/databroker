@@ -10,8 +10,8 @@ from .core import DatumNotFound
 
 logger = logging.getLogger(__name__)
 
-
-_FS_SINGLETON = FileStore(connection_config)
+VERSION = 1
+_FS_SINGLETON = FileStore(connection_config, version=VERSION)
 
 
 def db_disconnect():
