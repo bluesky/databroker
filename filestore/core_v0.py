@@ -54,7 +54,14 @@ def bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list):
     return bulk.execute()
 
 
-def insert_datum(col, resource, datum_id, datum_kwargs, known_spec):
+def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
+                 resource_col):
+    try:
+        resource['spec']
+    except (AttributeError, TypeError):
+        resource = resource_col.find_one({'_id': ObjectId(resource)})
+        resource['id'] = resource['_id']
+
     spec = resource['spec']
     if spec in known_spec:
         js_validate(datum_kwargs, known_spec[spec]['datum'])

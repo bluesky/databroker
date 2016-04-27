@@ -8,7 +8,6 @@ import json
 import logging
 
 from pymongo import MongoClient
-from bson import ObjectId
 
 import boltons.cacheutils
 
@@ -90,7 +89,7 @@ class FileStoreRO(object):
         self._api = _API_MAP[val]
         self._version = val
 
-    def __init__(self, config, handler_reg=None, version=0):
+    def __init__(self, config, handler_reg=None, version=1):
         self.config = config
         self._api = None
         self.version = version
@@ -121,7 +120,11 @@ class FileStoreRO(object):
 
     def _r_on_miss(self, k):
         col = self._resource_col
-        return col.find_one({'_id': k})
+        if self.version == 0:
+            ret = col.find_one({'_id': k})
+        elif self.version == 1:
+            ret = col.find_one({'uid': k})
+        return ret
 
     def get_datum(self, eid):
         return self._api.get_datum(self._datum_col, eid,
@@ -220,7 +223,10 @@ class FileStoreRO(object):
 
         spec = resource['spec']
         handler = self.handler_reg[spec]
-        key = (str(resource['_id']), handler.__name__)
+        if self.version == 0:
+            key = (str(resource['_id']), handler.__name__)
+        elif self.version == 1:
+            key = (str(resource['uid']), handler.__name__)
 
         try:
             return h_cache[key]
@@ -244,18 +250,11 @@ class FileStore(FileStoreRO):
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
         col = self._datum_col
-
-        try:
-            resource['spec']
-        except (AttributeError, TypeError):
-            res_col = self._resource_col
-            resource = res_col.find_one({'_id': ObjectId(resource)})
-            resource['id'] = resource['_id']
         if datum_kwargs is None:
             datum_kwargs = {}
 
         return self._api.insert_datum(col, resource, datum_id, datum_kwargs,
-                                      self.known_spec)
+                                      self.known_spec, self._resource_col)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         col = self._datum_col
