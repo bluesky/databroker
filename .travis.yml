@@ -51,7 +51,7 @@ script:
   - coverage run run_tests.py
   - coverage report -m
   # build the conda package on travis
-  - . ~/scripts/conda-build.sh
+  # - . ~/scripts/conda-build.sh
 
 after_success:
   - coveralls
