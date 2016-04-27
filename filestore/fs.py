@@ -6,6 +6,7 @@ from pkg_resources import resource_filename
 from contextlib import contextmanager
 import json
 import logging
+import os.path
 
 from pymongo import MongoClient
 
@@ -13,11 +14,13 @@ import boltons.cacheutils
 
 from .handlers_base import DuplicateHandler
 
+
 from . import core
 from . import core_v0
 
 _API_MAP = {0: core_v0,
             1: core}
+
 
 logger = logging.getLogger(__name__)
 
@@ -235,18 +238,21 @@ class FileStoreRO(object):
 
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
+        chroot = resource.get('chroot', '')
+        rpath = os.path.join(chroot, rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
         return ret
 
 
 class FileStore(FileStoreRO):
-    def insert_resource(self, spec, resource_path, resource_kwargs):
+    def insert_resource(self, spec, resource_path, resource_kwargs, chroot=''):
         col = self._resource_col
 
         return self._api.insert_resource(col, spec, resource_path,
                                          resource_kwargs,
-                                         self.known_spec)
+                                         self.known_spec,
+                                         chroot=chroot)
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
         col = self._datum_col

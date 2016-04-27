@@ -6,6 +6,7 @@ from doct import Document
 from jsonschema import validate as js_validate
 from bson import ObjectId
 from .core import DatumNotFound
+import os.path
 
 
 def get_datum(col, eid, datum_cache, get_spec_handler, logger):
@@ -77,11 +78,12 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
-                    known_spec):
+                    known_spec, chroot=''):
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
-
+    if chroot:
+        os.path.join(chroot, resource_path)
     resource_object = dict(spec=str(spec),
                            resource_path=str(resource_path),
                            resource_kwargs=resource_kwargs)

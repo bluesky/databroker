@@ -101,13 +101,14 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
-                    known_spec):
+                    known_spec, chroot):
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
 
     resource_object = dict(spec=str(spec),
                            resource_path=str(resource_path),
+                           chroot=str(chroot),
                            resource_kwargs=resource_kwargs,
                            uid=str(uuid.uuid4()))
 
