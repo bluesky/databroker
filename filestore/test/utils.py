@@ -1,21 +1,24 @@
 from __future__ import (unicode_literals, print_function, division,
                         absolute_import)
 import uuid
-from filestore.api import db_connect, db_disconnect
-import filestore.conf as fconf
-
 from filestore.handlers_base import HandlerBase
 import numpy as np
 
 
 conn = None
 db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
-old_conf = dict(fconf.connection_config)
+old_conf = None
 
 
 def fs_setup():
     "Create a fresh database with unique (random) name."
+    from filestore.api import db_connect, db_disconnect
+    import filestore.conf as fconf
+
     global conn
+    global old_conf
+
+    old_conf = dict(fconf.connection_config)
     db_disconnect()
     test_conf = dict(database=db_name, host='localhost',
                      port=27017)
@@ -28,6 +31,9 @@ def fs_setup():
 
 def fs_teardown():
     "Drop the fresh database and disconnect."
+    from filestore.api import db_disconnect
+    import filestore.conf as fconf
+
     conn.drop_database(db_name)
     db_disconnect()
     fconf.connection_config.clear()
