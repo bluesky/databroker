@@ -234,27 +234,25 @@ def insert(name, doc):
     return _DB_SINGLETON.insert(name, doc)
 
 
-def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
-                     project='', **kwargs):
+def insert_run_start(time, uid, **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
     ----------
     time : float
         The date/time as found at the client side when the run is started
-    scan_id : int
-        Scan identifier visible to the user and data analysis.  This is not
-        a unique identifier.
-    beamline_id : str
-        Beamline String identifier.
     uid : str
         Globally unique id to identify this RunStart
+    scan_id : int, optional
+        Scan identifier visible to the user and data analysis.  This is not
+        a unique identifier.
     owner : str, optional
         A username associated with the RunStart
     group : str, optional
         An experimental group associated with the RunStart
     project : str, optional
         Any project name to help users locate the data
+    sample : str or dict, optional
 
     Returns
     -------
@@ -263,10 +261,7 @@ def insert_run_start(time, scan_id, beamline_id, uid, owner='', group='',
         the full document.
 
     """
-    return _DB_SINGLETON.insert_run_start(time=time, scan_id=scan_id,
-                                          beamline_id=beamline_id, uid=uid,
-                                          owner=owner, group=group,
-                                          project=project, **kwargs)
+    return _DB_SINGLETON.insert_run_start(time=time, uid=uid, **kwargs)
 
 
 def insert_run_stop(run_start, time, uid, exit_status='success', reason='',
@@ -405,8 +400,6 @@ def find_run_starts(**kwargs):
     stop_time : time-like, optional
         timestamp of the latest time that a RunStart was created. See
         docs for `start_time` for examples.
-    beamline_id : str, optional
-        String identifier for a specific beamline
     project : str, optional
         Project name
     owner : str, optional

@@ -465,18 +465,27 @@ def get_events_table(descriptor, event_col, descriptor_col,
 # database INSERTION ###################################################
 
 def insert_run_start(run_start_col, run_start_cache,
-                     time, scan_id, beamline_id, uid, **kwargs):
+                     time, uid, **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
     ----------
     time : float
         The date/time as found at the client side when the run is started
-    scan_id : int
+    uid : str
+        Globally unique id string provided to metadatastore
+    scan_id : int, optional
         Scan identifier visible to the user and data analysis.  This is not
         a unique identifier.
-    beamline_id : str
-        Beamline String identifier.
+    owner : str, optional
+        A username associated with the RunStart
+    group : str, optional
+        An experimental group associated with the RunStart
+    project : str, optional
+        Any project name to help users locate the data
+    sample : str or dict, optional
+    kwargs
+        additional optional or custom fields
 
     Returns
     -------
@@ -493,8 +502,7 @@ def insert_run_start(run_start_col, run_start_cache,
         kwargs.update(custom)
 
     col = run_start_col
-    run_start = dict(time=time, scan_id=scan_id, uid=uid,
-                     beamline_id=beamline_id, **kwargs)
+    run_start = dict(time=time, uid=uid, **kwargs)
 
     col.insert_one(run_start)
 
@@ -554,9 +562,10 @@ def insert_run_stop(run_start_col, run_start_cache,
         raise RuntimeError("Runstop already exits for {!r}".format(run_start))
 
     col = run_stop_col
-    run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
-                    uid=uid,
+    run_stop = dict(run_start=run_start_uid, time=time, uid=uid,
                     exit_status=exit_status, **kwargs)
+    if reason is not None:
+        run_stop['reason'] = reason
 
     col.insert_one(run_stop)
     _cache_run_stop(run_stop, run_stop_cache, run_start_col, run_start_cache)
