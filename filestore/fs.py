@@ -120,7 +120,6 @@ class FileStoreRO(object):
     def reconfigure(self, config):
         self.disconnect()
         self.config = config
-        print(config)
 
     def _r_on_miss(self, k):
         col = self._resource_col
@@ -293,10 +292,7 @@ class FileStore(FileStoreRO):
                 return ''
             return os.path.join(*inp)
         actual_resource = self.resource_given_uid(resource)
-        print(resource)
-        print(actual_resource)
         if not isinstance(resource, six.string_types):
-            print('in comparison')
             if dict(actual_resource) != dict(resource):
                 raise RuntimeError('The resource you hold and the resource '
                                    'the data base holds do not match '
