@@ -13,7 +13,7 @@ from pymongo import MongoClient
 import boltons.cacheutils
 
 from .handlers_base import DuplicateHandler
-
+import os
 
 from . import core
 from . import core_v0
@@ -108,6 +108,7 @@ class FileStoreRO(object):
         self.__conn = None
         self.__datum_col = None
         self.__res_col = None
+        self.__res_update_col = None
         self.known_spec = dict(self.KNOWN_SPEC)
 
     def disconnect(self):
@@ -128,6 +129,10 @@ class FileStoreRO(object):
         elif self.version == 1:
             ret = col.find_one({'uid': k})
         return ret
+
+    def resource_given_uid(self, uid):
+        col = self._resource_col
+        return self._api.resource_given_uid(col, uid)
 
     def get_datum(self, eid):
         return self._api.get_datum(self._datum_col, eid,
@@ -182,6 +187,14 @@ class FileStoreRO(object):
             self.__res_col.create_index('resource_id')
 
         return self.__res_col
+
+    @property
+    def _resource_update_col(self):
+        if self.__res_update_col is None:
+            self.__res_update_col = self._db.get_collection('resource_update')
+            self.__res_update_col.create_index('resource')
+
+        return self.__res_update_col
 
     @property
     def _datum_col(self):
@@ -264,5 +277,59 @@ class FileStore(FileStoreRO):
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         col = self._datum_col
+
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
+
+    def shift_chroot(self, resource, shift):
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of chroot')
+
+        if shift == 0:
+            return resource
+
+        def safe_join(inp):
+            if not inp:
+                return ''
+            return os.path.join(*inp)
+        actual_resource = self.resource_given_uid(resource)
+        print(resource)
+        print(actual_resource)
+        if not isinstance(resource, six.string_types):
+            print('in comparison')
+            if dict(actual_resource) != dict(resource):
+                raise RuntimeError('The resource you hold and the resource '
+                                   'the data base holds do not match '
+                                   'yours: {!r} db: {!r}'.format(
+                                       resource, actual_resource))
+        resource = actual_resource
+        abs_path = resource['chroot'][0] == os.sep
+        chroot = [_ for _ in resource['chroot'].split(os.sep) if _]
+        rpath = [_ for _ in resource['resource_path'].split(os.sep) if _]
+
+        if shift > 0:
+            # to the right
+            if shift > len(rpath):
+                raise RuntimeError('Asked to shift farther to right '
+                                   'than there are directories')
+            new_chroot = safe_join(chroot + rpath[:shift])
+            new_rpath = safe_join(rpath[shift:])
+        else:
+            # sometime to the left
+            shift = len(chroot) + shift
+            if shift < 0:
+                raise RuntimeError('Asked to shift farther to left '
+                                   'than there are directories')
+            new_chroot = safe_join(chroot[:shift])
+            new_rpath = safe_join((chroot[shift:] + rpath))
+        if abs_path:
+            new_chroot = os.sep + new_chroot
+
+        new = dict(resource)
+        new['chroot'] = new_chroot
+        new['resource_path'] = new_rpath
+
+        update_col = self._resource_update_col
+        resource_col = self._resource_col
+        return self._api.update_resource(update_col, resource_col,
+                                         resource, new)

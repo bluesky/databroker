@@ -5,6 +5,7 @@ import six
 from doct import Document
 from jsonschema import validate as js_validate
 import uuid
+import time as ttime
 
 
 class DatumNotFound(Exception):
@@ -59,7 +60,16 @@ def get_datum(col, eid, datum_cache, get_spec_handler, logger):
     return handler(**datum['datum_kwargs'])
 
 
-def bulk_insert_datum(col, resource, datum_ids, datum_kwarg_list):
+def resource_given_uid(col, resource):
+    uid = doc_or_uid_to_uid(resource)
+    ret = col.find_one({'uid': uid})
+    ret.pop('_id')
+    ret['id'] = ret['uid']
+    return Document('resource', ret)
+
+
+def bulk_insert_datum(col, resource, datum_ids,
+                      datum_kwarg_list):
 
     resource_id = doc_or_uid_to_uid(resource)
 
@@ -115,4 +125,49 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
     col.insert_one(resource_object)
     # maintain back compatibility
     resource_object['id'] = resource_object['uid']
-    return resource_object
+    resource_object.pop('_id')
+    return Document('resource', resource_object)
+
+
+def update_resource(update_col, resource_col, old, new):
+    if old['uid'] != new['uid']:
+        raise RuntimeError('must not change the resource id')
+    uid = old['uid']
+    log_object = {'resource': uid,
+                  'old': old,
+                  'new': new,
+                  'time': ttime.time()}
+    update_col.insert_one(log_object)
+    result = resource_col.replace_one({'uid': uid}, new)
+    ret = resource_given_uid(uid)
+    return ret, log_object, result
+
+
+def get_resource_history(col, resource):
+    uid = doc_or_uid_to_uid(resource)
+    cursor = col.find({'resource': uid}).sort('time')
+    for doc in cursor:
+        out = {}
+        for k in ['new', 'old']:
+            d = doc[k]
+            d.pop('_id')
+            d['id'] = d['uid']
+            out[k] = Document('resource', d)
+        out['resource'] = doc['resource']
+        yield out
+
+
+def get_resources_by_chroot(col, chroot, partial=False):
+    pass
+
+
+def get_resources_by_path(col, path, partial=False):
+    pass
+
+
+def get_resources_by_spec(col, spec):
+    pass
+
+
+def get_resource_by_uid(col, uid):
+    pass

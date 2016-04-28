@@ -9,6 +9,13 @@ from .core import DatumNotFound
 import os.path
 
 
+def doc_or_oid_to_oid(doc_or_oid):
+    try:
+        return ObjectId(doc_or_oid)
+    except TypeError:
+        return doc_or_oid['id']
+
+
 def get_datum(col, eid, datum_cache, get_spec_handler, logger):
     try:
         datum = datum_cache[eid]
@@ -75,6 +82,13 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
     datum.pop('_id', None)
 
     return Document('datum', datum)
+
+
+def resource_given_uid(col, resource):
+    k = doc_or_oid_to_oid(resource)
+    ret = col.find_one({'_id': k})
+    ret['id'] = ret.pop('_id')
+    return ret
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
