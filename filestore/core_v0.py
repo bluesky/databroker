@@ -92,13 +92,13 @@ def resource_given_uid(col, resource):
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
-                    known_spec, chroot=''):
+                    known_spec, root=''):
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
 
-    if chroot:
-        resource_path = os.path.join(chroot, resource_path)
+    if root:
+        resource_path = os.path.join(root, resource_path)
     resource_object = dict(spec=str(spec),
                            resource_path=str(resource_path),
                            resource_kwargs=resource_kwargs)

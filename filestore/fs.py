@@ -252,21 +252,21 @@ class FileStoreRO(object):
 
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
-        chroot = resource.get('chroot', '')
-        rpath = os.path.join(chroot, rpath)
+        root = resource.get('root', '')
+        rpath = os.path.join(root, rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
         return ret
 
 
 class FileStore(FileStoreRO):
-    def insert_resource(self, spec, resource_path, resource_kwargs, chroot=''):
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=''):
         col = self._resource_col
 
         return self._api.insert_resource(col, spec, resource_path,
                                          resource_kwargs,
                                          self.known_spec,
-                                         chroot=chroot)
+                                         root=root)
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
         col = self._datum_col
@@ -282,9 +282,9 @@ class FileStore(FileStoreRO):
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
 
-    def shift_chroot(self, resource, shift):
+    def shift_root(self, resource, shift):
         if self.version == 0:
-            raise NotImplementedError('V0 has no notion of chroot')
+            raise NotImplementedError('V0 has no notion of root')
 
         if shift == 0:
             return resource
@@ -301,8 +301,8 @@ class FileStore(FileStoreRO):
                                    'yours: {!r} db: {!r}'.format(
                                        resource, actual_resource))
         resource = actual_resource
-        abs_path = resource['chroot'][0] == os.sep
-        chroot = [_ for _ in resource['chroot'].split(os.sep) if _]
+        abs_path = resource['root'][0] == os.sep
+        root = [_ for _ in resource['root'].split(os.sep) if _]
         rpath = [_ for _ in resource['resource_path'].split(os.sep) if _]
 
         if shift > 0:
@@ -310,21 +310,21 @@ class FileStore(FileStoreRO):
             if shift > len(rpath):
                 raise RuntimeError('Asked to shift farther to right '
                                    'than there are directories')
-            new_chroot = safe_join(chroot + rpath[:shift])
+            new_root = safe_join(root + rpath[:shift])
             new_rpath = safe_join(rpath[shift:])
         else:
             # sometime to the left
-            shift = len(chroot) + shift
+            shift = len(root) + shift
             if shift < 0:
                 raise RuntimeError('Asked to shift farther to left '
                                    'than there are directories')
-            new_chroot = safe_join(chroot[:shift])
-            new_rpath = safe_join((chroot[shift:] + rpath))
+            new_root = safe_join(root[:shift])
+            new_rpath = safe_join((root[shift:] + rpath))
         if abs_path:
-            new_chroot = os.sep + new_chroot
+            new_root = os.sep + new_root
 
         new = dict(resource)
-        new['chroot'] = new_chroot
+        new['root'] = new_root
         new['resource_path'] = new_rpath
 
         update_col = self._resource_update_col
@@ -334,8 +334,8 @@ class FileStore(FileStoreRO):
 
 
 class FileStoreMoving(FileStore):
-    def change_chroot(self, resource_or_uid, new_chroot, remove_origin=True,
-                      verify=True):
+    def change_root(self, resource_or_uid, new_root, remove_origin=True,
+                    verify=True):
         datum_col = self._datum_col
         # get list of files
         resource = self.resource_given_uid(resource_or_uid)
@@ -345,16 +345,16 @@ class FileStoreMoving(FileStore):
                                                         resource['uid'])
         file_list = handler.get_file_list(datum_gen)
 
-        # check that all files share the same chroot
-        old_chroot = resource['chroot']
+        # check that all files share the same root
+        old_root = resource['root']
         for f in file_list:
-            if not f.startswith(old_chroot):
+            if not f.startswith(old_root):
                 raise RuntimeError('something is very wrong, the files '
                                    'do not all share the same root, ABORT')
 
         # sort out where new files should go
-        new_file_list = [os.path.join(new_chroot,
-                                      os.path.relpath(f, old_chroot))
+        new_file_list = [os.path.join(new_root,
+                                      os.path.relpath(f, old_root))
                          for f in file_list]
         # copy the files to the new location
         for fin, fout in zip(file_list, new_file_list):
@@ -365,7 +365,7 @@ class FileStoreMoving(FileStore):
 
         # update the database
         new_resource = dict(resource)
-        new_resource['chroot'] = new_chroot
+        new_resource['root'] = new_root
 
         update_col = self._resource_update_col
         resource_col = self._resource_col
@@ -383,6 +383,5 @@ class FileStoreMoving(FileStore):
         for k in list(self._handler_cache):
             if k[0] == uid:
                 del self._handler_cache[k]
-
 
         return ret

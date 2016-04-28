@@ -34,22 +34,22 @@ def fs_v1(request):
 
 
 def _verify_shifted_resource(last_res, new_res):
-    '''Check that resources are identical except for chroot/rpath'''
+    '''Check that resources are identical except for root/rpath'''
     for k in set(chain(new_res, last_res)):
-        if k not in ('chroot', 'resource_path'):
+        if k not in ('root', 'resource_path'):
             assert new_res[k] == last_res[k]
         else:
             assert new_res[k] != last_res[k]
 
-    n_fp = os.path.join(new_res['chroot'],
+    n_fp = os.path.join(new_res['root'],
                         new_res['resource_path'])
-    l_fp = os.path.join(last_res['chroot'],
+    l_fp = os.path.join(last_res['root'],
                         last_res['resource_path']).rstrip('/')
     assert n_fp == l_fp
 
 
 @pytest.mark.parametrize("step,sign", product([1, 3, 5, 7], [1, -1]))
-def test_chroot_shift(fs_v1, step, sign):
+def test_root_shift(fs_v1, step, sign):
     fs = fs_v1
     n_paths = 15
 
@@ -57,18 +57,18 @@ def test_chroot_shift(fs_v1, step, sign):
         return os.path.join(*(str(_)
                               for _ in range(start, stop)))
     if sign > 0:
-        chroot = '/'
+        root = '/'
         rpath = num_paths(0, n_paths)
     elif sign < 0:
-        chroot = '/' + num_paths(0, n_paths)
+        root = '/' + num_paths(0, n_paths)
         rpath = ''
 
-    last_res = fs.insert_resource('chroot-test',
+    last_res = fs.insert_resource('root-test',
                                   rpath,
                                   {'a': 'fizz', 'b': 5},
-                                  chroot=chroot)
+                                  root=root)
     for n, j in enumerate(range(step, n_paths, step)):
-        new_res, log, _ = fs.shift_chroot(last_res, sign * step)
+        new_res, log, _ = fs.shift_root(last_res, sign * step)
         assert last_res == log['old']
 
         if sign > 0:
@@ -76,7 +76,7 @@ def test_chroot_shift(fs_v1, step, sign):
         elif sign < 0:
             left_count = n_paths - j
 
-        assert new_res['chroot'] == '/' + num_paths(0, left_count)
+        assert new_res['root'] == '/' + num_paths(0, left_count)
         assert new_res['resource_path'] == num_paths(left_count, n_paths)
         _verify_shifted_resource(last_res, new_res)
         last_res = new_res
@@ -111,7 +111,7 @@ def moving_files(fs_v1, tmpdir):
     res = fs_v1.insert_resource('npy_series',
                                 local_path,
                                 {'fmt': fmt},
-                                chroot=tmpdir)
+                                root=tmpdir)
     datum_uids = []
     fnames = []
     os.makedirs(os.path.join(tmpdir, local_path))
@@ -136,15 +136,15 @@ def test_moving(moving_files):
         datum = fs.get_datum(d_id)
         assert np.prod(shape) * j == np.sum(datum)
 
-    old_chroot = res['chroot']
-    new_chroot = os.path.join(old_chroot, 'archive')
+    old_root = res['root']
+    new_root = os.path.join(old_root, 'archive')
     for f in fnames:
         assert os.path.exists(f)
 
-    res2, log, _ = fs.change_chroot(res, new_chroot)
-    print(res2['chroot'])
+    res2, log, _ = fs.change_root(res, new_root)
+    print(res2['root'])
     for f in fnames:
-        assert os.path.exists(f.replace(old_chroot, new_chroot))
+        assert os.path.exists(f.replace(old_root, new_root))
         assert not os.path.exists(f)
 
     # sanity check on the way out

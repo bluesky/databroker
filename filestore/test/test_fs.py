@@ -70,17 +70,17 @@ def test_index(fs):
     assert index_fields == {'_id', 'datum_id', 'resource'}
 
 
-def test_chroot(fs):
+def test_root(fs):
     print(fs._db)
-    res = fs.insert_resource('chroot-test', 'foo', {}, chroot='bar')
+    res = fs.insert_resource('root-test', 'foo', {}, root='bar')
     dm = fs.insert_datum(res, str(uuid.uuid4()), {})
     if fs.version == 1:
-        assert res['chroot'] == 'bar'
+        assert res['root'] == 'bar'
 
     def local_handler(rpath):
         return lambda: rpath
 
-    with fs.handler_context({'chroot-test': local_handler}) as fs:
+    with fs.handler_context({'root-test': local_handler}) as fs:
         path = fs.get_datum(dm['datum_id'])
 
     assert path == os.path.join('bar', 'foo')
