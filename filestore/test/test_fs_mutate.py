@@ -5,9 +5,11 @@ import pytest
 from itertools import chain, product
 import os.path
 import uuid
+import numpy as np
 
 
 import filestore.fs
+from filestore.handlers_base import HandlerBase
 
 
 @pytest.fixture(scope='function')
@@ -19,8 +21,8 @@ def fs_v1(request):
     db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
     test_conf = dict(database=db_name, host='localhost',
                      port=27017)
-    fs = filestore.fs.FileStore(test_conf,
-                                version=1)
+    fs = filestore.fs.FileStoreMoving(test_conf,
+                                      version=1)
 
     def delete_dm():
         print("DROPPING DB")
@@ -46,37 +48,106 @@ def _verify_shifted_resource(last_res, new_res):
     assert n_fp == l_fp
 
 
-class TestChroot:
+@pytest.mark.parametrize("step,sign", product([1, 3, 5, 7], [1, -1]))
+def test_chroot_shift(fs_v1, step, sign):
+    fs = fs_v1
+    n_paths = 15
 
-    @pytest.mark.parametrize("step,sign", product([1, 3, 5, 7], [1, -1]))
-    def test_chroot_shift(self, fs_v1, step, sign):
-        fs = fs_v1
-        n_paths = 15
+    def num_paths(start, stop):
+        return os.path.join(*(str(_)
+                              for _ in range(start, stop)))
+    if sign > 0:
+        chroot = '/'
+        rpath = num_paths(0, n_paths)
+    elif sign < 0:
+        chroot = '/' + num_paths(0, n_paths)
+        rpath = ''
 
-        def num_paths(start, stop):
-            return os.path.join(*(str(_)
-                                  for _ in range(start, stop)))
+    last_res = fs.insert_resource('chroot-test',
+                                  rpath,
+                                  {'a': 'fizz', 'b': 5},
+                                  chroot=chroot)
+    for n, j in enumerate(range(step, n_paths, step)):
+        new_res, log, _ = fs.shift_chroot(last_res, sign * step)
+        assert last_res == log['old']
+
         if sign > 0:
-            chroot = '/'
-            rpath = num_paths(0, n_paths)
+            left_count = j
         elif sign < 0:
-            chroot = '/' + num_paths(0, n_paths)
-            rpath = ''
+            left_count = n_paths - j
 
-        last_res = fs.insert_resource('chroot-test',
-                                      rpath,
-                                      {'a': 'fizz', 'b': 5},
-                                      chroot=chroot)
-        for j in range(step, n_paths, step):
-            new_res, log, _ = fs.shift_chroot(last_res, sign * step)
-            assert last_res == log['old']
+        assert new_res['chroot'] == '/' + num_paths(0, left_count)
+        assert new_res['resource_path'] == num_paths(left_count, n_paths)
+        _verify_shifted_resource(last_res, new_res)
+        last_res = new_res
 
-            if sign > 0:
-                left_count = j
-            elif sign < 0:
-                left_count = n_paths - j
 
-            assert new_res['chroot'] == '/' + num_paths(0, left_count)
-            assert new_res['resource_path'] == num_paths(left_count, n_paths)
-            _verify_shifted_resource(last_res, new_res)
-            last_res = new_res
+class FileMoveTestingHandler(HandlerBase):
+    specs = {'npy_series'} | HandlerBase.specs
+
+    def __init__(self, fpath, fmt):
+        self.fpath = fpath
+        self.fmt = fmt
+
+    def __call__(self, point_number):
+        fname = os.path.join(self.fpath,
+                             self.fmt.format(point_number=point_number))
+        return np.load(fname)
+
+    def get_file_list(self, datumkw_gen):
+        return [os.path.join(self.fpath,
+                             self.fmt.format(**dkw))
+                for dkw in datumkw_gen]
+
+
+@pytest.fixture()
+def moving_files(fs_v1, tmpdir):
+    tmpdir = str(tmpdir)
+    cnt = 15
+    shape = (7, 13)
+
+    local_path = '2016/04/28/aardvark'
+    fmt = 'cub_{point_number:05}.npy'
+    res = fs_v1.insert_resource('npy_series',
+                                local_path,
+                                {'fmt': fmt},
+                                chroot=tmpdir)
+    datum_uids = []
+    fnames = []
+    os.makedirs(os.path.join(tmpdir, local_path))
+    for j in range(cnt):
+        fpath = os.path.join(tmpdir, local_path,
+                             fmt.format(point_number=j))
+        np.save(fpath, np.ones(shape) * j)
+        d = fs_v1.insert_datum(res, str(uuid.uuid4()),
+                               {'point_number': j})
+        datum_uids.append(d['datum_id'])
+        fnames.append(fpath)
+
+    return fs_v1, res, datum_uids, shape, cnt, fnames
+
+
+def test_moving(moving_files):
+    fs, res, datum_uids, shape, cnt, fnames = moving_files
+    fs.register_handler('npy_series', FileMoveTestingHandler)
+
+    # sanity check on the way in
+    for j, d_id in enumerate(datum_uids):
+        datum = fs.get_datum(d_id)
+        assert np.prod(shape) * j == np.sum(datum)
+
+    old_chroot = res['chroot']
+    new_chroot = os.path.join(old_chroot, 'archive')
+    for f in fnames:
+        assert os.path.exists(f)
+
+    res2, log, _ = fs.change_chroot(res, new_chroot)
+    print(res2['chroot'])
+    for f in fnames:
+        assert os.path.exists(f.replace(old_chroot, new_chroot))
+        assert not os.path.exists(f)
+
+    # sanity check on the way out
+    for j, d_id in enumerate(datum_uids):
+        datum = fs.get_datum(d_id)
+        assert np.prod(shape) * j == np.sum(datum)

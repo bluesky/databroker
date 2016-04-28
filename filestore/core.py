@@ -157,6 +157,15 @@ def get_resource_history(col, resource):
         yield out
 
 
+def get_datumkw_by_resuid_gen(datum_col, resource_uid):
+    resource_uid = doc_or_uid_to_uid(resource_uid)
+    print(resource_uid)
+    cur = datum_col.find({'resource': resource_uid})
+
+    for d in cur:
+        yield d['datum_kwargs']
+
+
 def get_resources_by_chroot(col, chroot, partial=False):
     pass
 

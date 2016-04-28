@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import json
 import logging
 import os.path
+import shutil
 
 from pymongo import MongoClient
 
@@ -329,3 +330,58 @@ class FileStore(FileStoreRO):
         resource_col = self._resource_col
         return self._api.update_resource(update_col, resource_col,
                                          resource, new)
+
+
+class FileStoreMoving(FileStore):
+    def change_chroot(self, resource_or_uid, new_chroot, remove_origin=True,
+                      verify=True):
+        datum_col = self._datum_col
+        # get list of files
+        resource = self.resource_given_uid(resource_or_uid)
+        handler = self.get_spec_handler(resource['uid'])
+
+        datum_gen = self._api.get_datumkw_by_resuid_gen(datum_col,
+                                                        resource['uid'])
+        file_list = handler.get_file_list(datum_gen)
+
+        # check that all files share the same chroot
+        old_chroot = resource['chroot']
+        for f in file_list:
+            if not f.startswith(old_chroot):
+                raise RuntimeError('something is very wrong, the files '
+                                   'do not all share the same root, ABORT')
+
+        # sort out where new files should go
+        new_file_list = [os.path.join(new_chroot,
+                                      os.path.relpath(f, old_chroot))
+                         for f in file_list]
+        # copy the files to the new location
+        for fin, fout in zip(file_list, new_file_list):
+            # copy files
+            print(fin, fout)
+            os.makedirs(os.path.dirname(fout), exist_ok=True)
+            shutil.copy2(fin, fout)
+
+        # update the database
+        new_resource = dict(resource)
+        new_resource['chroot'] = new_chroot
+
+        update_col = self._resource_update_col
+        resource_col = self._resource_col
+        ret = self._api.update_resource(update_col, resource_col,
+                                        resource, new_resource)
+
+        # remove original files
+        if remove_origin:
+            for f in file_list:
+                os.unlink(f)
+
+        # nuke caches
+        uid = resource['uid']
+        self._resource_cache.pop(uid, None)
+        for k in list(self._handler_cache):
+            if k[0] == uid:
+                del self._handler_cache[k]
+
+
+        return ret
