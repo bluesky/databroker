@@ -515,7 +515,7 @@ class MDS(MDSRO):
                     'event': 'insert_event',
                     'bulk_events': 'bulk_insert_events'}
 
-    def insert_run_start(self, time, uid **kwargs):
+    def insert_run_start(self, time, uid, **kwargs):
         '''Insert a Start document
 
         All extra keyword arguments are passed through to the database
@@ -550,7 +550,7 @@ class MDS(MDSRO):
             raise NotImplementedError("Can not create documents of v0 schema")
         return core.insert_run_start(self._runstart_col,
                                      self._RUNSTART_CACHE,
-                                     time=time, 
+                                     time=time,
                                      uid=uid,
                                      **kwargs)
 
