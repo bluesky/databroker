@@ -81,6 +81,7 @@ class MDSRO(object):
             self.__runstart_col.create_index([('time', pymongo.DESCENDING),
                                               ('scan_id', pymongo.DESCENDING)],
                                              unique=False, background=True)
+            self.__runstart_col.create_index([("$**", "text")])
 
         return self.__runstart_col
 
@@ -94,6 +95,7 @@ class MDSRO(object):
                                             unique=True)
             self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
                                             unique=False, background=True)
+            self.__runstop_col.create_index([("$**", "text")])
 
         return self.__runstop_col
 
@@ -108,6 +110,7 @@ class MDSRO(object):
                 [('run_start', pymongo.DESCENDING),
                  ('time', pymongo.DESCENDING)],
                 unique=False, background=True)
+            self.__descriptor_col.create_index([("$**", "text")])
 
         return self.__descriptor_col
 
