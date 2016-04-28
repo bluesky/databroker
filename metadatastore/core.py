@@ -357,7 +357,8 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       run_start_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('time', pymongo.ASCENDING)])
+                      sort=[('descriptor', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
 
     data_keys = descriptor['data_keys']
     for ev in ev_cur:
@@ -1019,7 +1020,9 @@ def find_events(start_col, start_cache,
 
     _format_time(kwargs, tz)
     col = event_col
-    events = col.find(kwargs)
+    events = col.find(kwargs,
+                      sort=[('descriptor', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
 
     for ev in events:
         ev.pop('_id', None)
