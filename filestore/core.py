@@ -139,7 +139,7 @@ def update_resource(update_col, resource_col, old, new):
                   'time': ttime.time()}
     update_col.insert_one(log_object)
     result = resource_col.replace_one({'uid': uid}, new)
-    ret = resource_given_uid(uid)
+    ret = resource_given_uid(resource_col, uid)
     return ret, log_object, result
 
 
