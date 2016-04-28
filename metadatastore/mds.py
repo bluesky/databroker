@@ -515,8 +515,7 @@ class MDS(MDSRO):
                     'event': 'insert_event',
                     'bulk_events': 'bulk_insert_events'}
 
-    def insert_run_start(self, time, scan_id, beamline_id, uid,
-                         owner='', group='', project='', **kwargs):
+    def insert_run_start(self, time, uid, **kwargs):
         '''Insert a Start document
 
         All extra keyword arguments are passed through to the database
@@ -526,19 +525,20 @@ class MDS(MDSRO):
         ----------
         time : float
             The date/time as found at the client side when the run is started
-        scan_id : int
-            Scan identifier visible to the user and data analysis.  This is not
-            a unique identifier.
-        beamline_id : str
-            Beamline String identifier.
         uid : str
             Globally unique id to identify this RunStart
+        scan_id : int, optional
+            Scan identifier visible to the user and data analysis.  This is not
+            a unique identifier.
         owner : str, optional
             A username associated with the RunStart
         group : str, optional
             An experimental group associated with the RunStart
         project : str, optional
             Any project name to help users locate the data
+        sample : str or dict, optional
+        kwargs
+            passed through
 
         Returns
         -------
@@ -550,12 +550,8 @@ class MDS(MDSRO):
             raise NotImplementedError("Can not create documents of v0 schema")
         return core.insert_run_start(self._runstart_col,
                                      self._RUNSTART_CACHE,
-                                     time, scan_id=scan_id,
-                                     beamline_id=beamline_id,
+                                     time=time,
                                      uid=uid,
-                                     owner=owner,
-                                     group=group,
-                                     project=project,
                                      **kwargs)
 
     def insert_run_stop(self, run_start, time, uid, exit_status='success',
