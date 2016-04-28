@@ -14,6 +14,7 @@ from pymongo import MongoClient
 import boltons.cacheutils
 
 from .handlers_base import DuplicateHandler
+from .utils import _make_sure_path_exists
 import os
 
 from . import core
@@ -359,7 +360,7 @@ class FileStoreMoving(FileStore):
         for fin, fout in zip(file_list, new_file_list):
             # copy files
             print(fin, fout)
-            os.makedirs(os.path.dirname(fout), exist_ok=True)
+            _make_sure_path_exists(os.path.dirname(fout))
             shutil.copy2(fin, fout)
 
         # update the database

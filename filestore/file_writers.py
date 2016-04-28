@@ -12,6 +12,7 @@ import os.path as op
 import datetime
 
 import filestore.api as fsc
+from .utils import _make_sure_path_exists
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,8 @@ class NpyWriter(HandlerBase):
             resource_kwargs = dict()
         for k in resource_kwargs.keys():
             if k != 'mmap_mode':
-                raise ValueError("The only valid resource_kwargs key is 'mmap_mode' "
+                raise ValueError("The only valid resource_kwargs key is "
+                                 "'mmap_mode' "
                                  "you passed in {}".format(k))
         self._f_custom = dict(resource_kwargs)
 
@@ -126,17 +128,3 @@ def save_ndarray(data, base_path=None, filename=None):
         eid = fout.add_data(data)
 
     return eid
-
-
-if six.PY2:
-    # http://stackoverflow.com/a/5032238/380231
-    def _make_sure_path_exists(path):
-        try:
-            os.makedirs(path)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise
-else:
-    # technically, this won't work with py3.1, but no one uses that
-    def _make_sure_path_exists(path):
-        return os.makedirs(path, exist_ok=True)
