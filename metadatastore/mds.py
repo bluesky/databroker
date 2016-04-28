@@ -515,8 +515,7 @@ class MDS(MDSRO):
                     'event': 'insert_event',
                     'bulk_events': 'bulk_insert_events'}
 
-    def insert_run_start(self, time, scan_id, beamline_id, uid,
-                         owner='', group='', project='', **kwargs):
+    def insert_run_start(self, time, scan_id, beamline_id, uid, **kwargs):
         '''Insert a Start document
 
         All extra keyword arguments are passed through to the database
@@ -533,12 +532,6 @@ class MDS(MDSRO):
             Beamline String identifier.
         uid : str
             Globally unique id to identify this RunStart
-        owner : str, optional
-            A username associated with the RunStart
-        group : str, optional
-            An experimental group associated with the RunStart
-        project : str, optional
-            Any project name to help users locate the data
 
         Returns
         -------
@@ -553,9 +546,6 @@ class MDS(MDSRO):
                                      time, scan_id=scan_id,
                                      beamline_id=beamline_id,
                                      uid=uid,
-                                     owner=owner,
-                                     group=group,
-                                     project=project,
                                      **kwargs)
 
     def insert_run_stop(self, run_start, time, uid, exit_status='success',
