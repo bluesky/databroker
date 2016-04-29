@@ -31,6 +31,25 @@ class MDSRO(object):
         self._api = None
         self.version = version
 
+    def __getstate__(self):
+        return self.version, self.config
+
+    def __setstate__(self, state):
+        self._RUNSTART_CACHE = {}
+        self._RUNSTOP_CACHE = {}
+        self._DESCRIPTOR_CACHE = {}
+
+        self.__conn = None
+
+        self.__db = None
+
+        self.__event_col = None
+        self.__descriptor_col = None
+        self.__runstart_col = None
+        self.__runstop_col = None
+        self._api = None
+        self.version, self.config = state
+
     @property
     def version(self):
         return self._version
