@@ -153,7 +153,7 @@ def get_data(eid, handler_registry=None):
     if handler_registry is None:
         handler_registry = {}
     with _FS_SINGLETON.handler_context(handler_registry) as fs:
-        return fs.get_datum(eid)
+        return fs.retrieve(eid)
 
 
 retrieve = get_data

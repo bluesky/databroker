@@ -151,5 +151,5 @@ def test_moving(moving_files):
 
     # sanity check on the way out
     for j, d_id in enumerate(datum_uids):
-        datum = fs.get_datum(d_id)
+        datum = fs.retrieve(d_id)
         assert np.prod(shape) * j == np.sum(datum)

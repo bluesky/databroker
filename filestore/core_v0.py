@@ -16,7 +16,7 @@ def doc_or_oid_to_oid(doc_or_oid):
         return doc_or_oid['id']
 
 
-def get_datum(col, eid, datum_cache, get_spec_handler, logger):
+def retrieve(col, eid, datum_cache, get_spec_handler, logger):
     try:
         datum = datum_cache[eid]
     except KeyError:

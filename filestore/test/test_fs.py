@@ -44,14 +44,14 @@ def test_insert_funcs(func, fs):
     mod_ids = func(fs, 'syn-mod', shape, 10)
 
     for j, r_id in enumerate(mod_ids):
-        data = fs.get_datum(r_id)
+        data = fs.retrieve(r_id)
         known_data = np.mod(np.arange(np.prod(shape)), j + 1).reshape(shape)
         assert_array_equal(data, known_data)
 
 
 def test_non_exist(fs):
     with pytest.raises(DatumNotFound):
-        fs.get_datum('aardvark')
+        fs.retrieve('aardvark')
 
 
 def test_non_unique_fail(fs):
@@ -83,6 +83,6 @@ def test_root(fs):
         return lambda: rpath
 
     with fs.handler_context({'root-test': local_handler}) as fs:
-        path = fs.get_datum(dm['datum_id'])
+        path = fs.retrieve(dm['datum_id'])
 
     assert path == os.path.join('bar', 'foo')

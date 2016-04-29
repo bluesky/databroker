@@ -135,8 +135,8 @@ class FileStoreRO(object):
         col = self._resource_col
         return self._api.resource_given_uid(col, uid)
 
-    def get_datum(self, eid):
-        return self._api.get_datum(self._datum_col, eid,
+    def retrieve(self, eid):
+        return self._api.retrieve(self._datum_col, eid,
                                    self._datum_cache, self.get_spec_handler,
                                    logger)
 

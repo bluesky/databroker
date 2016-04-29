@@ -32,7 +32,7 @@ def doc_or_uid_to_uid(doc_or_uid):
     return doc_or_uid
 
 
-def get_datum(col, eid, datum_cache, get_spec_handler, logger):
+def retrieve(col, eid, datum_cache, get_spec_handler, logger):
     try:
         datum = datum_cache[eid]
     except KeyError:
