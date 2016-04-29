@@ -14,9 +14,9 @@ _API_MAP = {0: core_v0,
 
 class MDSRO(object):
     def __init__(self, config, version=1):
-        self._RUNSTART_CACHE = boltons.cacheutils.LRU(max_size=1000)
-        self._RUNSTOP_CACHE = boltons.cacheutils.LRU(max_size=1000)
-        self._DESCRIPTOR_CACHE = boltons.cacheutils.LRU(max_size=1000)
+        self._RUNSTART_CACHE = {}
+        self._RUNSTOP_CACHE = {}
+        self._DESCRIPTOR_CACHE = {}
 
         self.config = config
 
