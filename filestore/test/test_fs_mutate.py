@@ -129,13 +129,14 @@ def moving_files(fs_v1, tmpdir):
     return fs_v1, res, datum_uids, shape, cnt, fnames
 
 
-def test_moving(moving_files):
+@pytest.mark.parametrize("remove", [True, False])
+def test_moving(moving_files, remove):
     fs, res, datum_uids, shape, cnt, fnames = moving_files
     fs.register_handler('npy_series', FileMoveTestingHandler)
 
     # sanity check on the way in
     for j, d_id in enumerate(datum_uids):
-        datum = fs.get_datum(d_id)
+        datum = fs.retrieve(d_id)
         assert np.prod(shape) * j == np.sum(datum)
 
     old_root = res['root']
@@ -143,11 +144,14 @@ def test_moving(moving_files):
     for f in fnames:
         assert os.path.exists(f)
 
-    res2, log, _ = fs.change_root(res, new_root)
+    res2, log, _ = fs.change_root(res, new_root, remove_origin=remove)
     print(res2['root'])
     for f in fnames:
         assert os.path.exists(f.replace(old_root, new_root))
-        assert not os.path.exists(f)
+        if remove:
+            assert not os.path.exists(f)
+        else:
+            assert os.path.exists(f)
 
     # sanity check on the way out
     for j, d_id in enumerate(datum_uids):
