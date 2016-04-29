@@ -517,7 +517,7 @@ def insert_run_start(run_start_col, run_start_cache,
 
 def insert_run_stop(run_start_col, run_start_cache,
                     run_stop_col, run_stop_cache,
-                    run_start, time, uid, exit_status, reason,
+                    run_start, time, uid, exit_status, reason=None,
                     **kwargs):
     """Insert RunStop document into database
 
@@ -567,7 +567,7 @@ def insert_run_stop(run_start_col, run_start_cache,
     col = run_stop_col
     run_stop = dict(run_start=run_start_uid, time=time, uid=uid,
                     exit_status=exit_status, **kwargs)
-    if reason is not None:
+    if reason is not None and reason != '':
         run_stop['reason'] = reason
 
     col.insert_one(run_stop)

@@ -574,9 +574,11 @@ def insert_run_stop(run_start_col, run_start_cache,
         raise RuntimeError("Runstop already exits for {!r}".format(run_start))
 
     col = run_stop_col
-    run_stop = dict(run_start=run_start_uid, reason=reason, time=time,
+    run_stop = dict(run_start=run_start_uid, time=time,
                     uid=uid,
                     exit_status=exit_status, **kwargs)
+    if reason is not None and reason != '':
+        run_stop['reason'] = reason
 
     col.insert_one(run_stop)
     _cache_run_stop(run_stop, run_stop_cache, run_start_col, run_start_cache)
