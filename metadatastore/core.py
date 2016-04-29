@@ -334,7 +334,7 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
 
 def get_events_generator(descriptor, event_col, descriptor_col,
                          descriptor_cache, run_start_col,
-                         run_start_cache):
+                         run_start_cache, convert_arrays=True):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -342,6 +342,8 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     descriptor : doc.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+    convert_arrays: boolean, optional
+        convert 'array' type to numpy.ndarray; True by default
 
     Yields
     ------
@@ -367,8 +369,9 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         for k, v in ev['data'].items():
             _dk = data_keys[k]
             # convert any arrays stored directly in mds into ndarray
-            if _dk['dtype'] == 'array' and not _dk.get('external', False):
-                ev['data'][k] = np.asarray(ev['data'][k])
+            if convert_arrays:
+                if _dk['dtype'] == 'array' and not _dk.get('external', False):
+                    ev['data'][k] = np.asarray(ev['data'][k])
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
 

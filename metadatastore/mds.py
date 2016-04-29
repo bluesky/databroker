@@ -271,7 +271,7 @@ class MDSRO(object):
                                               self._runstart_col,
                                               self._RUNSTART_CACHE)
 
-    def get_events_generator(self, descriptor):
+    def get_events_generator(self, descriptor, convert_arrays=True):
         """A generator which yields all events from the event stream
 
         Parameters
@@ -279,6 +279,8 @@ class MDSRO(object):
         descriptor : doc.Document or dict or str
             The EventDescriptor to get the Events for.  Can be either
             a Document/dict with a 'uid' key or a uid string
+        convert_arrays : boolean
+            convert 'array' type to numpy.ndarray; True by default
 
         Yields
         ------
@@ -291,7 +293,8 @@ class MDSRO(object):
                                              self._descriptor_col,
                                              self._DESCRIPTOR_CACHE,
                                              self._runstart_col,
-                                             self._RUNSTART_CACHE)
+                                             self._RUNSTART_CACHE,
+                                             convert_arrays=convert_arrays)
 
         # when we drop 2.7, this can be
         # yield from evs

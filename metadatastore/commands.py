@@ -163,7 +163,7 @@ def descriptors_by_start(run_start):
     return _DB_SINGLETON.descriptors_by_start(run_start)
 
 
-def get_events_generator(descriptor):
+def get_events_generator(descriptor, convert_arrays=True):
     """A generator which yields all events from the event stream
 
     Parameters
@@ -171,6 +171,8 @@ def get_events_generator(descriptor):
     descriptor : doc.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+    convert_arrays : boolean
+        convert 'array' type to numpy.ndarray; True by default
 
     Yields
     ------
@@ -178,7 +180,8 @@ def get_events_generator(descriptor):
         All events for the given EventDescriptor from oldest to
         newest
     """
-    for ev in _DB_SINGLETON.get_events_generator(descriptor):
+    for ev in _DB_SINGLETON.get_events_generator(
+            descriptor, convert_arrays=convert_arrays):
         yield ev
 
 
