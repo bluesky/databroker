@@ -26,6 +26,7 @@ requirements:
     - singledispatch [py27]
     - doct
     - boltons
+    - requests
 
 test:
   requires:
