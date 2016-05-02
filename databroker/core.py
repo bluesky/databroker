@@ -89,7 +89,9 @@ class Header(doc.Document):
         except NoEventDescriptors:
             ev_descs = []
 
-        d = {'start': run_start, 'stop': run_stop, 'descriptors': ev_descs}
+        d = {'start': run_start, 'descriptors': ev_descs}
+        if run_stop is not None:
+            d['stop'] = run_stop
         return cls('header', d)
 
 
@@ -155,9 +157,7 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
     for header in headers:
         # cache these attribute look-ups for performance
         start = header['start']
-        stop = header['stop']
-        if stop is None:
-            stop = {}
+        stop = header.get('stop', {})
         for descriptor in header['descriptors']:
             if name is not None and name != descriptor.get('name'):
                 continue
@@ -260,7 +260,7 @@ def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
     for header in headers:
         # cache these attribute look-ups for performance
         start = header['start']
-        stop = header['stop']
+        stop = header.get('stop', {})
         descriptors = header['descriptors']
         if stop is None:
             stop = {}
@@ -469,9 +469,7 @@ def _check_fields_exist(fields, headers):
     all_fields = set()
     for header in headers:
         all_fields.update(header['start'])
-        stop = header['stop']
-        if stop is not None:
-            all_fields.update(header['stop'])
+        all_fields.update(header.get('stop', {}))
         for descriptor in header['descriptors']:
             all_fields.update(descriptor['data_keys'])
             objs_conf = descriptor.get('configuration', {})
