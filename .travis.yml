@@ -9,7 +9,8 @@ matrix:
     - python: 2.7
     - python: 3.4
     - python: 3.5
-
+before_script:
+  - mongod --setParameter textSearchEnabled=true
 before_install:
   # use latest because why not?
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
