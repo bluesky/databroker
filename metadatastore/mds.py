@@ -119,14 +119,24 @@ class MDSRO(object):
     @property
     def _descriptor_col(self):
         if self.__descriptor_col is None:
+            # The name of the reference to the run start changed from
+            # 'run_start_id' in v0 to 'run_start' in v1.
+            if self.version == 1:
+                rs_name = 'run_start'
+            elif self.version == 0:
+                rs_name = 'run_start_id'
+            else:
+                raise RuntimeError("No rule for event index creation for "
+                                   " schema version {!r}".format(self.version))
             self.__descriptor_col = self._db.get_collection('event_descriptor')
 
             self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
                                                unique=True)
-            self.__descriptor_col.create_index(
-                [('run_start', pymongo.DESCENDING),
-                 ('time', pymongo.DESCENDING)],
-                unique=False, background=True)
+            self.__descriptor_col.create_index([(rs_name, pymongo.DESCENDING),
+                                                ('time', pymongo.DESCENDING)],
+                                               unique=False, background=True)
+            self.__descriptor_col.create_index([('time', pymongo.DESCENDING)],
+                                               unique=False, background=True)
             self.__descriptor_col.create_index([("$**", "text")])
 
         return self.__descriptor_col
@@ -140,12 +150,12 @@ class MDSRO(object):
                                           unique=True)
             if self.version == 1:
                 self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                               ('time', pymongo.DESCENDING)],
+                                               ('time', pymongo.ASCENDING)],
                                               unique=False, background=True)
             elif self.version == 0:
                 self.__event_col.create_index([('descriptor_id',
                                                 pymongo.DESCENDING),
-                                               ('time', pymongo.DESCENDING)],
+                                               ('time', pymongo.ASCENDING)],
                                               unique=False, background=True)
             else:
                 raise RuntimeError("No rule for event index creation for "

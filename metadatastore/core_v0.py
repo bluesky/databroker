@@ -369,7 +369,8 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     col = event_col
     oid = _UID_TO_OID_MAP[descriptor_uid]
     ev_cur = col.find({'descriptor_id': oid},
-                      sort=[('time', pymongo.ASCENDING)])
+                      sort=[('descriptor_id', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
 
     data_keys = descriptor['data_keys']
     for ev in ev_cur:
@@ -986,7 +987,8 @@ def find_descriptors(start_col, start_cache,
     _format_time(kwargs, tz)
 
     col = descriptor_col
-    event_descriptor_objects = col.find(kwargs)
+    event_descriptor_objects = col.find(kwargs,
+                                        sort=[('time', pymongo.ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache,
@@ -1035,7 +1037,9 @@ def find_events(start_col, start_cache,
 
     _format_time(kwargs, tz)
     col = event_col
-    events = col.find(kwargs)
+    events = col.find(kwargs,
+                      sort=[('descriptor_id', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
 
     for ev in events:
         ev.pop('_id', None)
