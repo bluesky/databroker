@@ -6,6 +6,7 @@ import numpy as np
 import h5py
 import tempfile
 import uuid
+import tifffile
 
 from filestore.api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler)
@@ -13,6 +14,7 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
 from filestore.api import handler_context
 from .utils import fs_setup, fs_teardown
 from filestore.handlers import AreaDetectorHDF5Handler
+from filestore.handlers import AreaDetectorTiffHandler
 from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
 from filestore.handlers import HDFMapsEnergyHandler as HDFE
@@ -21,6 +23,7 @@ from filestore.path_only_handlers import (AreaDetectorTiffPathOnlyHandler,
                                           RawHandler)
 from numpy.testing import assert_array_equal
 import os
+import shutil
 from itertools import product
 import pytest
 import itertools
@@ -52,6 +55,23 @@ class _with_file(object):
 
     def teardown(self):
         os.unlink(self.filename)
+
+    def _make_data(self):
+        # sub-classes need to override this to put data into the test file
+        pass
+
+
+class _with_path(object):
+    # a base-class for testing which provides a temporary directory for
+    # I/O tests.  This class provides a setup function which creates
+    # a temporary directory (path stored in `self.filepath`).  Sub-classes
+    # should over-ride `_make_data` to fill the file with data for the test.
+    def setup(self):
+        self.filepath = tempfile.mkdtemp() + '/'
+        self._make_data()
+
+    def teardown(self):
+        shutil.rmtree(self.filepath)
 
     def _make_data(self):
         # sub-classes need to override this to put data into the test file
@@ -185,6 +205,29 @@ class Test_maps_hdf5(_with_file):
             hand(0)
 
 
+class Test_ADTiff_files(_with_path):
+    template = '%s%s_%05d.tiff'
+    fpp = 2
+    n_frames = 10
+    fname = 'FS_TESTING'
+    fr_shape = (10, 15)
+
+    def _make_data(self):
+        for j in range(self.n_frames * self.fpp):
+            fn = self.template % (self.filepath, self.fname, j)
+            tifffile.imsave(fn, np.ones(self.fr_shape) * j)
+
+    def test_read(self):
+        hand = AreaDetectorTiffHandler(self.filepath, self.template,
+                                       self.fname, self.fpp)
+        abs_count = 0
+        for j in range(self.n_frames):
+            ret = hand(j)
+            assert (self.fpp,) + self.fr_shape == ret.shape
+            for fr in ret:
+                assert np.all(fr == abs_count)
+                abs_count += 1
+
 
 @pytest.mark.parametrize('npts, kw', itertools.product((1, 5), ({}, {'a': 1})))
 def test_ADDummy(npts, kw):
@@ -195,7 +238,7 @@ def test_ADDummy(npts, kw):
 
 def test_npyfw_fail():
     with pytest.raises(IOError):
-         NpyFrameWise('aarvark_rises')
+        NpyFrameWise('aarvark_rises')
 
 
 @pytest.mark.parametrize('path, fname, fpp',

@@ -37,7 +37,7 @@ install:
   - conda update conda
   - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons
   - source activate testenv
-  - conda install -c soft-matter pims
+  - conda install -c soft-matter pims tifffile
   - pip install coveralls
   - 'pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct'
   - python setup.py install
@@ -49,6 +49,7 @@ install:
 
 script:
   - coverage run run_tests.py
+  - coverage report -m
   # build the conda package on travis
   - . ~/scripts/conda-build.sh
 
