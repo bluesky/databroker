@@ -17,9 +17,17 @@ class MDSRO(object):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
-
+        self.reset_connection()
         self.config = config
+        self._api = None
+        self.version = version
 
+    def reset_caches(self):
+        self._RUNSTART_CAHCE.clear()
+        self._RUNSTOP_CAHCE.clear()
+        self._DESCRIPTOR_CAHCE.clear()
+
+    def reset_connection(self):
         self.__conn = None
 
         self.__db = None
@@ -28,8 +36,17 @@ class MDSRO(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
+
+    def __getstate__(self):
+        return self.version, self.config
+
+    def __setstate__(self, state):
+        self._RUNSTART_CACHE = {}
+        self._RUNSTOP_CACHE = {}
+        self._DESCRIPTOR_CACHE = {}
+        self.reset_connection()
         self._api = None
-        self.version = version
+        self.version, self.config = state
 
     @property
     def version(self):
