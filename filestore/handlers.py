@@ -82,7 +82,13 @@ class _HDF5HandlerBase(HandlerBase):
     def open(self):
         if self._file:
             return
-        self._file = h5py.File(self._filename, 'r')
+        try:
+            self._file = h5py.File(self._filename, 'r', swmr=True)
+            self._swmr = True
+        except ValueError:
+            # No SWMR, open without SWMR
+            self._file = h5py.File(self._filename, 'r', swmr=False)
+            self._swmr = False
 
     def close(self):
         super(_HDF5HandlerBase, self).close()
@@ -109,12 +115,18 @@ class HDF5DatasetSliceHandler(_HDF5HandlerBase):
         self._key = key
         self._file = None
         self._dataset = None
+        self._swmr = False
         self.open()
 
     def __call__(self, point_number):
         # Don't read out the dataset until it is requested for the first time.
         if not self._dataset:
             self._dataset = self._file[self._key]
+
+        # If we are using SWMR, refrest the dataset
+        if self._swmr:
+            self._dataset.id.refresh()
+
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
         return self._dataset[start:stop].squeeze()
 
