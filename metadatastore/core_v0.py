@@ -14,7 +14,7 @@ import numpy as np
 import pymongo
 import doct as doc
 
-from .core import NoRunStop, NoEventDescriptors
+from .core import NoRunStop, NoEventDescriptors, NoRunStart
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def doc_or_uid_to_uid(doc_or_uid):
     if not isinstance(doc_or_uid, six.string_types):
         try:
             doc_or_uid = doc_or_uid['uid']
-        except AttributeError:
+        except TypeError:
             return doc_or_uid
     return doc_or_uid
 
@@ -193,6 +193,8 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
         run_start = run_start_col.find_one({'uid': uid})
     else:
         run_start = run_start_col.find_one({'_id': uid})
+    if run_start is None:
+        raise NoRunStart("No runstart with uid {!r}".format(uid))
     return _cache_run_start(run_start, run_start_cache)
 
 
@@ -287,7 +289,7 @@ def stop_by_start(run_start, run_stop_col, run_stop_cache,
     run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = run_start_given_uid(run_start_uid, run_start_col,
                                     run_start_cache)
-    oid = _UID_TO_OID_MAP[run_start_uid]
+    oid = _UID_TO_OID_MAP[run_start['uid']]
     run_stop = run_stop_col.find_one({'run_start_id': oid})
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
@@ -320,15 +322,14 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
     """
     # normalize the input and get the run_start oid
     run_start_uid = doc_or_uid_to_uid(run_start)
-
     # query the database for any event descriptors which
     # refer to the given run_start
     run_start = run_start_given_uid(run_start_uid, run_start_col,
                                     run_start_cache)
-    oid = _UID_TO_OID_MAP[run_start_uid]
+
+    oid = _UID_TO_OID_MAP[run_start['uid']]
     descriptors = descriptor_col.find({'run_start_id': oid},
                                       sort=[('time', pymongo.ASCENDING)])
-
     # loop over the found documents, cache, and dereference
     rets = [_cache_descriptor(descriptor, descriptor_cache,
                               run_start_col, run_start_cache)
