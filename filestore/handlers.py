@@ -173,6 +173,7 @@ class _HdfMapsHandlerBase(_HDF5HandlerBase):
         self._dset_path = dset_path
         self._file = None
         self._dset = None
+        self._swmr = False
         self.open()
 
     def open(self):
@@ -188,6 +189,9 @@ class _HdfMapsHandlerBase(_HDF5HandlerBase):
 
         if not self._file:
             raise RuntimeError("File is not open")
+
+        if self._swmr:
+            self._dataset.id.refresh()
 
 
 class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
