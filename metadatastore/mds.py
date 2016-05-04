@@ -106,9 +106,13 @@ class MDSRO(object):
     def _runstop_col(self):
         if self.__runstop_col is None:
             self.__runstop_col = self._db.get_collection('run_stop')
-
-            self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
-                                            ('uid', pymongo.DESCENDING)],
+            if self.version == 0:
+                self.__runstop_col.create_index('run_start_id',
+                                                unique=True)
+            else:
+                self.__runstop_col.create_index('run_start',
+                                                unique=True)
+            self.__runstop_col.create_index('uid',
                                             unique=True)
             self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
                                             unique=False, background=True)
