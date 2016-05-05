@@ -112,14 +112,13 @@ def test_event_descriptor_insertion(mds_all):
 def test_custom_warn(mds_all):
     mds = mds_all
     run_start_uid = str(uuid.uuid4())
-
-    with warnings.catch_warnings(record=True) as w:
+    warnings.simplefilter('always', UserWarning)
+    with pytest.warns(UserWarning):
         run_start_uid = mds.insert_run_start(
             scan_id=30220, beamline_id='testbed',
             owner='Al the Aardvark', group='Orycteropus',
             project='Nikea', time=ttime.time(),
             uid=run_start_uid, custom={'order': 'Tubulidentata'})
-        assert len(w) == 1
 
     rs = next(mds.find_run_starts(order='Tubulidentata'))
     assert rs['uid'] == run_start_uid
