@@ -77,26 +77,26 @@ class DummyAreaDetectorHandler(HandlerBase):
         return out_stack.squeeze()
 
 
-class _HDF5HandlerBase(HandlerBase):
+# class _HDF5HandlerBase(HandlerBase):
+#
+#    def open(self):
+#        if self._file:
+#            return
+#        try:
+#            self._file = h5py.File(self._filename, 'r', swmr=True)
+#            self._swmr = True
+#        except ValueError:
+#            # No SWMR, open without SWMR
+#            self._file = h5py.File(self._filename, 'r', swmr=False)
+#            self._swmr = False
+#
+#    def close(self):
+#        super(_HDF5HandlerBase, self).close()
+#        self._file.close()
+#        self._file = None
 
-    def open(self):
-        if self._file:
-            return
-        try:
-            self._file = h5py.File(self._filename, 'r', swmr=True)
-            self._swmr = True
-        except ValueError:
-            # No SWMR, open without SWMR
-            self._file = h5py.File(self._filename, 'r', swmr=False)
-            self._swmr = False
 
-    def close(self):
-        super(_HDF5HandlerBase, self).close()
-        self._file.close()
-        self._file = None
-
-
-class HDF5DatasetSliceHandler(_HDF5HandlerBase):
+class HDF5DatasetSliceHandler(HandlerBase):
     """
     Handler for data stored in one Dataset of an HDF5 file.
 
@@ -130,6 +130,17 @@ class HDF5DatasetSliceHandler(_HDF5HandlerBase):
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
         return self._dataset[start:stop].squeeze()
 
+    def open(self):
+        if self._file:
+            return
+
+        self._file = h5py.File(self._filename, 'r')
+
+    def close(self):
+        super(AreaDetectorHDF5Handler, self).close()
+        self._file.close()
+        self._file = None
+
 
 class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
     """
@@ -154,7 +165,30 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
             frame_per_point=frame_per_point)
 
 
-class _HdfMapsHandlerBase(_HDF5HandlerBase):
+class AreaDetectorHDF5SWMRHandler(HDF5DatasetSliceHandler):
+    """
+    Handler for the 'AD_HDF5_SWMR' spec used by Area Detectors.
+
+    In this spec, the key (i.e., HDF5 dataset path) is always
+    '/entry/data/data'.
+
+    Parameters
+    ----------
+    filename : string
+        path to HDF5 file
+    frame_per_point : integer, optional
+        number of frames to return as one datum, default 1
+    """
+    specs = {'AD_HDF5_SWMR'} | HDF5DatasetSliceHandler.specs
+
+    def open(self):
+        if self._file:
+            return
+
+        self._file = h5py.File(self._filename, 'r', swmr=True)
+
+
+class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
     """
     Reader for XRF data stored in hdf5 files.
 
