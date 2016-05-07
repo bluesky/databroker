@@ -154,13 +154,13 @@ class Test_AD_hdf5_files(_with_file):
         assert hand._file is None
 
 
-class Test_AD_hdf5_SWMR_files(Test_AD_hdf5_files):
-    # test the HDF5 product emitted by the hdf5 plugin to area detector
-
-    spec = 'AD_HDF5_SWMR'
-    handler = AreaDetectorHDF5SWMRHandler
-
-
+# class Test_AD_hdf5_SWMR_files(Test_AD_hdf5_files):
+#     # test the HDF5 product emitted by the hdf5 plugin to area detector
+#
+#     spec = 'AD_HDF5_SWMR'
+#     handler = AreaDetectorHDF5SWMRHandler
+#
+#
 class Test_AD_hdf5_timestamp_files(_with_file):
     # test the HDF5 product emitted by the hdf5 plugin to area detector
     # This is for the timestamp field
@@ -214,13 +214,13 @@ class Test_AD_hdf5_timestamp_files(_with_file):
         assert hand._file is None
 
 
-class Test_AD_hdf5_SWMR_timestamp_files(Test_AD_hdf5_timestamp_files):
-    # test the HDF5 product emitted by the hdf5 plugin to area detector
-
-    spec = 'AD_HDF5_SWMR_TS'
-    handler = AreaDetectorHDF5SWMRTimestampHandler
-
-
+# class Test_AD_hdf5_SWMR_timestamp_files(Test_AD_hdf5_timestamp_files):
+#    # test the HDF5 product emitted by the hdf5 plugin to area detector
+#
+#    spec = 'AD_HDF5_SWMR_TS'
+#    handler = AreaDetectorHDF5SWMRTimestampHandler
+#
+#
 class Test_maps_hdf5(_with_file):
     n_pts = 20
     N = 10
