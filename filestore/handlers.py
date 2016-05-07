@@ -95,17 +95,12 @@ class HDF5DatasetSliceHandler(HandlerBase):
         self._key = key
         self._file = None
         self._dataset = None
-        self._swmr = False
         self.open()
 
     def __call__(self, point_number):
         # Don't read out the dataset until it is requested for the first time.
         if not self._dataset:
             self._dataset = self._file[self._key]
-
-        # If we are using SWMR, refrest the dataset
-        if self._swmr:
-            self._dataset.id.refresh()
 
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
         return self._dataset[start:stop].squeeze()
@@ -166,7 +161,12 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
             return
 
         self._file = h5py.File(self._filename, 'r', swmr=True)
-        self._swmr = True
+
+    def __call__(self, point_number):
+        if self._dataset is not None:
+            self._dataset.id.refresh()
+        super(AreaDetectorHDF5SWMRHandler, self).__call__(
+            point_number)
 
 
 class AreaDetectorHDF5TimestampHandler(HandlerBase):
@@ -234,6 +234,12 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
         if self._file:
             return
         self._file = h5py.File(self._filename, 'r', swmr=True)
+
+    def __call__(self, point_number):
+        if self._dataset is not None:
+            self._dataset.id.refresh()
+        super(AreaDetectorHDF5SWMRTimestampHandler, self).__call__(
+            point_number)
 
 
 class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
