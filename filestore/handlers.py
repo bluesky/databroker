@@ -165,8 +165,10 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     def __call__(self, point_number):
         if self._dataset is not None:
             self._dataset.id.refresh()
-        super(AreaDetectorHDF5SWMRHandler, self).__call__(
+        rtn = super(AreaDetectorHDF5SWMRHandler, self).__call__(
             point_number)
+
+        return rtn
 
 
 class AreaDetectorHDF5TimestampHandler(HandlerBase):
@@ -238,8 +240,9 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
     def __call__(self, point_number):
         if self._dataset is not None:
             self._dataset.id.refresh()
-        super(AreaDetectorHDF5SWMRTimestampHandler, self).__call__(
+        rtn = super(AreaDetectorHDF5SWMRTimestampHandler, self).__call__(
             point_number)
+        return rtn
 
 
 class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
