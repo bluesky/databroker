@@ -76,25 +76,6 @@ class DummyAreaDetectorHandler(HandlerBase):
         return out_stack.squeeze()
 
 
-# class _HDF5HandlerBase(HandlerBase):
-#
-#    def open(self):
-#        if self._file:
-#            return
-#        try:
-#            self._file = h5py.File(self._filename, 'r', swmr=True)
-#            self._swmr = True
-#        except ValueError:
-#            # No SWMR, open without SWMR
-#            self._file = h5py.File(self._filename, 'r', swmr=False)
-#            self._swmr = False
-#
-#    def close(self):
-#        super(_HDF5HandlerBase, self).close()
-#        self._file.close()
-#        self._file = None
-
-
 class HDF5DatasetSliceHandler(HandlerBase):
     """
     Handler for data stored in one Dataset of an HDF5 file.
