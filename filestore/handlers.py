@@ -238,7 +238,7 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
         self._file = h5py.File(self._filename, 'r', swmr=True)
 
     def __call__(self, point_number):
-        if self._dataset is not None:
+        if (self._dataset1 is not None) and (self._dataset2 is not None):
             self._dataset.id.refresh()
         rtn = super(AreaDetectorHDF5SWMRTimestampHandler, self).__call__(
             point_number)
