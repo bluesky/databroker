@@ -166,6 +166,7 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
             return
 
         self._file = h5py.File(self._filename, 'r', swmr=True)
+        self._swmr = True
 
 
 class AreaDetectorHDF5TimestampHandler(HandlerBase):
