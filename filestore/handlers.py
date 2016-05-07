@@ -136,7 +136,7 @@ class HDF5DatasetSliceHandler(HandlerBase):
         self._file = h5py.File(self._filename, 'r')
 
     def close(self):
-        super(AreaDetectorHDF5Handler, self).close()
+        super(HDF5DatasetSliceHandler, self).close()
         self._file.close()
         self._file = None
 
