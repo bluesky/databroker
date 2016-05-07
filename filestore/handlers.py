@@ -41,9 +41,8 @@ class AreaDetectorSPEHandler(HandlerBase):
         data = spe.getData()
 
         if data.shape[0] != self._fpp:
-            raise IntegrityError(
-                      "expected {} frames, found {} frames".format(
-                             self._fpp, data.shape[0]))
+            raise IntegrityError("expected {} frames, found {} frames".format(
+                                 self._fpp, data.shape[0]))
         return data.squeeze()
 
 
@@ -165,7 +164,7 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
             frame_per_point=frame_per_point)
 
 
-class AreaDetectorHDF5SWMRHandler(HDF5DatasetSliceHandler):
+class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     """
     Handler for the 'AD_HDF5_SWMR' spec used by Area Detectors.
 
