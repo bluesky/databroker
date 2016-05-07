@@ -70,7 +70,7 @@ except ImportError:
 
 
 class FileStoreRO(object):
-
+    '''Base FileStore object that knows how to read the database.'''
     KNOWN_SPEC = dict()
     # load the built-in schema
     for spec_name in ['AD_HDF5', 'AD_SPE']:
@@ -272,6 +272,7 @@ class FileStoreRO(object):
 
 
 class FileStore(FileStoreRO):
+    '''FileStore object that knows how to create new documents.'''
     def insert_resource(self, spec, resource_path, resource_kwargs, root=''):
         col = self._resource_col
 
@@ -294,10 +295,22 @@ class FileStore(FileStoreRO):
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
 
-    def shift_root(self, resource, shift):
+    def shift_root(self, resource_or_uid, shift):
+        '''Shift directory levels between root and resource_path
+
+        This is useful because the root can be change via `change_root`.
+
+        Parameters
+        ----------
+        resource_or_uid : Document or str
+            The resource to change the root/resource_path allocation of
+
+
+        '''
         if self.version == 0:
             raise NotImplementedError('V0 has no notion of root')
 
+        resource = self.resource_given_uid(resource_or_uid)
         if shift == 0:
             return resource
 
@@ -346,8 +359,56 @@ class FileStore(FileStoreRO):
 
 
 class FileStoreMoving(FileStore):
+    '''FileStore object that knows how to move files.'''
     def change_root(self, resource_or_uid, new_root, remove_origin=True,
-                    verify=True):
+                    verify=False):
+        '''Change the root directory of a given resource
+
+        The registered handler must have a `get_file_list` method and the
+        process running this method must have read/write access to both the
+        source and destination file systems.
+
+        Internally the resource level directory information is stored
+        as two parts: the root and the resource_path.  The 'root' is
+        the non-semantic component (typically a mount point) and the
+        'resource_path' is the 'semantic' part of the file path.  For
+        example, it is common to collect data into paths that look like
+        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
+        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
+
+
+
+        Parameters
+        ----------
+        resource_or_uid : Document or str
+            The resource to move the files of
+
+        new_root : str
+            The new 'root' to copy the files into
+
+        remove_origin : bool, optional (True)
+            If the source files should be removed
+
+        verify : bool, optional (False)
+            Verify that the move happened correctly.  This currently
+            is not implemented and will raise if ``verify == True``.
+
+        See Also
+        --------
+        `FileStore.shift_root`
+
+
+        .. Warning
+           This will change documents in your data base, move files and possibly
+           delete files.  Be sure you know what you are doing.
+
+        '''
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it')
+        if verify:
+            raise NotImplementedError('Verification is not implemented yet')
+
         datum_col = self._datum_col
         # get list of files
         resource = self.resource_given_uid(resource_or_uid)
@@ -383,6 +444,7 @@ class FileStoreMoving(FileStore):
         resource_col = self._resource_col
         ret = self._api.update_resource(update_col, resource_col,
                                         resource, new_resource)
+        # TODO look at mongo internal to make sure this went ok?
 
         # remove original files
         if remove_origin:
