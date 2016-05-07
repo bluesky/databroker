@@ -14,6 +14,7 @@ from filestore.api import (insert_resource, insert_datum, retrieve,
 from filestore.api import handler_context
 from .utils import fs_setup, fs_teardown
 from filestore.handlers import AreaDetectorHDF5Handler
+from filestore.handlers import AreaDetectorHDF5SWMRHandler
 from filestore.handlers import AreaDetectorTiffHandler
 from filestore.handlers import DummyAreaDetectorHandler
 from filestore.handlers import HDFMapsSpectrumHandler as HDFM
@@ -36,11 +37,13 @@ def setup_module(module):
     fs_setup()
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
+    register_handler('AD_HDF5_SWMR', AreaDetectorHDF5SWMRHandler)
 
 
 def teardown_module(module):
     fs_teardown()
     deregister_handler('AD_HDF5')
+    deregister_handler('AD_HDF5_SWMR')
 
 
 class _with_file(object):
@@ -100,6 +103,10 @@ class Test_np_FW(_with_file):
 
 class Test_AD_hdf5_files(_with_file):
     # test the HDF5 product emitted by the hdf5 plugin to area detector
+
+    spec = 'AD_HDF5'
+    handler = AreaDetectorHDF5Handler
+
     def _make_data(self):
         filename = self.filename
         with h5py.File(filename) as f:
@@ -109,7 +116,7 @@ class Test_AD_hdf5_files(_with_file):
             f.create_dataset('/entry/data/data', data=data)
 
         # Insert the data records.
-        resource_id = insert_resource('AD_HDF5', filename)
+        resource_id = insert_resource(self.spec, filename)
         self.datum_ids = [str(uuid.uuid4()) for i in range(N)]
         for i, datum_id in enumerate(self.datum_ids):
             insert_datum(resource_id, datum_id, dict(point_number=i))
@@ -124,14 +131,14 @@ class Test_AD_hdf5_files(_with_file):
 
     def test_context_manager(self):
         # make sure context manager works
-        with AreaDetectorHDF5Handler(self.filename) as hand:
+        with self.handler(self.filename) as hand:
             assert hand._file
             # also test double opening a handler
             hand.open()
 
     def test_open_close(self):
 
-        hand = AreaDetectorHDF5Handler(self.filename)  # calls open()
+        hand = self.handler(self.filename)  # calls open()
         assert hand._file is not None
         hand.close()
         assert hand._file is None
@@ -139,6 +146,13 @@ class Test_AD_hdf5_files(_with_file):
         assert hand._file is not None
         hand.close()
         assert hand._file is None
+
+
+class Test_AD_hdf5_SWMR_files(Test_AD_hdf5_files):
+    # test the HDF5 product emitted by the hdf5 plugin to area detector
+
+    spec = 'AD_HDF5_SWMR'
+    handler = AreaDetectorHDF5SWMRHandler
 
 
 class Test_maps_hdf5(_with_file):
