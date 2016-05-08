@@ -268,7 +268,8 @@ class FileStoreRO(object):
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
         root = resource.get('root', '')
-        rpath = os.path.join(root, rpath)
+        if root:
+            rpath = os.path.join(root, rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
         return ret
