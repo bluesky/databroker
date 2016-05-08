@@ -50,14 +50,16 @@ def _verify_shifted_resource(last_res, new_res):
     assert n_fp == l_fp
 
 
+def num_paths(start, stop):
+    return os.path.join(*(str(_)
+                          for _ in range(start, stop)))
+
+
 @pytest.mark.parametrize("step,sign", product([1, 3, 5, 7], [1, -1]))
 def test_root_shift(fs_v1, step, sign):
     fs = fs_v1
     n_paths = 15
 
-    def num_paths(start, stop):
-        return os.path.join(*(str(_)
-                              for _ in range(start, stop)))
     if sign > 0:
         root = '/'
         rpath = num_paths(0, n_paths)
@@ -82,6 +84,33 @@ def test_root_shift(fs_v1, step, sign):
         assert new_res['resource_path'] == num_paths(left_count, n_paths)
         _verify_shifted_resource(last_res, new_res)
         last_res = new_res
+
+
+def test_history(fs_v1):
+    fs = fs_v1
+    rpath = num_paths(0, 15)
+    root = '/'
+    shift_count = 5
+    last_res = fs.insert_resource('root-test',
+                                  rpath,
+                                  {'a': 'fizz', 'b': 5},
+                                  root=root)
+    for j in range(shift_count):
+        new_res, log = fs.shift_root(last_res, 1)
+
+    last_time = 0
+    cnt = 0
+    for doc in fs.get_history(last_res['uid']):
+        assert doc['time'] > last_time
+        assert doc['cmd'] == 'shift_root'
+        assert doc['cmd_kwargs'] == {'shift': 1}
+        assert doc['old'] == last_res
+
+        last_res = doc['new']
+        last_time = doc['time']
+        cnt += 1
+
+    assert cnt == shift_count
 
 
 class FileMoveTestingHandler(HandlerBase):

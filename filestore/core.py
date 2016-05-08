@@ -183,14 +183,13 @@ def get_resource_history(col, resource):
     uid = doc_or_uid_to_uid(resource)
     cursor = col.find({'resource': uid}).sort('time')
     for doc in cursor:
-        out = {}
         for k in ['new', 'old']:
             d = doc[k]
-            d.pop('_id')
+            d.pop('_id', None)
             d['id'] = d['uid']
-            out[k] = Document('resource', d)
-        out['resource'] = doc['resource']
-        yield out
+            doc[k] = Document('resource', d)
+        doc.pop('_id')
+        yield Document('update', doc)
 
 
 def get_datumkw_by_resuid_gen(datum_col, resource_uid):

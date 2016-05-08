@@ -274,6 +274,25 @@ class FileStoreRO(object):
         h_cache[key] = ret
         return ret
 
+    def get_history(self, resource_uid):
+        '''Generator of all updates to the given resource
+
+        Parameters
+        ----------
+        resource_uid : Document or str
+            The resource to get the history of
+
+        Yields
+        ------
+        update : Document
+        '''
+        if self.version == 0:
+            raise NotImplementedError('No history in v0 schema')
+
+        for doc in self._api.get_resource_history(
+                self._resource_update_col, resource_uid):
+            yield doc
+
 
 class FileStore(FileStoreRO):
     '''FileStore object that knows how to create new documents.'''
@@ -430,8 +449,10 @@ class FileStoreMoving(FileStore):
 
 
         .. Warning
-           This will change documents in your data base, move files and possibly
-           delete files.  Be sure you know what you are doing.
+
+           This will change documents in your data base, move files
+           and possibly delete files.  Be sure you know what you are
+           doing.
 
         '''
         if self.version == 0:
