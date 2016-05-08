@@ -19,7 +19,7 @@ from pims import FramesSequence, Frame
 # The ImageCube class is used for a per event representation of
 # a dataset
 
-class ImageCube(FramesSequence):
+class ImageStack(FramesSequence):
     "One of these represents the data from an event: (num_images x w x h)"
     def __init__(self, dataset, start, stop):
         # `start` and `stop` are the limits of this cube
@@ -139,8 +139,8 @@ class HDF5DatasetSliceHandler(HandlerBase):
         if point_number not in self._data_objects:
             start = point_number * self._fpp
             stop = (point_number + 1) * self._fpp
-            self._data_objects[point_number] = ImageCube(self._dataset,
-                                                         start, stop)
+            self._data_objects[point_number] = ImageStack(self._dataset,
+                                                          start, stop)
         return self._data_objects[point_number]
 
     def open(self):
@@ -154,9 +154,6 @@ class HDF5DatasetSliceHandler(HandlerBase):
         self._file.close()
         self._file = None
 
-
-# The ImageCube class is used for a per event representation of
-# a dataset
 
 class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
     """
