@@ -4,6 +4,7 @@ import uuid
 import itertools
 from filestore.handlers_base import HandlerBase
 import numpy as np
+from filestore.utils import install_sentinels
 
 
 conn = None
@@ -23,6 +24,7 @@ def fs_setup():
     db_disconnect()
     test_conf = dict(database=db_name, host='localhost',
                      port=27017)
+    install_sentinels(test_conf, 1)
     conn = db_connect(**test_conf)
     old_conf.clear()
     old_conf.update(fconf.connection_config)

@@ -10,6 +10,7 @@ import numpy as np
 
 import filestore.fs
 from filestore.handlers_base import HandlerBase
+from filestore.utils import install_sentinels
 
 
 @pytest.fixture(scope='function')
@@ -21,6 +22,7 @@ def fs_v1(request):
     db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
     test_conf = dict(database=db_name, host='localhost',
                      port=27017)
+    install_sentinels(test_conf, 1)
     fs = filestore.fs.FileStoreMoving(test_conf,
                                       version=1)
 
