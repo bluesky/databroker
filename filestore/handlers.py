@@ -44,7 +44,7 @@ class ImageStack(FramesSequence):
 
     @property
     def frame_shape(self):
-        return self._dataset.shape
+        return self._dataset.shape[1:]
 
 
 class IntegrityError(Exception):
