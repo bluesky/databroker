@@ -358,7 +358,9 @@ class FileStore(FileStoreRO):
         update_col = self._resource_update_col
         resource_col = self._resource_col
         return self._api.update_resource(update_col, resource_col,
-                                         resource, new)
+                                         resource, new,
+                                         cmd_kwargs=dict(shift=shift),
+                                         cmd='shift_root')
 
 
 class FileStoreMoving(FileStore):
@@ -446,7 +448,12 @@ class FileStoreMoving(FileStore):
         update_col = self._resource_update_col
         resource_col = self._resource_col
         ret = self._api.update_resource(update_col, resource_col,
-                                        resource, new_resource)
+                                        old=resource, new=new_resource,
+                                        cmd_kwargs=dict(
+                                            remove_origin=remove_origin,
+                                            verify=verify,
+                                            new_root=new_root),
+                                        cmd='change_root')
         # TODO look at mongo internal to make sure this went ok?
 
         # remove original files

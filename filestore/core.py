@@ -129,14 +129,17 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
     return Document('resource', resource_object)
 
 
-def update_resource(update_col, resource_col, old, new):
+def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
     if old['uid'] != new['uid']:
         raise RuntimeError('must not change the resource id')
     uid = old['uid']
     log_object = {'resource': uid,
                   'old': old,
                   'new': new,
-                  'time': ttime.time()}
+                  'time': ttime.time(),
+                  'cmd': cmd,
+                  'cmd_kwargs': cmd_kwargs}
+
     update_col.insert_one(log_object)
     result = resource_col.replace_one({'uid': uid}, new)
     ret = resource_given_uid(resource_col, uid)
