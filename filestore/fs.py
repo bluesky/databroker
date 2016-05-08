@@ -278,6 +278,26 @@ class FileStoreRO(object):
 class FileStore(FileStoreRO):
     '''FileStore object that knows how to create new documents.'''
     def insert_resource(self, spec, resource_path, resource_kwargs, root=''):
+        '''
+         Parameters
+         ----------
+
+         spec : str
+             spec used to determine what handler to use to open this
+             resource.
+
+         resource_path : str or None
+             Url to the physical location of this resource
+
+         resource_kwargs : dict, optional
+             resource_kwargs name/value pairs of additional kwargs to be
+             passed to the handler to open this resource.
+
+         root : str, optional
+             The 'root' part of the resource path.
+
+
+        '''
         col = self._resource_col
 
         return self._api.insert_resource(col, spec, resource_path,
@@ -307,8 +327,13 @@ class FileStore(FileStoreRO):
         Parameters
         ----------
         resource_or_uid : Document or str
-            The resource to change the root/resource_path allocation of
+            The resource to change the root/resource_path allocation
+            of absolute path.
 
+        shift : int
+            The amount to shift the split.  Positive numbers move more
+            levels into the root and negative values move levels into
+            the resource_path
 
         '''
         if self.version == 0:

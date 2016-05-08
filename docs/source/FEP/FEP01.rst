@@ -11,12 +11,12 @@ Status
 
 FEPs go through a number of phases in their lifetime:
 
-- **Discussion**: The FEP is being actively discussed.
+- **Partially Implemented**: The FEP is being actively discussed, a sub set has been implemented.
 
 Branches and Pull requests
 ==========================
 
-None yet
+ - https://github.com/NSLS-II/filestore/pull/58
 
 Abstract
 ========
@@ -29,13 +29,13 @@ Detailed description
 
 This FEP will provide API to
 
- - database to keep track of the full history of file locations
+ - database to keep track of the full history of file locations *implemented*
  - make a copy of all data from a resource from one location in the file
-   system to another and update all relevant entries
+   system to another and update all relevant entries *implemented*
    - This may be trouble for some usage patterns where multiple
      resources point to same file
- - move files from one place to another
- - delete files
+ - move files from one place to another *implemented*
+ - delete files *implemented*
  - delete resources
  - verify data at both file system and Datum level
 
@@ -52,12 +52,12 @@ General Requirements
      - shape, dtype, (min, max, mean, histogram ?)
      - may want to stats as separate transient DB
  - each file spec needs class/handler that will, given a resource,
-   produce a list of all the files that are needed
+   produce a list of all the files that are needed *partial, need to flesh out handlers*
  - implement resource < - > absolute path mapping collection
    - this is transient as it can always be re-generated
    - need a way to flag as 'alive' or not
  - implement hashing of files
- - maybe implement a chroot, as well as path into Resource
+ - maybe implement a chroot, as well as path into Resource *implemented, but not as described*
    - this is so that you can say ``change_root(resource_id, new_root)``
      and then the files along with the folder structure would be moved.
    - without doing this we could do something like
@@ -77,6 +77,98 @@ General Requirements
 
 API proposal
 ------------
+
+Currently Implemented
+*********************
+
+Limited API ::
+
+  def change_root(resource, new_root, remove_origin=True, verify=False):
+      '''Change the root directory of a given resource
+
+      The registered handler must have a `get_file_list` method and the
+      process running this method must have read/write access to both the
+      source and destination file systems.
+
+
+       Parameters
+       ----------
+       resource_or_uid : Document or str
+           The resource to move the files of
+
+       new_root : str
+           The new 'root' to copy the files into
+
+       remove_origin : bool, optional (True)
+           If the source files should be removed
+
+       verify : bool, optional (False)
+           Verify that the move happened correctly.  This currently
+           is not implemented and will raise if ``verify == True``.
+      '''
+
+   def shift_root(self, resource_or_uid, shift):
+       '''Shift directory levels between root and resource_path
+
+       This is useful because the root can be change via `change_root`.
+
+       Parameters
+       ----------
+       resource_or_uid : Document or str
+           The resource to change the root/resource_path allocation
+           of absolute path.
+
+       shift : int
+           The amount to shift the split.  Positive numbers move more
+           levels into the root and negative values move levels into
+           the resource_path
+
+       '''
+
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=''):
+
+
+
+additional public API *draft*::
+
+   def get_resources_by_root(root, partial=False):
+       pass
+
+
+   def get_resources_by_path(path, partial=False):
+       pass
+
+
+   def get_resources_by_spec(spec):
+       pass
+
+
+   def get_resource_by_uid(uid):
+       pass
+
+
+extended schema ::
+
+  resource_update = {
+      resource: uid,
+      old: original_resource_doc,
+      new: updated_serouce_doc,
+      time: timestamp (posix time),
+      cmd: str, the command that generated the insertion
+      cmd_kwargs: dict, the inputs to cmd
+      }
+
+  resource = {
+       spec: str,
+       root: str,
+       resource_path: str,
+       resource_kwargs: dict,
+       uid: str
+       }
+
+Full proposal
+*************
+
 New python API ::
 
    def copy_resource(resource_id, new_root, old_root=None):

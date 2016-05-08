@@ -130,6 +130,36 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
 
 
 def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
+    '''Update a resource document
+
+    Parameters
+    ----------
+    update_col : Collection
+        The collection to record audit trail in
+    resource_col : Collection
+        The resource collection
+
+    old : dict
+        The old resource document
+
+    new : dict
+        The new resource document
+
+    cmd : str
+        The name of the operation which generated this update
+
+    cmd_kwargs : dict
+        The arguments that went into the update (excluding the resource id)
+
+
+    Returns
+    -------
+    ret : Document
+        The new resource document
+
+    log_object : dict
+        The history object inserted (with oid removed)
+    '''
     if old['uid'] != new['uid']:
         raise RuntimeError('must not change the resource id')
     uid = old['uid']
@@ -161,25 +191,27 @@ def get_resource_history(col, resource):
 
 
 def get_datumkw_by_resuid_gen(datum_col, resource_uid):
+    '''Given a resource uid, get all datum_kwargs
+
+    No order is guaranteed.
+
+    Internally the result of this is passed to the `get_file_list` method
+    of the handler object in `change_root`
+
+    Parameters
+    ----------
+    datam_col : Collection
+        The Datum collection
+
+    resource_uid : Document or str
+       The resource to work on
+
+    Yields
+    ------
+    datum_kwarg : dict
+    '''
     resource_uid = doc_or_uid_to_uid(resource_uid)
-    print(resource_uid)
     cur = datum_col.find({'resource': resource_uid})
 
     for d in cur:
         yield d['datum_kwargs']
-
-
-def get_resources_by_root(col, root, partial=False):
-    pass
-
-
-def get_resources_by_path(col, path, partial=False):
-    pass
-
-
-def get_resources_by_spec(col, spec):
-    pass
-
-
-def get_resource_by_uid(col, uid):
-    pass

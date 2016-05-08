@@ -159,25 +159,12 @@ def get_data(eid, handler_registry=None):
 retrieve = get_data
 
 
-def insert_resource(spec, resource_path, resource_kwargs=None):
-    """
-    Parameters
-    ----------
-
-    spec : str
-        spec used to determine what handler to use to open this
-        resource.
-
-    resource_path : str or None
-        Url to the physical location of this resource
-
-    resource_kwargs : dict
-        resource_kwargs name/value pairs of additional kwargs to be
-        passed to the handler to open this resource.
-
-    """
+def insert_resource(spec, resource_path, resource_kwargs=None, root=''):
     resource_kwargs = resource_kwargs if resource_kwargs is not None else {}
-    return _FS_SINGLETON.insert_resource(spec, resource_path, resource_kwargs)
+    return _FS_SINGLETON.insert_resource(spec, resource_path,
+                                         resource_kwargs, root)
+
+insert_resource.__doc__ = _FS_SINGLETON.insert_resource.__doc__
 
 
 def insert_datum(resource, datum_id, datum_kwargs=None):
