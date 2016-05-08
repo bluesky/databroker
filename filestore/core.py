@@ -173,7 +173,10 @@ def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
     update_col.insert_one(log_object)
     result = resource_col.replace_one({'uid': uid}, new)
     ret = resource_given_uid(resource_col, uid)
-    return ret, log_object, result
+    # TODO look inside of result
+    del result
+    log_object.pop('_id')
+    return ret, log_object
 
 
 def get_resource_history(col, resource):

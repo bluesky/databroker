@@ -70,7 +70,7 @@ def test_root_shift(fs_v1, step, sign):
                                   {'a': 'fizz', 'b': 5},
                                   root=root)
     for n, j in enumerate(range(step, n_paths, step)):
-        new_res, log, _ = fs.shift_root(last_res, sign * step)
+        new_res, log = fs.shift_root(last_res, sign * step)
         assert last_res == log['old']
 
         if sign > 0:
@@ -144,7 +144,7 @@ def test_moving(moving_files, remove):
     for f in fnames:
         assert os.path.exists(f)
 
-    res2, log, _ = fs.change_root(res, new_root, remove_origin=remove)
+    res2, log = fs.change_root(res, new_root, remove_origin=remove)
     print(res2['root'])
     for f in fnames:
         assert os.path.exists(f.replace(old_root, new_root))
