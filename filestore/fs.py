@@ -137,8 +137,11 @@ class FileStoreRO(object):
 
     def retrieve(self, eid):
         return self._api.retrieve(self._datum_col, eid,
-                                   self._datum_cache, self.get_spec_handler,
-                                   logger)
+                                  self._datum_cache, self.get_spec_handler,
+                                  logger)
+
+    # back compat
+    get_datum = retrieve
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
