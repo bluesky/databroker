@@ -382,7 +382,9 @@ class FileStore(FileStoreRO):
             # to the right
             if shift > len(rpath):
                 raise RuntimeError('Asked to shift farther to right '
-                                   'than there are directories')
+                                   '({}) than there are directories '
+                                   'in the resource_path ({})'.format(
+                                       shift, len(rpath)))
             new_root = safe_join(root + rpath[:shift])
             new_rpath = safe_join(rpath[shift:])
         else:
@@ -390,7 +392,9 @@ class FileStore(FileStoreRO):
             shift = len(root) + shift
             if shift < 0:
                 raise RuntimeError('Asked to shift farther to left '
-                                   'than there are directories')
+                                   '({}) than there are directories '
+                                   'in the root ({})'.format(
+                                       shift-len(root), len(root)))
             new_root = safe_join(root[:shift])
             new_rpath = safe_join((root[shift:] + rpath))
         if abs_path:

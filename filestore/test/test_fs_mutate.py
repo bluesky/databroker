@@ -113,6 +113,17 @@ def test_history(fs_v1):
     assert cnt == shift_count
 
 
+@pytest.mark.parametrize('shift', [-5, 5])
+def test_over_step(fs_v1, shift):
+    fs = fs_v1
+    last_res = fs.insert_resource('root-test',
+                                  'a/b',
+                                  {'a': 'fizz', 'b': 5},
+                                  root='/c')
+    with pytest.raises(RuntimeError):
+        fs.shift_root(last_res, shift)
+
+
 class FileMoveTestingHandler(HandlerBase):
     specs = {'npy_series'} | HandlerBase.specs
 
