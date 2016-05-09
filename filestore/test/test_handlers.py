@@ -293,9 +293,11 @@ class Test_ADTiff_files(_with_path):
     fr_shape = (10, 15)
 
     def _make_data(self):
+        self.fn_list = []
         for j in range(self.n_frames * self.fpp):
             fn = self.template % (self.filepath, self.fname, j)
             tifffile.imsave(fn, np.ones(self.fr_shape) * j)
+            self.fn_list.append(fn)
 
     def test_read(self):
         hand = AreaDetectorTiffHandler(self.filepath, self.template,
@@ -307,6 +309,15 @@ class Test_ADTiff_files(_with_path):
             for fr in ret:
                 assert np.all(fr == abs_count)
                 abs_count += 1
+
+    def test_filename_list(self):
+        inp = sorted(self.fn_list)
+        hand = AreaDetectorTiffHandler(self.filepath, self.template,
+                                       self.fname, self.fpp)
+        datum_kwarg_gen = ({'point_number': j} for j in range(self.n_frames))
+        fn_list = sorted(hand.get_file_list(datum_kwarg_gen))
+
+        assert fn_list == inp
 
 
 @pytest.mark.parametrize('npts, kw', itertools.product((1, 5), ({}, {'a': 1})))

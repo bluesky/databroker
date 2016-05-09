@@ -45,6 +45,12 @@ class AreaDetectorSPEHandler(HandlerBase):
                                  self._fpp, data.shape[0]))
         return data.squeeze()
 
+    def get_file_list(self, datum_kwarg_gen):
+        return [self._template % (self._path,
+                                  self._filename,
+                                  d['point_number'])
+                for d in datum_kwarg_gen]
+
 
 class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs
@@ -55,14 +61,23 @@ class AreaDetectorTiffHandler(HandlerBase):
         self._template = template
         self._filename = filename
 
-    def __call__(self, point_number):
+    def _fnames_for_point(self, point_number):
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
-        ret = []
         for j in range(start, stop):
-            fn = self._template % (self._path, self._filename, j)
+            yield self._template % (self._path, self._filename, j)
+
+    def __call__(self, point_number):
+        ret = []
+        for fn in self._fnames_for_point(point_number):
             with tifffile.TiffFile(fn) as tif:
                 ret.append(tif.asarray())
         return np.array(ret).squeeze()
+
+    def get_file_list(self, datum_kwargs):
+        ret = []
+        for d_kw in datum_kwargs:
+            ret.extend(self._fnames_for_point(**d_kw))
+        return ret
 
 
 class DummyAreaDetectorHandler(HandlerBase):
@@ -96,6 +111,9 @@ class HDF5DatasetSliceHandler(HandlerBase):
         self._file = None
         self._dataset = None
         self.open()
+
+    def get_file_list(self, datum_kwarg_gen):
+        return [self._filename]
 
     def __call__(self, point_number):
         # Don't read out the dataset until it is requested for the first time.
@@ -361,6 +379,9 @@ class NpyHandler(HandlerBase):
     def __call__(self):
         return np.load(self._fpath, self._mmap_mode)
 
+    def get_file_list(self, datum_kwarg_gen):
+        return [self._fpath]
+
 
 class NpyFrameWise(HandlerBase):
     specs = {'npy_FRAMEWISE'} | HandlerBase.specs
@@ -374,3 +395,6 @@ class NpyFrameWise(HandlerBase):
 
     def __call__(self, frame_no):
         return self._data[frame_no]
+
+    def get_file_list(self, datum_kwarg_gen):
+        return [self._fpath]
