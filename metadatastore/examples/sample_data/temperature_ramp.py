@@ -52,7 +52,7 @@ def run(run_start_uid=None, sleep=0):
         # grab the actual event from metadatastore
         event, = find_events(uid=event_uid)
         events.append(event)
-        # assert event['data'] == event_dict['data']
+        assert event['data'] == event_dict['data']
 
     # Temperature Events
     for i, (time, temp) in enumerate(zip(*deadbanded_ramp)):
@@ -65,7 +65,7 @@ def run(run_start_uid=None, sleep=0):
         event_uid = insert_event(**event_dict)
         event, = find_events(uid=event_uid)
         events.append(event)
-        # assert event['data'] == event_dict['data']
+        assert event['data'] == event_dict['data']
 
     return events
 

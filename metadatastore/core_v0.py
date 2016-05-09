@@ -1068,6 +1068,9 @@ def find_events(start_col, start_cache,
         ev.pop('_id', None)
         # pop the descriptor oid
         desc_uid = ev.pop('descriptor_id')
+        data = ev.pop('data')
+        ev['timestamps'] = {k: v[1] for k, v in data.items()}
+        ev['data'] = {k: v[0] for k, v in data.items()}
         # replace it with the defererenced descriptor
         ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
                                                 descriptor_cache,
