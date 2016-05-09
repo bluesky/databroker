@@ -106,9 +106,13 @@ class MDSRO(object):
     def _runstop_col(self):
         if self.__runstop_col is None:
             self.__runstop_col = self._db.get_collection('run_stop')
-
-            self.__runstop_col.create_index([('run_start', pymongo.DESCENDING),
-                                            ('uid', pymongo.DESCENDING)],
+            if self.version == 0:
+                self.__runstop_col.create_index('run_start_id',
+                                                unique=True)
+            else:
+                self.__runstop_col.create_index('run_start',
+                                                unique=True)
+            self.__runstop_col.create_index('uid',
                                             unique=True)
             self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
                                             unique=False, background=True)
@@ -579,13 +583,11 @@ class MDS(MDSRO):
             uid of the inserted document.  Use `run_start_given_uid` to get
             the full document.
         '''
-        if self.version == 0:
-            raise NotImplementedError("Can not create documents of v0 schema")
-        return core.insert_run_start(self._runstart_col,
-                                     self._RUNSTART_CACHE,
-                                     time=time,
-                                     uid=uid,
-                                     **kwargs)
+        return self._api.insert_run_start(self._runstart_col,
+                                          self._RUNSTART_CACHE,
+                                          time=time,
+                                          uid=uid,
+                                          **kwargs)
 
     def insert_run_stop(self, run_start, time, uid, exit_status='success',
                         reason='', **kwargs):
@@ -615,16 +617,14 @@ class MDS(MDSRO):
         RuntimeError
             Only one RunStop per RunStart, raises if you try to insert a second
         """
-        if self.version == 0:
-            raise NotImplementedError("Can not create documents of v0 schema")
-        return core.insert_run_stop(self._runstart_col,
-                                    self._RUNSTART_CACHE,
-                                    self._runstop_col,
-                                    self._RUNSTOP_CACHE,
-                                    run_start=run_start,
-                                    time=time, uid=uid,
-                                    exit_status=exit_status,
-                                    reason=reason, **kwargs)
+        return self._api.insert_run_stop(self._runstart_col,
+                                         self._RUNSTART_CACHE,
+                                         self._runstop_col,
+                                         self._RUNSTOP_CACHE,
+                                         run_start=run_start,
+                                         time=time, uid=uid,
+                                         exit_status=exit_status,
+                                         reason=reason, **kwargs)
 
     def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
         """Insert an EventDescriptor document in to database.
@@ -649,16 +649,14 @@ class MDS(MDSRO):
         descriptor : str
             uid of inserted Document
         """
-        if self.version == 0:
-            raise NotImplementedError("Can not create documents of v0 schema")
-        return core.insert_descriptor(self._runstart_col,
-                                      self._RUNSTART_CACHE,
-                                      self._descriptor_col,
-                                      self._DESCRIPTOR_CACHE,
-                                      run_start=run_start,
-                                      data_keys=data_keys,
-                                      time=time, uid=uid,
-                                      **kwargs)
+        return self._api.insert_descriptor(self._runstart_col,
+                                           self._RUNSTART_CACHE,
+                                           self._descriptor_col,
+                                           self._DESCRIPTOR_CACHE,
+                                           run_start=run_start,
+                                           data_keys=data_keys,
+                                           time=time, uid=uid,
+                                           **kwargs)
 
     def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
                      validate=False):
@@ -688,23 +686,43 @@ class MDS(MDSRO):
         uid : str
             Globally unique id string provided to metadatastore
         """
+
         if self.version == 0:
-            raise NotImplementedError("Can not create documents of v0 schema")
-        return core.insert_event(self._event_col,
-                                 descriptor=descriptor,
-                                 time=time, seq_num=seq_num,
-                                 data=data,
-                                 timestamps=timestamps,
-                                 uid=uid,
-                                 validate=validate)
+            return self._api.insert_event(self._event_col,
+                                          descriptor=descriptor,
+                                          time=time, seq_num=seq_num,
+                                          data=data,
+                                          timestamps=timestamps,
+                                          uid=uid,
+                                          validate=validate,
+                                          descriptor_col=self._descriptor_col,
+                                          descriptor_cache=self._DESCRIPTOR_CACHE,
+                                          start_col=self._runstart_col,
+                                          start_cache=self._RUNSTART_CACHE)
+
+        return self._api.insert_event(self._event_col,
+                                      descriptor=descriptor,
+                                      time=time, seq_num=seq_num,
+                                      data=data,
+                                      timestamps=timestamps,
+                                      uid=uid,
+                                      validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
+
         if self.version == 0:
-            raise NotImplementedError("Can not create documents of v0 schema")
-        return core.bulk_insert_events(self._event_col,
-                                       descriptor=descriptor,
-                                       events=events,
-                                       validate=validate)
+            return self._api.bulk_insert_events(self._event_col,
+                                                descriptor=descriptor,
+                                                events=events,
+                                                validate=validate,
+                                                descriptor_col=self._descriptor_col,
+                                                descriptor_cache=self._DESCRIPTOR_CACHE,
+                                                start_col=self._runstart_col,
+                                                start_cache=self._RUNSTART_CACHE)
+        return self._api.bulk_insert_events(self._event_col,
+                                            descriptor=descriptor,
+                                            events=events,
+                                            validate=validate)
 
     def insert(self, name, doc):
         if name != 'bulk_events':

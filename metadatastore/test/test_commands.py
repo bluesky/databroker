@@ -131,6 +131,7 @@ def test_custom_warn():
 
     run_start_uid = str(uuid.uuid4())
 
+    warnings.simplefilter('always', UserWarning)
     with warnings.catch_warnings(record=True) as w:
         run_start_uid = mdsc.insert_run_start(
             scan_id=30220, beamline_id='testbed',

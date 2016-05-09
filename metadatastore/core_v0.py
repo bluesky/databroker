@@ -14,7 +14,7 @@ import numpy as np
 import pymongo
 import doct as doc
 
-from .core import NoRunStop, NoEventDescriptors
+from .core import NoRunStop, NoEventDescriptors, NoRunStart
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def doc_or_uid_to_uid(doc_or_uid):
     if not isinstance(doc_or_uid, six.string_types):
         try:
             doc_or_uid = doc_or_uid['uid']
-        except AttributeError:
+        except TypeError:
             return doc_or_uid
     return doc_or_uid
 
@@ -193,6 +193,8 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
         run_start = run_start_col.find_one({'uid': uid})
     else:
         run_start = run_start_col.find_one({'_id': uid})
+    if run_start is None:
+        raise NoRunStart("No runstart with uid {!r}".format(uid))
     return _cache_run_start(run_start, run_start_cache)
 
 
@@ -287,7 +289,7 @@ def stop_by_start(run_start, run_stop_col, run_stop_cache,
     run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = run_start_given_uid(run_start_uid, run_start_col,
                                     run_start_cache)
-    oid = _UID_TO_OID_MAP[run_start_uid]
+    oid = _UID_TO_OID_MAP[run_start['uid']]
     run_stop = run_stop_col.find_one({'run_start_id': oid})
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
@@ -320,15 +322,14 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
     """
     # normalize the input and get the run_start oid
     run_start_uid = doc_or_uid_to_uid(run_start)
-
     # query the database for any event descriptors which
     # refer to the given run_start
     run_start = run_start_given_uid(run_start_uid, run_start_col,
                                     run_start_cache)
-    oid = _UID_TO_OID_MAP[run_start_uid]
+
+    oid = _UID_TO_OID_MAP[run_start['uid']]
     descriptors = descriptor_col.find({'run_start_id': oid},
                                       sort=[('time', pymongo.ASCENDING)])
-
     # loop over the found documents, cache, and dereference
     rets = [_cache_descriptor(descriptor, descriptor_cache,
                               run_start_col, run_start_cache)
@@ -485,7 +486,7 @@ def get_events_table(descriptor, event_col, descriptor_col,
 # database INSERTION ###################################################
 
 def insert_run_start(run_start_col, run_start_cache,
-                     time, scan_id, beamline_id, uid, **kwargs):
+                     time, uid, **kwargs):
     """Insert a RunStart document into the database.
 
     Parameters
@@ -512,9 +513,14 @@ def insert_run_start(run_start_col, run_start_cache,
             raise TypeError("duplicate keys in kwargs and custom")
         kwargs.update(custom)
 
+    if 'scan_id' not in kwargs:
+        raise RuntimeError('v0 insert_runstart requires scan_id')
+
+    if 'beamline_id' not in kwargs:
+        raise RuntimeError('v0 insert_runstart requires beamline_id')
+
     col = run_start_col
-    run_start = dict(time=time, scan_id=scan_id, uid=uid,
-                     beamline_id=beamline_id, **kwargs)
+    run_start = dict(time=time, uid=uid, **kwargs)
 
     col.insert_one(run_start)
 
@@ -564,18 +570,18 @@ def insert_run_stop(run_start_col, run_start_cache,
     run_start_uid = doc_or_uid_to_uid(run_start)
     run_start = run_start_given_uid(run_start_uid, run_start_col,
                                     run_start_cache)
+    rs_oid = _UID_TO_OID_MAP[run_start['uid']]
     try:
-        stop_by_start(run_start_uid,
+        stop_by_start(run_start['uid'],
                       run_stop_col, run_stop_cache,
-                      run_start_col, run_start_cache,
-                      ver=1)
+                      run_start_col, run_start_cache)
     except NoRunStop:
         pass
     else:
         raise RuntimeError("Runstop already exits for {!r}".format(run_start))
 
     col = run_stop_col
-    run_stop = dict(run_start=run_start_uid, time=time,
+    run_stop = dict(run_start_id=rs_oid, time=time,
                     uid=uid,
                     exit_status=exit_status, **kwargs)
     if reason is not None and reason != '':
@@ -627,10 +633,11 @@ def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
 
     data_keys = {k: dict(v) for k, v in data_keys.items()}
     run_start_uid = doc_or_uid_to_uid(run_start)
-
+    run_start = run_start_given_uid(run_start_uid, run_start_col,
+                                    run_start_cache)
     col = descriptor_col
-
-    descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
+    oid = _UID_TO_OID_MAP[run_start['uid']]
+    descriptor = dict(run_start_id=oid, data_keys=data_keys,
                       time=time, uid=uid, **kwargs)
     # TODO validation
     col.insert_one(descriptor)
@@ -646,7 +653,8 @@ insert_event_descriptor = insert_descriptor
 
 
 def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
-                 validate):
+                 validate, descriptor_col, descriptor_cache, start_col,
+                 start_cache):
     """Create an event in metadatastore database backend
 
     .. warning
@@ -678,11 +686,17 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     # convert data to storage format
     # make sure we really have a uid
     descriptor_uid = doc_or_uid_to_uid(descriptor)
+    descriptor_given_uid(descriptor_uid, descriptor_col,
+                         descriptor_cache, start_col,
+                         start_cache)
 
+    oid = _UID_TO_OID_MAP[descriptor_uid]
     col = event_col
+    new_data = {k: (data[k], timestamps[k])
+                for k in set(list(data) + list(timestamps))}
 
-    event = dict(descriptor=descriptor_uid, uid=uid,
-                 data=data, timestamps=timestamps, time=time,
+    event = dict(descriptor_id=oid, uid=uid,
+                 data=new_data, time=time,
                  seq_num=seq_num)
 
     col.insert_one(event)
@@ -696,7 +710,9 @@ BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
 'timestamps do not match:\n data: {}\ntimestamps:{}"""
 
 
-def bulk_insert_events(event_col, descriptor, events, validate):
+def bulk_insert_events(event_col, descriptor, events, validate,
+                       descriptor_col, descriptor_cache, start_col,
+                       start_cache):
     """Bulk insert many events
 
     Parameters
@@ -716,6 +732,12 @@ def bulk_insert_events(event_col, descriptor, events, validate):
         dictionary of details about the insertion
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
+    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    descriptor_given_uid(descriptor_uid, descriptor_col,
+                         descriptor_cache, start_col,
+                         start_cache)
+
+    oid = _UID_TO_OID_MAP[descriptor_uid]
 
     def event_factory():
         for ev in events:
@@ -725,9 +747,11 @@ def bulk_insert_events(event_col, descriptor, events, validate):
                     raise ValueError(
                         BAD_KEYS_FMT.format(ev['data'].keys(),
                                             ev['timestamps'].keys()))
+            new_data = {k: (ev['data'][k], ev['timestamps'][k])
+                        for k in ev['data'].keys()}
 
-            ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=ev['data'], timestamps=ev['timestamps'],
+            ev_out = dict(descriptor_id=oid, uid=ev['uid'],
+                          data=new_data,
                           time=ev['time'],
                           seq_num=ev['seq_num'])
             yield ev_out
@@ -937,7 +961,8 @@ def find_run_stops(start_col, start_cache,
     # normalize the input and get the run_start oid
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
-        run_start_given_uid(run_start_uid)
+        run_start_given_uid(run_start_uid, start_col,
+                            start_cache)
         oid = _UID_TO_OID_MAP[run_start_uid]
         kwargs['run_start_id'] = oid
 
@@ -981,7 +1006,8 @@ def find_descriptors(start_col, start_cache,
     """
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
-        run_start_given_uid(run_start_uid)
+        run_start_given_uid(run_start_uid, start_col,
+                            start_cache)
         oid = _UID_TO_OID_MAP[run_start_uid]
         kwargs['run_start_id'] = oid
     _format_time(kwargs, tz)
@@ -1034,12 +1060,9 @@ def find_events(start_col, start_cache,
                              start_cache)
         oid = _UID_TO_OID_MAP[descriptor_uid]
         kwargs['descriptor_id'] = oid
-
     _format_time(kwargs, tz)
     col = event_col
-    events = col.find(kwargs,
-                      sort=[('descriptor_id', pymongo.DESCENDING),
-                            ('time', pymongo.ASCENDING)])
+    events = col.find(kwargs)
 
     for ev in events:
         ev.pop('_id', None)
