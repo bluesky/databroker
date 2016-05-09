@@ -387,7 +387,8 @@ class FileStore(FileStoreRO):
                                    'the data base holds do not match '
                                    'yours: {!r} db: {!r}'.format(
                                        resource, actual_resource))
-        resource = actual_resource
+        resource = dict(actual_resource)
+        resource.setdefault('root', '')
         abs_path = resource['root'][0] == os.sep
         root = [_ for _ in resource['root'].split(os.sep) if _]
         rpath = [_ for _ in resource['resource_path'].split(os.sep) if _]
@@ -421,7 +422,7 @@ class FileStore(FileStoreRO):
         update_col = self._resource_update_col
         resource_col = self._resource_col
         return self._api.update_resource(update_col, resource_col,
-                                         resource, new,
+                                         actual_resource, new,
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
 
@@ -481,7 +482,9 @@ class FileStoreMoving(FileStore):
 
         datum_col = self._datum_col
         # get list of files
-        resource = self.resource_given_uid(resource_or_uid)
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        resource = dict(actual_resource)
+        resource.setdefault('root', '')
         handler = self.get_spec_handler(resource['uid'])
 
         datum_gen = self._api.get_datumkw_by_resuid_gen(datum_col,
@@ -512,7 +515,8 @@ class FileStoreMoving(FileStore):
         update_col = self._resource_update_col
         resource_col = self._resource_col
         ret = self._api.update_resource(update_col, resource_col,
-                                        old=resource, new=new_resource,
+                                        old=actual_resource,
+                                        new=new_resource,
                                         cmd_kwargs=dict(
                                             remove_origin=remove_origin,
                                             verify=verify,
