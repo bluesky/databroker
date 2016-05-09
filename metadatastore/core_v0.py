@@ -693,7 +693,7 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     oid = _UID_TO_OID_MAP[descriptor_uid]
     col = event_col
     new_data = {k: (data[k], timestamps[k])
-                for k in set(data, timestamps)}
+                for k in set(list(data) + list(timestamps))}
 
     event = dict(descriptor_id=oid, uid=uid,
                  data=new_data, time=time,
@@ -1006,7 +1006,8 @@ def find_descriptors(start_col, start_cache,
     """
     if run_start:
         run_start_uid = doc_or_uid_to_uid(run_start)
-        run_start_given_uid(run_start_uid)
+        run_start_given_uid(run_start_uid, start_col,
+                            start_cache)
         oid = _UID_TO_OID_MAP[run_start_uid]
         kwargs['run_start_id'] = oid
     _format_time(kwargs, tz)
