@@ -41,6 +41,8 @@ def fill_event(fs, event, handler_registry=None, handler_overrides=None):
     """
     if handler_overrides is None:
         handler_overrides = {}
+    if handler_registry is None:
+        handler_registry = {}
     is_external = _external_keys(event.descriptor)
     mock_registries = {data_key: defaultdict(lambda: handler)
                        for data_key, handler in handler_overrides.items()}
@@ -250,6 +252,8 @@ def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
 
     if handler_overrides is None:
         handler_overrides = {}
+    if handler_registry is None:
+        handler_registry = {}
 
     if fields is None:
         fields = []
