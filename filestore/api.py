@@ -167,7 +167,7 @@ def insert_resource(spec, resource_path, resource_kwargs=None, root=''):
 insert_resource.__doc__ = _FS_SINGLETON.insert_resource.__doc__
 
 
-def insert_datum(resource, datum_id, datum_kwargs=None):
+def insert_datum(resource, datum_id, datum_kwargs):
     """
 
     Parameters
@@ -186,7 +186,6 @@ def insert_datum(resource, datum_id, datum_kwargs=None):
         resource.
 
     """
-    datum_kwargs = datum_kwargs if datum_kwargs is not None else {}
     return _FS_SINGLETON.insert_datum(resource, datum_id, datum_kwargs)
 
 

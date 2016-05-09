@@ -325,9 +325,25 @@ class FileStore(FileStoreRO):
                                          root=root)
 
     def insert_datum(self, resource, datum_id, datum_kwargs):
+        '''insert a datum for the given resource
+
+        Parameters
+        ----------
+
+        resource : Resource or Resource.id
+            Resource object
+
+        datum_id : str
+            Unique identifier for this datum.  This is the value stored in
+            metadatastore and is the value passed to `retrieve` to get
+            the data back out.
+
+        datum_kwargs : dict
+            dict with any kwargs needed to retrieve this specific
+            datum from the resource.
+
+        '''
         col = self._datum_col
-        if datum_kwargs is None:
-            datum_kwargs = {}
 
         return self._api.insert_datum(col, resource, datum_id, datum_kwargs,
                                       self.known_spec, self._resource_col)
