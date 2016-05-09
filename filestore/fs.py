@@ -359,8 +359,6 @@ class FileStore(FileStoreRO):
             raise NotImplementedError('V0 has no notion of root')
 
         resource = self.resource_given_uid(resource_or_uid)
-        if shift == 0:
-            return resource
 
         def safe_join(inp):
             if not inp:
@@ -488,7 +486,6 @@ class FileStoreMoving(FileStore):
         # copy the files to the new location
         for fin, fout in zip(file_list, new_file_list):
             # copy files
-            print(fin, fout)
             _make_sure_path_exists(os.path.dirname(fout))
             shutil.copy2(fin, fout)
 
@@ -505,7 +502,6 @@ class FileStoreMoving(FileStore):
                                             verify=verify,
                                             new_root=new_root),
                                         cmd='change_root')
-        # TODO look at mongo internal to make sure this went ok?
 
         # remove original files
         if remove_origin:
