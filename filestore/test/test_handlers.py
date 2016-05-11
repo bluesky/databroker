@@ -132,7 +132,7 @@ class Test_AD_hdf5_files(_with_file):
         # Retrieve the data.
         for i, datum_id in enumerate(self.datum_ids):
             data = retrieve(datum_id)
-            known_data = i * np.ones((2, 2))
+            known_data = i * np.ones((1, 2, 2))
             assert_array_equal(data, known_data)
 
     def test_context_manager(self):
