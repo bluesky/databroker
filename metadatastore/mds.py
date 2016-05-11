@@ -107,8 +107,7 @@ class MDSRO(object):
         if self.__runstop_col is None:
             self.__runstop_col = self._db.get_collection('run_stop')
             if self.version == 0:
-                self.__runstop_col.create_index('run_start_id',
-                                                unique=True)
+                self.__runstop_col.create_index('run_start_id')
             else:
                 self.__runstop_col.create_index('run_start',
                                                 unique=True)
