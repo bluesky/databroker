@@ -17,7 +17,7 @@ from .core import NoEventDescriptors, NoRunStop, NoRunStart
 logger = logging.getLogger(__name__)
 
 
-_DB_SINGLETON = mds.MDS(conf.connection_config, version=0)
+_DB_SINGLETON = mds.MDS(conf.connection_config, version=1)
 
 
 def doc_or_uid_to_uid(doc_or_uid):
