@@ -9,6 +9,7 @@ import logging
 import os.path
 import shutil
 
+import pymongo
 from pymongo import MongoClient
 
 import boltons.cacheutils
@@ -129,6 +130,9 @@ class FileStoreRO(object):
             ret = col.find_one({'_id': k})
         elif self.version == 1:
             ret = col.find_one({'uid': k})
+        else:
+            raise RuntimeError('{} is not a supported version, must be in'
+                               '{{0, 1}}'.format(self.version))
         return ret
 
     def resource_given_uid(self, uid):
@@ -187,7 +191,7 @@ class FileStoreRO(object):
             for col_name in versioned_collection:
                 val = sentinel.find_one({'collection': col_name})
                 if val is None:
-                    raise RuntimeError('there is now version sentinel for '
+                    raise RuntimeError('there is no version sentinel for '
                                        'the {} collection'.format(col_name))
                 if val['version'] != self.version:
                     raise RuntimeError('DB version {!r} does not match'
@@ -208,7 +212,10 @@ class FileStoreRO(object):
     def _resource_update_col(self):
         if self.__res_update_col is None:
             self.__res_update_col = self._db.get_collection('resource_update')
-            self.__res_update_col.create_index('resource')
+            self.__res_update_col.create_index([
+                ('resource', pymongo.DESCENDING),
+                ('time', pymongo.DESCENDING)
+            ])
 
         return self.__res_update_col
 

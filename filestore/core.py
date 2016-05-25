@@ -161,7 +161,7 @@ def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
         The history object inserted (with oid removed)
     '''
     if old['uid'] != new['uid']:
-        raise RuntimeError('must not change the resource id')
+        raise RuntimeError('must not change the resource uid')
     uid = old['uid']
     log_object = {'resource': uid,
                   'old': old,
