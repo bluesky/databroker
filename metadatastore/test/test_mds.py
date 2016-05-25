@@ -20,7 +20,7 @@ def check_for_id(document):
     """
     with pytest.raises(KeyError):
         document['id']
-
+        document['_id']
 
 def setup_syn(mds, custom=None):
     if custom is None:
