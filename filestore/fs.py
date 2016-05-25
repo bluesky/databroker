@@ -437,7 +437,7 @@ class FileStore(FileStoreRO):
 class FileStoreMoving(FileStore):
     '''FileStore object that knows how to move files.'''
     def change_root(self, resource_or_uid, new_root, remove_origin=True,
-                    verify=False):
+                    verify=False, file_rename_hook=None):
         '''Change the root directory of a given resource
 
         The registered handler must have a `get_file_list` method and the
@@ -469,6 +469,15 @@ class FileStoreMoving(FileStore):
             Verify that the move happened correctly.  This currently
             is not implemented and will raise if ``verify == True``.
 
+        file_rename_hook : callable, optional
+            If provided, must be a callable with signature ::
+
+               def hook(file_counter, total_number, old_name, new_name):
+                   pass
+
+            This will be run in the inner loop of the file copy step and is
+            run inside of an unconditional try/except block.
+
         See Also
         --------
         `FileStore.shift_root`
@@ -486,6 +495,21 @@ class FileStoreMoving(FileStore):
                                       'change it')
         if verify:
             raise NotImplementedError('Verification is not implemented yet')
+
+        def rename_hook_wrapper(hook):
+            if hook is None:
+                def noop(n, total, old_name, new_name):
+                    return
+                return noop
+
+            def safe_hook(n, total, old_name, new_name):
+                try:
+                    hook(n, total, old_name, new_name)
+                except:
+                    pass
+            return safe_hook
+
+        file_rename_hook = rename_hook_wrapper(file_rename_hook)
 
         datum_col = self._datum_col
         # get list of files
@@ -509,9 +533,11 @@ class FileStoreMoving(FileStore):
         new_file_list = [os.path.join(new_root,
                                       os.path.relpath(f, old_root))
                          for f in file_list]
+        N = len(new_file_list)
         # copy the files to the new location
-        for fin, fout in zip(file_list, new_file_list):
+        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
             # copy files
+            file_rename_hook(n, N, fin, fout)
             _make_sure_path_exists(os.path.dirname(fout))
             shutil.copy2(fin, fout)
 
