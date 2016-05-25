@@ -15,6 +15,13 @@ git:
 services:
   - mongodb
 
+addons:
+  apt:
+    sources:
+    - mongodb-3.2-precise
+    packages:
+    - mongodb-org-server
+
 cache:
   directories:
     - $HOME/.cache/pip
@@ -51,7 +58,7 @@ script:
   - coverage run run_tests.py
   - coverage report -m
   # build the conda package on travis
-  - . ~/scripts/conda-build.sh
+  # - . ~/scripts/conda-build.sh
 
 after_success:
   - coveralls
