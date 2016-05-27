@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.ioloop
 import tornado.web
 from tornado import gen
-
+import metadatastore.commands as mds
 import pymongo
 import pymongo.errors as perr
 
@@ -12,42 +12,11 @@ import jsonschema
 
 from metadataservice.server import utils
 
-# TODO: Write tests specifically for the server side(existing ones are garbage!)
-# TODO: Add indexing to all collections!
-
-CACHE_SIZE = 100000
 loop = tornado.ioloop.IOLoop.instance()
 
 
 class MetadataServiceException(Exception):
     pass
-
-
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to motor.
-    Connection established lazily.
-
-    Parameters
-    ----------
-    database: str
-        The name of database pymongo creates and/or connects
-    host: str
-        Name/address of the server that mongo daemon lives
-    port: int
-        Port num of the server
-
-    Returns pymongo.MotorDatabase
-    -------
-        Async server object which comes in handy as server has to juggle multiple clients
-        and makes no difference for a single client compared to pymongo
-    """
-
-    try:
-        client = pymongo.MongoClient(host=host, port=port)
-    except perr.ConnectionFailure:
-        raise MetadataServiceException("Unable to connect to MongoDB server. Make sure Mongo is up and running")
-    database = client[database]
-    return database
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -71,30 +40,43 @@ class RunStartHandler(DefaultHandler):
 
    Methods
     -------
+    queryable()
+        Identifies whether client provided function is fair game for get()
     get()
-        Query run_start documents. Query params are jsonified for type preservation
+        Query run_start documents.
     post()
         Insert a run_start document.Same validation method as bluesky, secondary
         safety net.
+    insertable()
+        Identifies whether client provided function is fair game for post()
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.queryables = ['find_run_starts', 'run_start_given_uid']
+
+    def queryable(self, func):
+        if func in self.queryables:
+            return True
+        else:
+            raise report_error(500, 'Not a valid query routine')
 
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        _id = query.pop('_id', None)
-        num = query.pop('num', None)
-        if _id:
-            raise tornado.web.HTTPError(500, 'No ObjectId based search supported')
-        if num:
-            docs = database.run_start.find().sort('time', direction=pymongo.DESCENDING).limit(num)
-        else:
-            docs = database.run_start.find(query).sort('time', direction=pymongo.DESCENDING)
-        if not docs:
-            raise tornado.web.HTTPError(500, reason='No results found for query')
-        else:
-            utils.return2client(self, docs)
+        mdsro = self.settings['mdsro'] #MDSRO
+        request = utils.unpack_params(self)
+        try:
+            func = request['signature']
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'No valid query function provided!')
+        try:
+            query = request['query']
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'A query string must be provided')
+        mdsro.func()
+        utils.return2client(self, request)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -139,10 +121,11 @@ class EventDescriptorHandler(DefaultHandler):
     Methods
     -------
     get()
-        Query event_descriptor documents. Get params are json encoded in order to preserve type
+        Query event_descriptor documents. Get params are json encoded in order
+        to preserve type
     post()
-        Insert a event_descriptor document.Same validation method as bluesky, secondary
-        safety net.
+        Insert a event_descriptor document.Same validation method as bluesky,
+        secondary safety net.
     """
     @tornado.web.asynchronous
     @gen.coroutine
@@ -210,8 +193,8 @@ class RunStopHandler(DefaultHandler):
         query = utils.unpack_params(self)
         docs = database.run_stop.find(query)
         if not docs:
-            raise tornado.web.HTTPError(500,
-                                        'No results for given query' + str(query))
+            raise report_error(500,
+                               'No results for given query {}'.format(query))
         else:
             utils.return2client(self, docs)
 
