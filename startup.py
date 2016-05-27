@@ -31,6 +31,9 @@ if __name__ == "__main__":
                         help='mongodb port to connect')
     parser.add_argument('--serviceport', dest='serviceport', type=int,
                         help='port to broadcast from')
+    parser.add_argument('--tz', dest='timezone', type=str,
+                        help='timezone of the service env')
+
     args = parser.parse_args()
     if args.database is not None:
         config['database'] = args.database
@@ -42,9 +45,13 @@ if __name__ == "__main__":
         config['mongoport'] = args.mongoport
     if args.serviceport is not None:
         config['serviceport'] = args.serviceport
+    if args.timezone is not None:
+        config['timezone'] = args.timezone
 
-    mdsro = MDSRO(version=1, config=config)
-    mdsrw = MDS(version=1, config=config)
+    libconfig = dict(host=config['mongohost'], port=config['mongoport'],
+                     timezone=config['timezone'], database=config['database'])
+    mdsro = MDSRO(version=1, config=libconfig)
+    mdsrw = MDS(version=1, config=libconfig)
 
     print('Connecting to mongodb...{}:{}/{}'.format(config['mongohost'],
                                                     config['mongoport'],

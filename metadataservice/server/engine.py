@@ -52,12 +52,12 @@ class RunStartHandler(DefaultHandler):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.queryables = ['find_run_starts', 'run_start_given_uid']
+        self.queryables = {'find_run_starts': self.settings['mdsro'].find_run_starts,
+                           'run_start_given_uid': self.settings['mdsro'].run_start_given_uid}
 
-    @gen.coroutine
     def queryable(self, func):
         if func in self.queryables:
-            yield True
+            return self.queryables[func]
         else:
             raise report_error(500, 'Not a valid query routine', func)
 
@@ -66,7 +66,6 @@ class RunStartHandler(DefaultHandler):
     def get(self):
         mdsro = self.settings['mdsro'] #MDSRO
         request = utils.unpack_params(self)
-        print(mdrso, 'got here')
         try:
             func = request['signature']
         except KeyError:
@@ -77,7 +76,9 @@ class RunStartHandler(DefaultHandler):
         except KeyError:
             raise report_error(500,
                                'A query string must be provided')
-        docs = yield mdsro.func(query)
+        func = self.queryable(func)
+        print(query)
+        docs = func(**query)
         utils.return2client(self, docs)
 
     @tornado.web.asynchronous
