@@ -47,13 +47,11 @@ def return2client(handler, payload):
     payload: dict, list
         Information to be sent to the client
     """
-
-    
     if isinstance(payload, pymongo.cursor.Cursor):
             l = []
             for p in payload:
                 del(p['_id'])
-                l.append(p)           
+                l.append(p)
             handler.write(ujson.dumps(l))
     elif isinstance(payload, dict):
         del(payload['_id'])
@@ -63,7 +61,7 @@ def return2client(handler, payload):
         d = next(payload)
         while True:
             try:
-                del(d['_id'])
+                # del(d['_id'])
                 handler.write(ujson.dumps(d))
                 d = next(payload)
                 handler.write(',')
@@ -71,3 +69,7 @@ def return2client(handler, payload):
                 break
         handler.write(']')
     handler.finish()
+
+def report_error(code, status, m_str=''):
+    fmsg = status + str(m_str)
+    raise tornado.web.HTTPError(code, fmsg)

@@ -3,10 +3,10 @@ from __future__ import (absolute_import, division, print_function,
 import tornado.ioloop
 import tornado.web
 from tornado import gen
-import metadatastore.commands as mds
+from metadatastore.mds import MDS, MDSRO
 import pymongo
 import pymongo.errors as perr
-
+from .utils import report_error
 import ujson
 import jsonschema
 
@@ -54,29 +54,31 @@ class RunStartHandler(DefaultHandler):
         super().__init__(*args, **kwargs)
         self.queryables = ['find_run_starts', 'run_start_given_uid']
 
+    @gen.coroutine
     def queryable(self, func):
         if func in self.queryables:
-            return True
+            yield True
         else:
-            raise report_error(500, 'Not a valid query routine')
+            raise report_error(500, 'Not a valid query routine', func)
 
     @tornado.web.asynchronous
     @gen.coroutine
     def get(self):
         mdsro = self.settings['mdsro'] #MDSRO
         request = utils.unpack_params(self)
+        print(mdrso, 'got here')
         try:
             func = request['signature']
         except KeyError:
-            raise utils._compose_error(500,
-                                       'No valid query function provided!')
+            raise report_error(500,
+                               'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils._compose_error(500,
-                                       'A query string must be provided')
-        mdsro.func()
-        utils.return2client(self, request)
+            raise report_error(500,
+                               'A query string must be provided')
+        docs = yield mdsro.func(query)
+        utils.return2client(self, docs)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -306,5 +308,3 @@ class EventHandler(DefaultHandler):
     @gen.coroutine
     def delete(self):
         raise tornado.web.HTTPError(404)
-
-# TODO: Include capped collection support in the next cycle.
