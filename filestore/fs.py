@@ -126,10 +126,12 @@ class FileStoreRO(object):
 
     def _r_on_miss(self, k):
         col = self._resource_col
-        if isinstance(k, str):
+        if isinstance(k, six.string_types):
             ret = col.find_one({'uid': k})
         else:
             ret = col.find_one({'_id': k})
+        if ret is None:
+            raise RuntimeError('did not find resource')
         return ret
 
     def resource_given_uid(self, uid):
@@ -261,7 +263,7 @@ class FileStoreRO(object):
         spec = resource['spec']
         handler = self.handler_reg[spec]
 
-        if isinstance(res_in, str):
+        if isinstance(res_in, six.string_types):
             key = (str(resource['uid']), handler.__name__)
         else:
             key = (str(resource['_id']), handler.__name__)
