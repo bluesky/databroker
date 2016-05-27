@@ -25,7 +25,6 @@ requirements:
     - pymongo
     - six
     - pyyaml
-    - prettytable
     - humanize
     - numpy
     - pytz
