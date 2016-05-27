@@ -131,7 +131,7 @@ class FileStoreRO(object):
         else:
             ret = col.find_one({'_id': k})
         if ret is None:
-            raise RuntimeError('did not find resource')
+            raise RuntimeError('did not find resource {!r}'.format(k))
         return ret
 
     def resource_given_uid(self, uid):
@@ -185,18 +185,20 @@ class FileStoreRO(object):
         if self.__db is None:
             conn = self._connection
             self.__db = conn.get_database(self.config['database'])
-            sentinel = self.__db.get_collection('sentinel')
-            versioned_collection = ['resource', 'datum']
-            for col_name in versioned_collection:
-                val = sentinel.find_one({'collection': col_name})
-                if val is None:
-                    raise RuntimeError('there is no version sentinel for '
-                                       'the {} collection'.format(col_name))
-                if val['version'] != self.version:
-                    raise RuntimeError('DB version {!r} does not match'
-                                       'API version of FS {} for the '
-                                       '{} collection'.format(
-                                           val, self.version, col_name))
+            if self.version > 0:
+                sentinel = self.__db.get_collection('sentinel')
+                versioned_collection = ['resource', 'datum']
+                for col_name in versioned_collection:
+                    val = sentinel.find_one({'collection': col_name})
+                    if val is None:
+                        raise RuntimeError('there is no version sentinel for '
+                                           'the {} collection'.format(col_name)
+                                           )
+                    if val['version'] != self.version:
+                        raise RuntimeError('DB version {!r} does not match'
+                                           'API version of FS {} for the '
+                                           '{} collection'.format(
+                                               val, self.version, col_name))
         return self.__db
 
     @property
