@@ -126,13 +126,10 @@ class FileStoreRO(object):
 
     def _r_on_miss(self, k):
         col = self._resource_col
-        if self.version == 0:
-            ret = col.find_one({'_id': k})
-        elif self.version == 1:
+        if isinstance(k, str):
             ret = col.find_one({'uid': k})
         else:
-            raise RuntimeError('{} is not a supported version, must be in'
-                               '{{0, 1}}'.format(self.version))
+            ret = col.find_one({'_id': k})
         return ret
 
     def resource_given_uid(self, uid):
@@ -256,16 +253,18 @@ class FileStoreRO(object):
             document returns the externally stored data
 
         """
+        res_in = resource
         resource = self._resource_cache[resource]
 
         h_cache = self._handler_cache
 
         spec = resource['spec']
         handler = self.handler_reg[spec]
-        if self.version == 0:
-            key = (str(resource['_id']), handler.__name__)
-        elif self.version == 1:
+
+        if isinstance(res_in, str):
             key = (str(resource['uid']), handler.__name__)
+        else:
+            key = (str(resource['_id']), handler.__name__)
 
         try:
             return h_cache[key]
