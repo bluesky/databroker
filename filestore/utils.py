@@ -41,7 +41,7 @@ def install_sentinels(config, version):
         val = sentinel.find_one({'collection': col_name})
         if val is not None:
             raise RuntimeError('This database already has sentinel '
-                               '{!r}'.forman(val))
+                               '{!r}'.format(val))
         sentinel.insert_one({'collection': col_name, 'version': version})
 
 
