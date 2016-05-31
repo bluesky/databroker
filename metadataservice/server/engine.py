@@ -1,12 +1,10 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import tornado.ioloop
 import tornado.web
 from tornado import gen
-from metadatastore.mds import MDS, MDSRO
+import metadatastore.commands as mds
 import pymongo
 import pymongo.errors as perr
-from .utils import report_error
+
 import ujson
 import jsonschema
 
@@ -17,6 +15,33 @@ loop = tornado.ioloop.IOLoop.instance()
 
 class MetadataServiceException(Exception):
     pass
+
+
+def db_connect(database, host, port):
+    """Helper function to deal with stateful connections to motor.
+    Connection established lazily.
+
+    Parameters
+    ----------
+    database: str
+        The name of database pymongo creates and/or connects
+    host: str
+           Name/address of the server that mongo daemon lives
+    port: int
+        Port num of the server
+
+    Returns pymongo.MotorDatabase
+    -------
+        Async server object which comes in handy as server has to juggle
+        multiple clientsv and makes no difference for a single client compared
+        to pymongo.
+       """
+    try:
+        client = pymongo.MongoClient(host=host, port=port)
+    except perr.ConnectionFailure:
+        raise MetadataServiceException("Unable to connect to MongoDB server.")
+    database = client[database]
+    return database
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -30,7 +55,8 @@ class DefaultHandler(tornado.web.RequestHandler):
         self.set_header('Content-type', 'application/json')
 
     def data_received(self, chunk):
-        """Abstract method, here to show it exists explicitly. Useful for streaming client"""
+        """Abstract method, here to show it exists explicitly.
+        Useful for streaming client"""
         pass
 
 
@@ -38,7 +64,7 @@ class RunStartHandler(DefaultHandler):
     """Handler for run_start insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
 
-   Methods
+    Methods
     -------
     queryable()
         Identifies whether client provided function is fair game for get()
@@ -52,34 +78,35 @@ class RunStartHandler(DefaultHandler):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.queryables = {'find_run_starts': self.settings['mdsro'].find_run_starts,
-                           'run_start_given_uid': self.settings['mdsro'].run_start_given_uid}
+        self.settings['mdsro'] = mdsro
+        self.settings['mds'] = mds
+        self.queryables = {'find_run_starts': mdsro.find_run_starts,
+                           'run_start_given_uid': mdsro.run_start_given_uid}
+        self.insertables = {'insert_run_start': mds.insert_run_start}
 
     def queryable(self, func):
         if func in self.queryables:
-            return self.queryables[func]
+            return  self.queryables[func]
         else:
-            raise report_error(500, 'Not a valid query routine', func)
+            raise report_error(500, 'Not a valid query routine')
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def get(self):
-        mdsro = self.settings['mdsro'] #MDSRO
+        mdsro = self.settings['mdsro']
         request = utils.unpack_params(self)
         try:
-            func = request['signature']
+             sign = request['signature']
+             func = self.queryable(sign)
         except KeyError:
-            raise report_error(500,
-                               'No valid query function provided!')
+            raise utils._compose_error(500,
+                                       'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise report_error(500,
-                               'A query string must be provided')
-        func = self.queryable(func)
-        print(query)
-        docs = func(**query)
-        utils.return2client(self, docs)
+            raise utils._compose_error(500,
+                                       'A query string must be provided')
+        print(func(query))
+        utils.return2client(self, request)
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -309,3 +336,5 @@ class EventHandler(DefaultHandler):
     @gen.coroutine
     def delete(self):
         raise tornado.web.HTTPError(404)
+
+# TODO: Include capped collection support in the next cycle.
