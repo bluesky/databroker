@@ -92,44 +92,47 @@ class RunStartHandler(DefaultHandler):
         else:
             raise report_error(500, 'Not a valid query routine', func)
 
+    def insertable(self, func):
+        if func in self.insertables:
+            return self.insertables[func]
+        else:
+            raise utils.report_error(500, 'Not a valid insert routine', func)
+
     @tornado.web.asynchronous
     def get(self):
         request = utils.unpack_params(self)
         try:
-             sign = request['signature']
-             func = self.queryable(sign)
+            sign = request['signature']
+            func = self.queryable(sign)
         except KeyError:
-            raise utils._compose_error(500,
-                                       'No valid query function provided!')
+            raise utils.report_error(500,
+                                     'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils._compose_error(500,
-                                       'A query string must be provided')
+            raise utils.report_error(500,
+                                     'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
 
     @tornado.web.asynchronous
     def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, utils.schemas['run_start'])
+        payload = ujson.loads(self.request.body.decode("utf-8"))
         try:
-            result = database.run_start.insert(data)
-        except perr.PyMongoError:
-            raise tornado.web.HTTPError(500,
-                                        status='Unable to insert the document')
-
-        database.run_start.create_index([('uid', pymongo.DESCENDING)],
-                                       unique=True, background=True)
-        database.run_start.create_index([('time', pymongo.DESCENDING),
-                                        ('scan_id', pymongo.DESCENDING)],
-                                        unique=False)
-
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils.return2client(self, data)
+            data = payload.pop('data')
+        except KeyError:
+            raise utils.report_error(500, 'No data provided to insert ')
+        try:
+            sign = payload.pop('signature')
+        except KeyError:
+            raise utils.report_error(500, 'No signature provided for insert')
+        func = self.insertable(sign)
+        try:
+            func(**data)
+        except: # TODO: Add all possible cases that would be raised here
+            raise utils.report_error(500, 'Data cannot be inserted', data)
+        self.write(ujson.dumps({"status": True}))
+        self.finish()
 
     @tornado.web.asynchronous
     def put(self):
