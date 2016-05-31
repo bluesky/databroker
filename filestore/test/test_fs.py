@@ -12,7 +12,7 @@ from numpy.testing import assert_array_equal
 import filestore.fs
 from filestore.core import DatumNotFound
 from .utils import SynHandlerMod, insert_syn_data, insert_syn_data_bulk
-from filestore.utils import install_sentinels
+from filestore.utils import create_test_database
 
 
 @pytest.fixture(params=[0, 1], scope='function')
@@ -22,10 +22,10 @@ def fs(request):
 
     '''
     version = request.param
-    db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
-    test_conf = dict(database=db_name, host='localhost',
-                     port=27017)
-    install_sentinels(test_conf, version)
+    db_name = "fs_testing_disposable_{uid}"
+    test_conf = create_test_database(host='localhost',
+                                     port=27017, version=version,
+                                     db_template=db_name)
     fs = filestore.fs.FileStore(test_conf, version=version)
     fs.register_handler('syn-mod', SynHandlerMod)
 
