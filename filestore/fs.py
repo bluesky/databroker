@@ -126,13 +126,12 @@ class FileStoreRO(object):
 
     def _r_on_miss(self, k):
         col = self._resource_col
-        if self.version == 0:
-            ret = col.find_one({'_id': k})
-        elif self.version == 1:
+        if isinstance(k, six.string_types):
             ret = col.find_one({'uid': k})
         else:
-            raise RuntimeError('{} is not a supported version, must be in'
-                               '{{0, 1}}'.format(self.version))
+            ret = col.find_one({'_id': k})
+        if ret is None:
+            raise RuntimeError('did not find resource {!r}'.format(k))
         return ret
 
     def resource_given_uid(self, uid):
@@ -186,18 +185,20 @@ class FileStoreRO(object):
         if self.__db is None:
             conn = self._connection
             self.__db = conn.get_database(self.config['database'])
-            sentinel = self.__db.get_collection('sentinel')
-            versioned_collection = ['resource', 'datum']
-            for col_name in versioned_collection:
-                val = sentinel.find_one({'collection': col_name})
-                if val is None:
-                    raise RuntimeError('there is no version sentinel for '
-                                       'the {} collection'.format(col_name))
-                if val['version'] != self.version:
-                    raise RuntimeError('DB version {!r} does not match'
-                                       'API version of FS {} for the '
-                                       '{} collection'.format(
-                                           val, self.version, col_name))
+            if self.version > 0:
+                sentinel = self.__db.get_collection('sentinel')
+                versioned_collection = ['resource', 'datum']
+                for col_name in versioned_collection:
+                    val = sentinel.find_one({'collection': col_name})
+                    if val is None:
+                        raise RuntimeError('there is no version sentinel for '
+                                           'the {} collection'.format(col_name)
+                                           )
+                    if val['version'] != self.version:
+                        raise RuntimeError('DB version {!r} does not match'
+                                           'API version of FS {} for the '
+                                           '{} collection'.format(
+                                               val, self.version, col_name))
         return self.__db
 
     @property
@@ -256,16 +257,18 @@ class FileStoreRO(object):
             document returns the externally stored data
 
         """
+        res_in = resource
         resource = self._resource_cache[resource]
 
         h_cache = self._handler_cache
 
         spec = resource['spec']
         handler = self.handler_reg[spec]
-        if self.version == 0:
-            key = (str(resource['_id']), handler.__name__)
-        elif self.version == 1:
+
+        if isinstance(res_in, six.string_types):
             key = (str(resource['uid']), handler.__name__)
+        else:
+            key = (str(resource['_id']), handler.__name__)
 
         try:
             return h_cache[key]
