@@ -16,6 +16,8 @@ loop = tornado.ioloop.IOLoop.instance()
 class MetadataServiceException(Exception):
     pass
 
+# TODO: Client side methods for insert() and find()
+
 
 def db_connect(database, host, port):
     """Helper function to deal with stateful connections to motor.
@@ -88,7 +90,7 @@ class RunStartHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(500, 'Not a valid query routine')
+            raise report_error(500, 'Not a valid query routine', func)
 
     @tornado.web.asynchronous
     def get(self):
@@ -106,9 +108,6 @@ class RunStartHandler(DefaultHandler):
                                        'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
-        #self.write(ujson.dumps(list(docs_gen)))
-        # self.finish()
-        #utils.return2client(self, st(docs_gen))
 
     @tornado.web.asynchronous
     def post(self):
@@ -157,20 +156,40 @@ class EventDescriptorHandler(DefaultHandler):
         Insert a event_descriptor document.Same validation method as bluesky,
         secondary safety net.
     """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        docs = database.event_descriptor.find(query)
-        if not docs:
-            raise tornado.web.HTTPError(500,
-                                        reason='No results found for query')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'descriptor_given_uid': mdsro.descriptor_given_uid,
+                           'descriptor_by_start': mdsro.descriptor_by_start,
+                           'find_descriptors': mdsro.find_descriptors}
+        self.insertables = {'insert_descriptor': mdsrw.insert_descriptor}
+
+    def queryable(self, func):
+        if func in self.queryables:
+            return  self.queryables[func]
         else:
-            utils.return2client(self, docs)
+            raise report_error(500, 'Not a valid query routine', func)
+
 
     @tornado.web.asynchronous
-    @gen.coroutine
+    def get(self):
+        request = utils.unpack_params(self)
+        try:
+             sign = request['signature']
+             func = self.queryable(sign)
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'No valid query function provided!')
+        try:
+            query = request['query']
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'A query string must be provided')
+        docs_gen = func(**query)
+        utils.transmit_list(self, list(docs_gen))
+
+    @tornado.web.asynchronous
     def post(self):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
@@ -216,17 +235,38 @@ class RunStopHandler(DefaultHandler):
         Insert a run_stop document.Same validation method as bluesky, secondary
         safety net.
     """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        docs = database.run_stop.find(query)
-        if not docs:
-            raise report_error(500,
-                               'No results for given query {}'.format(query))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'stop_by_start': mdsro.stop_by_start,
+                           'run_stop_given_uid': mdsro.run_stop_given_uid,
+                           'find_run_stops': mdsro.find_run_stops}
+        self.insertables = {'insert_run_stop': mdsrw.insert_run_stop}
+
+    def queryable(self, func):
+        if func in self.queryables:
+            return  self.queryables[func]
         else:
-            utils.return2client(self, docs)
+            raise report_error(500, 'Not a valid query routine', func)
+
+
+    @tornado.web.asynchronous
+    def get(self):
+        request = utils.unpack_params(self)
+        try:
+             sign = request['signature']
+             func = self.queryable(sign)
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'No valid query function provided!')
+        try:
+            query = request['query']
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'A query string must be provided')
+        docs_gen = func(**query)
+        utils.transmit_list(self, list(docs_gen))
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -280,28 +320,40 @@ class EventHandler(DefaultHandler):
         Insert a event document.Same validation method as bluesky, secondary
         safety net.
     """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        docs = database['event'].find(query)
-        if not docs:
-            raise tornado.web.HTTPError(500,
-                                        status_code='No results for given query' + str(query))
+    def __init__(self, *args, **kwargs):
+        # TODO: Special case get_events_generator/table
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'get_events_generator': mdsro.get_events_generator,
+                           'get_events_table': mdsro.get_events_table,
+                           'find_events': mdsro.find_events}
+        self.insertables = {'insert_descriptor': mdsrw.insert_descriptor,
+                            'bulk_insert_events': mdsrw.bulk_insert_events}
+
+    def queryable(self, func):
+        if func in self.queryables:
+            return  self.queryables[func]
         else:
-            self.write('[')
-            d = next(docs)
-            while True:
-                try:
-                    del(d['_id'])
-                    self.write(ujson.dumps(d))
-                    d = next(docs)
-                    self.write(',')
-                except StopIteration:
-                    break
-            self.write(']')
-        self.finish()
+            raise report_error(500, 'Not a valid query routine', func)
+
+
+    @tornado.web.asynchronous
+    def get(self):
+        request = utils.unpack_params(self)
+        try:
+             sign = request['signature']
+             func = self.queryable(sign)
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'No valid query function provided!')
+        try:
+            query = request['query']
+        except KeyError:
+            raise utils._compose_error(500,
+                                       'A query string must be provided')
+        docs_gen = func(**query)
+        utils.transmit_list(self, list(docs_gen))
 
     @tornado.web.asynchronous
     @gen.coroutine
@@ -336,5 +388,3 @@ class EventHandler(DefaultHandler):
     @gen.coroutine
     def delete(self):
         raise tornado.web.HTTPError(404)
-
-# TODO: Include capped collection support in the next cycle.
