@@ -31,7 +31,7 @@ if __name__ == "__main__":
                         help='mongodb port to connect')
     parser.add_argument('--serviceport', dest='serviceport', type=int,
                         help='port to broadcast from')
-    parser.add_argument('--tz', dest='timezone', type=str,
+    parser.add_argument('--tzone', dest='timezone', type=str,
                         help='timezone of the service env')
 
     args = parser.parse_args()

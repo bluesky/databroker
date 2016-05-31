@@ -53,8 +53,14 @@ def return2client(handler, payload):
                 del(p['_id'])
                 l.append(p)
             handler.write(ujson.dumps(l))
+    elif isinstance(payload, list):
+            handler.write(ujson.dumps(list))
+
     elif isinstance(payload, dict):
-        del(payload['_id'])
+        try:
+            del(payload['_id'])
+        except KeyError:
+            pass
         handler.write(ujson.dumps(list(payload)))
     else:
         handler.write('[')
@@ -73,3 +79,9 @@ def return2client(handler, payload):
 def report_error(code, status, m_str=''):
     fmsg = status + str(m_str)
     raise tornado.web.HTTPError(code, fmsg)
+
+
+def transmit_list(handler, t_list):
+    """Encodes and transmits a list response on the wire"""
+    handler.write(ujson.dumps(t_list))
+    handler.finish()

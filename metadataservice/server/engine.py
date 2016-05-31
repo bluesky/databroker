@@ -78,11 +78,11 @@ class RunStartHandler(DefaultHandler):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.settings['mdsro'] = mdsro
-        self.settings['mds'] = mds
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
         self.queryables = {'find_run_starts': mdsro.find_run_starts,
                            'run_start_given_uid': mdsro.run_start_given_uid}
-        self.insertables = {'insert_run_start': mds.insert_run_start}
+        self.insertables = {'insert_run_start': mdsrw.insert_run_start}
 
     def queryable(self, func):
         if func in self.queryables:
@@ -92,7 +92,6 @@ class RunStartHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        mdsro = self.settings['mdsro']
         request = utils.unpack_params(self)
         try:
              sign = request['signature']
@@ -105,11 +104,13 @@ class RunStartHandler(DefaultHandler):
         except KeyError:
             raise utils._compose_error(500,
                                        'A query string must be provided')
-        print(func(query))
-        utils.return2client(self, request)
+        docs_gen = func(**query)
+        utils.transmit_list(self, list(docs_gen))
+        #self.write(ujson.dumps(list(docs_gen)))
+        # self.finish()
+        #utils.return2client(self, st(docs_gen))
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def post(self):
         database = self.settings['db']
         data = ujson.loads(self.request.body.decode("utf-8"))
@@ -132,7 +133,6 @@ class RunStartHandler(DefaultHandler):
             utils.return2client(self, data)
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def put(self):
         raise tornado.web.HTTPError(404,
                                     status='Not allowed on server')
