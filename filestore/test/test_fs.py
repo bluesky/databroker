@@ -11,7 +11,8 @@ from numpy.testing import assert_array_equal
 
 import filestore.fs
 from filestore.core import DatumNotFound
-from .utils import SynHandlerMod, insert_syn_data, insert_syn_data_bulk
+from .utils import (SynHandlerMod, insert_syn_data, insert_syn_data_bulk,
+                    install_sentinels)
 from filestore.utils import create_test_database
 
 
