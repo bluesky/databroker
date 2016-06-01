@@ -28,7 +28,7 @@ install:
 - conda config --set always_yes true
 - conda update conda --yes
 - conda config --add channels lightsource2
-- conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 boltons humanize doct
+- conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 humanize doct
 - source activate testenv
 - python setup.py install
 - git describe
