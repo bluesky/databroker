@@ -2,17 +2,21 @@ import uuid
 import requests
 import uuid
 import time as ttime
+from subprocess import Popen
+import os
+
 
 testing_config = dict(mongohost='localhost', mongoport=27017,
                       database='mds_test'+str(uuid.uuid4()),
-                      serviceport=9001, tzone='US/Eastern')
+                      serviceport=9009, tzone='US/Eastern')
 
 
 def mds_setup():
     global proc
-    proc = Popen(["python", "startup.py", "--mongohost", "localhost", "--mongoport", 
-           "27017", "--database", "mds_test", "--tzone", "timezone", "--serviceport", 
-           "8899"])
+    f = os.path.dirname(os.path.realpath(__file__))
+    proc = Popen(["python", "../../startup.py", "--mongohost", "localhost", "--mongoport",
+           "27017", "--database", "mds_test", "--tzone", "timezone", "--serviceport",
+           "8899"], cwd=f)
     ttime.sleep(1) # make sure the process is started
     # TODO: Drop the database created using pymongo here!
 
