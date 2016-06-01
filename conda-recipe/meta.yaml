@@ -29,7 +29,6 @@ requirements:
     - numpy
     - pytz
     - jinja2
-    - boltons
     - doct
 
 test:
