@@ -17,7 +17,6 @@ class MetadataServiceException(Exception):
 # TODO: Client side methods for insert() and find()
 
 
-
 class DefaultHandler(tornado.web.RequestHandler):
     """DefaultHandler which takes care of CORS for @hslepicka js gui."""
     @tornado.web.asynchronous
@@ -48,7 +47,11 @@ class RunStartHandler(DefaultHandler):
         Insert a run_start document.Same validation method as bluesky, secondary
         safety net.
     insertable()
-        Identifies whether client provided function is fair game for post()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    Queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -77,12 +80,12 @@ class RunStartHandler(DefaultHandler):
             sign = request['signature']
             func = self.queryable(sign)
         except KeyError:
-            raise utils.report_error(500,
+            raise utils.report_error(400,
                                      'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils.report_error(500,
+            raise utils.report_error(400,
                                      'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
@@ -93,28 +96,27 @@ class RunStartHandler(DefaultHandler):
         try:
             data = payload.pop('data')
         except KeyError:
-            raise utils.report_error(500, 'No data provided to insert ')
+            raise utils.report_error(400, 'No data provided to insert ')
         try:
             sign = payload.pop('signature')
         except KeyError:
-            raise utils.report_error(500, 'No signature provided for insert')
+            raise utils.report_error(400, 'No signature provided for insert')
         func = self.insertable(sign)
         try:
             func(**data)
-        except: # TODO: Add all possible cases that would be raised here
-            raise utils.report_error(500, 'Data cannot be inserted', data)
+        except RuntimeError as err:
+            raise utils.report_error(500, err, data)
         self.write(ujson.dumps({"status": True}))
         self.finish()
 
     @tornado.web.asynchronous
     def put(self):
-        raise tornado.web.HTTPError(404,
+        raise tornado.web.HTTPError(403,
                                     status='Not allowed on server')
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def delete(self):
-        raise tornado.web.HTTPError(404,
+        raise tornado.web.HTTPError(403,
                                     status='Not allowed on server')
 
 
@@ -144,7 +146,7 @@ class EventDescriptorHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(500, 'Not a valid query routine', func)
+            raise report_error(400, 'Not a valid query routine', func)
 
 
     @tornado.web.asynchronous
@@ -154,48 +156,29 @@ class EventDescriptorHandler(DefaultHandler):
              sign = request['signature']
              func = self.queryable(sign)
         except KeyError:
-            raise utils._compose_error(500,
+            raise utils._compose_error(400,
                                        'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils._compose_error(500,
-                                       'A query string must be provided')
+            raise utils.report_error(400,
+                                     'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
 
     @tornado.web.asynchronous
     def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, utils.schemas['descriptor'])
-
-        try:
-            result = database.event_descriptor.insert(data)
-        except perr.PyMongoError:
-            raise tornado.web.HTTPError(500,
-                                        status='Unable to insert the document')
-        database.event_descriptor.create_index([('run_start', pymongo.DESCENDING)],
-                                               unique=False)
-        database.event_descriptor.create_index([('uid', pymongo.DESCENDING)],
-                                               unique=True)
-        database.event_descriptor.create_index([('time', pymongo.DESCENDING)],
-                                               unique=False)
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils.return2client(self, data)
+        pass
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def put(self):
-        raise tornado.web.HTTPError(404,
+        raise tornado.web.HTTPError(403,
                                     status='Not allowed on server')
 
     @tornado.web.asynchronous
     @gen.coroutine
     def delete(self):
-        raise tornado.web.HTTPError(404)
+        raise tornado.web.HTTPError(403, status='Not allowed on server')
 
 
 class RunStopHandler(DefaultHandler):
@@ -233,54 +216,27 @@ class RunStopHandler(DefaultHandler):
              sign = request['signature']
              func = self.queryable(sign)
         except KeyError:
-            raise utils._compose_error(500,
+            raise utils._compose_error(400,
                                        'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils._compose_error(500,
+            raise utils._compose_error(400,
                                        'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        docs = database.run_stop.find({'run_start': data['run_start']})
-        try:
-            res = next(docs)
-            raise tornado.web.HTTPError(500,
-                                        'A run_stop already created for given run_start')
-        except StopIteration:
-            pass
-        jsonschema.validate(data, utils.schemas['run_stop'])
-
-        try:
-            result = database.run_stop.insert(data)
-        except perr.PyMongoError:
-            raise tornado.web.HTTPError(500,
-                                        status='Unable to insert the document')
-        database.run_stop.create_index([('run_start', pymongo.DESCENDING),
-                                        ('uid', pymongo.DESCENDING)],
-                                       unique=True)
-        database.run_stop.create_index([('time', pymongo.DESCENDING)],
-                                       unique=False)
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils.return2client(self, data)
+        pass
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def put(self):
-        raise tornado.web.HTTPError(404)
+        raise tornado.web.HTTPError(403, 'Not allowed in the server')
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def delete(self):
-        raise tornado.web.HTTPError(404)
+        raise tornado.web.HTTPError(403, 'Not allowed in the server')
 
 
 class EventHandler(DefaultHandler):
@@ -310,7 +266,7 @@ class EventHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(500, 'Not a valid query routine', func)
+            raise report_error(400, 'Not a valid query routine', func)
 
 
     @tornado.web.asynchronous
@@ -320,46 +276,24 @@ class EventHandler(DefaultHandler):
              sign = request['signature']
              func = self.queryable(sign)
         except KeyError:
-            raise utils._compose_error(500,
+            raise utils._compose_error(400,
                                        'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils._compose_error(500,
-                                       'A query string must be provided')
+            raise utils.report_error(400,
+                                     'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        if isinstance(data, list):
-            jsonschema.validate(data, utils.schemas['bulk_events'])
-            bulk = database.event.initialize_unordered_bulk_op()
-            for _ in data:
-                if _ is not None:
-                    bulk.insert(_)
-            try:
-                bulk.execute()
-            except pymongo.errors.BulkWriteError as err:
-                raise tornado.web.HTTPError(500, str(err))
-            database.event.create_index([('time', pymongo.DESCENDING),
-                                         ('descriptor', pymongo.DESCENDING)])
-            database.event.create_index([('uid', pymongo.DESCENDING)], unique=True)
-        else:
-            jsonschema.validate(data, utils.schemas['event'])
-            result = database.event.insert(data)
-            if not result:
-                raise tornado.web.HTTPError(500)
+        pass
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def put(self):
-        raise tornado.web.HTTPError(404)
+        raise tornado.web.HTTPError(403, 'Not allowed in the server')
 
     @tornado.web.asynchronous
-    @gen.coroutine
     def delete(self):
-        raise tornado.web.HTTPError(404)
+        raise tornado.web.HTTPError(403, 'Not allowed in the server')
