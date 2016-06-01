@@ -49,7 +49,7 @@ class RunStartHandler(DefaultHandler):
     insertable()
         Identifies whether client provided function name is fair game for post(). If so,
         it returns the appropriate handle from metadatastore
-    Queryable()
+    queryable()
         Identifies whether client provided function name is fair game for get(). If so,
         it returns the appropriate handle from metadatastore
     """
@@ -132,6 +132,12 @@ class EventDescriptorHandler(DefaultHandler):
     post()
         Insert a event_descriptor document.Same validation method as bluesky,
         secondary safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -212,6 +218,12 @@ class RunStopHandler(DefaultHandler):
     post()
         Insert a run_stop document.Same validation method as bluesky, secondary
         safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -290,6 +302,12 @@ class EventHandler(DefaultHandler):
     post()
         Insert a event document.Same validation method as bluesky, secondary
         safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
         # TODO: Special case get_events_generator/table
