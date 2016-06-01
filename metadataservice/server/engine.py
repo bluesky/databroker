@@ -1,8 +1,6 @@
 import tornado.ioloop
 import tornado.web
 from tornado import gen
-import metadatastore.commands as mds
-import pymongo
 import pymongo.errors as perr
 
 import ujson
@@ -18,32 +16,6 @@ class MetadataServiceException(Exception):
 
 # TODO: Client side methods for insert() and find()
 
-
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to motor.
-    Connection established lazily.
-
-    Parameters
-    ----------
-    database: str
-        The name of database pymongo creates and/or connects
-    host: str
-           Name/address of the server that mongo daemon lives
-    port: int
-        Port num of the server
-
-    Returns pymongo.MotorDatabase
-    -------
-        Async server object which comes in handy as server has to juggle
-        multiple clientsv and makes no difference for a single client compared
-        to pymongo.
-       """
-    try:
-        client = pymongo.MongoClient(host=host, port=port)
-    except perr.ConnectionFailure:
-        raise MetadataServiceException("Unable to connect to MongoDB server.")
-    database = client[database]
-    return database
 
 
 class DefaultHandler(tornado.web.RequestHandler):
