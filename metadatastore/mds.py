@@ -4,7 +4,6 @@ from __future__ import (absolute_import, division, print_function,
 import six
 import pymongo
 from pymongo import MongoClient
-import boltons.cacheutils
 from . import core
 from . import core_v0
 
