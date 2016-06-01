@@ -148,6 +148,11 @@ class EventDescriptorHandler(DefaultHandler):
         else:
             raise report_error(400, 'Not a valid query routine', func)
 
+    def insertable(self, func):
+        if func in self.insertables:
+            return self.insertables[func]
+        else:
+            raise utils.report_error(500, 'Not a valid insert routine', func)
 
     @tornado.web.asynchronous
     def get(self):
@@ -168,7 +173,22 @@ class EventDescriptorHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def post(self):
-        pass
+        payload = ujson.loads(self.request.body.decode("utf-8"))
+        try:
+            data = payload.pop('data')
+        except KeyError:
+            raise utils.report_error(400, 'No data provided to insert ')
+        try:
+            sign = payload.pop('signature')
+        except KeyError:
+            raise utils.report_error(400, 'No signature provided for insert')
+        func = self.insertable(sign)
+        try:
+            func(**data)
+        except RuntimeError as err:
+            raise utils.report_error(500, err, data)
+        self.write(ujson.dumps({"status": True}))
+        self.finish()
 
     @tornado.web.asynchronous
     def put(self):
@@ -208,6 +228,11 @@ class RunStopHandler(DefaultHandler):
         else:
             raise report_error(500, 'Not a valid query routine', func)
 
+    def insertable(self, func):
+        if func in self.insertables:
+            return self.insertables[func]
+        else:
+            raise utils.report_error(500, 'Not a valid insert routine', func)
 
     @tornado.web.asynchronous
     def get(self):
@@ -228,7 +253,22 @@ class RunStopHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def post(self):
-        pass
+        payload = ujson.loads(self.request.body.decode("utf-8"))
+        try:
+            data = payload.pop('data')
+        except KeyError:
+            raise utils.report_error(400, 'No data provided to insert ')
+        try:
+            sign = payload.pop('signature')
+        except KeyError:
+            raise utils.report_error(400, 'No signature provided for insert')
+        func = self.insertable(sign)
+        try:
+            func(**data)
+        except RuntimeError as err:
+            raise utils.report_error(500, err, data)
+        self.write(ujson.dumps({"status": True}))
+        self.finish()
 
     @tornado.web.asynchronous
     def put(self):
