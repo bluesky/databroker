@@ -18,8 +18,10 @@ install:
   - source activate testenv
   - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
   - pip install coveralls codecov mongoquery
+  
 
 script:
+  - cd ~/metadataservice
   - py.test -sv
 
 after_success:
