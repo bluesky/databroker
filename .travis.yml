@@ -27,7 +27,6 @@ install:
   
 
 script:
-  - cd ~/metadataservice
   - py.test -sv
 
 after_success:
