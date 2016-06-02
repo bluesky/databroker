@@ -10,7 +10,6 @@ python:
 
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
-  - git clone https://github.com/nsls-ii/metadataservice.git
   - . ~/scripts/install-miniconda.sh ~/
 
 install:
