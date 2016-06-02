@@ -14,7 +14,7 @@ before_install:
   - . ~/scripts/install-miniconda.sh ~/
 
 install:
-  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson tornado jsonschema requests pyyaml pytz pytest doct -c lightsource2
+  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz pytest doct -c lightsource2
   - source activate testenv
   - 'pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore'
   - pip install coveralls codecov mongoquery
