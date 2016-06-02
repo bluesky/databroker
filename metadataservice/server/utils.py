@@ -60,10 +60,11 @@ def return2client(handler, payload):
         handler.write(']')
     handler.finish()
 
+
 def report_error(code, status, m_str=''):
     """Compose and raise an HTTPError message"""
-    fmsg = status + str(m_str)
-    raise tornado.web.HTTPError(code, fmsg)
+    fmsg = str(status) + ' ' + str(m_str)
+    raise tornado.web.HTTPError(status_code=code, reason=fmsg)
 
 
 def transmit_list(handler, t_list):

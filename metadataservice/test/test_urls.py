@@ -7,6 +7,7 @@ from time import sleep, time
 class TestUrls:
     def setup_class(self):
         mds_setup()
+        print('Started server for test')
         self.url_dict = {'run_start': 'find_run_starts',
                           'run_stop': 'find_run_stops',
                           'event': 'find_events',
@@ -35,3 +36,4 @@ class TestUrls:
 
     def teardown_class(self):
         mds_teardown()
+        print('Killed server after test')

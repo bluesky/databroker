@@ -18,10 +18,12 @@ def mds_setup():
                   "--mongoport", str(testing_config['mongoport']), "--database", testing_config['database'],
                   "--tzone", testing_config['tzone'], "--serviceport",
            str(testing_config['serviceport'])], cwd=f)
-    ttime.sleep(1) # make sure the process is started
+    print('Started the server with configuration..:{}'.format(testing_config))
+    ttime.sleep(5) # make sure the process is started
 
 def mds_teardown():
     proc2 = Popen(['kill', '-9', str(proc.pid)])
-    ttime.sleep(1) # make sure the process is killed
+    ttime.sleep(5) # make sure the process is killed
     conn = MongoClient(host=testing_config['mongohost'], port=testing_config['mongoport'])
     conn.drop_database(testing_config['database'])
+    ttime.sleep(2)

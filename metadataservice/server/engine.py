@@ -104,7 +104,7 @@ class RunStartHandler(DefaultHandler):
         func = self.insertable(sign)
         try:
             func(**data)
-        except RuntimeError as err:
+        except (RuntimeError, TypeError, KeyError) as err:
             utils.report_error(500, err, data)
         self.write(ujson.dumps({"status": True}))
         self.finish()
@@ -189,7 +189,7 @@ class EventDescriptorHandler(DefaultHandler):
         func = self.insertable(sign)
         try:
             func(**data)
-        except RuntimeError as err:
+        except (RuntimeError, TypeError, KeyError) as err:
             raise utils.report_error(500, err, data)
         self.write(ujson.dumps({"status": True}))
         self.finish()
@@ -274,7 +274,7 @@ class RunStopHandler(DefaultHandler):
         func = self.insertable(sign)
         try:
             func(**data)
-        except RuntimeError as err:
+        except  (RuntimeError, TypeError, KeyError) as err:
             raise utils.report_error(500, err, data)
         self.write(ujson.dumps({"status": True}))
         self.finish()
@@ -307,14 +307,13 @@ class EventHandler(DefaultHandler):
         it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
-        # TODO: Special case get_events_generator/table
         super().__init__(*args, **kwargs)
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'get_events_generator': mdsro.get_events_generator,
                            'get_events_table': mdsro.get_events_table,
                            'find_events': mdsro.find_events}
-        self.insertables = {'insert_descriptor': mdsrw.insert_descriptor,
+        self.insertables = {'insert_event': mdsrw.insert_event,
                             'bulk_insert_events': mdsrw.bulk_insert_events}
 
     def queryable(self, func):
@@ -323,13 +322,18 @@ class EventHandler(DefaultHandler):
         else:
             raise utils.report_error(400, 'Not a valid query routine', func)
 
+    def insertable(self, func):
+        if func in self.insertables:
+            return self.insertables[func]
+        else:
+            raise utils.report_error(500, 'Not a valid insert routine', func)
 
     @tornado.web.asynchronous
     def get(self):
         request = utils.unpack_params(self)
         try:
-             sign = request['signature']
-             func = self.queryable(sign)
+            sign = request['signature']
+            func = self.queryable(sign)
         except KeyError:
             raise utils._compose_error(400,
                                        'No valid query function provided!')
@@ -343,7 +347,22 @@ class EventHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def post(self):
-        pass
+        payload = ujson.loads(self.request.body.decode("utf-8"))
+        try:
+            data = payload.pop('data')
+        except KeyError:
+            raise utils.report_error(400, 'No data provided to insert ')
+        try:
+            sign = payload.pop('signature')
+        except KeyError:
+            raise utils.report_error(400, 'No signature provided for insert')
+        func = self.insertable(sign)
+        try:
+            func(**data)
+        except (RuntimeError, TypeError, KeyError) as err:
+            print('gotcha')
+            utils.report_error(500, err)
+
 
     @tornado.web.asynchronous
     def put(self):
