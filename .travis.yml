@@ -11,19 +11,14 @@ python:
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
-  - export MDS_HOST=localhost
-  - export MDS_DATABASE=test
-  - export MDS_TIMEZONE=US/Eastern
-  - mkdir -p /home/travis/.config/metadatastore
-  - 'echo ''port: 27017'' > /home/travis/.config/metadatastore/connection.yml' 
+
 install:
   - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson tornado jsonschema requests pyyaml pytz pytest doct metadatastore -c lightsource2
   - source activate testenv
-  - 
   - pip install coveralls codecov mongoquery
 
 script:
-  - python startup.py --mongohost localhost --mongoport 27017 --database mds_test --serviceport 7777
+  - py.test -sv
 
 after_success:
   - coveralls
