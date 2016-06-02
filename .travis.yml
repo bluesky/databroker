@@ -10,11 +10,14 @@ python:
 
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
-  - . ~/scripts/install-miniconda.sh
+  - git clone https://github.com/nsls-ii/metadatastore.git
+  - . ~/scripts/install-miniconda.sh ~/
 
 install:
-  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson tornado jsonschema requests pyyaml pytz pytest doct metadatastore -c lightsource2
+  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson tornado jsonschema requests pyyaml pytz pytest doct -c lightsource2
   - source activate testenv
+  - cd ~/metadatastore
+  - python setup.py install
   - pip install coveralls codecov mongoquery
 
 script:
