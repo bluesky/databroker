@@ -1,22 +1,6 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import tornado.web
-from pkg_resources import resource_filename as rs_fn
 import ujson
 import pymongo.cursor
-
-
-SCHEMA_PATH = 'schema'
-SCHEMA_NAMES = {'run_start': 'run_start.json',
-                'run_stop': 'run_stop.json',
-                'event': 'event.json',
-                'bulk_events': 'bulk_events.json',
-                'descriptor': 'event_descriptor.json'}
-fn = '{}/{{}}'.format(SCHEMA_PATH)
-schemas = {}
-for name, filename in SCHEMA_NAMES.items():
-    with open(rs_fn('metadataservice', resource_name=fn.format(filename))) as fin:
-        schemas[name] = ujson.load(fin)
 
 
 def unpack_params(handler):
@@ -77,6 +61,7 @@ def return2client(handler, payload):
     handler.finish()
 
 def report_error(code, status, m_str=''):
+    """Compose and raise an HTTPError message"""
     fmsg = status + str(m_str)
     raise tornado.web.HTTPError(code, fmsg)
 

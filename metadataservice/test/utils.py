@@ -14,9 +14,10 @@ testing_config = dict(mongohost='localhost', mongoport=27017,
 def mds_setup():
     global proc
     f = os.path.dirname(os.path.realpath(__file__))
-    proc = Popen(["python", "../../startup.py", "--mongohost", "localhost", "--mongoport",
-           "27017", "--database", "mds_test", "--tzone", "timezone", "--serviceport",
-           "8899"], cwd=f)
+    proc = Popen(["python", "../../startup.py", "--mongohost", testing_config["mongohost"],
+                  "--mongoport", str(testing_config['mongoport']), "--database", testing_config['database'],
+                  "--tzone", testing_config['tzone'], "--serviceport",
+           str(testing_config['serviceport'])], cwd=f)
     ttime.sleep(1) # make sure the process is started
     # TODO: Drop the database created using pymongo here!
 

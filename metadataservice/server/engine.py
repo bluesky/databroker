@@ -65,13 +65,13 @@ class RunStartHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(500, 'Not a valid query routine', func)
+            utils.report_error(500, 'Not a valid query routine', func)
 
     def insertable(self, func):
         if func in self.insertables:
             return self.insertables[func]
         else:
-            raise utils.report_error(500, 'Not a valid insert routine', func)
+            utils.report_error(400, 'Not a valid insert routine', func)
 
     @tornado.web.asynchronous
     def get(self):
@@ -80,13 +80,13 @@ class RunStartHandler(DefaultHandler):
             sign = request['signature']
             func = self.queryable(sign)
         except KeyError:
-            raise utils.report_error(400,
-                                     'No valid query function provided!')
+            utils.report_error(400,
+                               'No valid query function provided!')
         try:
             query = request['query']
         except KeyError:
-            raise utils.report_error(400,
-                                     'A query string must be provided')
+            utils.report_error(400,
+                               'A query string must be provided')
         docs_gen = func(**query)
         utils.transmit_list(self, list(docs_gen))
 
@@ -96,28 +96,26 @@ class RunStartHandler(DefaultHandler):
         try:
             data = payload.pop('data')
         except KeyError:
-            raise utils.report_error(400, 'No data provided to insert ')
+            utils.report_error(400, 'No data provided to insert ')
         try:
             sign = payload.pop('signature')
         except KeyError:
-            raise utils.report_error(400, 'No signature provided for insert')
+            utils.report_error(400, 'No signature provided for insert')
         func = self.insertable(sign)
         try:
             func(**data)
         except RuntimeError as err:
-            raise utils.report_error(500, err, data)
+            utils.report_error(500, err, data)
         self.write(ujson.dumps({"status": True}))
         self.finish()
 
     @tornado.web.asynchronous
     def put(self):
-        raise tornado.web.HTTPError(403,
-                                    status='Not allowed on server')
+        utils.report_error(403, 'Not allowed on server')
 
     @tornado.web.asynchronous
     def delete(self):
-        raise tornado.web.HTTPError(403,
-                                    status='Not allowed on server')
+        utils.report_error(403, 'Not allowed on server')
 
 
 class EventDescriptorHandler(DefaultHandler):
@@ -144,7 +142,7 @@ class EventDescriptorHandler(DefaultHandler):
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'descriptor_given_uid': mdsro.descriptor_given_uid,
-                           'descriptor_by_start': mdsro.descriptor_by_start,
+                           'descriptors_by_start': mdsro.descriptors_by_start,
                            'find_descriptors': mdsro.find_descriptors}
         self.insertables = {'insert_descriptor': mdsrw.insert_descriptor}
 
@@ -152,7 +150,7 @@ class EventDescriptorHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(400, 'Not a valid query routine', func)
+            utils.report_error(400, 'Not a valid query routine', func)
 
     def insertable(self, func):
         if func in self.insertables:
@@ -198,13 +196,12 @@ class EventDescriptorHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def put(self):
-        raise tornado.web.HTTPError(403,
-                                    status='Not allowed on server')
+        utils.report_error(403, status='Not allowed on server')
 
     @tornado.web.asynchronous
     @gen.coroutine
     def delete(self):
-        raise tornado.web.HTTPError(403, status='Not allowed on server')
+        utils.report_error(403, status='Not allowed on server')
 
 
 class RunStopHandler(DefaultHandler):
@@ -238,7 +235,7 @@ class RunStopHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(500, 'Not a valid query routine', func)
+            raise utils.report_error(500, 'Not a valid query routine', func)
 
     def insertable(self, func):
         if func in self.insertables:
@@ -284,11 +281,11 @@ class RunStopHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def put(self):
-        raise tornado.web.HTTPError(403, 'Not allowed in the server')
+        utils.report_error(403, 'Not allowed in the server')
 
     @tornado.web.asynchronous
     def delete(self):
-        raise tornado.web.HTTPError(403, 'Not allowed in the server')
+        utils.report_error(403, 'Not allowed in the server')
 
 
 class EventHandler(DefaultHandler):
@@ -324,7 +321,7 @@ class EventHandler(DefaultHandler):
         if func in self.queryables:
             return  self.queryables[func]
         else:
-            raise report_error(400, 'Not a valid query routine', func)
+            raise utils.report_error(400, 'Not a valid query routine', func)
 
 
     @tornado.web.asynchronous
@@ -350,8 +347,8 @@ class EventHandler(DefaultHandler):
 
     @tornado.web.asynchronous
     def put(self):
-        raise tornado.web.HTTPError(403, 'Not allowed in the server')
+        utils.report_error(403, 'Not allowed in the server')
 
     @tornado.web.asynchronous
     def delete(self):
-        raise tornado.web.HTTPError(403, 'Not allowed in the server')
+        utils.report_error(403, 'Not allowed in the server')
