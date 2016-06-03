@@ -16,7 +16,12 @@ class TestUrls:
         self.port=testing_config['serviceport']
         self.base_url = 'http://{}:{}/'.format(self.host, self.port)
 
-    def test_smoke_urls(self):
+    def test_run_start(self):
+        rs = dict(time=time(), scan_id=1, beamline_id='example', uid=str(uuid.uuid4()))
+        url = self.base_url + 'run_start'
+        payload = dict(data=rs, signature='insert_run_start')
+        r = requests.post(url, data = ujson.dumps(payload))
+        r.raise_for_status()
         trans_dict = dict(query={}, signature='find_run_start')
         for k, v in self.url_dict.items():
             url = self.base_url + k
@@ -24,12 +29,6 @@ class TestUrls:
             r = requests.get(url, params=ujson.dumps(message))
             r.raise_for_status()
 
-    def test_run_start(self):
-        rs = dict(time=time(), scan_id=1, beamline_id='example', uid=str(uuid.uuid4()))
-        url = self.base_url + 'run_start'
-        payload = dict(data=rs, signature='insert_run_start')
-        r = requests.post(url, data = ujson.dumps(payload))
-        r.raise_for_status()
 
     def test_run_stop(self):
         pass
