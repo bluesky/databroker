@@ -35,7 +35,6 @@ def fs(request):
         fs._connection.drop_database(db_name)
 
     request.addfinalizer(delete_dm)
-
     return fs
 
 
@@ -125,3 +124,8 @@ def test_read_old_in_new(fs_v01):
         data = fs1.retrieve(r_id)
         known_data = np.mod(np.arange(np.prod(shape)), j + 1).reshape(shape)
         assert_array_equal(data, known_data)
+
+
+def test_double_sentinel(fs):
+    with pytest.raises(RuntimeError):
+        install_sentinels(fs.config, fs.version)
