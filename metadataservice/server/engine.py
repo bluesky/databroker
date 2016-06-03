@@ -11,9 +11,6 @@ from metadataservice.server import utils
 loop = tornado.ioloop.IOLoop.instance()
 
 
-class MetadataServiceException(Exception):
-    pass
-
 # TODO: Client side methods for insert() and find()
 
 
@@ -33,26 +30,29 @@ class DefaultHandler(tornado.web.RequestHandler):
         pass
 
     def queryable(self, func):
-        if func in self.queryables:
-            return  self.queryables[func]
-        else:
-            utils.report_error(500, 'Not a valid query routine', func)
+        try:
+            return self.queryables[func]
+        except KeyError as err:
+            utils.report_error(500, 'Provided query method {} is not supported'.format(func))
 
     def insertable(self, func):
-        if func in self.insertables:
+        try:
             return self.insertables[func]
-        else:
-            utils.report_error(400, 'Not a valid insert routine', func)
+        except KeyError as err:
+            utils.report_error(500, 'Not a valid insert routine', func)
 
     @tornado.web.asynchronous
     def get(self):
         request = utils.unpack_params(self)
         try:
             sign = request['signature']
-            func = self.queryable(sign)
         except KeyError:
             utils.report_error(400,
-                               'No valid query function provided!')
+                               'No valid signature function provided!')
+        try:
+            func = self.queryable(sign)
+        except AttributeError as err:
+            utils.report_error(500, err)
         try:
             query = request['query']
         except KeyError:
@@ -72,7 +72,10 @@ class DefaultHandler(tornado.web.RequestHandler):
             sign = payload.pop('signature')
         except KeyError:
             utils.report_error(400, 'No signature provided for insert')
-        func = self.insertable(sign)
+        try:
+            func = self.insertable(sign)
+        except AttributeError as err:
+            utils.report_error(500, err)
         try:
             func(**data)
         except (RuntimeError, TypeError, KeyError) as err:
@@ -173,6 +176,7 @@ class RunStopHandler(DefaultHandler):
                            'run_stop_given_uid': mdsro.run_stop_given_uid,
                            'find_run_stops': mdsro.find_run_stops}
         self.insertables = {'insert_run_stop': mdsrw.insert_run_stop}
+
 
 class EventHandler(DefaultHandler):
     """Handler for event insert and query operations.
