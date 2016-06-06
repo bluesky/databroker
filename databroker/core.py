@@ -204,7 +204,7 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
                 yield ev
 
 
-def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
+def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
               convert_times=True, timezone=None, handler_registry=None,
               handler_overrides=None):
     """
@@ -271,10 +271,11 @@ def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
 
         # shim for back-compat with old data that has no 'primary' descriptor
         if not any(d for d in descriptors if d.get('name') == 'primary'):
-            name = None
+            stream_name = None
 
         for descriptor in descriptors:
-            if name is not None and name != descriptor.get('name'):
+            if ((stream_name is not None) and
+                    (stream_name != descriptor.get('name'))):
                 continue
             is_external = _external_keys(descriptor)
             objs_config = descriptor.get('configuration', {}).values()
@@ -499,7 +500,7 @@ def get_images(fs, headers, name, handler_registry=None,
         mapping spec names (strings) to handlers (callable classes)
     handler_override : callable class, optional
         overrides registered handlers
-        
+
 
     Example
     -------
