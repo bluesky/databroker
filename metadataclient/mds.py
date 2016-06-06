@@ -59,7 +59,30 @@ class MDSRO:
         run_start = doc.Document('RunStart', run_start)
         run_start_cache[run_start['uid']] = run_start
         return run_start
-    
+
+    def _cache_run_start(self, run_stop, run_stop_cache):
+        """De-reference and cache a RunStart document
+
+        The de-referenced Document is cached against the
+        ObjectId and the uid -> ObjectID mapping is stored.
+
+        Parameters
+        ----------
+        run_start : dict
+            raw pymongo dictionary. This is expected to have
+            an entry `_id` with the ObjectId used by mongo.
+
+        Returns
+        -------
+        run_start : doc.Document
+            Document instance for this RunStart document.
+            The ObjectId has been stripped.
+        """
+        run_stop = dict(run_stop)
+        run_stop = doc.Document('RunStop', run_stop)
+        run_stop_cache[run_stop['uid']] = run_stop
+        return run_stop
+
     def doc_or_uid_to_uid(self, doc_or_uid):
         """Given Document or uid return the uid
 
@@ -95,7 +118,7 @@ class MDSRO:
         return dict(query=None, signature=None)
 
     def run_start_given_uid(self, uid):
-        uid = self.doc_or_uid_to_uid(uid) 
+        uid = self.doc_or_uid_to_uid(uid)
         try:
             return self._RUN_START_CACHE[uid]
         except KeyError:
@@ -122,7 +145,28 @@ class MDSRO:
         return self._cache_run_stop(run_stop=response,
                                     self._RUN_STOP_CACHE)
 
+    def descriptor_given_uid(self, uid):
+        uid = self.doc_or_uid_to_uid(uid)
+        try:
+            return self.DESCRIPTOR_CACHE[uid]
+        except KeyError:
+            pass
+        params = self.queryfactory(query={'uid': uid},
+                                   signature='run_start_given_uid')
+        r = requests.get(self._desc_url, params=json.dumps(params))
+        r.raise_for_status()
+        response = r.json()
+        return self._cache_descriptor(run_stop=response,
+                                      self._DESCRIPTOR_CACHE)
 
+
+    def stop_by_start(self, run_start):
+        uid = self.doc_or_uid_to_uid()
+        params = self.queryfactory(query={'run_start': uid},
+                                   signature='stop_by_start')
+        r = requests.get(self._stop_url, params=json.dumps(params))
+        resp = r.json()
+        return self._cache_run_stop(resp, self._RUN_STOP_CACHE)
 
 
 class MDS(MDSRO):
