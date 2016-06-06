@@ -97,7 +97,7 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-def get_events(mds, fs, headers, fields=None, name=None, fill=False,
+def get_events(mds, fs, headers, fields=None, stream_name=None, fill=False,
                handler_registry=None, handler_overrides=None, plugins=None,
                **kwargs):
     """
@@ -111,7 +111,7 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
-    name : string, optional
+    stream_name : string, optional
         Get events from only one "event stream" with this name. If None
         (default) get events from all event streams.
     fill : bool, optional
@@ -161,7 +161,8 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
         start = header['start']
         stop = header.get('stop', {})
         for descriptor in header['descriptors']:
-            if name is not None and name != descriptor.get('name'):
+            descriptor_name = descriptor.get('name')
+            if stream_name is not None and stream_name != descriptor_name:
                 continue
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
