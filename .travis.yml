@@ -1,0 +1,34 @@
+language: python
+sudo: false
+
+services:
+  - mongodb
+
+addons:
+  apt:
+    sources:
+    - mongodb-3.2-precise
+    packages:
+    - mongodb-org-server
+
+python:
+  - 3.4
+  - 3.5
+
+before_install:
+  - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
+  - . ~/scripts/install-miniconda.sh ~/
+
+install:
+  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz pytest doct -c lightsource2
+  - source activate testenv
+  - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
+  - pip install coveralls codecov mongoquery
+  
+
+script:
+  - py.test -sv
+
+after_success:
+  - coveralls
+  - codecov

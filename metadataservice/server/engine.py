@@ -1,10 +1,6 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 import tornado.ioloop
 import tornado.web
 from tornado import gen
-
-import pymongo
 import pymongo.errors as perr
 
 import ujson
@@ -12,42 +8,10 @@ import jsonschema
 
 from metadataservice.server import utils
 
-# TODO: Write tests specifically for the server side(existing ones are garbage!)
-# TODO: Add indexing to all collections!
-
-CACHE_SIZE = 100000
 loop = tornado.ioloop.IOLoop.instance()
 
 
-class MetadataServiceException(Exception):
-    pass
-
-
-def db_connect(database, host, port):
-    """Helper function to deal with stateful connections to motor.
-    Connection established lazily.
-
-    Parameters
-    ----------
-    database: str
-        The name of database pymongo creates and/or connects
-    host: str
-        Name/address of the server that mongo daemon lives
-    port: int
-        Port num of the server
-
-    Returns pymongo.MotorDatabase
-    -------
-        Async server object which comes in handy as server has to juggle multiple clients
-        and makes no difference for a single client compared to pymongo
-    """
-
-    try:
-        client = pymongo.MongoClient(host=host, port=port)
-    except perr.ConnectionFailure:
-        raise MetadataServiceException("Unable to connect to MongoDB server. Make sure Mongo is up and running")
-    database = client[database]
-    return database
+# TODO: Client side methods for insert() and find()
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -61,75 +25,100 @@ class DefaultHandler(tornado.web.RequestHandler):
         self.set_header('Content-type', 'application/json')
 
     def data_received(self, chunk):
-        """Abstract method, here to show it exists explicitly. Useful for streaming client"""
+        """Abstract method, here to show it exists explicitly.
+        Useful for streaming client"""
         pass
+
+    def queryable(self, func):
+        try:
+            return self.queryables[func]
+        except KeyError as err:
+            utils.report_error(500, 'Provided query method {} is not supported'.format(func))
+
+    def insertable(self, func):
+        try:
+            return self.insertables[func]
+        except KeyError as err:
+            utils.report_error(500, 'Not a valid insert routine', func)
+
+    @tornado.web.asynchronous
+    def get(self):
+        request = utils.unpack_params(self)
+        try:
+            sign = request['signature']
+        except KeyError:
+            utils.report_error(400,
+                               'No valid signature function provided!')
+        try:
+            func = self.queryable(sign)
+        except AttributeError as err:
+            utils.report_error(500, err)
+        try:
+            query = request['query']
+        except KeyError:
+            utils.report_error(400,
+                               'A query string must be provided')
+        docs_gen = func(**query)
+        utils.transmit_list(self, list(docs_gen))
+
+    @tornado.web.asynchronous
+    def post(self):
+        payload = ujson.loads(self.request.body.decode("utf-8"))
+        try:
+            data = payload.pop('data')
+        except KeyError:
+            utils.report_error(400, 'No data provided to insert ')
+        try:
+            sign = payload.pop('signature')
+        except KeyError:
+            utils.report_error(400, 'No signature provided for insert')
+        try:
+            func = self.insertable(sign)
+        except AttributeError as err:
+            utils.report_error(500, err)
+        try:
+            func(**data)
+        except (RuntimeError, TypeError, KeyError) as err:
+            utils.report_error(500, err, data)
+        self.write(ujson.dumps({"status": True}))
+        self.finish()
+
+    @tornado.web.asynchronous
+    def put(self):
+        utils.report_error(403, 'Not allowed on server')
+
+    @tornado.web.asynchronous
+    def delete(self):
+        utils.report_error(403, 'Not allowed on server')
 
 
 class RunStartHandler(DefaultHandler):
     """Handler for run_start insert and query operations.
     Uses traditional RESTful lingo. get for querying and post for inserts
 
-   Methods
+    Methods
     -------
+    queryable()
+        Identifies whether client provided function is fair game for get()
     get()
-        Query run_start documents. Query params are jsonified for type preservation
+        Query run_start documents.
     post()
         Insert a run_start document.Same validation method as bluesky, secondary
         safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        _id = query.pop('_id', None)
-        num = query.pop('num', None)
-        if _id:
-            raise tornado.web.HTTPError(500, 'No ObjectId based search supported')
-        if num:
-            docs = database.run_start.find().sort('time', direction=pymongo.DESCENDING).limit(num)
-        else:
-            docs = database.run_start.find(query).sort('time', direction=pymongo.DESCENDING)
-        if not docs:
-            raise tornado.web.HTTPError(500, reason='No results found for query')
-        else:
-            utils.return2client(self, docs)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, utils.schemas['run_start'])
-        try:
-            result = database.run_start.insert(data)
-        except perr.PyMongoError:
-            raise tornado.web.HTTPError(500,
-                                        status='Unable to insert the document')
-
-        database.run_start.create_index([('uid', pymongo.DESCENDING)],
-                                       unique=True, background=True)
-        database.run_start.create_index([('time', pymongo.DESCENDING),
-                                        ('scan_id', pymongo.DESCENDING)],
-                                        unique=False)
-
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils.return2client(self, data)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def put(self):
-        raise tornado.web.HTTPError(404,
-                                    status='Not allowed on server')
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def delete(self):
-        raise tornado.web.HTTPError(404,
-                                    status='Not allowed on server')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'find_run_starts': mdsro.find_run_starts,
+                           'run_start_given_uid': mdsro.run_start_given_uid}
+        self.insertables = {'insert_run_start': mdsrw.insert_run_start}
 
 
 class EventDescriptorHandler(DefaultHandler):
@@ -139,56 +128,26 @@ class EventDescriptorHandler(DefaultHandler):
     Methods
     -------
     get()
-        Query event_descriptor documents. Get params are json encoded in order to preserve type
+        Query event_descriptor documents. Get params are json encoded in order
+        to preserve type
     post()
-        Insert a event_descriptor document.Same validation method as bluesky, secondary
-        safety net.
+        Insert a event_descriptor document.Same validation method as bluesky,
+        secondary safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        docs = database.event_descriptor.find(query)
-        if not docs:
-            raise tornado.web.HTTPError(500,
-                                        reason='No results found for query')
-        else:
-            utils.return2client(self, docs)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        jsonschema.validate(data, utils.schemas['descriptor'])
-
-        try:
-            result = database.event_descriptor.insert(data)
-        except perr.PyMongoError:
-            raise tornado.web.HTTPError(500,
-                                        status='Unable to insert the document')
-        database.event_descriptor.create_index([('run_start', pymongo.DESCENDING)],
-                                               unique=False)
-        database.event_descriptor.create_index([('uid', pymongo.DESCENDING)],
-                                               unique=True)
-        database.event_descriptor.create_index([('time', pymongo.DESCENDING)],
-                                               unique=False)
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils.return2client(self, data)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def put(self):
-        raise tornado.web.HTTPError(404,
-                                    status='Not allowed on server')
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def delete(self):
-        raise tornado.web.HTTPError(404)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'descriptor_given_uid': mdsro.descriptor_given_uid,
+                           'descriptors_by_start': mdsro.descriptors_by_start,
+                           'find_descriptors': mdsro.find_descriptors}
+        self.insertables = {'insert_descriptor': mdsrw.insert_descriptor}
 
 
 class RunStopHandler(DefaultHandler):
@@ -202,57 +161,21 @@ class RunStopHandler(DefaultHandler):
     post()
         Insert a run_stop document.Same validation method as bluesky, secondary
         safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        docs = database.run_stop.find(query)
-        if not docs:
-            raise tornado.web.HTTPError(500,
-                                        'No results for given query' + str(query))
-        else:
-            utils.return2client(self, docs)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        docs = database.run_stop.find({'run_start': data['run_start']})
-        try:
-            res = next(docs)
-            raise tornado.web.HTTPError(500,
-                                        'A run_stop already created for given run_start')
-        except StopIteration:
-            pass
-        jsonschema.validate(data, utils.schemas['run_stop'])
-
-        try:
-            result = database.run_stop.insert(data)
-        except perr.PyMongoError:
-            raise tornado.web.HTTPError(500,
-                                        status='Unable to insert the document')
-        database.run_stop.create_index([('run_start', pymongo.DESCENDING),
-                                        ('uid', pymongo.DESCENDING)],
-                                       unique=True)
-        database.run_stop.create_index([('time', pymongo.DESCENDING)],
-                                       unique=False)
-        if not result:
-            raise tornado.web.HTTPError(500)
-        else:
-            utils.return2client(self, data)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def put(self):
-        raise tornado.web.HTTPError(404)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def delete(self):
-        raise tornado.web.HTTPError(404)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'stop_by_start': mdsro.stop_by_start,
+                           'run_stop_given_uid': mdsro.run_stop_given_uid,
+                           'find_run_stops': mdsro.find_run_stops}
+        self.insertables = {'insert_run_stop': mdsrw.insert_run_stop}
 
 
 class EventHandler(DefaultHandler):
@@ -266,62 +189,19 @@ class EventHandler(DefaultHandler):
     post()
         Insert a event document.Same validation method as bluesky, secondary
         safety net.
+    insertable()
+        Identifies whether client provided function name is fair game for post(). If so,
+        it returns the appropriate handle from metadatastore
+    queryable()
+        Identifies whether client provided function name is fair game for get(). If so,
+        it returns the appropriate handle from metadatastore
     """
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def get(self):
-        database = self.settings['db']
-        query = utils.unpack_params(self)
-        docs = database['event'].find(query)
-        if not docs:
-            raise tornado.web.HTTPError(500,
-                                        status_code='No results for given query' + str(query))
-        else:
-            self.write('[')
-            d = next(docs)
-            while True:
-                try:
-                    del(d['_id'])
-                    self.write(ujson.dumps(d))
-                    d = next(docs)
-                    self.write(',')
-                except StopIteration:
-                    break
-            self.write(']')
-        self.finish()
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def post(self):
-        database = self.settings['db']
-        data = ujson.loads(self.request.body.decode("utf-8"))
-        if isinstance(data, list):
-            jsonschema.validate(data, utils.schemas['bulk_events'])
-            bulk = database.event.initialize_unordered_bulk_op()
-            for _ in data:
-                if _ is not None:
-                    bulk.insert(_)
-            try:
-                bulk.execute()
-            except pymongo.errors.BulkWriteError as err:
-                raise tornado.web.HTTPError(500, str(err))
-            database.event.create_index([('time', pymongo.DESCENDING),
-                                         ('descriptor', pymongo.DESCENDING)])
-            database.event.create_index([('uid', pymongo.DESCENDING)], unique=True)
-        else:
-            jsonschema.validate(data, utils.schemas['event'])
-            result = database.event.insert(data)
-            if not result:
-                raise tornado.web.HTTPError(500)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def put(self):
-        raise tornado.web.HTTPError(404)
-
-    @tornado.web.asynchronous
-    @gen.coroutine
-    def delete(self):
-        raise tornado.web.HTTPError(404)
-
-# TODO: Include capped collection support in the next cycle.
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mdsro = self.settings['mdsro']
+        mdsrw = self.settings['mdsrw']
+        self.queryables = {'get_events_generator': mdsro.get_events_generator,
+                           'get_events_table': mdsro.get_events_table,
+                           'find_events': mdsro.find_events}
+        self.insertables = {'insert_event': mdsrw.insert_event,
+                            'bulk_insert_events': mdsrw.bulk_insert_events}
