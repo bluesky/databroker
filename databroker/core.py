@@ -218,9 +218,9 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
-    name : string, optional
+    stream_name : string, optional
         Get data from a single "event stream." To obtain one comprehensive
-        table with all streams, use `name=None`. The default name is
+        table with all streams, use `stream_name=None`. The default name is
         'primary', but if no event stream with that name is found, the
         default reverts to `None` (for backward-compatibility).
     fill : bool, optional
