@@ -278,7 +278,7 @@ class Broker(object):
         _fill_event(self.fs, event, handler_registry=handler_registry,
                     handler_overrides=handler_overrides)
 
-    def get_events(self, headers, fields=None, name=None, fill=False,
+    def get_events(self, headers, fields=None, stream_name=None, fill=False,
                    handler_registry=None, handler_overrides=None, **kwargs):
         """
         Get Events from given run(s).
@@ -291,7 +291,7 @@ class Broker(object):
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
             Whether externally-stored data should be filled in. Defaults to True
-        name : string, optional
+        stream_name : string, optional
             Get events from only one "event stream" with this name. If None
             (default) get events from all event streams.
         handler_registry : dict, optional
@@ -311,15 +311,15 @@ class Broker(object):
         ValueError if any key in `fields` is not in at least one descriptor pre header.
         """
         res = _get_events(mds=self.mds, fs=self.fs, headers=headers,
-                         fields=fields, name=name, fill=fill,
+                         fields=fields, stream_name=stream_name, fill=fill,
                          handler_registry=handler_registry,
                          handler_overrides=handler_overrides,
                          plugins=self.plugins, **kwargs)
         for event in res:
             yield event
 
-
-    def get_table(self, headers, fields=None, name='primary', fill=False,
+    def get_table(self, headers, fields=None, stream_name='primary',
+                  fill=False,
                   convert_times=True, timezone=None, handler_registry=None,
                   handler_overrides=None):
         """
@@ -331,13 +331,14 @@ class Broker(object):
             The headers to fetch the events for
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
-        name : string, optional
+        stream_name : string, optional
             Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use `name=None`. The default name is
+            table with all streams, use `stream_name=None`. The default name is
             'primary', but if no event stream with that name is found, the
             default reverts to `None` (for backward-compatibility).
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to True
+            Whether externally-stored data should be filled in.
+            Defaults to True
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default.
@@ -356,14 +357,14 @@ class Broker(object):
         if timezone is None:
             timezone = self.mds.config['timezone']
         res = _get_table(mds=self.mds, fs=self.fs, headers=headers,
-                         fields=fields, name=name, fill=fill,
+                         fields=fields, stream_name=stream_name, fill=fill,
                          convert_times=convert_times,
                          timezone=timezone, handler_registry=handler_registry,
                          handler_overrides=handler_overrides)
         return res
 
     def get_images(self, headers, name, handler_registry=None,
-                  handler_override=None):
+                   handler_override=None):
         """
         Load images from a detector for given Header(s).
 
@@ -388,7 +389,6 @@ class Broker(object):
         """
         return Images(self.mds, self.fs, headers, name, handler_registry,
                       handler_override)
-
 
     def restream(self, headers, fields=None, fill=False):
         """
@@ -483,7 +483,7 @@ class ArchiverPlugin(object):
             e.g., 'http://host:port/'
         timezone : string
             e.g., 'US/Eastern'
-        
+
         Example
         -------
         >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/',

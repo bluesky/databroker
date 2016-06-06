@@ -76,3 +76,4 @@ See :doc:`searching` and :doc:`fetching` for details.
    searching
    fetching
    whats_new
+   api_changes

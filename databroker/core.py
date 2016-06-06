@@ -97,7 +97,7 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-def get_events(mds, fs, headers, fields=None, name=None, fill=False,
+def get_events(mds, fs, headers, fields=None, stream_name=None, fill=False,
                handler_registry=None, handler_overrides=None, plugins=None,
                **kwargs):
     """
@@ -111,7 +111,7 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
-    name : string, optional
+    stream_name : string, optional
         Get events from only one "event stream" with this name. If None
         (default) get events from all event streams.
     fill : bool, optional
@@ -161,7 +161,8 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
         start = header['start']
         stop = header.get('stop', {})
         for descriptor in header['descriptors']:
-            if name is not None and name != descriptor.get('name'):
+            descriptor_name = descriptor.get('name')
+            if stream_name is not None and stream_name != descriptor_name:
                 continue
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
@@ -204,7 +205,7 @@ def get_events(mds, fs, headers, fields=None, name=None, fill=False,
                 yield ev
 
 
-def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
+def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
               convert_times=True, timezone=None, handler_registry=None,
               handler_overrides=None):
     """
@@ -218,9 +219,9 @@ def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
         The headers to fetch the events for
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
-    name : string, optional
+    stream_name : string, optional
         Get data from a single "event stream." To obtain one comprehensive
-        table with all streams, use `name=None`. The default name is
+        table with all streams, use `stream_name=None`. The default name is
         'primary', but if no event stream with that name is found, the
         default reverts to `None` (for backward-compatibility).
     fill : bool, optional
@@ -271,10 +272,11 @@ def get_table(mds, fs, headers, fields=None, name='primary', fill=False,
 
         # shim for back-compat with old data that has no 'primary' descriptor
         if not any(d for d in descriptors if d.get('name') == 'primary'):
-            name = None
+            stream_name = None
 
         for descriptor in descriptors:
-            if name is not None and name != descriptor.get('name'):
+            if ((stream_name is not None) and
+                    (stream_name != descriptor.get('name'))):
                 continue
             is_external = _external_keys(descriptor)
             objs_config = descriptor.get('configuration', {}).values()
@@ -499,7 +501,7 @@ def get_images(fs, headers, name, handler_registry=None,
         mapping spec names (strings) to handlers (callable classes)
     handler_override : callable class, optional
         overrides registered handlers
-        
+
 
     Example
     -------
