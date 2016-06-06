@@ -18,8 +18,8 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     license="BSD (3-clause)",
-    url="https://github.com/synchbot/metadataclient",
-    packages=['metadataclient', 'metadataclient.sample_data'],
+    url="https://github.com/nsls-ii/metadataclient",
+    packages=['metadataclient'],
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: BSD License",
