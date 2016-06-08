@@ -192,11 +192,34 @@ class MDSRO:
         pass
 
 class MDS(MDSRO):
-    def insert():
+   _INS_METHODS = {'start': 'insert_run_start',
+                    'stop': 'insert_run_stop',
+                    'descriptor': 'insert_descriptor',
+                    'event': 'insert_event',
+                    'bulk_events': 'bulk_insert_events'}
+
+    def datafactory(self, data, signature):
+        return dict(data=data, signature=signature)
+
+    def _post(self, url, data)
+        r = request.post(url, json.dumps(data))
+        r.raise_for_status()
+        return r.json()
+
+    def insert(self):
         pass
 
-    def insert_run_start():
-        pass
+    def insert_run_start(self, time, uid, **kwargs):
+        if 'custom' in kwargs:
+            warnings.warn("Custom is a deprecated field")
+            custom = kwargs.pop('custom')
+            if any(k in kwargs for k in custom):
+                raise TypeError("Duplicate keys in kwargs and custom")
+            kwargs.update(custom)
+        doc = dict(time=time, uid=uid, **kwargs)
+        data = self.datafactory(data=doc, signature='insert_run_start')
+        self._post(self._rstart_url, data=data)
+        return uid
 
     def insert_run_stop():
         pass
