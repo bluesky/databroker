@@ -185,6 +185,27 @@ class MDSRO:
     def get_events_table(descriptor):
         pass
 
+    def find():
+        pass
+
+    def find_last():
+        pass
 
 class MDS(MDSRO):
-    pass
+    def insert():
+        pass
+
+    def insert_run_start():
+        pass
+
+    def insert_run_stop():
+        pass
+
+    def insert_descriptor():
+        pass
+
+    def insert_event():
+        pass
+
+    def bulk_insert_events():
+        pass
