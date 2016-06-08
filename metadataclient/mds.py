@@ -117,6 +117,11 @@ class MDSRO:
         """
         return dict(query=None, signature=None)
 
+    def _get(self, url, params):
+        r = requets.get(url, json.dumps(params))
+        r.raise_for_status()
+        return r.json()
+
     def run_start_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
         try:
@@ -125,9 +130,7 @@ class MDSRO:
             pass
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
-        r = requests.get(self._rstart_url, params=json.dumps(params))
-        r.raise_for_status()
-        response = r.json()
+        response = self._get(self._rstart_url, params=params)
         return self._cache_run_start(run_start=response,
                                      self._RUN_START_CACHE)
 
@@ -139,9 +142,7 @@ class MDSRO:
             pass
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
-        r = requests.get(self._rstop_url, params=json.dumps(params))
-        r.raise_for_status()
-        response = r.json()
+        response = self._get(self._rstop_url, params=params)
         return self._cache_run_stop(run_stop=response,
                                     self._RUN_STOP_CACHE)
 
@@ -153,9 +154,7 @@ class MDSRO:
             pass
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
-        r = requests.get(self._desc_url, params=json.dumps(params))
-        r.raise_for_status()
-        response = r.json()
+        response = self._get(self._desc_url, params=params)
         return self._cache_descriptor(run_stop=response,
                                       self._DESCRIPTOR_CACHE)
 
@@ -164,9 +163,8 @@ class MDSRO:
         uid = self.doc_or_uid_to_uid()
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
-        r = requests.get(self._stop_url, params=json.dumps(params))
-        resp = r.json()
-        return self._cache_run_stop(resp, self._RUN_STOP_CACHE)
+        response = self._get(self._rstop_url, params=params)
+        return self._cache_run_stop(response, self._RUN_STOP_CACHE)
 
 
 class MDS(MDSRO):
