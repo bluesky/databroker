@@ -83,6 +83,12 @@ class MDSRO:
         run_stop_cache[run_stop['uid']] = run_stop
         return run_stop
 
+    def _cache_descriptor(self, descriptor, descriptor_cache):
+        descriptor = dict(descriptor)
+        descriptor = doc.Document('EventDescriptor', descriptor)
+        descriptor_cache[descriptor['uid']] = descriptor
+        return descriptor
+
     def doc_or_uid_to_uid(self, doc_or_uid):
         """Given Document or uid return the uid
 
@@ -155,9 +161,16 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._desc_url, params=params)
-        return self._cache_descriptor(run_stop=response,
+        return self._cache_descriptor(descriptor=response,
                                       self._DESCRIPTOR_CACHE)
 
+    def descriptors_by_start(run_start):
+        rstart_uid = self.doc_or_uid_to_uid(run_start)
+        params = queryfactor(query={'run_start': rstart_uid},
+                             signature='
+        self._get(self._desc_url, params=params)
+        return self._cache_descriptor(descriptor=response,
+                                      self._DESCRIPTOR_CACHE)
 
     def stop_by_start(self, run_start):
         uid = self.doc_or_uid_to_uid()
@@ -165,6 +178,12 @@ class MDSRO:
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
         return self._cache_run_stop(response, self._RUN_STOP_CACHE)
+
+    def get_events_generator(descriptor, convert_arrays=True):
+        pass
+
+    def get_events_table(descriptor):
+        pass
 
 
 class MDS(MDSRO):
