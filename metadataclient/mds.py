@@ -116,12 +116,12 @@ class MDSRO:
     def reset_connection(self):
         self.config.clear()
 
-    def queryfactory(self):
+    def queryfactory(self, query, signature):
         """
         Currently only returns a simple dict mdservice expects.
         This can be extended in the future
         """
-        return dict(query=None, signature=None)
+        return dict(query=query, signature=signature)
 
     def _get(self, url, params):
         r = requets.get(url, json.dumps(params))
@@ -166,8 +166,8 @@ class MDSRO:
 
     def descriptors_by_start(run_start):
         rstart_uid = self.doc_or_uid_to_uid(run_start)
-        params = queryfactor(query={'run_start': rstart_uid},
-                             signature='
+        params = self.queryfactor(query={'run_start': rstart_uid},
+                             signature='descriptors_by_start')
         self._get(self._desc_url, params=params)
         return self._cache_descriptor(descriptor=response,
                                       self._DESCRIPTOR_CACHE)
