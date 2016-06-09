@@ -4,12 +4,16 @@ import six  # noqa
 from collections import deque, defaultdict
 import uuid
 from datetime import datetime
+import datetime as dt
 import tzlocal
 import pytz
 import logging
 import numbers
 import requests
 from doct import Document
+import prettytable
+import metadatastore.commands as mdsc
+
 from .core import (Header, _external_keys,
                    get_events as _get_events,
                    get_table as _get_table,
@@ -217,10 +221,10 @@ class Broker(object):
 
         Examples
         --------
-        >>> DataBroker('keyword')  # full text search
-        >>> DataBroker(start_time='2015-03-05', stop_time='2015-03-10')
-        >>> DataBroker(data_key='motor1')
-        >>> DataBroker(data_key='motor1', start_time='2015-03-05')
+        >>> Broker('keyword')  # full text search
+        >>> Broker(start_time='2015-03-05', stop_time='2015-03-10')
+        >>> Broker(data_key='motor1')
+        >>> Broker(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
         if text_search is not None:
@@ -311,10 +315,10 @@ class Broker(object):
         ValueError if any key in `fields` is not in at least one descriptor pre header.
         """
         res = _get_events(mds=self.mds, fs=self.fs, headers=headers,
-                         fields=fields, stream_name=stream_name, fill=fill,
-                         handler_registry=handler_registry,
-                         handler_overrides=handler_overrides,
-                         plugins=self.plugins, **kwargs)
+                          fields=fields, stream_name=stream_name, fill=fill,
+                          handler_registry=handler_registry,
+                          handler_overrides=handler_overrides,
+                          plugins=self.plugins, **kwargs)
         for event in res:
             yield event
 
@@ -382,7 +386,7 @@ class Broker(object):
 
         Example
         -------
-        >>> header = DataBroker[-1]
+        >>> header = Broker[-1]
         >>> images = Images(header, 'my_detector_lightfield')
         >>> for image in images:
                 # do something
@@ -415,7 +419,7 @@ class Broker(object):
         >>> def f(name, doc):
         ...     # do something
         ...
-        >>> h = DataBroker[-1]  # most recent header
+        >>> h = Broker[-1]  # most recent header
         >>> for name, doc in restream(h):
         ...     f(name, doc)
 
@@ -456,7 +460,7 @@ class Broker(object):
         >>> def f(name, doc):
         ...     # do something
         ...
-        >>> h = DataBroker[-1]  # most recent header
+        >>> h = Broker[-1]  # most recent header
         >>> process(h, f)
 
         Note
@@ -562,3 +566,62 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+known_special_keys = {
+    # The number of events per event descriptor
+    'num_events': lambda header: [
+        len(list(mdsc.get_events_generator(descriptor, False)))
+        for descriptor in header.descriptors],
+    # The datetime when the scan was started
+    'start_time': lambda header: datetime.fromtimestamp(header.start.timestamp),
+    # The datetime when the scan was started
+    'stop_time': lambda header: datetime.fromtimestamp(header.stop.timestamp),
+    # The duration of the scan
+    'duration': lambda header: (datetime.fromtimestamp(header.stop.timestamp) -
+                                datetime.fromtimestamp(header.start.timestamp)),
+    'uid-*': lambda header, s: header.start.uid[:int(s.split('-')[-1])],
+    'stop-reason': lambda header: header.stop.reason,
+}
+
+import fnmatch
+
+def summarize(headers, *keys, default_keys=['uid-6', 'scan_id', 'stop-reason', 'start-time', 'duration']):
+    """
+    Show a summary of the `headers` object that is passed in
+
+    Parameters
+    ----------
+    headers : iterable
+        Iterable of "Header" objects that come from the broker
+    *keys : *args
+        Keys that exist in the RunStart, Descriptor or Stop documents. Or one
+        of the entries in the `known_special_keys` list
+    default_keys : iterable, optional
+        List of keys that should *always* be present in a summary.
+    """
+    first_keys = ['uid*', 'scan_id']
+    last_keys = ['time']
+    field_names = set(list(keys) + default_keys)
+    extract = lambda keys, preferred_order: [key for k in preferred_order
+                                             for key in keys
+                                             if fnmatch.fnmatch(key, k)]
+    first = extract(field_names, first_keys)
+    last = extract(field_names, last_keys)
+    middle = sorted([key for key in field_names
+                    if (key not in first and key not in last)])
+    field_names = first + middle + last
+
+    table = prettytable.PrettyTable(field_names=field_names)
+
+    for header in headers:
+        row = [known_special_keys.get(key, header.start[key])
+               for key in field_names]
+        table.add_row(row)
+
+    print(table.to_string())
+    return table
+
+
+
+
