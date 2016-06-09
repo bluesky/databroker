@@ -3,11 +3,15 @@ import warnings
 import six  # noqa
 import uuid
 from datetime import datetime
+import datetime as dt
+import tzlocal
 import pytz
 import logging
 import numbers
 import requests
 from doct import Document
+import prettytable
+
 from .core import (Header,
                    get_events as _get_events,
                    get_table as _get_table,
@@ -15,8 +19,7 @@ from .core import (Header,
                    fill_event as _fill_event,
                    process as _process, Images,
                    get_fields,  # for conveniece
-                   ALL
-                  )
+                   ALL)
 
 
 def _format_time(search_dict, tz):
@@ -810,7 +813,7 @@ class ArchiverPlugin(object):
         -------
         >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/',
         ...                    'US/Eastern')
-        >>> db = Broker(mds, fs, plugins={'archiver_pvs': p})
+        >>> db = DataBroker(mds, fs, plugins={'archiver_pvs': p})
         >>> header = db[-1]
         >>> db.get_events(header, archiver_pvs=['...'])
         """
@@ -884,3 +887,146 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+known_special_keys = {
+    # The duration of the scan
+    'duration': lambda header: (datetime.fromtimestamp(header.stop.time) -
+                                datetime.fromtimestamp(header.start.time)),
+    # The number of events per event descriptor
+    'num_events': lambda header: [
+        len(list(mdsc.get_events_generator(descriptor, False)))
+        for descriptor in header.descriptors],
+}
+
+def _get_uid(key, document):
+    try:
+        # see if we have a hyphen
+        key, num = key.split('-')
+        num = int(num)
+    except ValueError:
+        # Nope! Must be asking for the whole uid
+        num = None
+    return document.uid[:num]
+
+
+def _get_from_header(header, key, default_value):
+    """
+    Get the value specified by `key` from the Header `h`. Give the value
+    of `default_value` for keys that are not in `h`
+
+    Parameters
+    ----------
+    header : databroker.core.Header
+        A single header to try and get a key from
+    key : str
+        The key to find a value for in `h`. See the `*keys` section of the
+        `databroker.broker.summarize` docstring
+    default_value : str
+        The default value for which to fill missing keys
+
+    Returns
+    -------
+    object
+        `default_value` or whatever `key` would return.
+    """
+    split = key.split('-', maxsplit=1)
+    if len(split) == 1:
+        # `key` is in `known_special_keys` or is assumed to be a key in the
+        # RunStart document
+        key, = split
+        if key in known_special_keys:
+            return known_special_keys[key](header)
+        # Use the registered handling for `Documents`
+        return _get_from_document(header.start, key, default_value)
+    s0, s1 = split
+    if 'uid' in s0:
+        return _get_uid(key, header.start)
+    if s0 == 'start':
+        return _get_from_document(header.start, s1, default_value)
+    elif s0 == 'stop':
+        return _get_from_document(header.stop, s1, default_value)
+    elif s0 == 'descriptor' or s0 == 'descriptors':
+        return [_get_from_document(descriptor, s1, default_value)
+                for descriptor in header.descriptors]
+
+
+def _get_from_document(document, key, default_value):
+    """
+    Get the value specified by `key` from the `document`. Give the value
+    of `default_value` for keys that are not in `document`
+
+    Parameters
+    ----------
+    document : databroker.core.Header
+        A single header to try and get a key from
+    key : str
+        The key to find a value for in `h`. See the `*keys` section of the
+        `databroker.broker.summarize` docstring
+    default_value : str
+        The default value for which to fill missing keys
+
+    Returns
+    -------
+    object
+        `default_value` or whatever `key` would return.
+    """
+    document = document
+    if 'uid' in key:
+        return _get_uid(key, document)
+    if key == 'time':
+        return datetime.fromtimestamp(document.get(key, default_value))
+    return document.get(key, default_value)
+
+
+def summarize(headers, keys=None, default_value="N/A"):
+    """
+    Show a summary of the `headers` object that is passed in
+
+    Parameters
+    ----------
+    headers : iterable
+        Iterable of "Header" objects that come from the broker
+    keys : iterable, optional
+        Defaults to ['start-time', 'scan_id', 'uid-6', 'stop-uid-6',
+                     'duration', 'num_events']
+        Keys that exist in the RunStart, Descriptor or Stop documents. Or one
+        of the entries in the `known_special_keys` list.
+
+        Specify which document to get a key from by providing the document
+        name, followed by a hyphen, followed by the key. If no document name
+        is provided, it is assumed you are asking for the key in the run
+        start document. e.g.:
+            start-<key>: get <key> from header.start
+            stop-<key>: get <key> from header.stop
+            descriptor-<key>: get <key> from the descriptors
+
+        There are some special keys:
+            scan_duration: difference between header.start.time and
+                           header.stop.time
+            num_events: get the number of events for each descriptor. Shown as
+                        #/#/#/...
+            uid-#: First "#" characters of the uid for a given document. If no
+                   document name is provided, it is assumed you want
+                   header.start.uid. NOTE: negative slicing doesn't work since
+                   I am splitting on "-"
+    default_value : str
+        The string to fill missing table values with
+    """
+    if not keys:
+        keys = ['start-time', 'scan_id', 'uid-6', 'stop-uid-6', 'duration',
+                'num_events']
+    # Sanitize the `headers` input
+    try:
+        headers[0]
+    except KeyError:
+        # we only got one header, make it a list
+        headers = [headers]
+
+    table = prettytable.PrettyTable(field_names=keys)
+
+    for header in headers:
+        row = [_get_from_header(header, key, default_value) for key in keys]
+        table.add_row(row)
+
+    return table
