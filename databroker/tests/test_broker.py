@@ -414,7 +414,17 @@ def test_uid_keys():
     table = broker.summarize(hdrs, *keys)
     assert uids == table._rows
 
+
 def test_stop_keys():
     hdrs = db[-2:]
     keys = set(['stop-%s' % k for hdr in hdrs for k in hdr.stop.keys()])
+    keys.add('horsepower')
+    table = broker.summarize(hdrs, *keys)
+
+
+def test_descriptor_keys():
+    hdrs = db[-2:]
+    keys = set(['descriptor-%s' % k for hdr in hdrs for k in
+                [key for descriptor in hdr.descriptors
+                     for key in descriptor.keys()]])
     table = broker.summarize(hdrs, *keys)

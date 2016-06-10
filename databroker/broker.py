@@ -590,13 +590,32 @@ def _get_uid(key, document):
 
 
 @singledispatch
-def _get_value(h, key):
+def _get_value(h, key, default_value):
+    """
+    Get the value specified by `key` from the Header `h`. Give the value
+    of `default_value` for keys that are not in `h`
+
+    Parameters
+    ----------
+    h : databroker.core.Header
+        A single header to try and get a key from
+    key : str
+        The key to find a value for in `h`. See the `*keys` section of the
+        `databroker.broker.summarize` docstring
+    default_value : str
+        The default value for which to fill missing keys
+
+    Returns
+    -------
+    object
+        `default_value` or whatever `key` would return.
+    """
     raise NotImplementedError("_get_value is not implemented for type(h)={}"
                               "".format(h))
 
 
 @_get_value.register(Header)
-def _(header, key):
+def _(header, key, default_value):
     split = key.split('-', maxsplit=1)
     if len(split) == 1:
         # `key` is in `known_special_keys` or is assumed to be a key in the
@@ -605,29 +624,30 @@ def _(header, key):
         if key in known_special_keys:
             return known_special_keys[key](header)
         # Use the registered handling for `Documents`
-        return _get_value(header.start, key)
+        return _get_value(header.start, key, default_value)
     s0, s1 = split
     if 'uid' in s0:
         return _get_uid(key, header.start)
     if s0 == 'start':
-        return _get_value(header.start, s1)
+        return _get_value(header.start, s1, default_value)
     elif s0 == 'stop':
-        return _get_value(header.stop, s1)
+        return _get_value(header.stop, s1, default_value)
     elif s0 == 'descriptor' or s0 == 'descriptors':
-        return _get_value(header.descriptors, s1)
+        return [_get_value(descriptor, s1, default_value)
+                for descriptor in header.descriptors]
 
 
 @_get_value.register(Document)
-def _(header, key):
+def _(header, key, default_value):
     document = header
     if 'uid' in key:
         return _get_uid(key, document)
     if key == 'time':
-        return datetime.fromtimestamp(document[key])
-    return document[key]
+        return datetime.fromtimestamp(document.get(key, default_value))
+    return document.get(key, default_value)
 
 
-def summarize(headers, *keys):
+def summarize(headers, *keys, default_value="N/A"):
     """
     Show a summary of the `headers` object that is passed in
 
@@ -656,6 +676,8 @@ def summarize(headers, *keys):
                    document name is provided, it is assumed you want
                    header.start.uid. NOTE: negative slicing doesn't work since
                    I am splitting on "-"
+    default_value : str
+        The string to fill missing table values with
     """
     # Sanitize the `headers` input
     try:
@@ -667,7 +689,7 @@ def summarize(headers, *keys):
     table = prettytable.PrettyTable(field_names=keys)
 
     for header in headers:
-        row = [_get_value(header, key) for key in keys]
+        row = [_get_value(header, key, default_value) for key in keys]
         table.add_row(row)
 
     return table
