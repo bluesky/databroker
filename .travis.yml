@@ -20,7 +20,7 @@ before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-filestore.sh
-  - . ~/scripts.init-metadatastore.sh
+  - . ~/scripts/init-metadatastore.sh
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
