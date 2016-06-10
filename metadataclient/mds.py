@@ -60,7 +60,7 @@ class MDSRO:
         run_start_cache[run_start['uid']] = run_start
         return run_start
 
-    def _cache_run_start(self, run_stop, run_stop_cache):
+    def _cache_run_stop(self, run_stop, run_stop_cache):
         """De-reference and cache a RunStart document
 
         The de-referenced Document is cached against the
@@ -209,26 +209,51 @@ class MDS(MDSRO):
     def insert(self):
         pass
 
-    def insert_run_start(self, time, uid, **kwargs):
-        if 'custom' in kwargs:
+    def _check_for_custom(self, kdict):
+        if 'custom' in kdict:
             warnings.warn("Custom is a deprecated field")
-            custom = kwargs.pop('custom')
-            if any(k in kwargs for k in custom):
+            custom = kdict.pop('custom')
+            if any(k in kdict for k in custom):
                 raise TypeError("Duplicate keys in kwargs and custom")
-            kwargs.update(custom)
+            kdict.update(custom)
+        return kdict
+
+    def insert_run_start(self, time, uid, **kwargs):
+        kwargs = self._check_for_custom(kwargs)
         doc = dict(time=time, uid=uid, **kwargs)
-        data = self.datafactory(data=doc, signature='insert_run_start')
+        data = self.datafactory(data=doc,
+                                signature='insert_run_start')
         self._post(self._rstart_url, data=data)
+        self._cache_run_start(run_start=doc,
+                              self._RUN_START_CACHE)
         return uid
 
-    def insert_run_stop():
+    def insert_run_stop(self, run_start, time, uid, exit_status, reason=None, **kwargs):
+        kwargs = self._check_for_custom(kwargs)
+        run_start_uid = self.doc_or_uid_to_uid(run_start)
+        run_start = self.run_start_given_uid(run_start_uid)
+        try:
+            self.stop_by_start(run_start)
+        except NoRunStop:
+            pass
+        else:
+            raise RunTimeError("Runstop already exits for {!r}".format(run_start))
+        doc = dict(run_start=run_start_uid, time=time, uid=uid,
+                   exit_status=exit_status)
+        if reason:
+            doc['reason'] = reason
+        data = self.data_factory(data=doc,
+                                 signature='insert_run_stop')
+        self._post(self._rstop_url, data=data)
+        self._cache_run_stop(run_stop=doc,
+                             self.RUN_STOP_CACHE)
+        return uid
+
+    def insert_descriptor(self):
         pass
 
-    def insert_descriptor():
+    def insert_event(self):
         pass
 
-    def insert_event():
-        pass
-
-    def bulk_insert_events():
+    def bulk_insert_events(self):
         pass
