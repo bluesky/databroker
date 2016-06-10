@@ -569,24 +569,61 @@ def _munge_time(t, timezone):
 
 
 known_special_keys = {
+    # The duration of the scan
+    'duration': lambda header: (datetime.fromtimestamp(header.stop.timestamp) -
+                                datetime.fromtimestamp(header.start.timestamp)),
     # The number of events per event descriptor
     'num_events': lambda header: [
         len(list(mdsc.get_events_generator(descriptor, False)))
         for descriptor in header.descriptors],
-    # The datetime when the scan was started
-    'start_time': lambda header: datetime.fromtimestamp(header.start.timestamp),
-    # The datetime when the scan was started
-    'stop_time': lambda header: datetime.fromtimestamp(header.stop.timestamp),
-    # The duration of the scan
-    'duration': lambda header: (datetime.fromtimestamp(header.stop.timestamp) -
-                                datetime.fromtimestamp(header.start.timestamp)),
-    'uid-*': lambda header, s: header.start.uid[:int(s.split('-')[-1])],
-    'stop-reason': lambda header: header.stop.reason,
 }
 
-import fnmatch
+def _get_uid(key, document):
+    try:
+        # see if we have a hyphen
+        key, num = key.split('-')
+        num = int(num)
+    except ValueError:
+        # Nope! Must be asking for the whole uid
+        num = None
+    return document.uid[:num]
 
-def summarize(headers, *keys, default_keys=['uid-6', 'scan_id', 'stop-reason', 'start-time', 'duration']):
+
+@singledispatch
+def _get_value(h, key):
+    raise NotImplementedError("_get_value is not implemented for type(h)={}"
+                              "".format(h))
+
+
+@_get_value.register(Header)
+def _(header, key):
+    split = key.split('-', maxsplit=1)
+    if len(split) == 1:
+        # We are either a special key or a uid
+        key, = split
+        if key in known_special_keys:
+            return known_special_keys[key](header)
+        return header.start[key]
+    s0, s1 = split
+    if 'uid' in s0:
+        return _get_uid(key, header.start)
+    if s0 == 'start':
+        return _get_value(header.start, key)
+    elif s0 == 'stop':
+        return _get_value(header.stop, key)
+    elif s0 == 'descriptor' or s0 == 'descriptors':
+        return _get_value(header.descriptors, key)
+
+
+@_get_value.register(Document)
+def _(header, key):
+    document = header
+    if 'uid' in key:
+        return _get_uid(key, document)
+    return document[key]
+
+
+def summarize(headers, *keys):
     """
     Show a summary of the `headers` object that is passed in
 
@@ -596,30 +633,32 @@ def summarize(headers, *keys, default_keys=['uid-6', 'scan_id', 'stop-reason', '
         Iterable of "Header" objects that come from the broker
     *keys : *args
         Keys that exist in the RunStart, Descriptor or Stop documents. Or one
-        of the entries in the `known_special_keys` list
-    default_keys : iterable, optional
-        List of keys that should *always* be present in a summary.
-    """
-    first_keys = ['uid*', 'scan_id']
-    last_keys = ['time']
-    field_names = set(list(keys) + default_keys)
-    extract = lambda keys, preferred_order: [key for k in preferred_order
-                                             for key in keys
-                                             if fnmatch.fnmatch(key, k)]
-    first = extract(field_names, first_keys)
-    last = extract(field_names, last_keys)
-    middle = sorted([key for key in field_names
-                    if (key not in first and key not in last)])
-    field_names = first + middle + last
+        of the entries in the `known_special_keys` list.
 
-    table = prettytable.PrettyTable(field_names=field_names)
+        Specify which document to get a key from by providing the document
+        name, followed by a hyphen, followed by the key. If no document name
+        is provided, it is assumed you are asking for the key in the run
+        start document. e.g.:
+            start-<key>: get <key> from header.start
+            stop-<key>: get <key> from header.stop
+            descriptor-<key>: get <key> from the descriptors
+
+        There are some special keys:
+            scan_duration: difference between header.start.time and
+                           header.stop.time
+            num_events: get the number of events for each descriptor. Shown as
+                        #/#/#/...
+            uid-#: First "#" characters of the uid for a given document. If no
+                   document name is provided, it is assumed you want
+                   header.start.uid.
+    """
+    table = prettytable.PrettyTable(field_names=keys)
 
     for header in headers:
-        row = [known_special_keys.get(key, header.start[key])
-               for key in field_names]
+        row = [_get_value(header, key) for key in keys]
         table.add_row(row)
 
-    print(table.to_string())
+    # print(table.to_string())
     return table
 
 

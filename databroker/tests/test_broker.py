@@ -376,3 +376,8 @@ def test_plugins():
     hdr = b[-1]
     assert 'echo-plugin-test' in list(b.get_events(hdr, a='echo-plugin-test'))
     assert 'echo-plugin-test' not in list(b.get_events(hdr))
+
+
+def test_summarize():
+    h = db(uid=image_example_uid)
+    assert h
