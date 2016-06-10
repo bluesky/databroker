@@ -599,11 +599,13 @@ def _get_value(h, key):
 def _(header, key):
     split = key.split('-', maxsplit=1)
     if len(split) == 1:
-        # We are either a special key or a uid
+        # `key` is in `known_special_keys` or is assumed to be a key in the
+        # RunStart document
         key, = split
         if key in known_special_keys:
             return known_special_keys[key](header)
-        return header.start[key]
+        # Use the registered handling for `Documents`
+        return _get_value(header.start, key)
     s0, s1 = split
     if 'uid' in s0:
         return _get_uid(key, header.start)

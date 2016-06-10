@@ -387,3 +387,15 @@ def test_plugins():
 def test_summarize(keys):
     h = db(uid=image_example_uid())
     broker.summarize(h, *keys)
+
+def test_get_value(image_example_uid):
+    # make sure we are getting the keys from the start document
+    hdr1 = db[image_example_uid]
+    hdr2 = db[-2:]
+    hdrs = [hdr1] + hdr2
+    keys = list(hdr1.start.keys())
+    start_keys = ['start-%s' % key for key in keys]
+    table1 = broker.summarize(hdrs, *keys)
+    table2 = broker.summarize(hdrs, *start_keys)
+
+    assert table1._rows == table2._rows
