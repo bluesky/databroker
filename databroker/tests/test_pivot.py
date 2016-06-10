@@ -1,8 +1,9 @@
-from nose.tools import assert_equal, assert_in
-from databroker.pivot import pivot_timeseries, zip_events, reset_time
-from numpy.testing import assert_array_equal
-import numpy as np
 import time as ttime
+
+import numpy as np
+from numpy.testing import assert_array_equal
+
+from databroker.pivot import pivot_timeseries, zip_events, reset_time
 
 
 def _pivot_data_helper(M, N):
@@ -95,26 +96,26 @@ def test_pivot_smoke():
     ev_dict = {ev['uid']: ev for ev in evs}
     pevs = list(pivot_timeseries(evs, 'abg', 'cdh'))
     for j, ev in enumerate(pevs):
-        assert_equal(j, ev['seq_no'])
-        assert_equal(ev['data']['_ind'], j % M)
+        assert j == ev['seq_no']
+        assert ev['data']['_ind'] == j % M
 
         desc = ev['descriptor']
         for k in 'abgcdh':
-            assert_in(k, desc['data_keys'])
-        assert_equal(desc['data_keys']['a']['shape'], ())
-        assert_equal(desc['data_keys']['b']['shape'], ())
-        assert_equal(desc['data_keys']['c']['shape'], (3, ))
-        assert_equal(desc['data_keys']['g']['shape'], (2, 2))
-        assert_equal(desc['data_keys']['h']['shape'], (3, 2, 2))
-        assert_equal(set(desc['data_keys']), set(ev['data']))
-        assert_equal(set(desc['data_keys']), set(ev['timestamps']))
+            assert k in desc['data_keys']
+        assert desc['data_keys']['a']['shape'] == ()
+        assert desc['data_keys']['b']['shape'] == ()
+        assert desc['data_keys']['c']['shape'] == (3, )
+        assert desc['data_keys']['g']['shape'] == (2, 2)
+        assert desc['data_keys']['h']['shape'] == (3, 2, 2)
+        assert set(desc['data_keys']) == set(ev['data'])
+        assert set(desc['data_keys']) == set(ev['timestamps'])
         for k in 'cdh':
-            assert_equal(desc['data_keys'][k]['source'], 'syn')
+            assert desc['data_keys'][k]['source'] == 'syn'
             assert_array_equal(ev['data'][k], evs[j // M]['data'][k])
 
         for k in 'abg':
             src = desc['data_keys'][k]['source']
-            assert_equal(src, str(j // M))
+            assert src == str(j // M)
             source_ev = ev_dict[src]
             assert_array_equal(ev['data'][k],
                                source_ev['data'][k][ev['data']['_ind']])
@@ -123,23 +124,23 @@ def test_pivot_smoke():
 def test_zip_events_smoke():
     dd = _zip_data_helper(('abc', 'def'), 10)
     for ev in zip_events(*dd):
-        assert_equal(set('abcdef'), set(ev['descriptor']['data_keys']))
-        assert_equal(set('abcdef'), set(ev['data']))
-        assert_equal(set('abcdef'), set(ev['timestamps']))
+        assert set('abcdef') == set(ev['descriptor']['data_keys'])
+        assert set('abcdef') == set(ev['data'])
+        assert set('abcdef') == set(ev['timestamps'])
 
 
 def test_zip_events_lazy():
     dd = _zip_data_helper(('abc', 'def'), 10)
     for ev in zip_events(*dd, lazy=False):
-        assert_equal(set('abcdef'), set(ev['descriptor']['data_keys']))
-        assert_equal(set('abcdef'), set(ev['data']))
-        assert_equal(set('abcdef'), set(ev['timestamps']))
+        assert set('abcdef') == set(ev['descriptor']['data_keys'])
+        assert set('abcdef') == set(ev['data'])
+        assert set('abcdef') == set(ev['timestamps'])
 
 
 def test_reset_time_smoke():
     evs = list(_reset_time_data_helper())
     revs = list(reset_time(evs, 'a'))
     for ev, rev in zip(evs, revs):
-        assert_equal(rev['time'], rev['timestamps']['a'])
-        assert_equal(ev['data'], rev['data'])
-        assert_equal(ev['timestamps'], rev['timestamps'])
+        assert rev['time'] == rev['timestamps']['a']
+        assert ev['data'] == rev['data']
+        assert ev['timestamps'] == rev['timestamps']
