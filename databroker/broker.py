@@ -654,8 +654,16 @@ def summarize(headers, *keys):
                         #/#/#/...
             uid-#: First "#" characters of the uid for a given document. If no
                    document name is provided, it is assumed you want
-                   header.start.uid.
+                   header.start.uid. NOTE: negative slicing doesn't work since
+                   I am splitting on "-"
     """
+    # Sanitize the `headers` input
+    try:
+        headers[0]
+    except KeyError:
+        # we only got one header, make it a list
+        headers = [headers]
+
     table = prettytable.PrettyTable(field_names=keys)
 
     for header in headers:
@@ -663,7 +671,3 @@ def summarize(headers, *keys):
         table.add_row(row)
 
     return table
-
-
-
-

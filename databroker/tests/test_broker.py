@@ -399,3 +399,17 @@ def test_get_value(image_example_uid):
     table2 = broker.summarize(hdrs, *start_keys)
 
     assert table1._rows == table2._rows
+
+def test_special_keys(image_example_uid):
+    hdr1 = db[image_example_uid]
+    # smoketest the creation of the table
+    table = broker.summarize(hdr1, *broker.known_special_keys.keys())
+
+
+def test_uid_keys():
+    hdrs = db[-2:]
+    nums = [0, 2, 40]
+    keys = ['uid-%s' % num for num in nums]
+    uids = [[hdr.start.uid[:num] for num in nums] for hdr in hdrs]
+    table = broker.summarize(hdrs, *keys)
+    assert uids == table._rows
