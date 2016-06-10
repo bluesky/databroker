@@ -1,9 +1,10 @@
-from ..examples.sample_data import (temperature_ramp, multisource_event,
-                                    image_and_scalar, step_scan)
+import pytest
 from filestore.test.utils import fs_setup, fs_teardown
 from metadatastore.test.utils import mds_setup, mds_teardown
-import pytest
-from databroker.testing.utils import Command
+
+from .utils import Command
+from ..examples.sample_data import (temperature_ramp, multisource_event,
+                                    image_and_scalar, step_scan)
 
 
 def setup_module(module):
