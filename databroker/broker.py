@@ -570,8 +570,8 @@ def _munge_time(t, timezone):
 
 known_special_keys = {
     # The duration of the scan
-    'duration': lambda header: (datetime.fromtimestamp(header.stop.timestamp) -
-                                datetime.fromtimestamp(header.start.timestamp)),
+    'duration': lambda header: (datetime.fromtimestamp(header.stop.time) -
+                                datetime.fromtimestamp(header.start.time)),
     # The number of events per event descriptor
     'num_events': lambda header: [
         len(list(mdsc.get_events_generator(descriptor, False)))
@@ -608,11 +608,11 @@ def _(header, key):
     if 'uid' in s0:
         return _get_uid(key, header.start)
     if s0 == 'start':
-        return _get_value(header.start, key)
+        return _get_value(header.start, s1)
     elif s0 == 'stop':
-        return _get_value(header.stop, key)
+        return _get_value(header.stop, s1)
     elif s0 == 'descriptor' or s0 == 'descriptors':
-        return _get_value(header.descriptors, key)
+        return _get_value(header.descriptors, s1)
 
 
 @_get_value.register(Document)
@@ -620,6 +620,8 @@ def _(header, key):
     document = header
     if 'uid' in key:
         return _get_uid(key, document)
+    if key == 'time':
+        return datetime.fromtimestamp(document[key])
     return document[key]
 
 
@@ -658,7 +660,6 @@ def summarize(headers, *keys):
         row = [_get_value(header, key) for key in keys]
         table.add_row(row)
 
-    # print(table.to_string())
     return table
 
 

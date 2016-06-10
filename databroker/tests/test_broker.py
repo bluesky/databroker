@@ -16,7 +16,8 @@ from metadatastore.api import (insert_run_start, insert_descriptor,
 from metadatastore.test.utils import mds_setup, mds_teardown
 
 from databroker import (DataBroker as db, get_events, get_table, stream,
-                        get_fields, restream, process, get_images, Broker)
+                        get_fields, restream, process, get_images, Broker,
+                        broker)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 
@@ -378,6 +379,11 @@ def test_plugins():
     assert 'echo-plugin-test' not in list(b.get_events(hdr))
 
 
-def test_summarize():
-    h = db(uid=image_example_uid)
-    assert h
+@pytest.mark.parametrize(
+    'keys',
+    [['start-time', 'uid-6', 'stop-uid-6', 'duration'],
+     ]
+)
+def test_summarize(keys):
+    h = db(uid=image_example_uid())
+    broker.summarize(h, *keys)
