@@ -413,3 +413,8 @@ def test_uid_keys():
     uids = [[hdr.start.uid[:num] for num in nums] for hdr in hdrs]
     table = broker.summarize(hdrs, *keys)
     assert uids == table._rows
+
+def test_stop_keys():
+    hdrs = db[-2:]
+    keys = set(['stop-%s' % k for hdr in hdrs for k in hdr.stop.keys()])
+    table = broker.summarize(hdrs, *keys)
