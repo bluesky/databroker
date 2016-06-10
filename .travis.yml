@@ -3,69 +3,46 @@ sudo: false
 
 services:
   - mongodb
+
 addons:
   apt:
     sources:
     - mongodb-3.2-precise
     packages:
     - mongodb-org-server
-matrix:
-  include:
-    - python: 2.7
-    - python: 3.4
-    - python: 3.5
+
+python:
+- 2.7
+- 3.4
+- 3.5
 
 before_install:
-  # use latest because why not?
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b -p /home/travis/mc
-  - export PATH=/home/travis/mc/bin:$PATH
-  # Set up config for MDS and FS.
-  - export MDS_HOST=localhost
-  - export MDS_DATABASE=test
-  - export MDS_TIMEZONE=US/Eastern
-  - mkdir -p /home/travis/.config/metadatastore
-  - 'echo ''port: 27017'' > /home/travis/.config/metadatastore/connection.yml'
-  - export FS_HOST=localhost
-  - export FS_DATABASE=test
-  - mkdir -p /home/travis/.config/filestore
-  - 'echo ''port: 27017'' > /home/travis/.config/filestore/connection.yml'
+  - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
+  - . ~/scripts/install-miniconda.sh
+  - . ~/scripts/init-filestore.sh
+  - . ~/scripts.init-metadatastore.sh
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda config --set always_yes true
-  - conda install "conda<4"
-  # pin to numpy < 1.10 because pandas 0.16 and numpy 1.10 do not play nice
-  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION six "numpy<1.10" pandas h5py coverage jsonschema jinja2 cytoolz
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION six \
+        numpy pandas h5py coverage jsonschema jinja2 cytoolz pyyaml \
+        mongoengine tzlocal boltons pymongo pims tifffile doct \
+        channelarchiver filestore metadatastore
   - source activate testenv
-  # deps needed for metadatastore/filestore
-  - conda install -n testenv pyyaml
-  # Dependencies not in official conda have been uploaded to binstar orgs.
-  - conda config --add channels lightsource2
-  - conda config --add channels soft-matter
-  - conda install mongoengine tzlocal boltons pymongo pims tifffile doct
-  - conda install nomkl
   # install all the pip deps
   - pip install coveralls
   - pip install codecov
-  # these next three will be replaced by the following two lines soon once
-  # conda-forge is activated on metadatastore, filestore and channelarchiver
-  # - conda config --add channels lightsource2-dev
-  # - conda install -n testenv metadatastore filestore channelarchiver
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch;
     fi;
-  - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
-  - pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore
-  - pip install https://github.com/NSLS-II/channelarchiver/zipball/master#egg=channelarchiver
   - python -c "from filestore import utils, conf; utils.install_sentinels(conf.connection_config, 1)"
   - python setup.py install
 
 
 script:
-  - python run_tests.py -v
+  - coverage run run_tests.py
 
 after_success:
+  - coverage report -m
   - coveralls
   - codecov
