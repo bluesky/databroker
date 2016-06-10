@@ -379,15 +379,6 @@ def test_plugins():
     assert 'echo-plugin-test' not in list(b.get_events(hdr))
 
 
-@pytest.mark.parametrize(
-    'keys',
-    [['start-time', 'uid-6', 'stop-uid-6', 'duration'],
-     ]
-)
-def test_summarize(keys):
-    h = db(uid=image_example_uid())
-    broker.summarize(h, *keys)
-
 def test_get_value(image_example_uid):
     # make sure we are getting the keys from the start document
     hdr1 = db[image_example_uid]
@@ -403,7 +394,7 @@ def test_get_value(image_example_uid):
 def test_special_keys(image_example_uid):
     hdr1 = db[image_example_uid]
     # smoketest the creation of the table
-    table = broker.summarize(hdr1, *broker.known_special_keys.keys())
+    broker.summarize(hdr1, *broker.known_special_keys.keys())
 
 
 def test_uid_keys():
@@ -419,7 +410,8 @@ def test_stop_keys():
     hdrs = db[-2:]
     keys = set(['stop-%s' % k for hdr in hdrs for k in hdr.stop.keys()])
     keys.add('horsepower')
-    table = broker.summarize(hdrs, *keys)
+    # smoketest the creation of the table
+    broker.summarize(hdrs, *keys)
 
 
 def test_descriptor_keys():
@@ -427,4 +419,5 @@ def test_descriptor_keys():
     keys = set(['descriptor-%s' % k for hdr in hdrs for k in
                 [key for descriptor in hdr.descriptors
                      for key in descriptor.keys()]])
-    table = broker.summarize(hdrs, *keys)
+    # smoketest the creation of the table
+    broker.summarize(hdrs, *keys)
