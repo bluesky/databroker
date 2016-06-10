@@ -1,23 +1,25 @@
 from __future__ import absolute_import, division, print_function
-import six
-import uuid
+
 import logging
-from itertools import count
 import time as ttime
+import uuid
+from datetime import datetime, date, timedelta
+from itertools import count
+
+import filestore.api
+import metadatastore.commands
+import pytest
+import six
+from filestore.test.utils import fs_setup, fs_teardown
+from metadatastore.api import (insert_run_start, insert_descriptor,
+                               find_run_starts)
+from metadatastore.test.utils import mds_setup, mds_teardown
+
 from databroker import (DataBroker as db, get_events, get_table, stream,
                         get_fields, restream, process, get_images, Broker)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
-from nose.tools import (assert_equal, assert_raises, assert_true,
-                        assert_false, raises)
-from datetime import datetime, date, timedelta
 
-from metadatastore.api import (insert_run_start, insert_descriptor,
-                               find_run_starts)
-from metadatastore.test.utils import mds_setup, mds_teardown
-import metadatastore.commands
-import filestore.api
-from filestore.test.utils import fs_setup, fs_teardown
 logger = logging.getLogger(__name__)
 
 
@@ -29,14 +31,18 @@ class DummyHandler(object):
         return 'dummy'
 
 
-blc = None
-image_example_uid = None
+@pytest.fixture(scope='module')
+def image_example_uid():
+    rs = insert_run_start(time=ttime.time(), scan_id=1,
+                          owner='nedbrainard', beamline_id='example',
+                          uid=str(uuid.uuid4()))
+    image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
+    return rs
 
 
-def setup_module():
+def setup_module(module):
     mds_setup()
     fs_setup()
-    global image_example_uid
 
     owners = ['docbrown', 'nedbrainard']
     num_entries = 5
@@ -52,13 +58,9 @@ def setup_module():
                                   uid=str(uuid.uuid4()))
             # insert some events into mds
             temperature_ramp.run(run_start_uid=rs, make_run_stop=(i != 0))
-            if i == 0:
-                # only need to do images once, it takes a while...
-                image_example_uid = rs
-                image_and_scalar.run(run_start_uid=rs, make_run_stop=True)
 
 
-def teardown_module():
+def teardown_module(module):
     fs_teardown()
     mds_teardown()
 
@@ -88,14 +90,13 @@ def test_basic_usage():
 
     # test time shift issue GH9
     table = get_table(db[105])
-    assert_true(table.notnull().all().all())
+    assert table.notnull().all().all()
 
 
-@raises(ValueError)
 def test_get_events_bad_key():
     hdr = db[-1]
-
-    list(get_events(hdr, fields=['abcd123']))
+    with pytest.raises(ValueError):
+        list(get_events(hdr, fields=['abcd123']))
 
 
 def test_indexing():
@@ -105,60 +106,42 @@ def test_indexing():
                          uid=str(uuid.uuid4()))
 
     header = db[-1]
-    is_list = isinstance(header, list)
-    assert_false(is_list)
-    scan_id = header['start']['scan_id']
-    assert_equal(scan_id, 5)
+    assert not isinstance(header, list)
+    assert header['start']['scan_id'] == 5
 
     header = db[-2]
-    is_list = isinstance(header, list)
-    assert_false(is_list)
-    scan_id = header['start']['scan_id']
-    assert_equal(scan_id, 4)
+    assert not isinstance(header, list)
+    assert header['start']['scan_id'] == 4
 
     f = lambda: db[-100000]
-    assert_raises(IndexError, f)
+    pytest.raises(IndexError, f)
 
     headers = db[-5:]
-    is_list = isinstance(headers, list)
-    assert_true(is_list)
-    num = len(headers)
-    assert_equal(num, 5)
+    assert isinstance(headers, list)
+    assert len(headers) == 5
 
-    header = db[-6:]
-    assert_true(is_list)
-    num = len(headers)
-    assert_equal(num, 5)
+    headers = db[-6:]
+    assert isinstance(headers, list)
+    assert len(headers) == 6
 
     headers = db[-1:]
-    assert_true(is_list)
-    num = len(headers)
-    assert_equal(num, 1)
-    header, = headers
-    scan_id = header['start']['scan_id']
-    assert_equal(scan_id, 5)
+    assert isinstance(headers, list)
+    assert len(headers) == 1
+    assert headers[0]['start']['scan_id'] == 5
 
     headers = db[-2:-1]
-    assert_true(is_list)
-    num = len(headers)
-    assert_equal(num, 1)
+    assert isinstance(headers, list)
+    assert len(headers) == 1
     header, = headers
-    scan_id = header['start']['scan_id']
-    assert_equal(scan_id, 4)
+    assert header['start']['scan_id'] == 4
 
-    headers = db[-3:-1]
-    scan_ids = [h['start']['scan_id'] for h in headers]
-    assert_equal(scan_ids, [4, 3])
+    assert [h['start']['scan_id'] for h in db[-3:-1]] == [4, 3]
 
     # fancy indexing, by location
-    headers = db[[-3, -1, -2]]
-    scan_ids = [h['start']['scan_id'] for h in headers]
-    assert_equal(scan_ids, [3, 5, 4])
+    assert [h['start']['scan_id'] for h in db[[-3, -1, -2]]] == [3, 5, 4]
 
     # fancy indexing, by scan id
-    headers = db[[3, 1, 2]]
-    scan_ids = [h['start']['scan_id'] for h in headers]
-    assert_equal(scan_ids, [3, 1, 2])
+    assert [h['start']['scan_id'] for h in db[[3, 1, 2]]] == [3, 1, 2]
 
 
 def test_scan_id_lookup():
@@ -171,11 +154,11 @@ def test_scan_id_lookup():
                             uid=str(uuid.uuid4())) for i in range(5)]
     header = db[3 + 314159]
     scan_id = header['start']['scan_id']
-    owner = header['start']['owner']
-    assert_equal(scan_id, 3 + 314159)
-    assert_equal(rd2[2], header['start']['uid'])
+    assert scan_id == 3 + 314159
+    assert rd2[2] == header['start']['uid']
     # This should be the most *recent* Scan 3 + 314159. There is ambiguity.
-    assert_equal(owner, 'nedbrainard')
+    owner = header['start']['owner']
+    assert owner == 'nedbrainard'
 
 
 def test_uid_lookup():
@@ -187,16 +170,16 @@ def test_uid_lookup():
                      owner='drstrangelove', beamline_id='example')
     # using full uid
     actual_uid = db[uid]['start']['uid']
-    assert_equal(actual_uid, uid)
-    assert_equal(rs1, uid)
+    assert actual_uid == uid
+    assert rs1 == uid
 
     # using first 6 chars
     actual_uid = db[uid[:6]]['start']['uid']
-    assert_equal(actual_uid, uid)
-    assert_equal(rs1, uid)
+    assert actual_uid == uid
+    assert rs1 == uid
 
     # using first char (will error)
-    assert_raises(ValueError, lambda: db[uid[0]])
+    pytest.raises(ValueError, lambda: db[uid[0]])
 
 
 def test_find_by_float_time():
@@ -204,8 +187,8 @@ def test_find_by_float_time():
                            owner='nedbrainard', beamline_id='example',
                            uid=str(uuid.uuid4()))
     result = db(start_time=99, stop_time=101)
-    uids = [hdr['start']['uid'] for hdr in result]
-    assert uid in uids
+    assert uid in [hdr['start']['uid'] for hdr in result]
+
 
 def test_find_by_string_time():
     uid = insert_run_start(time=ttime.time(), scan_id=1,
@@ -216,8 +199,7 @@ def test_find_by_string_time():
     today_str = today.strftime('%Y-%m-%d')
     tomorrow_str = tomorrow.strftime('%Y-%m-%d')
     result = db(start_time=today_str, stop_time=tomorrow_str)
-    uids = [hdr['start']['uid'] for hdr in result]
-    assert uid in uids
+    assert uid in [hdr['start']['uid'] for hdr in result]
 
 
 def test_data_key():
@@ -238,10 +220,10 @@ def test_data_key():
                             uid=str(uuid.uuid4()))
     result1 = db(data_key='fork')
     result2 = db(data_key='fork', start_time=150)
-    assert_equal(len(result1), 2)
-    assert_equal(len(result2), 1)
+    assert len(result1) == 2
+    assert len(result2) == 1
     actual = result2[0]['start']['uid']
-    assert_equal(actual, str(rs2.uid))
+    assert actual == str(rs2.uid)
 
 
 def _search_helper(query):
@@ -269,21 +251,17 @@ def test_search_for_smoke():
         db[query]
 
 
-@raises(ValueError)
-def _raiser_helper(key):
-    db[key]
-
-
-def test_raise_conditions():
-    raising_keys = [
-        slice(1, None, None), # raise because trying to slice by scan id
-        slice(-1, 2, None),  # raise because slice stop value is > 0
-        slice(None, None, None), # raise because slice has slice.start == None
-        4500,  # raise on not finding a header by a scan id
-        str(uuid.uuid4()),  # raise on not finding a header by uuid
-    ]
-    for raiser in raising_keys:
-        yield _raiser_helper, raiser
+@pytest.mark.parametrize(
+    'key',
+    [slice(1, None, None), # raise because trying to slice by scan id
+     slice(-1, 2, None),  # raise because slice stop value is > 0
+     slice(None, None, None),  # raise because slice has slice.start == None
+     4500,  # raise on not finding a header by a scan id
+     str(uuid.uuid4()),  # raise on not finding a header by uuid
+     ])
+def test_raise_conditions(key):
+    with pytest.raises(ValueError):
+        db[key]
 
 
 def test_stream():
@@ -364,7 +342,7 @@ def test_configuration():
     assert 'exit_status' in ev['timestamps']
 
 
-def test_handler_options():
+def test_handler_options(image_example_uid):
     h = db[image_example_uid]
     list(get_events(h))
     list(get_table(h))
