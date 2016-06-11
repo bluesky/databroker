@@ -5,17 +5,17 @@ from databroker import DataBroker as db, get_events
 from numpy.testing.utils import assert_array_equal
 
 
-def setup_module():
+def setup_module(module):
     fs_setup()
     mds_setup()
 
 
-def teardown_module():
+def teardown_module(module):
     fs_teardown()
     mds_teardown()
 
 
-def _test_retrieve_data(event, rows, cols):
+def _retrieve_data_helper(event, cols):
     spec = event['data']['xrf_spectrum']
     x = event['data']['h_pos']
     y = event['data']['v_pos']
@@ -28,5 +28,5 @@ def test_hdf_io():
     rs_uid, ev_uids = hdf_data_io(rows, cols)
     h = db[rs_uid]
     for e in get_events(h, fill=True):
-        _test_retrieve_data(e, rows, cols)
+        _retrieve_data_helper(e, cols)
         assert e['uid'] in ev_uids
