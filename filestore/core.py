@@ -80,7 +80,7 @@ def bulk_insert_datum(col, resource, datum_ids,
                          datum_kwargs=dict(d_kwargs))
             yield datum
 
-    bulk = col.initialize_ordered_bulk_op()
+    bulk = col.initialize_unordered_bulk_op()
     for dm in datum_factory():
         bulk.insert(dm)
 
