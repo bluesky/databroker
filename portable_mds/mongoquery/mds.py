@@ -1,15 +1,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import six
-import pymongo
-from pymongo import MongoClient
-import boltons.cacheutils
+import os
+import json
 from . import core
-from . import core_v0
 
-_API_MAP = {0: core_v0,
-            1: core}
+_API_MAP = {1: core}
 
 
 class MDSRO(object):
@@ -17,25 +13,18 @@ class MDSRO(object):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
-        self.reset_connection()
         self.config = config
         self._api = None
         self.version = version
+        self.__event_col = None
+        self.__descriptor_col = None
+        self.__runstart_col = None
+        self.__runstop_col = None
 
     def reset_caches(self):
         self._RUNSTART_CAHCE.clear()
         self._RUNSTOP_CAHCE.clear()
         self._DESCRIPTOR_CAHCE.clear()
-
-    def reset_connection(self):
-        self.__conn = None
-
-        self.__db = None
-
-        self.__event_col = None
-        self.__descriptor_col = None
-        self.__runstart_col = None
-        self.__runstop_col = None
 
     def __getstate__(self):
         return self.version, self.config
@@ -44,7 +33,6 @@ class MDSRO(object):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
-        self.reset_connection()
         self._api = None
         self.version, self.config = state
 
@@ -59,126 +47,46 @@ class MDSRO(object):
         self._api = _API_MAP[val]
         self._version = val
 
-    def disconnect(self):
-
-        self.__conn = None
-
-        self.__db = None
-
+    def refresh(self):
         self.__event_col = None
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
 
     def reconfigure(self, config):
-        self.disconnect()
         self.config = config
-
-    @property
-    def _connection(self):
-        if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
-        return self.__conn
-
-    @property
-    def _db(self):
-        if self.__db is None:
-            conn = self._connection
-            self.__db = conn.get_database(self.config['database'])
-            if self.version > 0:
-                sentinel = self.__db.get_collection('sentinel')
-                versioned_collection = ['run_start', 'run_stop',
-                                        'event_descriptor', 'event']
-                for col_name in versioned_collection:
-                    val = sentinel.find_one({'collection': col_name})
-                    if val is None:
-                        raise RuntimeError('there is no version sentinel for '
-                                           'the {} collection'.format(col_name)
-                                           )
-                    if val['version'] != self.version:
-                        raise RuntimeError('DB version {!r} does not match'
-                                           'API version of MDS {} for the '
-                                           '{} collection'.format(
-                                               val, self.version, col_name))
-        return self.__db
 
     @property
     def _runstart_col(self):
         if self.__runstart_col is None:
-            self.__runstart_col = self._db.get_collection('run_start')
-
-            self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
-                                             unique=True)
-            self.__runstart_col.create_index([('time', pymongo.DESCENDING),
-                                              ('scan_id', pymongo.DESCENDING)],
-                                             unique=False, background=True)
-            self.__runstart_col.create_index([("$**", "text")])
-
+            fp = os.path.join(self.config['directory'], 'run_starts.json')
+            with open(fp, 'r') as f:
+                self.__runstart_col = json.load(f)
         return self.__runstart_col
 
     @property
     def _runstop_col(self):
         if self.__runstop_col is None:
-            self.__runstop_col = self._db.get_collection('run_stop')
-            if self.version == 0:
-                self.__runstop_col.create_index('run_start_id',
-                                                unique=True)
-            else:
-                self.__runstop_col.create_index('run_start',
-                                                unique=True)
-            self.__runstop_col.create_index('uid',
-                                            unique=True)
-            self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
-                                            unique=False, background=True)
-            self.__runstop_col.create_index([("$**", "text")])
-
+            fp = os.path.join(self.config['directory'], 'run_stops.json')
+            with open(fp, 'r') as f:
+                self.__runstop_col = json.load(f)
         return self.__runstop_col
 
     @property
     def _descriptor_col(self):
         if self.__descriptor_col is None:
-            # The name of the reference to the run start changed from
-            # 'run_start_id' in v0 to 'run_start' in v1.
-            if self.version == 1:
-                rs_name = 'run_start'
-            elif self.version == 0:
-                rs_name = 'run_start_id'
-            else:
-                raise RuntimeError("No rule for event index creation for "
-                                   " schema version {!r}".format(self.version))
-            self.__descriptor_col = self._db.get_collection('event_descriptor')
-
-            self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
-                                               unique=True)
-            self.__descriptor_col.create_index([(rs_name, pymongo.DESCENDING),
-                                                ('time', pymongo.DESCENDING)],
-                                               unique=False, background=True)
-            self.__descriptor_col.create_index([('time', pymongo.DESCENDING)],
-                                               unique=False, background=True)
-            self.__descriptor_col.create_index([("$**", "text")])
-
+            fp = os.path.join(self.config['directory'],
+                              'event_descriptors.json')
+            with open(fp, 'r') as f:
+                self.__descriptor_col = json.load(f)
         return self.__descriptor_col
 
     @property
     def _event_col(self):
         if self.__event_col is None:
-            self.__event_col = self._db.get_collection('event')
-
-            self.__event_col.create_index([('uid', pymongo.DESCENDING)],
-                                          unique=True)
-            if self.version == 1:
-                self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                               ('time', pymongo.ASCENDING)],
-                                              unique=False, background=True)
-            elif self.version == 0:
-                self.__event_col.create_index([('descriptor_id',
-                                                pymongo.DESCENDING),
-                                               ('time', pymongo.ASCENDING)],
-                                              unique=False, background=True)
-            else:
-                raise RuntimeError("No rule for event index creation for "
-                                   " schema version {!r}".format(self.version))
+            fp = os.path.join(self.config['directory'], 'events.json')
+            with open(fp, 'r') as f:
+                self.__descriptor_col = json.load(f)
         return self.__event_col
 
     def clear_process_cache(self):
@@ -186,27 +94,6 @@ class MDSRO(object):
         self._RUNSTART_CACHE.clear()
         self._RUNSTOP_CACHE.clear()
         self._DESCRIPTOR_CACHE.clear()
-
-    def db_disconnect(self):
-        """Helper function to deal with stateful connections to mongoengine"""
-        self.disconnect()
-        self.clear_process_cache()
-
-    def db_connect(self, database, host, port, **kwargs):
-        """Helper function to deal with stateful connections to mongoengine
-
-        .. warning
-
-           This will silently ignore input if the database is already
-           connected, even if the input database, host, or port are
-           different than currently connected.  To change the database
-           connection you must call `db_disconnect` before attempting to
-           re-connect.
-        """
-        self.clear_process_cache()
-        self.reconfigure(dict(database=database,
-                              host=host, port=port, **kwargs))
-        return self._connection
 
     def run_start_given_uid(self, uid):
         """Given a uid, return the RunStart document
