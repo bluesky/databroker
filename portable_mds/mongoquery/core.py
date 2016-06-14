@@ -975,67 +975,11 @@ def find_descriptors(start_col, start_cache,
 
     col = descriptor_col
     event_descriptor_objects = col.find(kwargs,
-                                        sort=[('time', pymongo.ASCENDING)])
+                                        sort=[('time', ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache,
                                 start_col, start_cache)
-
-
-def find_events(start_col, start_cache,
-                descriptor_col, descriptor_cache,
-                event_col, tz, descriptor=None, **kwargs):
-    """Given search criteria, locate Event Documents.
-
-    Parameters
-    -----------
-    start_time : time-like, optional
-        time-like representation of the earliest time that an Event
-        was created. Valid options are:
-           - timestamps --> time.time()
-           - '2015'
-           - '2015-01'
-           - '2015-01-30'
-           - '2015-03-30 03:00:00'
-           - datetime.datetime.now()
-    stop_time : time-like, optional
-        timestamp of the latest time that an Event was created. See
-        docs for `start_time` for examples.
-    descriptor : doc.Document or str, optional
-       Find events for a given EventDescriptor
-    uid : str, optional
-        Globally unique id string provided to metadatastore
-
-    Returns
-    -------
-    events : iterable of doc.Document objects
-    """
-    # Some user-friendly error messages for an easy mistake to make
-    if 'event_descriptor' in kwargs:
-        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
-
-    if descriptor:
-        descriptor_uid = doc_or_uid_to_uid(descriptor)
-        kwargs['descriptor'] = descriptor_uid
-
-    _format_time(kwargs, tz)
-    col = event_col
-    events = col.find(kwargs,
-                      sort=[('descriptor', pymongo.DESCENDING),
-                            ('time', pymongo.ASCENDING)])
-
-    for ev in events:
-        ev.pop('_id', None)
-        # pop the descriptor oid
-        desc_uid = ev.pop('descriptor')
-        # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
-                                                descriptor_cache,
-                                                start_col, start_cache)
-
-        # wrap it our fancy dict
-        ev = doc.Document('Event', ev)
-        yield ev
 
 
 def find_last(start_col, start_cache, num):
