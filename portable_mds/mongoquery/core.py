@@ -3,19 +3,18 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import warnings
-
 import datetime
 import logging
-
-import pymongo
 import pytz
-
 import numpy as np
-
 import doct as doc
 
 
 logger = logging.getLogger(__name__)
+
+# singletons defined as they are defined in pymongo
+ASCENDING = 1
+DESCENDING = -1
 
 
 class NoRunStop(Exception):
@@ -358,8 +357,8 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       run_start_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('descriptor', pymongo.DESCENDING),
-                            ('time', pymongo.ASCENDING)])
+                      sort=[('descriptor', DESCENDING),
+                            ('time', ASCENDING)])
 
     data_keys = descriptor['data_keys']
     for ev in ev_cur:
@@ -885,7 +884,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     # now try rest of formatting
     _format_time(kwargs, tz)
     rs_objects = run_start_col.find(kwargs,
-                                    sort=[('time', pymongo.DESCENDING)])
+                                    sort=[('time', DESCENDING)])
 
     for rs in rs_objects:
         yield _cache_run_start(rs, run_start_cache)
@@ -932,7 +931,7 @@ def find_run_stops(start_col, start_cache,
 
     _format_time(kwargs, tz)
     col = stop_col
-    run_stop = col.find(kwargs, sort=[('time', pymongo.ASCENDING)])
+    run_stop = col.find(kwargs, sort=[('time', ASCENDING)])
 
     for rs in run_stop:
         yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
@@ -1053,5 +1052,5 @@ def find_last(start_col, start_cache, num):
        The requested RunStart documents
     """
     col = start_col
-    for rs in col.find().sort('time', pymongo.DESCENDING).limit(num):
+    for rs in col.find().sort('time', DESCENDING).limit(num):
         yield _cache_run_start(rs, start_cache)
