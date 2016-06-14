@@ -124,6 +124,7 @@ class MDSRO:
         return dict(query=query, signature=signature)
 
     def _get(self, url, params):
+        """RESTful api get call"""
         r = requets.get(url, json.dumps(params))
         r.raise_for_status()
         return r.json()
@@ -192,7 +193,7 @@ class MDSRO:
         pass
 
 class MDS(MDSRO):
-   _INS_METHODS = {'start': 'insert_run_start',
+    _INS_METHODS = {'start': 'insert_run_start',
                     'stop': 'insert_run_stop',
                     'descriptor': 'insert_descriptor',
                     'event': 'insert_event',
@@ -202,11 +203,13 @@ class MDS(MDSRO):
         return dict(data=data, signature=signature)
 
     def _post(self, url, data)
+        """RESTful api insert call"""
         r = request.post(url, json.dumps(data))
         r.raise_for_status()
         return r.json()
 
     def insert(self):
+        """Simple utility routine to insert data given doc name"""
         pass
 
     def _check_for_custom(self, kdict):
@@ -249,11 +252,28 @@ class MDS(MDSRO):
                              self.RUN_STOP_CACHE)
         return uid
 
-    def insert_descriptor(self):
-        pass
+    def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
+        kwargs = self._check_for_custom(kwargs)
+        for k in data_keys:
+            if '.' in k:
+                raise ValueError('Key names cannot contain period(.)')
+        data_keys = {k: dict(v) for k, v in data_keys.items()}
+        run_start_uid = self.doc_or_uid_to_uid(run_start)
+        desc = dict(run_start=run_start, time=time, uid=uid,
+                    data_keys=data_keys, uid=uid, **kwargs)
+        self._post(self._desc_url, desc)
+        self._cache_descriptor(desc, self._DESCRIPTOR_CACHE)
+        return uid
 
-    def insert_event(self):
-        pass
+    def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
+                     validate):
+        if validate:
+            raise NotImplementedError("No validation is implemented yet")
+        desc_uid = self.doc_or_uid_to_uid(descriptor)
+        event = dict(descriptor=desc_uid, time=time, seq_num=seq_num, data=data,
+                     timestamps=timestamps, time=time, seq_num=seq_num)
+        self._post(self._event_url, event)
+        return uid
 
     def bulk_insert_events(self):
         pass
