@@ -38,16 +38,22 @@ class JSONCollection(object):
             return None
 
     def insert_one(self, doc):
-        with open(self._fp, 'r') as f:
-            data = json.load(f)
+        if os.path.isfile(self._fp):
+            with open(self._fp, 'r') as f:
+                data = json.load(f)
+        else:
+            data = []
         data.append(doc)
         self._docs = data
         with open(self._fp, 'w') as f:
             json.dump(data, f)
 
     def insert(self, docs):
-        with open(self._fp, 'r') as f:
-            data = json.load(f)
+        if os.path.isfile(self._fp):
+            with open(self._fp, 'r') as f:
+                data = json.load(f)
+        else:
+            data = []
         data.extend(docs)
         self._docs = data
         with open(self._fp, 'w') as f:
