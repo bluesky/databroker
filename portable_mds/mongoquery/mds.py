@@ -5,7 +5,7 @@ from ..template.mds import MDSTemplate, MDSROTemplate
 from ..template.core import ASCENDING, DESCENDING
 
 
-class Collection(object):
+class JSONCollection(object):
     def __init__(self, fp):
         self._fp = fp
         self.refresh()
@@ -79,14 +79,14 @@ class _CollectionMixin(object):
     def _runstart_col(self):
         if self.__runstart_col is None:
             fp = os.path.join(self.config['directory'], 'run_starts.json')
-            self.__runstart_col = Collection(fp)
+            self.__runstart_col = JSONCollection(fp)
         return self.__runstart_col
 
     @property
     def _runstop_col(self):
         if self.__runstop_col is None:
             fp = os.path.join(self.config['directory'], 'run_stops.json')
-            self.__runstop_col = Collection(fp)
+            self.__runstop_col = JSONCollection(fp)
         return self.__runstop_col
 
     @property
@@ -94,14 +94,14 @@ class _CollectionMixin(object):
         if self.__descriptor_col is None:
             fp = os.path.join(self.config['directory'],
                               'event_descriptors.json')
-            self.__descriptor_col = Collection(fp)
+            self.__descriptor_col = JSONCollection(fp)
         return self.__descriptor_col
 
     @property
     def _event_col(self):
         if self.__event_col is None:
             fp = os.path.join(self.config['directory'], 'events.json')
-            self.__event_col = Collection(fp)
+            self.__event_col = JSONCollection(fp)
         return self.__event_col
 
 
