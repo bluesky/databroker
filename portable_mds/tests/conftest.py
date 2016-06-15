@@ -3,19 +3,21 @@ import tempfile
 import shutil
 import tzlocal
 import pytest
-from ..mongoquery.mds import MDS
+import portable_mds.mongoquery.mds
+import portable_mds.sqlite.mds
 
+variations = [portable_mds.mongoquery.mds,
+              portable_mds.sqlite.mds]
 
-@pytest.fixture(params=[1], scope='function')
+@pytest.fixture(params=variations, scope='function')
 def mds_all(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with both v0 and v1.
 
     '''
-    ver = request.param
     tempdirname = tempfile.mkdtemp()
-    mds = MDS({'directory': tempdirname,
-               'timezone': tzlocal.get_localzone().zone}, version=ver)
+    mds = request.param.MDS({'directory': tempdirname,
+               'timezone': tzlocal.get_localzone().zone}, version=1)
     filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
                  'events.json']
     for fn in filenames:
