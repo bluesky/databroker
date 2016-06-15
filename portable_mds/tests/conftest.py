@@ -5,9 +5,11 @@ import tzlocal
 import pytest
 import portable_mds.mongoquery.mds
 import portable_mds.sqlite.mds
+import portable_mds.hdf5.mds
 
 variations = [portable_mds.mongoquery.mds,
-              portable_mds.sqlite.mds]
+              portable_mds.sqlite.mds,
+              portable_mds.hdf5.mds]
 
 @pytest.fixture(params=variations, scope='function')
 def mds_all(request):

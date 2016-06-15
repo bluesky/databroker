@@ -105,7 +105,7 @@ class EventCollection(object):
         with cursor(self._runstarts[run_start_uid]) as c:
             c.execute(CREATE_TABLE % table_name
                       + '(' + ','.join(columns) + ')')
-            self._descriptors[uid] = run_start_uid
+        self._descriptors[uid] = run_start_uid
 
     def find(self, query, sort=None):
         if list(query.keys()) != ['descriptor']:
