@@ -3,18 +3,19 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import warnings
+
 import datetime
 import logging
+
+import pymongo
 import pytz
+
 import numpy as np
+
 import doct as doc
 
 
 logger = logging.getLogger(__name__)
-
-# singletons defined as they are defined in pymongo
-ASCENDING = 1
-DESCENDING = -1
 
 
 class NoRunStop(Exception):
@@ -357,8 +358,8 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       run_start_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('descriptor', DESCENDING),
-                            ('time', ASCENDING)])
+                      sort=[('descriptor', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
 
     data_keys = descriptor['data_keys']
     for ev in ev_cur:
@@ -884,7 +885,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     # now try rest of formatting
     _format_time(kwargs, tz)
     rs_objects = run_start_col.find(kwargs,
-                                    sort=[('time', DESCENDING)])
+                                    sort=[('time', pymongo.DESCENDING)])
 
     for rs in rs_objects:
         yield _cache_run_start(rs, run_start_cache)
@@ -931,7 +932,7 @@ def find_run_stops(start_col, start_cache,
 
     _format_time(kwargs, tz)
     col = stop_col
-    run_stop = col.find(kwargs, sort=[('time', ASCENDING)])
+    run_stop = col.find(kwargs, sort=[('time', pymongo.ASCENDING)])
 
     for rs in run_stop:
         yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
@@ -975,11 +976,67 @@ def find_descriptors(start_col, start_cache,
 
     col = descriptor_col
     event_descriptor_objects = col.find(kwargs,
-                                        sort=[('time', ASCENDING)])
+                                        sort=[('time', pymongo.ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache,
                                 start_col, start_cache)
+
+
+def find_events(start_col, start_cache,
+                descriptor_col, descriptor_cache,
+                event_col, tz, descriptor=None, **kwargs):
+    """Given search criteria, locate Event Documents.
+
+    Parameters
+    -----------
+    start_time : time-like, optional
+        time-like representation of the earliest time that an Event
+        was created. Valid options are:
+           - timestamps --> time.time()
+           - '2015'
+           - '2015-01'
+           - '2015-01-30'
+           - '2015-03-30 03:00:00'
+           - datetime.datetime.now()
+    stop_time : time-like, optional
+        timestamp of the latest time that an Event was created. See
+        docs for `start_time` for examples.
+    descriptor : doc.Document or str, optional
+       Find events for a given EventDescriptor
+    uid : str, optional
+        Globally unique id string provided to metadatastore
+
+    Returns
+    -------
+    events : iterable of doc.Document objects
+    """
+    # Some user-friendly error messages for an easy mistake to make
+    if 'event_descriptor' in kwargs:
+        raise ValueError("Use 'descriptor', not 'event_descriptor'.")
+
+    if descriptor:
+        descriptor_uid = doc_or_uid_to_uid(descriptor)
+        kwargs['descriptor'] = descriptor_uid
+
+    _format_time(kwargs, tz)
+    col = event_col
+    events = col.find(kwargs,
+                      sort=[('descriptor', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
+
+    for ev in events:
+        ev.pop('_id', None)
+        # pop the descriptor oid
+        desc_uid = ev.pop('descriptor')
+        # replace it with the defererenced descriptor
+        ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
+                                                descriptor_cache,
+                                                start_col, start_cache)
+
+        # wrap it our fancy dict
+        ev = doc.Document('Event', ev)
+        yield ev
 
 
 def find_last(start_col, start_cache, num):
@@ -996,5 +1053,5 @@ def find_last(start_col, start_cache, num):
        The requested RunStart documents
     """
     col = start_col
-    for rs in col.find().sort('time', DESCENDING).limit(num):
+    for rs in col.find().sort('time', pymongo.DESCENDING).limit(num):
         yield _cache_run_start(rs, start_cache)
