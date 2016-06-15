@@ -9,7 +9,7 @@ source_config = {'host': 'localhost',
 dest_config = {'directory': 'some_directory',
                'timezone': 'US/Eastern'}
 
-source = MDSRO(source_config)
+source = MDSRO(source_config)  # a read-only metadatastore object
 dest = MDS(dest_config)
 
 for run_start in source.find_run_starts():
