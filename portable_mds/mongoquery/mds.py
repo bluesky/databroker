@@ -11,8 +11,13 @@ class JSONCollection(object):
         self.refresh()
 
     def refresh(self):
-        with open(self._fp, 'r') as f:
-            self._docs = json.load(f)
+        if os.path.isfile(self._fp):
+            with open(self._fp, 'r') as f:
+                self._docs= json.load(f)
+        else:
+            self._docs = []
+            with open(self._fp, 'w') as f:
+                json.dump([], f)
 
     def find(self, query, sort=None):
         match = Query(query).match
@@ -38,26 +43,16 @@ class JSONCollection(object):
             return None
 
     def insert_one(self, doc):
-        if os.path.isfile(self._fp):
-            with open(self._fp, 'r') as f:
-                data = json.load(f)
-        else:
-            data = []
-        data.append(doc)
-        self._docs = data
+        self.refresh()
+        self._docs.append(doc)
         with open(self._fp, 'w') as f:
-            json.dump(data, f)
+            json.dump(self._docs, f)
 
     def insert(self, docs):
-        if os.path.isfile(self._fp):
-            with open(self._fp, 'r') as f:
-                data = json.load(f)
-        else:
-            data = []
-        data.extend(docs)
-        self._docs = data
+        self.refresh()
+        self._docs.extend(docs)
         with open(self._fp, 'w') as f:
-            json.dump(data, f)
+            json.dump(self._docs, f)
 
 
 class _CollectionMixin(object):
