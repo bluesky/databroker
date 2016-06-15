@@ -6,7 +6,8 @@ source_config = {'host': 'localhost',
                  'port': 27017,
                  'database': 'metadatastore_production_v1',
                  'timezone': 'US/Eastern'}
-dest_config = {'directory': 'some_directory'}
+dest_config = {'directory': 'some_directory',
+               'timezone': 'US/Eastern'}
 
 source = MDSRO(source_config)
 dest = MDS(dest_config)
