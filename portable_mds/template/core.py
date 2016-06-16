@@ -991,5 +991,6 @@ def find_last(start_col, start_cache, num):
        The requested RunStart documents
     """
     col = start_col
-    for rs in col.find({}, sort=[('time', DESCENDING)])[:num]:
-        yield _cache_run_start(rs, start_cache)
+    gen = col.find({}, sort=[('time', DESCENDING)])
+    for _ in range(num):
+        yield _cache_run_start(next(gen), start_cache)
