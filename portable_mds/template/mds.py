@@ -16,9 +16,9 @@ class MDSROTemplate(object):
         self.version = version
 
     def reset_caches(self):
-        self._RUNSTART_CAHCE.clear()
-        self._RUNSTOP_CAHCE.clear()
-        self._DESCRIPTOR_CAHCE.clear()
+        self._RUNSTART_CACHE.clear()
+        self._RUNSTOP_CACHE.clear()
+        self._DESCRIPTOR_CACHE.clear()
 
     def __getstate__(self):
         return self.version, self.config

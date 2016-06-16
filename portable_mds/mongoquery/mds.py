@@ -40,7 +40,7 @@ class JSONCollection(object):
         for doc in self._docs:
             if match(doc):
                 return doc
-            return None
+        return None
 
     def insert_one(self, doc):
         self.refresh()
