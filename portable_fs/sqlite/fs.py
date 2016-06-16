@@ -16,10 +16,10 @@ CREATE TABLE Resources(
 );"""
 CREATE_DATUMS_TABLE = """
 CREATE TABLE Datums(
-    datum_uid TEXT PRIMARY KEY NOT NULL,
+    datum_id TEXT PRIMARY KEY NOT NULL,
     datum_kwargs BLOB NOT NULL,
-    resource_uid TEXT NOT NULL,
-    FOREIGN KEY(resource_uid) REFERENCES Resources(uid)
+    resource TEXT NOT NULL,
+    FOREIGN KEY(resource) REFERENCES Resources(uid)
 );"""
 CREATE_RESOURCE_UPDATES_TABLE = """
 CREATE TABLE ResourceUpdates(
@@ -32,14 +32,14 @@ CREATE TABLE ResourceUpdates(
     FOREIGN KEY(uid) REFERENCES Resources(uid)
 );"""
 INSERT_DATUM = """
-INSERT INTO Datums (datum_uid, datum_kwargs, resource_uid)
+INSERT INTO Datums (datum_id, datum_kwargs, resource)
 VALUES (?, ?, ?);"""
 INSERT_RESOURCE = """
 INSERT INTO Resources (uid, spec, resource_path, root, resource_kwargs)
 VALUES (?, ?, ?, ?, ?);"""
 SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
-SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_uid=?;"
-SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource_uid=?;"
+SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_id=?;"
+SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource=?;"
 UPDATE_RESOURCE = """
 UPDATE Resources
 SET spec=?,
@@ -112,23 +112,26 @@ class DatumCollection(object):
 
     def insert(self, datums):
         datums = map(lambda d: shadow_with_json(d, ['datum_kwargs']), datums)
-        keys = ['datum_id', 'resource', 'datum_kwargs']
+        keys = ['datum_id', 'datum_kwargs', 'resource']
         with cursor(self._conn) as c:
             c.executemany(INSERT_DATUM, ([d[k] for k in keys] for d in datums))
     
     def find_one(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_DATUM_BY_UID, (query['datum_id'],))
-            raw,= c.fetchall()
+            raw = c.fetchone()
+        if raw is None:
+            return None
         doc = dict(raw)
         doc['datum_kwargs'] = json.loads(doc['datum_kwargs'])
+        return doc
 
     def find(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_DATUM_BY_RESOURCE, (query['resource'],))
             raw = c.fetchall()
         for row in raw:
-            doc = dict(raw)
+            doc = dict(row)
             doc['datum_kwargs'] = json.loads(doc['datum_kwargs'])
             yield doc
 
@@ -163,9 +166,12 @@ class ResourceCollection(object):
     def find_one(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_RESOURCE, (query['uid'],))
-            raw,= c.fetchall()
+            raw= c.fetchone()
+        if raw is None:
+            return None
         doc = dict(raw)
         doc['resource_kwargs'] = json.loads(doc['resource_kwargs'])
+        return doc
 
 
 class _CollectionMixin(object):
