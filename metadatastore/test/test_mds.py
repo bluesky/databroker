@@ -411,6 +411,11 @@ def test_double_run_stop(mds_all):
                              uid=str(uuid.uuid4()))
 
 
+def test_reset_caches(mds_all):
+    # smoke test
+    mds_all.reset_caches()
+
+
 def test_fail_runstart(mds_all):
     mdsc = mds_all
     with pytest.raises(NoRunStart):
