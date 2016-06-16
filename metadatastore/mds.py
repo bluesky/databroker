@@ -21,9 +21,9 @@ class MDSRO(object):
         self.auth = auth
 
     def reset_caches(self):
-        self._RUNSTART_CAHCE.clear()
-        self._RUNSTOP_CAHCE.clear()
-        self._DESCRIPTOR_CAHCE.clear()
+        self._RUNSTART_CACHE.clear()
+        self._RUNSTOP_CACHE.clear()
+        self._DESCRIPTOR_CACHE.clear()
 
     def reset_connection(self):
         self.__conn = None
