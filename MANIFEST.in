@@ -1,0 +1,2 @@
+include versioneer.py
+include portable_fs/_version.py
