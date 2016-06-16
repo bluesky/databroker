@@ -2,7 +2,8 @@ import os
 import sqlite3
 import json
 from contextlib import contextmanager
-from ..template.fs import FileStoreTemplate, FileStoreTemplateRO, _ChainMap
+from ..template.fs import (FileStoreTemplate, FileStoreTemplateRO, _ChainMap,
+                           FileStoreMovingTemplate)
 
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
@@ -23,13 +24,13 @@ CREATE TABLE Datums(
 );"""
 CREATE_RESOURCE_UPDATES_TABLE = """
 CREATE TABLE ResourceUpdates(
-    uid TEXT PRIMARY KEY NOT NULL,
+    resource TEXT,
     old BLOB NOT NULL,
     new BLOB NOT NULL,
     time FLOAT NOT NULL,
     cmd TEXT NOT NULL,
     cmd_kwargs BLOB NOT NULL,
-    FOREIGN KEY(uid) REFERENCES Resources(uid)
+    FOREIGN KEY(resource) REFERENCES Resources(uid)
 );"""
 INSERT_DATUM = """
 INSERT INTO Datums (datum_id, datum_kwargs, resource)
@@ -42,14 +43,19 @@ SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_id=?;"
 SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource=?;"
 UPDATE_RESOURCE = """
 UPDATE Resources
-SET spec=?,
-SET resource_path=?,
-SET root=?,
-SET resource_kwargs=?
+SET
+spec=?,
+resource_path=?,
+root=?,
+resource_kwargs=?
 WHERE uid=?;"""
 INSERT_RESOURCE_UPDATE = """
-INSERT INTO ResourceUpdates (uid, old, new, time, cmd, cmd_kwargs)
+INSERT INTO ResourceUpdates (resource, old, new, time, cmd, cmd_kwargs)
 VALUES (?, ?, ?, ?, ?, ?);"""
+SELECT_RESOURCE_UPDATES = """
+SELECT * FROM ResourceUpdates
+WHERE resource=?
+ORDER BY time;"""
 
 
 @contextmanager
@@ -137,14 +143,27 @@ class DatumCollection(object):
 
 
 class ResourceUpdatesCollection(object):
+    _JSONIFY_KEYS = ['old', 'new', 'cmd_kwargs']
+
     def __init__(self, conn):
         self._conn = conn
 
     def insert_one(self, log_object):
-        log_object = shadow_with_json(log_object, ['cmd_kwargs'])
-        keys = ['uid', 'old', 'new', 'time', 'cmd', 'cmd_kwargs']
+        log_object = shadow_with_json(log_object, self._JSONIFY_KEYS)
+        keys = ['resource', 'old', 'new', 'time', 'cmd', 'cmd_kwargs']
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE_UPDATE, [log_object[k] for k in keys])
+
+
+    def find(self, query):
+        with cursor(self._conn) as c:
+            c.execute(SELECT_RESOURCE_UPDATES, (query['resource'],))
+            raw = c.fetchall()
+        for row in raw:
+            doc = dict(row)
+            for key in self._JSONIFY_KEYS:
+                doc[key] = json.loads(doc[key])
+            yield doc
 
 
 class ResourceCollection(object):
@@ -157,7 +176,7 @@ class ResourceCollection(object):
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE, [resource[k] for k in keys])
 
-    def replace_one(self, resource):
+    def replace_one(self, query, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
         keys = ['spec', 'resource_path', 'root', 'resource_kwargs', 'uid']
         with cursor(self._conn) as c:
@@ -203,7 +222,7 @@ class _CollectionMixin(object):
 
     @property
     def _resource_update_col(self):
-        if self.__resource_update__col is None:
+        if self.__resource_update_col is None:
             self.__resource_update_col = ResourceUpdatesCollection(self._conn)
         return self.__resource_update_col
 
@@ -219,4 +238,8 @@ class FileStoreRO(_CollectionMixin, FileStoreTemplateRO):
 
 
 class FileStore(_CollectionMixin, FileStoreTemplate):
+    pass
+
+
+class FileStoreMoving(_CollectionMixin, FileStoreMovingTemplate):
     pass

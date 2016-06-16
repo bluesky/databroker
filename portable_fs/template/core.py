@@ -177,7 +177,7 @@ def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
 
 def get_resource_history(col, resource):
     uid = doc_or_uid_to_uid(resource)
-    cursor = col.find({'resource': uid}).sort('time')
+    cursor = col.find({'resource': uid})
     for doc in cursor:
         for k in ['new', 'old']:
             d = doc[k]

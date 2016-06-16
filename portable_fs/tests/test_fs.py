@@ -4,6 +4,12 @@ from filestore.test.test_fs import (
     test_insert_funcs,
     test_root,
 )
+from filestore.test.test_fs_mutate import (
+    test_root_shift,
+    test_moving,
+    test_over_step,
+    test_history
+)
 
 
 def test_non_exist(fs):
