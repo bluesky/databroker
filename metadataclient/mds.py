@@ -164,7 +164,7 @@ class MDSRO:
         return self._cache_descriptor(descriptor=response,
                                       self._DESCRIPTOR_CACHE)
 
-    def descriptors_by_start(run_start):
+    def descriptors_by_start(self, run_start):
         rstart_uid = self.doc_or_uid_to_uid(run_start)
         params = self.queryfactor(query={'run_start': rstart_uid},
                              signature='descriptors_by_start')
@@ -190,6 +190,7 @@ class MDSRO:
 
     def find_last():
         pass
+
 
 class MDS(MDSRO):
    _INS_METHODS = {'start': 'insert_run_start',
@@ -249,11 +250,32 @@ class MDS(MDSRO):
                              self.RUN_STOP_CACHE)
         return uid
 
-    def insert_descriptor(self):
-        pass
+    def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
+        kwargs = self._check_for_custom(kwargs)
+        for k in data_keys:
+            if '.' in k:
+                raise ValueError("Key names cannot contain period '.'.")
+        data_keys = {k: dict(v) for k, v in data_keys.items()}
+        run_start_uid = doc_or_uid_to_uid(run_start)
+        descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
+                          time=time, uid=uid, **kwargs)
+        data = self.data_factory(data=descriptor,
+                                 signature='insert_descriptor')
+        self._post(self._desc_url, data=data)
+        self._cache_descriptor(descriptor=descriptor,
+                               descriptor_cache=self._DESCRIPTOR_CACHE)
+        return uid
 
-    def insert_event(self):
-        pass
+    def insert_event(self, descriptor, time, seq_num, data, timestamps,
+                     uid, validate):
+        if validate:
+            raise NotImplementedError('Insert event validation not written yet')
+        descriptor_uid = self.doc_or_uid_to_uid(descriptor)
+        event = dict(descriptor=descriptor_uid, time=time, seq_num=seq_num, data=data,
+                     timestamps=timestamps, uid=uid)
+        data = self.datafactory(data=event, signature='insert_event')
+        self._post(self._event_url, data=data)
+        return uid
 
     def bulk_insert_events(self):
         pass
