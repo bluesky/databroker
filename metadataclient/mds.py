@@ -3,14 +3,14 @@ import requests
 from functools import wraps
 import json
 from doct import Document
+import six
 
 
 class MDSRO:
-    def __init__(self, config)
+    def __init__(self, config):
         self._RUN_START_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
-        self.reset_connection()
         self.config = config
 
     @property
@@ -24,15 +24,15 @@ class MDSRO:
 
     @property
     def _desc_url(self):
-        return self._service_path + 'event_descriptor'
+        return self._server_path + 'event_descriptor'
 
     @property
     def _event_url(self):
-        return self._service_path + 'event'
+        return self._server_path + 'event'
 
     @property
     def _rstop_url(self):
-        return self._service_path + 'run_stop'
+        return self._server_path + 'run_stop'
 
     def __get_hostname__(self):
         return self.hostname
@@ -56,7 +56,7 @@ class MDSRO:
             The ObjectId has been stripped.
         """
         run_start = dict(run_start)
-        run_start = doc.Document('RunStart', run_start)
+        run_start = Document('RunStart', run_start)
         run_start_cache[run_start['uid']] = run_start
         return run_start
 
@@ -79,13 +79,13 @@ class MDSRO:
             The ObjectId has been stripped.
         """
         run_stop = dict(run_stop)
-        run_stop = doc.Document('RunStop', run_stop)
+        run_stop = Document('RunStop', run_stop)
         run_stop_cache[run_stop['uid']] = run_stop
         return run_stop
 
     def _cache_descriptor(self, descriptor, descriptor_cache):
         descriptor = dict(descriptor)
-        descriptor = doc.Document('EventDescriptor', descriptor)
+        descriptor = Document('EventDescriptor', descriptor)
         descriptor_cache[descriptor['uid']] = descriptor
         return descriptor
 
@@ -124,7 +124,7 @@ class MDSRO:
         return dict(query=query, signature=signature)
 
     def _get(self, url, params):
-        r = requets.get(url, json.dumps(params))
+        r = requests.get(url, json.dumps(params))
         r.raise_for_status()
         return r.json()
 
@@ -137,7 +137,7 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._rstart_url, params=params)
-        return self._cache_run_start(run_start=response,
+        return self._cache_run_start(response,
                                      self._RUN_START_CACHE)
 
     def run_stop_given_uid(self, uid):
@@ -149,7 +149,7 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._rstop_url, params=params)
-        return self._cache_run_stop(run_stop=response,
+        return self._cache_run_stop(response,
                                     self._RUN_STOP_CACHE)
 
     def descriptor_given_uid(self, uid):
@@ -161,7 +161,7 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._desc_url, params=params)
-        return self._cache_descriptor(descriptor=response,
+        return self._cache_descriptor(response,
                                       self._DESCRIPTOR_CACHE)
 
     def descriptors_by_start(self, run_start):
@@ -169,11 +169,11 @@ class MDSRO:
         params = self.queryfactor(query={'run_start': rstart_uid},
                              signature='descriptors_by_start')
         self._get(self._desc_url, params=params)
-        return self._cache_descriptor(descriptor=response,
+        return self._cache_descriptor(response,
                                       self._DESCRIPTOR_CACHE)
 
     def stop_by_start(self, run_start):
-        uid = self.doc_or_uid_to_uid()
+        uid = self.doc_or_uid_to_uid(run_start)
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
@@ -193,17 +193,19 @@ class MDSRO:
 
 
 class MDS(MDSRO):
-   _INS_METHODS = {'start': 'insert_run_start',
-                    'stop': 'insert_run_stop',
-                    'descriptor': 'insert_descriptor',
-                    'event': 'insert_event',
-                    'bulk_events': 'bulk_insert_events'}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._INS_METHODS = {'start': 'insert_run_start',
+                             'stop': 'insert_run_stop',
+                             'descriptor': 'insert_descriptor',
+                             'event': 'insert_event',
+                             'bulk_events': 'bulk_insert_events'}
 
     def datafactory(self, data, signature):
         return dict(data=data, signature=signature)
 
-    def _post(self, url, data)
-        r = request.post(url, json.dumps(data))
+    def _post(self, url, data):
+        r = requests.post(url, json.dumps(data))
         r.raise_for_status()
         return r.json()
 
@@ -225,7 +227,7 @@ class MDS(MDSRO):
         data = self.datafactory(data=doc,
                                 signature='insert_run_start')
         self._post(self._rstart_url, data=data)
-        self._cache_run_start(run_start=doc,
+        self._cache_run_start(doc,
                               self._RUN_START_CACHE)
         return uid
 
@@ -246,7 +248,7 @@ class MDS(MDSRO):
         data = self.data_factory(data=doc,
                                  signature='insert_run_stop')
         self._post(self._rstop_url, data=data)
-        self._cache_run_stop(run_stop=doc,
+        self._cache_run_stop(doc,
                              self.RUN_STOP_CACHE)
         return uid
 
