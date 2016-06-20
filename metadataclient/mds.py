@@ -155,7 +155,7 @@ class MDSRO:
     def descriptor_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
         try:
-            return self.DESCRIPTOR_CACHE[uid]
+            return self._DESCRIPTOR_CACHE[uid]
         except KeyError:
             pass
         params = self.queryfactory(query={'uid': uid},
@@ -166,7 +166,7 @@ class MDSRO:
 
     def descriptors_by_start(self, run_start):
         rstart_uid = self.doc_or_uid_to_uid(run_start)
-        params = self.queryfactor(query={'run_start': rstart_uid},
+        params = self.queryfactory(query={'run_start': rstart_uid},
                              signature='descriptors_by_start')
         self._get(self._desc_url, params=params)
         return self._cache_descriptor(response,
@@ -179,8 +179,42 @@ class MDSRO:
         response = self._get(self._rstop_url, params=params)
         return self._cache_run_stop(response, self._RUN_STOP_CACHE)
 
-    def get_events_generator(descriptor, convert_arrays=True):
-        pass
+    def get_events_generator(self, descriptor, convert_arrays=True):
+       descriptor_uid = self.doc_or_uid_to_uid(descriptor)
+       descriptor = self.descriptor_given_uid(descriptor_uid)
+       params = self.queryfactory(query={'descriptor': descriptor,
+                                         'convert_arrays': convert_arrays},
+                                  signature='get_events_generator')
+       events = self._get(self._event_url, params=params)
+       yield events
+
+    def _transpose(self, in_data, keys, field):
+        """Turn a list of dicts into dict of lists
+
+        Parameters
+        ----------
+        in_data : list
+            A list of dicts which contain at least one dict.
+            All of the inner dicts must have at least the keys
+            in `keys`
+
+        keys : list
+            The list of keys to extract
+
+        field : str
+            The field in the outer dict to use
+
+        Returns
+        -------
+        transpose : dict
+            The transpose of the data
+        """
+        out = {k: [None] * len(in_data) for k in keys}
+        for j, ev in enumerate(in_data):
+            dd = ev[field]
+            for k in keys:
+                out[k][j] = dd[k]
+        return out
 
     def get_events_table(descriptor):
         pass
