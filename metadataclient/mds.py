@@ -5,6 +5,7 @@ import json
 from doct import Document
 import six
 import warnings
+import logging
 
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class MDSRO:
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
-        return self._cache_document(run_start, 'RunStart', run_start_cache)
+        return self.cache_document(run_start, 'RunStart', run_start_cache)
 
 
     def _cache_run_stop(self, run_stop, run_stop_cache):
@@ -85,10 +86,10 @@ class MDSRO:
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
-        return self._cache_document(run_stop, 'RunStop',run_stop_cache)
+        return self.cache_document(run_stop, 'RunStop',run_stop_cache)
 
     def _cache_descriptor(self, descriptor, descriptor_cache):
-        return self._cache_document(descriptor, 'EventDescriptor',
+        return self.cache_document(descriptor, 'EventDescriptor',
                                     descriptor_cache)
 
     def doc_or_uid_to_uid(self, doc_or_uid):
@@ -215,7 +216,7 @@ class MDS(MDSRO):
     def _post(self, url, data):
         r = requests.post(url, json.dumps(data))
         r.raise_for_status()
-        return r.json()
+        return r.ujson()
 
     def insert(self):
         pass
@@ -267,10 +268,10 @@ class MDS(MDSRO):
             if '.' in k:
                 raise ValueError("Key names cannot contain period '.':{}".format(k))
         data_keys = {k: dict(v) for k, v in data_keys.items()}
-        run_start_uid = doc_or_uid_to_uid(run_start)
+        run_start_uid = self.doc_or_uid_to_uid(run_start)
         descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
                           time=time, uid=uid, **kwargs)
-        data = self.data_factory(data=descriptor,
+        data = self.datafactory(data=descriptor,
                                  signature='insert_descriptor')
         self._post(self._desc_url, data=data)
         self._cache_descriptor(descriptor=descriptor,
