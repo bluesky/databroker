@@ -386,15 +386,16 @@ def test_get_value(image_example_uid):
     hdrs = [hdr1] + hdr2
     keys = list(hdr1.start.keys())
     start_keys = ['start-%s' % key for key in keys]
-    table1 = broker.summarize(hdrs, *keys)
-    table2 = broker.summarize(hdrs, *start_keys)
+    table1 = broker.summarize(hdrs, keys=keys)
+    table2 = broker.summarize(hdrs, keys=start_keys)
 
     assert table1._rows == table2._rows
+
 
 def test_special_keys(image_example_uid):
     hdr1 = db[image_example_uid]
     # smoketest the creation of the table
-    broker.summarize(hdr1, *broker.known_special_keys.keys())
+    broker.summarize(hdr1, keys=broker.known_special_keys.keys())
 
 
 def test_uid_keys():
@@ -402,7 +403,7 @@ def test_uid_keys():
     nums = [0, 2, 40]
     keys = ['uid-%s' % num for num in nums]
     uids = [[hdr.start.uid[:num] for num in nums] for hdr in hdrs]
-    table = broker.summarize(hdrs, *keys)
+    table = broker.summarize(hdrs, keys=keys)
     assert uids == table._rows
 
 
@@ -411,7 +412,7 @@ def test_stop_keys():
     keys = set(['stop-%s' % k for hdr in hdrs for k in hdr.stop.keys()])
     keys.add('horsepower')
     # smoketest the creation of the table
-    broker.summarize(hdrs, *keys)
+    broker.summarize(hdrs, keys=keys)
 
 
 def test_descriptor_keys():
@@ -420,4 +421,4 @@ def test_descriptor_keys():
                 [key for descriptor in hdr.descriptors
                      for key in descriptor.keys()]])
     # smoketest the creation of the table
-    broker.summarize(hdrs, *keys)
+    broker.summarize(hdrs, keys=keys)
