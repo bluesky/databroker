@@ -4,7 +4,10 @@ from functools import wraps
 import json
 from doct import Document
 import six
+import warnings
 
+
+logger = logging.getLogger(__name__)
 
 class MDSRO:
     def __init__(self, config):
@@ -37,6 +40,12 @@ class MDSRO:
     def __get_hostname__(self):
         return self.hostname
 
+    def cache_document(self, doc, doc_type, doc_cache):
+        doc = dict(doc)
+        doc = Document(doc_type, doc)
+        doc_cache[doc['uid']] = doc
+        return doc
+
     def _cache_run_start(self, run_start, run_start_cache):
         """De-reference and cache a RunStart document
 
@@ -55,10 +64,8 @@ class MDSRO:
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
-        run_start = dict(run_start)
-        run_start = Document('RunStart', run_start)
-        run_start_cache[run_start['uid']] = run_start
-        return run_start
+        return self._cache_document(run_start, 'RunStart', run_start_cache)
+
 
     def _cache_run_stop(self, run_stop, run_stop_cache):
         """De-reference and cache a RunStart document
@@ -78,16 +85,11 @@ class MDSRO:
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
-        run_stop = dict(run_stop)
-        run_stop = Document('RunStop', run_stop)
-        run_stop_cache[run_stop['uid']] = run_stop
-        return run_stop
+        return self._cache_document(run_stop, 'RunStop',run_stop_cache)
 
     def _cache_descriptor(self, descriptor, descriptor_cache):
-        descriptor = dict(descriptor)
-        descriptor = Document('EventDescriptor', descriptor)
-        descriptor_cache[descriptor['uid']] = descriptor
-        return descriptor
+        return self._cache_document(descriptor, 'EventDescriptor',
+                                    descriptor_cache)
 
     def doc_or_uid_to_uid(self, doc_or_uid):
         """Given Document or uid return the uid
@@ -188,34 +190,6 @@ class MDSRO:
        events = self._get(self._event_url, params=params)
        yield events
 
-    def _transpose(self, in_data, keys, field):
-        """Turn a list of dicts into dict of lists
-
-        Parameters
-        ----------
-        in_data : list
-            A list of dicts which contain at least one dict.
-            All of the inner dicts must have at least the keys
-            in `keys`
-
-        keys : list
-            The list of keys to extract
-
-        field : str
-            The field in the outer dict to use
-
-        Returns
-        -------
-        transpose : dict
-            The transpose of the data
-        """
-        out = {k: [None] * len(in_data) for k in keys}
-        for j, ev in enumerate(in_data):
-            dd = ev[field]
-            for k in keys:
-                out[k][j] = dd[k]
-        return out
-
     def get_events_table(descriptor):
         pass
 
@@ -265,7 +239,8 @@ class MDS(MDSRO):
                               self._RUN_START_CACHE)
         return uid
 
-    def insert_run_stop(self, run_start, time, uid, exit_status, reason=None, **kwargs):
+    def insert_run_stop(self, run_start, time, uid, exit_status, reason=None,
+                        **kwargs):
         kwargs = self._check_for_custom(kwargs)
         run_start_uid = self.doc_or_uid_to_uid(run_start)
         run_start = self.run_start_given_uid(run_start_uid)
@@ -290,7 +265,7 @@ class MDS(MDSRO):
         kwargs = self._check_for_custom(kwargs)
         for k in data_keys:
             if '.' in k:
-                raise ValueError("Key names cannot contain period '.'.")
+                raise ValueError("Key names cannot contain period '.':{}".format(k))
         data_keys = {k: dict(v) for k, v in data_keys.items()}
         run_start_uid = doc_or_uid_to_uid(run_start)
         descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
@@ -313,5 +288,22 @@ class MDS(MDSRO):
         self._post(self._event_url, data=data)
         return uid
 
-    def bulk_insert_events(self):
-        pass
+    def bulk_insert_events(self, descriptor, events, validate):
+        def event_factory():
+            for ev in events:
+                # check keys, this could be expensive
+                if validate:
+                    if ev['data'].keys() != ev['timestamps'].keys():
+                        raise ValueError(
+                            BAD_KEYS_FMT.format(ev['data'].keys(),
+                                                ev['timestamps'].keys()))
+
+                ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
+                            data=ev['data'], timestamps=ev['timestamps'],
+                            time=ev['time'],
+                            seq_num=ev['seq_num'])
+                yield ev_out
+        d = list(event_factory())
+        payload = self.datafactory(data=dict(descriptor=descriptor, events=events,
+                                   validate=validate), signature='bulk_insert_events')
+        self._post(self._event_url, data=payload)
