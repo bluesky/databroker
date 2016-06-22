@@ -1,5 +1,5 @@
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
     try:
         from setuptools.core import setup
@@ -19,7 +19,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     license="BSD (3-clause)",
     url="https://github.com/nsls-ii/metadataclient",
-    packages=['metadataclient'],
+    packages=find_packages(),
     long_description=read('README.md'),
     classifiers=[
         "License :: OSI Approved :: BSD License",
