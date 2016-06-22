@@ -1,16 +1,4 @@
 language: python
-env:
-  global:
-    - ANACONDA_USER=lightsource2
-    # if ANACONDA_CHANNEL is not defined then the conda package will be
-    # uploaded to the main channel.
-    - ANACONDA_CHANNEL="development"
-    - UPLOAD_ONLY_IF_BRANCH_IS="master"
-    - secure: "URtCilMlIxGqUBaP4YHsLwBZO0ypNjl0g72dd7fXbPcJNhpHTEJy1K4MU7FP36ZCGx9RoRI60yjYVYmY/gp7Nw/SssZ75v1I+KMubtZ18LvRi9euurIPwxxsQAlY4ECn/baNgCl75zKFFtssUScuFX/i/zuPmkZMTBytXD6WMRc="
-
-git:
-  # hack around git fetch --unshallow failing and nuking the whole CI
-  depth: 9999999
 
 services:
   - mongodb
@@ -34,7 +22,6 @@ python:
 before_install:
   # clone conda install/build/upload helper scripts and make them executable
   - git clone https://github.com/NSLS-II/nsls2-ci ~/scripts
-  - chmod +x ~/scripts/*.sh
   # install miniconda/anaconda-client/conda-build
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-filestore.sh
@@ -42,11 +29,9 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda
-  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons pims tifffile doct
   - source activate testenv
-  - conda install -c soft-matter pims tifffile
   - pip install coveralls
-  - 'pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct'
   - python setup.py install
   # Need to clean the python build directory (and other cruft) or pytest is
   # going to find the build directory and get confused why there are two sets
