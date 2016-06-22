@@ -71,7 +71,27 @@ except ImportError:
 
 
 class FileStoreRO(object):
-    '''Base FileStore object that knows how to read the database.'''
+    '''Base FileStore object that knows how to read the database.
+
+    Parameters
+    ----------
+    config : dict
+       Much have keys {'database', 'collection', 'host'} and may have a 'port'
+
+    handler_reg : dict, optional
+       Mapping between spec names and handler classes
+
+    version : int, optional
+        schema version of the database.
+        Defaults to 1
+
+    root_map : dict, optional
+        str -> str mapping to account for temporarily moved/copied/remounted
+        files.  Any resources which have a ``root`` in ``root_map``
+        will have the resource path updated before being handed to the
+        Handler in ``get_spec_handler``
+
+    '''
     KNOWN_SPEC = dict()
     # load the built-in schema
     for spec_name in ['AD_HDF5', 'AD_SPE']:
@@ -84,6 +104,20 @@ class FileStoreRO(object):
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
+    def set_root_map(self, root_map):
+        '''Set the root map
+
+        Parameters
+        ----------
+        root_map : dict
+            str -> str mapping to account for temporarily
+            moved/copied/remounted files.  Any resources which have a
+            ``root`` in ``root_map`` will have the resource path
+            updated before being handed to the Handler in
+            ``get_spec_handler``
+        '''
+        self.root_map = root_map
+
     @property
     def version(self):
         return self._version
@@ -95,14 +129,18 @@ class FileStoreRO(object):
         self._api = _API_MAP[val]
         self._version = val
 
-    def __init__(self, config, handler_reg=None, version=1):
+    def __init__(self, config, handler_reg=None, version=1, root_map=None):
         self.config = config
         self._api = None
         self.version = version
+
         if handler_reg is None:
             handler_reg = {}
-
         self.handler_reg = _ChainMap(handler_reg)
+
+        if root_map is None:
+            root_map = {}
+        self.root_map = root_map
 
         self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
         self._handler_cache = boltons.cacheutils.LRU()
@@ -278,6 +316,7 @@ class FileStoreRO(object):
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
         root = resource.get('root', '')
+        root = self.root_map.get(root, root)
         if root:
             rpath = os.path.join(root, rpath)
         ret = handler(rpath, **kwargs)

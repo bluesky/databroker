@@ -192,3 +192,18 @@ def insert_datum(resource, datum_id, datum_kwargs):
 def bulk_insert_datum(resource, datum_ids, datum_kwarg_list):
     return _FS_SINGLETON.bulk_insert_datum(resource, datum_ids,
                                            datum_kwarg_list)
+
+
+def set_root_map(self, root_map):
+    '''Set the root map
+
+    Parameters
+    ----------
+    root_map : dict
+        str -> str mapping to account for temporarily
+        moved/copied/remounted files.  Any resources which have a
+        ``root`` in ``root_map`` will have the resource path
+        updated before being handed to the Handler in
+        ``get_spec_handler``
+    '''
+    return _FS_SINGLETON.set_root_map(root_map)
