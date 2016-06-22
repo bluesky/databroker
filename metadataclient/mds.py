@@ -10,6 +10,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+class NoRunStop(Exception):
+    pass
+
+
+class NoRunStart(Exception):
+    pass
+
+
+class NoEventDescriptors(Exception):
+    pass
+
+
 class MDSRO:
     def __init__(self, config):
         self._RUN_START_CACHE = {}
@@ -67,7 +80,6 @@ class MDSRO:
         """
         return self.cache_document(run_start, 'RunStart', run_start_cache)
 
-
     def _cache_run_stop(self, run_stop, run_stop_cache):
         """De-reference and cache a RunStart document
 
@@ -86,11 +98,11 @@ class MDSRO:
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
-        return self.cache_document(run_stop, 'RunStop',run_stop_cache)
+        return self.cache_document(run_stop, 'RunStop', run_stop_cache)
 
     def _cache_descriptor(self, descriptor, descriptor_cache):
         return self.cache_document(descriptor, 'EventDescriptor',
-                                    descriptor_cache)
+                                   descriptor_cache)
 
     def doc_or_uid_to_uid(self, doc_or_uid):
         """Given Document or uid return the uid
@@ -170,8 +182,8 @@ class MDSRO:
     def descriptors_by_start(self, run_start):
         rstart_uid = self.doc_or_uid_to_uid(run_start)
         params = self.queryfactory(query={'run_start': rstart_uid},
-                             signature='descriptors_by_start')
-        self._get(self._desc_url, params=params)
+                                   signature='descriptors_by_start')
+        response = self._get(self._desc_url, params=params)
         return self._cache_descriptor(response,
                                       self._DESCRIPTOR_CACHE)
 
@@ -183,13 +195,13 @@ class MDSRO:
         return self._cache_run_stop(response, self._RUN_STOP_CACHE)
 
     def get_events_generator(self, descriptor, convert_arrays=True):
-       descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-       descriptor = self.descriptor_given_uid(descriptor_uid)
-       params = self.queryfactory(query={'descriptor': descriptor,
-                                         'convert_arrays': convert_arrays},
-                                  signature='get_events_generator')
-       events = self._get(self._event_url, params=params)
-       yield events
+        descriptor_uid = self.doc_or_uid_to_uid(descriptor)
+        descriptor = self.descriptor_given_uid(descriptor_uid)
+        params = self.queryfactory(query={'descriptor': descriptor,
+                                          'convert_arrays': convert_arrays},
+                                   signature='get_events_generator')
+        events = self._get(self._event_url, params=params)
+        yield events
 
     def get_events_table(descriptor):
         pass
@@ -216,7 +228,7 @@ class MDS(MDSRO):
     def _post(self, url, data):
         r = requests.post(url, json.dumps(data))
         r.raise_for_status()
-        return r.ujson()
+        return r.json()
 
     def insert(self):
         pass
@@ -247,7 +259,7 @@ class MDS(MDSRO):
         run_start = self.run_start_given_uid(run_start_uid)
         try:
             self.stop_by_start(run_start)
-        except NoRunStop:
+        except requests.HTTPError:
             pass
         else:
             raise RunTimeError("Runstop already exits for {!r}".format(run_start))
@@ -255,11 +267,11 @@ class MDS(MDSRO):
                    exit_status=exit_status)
         if reason:
             doc['reason'] = reason
-        data = self.data_factory(data=doc,
+        data = self.datafactory(data=doc,
                                  signature='insert_run_stop')
         self._post(self._rstop_url, data=data)
         self._cache_run_stop(doc,
-                             self.RUN_STOP_CACHE)
+                             self._RUNSTOP_CACHE)
         return uid
 
     def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
@@ -298,7 +310,7 @@ class MDS(MDSRO):
                         raise ValueError(
                             BAD_KEYS_FMT.format(ev['data'].keys(),
                                                 ev['timestamps'].keys()))
-
+                descriptor_uid = self.doc_or_uid_to_uid(descriptor)
                 ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
                             data=ev['data'], timestamps=ev['timestamps'],
                             time=ev['time'],
