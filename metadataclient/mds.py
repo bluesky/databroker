@@ -152,8 +152,9 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._rstart_url, params=params)
-        return self._cache_run_start(response,
-                                     self._RUN_START_CACHE)
+        return response
+        #return self._cache_run_start(response,
+        #                             self._RUN_START_CACHE)
 
     def run_stop_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
@@ -164,8 +165,9 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._rstop_url, params=params)
-        return self._cache_run_stop(response,
-                                    self._RUN_STOP_CACHE)
+        return response
+        #return self._cache_run_stop(response,
+        #                            self._RUN_STOP_CACHE)
 
     def descriptor_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
@@ -176,23 +178,26 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._desc_url, params=params)
-        return self._cache_descriptor(response,
-                                      self._DESCRIPTOR_CACHE)
+        return response
+        #return self._cache_descriptor(response,
+        #                              self._DESCRIPTOR_CACHE)
 
     def descriptors_by_start(self, run_start):
         rstart_uid = self.doc_or_uid_to_uid(run_start)
         params = self.queryfactory(query={'run_start': rstart_uid},
                                    signature='descriptors_by_start')
         response = self._get(self._desc_url, params=params)
-        return self._cache_descriptor(response,
-                                      self._DESCRIPTOR_CACHE)
+        return response
+        #return self._cache_descriptor(response,
+        #                              self._DESCRIPTOR_CACHE)
 
     def stop_by_start(self, run_start):
         uid = self.doc_or_uid_to_uid(run_start)
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
-        return self._cache_run_stop(response, self._RUN_STOP_CACHE)
+        return response
+        # return self._cache_run_stop(response, self._RUNSTOP_CACHE)
 
     def get_events_generator(self, descriptor, convert_arrays=True):
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
@@ -201,10 +206,43 @@ class MDSRO:
                                           'convert_arrays': convert_arrays},
                                    signature='get_events_generator')
         events = self._get(self._event_url, params=params)
-        yield events
+        for e in events:
+            yield e
 
-    def get_events_table(descriptor):
-        pass
+    def get_events_table(self, descriptor):
+        desc_uid = self.doc_or_uid_to_uid(descriptor)
+        all_events = list(self.get_events_generator(descriptor=descriptor))
+        seq_nums = [ev['seq_num'] for ev in all_events]
+        times = [ev['time'] for ev in all_events]
+        uids = [ev['uid'] for ev in all_events]
+        keys = list(descriptor['data_keys'])
+        data_table = self._transpose(all_events, keys, 'data')
+        timestamps_table = self._transpose(all_events, keys, 'timestamps')
+        return descriptor, data_table, seq_nums, times, uids, timestamps_table
+
+    def _transpose(self, in_data, keys, field):
+        """Turn a list of dicts into dict of lists
+        Parameters
+        ----------
+        in_data : list
+            A list of dicts which contain at least one dict.
+            All of the inner dicts must have at least the keys
+            in `keys`
+        keys : list
+            The list of keys to extract
+        field : str
+            The field in the outer dict to use
+        Returns
+        -------
+        transpose : dict
+            The transpose of the data
+        """
+        out = {k: [None] * len(in_data) for k in keys}
+        for j, ev in enumerate(in_data):
+            dd = ev[field]
+            for k in keys:
+                out[k][j] = dd[k]
+        return out
 
     def find():
         pass
@@ -262,7 +300,7 @@ class MDS(MDSRO):
         except requests.HTTPError:
             pass
         else:
-            raise RunTimeError("Runstop already exits for {!r}".format(run_start))
+            raise RuntimeError("Runstop already exits for {!r}".format(run_start))
         doc = dict(run_start=run_start_uid, time=time, uid=uid,
                    exit_status=exit_status)
         if reason:
