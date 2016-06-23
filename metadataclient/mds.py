@@ -156,27 +156,37 @@ class MDSRO:
         #return self._cache_run_start(response,
         #                             self._RUN_START_CACHE)
 
+    def find_run_starts(self, **kwargs):
+        params = self.queryfactory(query=kwargs,
+                                   signature='find_run_starts')
+        response = self._get(self._rstart_url, params=params)
+        for r in response:
+            yield Document('RunStart', r)
+
+    def find_run_stops(self, **kwargs):
+        params = self.queryfactory(query=kwargs,
+                                   signature='find_run_stops')
+        response = self._get(self._rstop_url, params=params)
+        for r in response:
+            r['run_start'] = Document('RunStart', r['run_start'])
+            yield Document('RunStop', r)
+
+
     def run_stop_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
         try:
-            return self._RUN_STOP_CACHE[uid]
+            return self._RUNSTOP_CACHE[uid]
         except KeyError:
             pass
         params = self.queryfactory(query={'uid': uid},
-                                   signature='run_start_given_uid')
+                                   signature='run_stop_given_uid')
         response = self._get(self._rstop_url, params=params)
         return response
-        #return self._cache_run_stop(response,
-        #                            self._RUN_STOP_CACHE)
 
     def descriptor_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
-        try:
-            return self._DESCRIPTOR_CACHE[uid]
-        except KeyError:
-            pass
         params = self.queryfactory(query={'uid': uid},
-                                   signature='run_start_given_uid')
+                                   signature='descriptor_given_uid')
         response = self._get(self._desc_url, params=params)
         return response
         #return self._cache_descriptor(response,
@@ -290,26 +300,24 @@ class MDS(MDSRO):
                               self._RUN_START_CACHE)
         return uid
 
-    def insert_run_stop(self, run_start, time, uid, exit_status, reason=None,
+    def insert_run_stop(self, run_start, time, uid, exit_status='success',
+                        reason=None,
                         **kwargs):
         kwargs = self._check_for_custom(kwargs)
         run_start_uid = self.doc_or_uid_to_uid(run_start)
         run_start = self.run_start_given_uid(run_start_uid)
-        try:
-            self.stop_by_start(run_start)
-        except requests.HTTPError:
-            pass
-        else:
-            raise RuntimeError("Runstop already exits for {!r}".format(run_start))
         doc = dict(run_start=run_start_uid, time=time, uid=uid,
                    exit_status=exit_status)
         if reason:
             doc['reason'] = reason
         data = self.datafactory(data=doc,
                                  signature='insert_run_stop')
+        #try:
         self._post(self._rstop_url, data=data)
-        self._cache_run_stop(doc,
-                             self._RUNSTOP_CACHE)
+        # except HTTPError:
+        #    raise RuntimeError("Runstop already exits for {!r}".format(run_start))
+        #self._cache_run_stop(doc,
+        #                     self._RUNSTOP_CACHE)
         return uid
 
     def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
@@ -340,6 +348,7 @@ class MDS(MDSRO):
         return uid
 
     def bulk_insert_events(self, descriptor, events, validate):
+        events = list(events)
         def event_factory():
             for ev in events:
                 # check keys, this could be expensive
