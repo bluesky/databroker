@@ -7,7 +7,7 @@ from metadatastore.test.test_mds import (
     test_bad_bulk_insert_event_timestamp,
     test_bad_event_desc,
     test_bulk_insert,
-#    test_bulk_table,
+    test_bulk_table,
 #    test_cache_clear_lookups,
 #    test_custom_warn,
     test_double_run_stop,
@@ -18,7 +18,7 @@ from metadatastore.test.test_mds import (
     test_insert_run_start,
     test_no_evdesc,
     test_pickle,
-    #test_run_stop_by_run_start,
+    test_run_stop_by_run_start,
     test_run_stop_insertion)
 
 def test_no_evdesc(mds_all):

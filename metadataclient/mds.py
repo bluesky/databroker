@@ -209,7 +209,7 @@ class MDSRO:
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
         response['run_start'] = Document('RunStart', response['run_start'])
-        return response
+        return Document('RunStop', response)
         # return self._cache_run_stop(response, self._RUNSTOP_CACHE)
 
     def get_events_generator(self, descriptor, convert_arrays=True):
@@ -220,10 +220,12 @@ class MDSRO:
                                    signature='get_events_generator')
         events = self._get(self._event_url, params=params)
         for e in events:
+            e['descriptor'] = descriptor
             yield e
 
     def get_events_table(self, descriptor):
         desc_uid = self.doc_or_uid_to_uid(descriptor)
+        descriptor = self.descriptor_given_uid(desc_uid)
         all_events = list(self.get_events_generator(descriptor=descriptor))
         seq_nums = [ev['seq_num'] for ev in all_events]
         times = [ev['time'] for ev in all_events]
