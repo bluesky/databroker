@@ -6,21 +6,11 @@ from doct import Document
 import six
 import warnings
 import logging
-
+from requests import HTTPError
+from metadatastore.core import (NoRunStart, NoEventDescriptors, NoRunStop,
+                               BAD_KEYS_FMT)
 
 logger = logging.getLogger(__name__)
-
-
-class NoRunStop(Exception):
-    pass
-
-
-class NoRunStart(Exception):
-    pass
-
-
-class NoEventDescriptors(Exception):
-    pass
 
 
 class MDSRO:
@@ -152,6 +142,8 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_start_given_uid')
         response = self._get(self._rstart_url, params=params)
+        if not response:
+            raise NoRunStart('No RunStart found with uid {}'.format(uid))
         return response
         #return self._cache_run_start(response,
         #                             self._RUN_START_CACHE)
@@ -163,6 +155,15 @@ class MDSRO:
         for r in response:
             yield Document('RunStart', r)
 
+    def find_descriptors(self, **kwargs):
+        params = self.queryfactory(query=kwargs,
+                                   signature='find_descriptors')
+        response = self._get(self._desc_url, params=params)
+        for r in response:
+            r['run_start'] = Document('RunStart', r['run_start'])
+            yield Document('EventDescriptor', r)
+
+
     def find_run_stops(self, **kwargs):
         params = self.queryfactory(query=kwargs,
                                    signature='find_run_stops')
@@ -170,7 +171,6 @@ class MDSRO:
         for r in response:
             r['run_start'] = Document('RunStart', r['run_start'])
             yield Document('RunStop', r)
-
 
     def run_stop_given_uid(self, uid):
         uid = self.doc_or_uid_to_uid(uid)
@@ -181,6 +181,8 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_stop_given_uid')
         response = self._get(self._rstop_url, params=params)
+        response['run_start'] = Document('RunStart', response['run_start'])
+        response = Document('RunStop', response)
         return response
 
     def descriptor_given_uid(self, uid):
@@ -206,6 +208,7 @@ class MDSRO:
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
+        response['run_start'] = Document('RunStart', response['run_start'])
         return response
         # return self._cache_run_stop(response, self._RUNSTOP_CACHE)
 
@@ -312,10 +315,10 @@ class MDS(MDSRO):
             doc['reason'] = reason
         data = self.datafactory(data=doc,
                                  signature='insert_run_stop')
-        #try:
-        self._post(self._rstop_url, data=data)
-        # except HTTPError:
-        #    raise RuntimeError("Runstop already exits for {!r}".format(run_start))
+        try:
+            self._post(self._rstop_url, data=data)
+        except HTTPError:
+            raise RuntimeError("Runstop already exits for {!r}".format(run_start))
         #self._cache_run_stop(doc,
         #                     self._RUNSTOP_CACHE)
         return uid
