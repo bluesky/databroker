@@ -5,21 +5,17 @@ services:
   - mongodb
 
 python:
-  - 3.5
+  - "3.4.3"
 
 before_install:
   - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh; fi
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/mc
   - export PATH=/home/travis/mc/bin:$PATH
+  - git clone https://github.com/NSLS-II/metadataservice.git /home/travis/metadataservice
   - export PATH=/home/travis/mc/bin:$PATH
   - mkdir -p /home/travis/.config/metadataservice
   - mkdir -p /home/travis/.config/metadataclient
-  - 'echo ''timezone: US/Eastern'' >> /home/travis/.config/metadataservice/connection.yml'
-  - 'echo ''port: 7770'' > /home/travis/.config/metadataclient/connection.yml'
-  - 'echo ''host: localhost'' >> /home/travis/.config/metadataclient/connection.yml'
-  - 'echo ''protocol: http'' >> /home/travis/.config/metadataclient/connection.yml'
-  - 'echo ''timezone: US/Eastern'' >> /home/travis/.config/metadataclient/connection.yml'
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
@@ -28,12 +24,12 @@ install:
   - source activate testenv
   - pip install coveralls codecov
   - pip install prettytable
-  - 'pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct'
-  - 'pip install https://github.com/NSLS-II/metadataservice/zipball/master#egg=metadataservice'
+  - pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct
   - python setup.py install
 
 script:
-  - python run_tests.py -v
+  - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataservice/
+  - py.test -sv
 
 after_success:
   - coveralls

@@ -59,7 +59,3 @@ def load_configuration(name, prefix, fields):
         raise KeyError("The configuration field(s) {0} were not found in any "
                        "file or environmental variable.".format(missing))
     return config
-
-connection_config = load_configuration('metadataclient', 'MDC',
-                                       ['host', 'port', 'protocol', 'timezone'])
-
