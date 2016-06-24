@@ -1,5 +1,4 @@
 from __future__ import (absolute_import, unicode_literals, generators)
-i    test_cache_clear_lookups,
 import requests
 from functools import wraps
 import json
