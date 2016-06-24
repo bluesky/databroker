@@ -183,6 +183,7 @@ class MDSRO:
         response = self._get(self._rstop_url, params=params)
         response['run_start'] = Document('RunStart', response['run_start'])
         response = Document('RunStop', response)
+        print(response)
         return response
 
     def descriptor_given_uid(self, uid):
@@ -199,6 +200,8 @@ class MDSRO:
         params = self.queryfactory(query={'run_start': rstart_uid},
                                    signature='descriptors_by_start')
         response = self._get(self._desc_url, params=params)
+        if not response:
+            raise NoEventDescriptors('No descriptor is found provided run_start {}'.format(rstart_uid))
         return response
         #return self._cache_descriptor(response,
         #                              self._DESCRIPTOR_CACHE)

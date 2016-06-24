@@ -9,7 +9,7 @@ from metadatastore.test.test_mds import (
     test_bulk_insert,
     test_bulk_table,
 #    test_cache_clear_lookups,
-#    test_custom_warn,
+    test_custom_warn,
     test_double_run_stop,
     test_event_descriptor_insertion,
     test_fail_runstart,
@@ -28,11 +28,11 @@ def test_no_evdesc(mds_all):
         group='awesome-devs', project='Nikea', time=ttime.time(),
         uid=str(uuid.uuid4()))
 
-#    with pytest.raises(NoEventDescriptors):
-#        mdsc.descriptors_by_start(run_start_uid)
+    with pytest.raises(NoEventDescriptors):
+        mdsc.descriptors_by_start(run_start_uid)
 
 
-#def test_fail_runstart(mds_all):
-#    mdsc = mds_all
-#    with pytest.raises(NoRunStart):
-#        mdsc.run_start_given_uid('aardvark')
+def test_fail_runstart(mds_all):
+    mdsc = mds_all
+    with pytest.raises(NoRunStart):
+        mdsc.run_start_given_uid('aardvark')
