@@ -296,6 +296,7 @@ class MDS(MDSRO):
             if any(k in kdict for k in custom):
                 raise TypeError("Duplicate keys in kwargs and custom")
             kdict.update(custom)
+        print('Caught custom and unpacked', kdict)
         return kdict
 
     def insert_run_start(self, time, uid, **kwargs):
@@ -315,11 +316,12 @@ class MDS(MDSRO):
         run_start_uid = self.doc_or_uid_to_uid(run_start)
         run_start = self.run_start_given_uid(run_start_uid)
         doc = dict(run_start=run_start_uid, time=time, uid=uid,
-                   exit_status=exit_status)
+                   exit_status=exit_status, **kwargs)
         if reason:
             doc['reason'] = reason
         data = self.datafactory(data=doc,
                                  signature='insert_run_stop')
+        print(doc)
         try:
             self._post(self._rstop_url, data=data)
         except HTTPError:
