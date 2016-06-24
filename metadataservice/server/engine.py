@@ -2,16 +2,15 @@ import tornado.ioloop
 import tornado.web
 from tornado import gen
 import pymongo.errors as perr
-
+import doct
 import ujson
 import jsonschema
-
+import json
+import types
 from metadataservice.server import utils
+from metadatastore.core import NoRunStop, NoEventDescriptors, NoRunStart
 
 loop = tornado.ioloop.IOLoop.instance()
-
-
-# TODO: Client side methods for insert() and find()
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -58,8 +57,15 @@ class DefaultHandler(tornado.web.RequestHandler):
         except KeyError:
             utils.report_error(400,
                                'A query string must be provided')
-        docs_gen = func(**query)
-        utils.transmit_list(self, list(docs_gen))
+        try:
+            docs_gen = func(**query)
+        except (NoRunStop, NoRunStart, NoEventDescriptors):
+           docs_gen = []
+        if isinstance(docs_gen, (doct.Document, list)):
+            self.write(json.dumps(docs_gen))
+        elif isinstance(docs_gen, types.GeneratorType):
+            self.write(json.dumps(list(docs_gen)))
+        self.finish()
 
     @tornado.web.asynchronous
     def post(self):
@@ -204,4 +210,5 @@ class EventHandler(DefaultHandler):
                            'get_events_table': mdsro.get_events_table,
                            'find_events': mdsro.find_events}
         self.insertables = {'insert_event': mdsrw.insert_event,
-                            'bulk_insert_events': mdsrw.bulk_insert_events}
+                            'bulk_insert_events': mdsrw.bulk_insert_events
+                            }
