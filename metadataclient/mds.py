@@ -1,4 +1,5 @@
 from __future__ import (absolute_import, unicode_literals, generators)
+i    test_cache_clear_lookups,
 import requests
 from functools import wraps
 import json
@@ -183,7 +184,6 @@ class MDSRO:
         response = self._get(self._rstop_url, params=params)
         response['run_start'] = Document('RunStart', response['run_start'])
         response = Document('RunStop', response)
-        print(response)
         return response
 
     def descriptor_given_uid(self, uid):
@@ -296,7 +296,6 @@ class MDS(MDSRO):
             if any(k in kdict for k in custom):
                 raise TypeError("Duplicate keys in kwargs and custom")
             kdict.update(custom)
-        print('Caught custom and unpacked', kdict)
         return kdict
 
     def insert_run_start(self, time, uid, **kwargs):
@@ -321,7 +320,6 @@ class MDS(MDSRO):
             doc['reason'] = reason
         data = self.datafactory(data=doc,
                                  signature='insert_run_stop')
-        print(doc)
         try:
             self._post(self._rstop_url, data=data)
         except HTTPError:
