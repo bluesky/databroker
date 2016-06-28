@@ -88,7 +88,10 @@ def resource_given_uid(col, resource):
     k = doc_or_oid_to_oid(resource)
     ret = col.find_one({'_id': k})
     ret['id'] = ret.pop('_id')
-    return ret
+    ret['uid'] = ret['id']
+    if ret is None:
+        raise RuntimeError('did not find resource {!r}'.format(k))
+    return Document('resource', ret)
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
@@ -106,4 +109,5 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
     col.insert_one(resource_object)
     # rename to play nice with ME
     resource_object['id'] = resource_object.pop('_id')
-    return resource_object
+    resource_object['uid'] = resource_object['id']
+    return Document('resource', resource_object)
