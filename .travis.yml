@@ -5,7 +5,7 @@ services:
   - mongodb
 
 python:
-  - "3.4.3"
+  - "3.4"
 
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
