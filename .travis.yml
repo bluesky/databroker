@@ -20,7 +20,7 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
-  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz six
+  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz six pytest
   - source activate testenv
   - pip install coveralls codecov
   - pip install tzlocal
