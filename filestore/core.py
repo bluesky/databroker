@@ -36,7 +36,7 @@ def doc_or_uid_to_uid(doc_or_uid):
     return doc_or_uid
 
 
-def retrieve(col, eid, datum_cache, get_spec_handler, logger):
+def _get_datum_from_eid(col, eid, datum_cache, logger):
     try:
         datum = datum_cache[eid]
     except KeyError:
@@ -60,6 +60,11 @@ def retrieve(col, eid, datum_cache, get_spec_handler, logger):
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
+    return datum
+
+
+def retrieve(col, eid, datum_cache, get_spec_handler, logger):
+    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
     handler = get_spec_handler(datum['resource'])
     return handler(**datum['datum_kwargs'])
 
