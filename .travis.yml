@@ -27,7 +27,6 @@ install:
   - pip install prettytable
   - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
   - pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct
-  - python setup.py install
    
 script:
   - source activate testenv
