@@ -30,6 +30,7 @@ install:
   - python setup.py install
    
 script:
+  - source activate testenv
   - nohup python /home/travis/metadataservice/startup.py --mongohost localhost --mongoport 27017 --serviceport 7778 --database mdservicetest --tzone US/Eastern &
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
   - py.test -sv
