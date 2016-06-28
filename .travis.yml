@@ -24,11 +24,13 @@ install:
   - source activate testenv
   - pip install coveralls codecov
   - pip install prettytable
+  - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
   - pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct
   - python setup.py install
-
+   
 script:
-  - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataservice/
+  - python /home/travis/metadataservice/startup.py --mongohost localhost --mongoport 27017 --serviceport 7778 --database mdservicetest    
+  - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
   - py.test -sv
 
 after_success:
