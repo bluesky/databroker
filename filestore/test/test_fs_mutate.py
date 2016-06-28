@@ -7,32 +7,8 @@ import os.path
 import uuid
 import numpy as np
 
-
-import filestore.fs
 from filestore.handlers_base import HandlerBase
-from filestore.utils import install_sentinels
-
-
-@pytest.fixture(scope='function')
-def fs_v1(request):
-    '''Provide a function level scoped FileStore instance talking to
-    temporary database on localhost:27017. v1 only
-
-    '''
-    db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
-    test_conf = dict(database=db_name, host='localhost',
-                     port=27017)
-    install_sentinels(test_conf, 1)
-    fs = filestore.fs.FileStoreMoving(test_conf,
-                                      version=1)
-
-    def delete_dm():
-        print("DROPPING DB")
-        fs._connection.drop_database(db_name)
-
-    request.addfinalizer(delete_dm)
-
-    return fs
+from .utils import insert_syn_data_with_resource
 
 
 def _verify_shifted_resource(last_res, new_res):
@@ -143,7 +119,7 @@ class FileMoveTestingHandler(HandlerBase):
 
 
 @pytest.fixture()
-def moving_files(fs_v1, tmpdir):
+def moving_files(request, fs_v1, tmpdir):
     tmpdir = str(tmpdir)
     cnt = 15
     shape = (7, 13)
@@ -199,6 +175,14 @@ def test_moving(moving_files, remove):
         assert np.prod(shape) * j == np.sum(datum)
 
 
+def test_get_resource(moving_files):
+    fs, res, datum_uids, shape, cnt, fnames = moving_files
+    for d in datum_uids:
+        d_res = fs.resource_given_eid(d)
+        assert d_res == res
+        print(d_res, res)
+
+
 def test_temporary_root(fs_v1):
     fs = fs_v1
     print(fs._db)
@@ -219,3 +203,20 @@ def test_temporary_root(fs_v1):
         path = fs.retrieve(dm['datum_id'])
 
     assert path == os.path.join('baz', 'foo')
+
+
+def test_read_old_in_new_resource(fs_v01):
+    fs0, fs1 = fs_v01
+    shape = [25, 32]
+    # save data using old schema
+    mod_ids, res = insert_syn_data_with_resource(fs0, 'syn-mod',
+                                                 shape, 10)
+
+    resource = fs0.resource_given_uid(res)
+    assert resource == res
+    assert res == fs1.resource_given_uid(res)
+
+    for j, d_id in enumerate(mod_ids):
+        # get back using new schema
+        d_res = fs1.resource_given_eid(d_id)
+        assert d_res == resource

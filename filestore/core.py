@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+from bson import ObjectId
+from bson.errors import InvalidId
 import six
 from doct import Document
 from jsonschema import validate as js_validate
@@ -28,11 +29,14 @@ def doc_or_uid_to_uid(doc_or_uid):
 
     """
     if not isinstance(doc_or_uid, six.string_types):
-        doc_or_uid = doc_or_uid['uid']
+        try:
+            doc_or_uid = doc_or_uid['uid']
+        except TypeError:
+            pass
     return doc_or_uid
 
 
-def retrieve(col, eid, datum_cache, get_spec_handler, logger):
+def _get_datum_from_eid(col, eid, datum_cache, logger):
     try:
         datum = datum_cache[eid]
     except KeyError:
@@ -56,14 +60,35 @@ def retrieve(col, eid, datum_cache, get_spec_handler, logger):
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
+    return datum
+
+
+def retrieve(col, eid, datum_cache, get_spec_handler, logger):
+    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
     handler = get_spec_handler(datum['resource'])
     return handler(**datum['datum_kwargs'])
 
 
+def resource_given_eid(col, eid, datum_cache, logger):
+    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
+    return datum['resource']
+
+
 def resource_given_uid(col, resource):
     uid = doc_or_uid_to_uid(resource)
-    ret = col.find_one({'uid': uid})
-    ret.pop('_id')
+
+    try:
+        uid = ObjectId(uid)
+    except InvalidId:
+        ret = col.find_one({'uid': uid})
+    else:
+        ret = col.find_one({'_id': uid})
+
+    if ret is None:
+        raise RuntimeError('did not find resource {!r}'.format(resource))
+
+    oid = ret.pop('_id')
+    ret.setdefault('uid', oid)
     ret['id'] = ret['uid']
     return Document('resource', ret)
 

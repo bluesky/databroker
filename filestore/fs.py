@@ -164,13 +164,7 @@ class FileStoreRO(object):
 
     def _r_on_miss(self, k):
         col = self._resource_col
-        if isinstance(k, six.string_types):
-            ret = col.find_one({'uid': k})
-        else:
-            ret = col.find_one({'_id': k})
-        if ret is None:
-            raise RuntimeError('did not find resource {!r}'.format(k))
-        return ret
+        return self._api.resource_given_uid(col, k)
 
     def resource_given_uid(self, uid):
         col = self._resource_col
@@ -295,7 +289,6 @@ class FileStoreRO(object):
             document returns the externally stored data
 
         """
-        res_in = resource
         resource = self._resource_cache[resource]
 
         h_cache = self._handler_cache
@@ -303,10 +296,7 @@ class FileStoreRO(object):
         spec = resource['spec']
         handler = self.handler_reg[spec]
 
-        if isinstance(res_in, six.string_types):
-            key = (str(resource['uid']), handler.__name__)
-        else:
-            key = (str(resource['_id']), handler.__name__)
+        key = (str(resource['uid']), handler.__name__)
 
         try:
             return h_cache[key]
@@ -611,3 +601,14 @@ class FileStoreMoving(FileStore):
                 del self._handler_cache[k]
 
         return ret
+
+    def resource_given_eid(self, eid):
+        '''Given a datum eid return it's Resource document
+        '''
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it so no need for this method')
+
+        res = self._api.resource_given_eid(self._datum_col, eid,
+                                           self._datum_cache, logger)
+        return self._resource_cache[res]
