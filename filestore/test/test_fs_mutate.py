@@ -7,32 +7,8 @@ import os.path
 import uuid
 import numpy as np
 
-
-import filestore.fs
 from filestore.handlers_base import HandlerBase
-from filestore.utils import install_sentinels
-
-
-@pytest.fixture(scope='function')
-def fs_v1(request):
-    '''Provide a function level scoped FileStore instance talking to
-    temporary database on localhost:27017. v1 only
-
-    '''
-    db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
-    test_conf = dict(database=db_name, host='localhost',
-                     port=27017)
-    install_sentinels(test_conf, 1)
-    fs = filestore.fs.FileStoreMoving(test_conf,
-                                      version=1)
-
-    def delete_dm():
-        print("DROPPING DB")
-        fs._connection.drop_database(db_name)
-
-    request.addfinalizer(delete_dm)
-
-    return fs
+from .utils import insert_syn_data_with_resource
 
 
 def _verify_shifted_resource(last_res, new_res):
@@ -143,7 +119,7 @@ class FileMoveTestingHandler(HandlerBase):
 
 
 @pytest.fixture()
-def moving_files(fs_v1, tmpdir):
+def moving_files(request, fs_v1, tmpdir):
     tmpdir = str(tmpdir)
     cnt = 15
     shape = (7, 13)
