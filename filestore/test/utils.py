@@ -80,6 +80,11 @@ class SynHandlerEcho(HandlerBase):
 
 
 def insert_syn_data(fs, f_type, shape, count):
+    ret, _ = insert_syn_data_with_resource(fs, f_type, shape, count)
+    return ret
+
+
+def insert_syn_data_with_resource(fs, f_type, shape, count):
     fb = fs.insert_resource(f_type, None, {'shape': shape})
     ret = []
     res_map_cycle = itertools.cycle((lambda x: x,
@@ -89,7 +94,7 @@ def insert_syn_data(fs, f_type, shape, count):
         r_id = str(uuid.uuid4())
         fs.insert_datum(rmap(fb), r_id, {'n': k + 1})
         ret.append(r_id)
-    return ret
+    return ret, fb
 
 
 def insert_syn_data_bulk(fs, f_type, shape, count):

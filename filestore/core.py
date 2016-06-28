@@ -69,6 +69,11 @@ def retrieve(col, eid, datum_cache, get_spec_handler, logger):
     return handler(**datum['datum_kwargs'])
 
 
+def resource_given_eid(col, eid, datum_cache, logger):
+    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
+    return datum['resource']
+
+
 def resource_given_uid(col, resource):
     uid = doc_or_uid_to_uid(resource)
 
