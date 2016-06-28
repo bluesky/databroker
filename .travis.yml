@@ -23,6 +23,7 @@ install:
   - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz six
   - source activate testenv
   - pip install coveralls codecov
+  - pip install tzlocal
   - pip install prettytable
   - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
   - pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct
