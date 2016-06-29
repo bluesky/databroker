@@ -14,9 +14,9 @@ testing_config = dict(mongohost='localhost', mongoport=27017,
 def mds_setup():
     global proc
     f = os.path.dirname(os.path.realpath(__file__))
-    proc = Popen(["python", "../../startup.py", "--mongohost", testing_config["mongohost"],
-                  "--mongoport", str(testing_config['mongoport']), "--database", testing_config['database'],
-                  "--tzone", testing_config['tzone'], "--serviceport",
+    proc = Popen(["python", "../../startup.py", "--mongo-host", testing_config["mongohost"],
+                  "--mongo-port", str(testing_config['mongoport']), "--database", testing_config['database'],
+                  "--timezone", testing_config['tzone'], "--service-port",
            str(testing_config['serviceport'])], cwd=f)
     print('Started the server with configuration..:{}'.format(testing_config))
     ttime.sleep(5) # make sure the process is started

@@ -35,4 +35,4 @@ class TestUrls:
 
     def teardown_class(self):
         mds_teardown()
-        print('Killed server after test')
+        print('\nKilled server after test')
