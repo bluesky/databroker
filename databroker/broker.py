@@ -390,6 +390,36 @@ class Broker(object):
         return Images(self.mds, self.fs, headers, name, handler_registry,
                       handler_override)
 
+    def get_resource_uids(self, header):
+        '''Given a Header, give back a list of resource uids
+
+        These uids are required to move the underlying files.
+
+        Parameters
+        ----------
+        header : Header
+
+        Returns
+        -------
+        ret : set
+            set of resource uids which are refereneced by this
+            header.
+        '''
+        external_keys = set()
+        for d in header['descriptors']:
+            for k, v in d['data_keys'].items():
+                if 'external' in v:
+                    external_keys.add(k)
+
+        ev_gen = self.get_events(header, stream_name=None,
+                                 fields=external_keys, fill=False)
+        resources = set()
+        for ev in ev_gen:
+            for v in ev['data'].values():
+                res = self.fs.resource_given_eid(v)
+                resources.add(res['uid'])
+        return resources
+
     def restream(self, headers, fields=None, fill=False):
         """
         Get all Documents from given run(s).
