@@ -28,7 +28,7 @@ install:
   - source activate testenv
   - pip install coveralls codecov
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
-      pip install singledispatch";
+      pip install singledispatch;
     fi;
   - python -c "from filestore import utils, conf; utils.install_sentinels(conf.connection_config, 1)"
   - python setup.py install
