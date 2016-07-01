@@ -8,9 +8,11 @@ filestore prototype
 
 ## Conda Recipes
 
-[tag](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/filestore)
+Install the most recent tagged build: `conda install filestore -c lightsource2-tag`
 
-[dev](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/filestore)
+Install the most recent tagged build: `conda install filestore -c lightsource2-dev`
+
+Find the tagged recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/filestore) and the dev recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/filestore)
 
 ##important bits
 - `filestore` does not manage files on disk for you.
