@@ -6,6 +6,12 @@
 # filestore
 filestore prototype
 
+## Conda Recipes
+
+[tag](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/filestore)
+
+[dev](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/filestore)
+
 ##important bits
 - `filestore` does not manage files on disk for you.
 - `filestore` relies on you (the user!) to know the mapping between your file
