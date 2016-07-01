@@ -22,3 +22,9 @@ Planned:
 [![codecov](https://codecov.io/gh/NSLS-II/databroker/branch/master/graph/badge.svg)](https://codecov.io/gh/NSLS-II/databroker)
 [![Anaconda-Server Badge](https://anaconda.org/lightsource2/databroker/badges/version.svg)](https://anaconda.org/lightsource2/databroker)
 [![Anaconda-Server Badge](https://anaconda.org/lightsource2/databroker/badges/license.svg)](https://anaconda.org/lightsource2/databroker)
+
+## Conda Recipes
+
+[tag](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/databroker)
+
+[dev](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/databroker)
