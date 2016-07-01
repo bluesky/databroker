@@ -25,6 +25,8 @@ Planned:
 
 ## Conda Recipes
 
-[tag](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/databroker)
+Install the most recent tagged build: `conda install databroker -c lightsource2-tag`
 
-[dev](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/databroker)
+Install the most recent tagged build: `conda install databroker -c lightsource2-dev`
+
+Find the tagged recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/databroker) and the dev recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/databroker)
