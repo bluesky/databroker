@@ -6,6 +6,14 @@
 # metadatastore
 NSLS2 Beamlines metadatastore prototype implemented in MongoDB.
 
+## Conda Recipes
+
+Install the most recent tagged build: `conda install filestore -c lightsource2-tag`
+
+Install the most recent tagged build: `conda install filestore -c lightsource2-dev`
+
+Find the tagged recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/filestore) and the dev recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/filestore)
+
 
 ## metadatastore configuration
 
@@ -18,13 +26,13 @@ host: 127.0.0.1
 timezone: US/Eastern
 ```
 
-where 
+where
 
- - `metadatastore` can be any valid string 
+ - `metadatastore` can be any valid string
  - `127.0.0.1` can be any IP/DNS name
  - `US/Eastern` can be any [of these timezone strings] (https://www.vmware.com/support/developer/vc-sdk/visdk400pubs/ReferenceGuide/timezone.html)
 
-This configuration information can live in up to four different places, as 
+This configuration information can live in up to four different places, as
 defined in the docstring of the `load_configuration` function in
  `metadatastore/conf.py`. In order of increasing precedence:
 
