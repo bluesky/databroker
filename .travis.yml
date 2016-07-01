@@ -1,59 +1,38 @@
 language: python
+
 sudo: false
+
 services:
-- mongodb
+  - mongodb
+
 addons:
   apt:
     sources:
     - mongodb-3.2-precise
     packages:
     - mongodb-org-server
-matrix:
-  include:
-  - python: 2.7
-  - python: 3.4
-  - python: 3.5
+
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+
 before_install:
-- wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-- chmod +x miniconda.sh
-- "./miniconda.sh -b -p /home/travis/mc"
-- export PATH=/home/travis/mc/bin:$PATH
-- export MDS_HOST=localhost
-- export MDS_DATABASE=test
-- export MDS_TIMEZONE=US/Eastern
-- mkdir -p /home/travis/.config/metadatastore
-- 'echo ''port: 27017'' > /home/travis/.config/metadatastore/connection.yml'
+  - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
+  - . ~/scripts/install-miniconda.sh
+  - . ~/scripts/init-metadatastore.sh
+
 install:
-- export GIT_FULL_HASH=`git rev-parse HEAD`
-- conda config --set always_yes true
-- conda update conda --yes
-- conda config --add channels lightsource2
-- conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 humanize doct
-- source activate testenv
-- python setup.py install
-- git describe
-- pip install coveralls codecov
-- python -c "import metadatastore; print(metadatastore.__version__)"
-- git clean -xfd
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 humanize doct
+  - source activate testenv
+  - pip install codecov
+  - python setup.py install
+  - git clean -xfd
+  - python -c "import metadatastore; print(metadatastore.__version__)"
+
 script:
-- coverage run run_tests.py
-- coverage report -m
-- git fetch --unshallow
-- conda install -n root conda-build==1.18.1 jinja2 anaconda-client
-- export CONDA_BUILD_COMMAND="conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION"
-- "$CONDA_BUILD_COMMAND"
+  - coverage run run_tests.py
+  - coverage report -m
+
 after_success:
-- coveralls
 - codecov
-- source deactivate
-- git clone https://github.com/ericdill/travis-little-helper
-- if [ "${TRAVIS_PULL_REQUEST}" = "false" ] && [ "${TRAVIS_BRANCH}" == "master" ]; then
-    $CONDA_BUILD_COMMAND --output | bash travis-little-helper/anaconda-version-string.sh > version;
-    anaconda login --username nsls2builder --password $ANACONDA_PASS --hostname "$TRAVIS_PYTHON_VERSION-`cat version`";
-    bash travis-little-helper/clean-anaconda-channel.sh lightsource2-dev metadatastore true;
-    anaconda upload -u lightsource2-dev `$CONDA_BUILD_COMMAND --output`;
-    anaconda logout;
-  fi;
-env:
-  global:
-    secure: "pYO9aM4keSwyVrom3/tbmjE0mwuSBKJ+SroIF56JUVLh8jT3jiHmwZfI3fUNY6erNewyoiFhkDDBvyY/gxXGHma6T0RcV+LAZmWCXePBL8fsm5X93lo3RlPFtqmXbkOW7C0+h4RDEMQP/UYsNJvL7YbmeDT+fNozV/CpK1zJtU4="
