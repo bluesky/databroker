@@ -13,9 +13,9 @@ import argparse
 
 
 # number of motor positions to fake
-num1 = 20
+num1 = num_motor_positions = 50
 # number of temperatures to record per motor position
-num2 = 10
+num2 = num_temps_per_motor_position = 10
 
 # These are imported from MDS and cannot be imported as things.
 noisy = common.noisy
@@ -23,13 +23,17 @@ example = common.example
 
 # This section sets up what the simulated images will look like.
 
-img_size = (500, 500)
+# never use a square image for test purposes!
+img_size = (150, 175)
+
 period = 150
 
 
 def I_func_sin(count):
     return (1 + .5*np.sin(2 * count * np.pi / period))
-center = 25
+
+# never put the center of the test pattern in the center of the data set!
+center = num_motor_positions / 2.5
 sigma = center / 4
 
 
@@ -80,7 +84,7 @@ def run(run_start_uid=None, sleep=0):
         uid=str(uuid.uuid4()))
 
     events = []
-    for idx1, i in enumerate(range(num1)):
+    for idx1, i in enumerate(range(num_motor_positions)):
         img = next(frame_generator)
         img_sum = float(img.sum())
         img_sum_x = img.sum(axis=0)
@@ -104,19 +108,21 @@ def run(run_start_uid=None, sleep=0):
         timestamps1 = {k: noisy(i) for k in data1}
 
         event_uid = insert_event(descriptor=descriptor1_uid, seq_num=idx1,
-                                 time=noisy(i), data=data1,
-                                 timestamps=timestamps1,
+                                 time=idx1*num_temps_per_motor_position,
+                                 data=data1, timestamps=timestamps1,
                                  uid=str(uuid.uuid4()))
         event, = find_events(uid=event_uid)
         events.append(event)
-        for idx2, i2 in enumerate(range(num2)):
-            time = noisy(i/num2)
-            data2 = {'Tsam': idx1 + np.random.randn()}
+        for idx2, i2 in enumerate(range(num_temps_per_motor_position)):
+            seq_num = idx2+idx1*num_temps_per_motor_position
+            time = seq_num
+            data2 = {'Tsam': idx1 + np.random.randn()*.1}
             timestamps2 = {'Tsam': time}
-            event_uid = insert_event(descriptor=descriptor2_uid,
-                                     seq_num=idx2+idx1, time=time, data=data2,
-                                     uid=str(uuid.uuid4()),
-                                     timestamps=timestamps2)
+            event_uid = insert_event(
+                descriptor=descriptor2_uid, time=seq_num, data=data2,
+                seq_num=seq_num,
+                uid=str(uuid.uuid4()), timestamps=timestamps2
+            )
             event, = find_events(uid=event_uid)
             events.append(event)
         ttime.sleep(sleep)
@@ -143,7 +149,7 @@ if __name__ == '__main__':
         scan_id = 1
     scan_id = str(scan_id)
     custom = {'plotx': 'linear_motor', 'ploty': ['total_img_sum'],
-              'moon': 'full'}
+              'moon': 'full', 'scan_type': 'Image and Scalar'}
     # insert the run start
     run_start_uid = insert_run_start(scan_id=scan_id, time=ttime.time(),
                                      beamline_id='csx', custom=custom,
