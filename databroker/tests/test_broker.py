@@ -16,7 +16,8 @@ from metadatastore.api import (insert_run_start, insert_descriptor,
 from metadatastore.test.utils import mds_setup, mds_teardown
 
 from databroker import (DataBroker as db, get_events, get_table, stream,
-                        get_fields, restream, process, get_images, Broker)
+                        get_fields, restream, process, get_images, Broker,
+                        broker)
 from ..examples.sample_data import (temperature_ramp, image_and_scalar,
                                     step_scan)
 
@@ -376,3 +377,48 @@ def test_plugins():
     hdr = b[-1]
     assert 'echo-plugin-test' in list(b.get_events(hdr, a='echo-plugin-test'))
     assert 'echo-plugin-test' not in list(b.get_events(hdr))
+
+
+def test_get_value(image_example_uid):
+    # make sure we are getting the keys from the start document
+    hdr1 = db[image_example_uid]
+    hdr2 = db[-2:]
+    hdrs = [hdr1] + hdr2
+    keys = list(hdr1.start.keys())
+    start_keys = ['start-%s' % key for key in keys]
+    table1 = broker.summarize(hdrs, keys=keys)
+    table2 = broker.summarize(hdrs, keys=start_keys)
+
+    assert table1._rows == table2._rows
+
+
+def test_special_keys(image_example_uid):
+    hdr1 = db[image_example_uid]
+    # smoketest the creation of the table
+    broker.summarize(hdr1, keys=broker.known_special_keys.keys())
+
+
+def test_uid_keys():
+    hdrs = db[-2:]
+    nums = [0, 2, 40]
+    keys = ['uid-%s' % num for num in nums]
+    uids = [[hdr.start.uid[:num] for num in nums] for hdr in hdrs]
+    table = broker.summarize(hdrs, keys=keys)
+    assert uids == table._rows
+
+
+def test_stop_keys():
+    hdrs = db[-2:]
+    keys = set(['stop-%s' % k for hdr in hdrs for k in hdr.stop.keys()])
+    keys.add('horsepower')
+    # smoketest the creation of the table
+    broker.summarize(hdrs, keys=keys)
+
+
+def test_descriptor_keys():
+    hdrs = db[-2:]
+    keys = set(['descriptor-%s' % k for hdr in hdrs for k in
+                [key for descriptor in hdr.descriptors
+                     for key in descriptor.keys()]])
+    # smoketest the creation of the table
+    broker.summarize(hdrs, keys=keys)
