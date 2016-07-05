@@ -575,6 +575,39 @@ class ArchiverPlugin(object):
                 yield Document('Event', doc)
 
 
+class DangerBroker(Broker):
+
+    def move_files_for_run(self, header, new_root, **kwargs):
+        '''Move all the files associated with a header to new root path
+
+        .. Warning
+
+           This will move and (maybe) delete files.  You probably do
+           not really want to use this method.  If you have more than
+           one resource looking at the same underlying file this will
+           break all other resources.
+
+        kwargs are passed through to `FileStoreMoving.change_root`.
+
+        Parameters
+        ----------
+        header : Header
+            The header to move the files of.
+
+        new_roow : str
+            The new root to move the files to
+        '''
+        resource = self.get_resource_uids(header)
+        if not resource:
+            return
+        old_root = resource[0].get('root', '')
+        if any(r.get('root', '') != old_root for r in resource):
+            raise RuntimeError("Roots do not all match {!r}".format(resource))
+
+        for r in resource:
+            self.fs.change_root(r, new_root, **kwargs)
+
+
 def _munge_time(t, timezone):
     """Close your eyes and trust @arkilic
 
