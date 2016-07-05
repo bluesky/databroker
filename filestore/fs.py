@@ -428,7 +428,8 @@ class FileStore(FileStoreRO):
                                        resource, actual_resource))
         resource = dict(actual_resource)
         resource.setdefault('root', '')
-        abs_path = resource['root'][0] == os.sep
+        full_path = os.path.join(resource['root'], resource['resource_path'])
+        abs_path = full_path and full_path[0] == os.sep
         root = [_ for _ in resource['root'].split(os.sep) if _]
         rpath = [_ for _ in resource['resource_path'].split(os.sep) if _]
 

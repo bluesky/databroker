@@ -37,8 +37,8 @@ def test_root_shift(fs_v1, step, sign):
     n_paths = 15
 
     if sign > 0:
-        root = '/'
-        rpath = num_paths(0, n_paths)
+        root = ''
+        rpath = '/' + num_paths(0, n_paths)
     elif sign < 0:
         root = '/' + num_paths(0, n_paths)
         rpath = ''
@@ -60,6 +60,19 @@ def test_root_shift(fs_v1, step, sign):
         assert new_res['resource_path'] == num_paths(left_count, n_paths)
         _verify_shifted_resource(last_res, new_res)
         last_res = new_res
+
+
+@pytest.mark.parametrize("root", ['', '///'])
+def test_pathological_root(fs_v1, root):
+    fs = fs_v1
+    rpath = '/foo/bar/baz'
+    last_res = fs.insert_resource('root-test',
+                                  rpath,
+                                  {'a': 'fizz', 'b': 5},
+                                  root=root)
+    new_res, _ = fs.shift_root(last_res, 2)
+    assert new_res['root'] == '/foo/bar'
+    assert new_res['resource_path'] == 'baz'
 
 
 def test_history(fs_v1):
