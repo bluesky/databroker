@@ -335,7 +335,7 @@ class FileStoreRO(object):
 
 class FileStore(FileStoreRO):
     '''FileStore object that knows how to create new documents.'''
-    def insert_resource(self, spec, resource_path, resource_kwargs, root=''):
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
         '''
          Parameters
          ----------
@@ -356,6 +356,9 @@ class FileStore(FileStoreRO):
 
 
         '''
+        if root is None:
+            root = ''
+
         col = self._resource_col
 
         return self._api.insert_resource(col, spec, resource_path,

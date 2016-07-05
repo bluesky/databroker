@@ -62,7 +62,7 @@ def test_root_shift(fs_v1, step, sign):
         last_res = new_res
 
 
-@pytest.mark.parametrize("root", ['', '///'])
+@pytest.mark.parametrize("root", ['', '///', None])
 def test_pathological_root(fs_v1, root):
     fs = fs_v1
     rpath = '/foo/bar/baz'
