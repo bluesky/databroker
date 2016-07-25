@@ -30,11 +30,13 @@ def run(run_start_uid=None, sleep=0):
     ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
                                      data_keys=data_keys1,
                                      time=common.get_time(),
-                                     uid=str(uuid.uuid4()))
+                                     uid=str(uuid.uuid4()),
+                                     name='primary')
     ev_desc2_uid = insert_descriptor(run_start=run_start_uid,
                                      data_keys=data_keys2,
                                      time=common.get_time(),
-                                     uid=str(uuid.uuid4()))
+                                     uid=str(uuid.uuid4()),
+                                     name='baseline')
 
     # Create Events.
     events = []
