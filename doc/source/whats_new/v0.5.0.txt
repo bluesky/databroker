@@ -1,0 +1,11 @@
+v0.5.0
+------
+
+API Changes
+===========
+* Change kwarg ``name`` to ``stream_name`` to select a descriptor by name
+* Requires filestore >= v0.5.0
+
+Enhancements
+============
+* Learned how to get all of the FS resource documents from a header
