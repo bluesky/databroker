@@ -16,6 +16,7 @@ from .core import (Header, _external_keys,
                    restream as _restream,
                    fill_event as _fill_event,
                    process as _process, Images)
+from metadatastore.core import _format_time
 
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
@@ -148,7 +149,7 @@ def _(key, mds):
 
 
 class Broker(object):
-    def __init__(self, mds, fs, plugins=None):
+    def __init__(self, mds, fs, plugins=None, filters=None):
         """
         Unified interface to data sources
 
@@ -159,12 +160,72 @@ class Broker(object):
         plugins : dict or None, optional
             mapping keyword argument name (string) to Plugin, an object
             that should implement ``get_events``
+        filters : list
+            list of mongo queries to be combined with query using '$and',
+            acting as a filter to restrict the results
         """
         self.mds = mds
         self.fs = fs
         if plugins is None:
             plugins = {}
         self.plugins = plugins
+        if filters is None:
+            filters = []
+        self.filters = filters
+
+    def _format_time(self, val):
+        "close over the timezone config"
+        # modifies a query dict in place, remove keys 'start_time' and
+        # 'stop_time' and adding $lte and/or $gte queries on 'time' key
+        _format_time(val, self.mds.config['timezone'])
+
+    @property
+    def filters(self):
+        return self._filters
+
+    @filters.setter
+    def filters(self, val):
+        for elem in val:
+            self._format_time(val)
+        self._filters = val
+
+    def add_filter(self, **kwargs):
+        """
+        Add query to the list of 'filter' queries.
+
+        Filter queries are combined with every given query using '$and',
+        acting as a filter to restrict the results.
+
+        ``Broker.add_filter(**kwargs)`` is just a convenient way to spell
+        ``Broker.filters.append(dict(**kwargs))``.
+
+        Example
+        -------
+        Filter all searches to restrict runs to a specific 'user'.
+        >>> db.add_filter(user='Dan')
+
+        See Also
+        --------
+        `Broker.add_filter`
+
+        """
+        self.filters.append(dict(**kwargs))
+
+    def clear_filters(self, **kwargs):
+        """
+        Clear all 'filter' queries.
+
+        Filter queries are combined with every given query using '$and',
+        acting as a filter to restrict the results.
+
+        ``Broker.clear_filters()`` is just a convenient way to spell
+        ``Broker.filters.clear()``.
+
+        See Also
+        --------
+        `Broker.add_filter`
+        """
+        self.filters.clear()
 
     def __getitem__(self, key):
         """DWIM slicing
@@ -224,16 +285,19 @@ class Broker(object):
         """
         data_key = kwargs.pop('data_key', None)
         if text_search is not None:
-            query = {'$text': {'$search': text_search}}
+            query = {'$and': [{'$text': {'$search': text_search}}]
+                               + self.filters}
         else:
-            query = kwargs
+            # Include empty {} here so that '$and' gets at least one query.
+            self._format_time(kwargs)
+            query = {'$and': [{}] + [kwargs] + self.filters}
         run_start = self.mds.find_run_starts(**query)
 
         # The 'data_key' kwarg filters the run starts.
         if data_key is not None:
             node_name = 'data_keys.{0}'.format(data_key)
 
-            query = {node_name: {'$exists': True}}
+            query = {'$and': [{node_name: {'$exists': True}}] + self.filters}
             descriptors = []
             for rs in run_start:
                 descriptor = self.mds.find_descriptors(run_start=rs, **query)
