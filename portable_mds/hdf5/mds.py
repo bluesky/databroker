@@ -101,7 +101,7 @@ class EventCollection(object):
 
     def insert_one(self, doc):
         # not used on event_col
-        raise NotImplementedError()
+        return self.insert([doc])
 
     def insert(self, docs):
         # Sort docs by descriptor.

@@ -140,20 +140,7 @@ class EventCollection(object):
         raise NotImplementedError()
 
     def insert_one(self, doc):
-        desc_uid = doc['descriptor']
-        table_name = 'desc_' + desc_uid.replace('-', '_')
-        # Get list of keys and list of values in consistent order.
-        keys = []
-        values = []
-        for k, v in doc.items():
-            keys.append(k)
-            values.append(v)
-        keys = ['uid', 'seq_num', 'time'] + keys
-        values = tuple([doc['uid']], [doc['seq_num']] + [doc['time']]
-                        + doc['data'] + doc['timestamps'])
-        with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
-            c.execute(("INSERT INTO %s (%s)" % (table_name, ','.join(keys)))
-                       + qmarks(len(values)), values)
+        return self.insert([doc])
 
     def insert(self, docs):
         values = defaultdict(list)
@@ -166,7 +153,7 @@ class EventCollection(object):
                 ordered_keys[uid] = sorted(doc['data'])
                 columns[uid] = self.columns(doc['data'])
 
-            value = tuple([doc['uid']] + [doc['seq_num']] + [doc['time']] + 
+            value = tuple([doc['uid']] + [doc['seq_num']] + [doc['time']] +
                           [doc['data'][k] for k in ordered_keys[uid]] +
                           [doc['timestamps'][k] for k in ordered_keys[uid]])
             values[uid].append(value)
