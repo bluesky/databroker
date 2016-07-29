@@ -23,6 +23,7 @@ def check_for_id(document):
     with pytest.raises(KeyError):
         document['_id']
 
+
 def setup_syn(mds, custom=None):
     if custom is None:
         custom = {}
@@ -30,6 +31,8 @@ def setup_syn(mds, custom=None):
                      'dtype': 'number',
                      'shape': None} for k in 'ABCEDEFGHIJKL'
                  }
+    data_keys['Z'] = {'source': 'Z', 'dtype': 'array', 'shape': [5, 5],
+                      'external': 'foo'}
     scan_id = 1
 
     # Create a BeginRunEvent that serves as entry point for a run
@@ -276,6 +279,7 @@ def test_bulk_insert(mds_all):
         assert ret['descriptor']['uid'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
+        assert ret['filled'] == {'Z': False}
 
 
 def test_bulk_table(mds_all):
