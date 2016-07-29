@@ -7,6 +7,7 @@ from metadatastore.test.test_mds import (
     test_bad_bulk_insert_event_timestamp,
     test_bad_event_desc,
     test_bulk_insert,
+    test_iterative_insert,
     test_bulk_table,
     test_cache_clear_lookups,
     test_custom_warn,
