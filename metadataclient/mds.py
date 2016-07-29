@@ -344,7 +344,7 @@ class MDS(MDSRO):
         return uid
 
     def insert_event(self, descriptor, time, seq_num, data, timestamps,
-                     uid, validate):
+                     uid, validate=False):
         if validate:
             raise NotImplementedError('Insert event validation not written yet')
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
