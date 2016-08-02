@@ -6,6 +6,12 @@ logger = logging.getLogger(__name__)
 
 
 try:
+    from .databroker import DataBroker
+except ImportError:
+    warnings.warn("The top-level functions (get_table, get_events, etc.)"
+                  "cannot be created because "
+                  "the necessary configuration was not found.")
+else:
     from .databroker import (DataBroker, DataBroker as db,
                              get_events, get_table, stream, get_fields,
                              restream, process)
@@ -15,10 +21,6 @@ try:
     # register all built-in filestore handlers
     register_builtin_handlers()
     del register_builtin_handlers
-except ImportError:
-    warnings.warn("The top-level functions (get_table, get_events, etc.)"
-                  "cannot be created because "
-                  "the necessary configuration was not found.")
 
 from .broker import Broker, ArchiverPlugin
 
