@@ -6,7 +6,7 @@ import pandas as pd
 import tzlocal
 import doct as doc
 from pims import FramesSequence, Frame
-from metadatastore.commands import NoRunStop, NoEventDescriptors
+from metadatastore.core import NoRunStop, NoEventDescriptors
 from filestore import handlers, HandlerBase
 import logging
 import numbers
