@@ -577,6 +577,19 @@ class Broker(object):
 
     get_fields = staticmethod(get_fields)  # for convenience
 
+    def export(headers, mds, fs):
+        """ export a list of headers
+
+            Parameters:
+            -----------
+            headers : databroker.header
+                list of headers that are going to be exported
+            mds : metadatasote
+                metadata store object #FIXME
+            fs : file store
+                file store object #FIXME
+        """
+        pass
 
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
