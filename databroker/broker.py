@@ -186,7 +186,7 @@ class Broker(object):
     @filters.setter
     def filters(self, val):
         for elem in val:
-            self._format_time(val)
+            self._format_time(elem)
         self._filters = val
 
     def add_filter(self, **kwargs):
