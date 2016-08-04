@@ -930,7 +930,7 @@ def _get_from_header(header, key, default_value):
     object
         `default_value` or whatever `key` would return.
     """
-    split = key.split('-', maxsplit=1)
+    split = key.split('-', 1)
     if len(split) == 1:
         # `key` is in `known_special_keys` or is assumed to be a key in the
         # RunStart document
