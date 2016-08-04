@@ -1,4 +1,4 @@
-#!/bim/bash
+#!/bin/bash
 apt-get install sysv-rc-softioc
 conda create -p /opt/conda_envs/services python=3.5
 source activate services
