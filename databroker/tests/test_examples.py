@@ -41,9 +41,9 @@ def test_examples_programmatically(example):
 
 def test_get_resource_uid():
     from databroker import DataBroker as db
+    from databroker.broker import DangerBroker
     fs = FileStoreMoving(db.fs.config)
-    old_fs = db.fs
-    db.fs = fs
+    db = DangerBroker(db.mds, fs)
     register_builtin_handlers(fs)
     events = list(image_and_scalar.run())
     fs_res = set()
@@ -56,4 +56,3 @@ def test_get_resource_uid():
                 fs_res.add(fs.resource_given_eid(dd[k])['uid'])
 
     assert fs_res == db.get_resource_uids(hdr)
-    db.fs = old_fs
