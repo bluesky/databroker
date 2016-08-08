@@ -729,10 +729,10 @@ class Broker(object):
             -----------
             headers : databroker.header
                 list of headers that are going to be exported
-            mds : metadatasote
-                metadata store object
-            fs : file store
-                file store object
+            mds : MDS
+                target instance of metadatastore to export info
+            fs : filestore
+                target instance of filestore to export info
         """
         for header in headers:
             mds.insert_run_start(**header['start'])
