@@ -590,6 +590,7 @@ class Broker(object):
                 target instance of filestore to export info
         """
         for header in headers:
+            # insert mds
             mds.insert_run_start(**header['start'])
             for descripto in header['descriptor']:
                 mds.insert_descriptor(**descriptor)
@@ -597,7 +598,11 @@ class Broker(object):
                 for event in events:
                     mds.insert_event(event, descriptor)
             mds.insert_run_stop(**header['stop'])
-        pass
+            # insert fs
+            res_uids = self.get_resource_uids(header)
+            for res_uid in res_uids:
+
+        return
 
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
