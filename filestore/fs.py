@@ -573,7 +573,7 @@ class FileStore(FileStoreRO):
                                                         actual_resource['uid'])
         return datum_gen
 
-    def get_file_list(self, resource, datum_kwarg_gen):
+    def get_file_list(self, resource_or_uid, datum_kwarg_gen):
         """Given a resource or resource uid and an iterable of datum kwargs,
         return filepaths.
 
