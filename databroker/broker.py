@@ -730,10 +730,18 @@ class Broker(object):
             headers : databroker.header
                 list of headers that are going to be exported
             mds : metadatasote
-                metadata store object #FIXME
+                metadata store object
             fs : file store
-                file store object #FIXME
+                file store object
         """
+        for header in headers:
+            mds.insert_run_start(**header['start'])
+            for descripto in header['descriptor']:
+                mds.insert_descriptor(**descriptor)
+                events = self.get_events(header)
+                for event in events:
+                    mds.insert_event(event, descriptor)
+            mds.insert_run_stop(**header['stop'])
         pass
 
 class ArchiverPlugin(object):
