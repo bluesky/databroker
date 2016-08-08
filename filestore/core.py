@@ -242,3 +242,8 @@ def get_datumkw_by_resuid_gen(datum_col, resource_uid):
 
     for d in cur:
         yield d['datum_kwargs']
+
+
+def get_file_list(resource, datum_kwarg_gen, get_spec_handler):
+    handler = get_spec_handler(resource)
+    return handler.get_file_list(datum_kwarg_gen)
