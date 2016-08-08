@@ -576,6 +576,10 @@ class FileStore(FileStoreRO):
     def get_file_list(self, resource, datum_kwarg_gen):
         """Given a resource or resource uid and an iterable of datum kwargs,
         return filepaths.
+
+
+        DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
+        See the methods for moving and copying on the FileStore object.
         """
         actual_resource = self.resource_given_uid(resource_or_uid)
         return self._api.get_file_list(actual_resource, datum_kwarg_gen,
