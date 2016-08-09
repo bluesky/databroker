@@ -242,3 +242,15 @@ def get_datumkw_by_resuid_gen(datum_col, resource_uid):
 
     for d in cur:
         yield d['datum_kwargs']
+
+
+def get_file_list(resource, datum_kwarg_gen, get_spec_handler):
+    """
+    Given a resource and an iterable of datum kwargs, get a list of
+    associated files.
+
+    DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
+    See the methods for moving and copying on the FileStore object.
+    """
+    handler = get_spec_handler(resource['uid'])
+    return handler.get_file_list(datum_kwarg_gen)

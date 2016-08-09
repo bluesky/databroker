@@ -469,6 +469,122 @@ class FileStore(FileStoreRO):
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
 
+    def copy_files(self, resource_or_uid, new_root,
+                   verify=False, file_rename_hook=None):
+        """
+        Copy files associated with a resource to a new directory.
+
+        The registered handler must have a `get_file_list` method and the
+        process running this method must have read/write access to both the
+        source and destination file systems.
+
+        This method does *not* update the filestore database.
+
+        Internally the resource level directory information is stored
+        as two parts: the root and the resource_path.  The 'root' is
+        the non-semantic component (typically a mount point) and the
+        'resource_path' is the 'semantic' part of the file path.  For
+        example, it is common to collect data into paths that look like
+        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
+        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
+
+
+
+        Parameters
+        ----------
+        resource_or_uid : Document or str
+            The resource to move the files of
+
+        new_root : str
+            The new 'root' to copy the files into
+
+        verify : bool, optional (False)
+            Verify that the move happened correctly.  This currently
+            is not implemented and will raise if ``verify == True``.
+
+        file_rename_hook : callable, optional
+            If provided, must be a callable with signature ::
+
+               def hook(file_counter, total_number, old_name, new_name):
+                   pass
+
+            This will be run in the inner loop of the file copy step and is
+            run inside of an unconditional try/except block.
+
+        See Also
+        --------
+        `FileStoreMoving.shift_root`
+        `FileStoreMoving.change_root`
+        """
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it')
+        if verify:
+            raise NotImplementedError('Verification is not implemented yet')
+
+        def rename_hook_wrapper(hook):
+            if hook is None:
+                def noop(n, total, old_name, new_name):
+                    return
+                return noop
+
+            def safe_hook(n, total, old_name, new_name):
+                try:
+                    hook(n, total, old_name, new_name)
+                except:
+                    pass
+            return safe_hook
+
+        file_rename_hook = rename_hook_wrapper(file_rename_hook)
+
+        # get list of files
+        resource = dict(self.resource_given_uid(resource_or_uid))
+        resource.setdefault('root', '')
+
+        datum_gen = self.datum_gen_given_resource(resource)
+        file_list = self.get_file_list(resource, datum_gen)
+
+        # check that all files share the same root
+        old_root = resource['root']
+        for f in file_list:
+            if not f.startswith(old_root):
+                raise RuntimeError('something is very wrong, the files '
+                                   'do not all share the same root, ABORT')
+
+        # sort out where new files should go
+        new_file_list = [os.path.join(new_root,
+                                      os.path.relpath(f, old_root))
+                         for f in file_list]
+        N = len(new_file_list)
+        # copy the files to the new location
+        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
+            # copy files
+            file_rename_hook(n, N, fin, fout)
+            _make_sure_path_exists(os.path.dirname(fout))
+            shutil.copy2(fin, fout)
+
+        return zip(file_list, new_file_list)
+
+    def datum_gen_given_resource(self, resource_or_uid):
+        """Given resource or resource uid return associated datum documents.
+        """
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        datum_gen = self._api.get_datumkw_by_resuid_gen(self._datum_col,
+                                                        actual_resource['uid'])
+        return datum_gen
+
+    def get_file_list(self, resource_or_uid, datum_kwarg_gen):
+        """Given a resource or resource uid and an iterable of datum kwargs,
+        return filepaths.
+
+
+        DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
+        See the methods for moving and copying on the FileStore object.
+        """
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        return self._api.get_file_list(actual_resource, datum_kwarg_gen,
+                                       self.get_spec_handler)
+
 
 class FileStoreMoving(FileStore):
     '''FileStore object that knows how to move files.'''
@@ -526,56 +642,11 @@ class FileStoreMoving(FileStore):
            doing.
 
         '''
-        if self.version == 0:
-            raise NotImplementedError('V0 has no notion of root so can not '
-                                      'change it')
-        if verify:
-            raise NotImplementedError('Verification is not implemented yet')
+        resource = dict(self.resource_given_uid(resource_or_uid))
 
-        def rename_hook_wrapper(hook):
-            if hook is None:
-                def noop(n, total, old_name, new_name):
-                    return
-                return noop
-
-            def safe_hook(n, total, old_name, new_name):
-                try:
-                    hook(n, total, old_name, new_name)
-                except:
-                    pass
-            return safe_hook
-
-        file_rename_hook = rename_hook_wrapper(file_rename_hook)
-
-        datum_col = self._datum_col
-        # get list of files
-        actual_resource = self.resource_given_uid(resource_or_uid)
-        resource = dict(actual_resource)
-        resource.setdefault('root', '')
-        handler = self.get_spec_handler(resource['uid'])
-
-        datum_gen = self._api.get_datumkw_by_resuid_gen(datum_col,
-                                                        resource['uid'])
-        file_list = handler.get_file_list(datum_gen)
-
-        # check that all files share the same root
-        old_root = resource['root']
-        for f in file_list:
-            if not f.startswith(old_root):
-                raise RuntimeError('something is very wrong, the files '
-                                   'do not all share the same root, ABORT')
-
-        # sort out where new files should go
-        new_file_list = [os.path.join(new_root,
-                                      os.path.relpath(f, old_root))
-                         for f in file_list]
-        N = len(new_file_list)
-        # copy the files to the new location
-        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
-            # copy files
-            file_rename_hook(n, N, fin, fout)
-            _make_sure_path_exists(os.path.dirname(fout))
-            shutil.copy2(fin, fout)
+        file_lists = self.copy_files(resource, new_root, verify,
+                                     file_rename_hook)
+        old_file_list, new_file_list = zip(*file_lists)
 
         # update the database
         new_resource = dict(resource)
@@ -584,7 +655,7 @@ class FileStoreMoving(FileStore):
         update_col = self._resource_update_col
         resource_col = self._resource_col
         ret = self._api.update_resource(update_col, resource_col,
-                                        old=actual_resource,
+                                        old=resource,
                                         new=new_resource,
                                         cmd_kwargs=dict(
                                             remove_origin=remove_origin,
@@ -594,7 +665,7 @@ class FileStoreMoving(FileStore):
 
         # remove original files
         if remove_origin:
-            for f in file_list:
+            for f in old_file_list:
                 os.unlink(f)
 
         # nuke caches
