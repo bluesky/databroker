@@ -123,7 +123,8 @@ class RunStartHandler(DefaultHandler):
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'find_run_starts': mdsro.find_run_starts,
-                           'run_start_given_uid': mdsro.run_start_given_uid}
+                           'run_start_given_uid': mdsro.run_start_given_uid,
+                           'find_last': mdsro.find_last}
         self.insertables = {'insert_run_start': mdsrw.insert_run_start}
 
 
