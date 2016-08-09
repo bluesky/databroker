@@ -745,7 +745,16 @@ class Broker(object):
             mds.insert_run_stop(**header['stop'])
             # insert fs
             res_uids = self.get_resource_uids(header)
-            for res_uid in res_uids:
+            for uid in res_uids:
+                res = self.fs.resource_given_uid(uid)
+                fs.insert_resource(res['spec'],
+                                   res['resource_path'],
+                                   None) #FIXME: resource_kwargs = None?
+                datums = self.fs.datum_gen_given_resource(uid)
+                for datum in datums:
+                    fs.insert_datum(res, datum_id, datum_kwargs)
+                    # FIXME: just the signature now, need to figure out
+                    # waht datum_uid and datum_kwargs is
 
         return
 
