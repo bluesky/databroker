@@ -13,6 +13,7 @@ import metadatastore.core as core
 from .utils import mds_setup, mds_teardown
 from metadatastore.examples.sample_data import temperature_ramp
 import uuid
+import time
 
 # some useful globals
 run_start_uid = None
@@ -504,9 +505,25 @@ def test_double_run_stop():
         mdsc.insert_run_stop(run_start_uid, ttime.time(),
                              uid=str(uuid.uuid4()))
 
+def prep_header():
+    testuid = str(uuid.uuid4())
+    hdr = {'time': time.time(), 'uid': testuid,
+           'tag': 'find_last_test_tag'}
+    return hdr
+
 
 def test_find_last_for_smoke():
     last, = mdsc.find_last()
+
+
+def test_find_last():
+    refhdr = prep_header()
+    mdsc.insert('start', refhdr)
+    next(mdsc.find_last())['uid'] == refhdr['uid']
+
+
+def test_insert_basic():
+   mdsc.insert('start', prep_header())
 
 
 def test_fail_runstart():
