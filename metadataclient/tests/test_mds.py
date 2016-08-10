@@ -9,6 +9,7 @@ from metadatastore.test.test_mds import (
     test_bulk_insert,
     test_bulk_table,
 #    test_cache_clear_lookups,
+    test_iterative_insert,
     test_custom_warn,
     test_double_run_stop,
     test_event_descriptor_insertion,

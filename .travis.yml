@@ -37,10 +37,14 @@ install:
   - python setup.py develop
    
 script:
+  - mkdir -p /home/travis/.config/metadataclient
+  - cp connection.yml /home/travis/.config/metadataclient
+  - source activate testenv
   - nohup python /home/travis/metadataservice/startup.py --mongo-host localhost --mongo-port 27017 --service-port 7778 --database mdservicetest --timezone US/Eastern &
+  - sleep 5
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
-  - py.test -sv --cov=metadataclient --cov-report term-missing
   - cat nohup.out
+  - py.test -sv --cov=metadataclient --cov-report term-missing
 
 after_success:
   - coveralls
