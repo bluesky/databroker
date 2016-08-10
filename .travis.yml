@@ -43,8 +43,8 @@ script:
   - nohup python /home/travis/metadataservice/startup.py --mongohost localhost --mongoport 27017 --serviceport 7778 --database mdservicetest --tzone US/Eastern &
   - sleep 5
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
-  - py.test -sv --cov=metadataclient --cov-report term-missing
   - cat nohup.out
+  - py.test -sv --cov=metadataclient --cov-report term-missing
 
 after_success:
   - coveralls
