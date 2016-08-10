@@ -145,8 +145,6 @@ class MDSRO:
         if not response:
             raise NoRunStart('No RunStart found with uid {}'.format(uid))
         return response
-        #return self._cache_run_start(response,
-        #                             self._RUN_START_CACHE)
 
     def find_run_starts(self, **kwargs):
         params = self.queryfactory(query=kwargs,
@@ -261,11 +259,22 @@ class MDSRO:
                 out[k][j] = dd[k]
         return out
 
-    def find():
-        pass
-
-    def find_last():
-        pass
+    def find_last(self, num):
+        """Locate the last `num` RunStart Documents
+        Parameters
+        ----------
+        num : integer, optional
+            number of RunStart documents to return, default 1
+        Yields
+        ------
+        run_start doc.Document
+        The requested RunStart documents
+        """
+        params = self.queryfactory(query={'num': num},
+                                   signature='find_last')
+        response = self._get(self._rstart_url, params=params)
+        for r in response:
+            yield Document('RunStart', r)
 
 
 class MDS(MDSRO):
@@ -285,8 +294,15 @@ class MDS(MDSRO):
         r.raise_for_status()
         return r.json()
 
-    def insert(self):
-        pass
+    def insert(self, name, doc):
+        if name != 'bulk_events':
+            getattr(self, self._INS_METHODS[name])(**doc)
+        else:
+            for desc_uid, events in doc.items():
+                # If events is empty, mongo chokes.
+                if not events:
+                    continue
+                self.bulk_insert_events(desc_uid, events)
 
     def _check_for_custom(self, kdict):
         if 'custom' in kdict:
