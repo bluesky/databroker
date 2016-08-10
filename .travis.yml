@@ -31,7 +31,7 @@ install:
    
 script:
   - mkdir -p /home/travis/.config/metadataclient
-  - cp connection.yml /home/travis/config/metadataclient
+  - cp connection.yml /home/travis/.config/metadataclient
   - source activate testenv
   - nohup python /home/travis/metadataservice/startup.py --mongohost localhost --mongoport 27017 --serviceport 7778 --database mdservicetest --tzone US/Eastern &
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
