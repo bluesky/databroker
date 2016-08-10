@@ -40,7 +40,7 @@ script:
   - mkdir -p /home/travis/.config/metadataclient
   - cp connection.yml /home/travis/.config/metadataclient
   - source activate testenv
-  - nohup python /home/travis/metadataservice/startup.py --mongohost localhost --mongoport 27017 --serviceport 7778 --database mdservicetest --tzone US/Eastern &
+  - nohup python startup.py --mongo-host localhost --mongo-port 27017 --service-port 7778 --timezone US/Eastern --database mdservicetest &
   - sleep 5
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
   - cat nohup.out
