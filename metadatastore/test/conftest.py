@@ -7,7 +7,6 @@ from metadatastore.mds import MDS
 def mds_all(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with both v0 and v1.
-
     '''
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     test_conf = dict(database=db_name, host='localhost',
