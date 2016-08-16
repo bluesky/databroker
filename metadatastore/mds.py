@@ -5,10 +5,8 @@ import six
 import pymongo
 from pymongo import MongoClient
 from . import core
-from . import core_v0
 
-_API_MAP = {0: core_v0,
-            1: core}
+_API_MAP = {1: core}
 
 
 class MDSRO(object):
