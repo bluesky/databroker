@@ -23,7 +23,8 @@ class MDSRO:
     @property
     def _server_path(self):
         return "http://{}:{}/".format(self.config['host'],
-                                      self.config['port'])
+                                      self.config['port'],
+                                      self.timezone['timezone'])
 
     @property
     def _rstart_url(self):
@@ -199,7 +200,8 @@ class MDSRO:
         response = self._get(self._desc_url, params=params)
         if not response:
             raise NoEventDescriptors('No descriptor is found provided run_start {}'.format(rstart_uid))
-        return response
+        return [Document('EventDescriptor', r) for r in response]
+	
         #return self._cache_descriptor(response,
         #                              self._DESCRIPTOR_CACHE)
 
@@ -214,14 +216,14 @@ class MDSRO:
 
     def get_events_generator(self, descriptor, convert_arrays=True):
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-        descriptor = self.descriptor_given_uid(descriptor_uid)
-        params = self.queryfactory(query={'descriptor': descriptor,
+        # descriptor = self.descriptor_given_uid(descriptor_uid)
+        params = self.queryfactory(query={'descriptor': descriptor_uid,
                                           'convert_arrays': convert_arrays},
                                    signature='get_events_generator')
         events = self._get(self._event_url, params=params)
         for e in events:
             e['descriptor'] = descriptor
-            yield e
+            yield Document('Event', e)
 
     def get_events_table(self, descriptor):
         desc_uid = self.doc_or_uid_to_uid(descriptor)

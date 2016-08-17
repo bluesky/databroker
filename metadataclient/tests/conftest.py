@@ -4,9 +4,9 @@ import shutil
 import tzlocal
 import pytest
 import metadataclient.mds
-import metadataclient.commands
+# import metadataclient.commands
 
-variations = [metadataclient.mds, metadataclient.commands]
+variations = [metadataclient.mds] #, metadataclient.commands]
 
 
 @pytest.fixture(params=variations, scope='function')
