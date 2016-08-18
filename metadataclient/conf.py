@@ -61,4 +61,4 @@ def load_configuration(name, prefix, fields):
     return config
 
 connection_config = load_configuration(
-    'metadataclient', 'MDS', ['host', 'port'])
+    'metadataclient', 'MDS', ['host', 'port', 'timezone'])
