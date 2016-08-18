@@ -131,9 +131,6 @@ class MDSRO:
         self._RUNSTOP_CACHE.clear()
         self._DESCRIPTOR_CACHE.clear()
 
-    def reset_connection(self):
-        self.config.clear()
-
     def queryfactory(self, query, signature):
         """
         Currently only returns a simple dict mdservice expects.
