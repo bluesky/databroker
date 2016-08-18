@@ -16,9 +16,11 @@ def mds_all(request):
     '''
     try:
         tmds = request.param.MDS({'host': 'localhost',
-                                 'port': 7778})
+                                 'port': 7778,
+                                 'timezone': 'US/Eastern'})
     except AttributeError:
         request.param._DB_SINGLETON = metadataclient.mds.MDS({'host': 'localhost',
-                                               'port': 7778})
+                                               'port': 7778,
+                                               'timezone': 'US/Eastern'})
         tmds = request.param._DB_SINGLETON
     return tmds

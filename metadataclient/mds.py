@@ -18,13 +18,19 @@ class MDSRO:
         self._RUN_START_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
-        self.config = config
+        self.config = self._verify_cfg(config)
+
+    def _verify_cfg(self, config):
+        config['host']
+        config['port']
+        config['timezone']
+        return config
 
     @property
     def _server_path(self):
         return "http://{}:{}/".format(self.config['host'],
-                                      self.config['port'],
-                                      self.timezone['timezone'])
+                                      self.config['port']
+                                      )
 
     @property
     def _rstart_url(self):
@@ -189,9 +195,7 @@ class MDSRO:
         params = self.queryfactory(query={'uid': uid},
                                    signature='descriptor_given_uid')
         response = self._get(self._desc_url, params=params)
-        return response
-        #return self._cache_descriptor(response,
-        #                              self._DESCRIPTOR_CACHE)
+        return Document('EventDescriptor', response)
 
     def descriptors_by_start(self, run_start):
         rstart_uid = self.doc_or_uid_to_uid(run_start)
@@ -201,9 +205,6 @@ class MDSRO:
         if not response:
             raise NoEventDescriptors('No descriptor is found provided run_start {}'.format(rstart_uid))
         return [Document('EventDescriptor', r) for r in response]
-	
-        #return self._cache_descriptor(response,
-        #                              self._DESCRIPTOR_CACHE)
 
     def stop_by_start(self, run_start):
         uid = self.doc_or_uid_to_uid(run_start)
@@ -216,7 +217,7 @@ class MDSRO:
 
     def get_events_generator(self, descriptor, convert_arrays=True):
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-        # descriptor = self.descriptor_given_uid(descriptor_uid)
+        descriptor = self.descriptor_given_uid(descriptor_uid)
         params = self.queryfactory(query={'descriptor': descriptor_uid,
                                           'convert_arrays': convert_arrays},
                                    signature='get_events_generator')
