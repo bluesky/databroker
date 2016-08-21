@@ -25,7 +25,8 @@ def run(run_start_uid=None, sleep=0):
     point_det_data = rs.randn(num_exposures) + np.arange(num_exposures)
 
     # Create Event Descriptors
-    data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number')}
+    data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number'),
+                  'intensity_det': dict(source='PV:ES:IntensityDet', dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
     ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
                                      data_keys=data_keys1,
@@ -45,8 +46,10 @@ def run(run_start_uid=None, sleep=0):
     base_time = common.get_time()
     for i in range(num_exposures):
         time = float(2 * i + 0.5 * rs.randn()) + base_time
-        data = {'point_det': point_det_data[i]}
-        timestamps = {'point_det': time}
+        data = {'point_det': point_det_data[i],
+                'intensity_det': ''}
+        timestamps = {'point_det': time,
+                      'intensity_det': time}
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data, timestamps=timestamps,
                           uid=str(uuid.uuid4()))
