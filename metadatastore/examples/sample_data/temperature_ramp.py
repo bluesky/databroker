@@ -47,7 +47,7 @@ def run(run_start_uid=None, sleep=0):
     for i in range(num_exposures):
         time = float(2 * i + 0.5 * rs.randn()) + base_time
         data = {'point_det': point_det_data[i],
-                'intensity_det': ''}
+                'boolean_det': 'Yes'}
         timestamps = {'point_det': time,
                       'intensity_det': time}
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
