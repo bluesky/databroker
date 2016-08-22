@@ -49,7 +49,7 @@ def run(run_start_uid=None, sleep=0):
         data = {'point_det': point_det_data[i],
                 'boolean_det': 'Yes'}
         timestamps = {'point_det': time,
-                      'intensity_det': time}
+                      'boolean_det': time}
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data, timestamps=timestamps,
                           uid=str(uuid.uuid4()))
