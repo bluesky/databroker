@@ -26,7 +26,7 @@ def run(run_start_uid=None, sleep=0):
 
     # Create Event Descriptors
     data_keys1 = {'point_det': dict(source='PV:ES:PointDet', dtype='number'),
-                  'intensity_det': dict(source='PV:ES:IntensityDet', dtype='number')}
+                  'boolean_det': dict(source='PV:ES:IntensityDet', dtype='string')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
     ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
                                      data_keys=data_keys1,
