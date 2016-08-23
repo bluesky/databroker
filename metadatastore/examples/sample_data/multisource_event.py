@@ -41,7 +41,6 @@ def run(run_start=None, sleep=0):
     base_time = common.get_time()
     for i in range(num_exposures):
         time = float(i + 0.5 * rs.randn()) + base_time
-        data = {'point_det': (point_det_data[i], time)}
         data = {'point_det': point_det_data[i]}
         timestamps = {'point_det': time}
         event_uid = insert_event(descriptor=ev_desc1_uid, seq_num=i, time=time,
