@@ -160,9 +160,9 @@ def test_insert_run_start(mds_all):
     run_start_uid = mds.insert_run_start(
         time, beamline_id=beamline_id,
         scan_id=scan_id, uid=str(uuid.uuid4()), **custom)
-    type(run_start_uid) == str
+    assert isinstance(run_start_uid, str)
     run_start_mds, = mds.find_run_starts(uid=run_start_uid)
-    type(run_start_mds) == Document
+    assert isinstance(run_start_mds, Document)
     names = ['time', 'beamline_id', 'scan_id'] + list(custom.keys())
     values = [time, beamline_id, scan_id] + list(custom.values())
 
@@ -190,8 +190,8 @@ def test_run_stop_insertion(mds_all):
 
     # get the sanitized run_stop document from metadatastore
     run_stop, = mds.find_run_stops(uid=run_stop_uid)
-    type(run_stop_uid) == str
-    type(run_stop) == Document
+    assert isinstance(run_stop_uid, str)
+    assert isinstance(run_stop, Document)
     # make sure it does not have an 'id' field
     check_for_id(run_stop)
     # make sure the run stop is pointing to the correct run start
@@ -296,7 +296,7 @@ def test_iterative_insert(mds_all):
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
 
     ev_gen = mdsc.get_events_generator(e_desc)
-    type(ev_gen) == GeneratorType
+    assert isinstance(ev_gen, GeneratorType)
     for ret, expt in zip(ev_gen, all_data):
         assert ret['descriptor']['uid'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
@@ -312,14 +312,14 @@ def test_bulk_table(mds_all):
     mdsc.bulk_insert_events(e_desc, all_data, validate=False)
     mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
     ret = mdsc.get_events_table(e_desc)
-    type(ret) == tuple
+    assert isinstance(ret, tuple)
     descriptor, data_table, seq_nums, times, uids, timestamps_table = ret
-    type(descriptor) == Document
-    type(data_table) == dict
-    type(seq_nums) == list
-    type(times) == list
-    type(timestamps_table) == dict
-    type(uids) == list
+    assert isinstance(descriptor, Document)
+    assert isinstance(data_table, dict)
+    assert isinstance(seq_nums, list)
+    assert isinstance(times, list)
+    assert isinstance(timestamps_table, dict)
+    assert isinstance(uids, list)
     for vals in data_table.values():
         assert all(s == v for s, v in zip(seq_nums, vals))
 
@@ -357,18 +357,18 @@ def test_run_stop_by_run_start(mds_all):
     run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.run_stop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
-    type(ev_desc) == Document
-    type(run_start) == Document
-    type(run_stop) == Document
-    type(ev_desc) == Document
+    assert isinstance(ev_desc, Document)
+    assert isinstance(run_start, Document)
+    assert isinstance(run_stop, Document)
+    assert isinstance(ev_desc, Document)
     run_stop2 = mdsc.stop_by_start(run_start)
     run_stop3 = mdsc.stop_by_start(run_start_uid)
-    type(run_stop2) == Document
+    assert isinstance(run_stop2, Document)
     assert run_stop == run_stop2
     assert run_stop == run_stop3
 
     ev_desc2, = mdsc.descriptors_by_start(run_start)
-    type(ev_desc2) == Document
+    assert isinstance(ev_desc2, Document)
     ev_desc3, = mdsc.descriptors_by_start(run_start_uid)
     assert ev_desc == ev_desc2
     assert ev_desc == ev_desc3
