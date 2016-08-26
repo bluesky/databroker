@@ -10,7 +10,7 @@ _API_MAP = {1: core}
 
 
 class MDSRO(object):
-    def __init__(self, config, version=1):
+    def __init__(self, config, version=1, auth=True):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
@@ -18,6 +18,7 @@ class MDSRO(object):
         self.config = config
         self._api = None
         self.version = version
+        self.auth = auth
 
     def reset_caches(self):
         self._RUNSTART_CAHCE.clear()
@@ -74,8 +75,15 @@ class MDSRO(object):
     @property
     def _connection(self):
         if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
+            if self.auth:
+                uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(self.config['mongo_user'],
+                                                          self.config['mongo_pwd'],
+                                                          self.config['host'],
+                                                          self.config['port'])
+                self.__conn = MongoClient(uri)
+            else:
+                self.__conn = MongoClient(self.config['host'],
+                                          self.config.get('port', None))
         return self.__conn
 
     @property
