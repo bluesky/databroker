@@ -140,20 +140,18 @@ class EventCollection(object):
         raise NotImplementedError()
 
     def insert_one(self, doc):
+        ordered_keys = sorted(doc['data'])
+        columns = self.columns(doc['data'])
         desc_uid = doc['descriptor']
         table_name = 'desc_' + desc_uid.replace('-', '_')
-        # Get list of keys and list of values in consistent order.
-        keys = []
-        values = []
-        for k, v in doc.items():
-            keys.append(k)
-            values.append(v)
-        keys = ['uid', 'seq_num', 'time'] + keys
-        values = tuple([doc['uid']], [doc['seq_num']] + [doc['time']]
-                        + doc['data'] + doc['timestamps'])
+
+        values = tuple([doc['uid']] + [doc['seq_num']] + [doc['time']] + 
+                        [doc['data'][k] for k in ordered_keys] +
+                        [doc['timestamps'][k] for k in ordered_keys])
         with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
-            c.execute(("INSERT INTO %s (%s)" % (table_name, ','.join(keys)))
-                       + qmarks(len(values)), values)
+            c.execute("INSERT INTO %s (%s) VALUES %s " %
+                      (table_name, ','.join(columns), qmarks(len(columns))),
+                      values)
 
     def insert(self, docs):
         values = defaultdict(list)
@@ -174,9 +172,9 @@ class EventCollection(object):
             table_name = 'desc_' + desc_uid.replace('-', '_')
             cols = columns[desc_uid]
             with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
-                c.executemany(("INSERT INTO %s (%s) VALUES " %
-                               (table_name, ','.join(cols)))
-                              + qmarks(len(cols)), values[desc_uid])
+                c.executemany("INSERT INTO %s (%s) VALUES %s" %
+                              (table_name, ','.join(cols), qmarks(len(cols))),
+                              values[desc_uid])
 
 
 class _CollectionMixin(object):
