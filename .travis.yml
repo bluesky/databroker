@@ -3,12 +3,12 @@ language: python
 sudo: false
 
 services:
-  - mongodb
+        - mongodb --auth
 
 addons:
   apt:
     sources:
-    - mongodb-3.2-precise
+    - mongodb-3.2-precise 
     packages:
     - mongodb-org-server
 
@@ -18,6 +18,17 @@ python:
   - 3.5
 
 before_install:
+  -  mongo admin --eval 'db.createUser(
+{
+    user: "tom",
+    pwd: "jerry",
+    roles: [
+              { role: "userAdminAnyDatabase", db: "admin" },
+              { role: "readWriteAnyDatabase", db: "admin" },
+              { role: "dbAdminAnyDatabase", db: "admin" },
+              { role: "clusterAdmin", db: "admin" }
+           ]
+})'     
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-metadatastore.sh
