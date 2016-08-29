@@ -3,7 +3,7 @@ language: python
 sudo: false
 
 services:
-        - mongodb --auth
+    - mongodb --auth
 
 addons:
   apt:
@@ -29,7 +29,7 @@ before_install:
               { role: "clusterAdmin", db: "admin" }
            ]
 })'     
-  - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
+  - git clone https://github.com/arkilic/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-metadatastore.sh
 
