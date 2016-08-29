@@ -18,17 +18,7 @@ python:
   - 3.5
 
 before_install:
-  -  mongo admin --eval 'db.createUser(
-{
-    user: "tom",
-    pwd: "jerry",
-    roles: [
-              { role: "userAdminAnyDatabase", db: "admin" },
-              { role: "readWriteAnyDatabase", db: "admin" },
-              { role: "dbAdminAnyDatabase", db: "admin" },
-              { role: "clusterAdmin", db: "admin" }
-           ]
-})'     
+  -  mongo admin --eval 'db.createUser({user: "tom", pwd: "jerry", roles:[{ role: "userAdminAnyDatabase", db: "admin" }, { role: "readWriteAnyDatabase", db: "admin" },{ role: "dbAdminAnyDatabase", db: "admin" },{ role: "clusterAdmin", db: "admin" }]})'
   - git clone https://github.com/arkilic/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-metadatastore.sh
