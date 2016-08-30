@@ -31,9 +31,12 @@ install:
   - git clean -xfd
   - python -c "import metadatastore; print(metadatastore.__version__)"
 
+before_script:
+  - sleep 15
+  - mongo admin --eval 'db.addUser("tom", "jerry");'
+
 script:
   - mongo --eval 'db.hostInfo()'
-  - mongo --eval 'db.createUser({user: "tom", pwd: "jerry", roles:[{ role: "userAdminAnyDatabase", db: "admin" }, { role: "readWriteAnyDatabase", db: "admin" },{ role: "dbAdminAnyDatabase", db: "admin" },{ role: "clusterAdmin", db: "admin" }]})'
   - coverage run run_tests.py
   - coverage report -m
 
