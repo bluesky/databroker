@@ -3,7 +3,7 @@ language: python
 sudo: false
 
 services:
-    - mongodb --auth
+    - mongodb
 
 addons:
   apt:
@@ -33,6 +33,7 @@ install:
 
 script:
   - mongo --eval 'db.hostInfo()'
+  - mongo --eval 'db.createUser({user: "tom", pwd: "jerry", roles:[{ role: "userAdminAnyDatabase", db: "admin" }, { role: "readWriteAnyDatabase", db: "admin" },{ role: "dbAdminAnyDatabase", db: "admin" },{ role: "clusterAdmin", db: "admin" }]})'
   - coverage run run_tests.py
   - coverage report -m
 
