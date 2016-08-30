@@ -10,7 +10,9 @@ def mds_all(request):
     '''
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     test_conf = dict(database=db_name, host='localhost',
-                     port=27017, timezone='US/Eastern')
+                     port=27017, timezone='US/Eastern',
+                     mongo_user='tom',
+                     mongo_pwd='jerry')
     ver = request.param
     obj_api = True
     if ver == 'cmds':
@@ -24,9 +26,9 @@ def mds_all(request):
 
     request.addfinalizer(delete_dm)
 
-    if obj_api:
-        return mds
-    else:
-        import metadatastore.commands as mdsc
-        mdsc._DB_SINGLETON = mds
-        return mdsc
+    # if obj_api:
+    return mds
+    # else:
+    #    import metadatastore.commands as mdsc
+    #    mdsc._DB_SINGLETON = mds
+    #    return mdsc
