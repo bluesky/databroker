@@ -1,6 +1,9 @@
 import uuid
 import pytest
 from metadatastore.mds import MDS
+import os
+
+AUTH = os.environ.get('MDSTESTWITHAUTH', False)
 
 
 @pytest.fixture(params=[1], scope='function')
@@ -14,7 +17,7 @@ def mds_all(request):
                      mongo_user='tom',
                      mongo_pwd='jerry')
     ver = request.param
-    mds = MDS(test_conf, ver)
+    mds = MDS(test_conf, ver, auth=AUTH)
 
     def delete_dm():
         print("DROPPING DB")
@@ -37,7 +40,7 @@ def mds_all_mod(request):
                      mongo_pwd='jerry')
     ver = request.param
 
-    mds = MDS(test_conf, ver)
+    mds = MDS(test_conf, ver, auth=AUTH)
 
     def delete_dm():
         print("DROPPING DB")
