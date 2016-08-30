@@ -24,7 +24,7 @@ before_install:
   
 
 install:
-  - mongo admin --eval 'db.createUser("tom", "jerry");'
+        - mongo admin --eval 'db.createUser({user: "tom", pwd: "jerry"});'
   - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 humanize doct
   - source activate testenv
   - pip install codecov
