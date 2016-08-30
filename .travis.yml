@@ -32,7 +32,7 @@ install:
   - python -c "import metadatastore; print(metadatastore.__version__)"
 
 script:
-  - mongo admin --eval 'db.createUser({user: "tom", pwd: "jerry", roles:[{ role: "userAdminAnyDatabase", db: "admin" }, { role: "readWriteAnyDatabase", db: "admin" },{ role: "dbAdminAnyDatabase", db: "admin" },{ role: "clusterAdmin", db: "admin" }]})'
+  - mongo localhost:27017/admin --eval 'db.createUser({user: "tom", pwd: "jerry", roles:[{ role: "userAdminAnyDatabase", db: "admin" }, { role: "readWriteAnyDatabase", db: "admin" },{ role: "dbAdminAnyDatabase", db: "admin" },{ role: "clusterAdmin", db: "admin" }]})'
   - coverage run run_tests.py
   - coverage report -m
 
