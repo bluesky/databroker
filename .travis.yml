@@ -28,7 +28,6 @@ before_install:
   # install miniconda/anaconda-client/conda-build
   - . ~/scripts/install-miniconda.sh
   # remove conda-forge because h5py and hdf5 are broken packages. gzip does not work
-  # if I use the packages from the conda-forge channel
 #  - conda config --remove channels conda-forge --force
   - . ~/scripts/init-metadatastore.sh
   - . ~/scripts/init-filestore.sh
