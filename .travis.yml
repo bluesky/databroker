@@ -33,10 +33,10 @@ install:
 
 before_script:
   - sleep 15
+  - which mongo 
   - mongo admin --eval 'db.addUser("tom", "jerry");'
 
 script:
-  - mongo --eval 'db.hostInfo()'
   - coverage run run_tests.py
   - coverage report -m
 
