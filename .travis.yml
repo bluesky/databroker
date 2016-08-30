@@ -35,20 +35,14 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda
-  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION databroker numpy h5py coverage event-model doct jinja2 pandas prettytable
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct pandas
   - source activate testenv
-  - if [[ $TRAVIS_PYTHON_VERSION != "2.7" ]]; then
-      conda install bluesky;
-    else
-      pip install singledispatch;
-    fi;
   - pip install codecov
   - python setup.py install
   # Need to clean the python build directory (and other cruft) or pytest is
   # going to find the build directory and get confused why there are two sets
   # of every test file
   - git clean -xfd
-
 
 script:
   - coverage run run_tests.py
