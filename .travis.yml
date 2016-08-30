@@ -24,17 +24,13 @@ before_install:
   
 
 install:
+  - mongo admin --eval 'db.createUser("tom", "jerry");'
   - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas jinja2 humanize doct
   - source activate testenv
   - pip install codecov
   - python setup.py install
   - git clean -xfd
   - python -c "import metadatastore; print(metadatastore.__version__)"
-
-before_script:
-  - sleep 15
-  - which mongo 
-  - mongo admin --eval 'db.addUser("tom", "jerry");'
 
 script:
   - coverage run run_tests.py
