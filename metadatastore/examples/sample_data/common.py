@@ -3,8 +3,10 @@ import time as ttime
 import uuid
 from functools import wraps
 
-from metadatastore.api import (insert_run_start,
-                               insert_run_stop, find_run_stops)
+from metadatastore.mds import MDS
+
+# (insert_run_start,
+# insert_run_stop, find_run_stops)
 
 
 def stepped_ramp(start, stop, step, points_per_step, noise_level=0.1):
