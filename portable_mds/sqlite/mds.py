@@ -37,21 +37,21 @@ def qmarks(num):
 class RunStartCollection(JSONCollection):
     def __init__(self, event_col, *args, **kwargs):
         self._event_col = event_col
-        super().__init__(*args, **kwargs)
+        super(RunStartCollection, self).__init__(*args, **kwargs)
 
     def insert_one(self, doc):
         self._event_col.new_runstart(doc)
-        super().insert_one(doc)
+        super(RunStartCollection, self).insert_one(doc)
 
 
 class DescriptorCollection(JSONCollection):
     def __init__(self, event_col, *args, **kwargs):
         self._event_col = event_col
-        super().__init__(*args, **kwargs)
+        super(DescriptorCollection, self).__init__(*args, **kwargs)
 
     def insert_one(self, doc):
         self._event_col.new_descriptor(doc)
-        super().insert_one(doc)
+        super(DescriptorCollection, self).insert_one(doc)
 
 
 class EventCollection(object):
@@ -145,7 +145,7 @@ class EventCollection(object):
         desc_uid = doc['descriptor']
         table_name = 'desc_' + desc_uid.replace('-', '_')
 
-        values = tuple([doc['uid']] + [doc['seq_num']] + [doc['time']] + 
+        values = tuple([doc['uid']] + [doc['seq_num']] + [doc['time']] +
                         [doc['data'][k] for k in ordered_keys] +
                         [doc['timestamps'][k] for k in ordered_keys])
         with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
@@ -180,7 +180,7 @@ class EventCollection(object):
 class _CollectionMixin(object):
     def __init__(self, *args, **kwargs):
         self._config = None
-        super().__init__(*args, **kwargs)
+        super(_CollectionMixin, self).__init__(*args, **kwargs)
         self.__event_col = None
         self.__descriptor_col = None
         self.__runstart_col = None
