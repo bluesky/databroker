@@ -73,5 +73,5 @@ def load_configuration(name, prefix, fields):
                        "variable.".format(missing))
     return config
 
-connection_config = load_configuration(
-    'metadatastore', 'MDS', ['host', 'database', 'port', 'timezone'])
+# connection_config = load_configuration(
+#    'metadatastore', 'MDS', ['host', 'database', 'port', 'timezone'])
