@@ -35,7 +35,7 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda
-  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct pandas
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal metadatastore
   - source activate testenv
   - pip install codecov
   - python setup.py install
