@@ -111,12 +111,8 @@ class MDSRO(object):
     def _runstop_col(self):
         if self.__runstop_col is None:
             self.__runstop_col = self._db.get_collection('run_stop')
-            if self.version == 0:
-                self.__runstop_col.create_index('run_start_id',
-                                                unique=True)
-            else:
-                self.__runstop_col.create_index('run_start',
-                                                unique=True)
+            self.__runstop_col.create_index('run_start',
+                                            unique=True)
             self.__runstop_col.create_index('uid',
                                             unique=True)
             self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
@@ -130,13 +126,8 @@ class MDSRO(object):
         if self.__descriptor_col is None:
             # The name of the reference to the run start changed from
             # 'run_start_id' in v0 to 'run_start' in v1.
-            if self.version == 1:
-                rs_name = 'run_start'
-            elif self.version == 0:
-                rs_name = 'run_start_id'
-            else:
-                raise RuntimeError("No rule for event index creation for "
-                                   " schema version {!r}".format(self.version))
+            rs_name = 'run_start'
+
             self.__descriptor_col = self._db.get_collection('event_descriptor')
 
             self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
@@ -157,18 +148,9 @@ class MDSRO(object):
 
             self.__event_col.create_index([('uid', pymongo.DESCENDING)],
                                           unique=True)
-            if self.version == 1:
-                self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                               ('time', pymongo.ASCENDING)],
-                                              unique=False, background=True)
-            elif self.version == 0:
-                self.__event_col.create_index([('descriptor_id',
-                                                pymongo.DESCENDING),
-                                               ('time', pymongo.ASCENDING)],
-                                              unique=False, background=True)
-            else:
-                raise RuntimeError("No rule for event index creation for "
-                                   " schema version {!r}".format(self.version))
+            self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
+                                           ('time', pymongo.ASCENDING)],
+                                          unique=False, background=True)
         return self.__event_col
 
     def clear_process_cache(self):
@@ -692,19 +674,6 @@ class MDS(MDSRO):
             Globally unique id string provided to metadatastore
         """
 
-        if self.version == 0:
-            return self._api.insert_event(self._event_col,
-                                          descriptor=descriptor,
-                                          time=time, seq_num=seq_num,
-                                          data=data,
-                                          timestamps=timestamps,
-                                          uid=uid,
-                                          validate=validate,
-                                          descriptor_col=self._descriptor_col,
-                                          descriptor_cache=self._DESCRIPTOR_CACHE,
-                                          start_col=self._runstart_col,
-                                          start_cache=self._RUNSTART_CACHE)
-
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
@@ -715,15 +684,6 @@ class MDS(MDSRO):
 
     def bulk_insert_events(self, descriptor, events, validate=False):
 
-        if self.version == 0:
-            return self._api.bulk_insert_events(self._event_col,
-                                                descriptor=descriptor,
-                                                events=events,
-                                                validate=validate,
-                                                descriptor_col=self._descriptor_col,
-                                                descriptor_cache=self._DESCRIPTOR_CACHE,
-                                                start_col=self._runstart_col,
-                                                start_cache=self._RUNSTART_CACHE)
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,
