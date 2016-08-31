@@ -357,9 +357,12 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       run_start_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('time', ASCENDING)])
+                      sort=[('descriptor', pymongo.DESCENDING),
+                            ('time', pymongo.ASCENDING)])
 
     data_keys = descriptor['data_keys']
+    external_keys = [k for k in data_keys if 'external' in data_keys[k]]
+    filled = {k: False for k in external_keys}
     for ev in ev_cur:
         # ditch the ObjectID
         ev.pop('_id', None)
@@ -372,6 +375,10 @@ def get_events_generator(descriptor, event_col, descriptor_col,
             if convert_arrays:
                 if _dk['dtype'] == 'array' and not _dk.get('external', False):
                     ev['data'][k] = np.asarray(ev['data'][k])
+
+        # note which keys refer to dereferences (external) data
+        ev['filled'] = filled
+
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
 
