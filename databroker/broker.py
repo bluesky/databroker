@@ -15,7 +15,9 @@ from .core import (Header, _external_keys,
                    get_table as _get_table,
                    restream as _restream,
                    fill_event as _fill_event,
-                   process as _process, Images)
+                   process as _process, Images,
+                   get_fields  # for conveniece
+                  )
 from metadatastore.core import _format_time
 
 
@@ -637,6 +639,8 @@ class ArchiverPlugin(object):
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'descriptor': descriptor}
                 yield Document('Event', doc)
+
+    get_fields = get_fields  # for convenience
 
 
 def _munge_time(t, timezone):
