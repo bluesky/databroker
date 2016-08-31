@@ -1,6 +1,6 @@
 language: python
 
-sudo: required 
+sudo: required
 
 services:
     - mongodb
@@ -8,7 +8,7 @@ services:
 addons:
   apt:
     sources:
-    - mongodb-3.2-precise 
+    - mongodb-3.2-precise
     packages:
     - mongodb-org
 
@@ -21,7 +21,8 @@ before_install:
         - git clone https://github.com/NSLS-II/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-metadatastore.sh
-  
+  - export MDSTESTWITHAUTH=1
+
 
 install:
   - mongo localhost:27017/admin ~/scripts/admin.js

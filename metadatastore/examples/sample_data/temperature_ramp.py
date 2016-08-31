@@ -1,7 +1,4 @@
 from __future__ import division
-from metadatastore.api import (insert_event, insert_descriptor,
-                               find_events, insert_run_stop)
-
 import uuid
 
 import numpy as np
@@ -14,7 +11,7 @@ num_exposures = 17
 
 
 @common.example
-def run(run_start_uid=None, sleep=0):
+def run(mds, run_start_uid=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
@@ -29,16 +26,16 @@ def run(run_start_uid=None, sleep=0):
                   'boolean_det': dict(source='PV:ES:IntensityDet', dtype='string'),
                   'ccd_det_info': dict(source='PV:ES:CCDDet', dtype='list')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number')}
-    ev_desc1_uid = insert_descriptor(run_start=run_start_uid,
-                                     data_keys=data_keys1,
-                                     time=common.get_time(),
-                                     uid=str(uuid.uuid4()),
-                                     name='primary')
-    ev_desc2_uid = insert_descriptor(run_start=run_start_uid,
-                                     data_keys=data_keys2,
-                                     time=common.get_time(),
-                                     uid=str(uuid.uuid4()),
-                                     name='baseline')
+    ev_desc1_uid = mds.insert_descriptor(run_start=run_start_uid,
+                                         data_keys=data_keys1,
+                                         time=common.get_time(),
+                                         uid=str(uuid.uuid4()),
+                                         name='primary')
+    ev_desc2_uid = mds.insert_descriptor(run_start=run_start_uid,
+                                         data_keys=data_keys2,
+                                         time=common.get_time(),
+                                         uid=str(uuid.uuid4()),
+                                         name='baseline')
 
     # Create Events.
     events = []
@@ -56,9 +53,9 @@ def run(run_start_uid=None, sleep=0):
         event_dict = dict(descriptor=ev_desc1_uid, seq_num=i,
                           time=time, data=data, timestamps=timestamps,
                           uid=str(uuid.uuid4()))
-        event_uid = insert_event(**event_dict)
+        event_uid = mds.insert_event(**event_dict)
         # grab the actual event from metadatastore
-        event, = find_events(uid=event_uid)
+        event, = mds.find_events(uid=event_uid)
         events.append(event)
         assert event['data'] == event_dict['data']
 
@@ -70,23 +67,9 @@ def run(run_start_uid=None, sleep=0):
         event_dict = dict(descriptor=ev_desc2_uid, time=time,
                           data=data, timestamps=timestamps, seq_num=i,
                           uid=str(uuid.uuid4()))
-        event_uid = insert_event(**event_dict)
-        event, = find_events(uid=event_uid)
+        event_uid = mds.insert_event(**event_dict)
+        event, = mds.find_events(uid=event_uid)
         events.append(event)
         assert event['data'] == event_dict['data']
 
     return events
-
-
-if __name__ == '__main__':
-    import metadatastore.api as mdsc
-
-    run_start_uid = mdsc.insert_run_start(scan_id=3022013,
-                                          beamline_id='testbed',
-                                          owner='tester',
-                                          group='awesome-devs',
-                                          project='Nikea',
-                                          time=common.get_time(),
-                                          uid=str(uuid.uuid4()))
-
-    run(run_start_uid)
