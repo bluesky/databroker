@@ -1,8 +1,8 @@
-Dataportal v0.2.0
+dataportal v0.2.0
 -----------------
 
 API Changes
-===========
++++++++++++
 
 * `DataBroker[]` for slicing by scan ID(s) or recency
 *  `DataBroker()` for building queries from keyword arguments

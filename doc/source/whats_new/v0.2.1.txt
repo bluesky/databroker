@@ -1,8 +1,8 @@
-Dataportal v0.2.1
+dataportal v0.2.1
 -----------------
 
 API Changes
-===========
++++++++++++
 
 * `get_images` (as alias for `Images`) added for consistency with other
   function names

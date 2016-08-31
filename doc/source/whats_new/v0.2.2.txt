@@ -1,8 +1,9 @@
-Dataportal v0.2.2
+dataportal v0.2.2
 -----------------
 
 Bug Fixes
-=========
++++++++++
+
 * Times, as returned by pandas-aware functions, are now reported correctly.
   Previously, these times were being reported as UTC, which is 4 or 5 hours
   different from US/Eastern time, depending on the time of year. (:issue:`209`)

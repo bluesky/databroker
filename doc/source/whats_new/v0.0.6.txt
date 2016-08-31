@@ -2,7 +2,7 @@ Dataportal v0.0.6
 -----------------
 
 Enhancements
-============
+++++++++++++
 
 - A new ``StepScan`` interface acts like ``DataBroker``
   but immediately returns tabular data as a DataFrame in one step.
@@ -23,7 +23,7 @@ Enhancements
   (:issue:`134`)
 
 API Changes
-===========
++++++++++++
 
 - The Event documents are reorganized to be more intuitive
   and require less typing. Formerly, ``event.data`` returned
@@ -78,6 +78,6 @@ API Changes
   which is uses to interpret human-friendly datetimes.
 
 Bug Fixes
-=========
++++++++++
 
 - All DataMuxer output is sorted by Event time. (:issue:`134`)
