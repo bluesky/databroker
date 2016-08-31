@@ -6,7 +6,7 @@ multiple sources. It requires some initial configuration to locate all these
 sources.
 
 This configuration can be done in Python --- typically using a startup
-file in an IPython profile so that they don't need to be typed every time.
+file in an IPython profile so that it doesn't need to be typed every time.
 Alternatively, the configuration can be specified in files or environment
 variables. The file- or environment-based approach is less customizable, so by
 default we recommend using a Python script.
@@ -40,7 +40,7 @@ Script-Based Configuration
 
     db = Broker(mds, fs)
 
-Configuration Files or Environmental Variables
+Configuration Files or Environment Variables
 ----------------------------------------------
 
 DataBroker looks for configuration in:
@@ -57,7 +57,7 @@ in that order. Create a file like this in either of those locations:
     database: metadatastore-production-v1
     timezone: US/Eastern
 
-Configuration can also be provided through the environmental variables which,
+Configuration can also be provided through the environment variables which,
 if set, take precedence over the files.
 
 .. code-block:: bash
@@ -80,7 +80,7 @@ for a file like:
     port: 27017
     database: filestore-production-v1
 
-which, likewise, can be overridden by environmental variables:
+which, likewise, can be overridden by environment variables:
 
 .. code-block:: bash
 
