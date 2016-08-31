@@ -18,7 +18,7 @@ python:
   - 3.5
 
 before_install:
-  - git clone https://github.com/arkilic/nsls2-ci ~/scripts
+        - git clone https://github.com/NSLS-II/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
   - . ~/scripts/init-metadatastore.sh
   
