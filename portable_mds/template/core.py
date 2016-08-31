@@ -357,8 +357,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                                       run_start_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
-                      sort=[('descriptor', DESCENDING),
-                            ('time', ASCENDING)])
+                      sort=[('time', ASCENDING)])
 
     data_keys = descriptor['data_keys']
     external_keys = [k for k in data_keys if 'external' in data_keys[k]]
