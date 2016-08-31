@@ -1,0 +1,38 @@
+language: python
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+
+before_install:
+  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
+  - "export DISPLAY=:99.0"
+  # clone conda install/build/upload helper scripts and make them executable
+  - git clone https://github.com/NSLS-II/nsls2-ci ~/scripts
+  - chmod +x ~/scripts/*.sh
+  # install miniconda/anaconda-client/conda-build
+  - . ~/scripts/install-miniconda.sh
+
+install:
+  - export GIT_FULL_HASH=`git rev-parse HEAD`
+  - conda update conda
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal metadatastore
+  - source activate testenv
+  - pip install codecov
+  - python setup.py install
+  # Need to clean the python build directory (and other cruft) or pytest is
+  # going to find the build directory and get confused why there are two sets
+  # of every test file
+  - git clean -xfd
+
+script:
+  - coverage run run_tests.py
+  - coverage report -m
+
+after_success:
+  - codecov
