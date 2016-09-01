@@ -1,4 +1,4 @@
-from .databroker import DataBroker, _MDS_SINGLETON, _FS_SINGLETON
+from .databroker import DataBroker
 from .core import Images as _Images
 
 
@@ -17,7 +17,7 @@ def get_images(headers, name, handler_registry=None,
         mapping spec names (strings) to handlers (callable classes)
     handler_override : callable class, optional
         overrides registered handlers
-        
+
 
     Example
     -------
@@ -25,7 +25,7 @@ def get_images(headers, name, handler_registry=None,
     >>> images = Images(header, 'my_detector_lightfield')
     >>> for image in images:
             # do something
-    """  
+    """
     res = DataBroker.get_images(headers=headers, name=name,
                                 handler_registry=handler_registry,
                                 handler_override=handler_override)
@@ -53,6 +53,6 @@ def Images(headers, name, handler_registry=None, handler_override=None):
     >>> for image in images:
             # do something
     """
-    return _Images(_MDS_SINGLETON, _FS_SINGLETON, headers=headers, name=name,
+    return _Images(DataBroker.mds, DataBroker.fs, headers=headers, name=name,
                    handler_registry=handler_registry,
                    handler_override=handler_override)
