@@ -213,7 +213,21 @@ To "save" a search for easy resuse, you can create an alias.
 
     db.cal  # -> db(purpose='calibration')
 
-Aliases are stored in ``db.aliases``, where they can be reviewed or deleted.
+A "dynamic alias" maps the alias to a function that returns a query.
+
+.. code-block:: python
+
+    # Get headers from the last 24 hours.
+    db.dynamic_alias('today',
+                     lambda: {'start_time': start_time=time.time() - 24*60*60})
+
+    # Get headers where the 'user' field matches the current logged-in user.
+    import getpass
+    db.dynamic_alias('mine', lambda: {'user': getpass.getuser()})
+
+Aliases are stored in ``db.aliases`` (a dictionary mapping alias names to
+queries or functions that return queries) where they can be reviewed or
+deleted.
 
 If the module ``historydict`` is installed, ``db.aliases`` are persisted
 between sessions in a dictionary-like object backed by a sqlite database.
