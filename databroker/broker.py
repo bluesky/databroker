@@ -584,6 +584,8 @@ class Broker(object):
         _process(mds=self.mds, fs=self.fs, headers=headers, func=func,
                  fields=fields, fill=fill)
 
+    get_fields = staticmethod(get_fields)  # for convenience
+
 
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
@@ -656,8 +658,6 @@ class ArchiverPlugin(object):
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'descriptor': descriptor}
                 yield Document('Event', doc)
-
-    get_fields = get_fields  # for convenience
 
 
 def _munge_time(t, timezone):
