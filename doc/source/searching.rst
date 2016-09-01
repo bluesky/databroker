@@ -8,9 +8,13 @@ Searching for Data
     <https://nsls-ii.github.io/bluesky/documents.html>`_. This background is not
     essential, but we recommend it for more context.
 
-Searching by ID or Recency
-++++++++++++++++++++++++++
+Basic Examples
+--------------
 
+.. code-block:: python
+
+Searching by ID or Recency
+--------------------------
 
 Here is a summary of the "Do What I Mean" slicing supported by ``DataBroker``.
 
@@ -25,8 +29,8 @@ syntax                          meaning
 ``DataBroker['acsf3rf']``       header with unique ID (uid) beginning with ``acsf3rf``
 =============================== ==========================================================
 
-Scan ID vs. Unique ID
-+++++++++++++++++++++
+Aside: Scan ID vs. Unique ID
+----------------------------
 
 Notice that there are two IDs in play: the "scan ID" and the "unique ID." The
 scan ID is a counting number. Some users reset it to 1 between experiments, 
@@ -40,7 +44,7 @@ data set. If they are not, the DataBroker will raise an error and request
 the full unique ID, or at least more characters of it.
 
 Time-based Queries
-++++++++++++++++++
+------------------
 
 Runs that took place sometime in a given time interval are also supported.
 
@@ -51,9 +55,14 @@ syntax                                                          meaning
 ``DataBroker(start_time='2015-01-05', stop_time='2015-01-10')`` between January 5 and 10
 =============================================================== ======================================
 
+Filters
+-------
+
+Aliases
+-------
 
 Complex Queries
-+++++++++++++++
+---------------
 
 Finally, for advanced queries, the full MongoDB query language is supported.
 Here are just a few examples:
