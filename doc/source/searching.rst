@@ -137,6 +137,23 @@ fields could have been used.)
     db(purpose='calibration')  # returns the two calibration runs
     db(operator='Dan')  # returns three runs by Dan
 
+Full Text Search
+----------------
+
+Calling ``db`` with a positional argument like
+
+.. code-block:: python
+
+    db('calibration')
+
+performs a full-text search and returns any headers with the value
+``'calibration'`` in any field.
+
+Presently, it searches the full text of Run Start documents, which in the vast
+majority of cases contains the metadata one would want to base a search on. In
+the future it might be extended to search all fields in the header, depending
+on performance considerations.
+
 Searching by ID or Recency
 --------------------------
 
