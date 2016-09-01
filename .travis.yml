@@ -19,10 +19,14 @@ addons:
     packages:
     - mongodb-org-server
 
-python:
-- 2.7
-- 3.4
-- 3.5
+matrix:
+  include:
+    - python: 2.7
+      env: BUILD_DOCS=false
+    - python: 3.4
+      env: BUILD_DOCS=false
+    - python: 3.5
+      env: BUILD_DOCS=true
 
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
