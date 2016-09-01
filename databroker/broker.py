@@ -174,6 +174,7 @@ class Broker(object):
         if filters is None:
             filters = []
         self.filters = filters
+        self.aliases = {}
 
     def _format_time(self, val):
         "close over the timezone config"
@@ -232,6 +233,25 @@ class Broker(object):
     def __getitem__(self, key):
         """Do-What-I-Mean slicing"""
         return search(key, self.mds)
+
+    def __getattr__(self, key):
+        try:
+            query = self.aliases[key]
+        except KeyError:
+            raise AttributeError(key)
+        if callable(query):
+            query = query()
+        return self(**query)
+
+    def alias(self, key, **query):
+        if hasattr(self, key) and key not in self.aliases:
+            raise ValueError("'%s' is not a legal alias." % key)
+        self.aliases[key] = query
+
+    def dynamic_alias(self, key, func):
+        if hasattr(self, key) and key not in self.aliases:
+            raise ValueError("'%s' is not a legal alias." % key)
+        self.aliases[key] = func
 
     def __call__(self, text_search=None, **kwargs):
         """Given search criteria, find Headers describing runs.

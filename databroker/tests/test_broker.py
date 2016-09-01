@@ -251,6 +251,21 @@ def test_search_for_smoke():
         db[query]
 
 
+def test_alias():
+    # basic usage of alias
+    uid1 = db[-1]
+    db.alias('foo', uid=uid1)
+    print(db.aliases)
+    db.foo == db[-1]
+
+    # can't set alias to existing attribute name
+    with pytest.raises(ValueError):
+        db.alias('get_events', uid=uid1)
+
+    # basic usage of dynamic alias
+    db.dynamic_alias('bar', lambda: uid1)
+    db.bar = uid1
+
 @pytest.mark.parametrize(
     'key',
     [slice(1, None, None), # raise because trying to slice by scan id
