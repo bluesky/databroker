@@ -344,7 +344,7 @@ class Broker(object):
     def fetch_events(self, headers, fill=True):
         "This function is deprecated."
         warnings.warn("Use .get_events() instead.")
-        return self.get_events(headers, None, fill)
+        return self.get_events(headers, fill=fill)
 
     def fill_event(self, event, handler_registry=None, handler_overrides=None):
         """
