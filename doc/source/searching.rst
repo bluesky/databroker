@@ -186,6 +186,8 @@ Filters
 To restrict seraches by user, project, date, plan_name, or any other parameter,
 add a "filter" to the Broker.
 
+.. code-block:: python
+
     # Restrict future searches.
     db.add_filter(user='Dan')
     db.add_filter(start_time='2015-01')
