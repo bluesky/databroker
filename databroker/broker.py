@@ -230,10 +230,7 @@ class Broker(object):
         self.filters.clear()
 
     def __getitem__(self, key):
-        """DWIM slicing
-
-        Some more docs go here
-        """
+        """Do-What-I-Mean slicing"""
         return search(key, self.mds)
 
     def __call__(self, text_search=None, **kwargs):
