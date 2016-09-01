@@ -181,12 +181,42 @@ syntax                                                  meaning
 Filters
 -------
 
-TO DO
+.. versionadded:: v0.6.0
+
+To restrict seraches by user, project, date, plan_name, or any other parameter,
+add a "filter" to the Broker.
+
+    # Restrict future searches.
+    db.add_filter(user='Dan')
+    db.add_filter(start_time='2015-01')
+
+    db(sample='A')  # becomes db(sample='A', user='Dan', start_time='2015-01')
+
+    # Clear all filters.
+    db.clear_filters()
+
+Any query passed to ``db.add_filter()`` is stashed and "AND-ed" with all future
+queries. You can also review or alter the filters through the ``db.filters``
+property, a list of queries (that is, a list of dicts formatted like MongoDB
+queries).
 
 Aliases
 -------
 
-TO DO
+.. versionadded:: v0.6.0
+
+To "save" a search for easy resuse, you can create an alias.
+
+.. code-block:: python
+
+    db.alias('cal', purpose='calibration')
+
+    db.cal  # -> db(purpose='calibration')
+
+Aliases are stored in ``db.aliases``, where they can be reviewed or deleted.
+
+If the module ``historydict`` is installed, ``db.aliases`` are persisted
+between sessions in a dictionary-like object backed by a sqlite database.
 
 Complex Queries
 ---------------
