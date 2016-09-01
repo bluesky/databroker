@@ -5,8 +5,8 @@ import tzlocal
 from portable_mds.sqlite.mds import MDS
 from portable_fs.sqlite.fs import FileStore
 from databroker import Broker
+from bluesky.tests.conftest import fresh_RE as RE
 import pytest
-
 
 @pytest.fixture(scope='function')
 def db(request):
