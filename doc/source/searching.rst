@@ -224,7 +224,8 @@ Aliases
 
 .. versionadded:: v0.6.0
 
-To "save" a search for easy resuse, you can create an alias.
+To "save" a search for easy resuse, you can create an alias. It may be
+convenient to define these in a startup file.
 
 .. code-block:: python
 
@@ -247,9 +248,6 @@ A "dynamic alias" maps the alias to a function that returns a query.
 Aliases are stored in ``db.aliases`` (a dictionary mapping alias names to
 queries or functions that return queries) where they can be reviewed or
 deleted.
-
-If the module ``historydict`` is installed, ``db.aliases`` are persisted
-between sessions in a dictionary-like object backed by a sqlite database.
 
 Complex Queries
 ---------------
