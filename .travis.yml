@@ -1,5 +1,13 @@
 language: python
 sudo: false
+env:
+  global:
+    BUILD_DOCS_BRANCH: master
+    DOCS_SUBDIR: doc/
+    TARGET_DEV_SUBDIR: databroker/
+    HTML_SUBDIR: build/html
+    DOCS_CONDA_DEPS: "matplotlib"
+    DOCS_PIP_DEPS: "tqdm"
 
 services:
   - mongodb
@@ -38,8 +46,19 @@ install:
 
 script:
   - coverage run run_tests.py
+  - |
+    if [ $BUILD_DOCS == true ]; then
+      source ~/ci_scripts/make-docs.sh
+    fi
 
 after_success:
-  - coverage report -m
-  - coveralls
   - codecov
+  - |
+    if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == 'NSLS-II/databroker' && $BUILD_DOCS == true && $TRAVIS_BRANCH == 'master' ]]; then
+      echo "Adding encrypted deployment key for uploading docs"
+      openssl aes-256-cbc -K $encrypted_fc5d6c7ff840_key -iv $encrypted_fc5d6c7ff840_iv -in databroker-docs-deploy.enc -out databroker-docs-deploy -d
+      eval `ssh-agent -s`
+      chmod 600 databroker-docs-deploy
+      ssh-add databroker-docs-deploy
+      source ~/ci_scripts/push-docs.sh
+    fi
