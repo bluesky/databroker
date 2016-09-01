@@ -15,8 +15,8 @@ can be used to search and filter the data during later analysis.
 
 You do not need to be familiar with bluesky's usage to follow the gist these
 examples. For a more detailed understanding, refer to the sections on
-`basic usage <https://nsls-ii.github.io/bluesky/plans_intro.html`_ and
-`recording metadata <https://nsls-ii.github.io/bluesky/metadata.html`_.
+`basic usage <https://nsls-ii.github.io/bluesky/plans_intro.html>`_ and
+`recording metadata <https://nsls-ii.github.io/bluesky/metadata.html>`_.
 
 By Unique ID
 ++++++++++++
