@@ -16,6 +16,7 @@ Index
     :maxdepth: 1
 
     configuration
+    headers
     searching
     fetching
     whats_new
