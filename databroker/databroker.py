@@ -1,17 +1,25 @@
 "This module exists for back-compatability only."
 import warnings
 
-from .broker  import Broker
+from .broker import Broker
 from .core import get_fields  # unused, but here for API compat
 
 try:
-    from metadatastore.commands import _DB_SINGLETON as _MDS_SINGLETON
-    from filestore.api import _FS_SINGLETON
-except KeyError as exc:
+    import metadatastore.conf
+    mds_config = metadatastore.conf.load_configuration(
+        'metadatastore', 'MDS', ['host', 'database', 'port', 'timezone'])
+
+    import filestore.conf
+    fs_config = filestore.conf.load_configuration('filestore', 'FS',
+                                                  ['host', 'database', 'port'])
+
+    from filestore.fs import FileStoreRO
+    from metadatastore.mds import MDSRO
+except (KeyError, ImportError) as exc:
     warnings.warn("No default DataBroker object will be created because "
-                 "the necessary configuration was not found: %s" % exc)
+                  "the necessary configuration was not found: %s" % exc)
 else:
-    DataBroker = Broker(_MDS_SINGLETON, _FS_SINGLETON)
+    DataBroker = Broker(MDSRO(mds_config), FileStoreRO(fs_config))
 
     get_events = DataBroker.get_events
     get_table = DataBroker.get_table
