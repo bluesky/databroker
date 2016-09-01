@@ -238,6 +238,7 @@ A "dynamic alias" maps the alias to a function that returns a query.
 .. code-block:: python
 
     # Get headers from the last 24 hours.
+    import time
     db.dynamic_alias('today',
                      lambda: {'start_time': start_time=time.time() - 24*60*60})
 
