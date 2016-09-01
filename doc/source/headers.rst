@@ -72,7 +72,7 @@ In later, more specific examples, we'll see more specific and useful metadata.
 
 .. note::
 
-    Keys in a header can be accessed in two ways. This are equivalent:
+    Fields in a header can be accessed in two ways. These are equivalent:
 
     .. code-block:: python
         
