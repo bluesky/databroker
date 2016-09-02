@@ -9,18 +9,11 @@ import itertools
 
 import pytest
 import six
+import numpy as np
 from bluesky.examples import det, det1, det2, Reader
 from bluesky.plans import count, pchain
 
 logger = logging.getLogger(__name__)
-
-
-class DummyHandler(object):
-    def __init__(*args, **kwargs):
-        pass
-
-    def __call__(*args, **kwrags):
-        return 'dummy'
 
 
 def test_empty_fixture(db):
@@ -134,6 +127,7 @@ def test_scan_id_lookup(db, RE):
     # being more specific.
     assert uid2 == db[1]['start']['uid']
     assert uid1 == db(scan_id=1, marked=True)[0]['start']['uid']
+
 
 def test_partial_uid_lookup(db, RE):
     RE.subscribe('all', db.mds.insert)
@@ -326,29 +320,97 @@ def test_configuration(db, RE):
     assert 'exit_status' in ev['timestamps']
 
 
-def test_handler_options(image_example_uid):
-    h = db[image_example_uid]
-    list(get_events(h))
-    list(get_table(h))
-    list(get_images(h, 'img'))
-    res = list(get_events(h, fields=['img'], fill=True,
-                          handler_registry={'npy': DummyHandler}))
-    res = [ev for ev in res if 'img' in ev['data']]
-    res[0]['data']['img'] == 'dummy'
-    res = list(get_events(h, fields=['img'], fill=True,
-                          handler_overrides={'image': DummyHandler}))
-    res = [ev for ev in res if 'img' in ev['data']]
-    res[0]['data']['img'] == 'dummy'
-    res = get_table(h, ['img'], fill=True,
-                    handler_registry={'npy': DummyHandler})
-    assert res['img'].iloc[0] == 'dummy'
-    res = get_table(h, ['img'], fill=True,
-                    handler_overrides={'img': DummyHandler})
-    assert res['img'].iloc[0] == 'dummy'
-    res = get_images(h, 'img', handler_registry={'npy': DummyHandler})
-    assert res[0] == 'dummy'
-    res = get_images(h, 'img', handler_override=DummyHandler)
-    assert res[0] == 'dummy'
+def test_handler_options(db, RE):
+    datum_id = str(uuid.uuid4())
+    desc_uid = str(uuid.uuid4())
+    event_uid = str(uuid.uuid4())
+
+    # Side-band resource and datum documents.
+    res = db.fs.insert_resource('foo', '', {'x': 1})
+    db.fs.insert_datum(res, datum_id, {'y': 2})
+
+    # Generate a normal run.
+    RE.subscribe('all', db.mds.insert)
+    rs_uid, = RE(count([det]))
+
+    # Side band an extra descriptor and event into this run.
+    data_keys = {'image': {'dtype': 'array', 'source': '', 'shape': [5, 5],
+                           'external': 'FILESTORE://simulated'}}
+    db.mds.insert_descriptor(run_start=rs_uid, data_keys=data_keys,
+                             time=ttime.time(), uid=desc_uid,
+                             name='injected')
+    db.mds.insert_event(descriptor=desc_uid, time=ttime.time(), uid=event_uid,
+                        data={'image': datum_id},
+                        timestamps={'image': ttime.time()}, seq_num=0)
+
+    h = db[rs_uid]
+
+    # Get unfilled event.
+    ev, = db.get_events(h, fields=['image'])
+    assert ev['data']['image'] == datum_id
+
+    # Get filled event -- error because no handler is registered.
+    with pytest.raises(KeyError):
+        ev, = db.get_events(h, fields=['image'], fill=True)
+
+    # Get filled event -- error because no handler is registered.
+    with pytest.raises(KeyError):
+        list(db.get_images(h, 'image'))
+
+
+    class ImageHandler(object):
+        RESULT = np.zeros((5, 5))
+
+        def __init__(self, resource_path, **resource_kwargs):
+            self._res = resource_kwargs
+
+        def __call__(self, **datum_kwargs):
+            return self.RESULT
+
+
+    class DummyHandler(object):
+        def __init__(*args, **kwargs):
+            pass
+
+        def __call__(*args, **kwrags):
+            return 'dummy'
+
+    # Use a one-off handler registry.
+    ev, = db.get_events(h, fields=['image'], fill=True,
+                        handler_registry={'foo': ImageHandler})
+    assert ev['data']['image'].shape == ImageHandler.RESULT.shape
+
+    # Statefully register the handler.
+    db.fs.register_handler('foo', ImageHandler)
+
+    ev, = db.get_events(h, fields=['image'], fill=True)
+    assert ev['data']['image'].shape == ImageHandler.RESULT.shape
+    assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
+
+    # Override the stateful registry with a one-off handler.
+    # This maps onto the *data key*, not the resource spec.
+    ev, = db.get_events(h, fields=['image'], fill=True,
+                        handler_overrides={'image': DummyHandler})
+    assert ev['data']['image'] == 'dummy'
+
+
+    res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
+                       handler_registry={'foo': DummyHandler})
+    assert res['image'].iloc[0] ==  'dummy'
+
+    res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
+                    handler_overrides={'image': DummyHandler})
+    assert res['image'].iloc[0] == 'dummy'
+
+    # Register the DummyHandler statefully so we can test overriding with
+    # ImageHandler for the get_images method below.
+    db.fs.register_handler('foo', DummyHandler, overwrite=True)
+
+    res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
+    assert res[0].shape ==  ImageHandler.RESULT.shape
+
+    res = db.get_images(h, 'image', handler_override=ImageHandler)
+    assert res[0].shape == ImageHandler.RESULT.shape
 
 
 def test_plugins(db, RE):
