@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+import sys
 import string
 import time as ttime
 import uuid
@@ -15,12 +16,15 @@ from bluesky.plans import count, pchain
 
 logger = logging.getLogger(__name__)
 
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3") 
 
+@py3
 def test_empty_fixture(db):
     "Test that the db pytest fixture works."
     assert len(db()) == 0
 
 
+@py3
 def test_uid_roundtrip(db, RE):
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det]))
@@ -28,6 +32,7 @@ def test_uid_roundtrip(db, RE):
     assert h['start']['uid'] == uid
 
 
+@py3
 def test_uid_list_multiple_headers(db, RE):
     RE.subscribe('all', db.mds.insert)
     uids = RE(pchain(count([det]), count([det])))
@@ -35,6 +40,7 @@ def test_uid_list_multiple_headers(db, RE):
     assert uids == [h['start']['uid'] for h in headers]
 
 
+@py3
 def test_get_events(db, RE):
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det]))
@@ -47,12 +53,14 @@ def test_get_events(db, RE):
     assert len(list(db.get_events(h))) == 7
 
 
+@py3
 def test_get_events_multiple_headers(db, RE):
     RE.subscribe('all', db.mds.insert)
     headers = db[RE(pchain(count([det]), count([det])))]
     assert len(list(db.get_events(headers))) == 2
 
 
+@py3
 def test_get_events_filtering_stream_name(db, RE):
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det], num=7))
@@ -63,6 +71,7 @@ def test_get_events_filtering_stream_name(db, RE):
     assert len(list(db.get_events(h, stream_name='primary', fields=['det']))) == 7
 
 
+@py3
 def test_get_events_filtering_field(db, RE):
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det], num=7))
@@ -79,6 +88,7 @@ def test_get_events_filtering_field(db, RE):
     assert len(list(db.get_events(headers, fields=['det2']))) == 3
 
 
+@py3
 def test_deprecated_api(db, RE):
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det]))
@@ -86,6 +96,7 @@ def test_deprecated_api(db, RE):
     assert list(db.fetch_events(h))
 
 
+@py3
 def test_indexing(db, RE):
     RE.subscribe('all', db.mds.insert)
     uids = []
@@ -104,6 +115,7 @@ def test_indexing(db, RE):
         db[:-5]
     
 
+@py3
 def test_table_alignment(db, RE):
     # test time shift issue GH9
     RE.subscribe('all', db.mds.insert)
@@ -112,6 +124,7 @@ def test_table_alignment(db, RE):
     assert table.notnull().all().all()
 
 
+@py3
 def test_scan_id_lookup(db, RE):
     RE.subscribe('all', db.mds.insert)
 
@@ -129,6 +142,7 @@ def test_scan_id_lookup(db, RE):
     assert uid1 == db(scan_id=1, marked=True)[0]['start']['uid']
 
 
+@py3
 def test_partial_uid_lookup(db, RE):
     RE.subscribe('all', db.mds.insert)
     
@@ -142,6 +156,7 @@ def test_partial_uid_lookup(db, RE):
             db[first_letter]
 
 
+@py3
 def test_find_by_float_time(db, RE):
     RE.subscribe('all', db.mds.insert)
 
@@ -160,6 +175,7 @@ def test_find_by_float_time(db, RE):
     assert header['start']['uid'] == during
 
 
+@py3
 def test_find_by_string_time(db, RE):
     RE.subscribe('all', db.mds.insert)
 
@@ -174,6 +190,7 @@ def test_find_by_string_time(db, RE):
     assert len(db(start_time=tomorrow_str, stop_time=day_after_tom_str)) == 0
 
 
+@py3
 def test_data_key(db, RE):
     RE.subscribe('all', db.mds.insert)
     RE(count([det1]))
@@ -184,6 +201,7 @@ def test_data_key(db, RE):
     assert len(result2) == 1
 
 
+@py3
 def test_search_for_smoke(db, RE):
     RE.subscribe('all', db.mds.insert)
     for _ in range(5):
@@ -207,6 +225,7 @@ def test_search_for_smoke(db, RE):
         db[query]
 
 
+@py3
 def test_alias(db, RE):
     RE.subscribe('all', db.mds.insert)
 
@@ -230,6 +249,7 @@ def test_alias(db, RE):
     with pytest.raises(AttributeError):
         db.this_is_not_a_thing
 
+@py3
 @pytest.mark.parametrize(
     'key',
     [slice(1, None, None), # raise because trying to slice by scan id
@@ -247,6 +267,7 @@ def test_raise_conditions(key, db, RE):
         db[key]
 
 
+@py3
 def test_stream(db, RE):
     _stream('restream', db, RE)
     _stream('stream', db, RE)  # old name
@@ -273,6 +294,7 @@ def _stream(method_name, db, RE):
     assert 'exit_status' in doc # Stop
 
 
+@py3
 def test_process(db, RE):
     uid = RE.subscribe('all', db.mds.insert)
     uid = RE(count([det]))
@@ -284,6 +306,7 @@ def test_process(db, RE):
     assert next(c) == len(list(db.restream(db[uid])))
 
 
+@py3
 def test_get_fields(db, RE):
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det1, det2]))
@@ -291,6 +314,7 @@ def test_get_fields(db, RE):
     assert actual == set(['det1', 'det2'])
 
 
+@py3
 def test_configuration(db, RE):
     det_with_conf = Reader('det_with_conf', {'a': lambda: 1}, {'b': lambda: 2})
     RE.subscribe('all', db.mds.insert)
@@ -320,6 +344,7 @@ def test_configuration(db, RE):
     assert 'exit_status' in ev['timestamps']
 
 
+@py3
 def test_handler_options(db, RE):
     datum_id = str(uuid.uuid4())
     desc_uid = str(uuid.uuid4())
