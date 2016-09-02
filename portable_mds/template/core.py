@@ -17,6 +17,17 @@ ASCENDING = 1
 DESCENDING = -1
 
 
+def _format_regex(d):
+    for k, v in six.iteritems(d):
+        if k == '$regex':
+            # format regex for monoquery
+            d[k] = '/{0}/'.format(v)
+        else:
+            # recurse if v is a dict
+            if hasattr(v, 'items'):
+                _format_regex(v)
+
+
 class NoRunStop(Exception):
     pass
 
@@ -878,6 +889,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     """
     # now try rest of formatting
     _format_time(kwargs, tz)
+    _format_regex(kwargs)
     rs_objects = run_start_col.find(kwargs,
                                     sort=[('time', DESCENDING)])
 
