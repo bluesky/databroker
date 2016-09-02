@@ -42,7 +42,6 @@ install:
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch;
     fi;
-  - python -c "from filestore import utils, conf; utils.install_sentinels(conf.connection_config, 1)"
   - python setup.py install
   # Need to clean the repo or pytest gets confused why there are *two* copies
   # of all the python files
