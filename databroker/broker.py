@@ -128,7 +128,7 @@ def _(key, mds):
     if not results:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
-        gen = mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        gen = mds.find_run_starts(uid={'$regex': '/{0}.*/'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
