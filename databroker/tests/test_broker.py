@@ -119,7 +119,28 @@ def test_indexing(db, RE):
     with pytest.raises(IndexError):
         # too far back
         db[-11]
-    
+
+
+@py3
+def test_full_text_search(db, RE):
+    RE.subscribe('all', db.mds.insert)
+
+    uid, = RE(count([det]), foo='some words')
+    RE(count([det]))
+
+    assert len(db()) == 2
+
+    try:
+        db('some words')
+    except NotImplementedError:
+        raise pytest.skip("This mongo-like backend does not support $text.")
+
+    assert len(db('some words')) == 1
+    header, = db('some words')
+    assert header['start']['uid'] == uid
+
+    # Full text search does *not* apply to keys.
+    assert len(db('foo')) == 0
 
 @py3
 def test_table_alignment(db, RE):
