@@ -61,7 +61,7 @@ def build_pymongo_backed_broker(request):
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     test_conf = dict(database=db_name, host='localhost',
                      port=27017, timezone='US/Eastern')
-    mds = MDS(test_conf, 1)
+    mds = MDS(test_conf, 1, auth=False)
 
     def delete_mds():
         print("DROPPING DB")
