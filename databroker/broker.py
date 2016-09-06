@@ -312,28 +312,19 @@ class Broker(object):
             query = {'$and': [{}] + [kwargs] + self.filters}
         run_start = self.mds.find_run_starts(**query)
 
-        # The 'data_key' kwarg filters the run starts.
-        if data_key is not None:
-            node_name = 'data_keys.{0}'.format(data_key)
-
-            query = {'$and': [{node_name: {'$exists': True}}] + self.filters}
-            descriptors = []
-            for rs in run_start:
-                descriptor = self.mds.find_descriptors(run_start=rs, **query)
-                for d in descriptor:
-                    descriptors.append(d)
-            # query = {node_name: {'$exists': True},
-            #          'run_start_id': {'$in': [ObjectId(rs.id) for rs in run_start]}}
-            # descriptors = find_descriptors(**query)
-            result = []
-            known_uids = deque()
-            for descriptor in descriptors:
-                if descriptor['run_start']['uid'] not in known_uids:
-                    rs = descriptor['run_start']
-                    known_uids.append(rs['uid'])
-                    result.append(rs)
-            run_start = result
-        headers = [Header.from_run_start(self.mds, rs) for rs in run_start]
+        headers = []
+        for rs in run_start:
+            header = Header.from_run_start(self.mds, rs)
+            if data_key is None:
+                headers.append(header)
+                continue
+            else:
+                # Only include this header in the result if `data_key` is found
+                # in one of its descriptors' data_keys.
+                for descriptor in header.descriptors:
+                    if data_key in descriptor['data_keys']:
+                        headers.append(header)
+                        break
         return headers
 
     def find_headers(self, **kwargs):
@@ -344,7 +335,7 @@ class Broker(object):
     def fetch_events(self, headers, fill=True):
         "This function is deprecated."
         warnings.warn("Use .get_events() instead.")
-        return self.get_events(headers, None, fill)
+        return self.get_events(headers, fill=fill)
 
     def fill_event(self, event, handler_registry=None, handler_overrides=None):
         """
@@ -584,6 +575,8 @@ class Broker(object):
         _process(mds=self.mds, fs=self.fs, headers=headers, func=func,
                  fields=fields, fill=fill)
 
+    get_fields = staticmethod(get_fields)  # for convenience
+
 
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
@@ -656,8 +649,6 @@ class ArchiverPlugin(object):
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'descriptor': descriptor}
                 yield Document('Event', doc)
-
-    get_fields = get_fields  # for convenience
 
 
 def _munge_time(t, timezone):
