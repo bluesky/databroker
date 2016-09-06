@@ -11,8 +11,10 @@ import itertools
 import pytest
 import six
 import numpy as np
-from bluesky.examples import det, det1, det2, Reader
-from bluesky.plans import count, pchain
+
+if sys.version_info >= (3, 0):
+    from bluesky.examples import det, det1, det2, Reader
+    from bluesky.plans import count, pchain
 
 logger = logging.getLogger(__name__)
 

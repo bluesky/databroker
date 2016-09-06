@@ -1,11 +1,15 @@
 import uuid
 import shutil
 import os
+import sys
 import tempfile
 import tzlocal
 from databroker import Broker
-from bluesky.tests.conftest import fresh_RE as RE
 import pytest
+
+
+if sys.version_info >= (3, 0):
+    from bluesky.tests.conftest import fresh_RE as RE
 
 @pytest.fixture(params=['sqlite', 'mongo'], scope='function')
 def db(request):
