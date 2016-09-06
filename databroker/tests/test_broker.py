@@ -115,6 +115,10 @@ def test_indexing(db, RE):
     with pytest.raises(ValueError):
         # not allowed to slice into unspecified past
         db[:-5]
+
+    with pytest.raises(IndexError):
+        # too far back
+        db[-11]
     
 
 @py3
