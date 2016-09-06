@@ -577,7 +577,7 @@ class Broker(object):
 
     get_fields = staticmethod(get_fields)  # for convenience
 
-    def export(headers, mds, fs):
+    def export(headers, mds, fs, new_root=None):
         """ export a list of headers
 
             Parameters:
@@ -586,8 +586,11 @@ class Broker(object):
                 list of headers that are going to be exported
             mds : MDS
                 target instance of metadatastore to export info
-            fs : filestore
+            fs : FileStore
                 target instance of filestore to export info
+            new_root : str
+                optional. root directory of files that are going to
+                be exported
         """
         for header in headers:
             # insert mds
@@ -605,7 +608,7 @@ class Broker(object):
                 fs.insert_resource(res['spec'],
                                    res['resource_path'],
                                    res['resource_kwargs'],
-                                   root=None)
+                                   root=new_root)
                                    # FIXME: revisit root when dealing
                                    # with complete file exporting 
                 datums = self.fs.datum_gen_given_resource(uid)
