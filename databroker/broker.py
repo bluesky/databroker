@@ -722,44 +722,44 @@ class Broker(object):
 
     get_fields = staticmethod(get_fields)  # for convenience
 
-    def export(headers, mds, fs, new_root=None):
+    def export(self, headers, db, new_root=None):
         """ export a list of headers
 
             Parameters:
             -----------
             headers : databroker.header
                 list of headers that are going to be exported
-            mds : MDS
-                target instance of metadatastore to export info
-            fs : FileStore
-                target instance of filestore to export info
+            db : databroker.Broker
+                an instance of databroker.Broker class, which has
+                filestore (fs) and metadatastore (mds) attributes
+                that will be the target to export info
             new_root : str
                 optional. root directory of files that are going to
                 be exported
         """
         for header in headers:
             # insert mds
-            mds.insert_run_start(**header['start'])
+            db.mds.insert_run_start(**header['start'])
             events = self.get_events(header)
-            for descripto in header['descriptor']:
-                mds.insert_descriptor(**descriptor)
+            for descriptor in header['descriptor']:
+                db.mds.insert_descriptor(**descriptor)
                 for event in events:
-                    mds.insert_event(event, descriptor)
-            mds.insert_run_stop(**header['stop'])
+                    db.mds.insert_event(event, descriptor)
+            db.mds.insert_run_stop(**header['stop'])
             # insert fs
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
                 res = self.fs.resource_given_uid(uid)
-                fs.insert_resource(res['spec'],
-                                   res['resource_path'],
-                                   res['resource_kwargs'],
-                                   root=new_root)
-                                   # FIXME: revisit root when dealing
-                                   # with complete file exporting 
+                db.fs.insert_resource(res['spec'],
+                                      res['resource_path'],
+                                      res['resource_kwargs'],
+                                      root=new_root)
+                                      # FIXME: revisit root when dealing
+                                      # with complete file exporting 
                 datums = self.fs.datum_gen_given_resource(uid)
                 for datum in datums:
-                    fs.insert_datum(res, datum['datum_id'],
-                                    datum['datum_kwargs'])
+                    db.fs.insert_datum(res, datum['datum_id'],
+                                       datum['datum_kwargs'])
 
         return
 
