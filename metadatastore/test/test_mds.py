@@ -417,6 +417,12 @@ def test_fail_runstart(mds_all):
         mdsc.run_start_given_uid('aardvark')
 
 
+def test_exceptions_are_mds_attributes(mds_all):
+    isinstance(mds_all.NoRunStop, Exception)
+    isinstance(mds_all.NoRunStart, Exception)
+    isinstance(mds_all.NoEventDescriptors, Exception)
+
+
 def test_bad_event_desc(mds_all):
     mdsc = mds_all
     data_keys = {k: {'source': k,
