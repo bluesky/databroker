@@ -502,6 +502,11 @@ def test_plugins(db, RE):
             yield a
 
     hdr = db[-1]
+    with pytest.raises(KeyError):
+        # A plugin for the keyword argument 'a' is not registered yet.
+        list(db.get_events(hdr, a='echo-plugin-test'))
+
+
     db.plugins = {'a': EchoPlugin()}
     assert 'echo-plugin-test' in list(db.get_events(hdr, a='echo-plugin-test'))
     assert 'echo-plugin-test' not in list(db.get_events(hdr))
