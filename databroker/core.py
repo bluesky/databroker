@@ -167,7 +167,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
         stop = header.get('stop', {})
         for descriptor in header['descriptors']:
             descriptor_name = descriptor.get('name')
-            if stream_name is not ALL and stream_name != descriptor_name:
+            if (stream_name is not ALL) and (stream_name != descriptor_name):
                 continue
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
@@ -282,7 +282,7 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
 
         for descriptor in descriptors:
             descriptor_name = descriptor.get('name')
-            if stream_name is not ALL and stream_name != descriptor_name:
+            if (stream_name is not ALL) and (stream_name != descriptor_name):
                 continue
             is_external = _external_keys(descriptor)
             objs_config = descriptor.get('configuration', {}).values()
