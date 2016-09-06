@@ -235,21 +235,22 @@ def test_search_for_smoke(db, RE):
 def test_alias(db, RE):
     RE.subscribe('all', db.mds.insert)
 
+    uid, = RE(count([det]))
+    RE(count([det]))
+
     # basic usage of alias
-    uid1 = RE(count([det]))
-    db.alias('foo', uid=uid1)
-    print(db.aliases)
-    db.foo == db[-1]
+    db.alias('foo', uid=uid)
+    assert db.foo == db(uid=uid)
 
     # can't set alias to existing attribute name
     with pytest.raises(ValueError):
-        db.alias('get_events', uid=uid1)
+        db.alias('get_events', uid=uid)
     with pytest.raises(ValueError):
-        db.dynamic_alias('get_events', lambda: {'uid': uid1})
+        db.dynamic_alias('get_events', lambda: {'uid': uid})
 
     # basic usage of dynamic alias
-    db.dynamic_alias('bar', lambda: uid1)
-    db.bar = uid1
+    db.dynamic_alias('bar', lambda: {'uid': uid})
+    assert db.bar == db(uid=uid)
 
     # normal AttributeError still works
     with pytest.raises(AttributeError):
