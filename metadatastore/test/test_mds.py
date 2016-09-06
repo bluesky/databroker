@@ -4,12 +4,12 @@ import time as ttime
 import uuid
 import pytest
 import warnings
-import datetime
+
 from types import GeneratorType
 from doct import Document
 from metadatastore.mds import MDS
 from metadatastore.core import (NoRunStart, NoEventDescriptors)
-
+from metadatastore.conf import load_configuration
 
 def check_for_id(document):
     """Make sure that our documents do not have an id field
@@ -438,3 +438,5 @@ def test_bad_event_desc(mds_all):
                                run_start=rs, uid=str(uuid.uuid4()))
 
 
+def test_load_configuration_smoke():
+    load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])

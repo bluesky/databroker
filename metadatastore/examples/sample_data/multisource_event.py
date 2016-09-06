@@ -1,6 +1,5 @@
 from __future__ import division
 import uuid
-from metadatastore.api import insert_event, insert_descriptor, find_events
 import numpy as np
 from metadatastore.examples.sample_data import common
 
@@ -11,7 +10,7 @@ num_exposures = 23
 
 
 @common.example
-def run(run_start=None, sleep=0):
+def run(mds, run_start=None, sleep=0):
     if sleep != 0:
         raise NotImplementedError("A sleep time is not implemented for this "
                                   "example.")
@@ -26,14 +25,14 @@ def run(run_start=None, sleep=0):
                                     dtype='number')}
     data_keys2 = {'Tsam': dict(source='PV:ES:Tsam', dtype='number'),
                   'Troom': dict(source='PV:ES:Troom', dtype='number')}
-    ev_desc1_uid = insert_descriptor(run_start=run_start,
-                                     data_keys=data_keys1,
-                                     time=common.get_time(),
-                                     uid=str(uuid.uuid4()))
-    ev_desc2_uid = insert_descriptor(run_start=run_start,
-                                     data_keys=data_keys2,
-                                     time=common.get_time(),
-                                     uid=str(uuid.uuid4()))
+    ev_desc1_uid = mds.insert_descriptor(run_start=run_start,
+                                         data_keys=data_keys1,
+                                         time=common.get_time(),
+                                         uid=str(uuid.uuid4()))
+    ev_desc2_uid = mds.insert_descriptor(run_start=run_start,
+                                         data_keys=data_keys2,
+                                         time=common.get_time(),
+                                         uid=str(uuid.uuid4()))
     # Create Events.
     events = []
 
@@ -43,10 +42,11 @@ def run(run_start=None, sleep=0):
         time = float(i + 0.5 * rs.randn()) + base_time
         data = {'point_det': point_det_data[i]}
         timestamps = {'point_det': time}
-        event_uid = insert_event(descriptor=ev_desc1_uid, seq_num=i, time=time,
-                                 data=data, uid=str(uuid.uuid4()),
-                                 timestamps=timestamps)
-        event, = find_events(uid=event_uid)
+        event_uid = mds.insert_event(descriptor=ev_desc1_uid,
+                                     seq_num=i, time=time, data=data,
+                                     uid=str(uuid.uuid4()),
+                                     timestamps=timestamps)
+        event, = mds.find_events(uid=event_uid)
         events.append(event)
 
     # Temperature Events
@@ -56,10 +56,11 @@ def run(run_start=None, sleep=0):
                 'Troom': temp + 10}
         timestamps = {'Tsam': time,
                       'Troom': time}
-        event_uid = insert_event(descriptor=ev_desc2_uid, time=time,
-                                 data=data, seq_num=i, uid=str(uuid.uuid4()),
-                                 timestamps=timestamps)
-        event, = find_events(uid=event_uid)
+        event_uid = mds.insert_event(descriptor=ev_desc2_uid,
+                                     time=time, data=data, seq_num=i,
+                                     uid=str(uuid.uuid4()),
+                                     timestamps=timestamps)
+        event, = mds.find_events(uid=event_uid)
         events.append(event)
     return events
 

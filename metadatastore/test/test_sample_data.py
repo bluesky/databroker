@@ -1,18 +1,9 @@
 from metadatastore.examples.sample_data.common import apply_deadband, noisy
 from metadatastore.examples.sample_data import (temperature_ramp,
                                                 multisource_event)
-from .utils import mds_setup, mds_teardown
 import numpy as np
 import itertools
 import pytest
-
-
-def setup_module(module):
-    mds_setup()
-
-
-def teardown_module(module):
-    mds_teardown()
 
 
 def test_bad_deadbands():
@@ -30,14 +21,14 @@ def test_noisy_for_smoke(v):
     'failing_time, mod',
     itertools.product([-1, 1], [temperature_ramp, multisource_event])
 )
-def test_sleepy_failures(failing_time, mod):
+def test_sleepy_failures(mds_all, failing_time, mod):
     with pytest.raises(NotImplementedError):
-        mod.run(sleep=failing_time)
+        mod.run(mds_all, sleep=failing_time)
 
 
-def test_multisource_event():
-    multisource_event.run()
+def test_multisource_event(mds_all):
+    multisource_event.run(mds_all)
 
 
-def test_temperature_ramp():
-    temperature_ramp.run()
+def test_temperature_ramp(mds_all):
+    temperature_ramp.run(mds_all)
