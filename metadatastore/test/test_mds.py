@@ -8,8 +8,8 @@ import warnings
 from types import GeneratorType
 from doct import Document
 from metadatastore.mds import MDS
-from metadatastore.core import (NoRunStart, NoEventDescriptors)
 from metadatastore.conf import load_configuration
+
 
 def check_for_id(document):
     """Make sure that our documents do not have an id field
@@ -262,7 +262,7 @@ def test_no_evdesc(mds_all):
         group='awesome-devs', project='Nikea', time=ttime.time(),
         uid=str(uuid.uuid4()))
 
-    with pytest.raises(NoEventDescriptors):
+    with pytest.raises(mds_all.NoEventDescriptors):
         mdsc.descriptors_by_start(run_start_uid)
 
 
@@ -413,7 +413,7 @@ def test_double_run_stop(mds_all):
 
 def test_fail_runstart(mds_all):
     mdsc = mds_all
-    with pytest.raises(NoRunStart):
+    with pytest.raises(mds_all.NoRunStart):
         mdsc.run_start_given_uid('aardvark')
 
 
