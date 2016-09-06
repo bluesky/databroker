@@ -244,11 +244,43 @@ class Broker(object):
         return self(**query)
 
     def alias(self, key, **query):
+        """
+        Create an alias for a query.
+
+        Parameters
+        ----------
+        key : string
+            must be a valid Python identifier
+        query :
+            keyword argument comprising a query
+
+        Examples
+        --------
+        >>> db.alias('cal', purpose='calibration')
+        """
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
         self.aliases[key] = query
 
     def dynamic_alias(self, key, func):
+        """
+        Create an alias for a "dynamic" query, a function that returns a query.
+
+        Parameters
+        ----------
+        key : string
+            must be a valid Python identifier
+        func : callable
+            When called with no arguments, must return a dict that is a valid
+            query.
+
+        Examples
+        --------
+        Get headers from the last 24 hours.
+        >>> import time
+        >>> db.dynamic_alias('today',
+                             lambda: {'start_time': start_time=time.time()- 24*60*60})
+        """
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
         self.aliases[key] = func

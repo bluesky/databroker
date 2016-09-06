@@ -115,7 +115,32 @@ def test_indexing(db, RE):
     with pytest.raises(ValueError):
         # not allowed to slice into unspecified past
         db[:-5]
-    
+
+    with pytest.raises(IndexError):
+        # too far back
+        db[-11]
+
+
+@py3
+def test_full_text_search(db, RE):
+    RE.subscribe('all', db.mds.insert)
+
+    uid, = RE(count([det]), foo='some words')
+    RE(count([det]))
+
+    assert len(db()) == 2
+
+    try:
+        db('some words')
+    except NotImplementedError:
+        raise pytest.skip("This mongo-like backend does not support $text.")
+
+    assert len(db('some words')) == 1
+    header, = db('some words')
+    assert header['start']['uid'] == uid
+
+    # Full text search does *not* apply to keys.
+    assert len(db('foo')) == 0
 
 @py3
 def test_table_alignment(db, RE):
@@ -231,25 +256,52 @@ def test_search_for_smoke(db, RE):
 def test_alias(db, RE):
     RE.subscribe('all', db.mds.insert)
 
+    uid, = RE(count([det]))
+    RE(count([det]))
+
     # basic usage of alias
-    uid1 = RE(count([det]))
-    db.alias('foo', uid=uid1)
-    print(db.aliases)
-    db.foo == db[-1]
+    db.alias('foo', uid=uid)
+    assert db.foo == db(uid=uid)
 
     # can't set alias to existing attribute name
     with pytest.raises(ValueError):
-        db.alias('get_events', uid=uid1)
+        db.alias('get_events', uid=uid)
     with pytest.raises(ValueError):
-        db.dynamic_alias('get_events', lambda: {'uid': uid1})
+        db.dynamic_alias('get_events', lambda: {'uid': uid})
 
     # basic usage of dynamic alias
-    db.dynamic_alias('bar', lambda: uid1)
-    db.bar = uid1
+    db.dynamic_alias('bar', lambda: {'uid': uid})
+    assert db.bar == db(uid=uid)
 
     # normal AttributeError still works
     with pytest.raises(AttributeError):
         db.this_is_not_a_thing
+
+
+@py3
+def test_filters(db, RE):
+    RE.subscribe('all', db.mds.insert)
+    RE(count([det]), user='Ken')
+    dan_uid, = RE(count([det]), user='Dan', purpose='calibration')
+    ken_calib_uid, = RE(count([det]), user='Ken', purpose='calibration')
+
+    assert len(db()) == 3
+    db.add_filter(user='Dan')
+    assert len(db.filters) == 1
+    assert len(db()) == 1
+    header, = db()
+    assert header['start']['uid'] == dan_uid
+
+    db.clear_filters()
+    assert len(db.filters) == 0
+
+    assert len(db(purpose='calibration')) == 2
+    db.add_filter(user='Ken')
+    assert len(db(purpose='calibration')) == 1
+    header, = db(purpose='calibration')
+
+    assert header['start']['uid'] == ken_calib_uid
+
 
 @py3
 @pytest.mark.parametrize(
@@ -450,6 +502,11 @@ def test_plugins(db, RE):
             yield a
 
     hdr = db[-1]
+    with pytest.raises(KeyError):
+        # A plugin for the keyword argument 'a' is not registered yet.
+        list(db.get_events(hdr, a='echo-plugin-test'))
+
+
     db.plugins = {'a': EchoPlugin()}
     assert 'echo-plugin-test' in list(db.get_events(hdr, a='echo-plugin-test'))
     assert 'echo-plugin-test' not in list(db.get_events(hdr))
