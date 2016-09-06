@@ -440,6 +440,7 @@ def test_handler_options(db, RE):
     assert res[0].shape == ImageHandler.RESULT.shape
 
 
+@py3
 def test_plugins(db, RE):
     RE.subscribe('all', db.mds.insert)
     RE(count([det]))
