@@ -52,9 +52,21 @@ class MDSRO(object):
     @version.setter
     def version(self, val):
         if self._api is not None:
-            raise RuntimeError("Can not change api version at runtime")
+            raise RuntimeError("Cannot change api version at runtime")
         self._api = _API_MAP[val]
         self._version = val
+
+    @property
+    def NoRunStart(self):
+        return self._api.NoRunStart
+
+    @property
+    def NoRunStop(self):
+        return self._api.NoRunStop
+
+    @property
+    def NoEventDescriptors(self):
+        return self._api.NoEventDescriptors
 
     def disconnect(self):
 
