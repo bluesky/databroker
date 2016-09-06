@@ -22,6 +22,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class ALL:
+    "Sentinel used as the default value for stream_name"
+    pass
+
+
 def fill_event(fs, event, handler_registry=None, handler_overrides=None):
     """
     Populate events with externally stored data.
@@ -97,7 +102,7 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-def get_events(mds, fs, headers, fields=None, stream_name=None, fill=False,
+def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
                handler_registry=None, handler_overrides=None, plugins=None,
                **kwargs):
     """
@@ -112,8 +117,8 @@ def get_events(mds, fs, headers, fields=None, stream_name=None, fill=False,
     fields : list, optional
         whitelist of field names of interest; if None, all are returned
     stream_name : string, optional
-        Get events from only one "event stream" with this name. If None
-        (default) get events from all event streams.
+        Get events from only one "event stream" with this name. Default value
+        is special sentinel class, `ALL`, which gets all streams together.
     fill : bool, optional
         Whether externally-stored data should be filled in. Defaults to False.
     handler_registry : dict, optional
@@ -162,7 +167,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=None, fill=False,
         stop = header.get('stop', {})
         for descriptor in header['descriptors']:
             descriptor_name = descriptor.get('name')
-            if stream_name is not None and stream_name != descriptor_name:
+            if stream_name is not ALL and stream_name != descriptor_name:
                 continue
             objs_config = descriptor.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
@@ -221,9 +226,10 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
         whitelist of field names of interest; if None, all are returned
     stream_name : string, optional
         Get data from a single "event stream." To obtain one comprehensive
-        table with all streams, use `stream_name=None`. The default name is
+        table with all streams, use `stream_name=ALL` (where `ALL` is a
+        sentinel class defined in this module). The default name is
         'primary', but if no event stream with that name is found, the
-        default reverts to `None` (for backward-compatibility).
+        default reverts to `ALL` (for backward-compatibility).
     fill : bool, optional
         Whether externally-stored data should be filled in. Defaults to False.
     convert_times : bool, optional
@@ -272,11 +278,11 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
 
         # shim for back-compat with old data that has no 'primary' descriptor
         if not any(d for d in descriptors if d.get('name') == 'primary'):
-            stream_name = None
+            stream_name = ALL
 
         for descriptor in descriptors:
-            if ((stream_name is not None) and
-                    (stream_name != descriptor.get('name'))):
+            descriptor_name = descriptor.get('name')
+            if stream_name is not ALL and stream_name != descriptor_name:
                 continue
             is_external = _external_keys(descriptor)
             objs_config = descriptor.get('configuration', {}).values()
