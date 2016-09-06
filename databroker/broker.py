@@ -592,9 +592,9 @@ class Broker(object):
         for header in headers:
             # insert mds
             mds.insert_run_start(**header['start'])
+            events = self.get_events(header)
             for descripto in header['descriptor']:
                 mds.insert_descriptor(**descriptor)
-                events = self.get_events(header)
                 for event in events:
                     mds.insert_event(event, descriptor)
             mds.insert_run_stop(**header['stop'])
@@ -604,12 +604,14 @@ class Broker(object):
                 res = self.fs.resource_given_uid(uid)
                 fs.insert_resource(res['spec'],
                                    res['resource_path'],
-                                   None) #FIXME: resource_kwargs = None?
+                                   res['resource_kwargs'],
+                                   root=None)
+                                   # FIXME: revisit root when dealing
+                                   # with complete file exporting 
                 datums = self.fs.datum_gen_given_resource(uid)
                 for datum in datums:
-                    fs.insert_datum(res, datum_id, datum_kwargs)
-                    # FIXME: just the signature now, need to figure out
-                    # waht datum_uid and datum_kwargs is
+                    fs.insert_datum(res, datum['datum_id'],
+                                    datum['datum_kwargs'])
 
         return
 
