@@ -21,8 +21,9 @@ before_install:
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda
-  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal metadatastore six
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal
   - source activate testenv
+  - pip install https://github.com/NSLS-II/metadatastore/zipball/master
   - pip install codecov
   - python setup.py install
   # Need to clean the python build directory (and other cruft) or pytest is
