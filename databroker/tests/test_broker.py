@@ -256,6 +256,32 @@ def test_alias(db, RE):
     with pytest.raises(AttributeError):
         db.this_is_not_a_thing
 
+
+@py3
+def test_filters(db, RE):
+    RE.subscribe('all', db.mds.insert)
+    RE(count([det]), user='Ken')
+    dan_uid, = RE(count([det]), user='Dan', purpose='calibration')
+    ken_calib_uid, = RE(count([det]), user='Ken', purpose='calibration')
+
+    assert len(db()) == 3
+    db.add_filter(user='Dan')
+    assert len(db.filters) == 1
+    assert len(db()) == 1
+    header, = db()
+    assert header['start']['uid'] == dan_uid
+
+    db.clear_filters()
+    assert len(db.filters) == 0
+
+    assert len(db(purpose='calibration')) == 2
+    db.add_filter(user='Ken')
+    assert len(db(purpose='calibration')) == 1
+    header, = db(purpose='calibration')
+
+    assert header['start']['uid'] == ken_calib_uid
+
+
 @py3
 @pytest.mark.parametrize(
     'key',
