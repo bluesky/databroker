@@ -39,6 +39,8 @@ install:
   - pip install mongoquery
   - pip install https://github.com/NSLS-II/portable-mds/zipball/master
   - pip install https://github.com/NSLS-II/portable-fs/zipball/master
+  - pip install https://github.com/NSLS-II/metadatastore/zipball/master
+  - pip install https://github.com/NSLS-II/filestore/zipball/master
   - pip install coveralls codecov
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch;
