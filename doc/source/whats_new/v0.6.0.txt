@@ -1,0 +1,24 @@
+v0.6.0
+------
+
+Bug Fixes
++++++++++
+
+Make ``get_table`` properly respect its ``stream_name`` argument. (Previously
+any value but default returned an empty result.)
+
+Enhancements
+++++++++++++
+
+* Allow ``Broker`` to be imported without configuration present.
+* Add stateful "filters" to restrict searches.
+* Add aliases to save searches during a session.
+* Overhaul documents and tests.
+
+API Changes
++++++++++++
+
+* The default value of ``stream_name`` in ``get_events`` is now ``ALL``, a
+  sentinel value. (The default for ``get_table`` is still ``'primary'``, but it
+  now also accepts ``ALL``.)
+
