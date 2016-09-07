@@ -7,8 +7,6 @@ import warnings
 
 from types import GeneratorType
 from doct import Document
-from metadatastore.mds import MDS
-from metadatastore.conf import load_configuration
 
 
 def check_for_id(document):
@@ -65,8 +63,8 @@ def syn_data(data_keys, count):
     return all_data
 
 
-@pytest.mark.parametrize('ver', (0, 1))
-def test_pickle(ver):
+def test_pickle():
+    from metadatastore.mds import MDS
     md = MDS(config={'host': 'portland'}, version=1)
     md2 = pickle.loads(pickle.dumps(md))
 
@@ -445,4 +443,6 @@ def test_bad_event_desc(mds_all):
 
 
 def test_load_configuration_smoke():
+    from metadatastore.conf import load_configuration
+
     load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])
