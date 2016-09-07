@@ -49,9 +49,11 @@ install:
     fi;
   - |
     if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
-      conda install bluesky;  # installs metadatastore, which I don't want
+      conda install bluesky;  # Use this to install deps.
       conda remove metadatastore --force;
+      conda remove bluesky --force;
       pip install https://github.com/NSLS-II/metadatastore/zipball/master;
+      pip install https://github.com/NSLS-II/bluesky/zipball/master;
     fi;
   - python setup.py install
   # Need to clean the repo or pytest gets confused why there are *two* copies

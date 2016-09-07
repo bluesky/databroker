@@ -14,7 +14,7 @@ import numpy as np
 
 if sys.version_info >= (3, 0):
     from bluesky.examples import det, det1, det2, Reader
-    from bluesky.plans import count, pchain
+    from bluesky.plans import count, pchain, monitor_during_wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +63,30 @@ def test_get_events_multiple_headers(db, RE):
 
 
 @py3
-def test_get_events_filtering_stream_name(db, RE):
+def test_filtering_stream_name(db, RE):
+
+    # one event stream
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
-
-    # name and field
+    assert len(db.get_table(h, stream_name='primary')) == 7
     assert len(list(db.get_events(h, stream_name='primary', fields=['det']))) == 7
+    assert len(db.get_table(h, stream_name='primary', fields=['det'])) == 7
+
+    # two event streams: 'primary' and 'd-monitor'
+    d = Reader('d', read_fields={'d': lambda: 1}, monitor_intervals=[0.5],
+               loop=RE.loop)
+    uid, = RE(monitor_during_wrapper(count([det], num=7, delay=0.1), [d]))
+    h = db[uid]
+    assert len(h.descriptors) == 2
+    assert len(list(db.get_events(h, stream_name='primary'))) == 7
+    assert len(list(db.get_events(h, stream_name='d-monitor'))) == 1
+    assert len(list(db.get_events(h))) == 8  # ALL streams by default
+
+    assert len(db.get_table(h, stream_name='primary')) == 7
+    assert len(db.get_table(h, stream_name='d-monitor')) == 1
+    assert len(db.get_table(h)) == 7  # 'primary' by default
 
 
 @py3
