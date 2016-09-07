@@ -42,11 +42,13 @@ install:
   - pip install https://github.com/NSLS-II/portable-fs/zipball/master
   - pip install https://github.com/NSLS-II/filestore/zipball/master
   - pip install coveralls codecov
-  - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
+  - |
+    if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch;
-      pip install https://github.com/NSLS-II/metadatastore/zipball/master;
+      pip install "https://github.com/NSLS-II/metadatastore/zipball/master";
     fi;
-  - if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
+  - |
+    if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
       conda install bluesky;  # installs metadatastore, which I don't want
       conda remove metadatastore --force;
       pip install https://github.com/NSLS-II/metadatastore/zipball/master;
