@@ -9,7 +9,7 @@ addons:
     sources:
     - mongodb-3.2-precise
     packages:
-    - mongodb-org-server
+    - mongodb-org
 
 python:
   - 3.4
@@ -20,7 +20,8 @@ before_install:
   - . ~/scripts/install-miniconda.sh ~/
 
 install:
-  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz pytest doct -c lightsource2
+  - mongo localhost:27017/admin ~/scripts/admin.js
+  - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema requests pyyaml pytz pytest doct -c nsls2-tag
   - source activate testenv
   - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
   - pip install coveralls codecov mongoquery
