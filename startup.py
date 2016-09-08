@@ -13,16 +13,6 @@ from metadataservice.server.conf import load_configuration
 
 
 if __name__ == "__main__":
-
-    # Command line args have oriority over built in config file. Server should be
-    # explicitly stated at startup. Leaving this here in case server needs to use
-    # a config.
-    # config = {k: v for k, v in load_configuration('metadataservice', 'MDS',
-    #                                               ['host', 'port', 'timezone',
-    #                                               'database'],
-    #                                               allow_missing=True).items()
-    #           if v is not None}
-
     config = {}
     parser = argparse.ArgumentParser()
     parser.add_argument('--database', dest='database', type=str,
@@ -35,7 +25,13 @@ if __name__ == "__main__":
                         help='mongodb port to connect')
     parser.add_argument('--service-port', dest='serviceport', type=int,
                         help='port to broadcast from')
-
+    parser.add_argument('--no-auth', dest='auth', action='store_false')
+    parser.add_argument('--auth', dest='auth', action='store_true')
+    parser.set_defaults(auth=False)
+    parser.add_argument('--mongo-user', dest='mongo_user', type=str,
+                            help='Mongo username')
+    parser.add_argument('--mongo-pwd', dest='mongo_pwd', type=str,
+                            help='Mongo password')
     args = parser.parse_args()
     # name of the database server will talk to.
     # If db does not exist, creates one
@@ -63,10 +59,20 @@ if __name__ == "__main__":
         config['serviceport'] = args.serviceport
     else:
         raise KeyError('--service-port is a required arg')
+    if args.auth:
+        if args.mongo_user and args.mongo_pwd:
+            config['mongo_user'] = args.mongo_user
+            config['mongo_pwd'] = args.mongo_pwd
+        else:
+            raise KeyError('--mongo-user and --mongo-pwd required with auth')
+    else:
+        config['mongo_user'] = None
+        config['mongo_pwd'] = None
     libconfig = dict(host=config['mongohost'], port=config['mongoport'],
-                     timezone=config['timezone'], database=config['database'])
-    mdsro = MDSRO(version=1, config=libconfig)
-    mdsrw = MDS(version=1, config=libconfig)
+                     timezone=config['timezone'], database=config['database'],
+                     mongo_user= config['mongo_user'], mongo_pwd=config['mongo_pwd'])
+    mdsro = MDSRO(version=1, config=libconfig, auth=args.auth)
+    mdsrw = MDS(version=1, config=libconfig, auth=args.auth)
 
     print('Connecting to mongodb...{}:{}/{}'.format(config['mongohost'],
                                                     config['mongoport'],
