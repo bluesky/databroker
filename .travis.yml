@@ -18,7 +18,7 @@ before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
   - . ~/scripts/install-miniconda.sh
 
-  - git clone https://github.com/arkilic/metadataservice.git /home/travis/metadataservice
+  - git clone https://github.com/NSLS-II/metadataservice.git /home/travis/metadataservice
   - mkdir -p /home/travis/.config/metadataservice
   - mkdir -p /home/travis/.config/metadataclient
 
