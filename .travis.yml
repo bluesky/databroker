@@ -1,5 +1,5 @@
 language: python
-sudo: false
+sudo: required
 
 services:
   - mongodb
@@ -9,7 +9,7 @@ addons:
     sources:
     - mongodb-3.0-precise
     packages:
-    - mongodb-org-server
+    - mongodb-org
 
 python:
   - "3.4"
@@ -23,6 +23,7 @@ before_install:
   - mkdir -p /home/travis/.config/metadataclient
 
 install:
+  - mongo localhost:27017/admin ~/scripts/admin.js
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda update conda --yes
   - conda create -n testenv --yes nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema pyyaml pytz six
@@ -40,7 +41,7 @@ script:
   - mkdir -p /home/travis/.config/metadataclient
   - cp connection.yml /home/travis/.config/metadataclient
   - source activate testenv
-  - nohup python /home/travis/metadataservice/startup.py --mongo-host localhost --mongo-port 27017 --service-port 7778 --database mdservicetest --timezone US/Eastern &
+  - nohup python /home/travis/metadataservice/startup.py --mongo-host localhost --mongo-port 27017 --service-port 7778 --database mdservicetest --timezone US/Eastern --auth --mongo-user tom --mongo-pwd jerry &
   - sleep 5
   - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
   - cat nohup.out
