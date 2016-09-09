@@ -552,7 +552,7 @@ class MDS(MDSRO):
                     'bulk_events': 'bulk_insert_events'}
 
     def insert_run_start(self, time, uid, **kwargs):
-        '''Insert a Start document
+        """Insert a Start document
 
         All extra keyword arguments are passed through to the database
         as fields in the Start document.
@@ -581,7 +581,7 @@ class MDS(MDSRO):
         run_start : str
             uid of the inserted document.  Use `run_start_given_uid` to get
             the full document.
-        '''
+        """
         return self._api.insert_run_start(self._runstart_col,
                                           self._RUNSTART_CACHE,
                                           time=time,
