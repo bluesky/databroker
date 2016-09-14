@@ -71,8 +71,8 @@ class Header(doc.Document):
 
         Parameters
         ----------
-        run_start : metadatastore.document.Document or str
-            RunStart Document
+        run_start : dict or string
+            RunStart document or uid of one
 
         Returns
         -------
