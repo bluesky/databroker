@@ -76,7 +76,6 @@ def cursor(connection):
 class FileStoreDatabase(object):
     def __init__(self, fp):
         self._fp = fp
-        print("FILEPATH", self._fp)
         self.reconnect()
 
     def reconnect(self):
