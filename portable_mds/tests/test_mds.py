@@ -22,6 +22,7 @@ from metadatastore.test.test_mds import (
     test_run_stop_by_run_start,
     test_run_stop_insertion)
 
+
 def test_no_evdesc(mds_all):
     mdsc = mds_all
     run_start_uid = mdsc.insert_run_start(
