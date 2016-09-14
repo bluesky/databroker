@@ -71,11 +71,11 @@ class EventCollection(object):
     def reconnect(self):
         for fn in os.listdir(self._dirpath):
             # Cache connections to every sqlite file.
-            match = re.match('([a-z-]+)\.sqlite', fn)
+            match = re.match('([0-9a-z-]+)\.sqlite', fn)
             if match is None:
                 # skip unrecognized file
                 continue
-            uid, = match
+            uid, = match.groups()
             fp = os.path.join(self._dirpath, fn)
             conn = sqlite3.connect(fp)
             # Return rows as objects that support getitem.
@@ -83,10 +83,11 @@ class EventCollection(object):
             self._runstarts[uid] = conn
 
             # Build a mapping of descriptor uids to run start uids.
-            with cursor(self._run_starts[uid]) as c:
+            with cursor(self._runstarts[uid]) as c:
                 c.execute(LIST_TABLES)
-                for descriptor_uid in self._cur.fetchall():
-                    self._descriptors[descriptor_uid] = uid
+                for descriptor_uid in c.fetchall():
+                    duid = descriptor_uid['name'][5:].replace('_', '-')
+                    self._descriptors[duid] = uid
 
     def new_runstart(self, doc):
         uid = doc['uid']
