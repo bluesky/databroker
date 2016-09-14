@@ -6,7 +6,6 @@ import pandas as pd
 import tzlocal
 import doct as doc
 from pims import FramesSequence, Frame
-from filestore import handlers, HandlerBase
 import logging
 import numbers
 import boltons.cacheutils
@@ -442,6 +441,7 @@ def process(mds, fs, headers, func, fields=None, fill=False):
 
 def register_builtin_handlers(fs):
     "Register all the handlers built in to filestore."
+    from filestore import handlers, HandlerBase
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
     for cls in vars(handlers).values():
