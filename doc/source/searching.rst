@@ -67,7 +67,7 @@ Suppose we execute several experiments ("plans", in bluesky jargon) like so.
 
     RE(count([det]))  # 1
     RE(scan([det], motor, -1, 1, 5))  # 2
-    RE(relative_scan([det]), motor, 1, 10, 10)  # 3
+    RE(relative_scan([det], motor, 1, 10, 10))  # 3
     RE(scan([det], motor, -1, 1, 1000))  # 4
 
 We can search by ``plan_name``, which is always automatically recorded in the 
@@ -115,14 +115,14 @@ sample and the purpose of each run.
     RE.md['operator'] = 'Ken'
 
     RE(count([det]), purpose='calibration', sample='A')
-    RE(scan([det]), motor, 1, 10, 10, operator='Dan')  # temporarily overrides Ken
+    RE(scan([det], motor, 1, 10, 10), operator='Dan')  # temporarily overrides Ken
     RE(count([det]), sample='A')  # (now back to Ken)
     RE(count([det]), sample='B')
 
     RE.md['operator'] = 'Dan'
 
     RE(count([det]), purpose='calibration')
-    RE(scan([det]), motor, 1, 10, 10)
+    RE(scan([det], motor, 1, 10, 10))
 
     del RE.md['operator']  # clean up by un-setting operator
 
