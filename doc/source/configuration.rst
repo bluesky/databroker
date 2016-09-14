@@ -36,7 +36,7 @@ Script-Based Configuration
     # This an example. You'll need to know your local configuration.
     fs = FileStoreRO({'host': 'localhost',
                       'port': 27017,
-                      'database': 'filestore-production-v1')
+                      'database': 'filestore-production-v1'})
 
     db = Broker(mds, fs)
 
