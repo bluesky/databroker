@@ -68,7 +68,7 @@ def _normalize_human_friendly_time(val, tz):
     # {} is placeholder for formats; filled in after def...
 
     zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
-    epoch = pytz.UTC.localize(datetime.datetime(1970, 1, 1))
+    epoch = pytz.UTC.localize(datetime(1970, 1, 1))
     check = True
 
     if isinstance(val, six.string_types):
@@ -84,13 +84,13 @@ def _normalize_human_friendly_time(val, tz):
 
         for fmt in _TS_FORMATS:
             try:
-                ts = datetime.datetime.strptime(val, fmt)
+                ts = datetime.strptime(val, fmt)
                 break
             except ValueError:
                 pass
 
         try:
-            if isinstance(ts, datetime.datetime):
+            if isinstance(ts, datetime):
                 val = ts
                 check = False
             else:
@@ -101,7 +101,7 @@ def _normalize_human_friendly_time(val, tz):
         except NameError:
             raise ValueError('failed to parse time: ' + repr(val))
 
-    if check and not isinstance(val, datetime.datetime):
+    if check and not isinstance(val, datetime):
         return val
 
     if val.tzinfo is None:
