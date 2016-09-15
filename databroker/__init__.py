@@ -8,9 +8,8 @@ logger = logging.getLogger(__name__)
 try:
     from .databroker import DataBroker
 except ImportError:
-    warnings.warn("The top-level functions (get_table, get_events, etc.)"
-                  "cannot be created because "
-                  "the necessary configuration was not found.")
+    # The .databroker module emits a warning, no need to duplicate it here.
+    pass
 else:
     from .databroker import (DataBroker, DataBroker as db,
                              get_events, get_table, stream, get_fields,

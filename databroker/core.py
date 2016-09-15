@@ -6,8 +6,6 @@ import pandas as pd
 import tzlocal
 import doct as doc
 from pims import FramesSequence, Frame
-from metadatastore.core import NoRunStop, NoEventDescriptors
-from filestore import handlers, HandlerBase
 import logging
 import numbers
 import boltons.cacheutils
@@ -72,8 +70,8 @@ class Header(doc.Document):
 
         Parameters
         ----------
-        run_start : metadatastore.document.Document or str
-            RunStart Document
+        run_start : dict or string
+            RunStart document or uid of one
 
         Returns
         -------
@@ -86,14 +84,14 @@ class Header(doc.Document):
         try:
             run_stop = doc.ref_doc_to_uid(mds.stop_by_start(run_start_uid),
                                           'run_start')
-        except NoRunStop:
+        except mds.NoRunStop:
             run_stop = None
 
         try:
             ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
                         for ev_desc in
                         mds.descriptors_by_start(run_start_uid)]
-        except NoEventDescriptors:
+        except mds.NoEventDescriptors:
             ev_descs = []
 
         d = {'start': run_start, 'descriptors': ev_descs}
@@ -443,6 +441,7 @@ def process(mds, fs, headers, func, fields=None, fill=False):
 
 def register_builtin_handlers(fs):
     "Register all the handlers built in to filestore."
+    from filestore import handlers, HandlerBase
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
     for cls in vars(handlers).values():
