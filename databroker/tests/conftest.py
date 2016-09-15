@@ -49,6 +49,12 @@ def build_sqlite_backed_broker(request):
     return Broker(mds, fs)
 
 
+@pytest.fixture(params=['sqlite'], scope='function')
+def broker_factory(request):
+    "Use this to get more than one broker in a test."
+    return lambda: build_sqlite_backed_broker(request)
+
+
 def build_pymongo_backed_broker(request):
     '''Provide a function level scoped MDS instance talking to
     temporary database on localhost:27017 with v1 schema.

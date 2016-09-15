@@ -527,3 +527,14 @@ def test_plugins(db, RE):
     db.plugins = {'a': EchoPlugin()}
     assert 'echo-plugin-test' in list(db.get_events(hdr, a='echo-plugin-test'))
     assert 'echo-plugin-test' not in list(db.get_events(hdr))
+
+
+@py3
+def test_export(broker_factory, RE):
+    db1 = broker_factory()
+    db2 = broker_factory()
+    RE.subscribe('all', db1.mds.insert)
+    uid, = RE(count([det]))
+    db1.export(db1[uid], db2)
+    assert db2[uid] == db1[uid]
+    assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
