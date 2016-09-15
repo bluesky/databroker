@@ -723,19 +723,24 @@ class Broker(object):
     get_fields = staticmethod(get_fields)  # for convenience
 
     def export(self, headers, db, new_root=None):
-        """ export a list of headers
+        """
+        Export a list of headers.
 
-            Parameters:
-            -----------
-            headers : databroker.header
-                list of headers that are going to be exported
-            db : databroker.Broker
-                an instance of databroker.Broker class, which has
-                filestore (fs) and metadatastore (mds) attributes
-                that will be the target to export info
-            new_root : str
-                optional. root directory of files that are going to
-                be exported
+        .. warning::
+
+            This does not yet support copying external files.
+
+        Parameters:
+        -----------
+        headers : databroker.header
+            list of headers that are going to be exported
+        db : databroker.Broker
+            an instance of databroker.Broker class, which has
+            filestore (fs) and metadatastore (mds) attributes
+            that will be the target to export info
+        new_root : str
+            optional. root directory of files that are going to
+            be exported
         """
         for header in headers:
             # insert mds
@@ -762,6 +767,7 @@ class Broker(object):
                                        datum['datum_kwargs'])
 
         return
+
 
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
