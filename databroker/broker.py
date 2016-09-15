@@ -733,7 +733,7 @@ class Broker(object):
         Parameters:
         -----------
         headers : databroker.header
-            list of headers that are going to be exported
+            one or more headers that are going to be exported
         db : databroker.Broker
             an instance of databroker.Broker class, which has
             filestore (fs) and metadatastore (mds) attributes
@@ -742,6 +742,12 @@ class Broker(object):
             optional. root directory of files that are going to
             be exported
         """
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
         for header in headers:
             # insert mds
             db.mds.insert_run_start(**header['start'])
