@@ -63,6 +63,7 @@ def test_get_events_multiple_headers(db, RE):
 
 
 @py3
+@pytest.mark.xfail(run=False)
 def test_filtering_stream_name(db, RE):
 
     # one event stream
