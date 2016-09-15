@@ -1,16 +1,14 @@
 from __future__ import print_function
 import warnings
 import six  # noqa
-from collections import deque, defaultdict
 import uuid
 from datetime import datetime
-import tzlocal
 import pytz
 import logging
 import numbers
 import requests
 from doct import Document
-from .core import (Header, _external_keys,
+from .core import (Header,
                    get_events as _get_events,
                    get_table as _get_table,
                    restream as _restream,
