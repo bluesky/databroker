@@ -750,13 +750,17 @@ class Broker(object):
             headers = [headers]
         for header in headers:
             # insert mds
-            db.mds.insert_run_start(**header['start'])
+            db.mds.insert_run_start(**_clean_doct(header['start']))
             events = self.get_events(header)
-            for descriptor in header['descriptor']:
-                db.mds.insert_descriptor(**descriptor)
+            for descriptor in header['descriptors']:
+                db.mds.insert_descriptor(**_clean_doct(descriptor))
                 for event in events:
-                    db.mds.insert_event(event, descriptor)
-            db.mds.insert_run_stop(**header['stop'])
+                    event = _clean_doct(event)
+                    # 'filled' is obtained from the descriptor, not stored
+                    # in each event.
+                    event.pop('filled', None)
+                    db.mds.insert_event(**event)
+            db.mds.insert_run_stop(**_clean_doct(header['stop']))
             # insert fs
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
@@ -865,3 +869,10 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+def _clean_doct(d):
+    """Return a normal dict and strip off the special _name key."""
+    _d = dict(d)
+    _d.pop('_name')
+    return _d
