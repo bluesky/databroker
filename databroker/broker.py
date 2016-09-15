@@ -708,6 +708,46 @@ class Broker(object):
 
     get_fields = staticmethod(get_fields)  # for convenience
 
+    def export(self, headers, db, new_root=None):
+        """ export a list of headers
+
+            Parameters:
+            -----------
+            headers : databroker.header
+                list of headers that are going to be exported
+            db : databroker.Broker
+                an instance of databroker.Broker class, which has
+                filestore (fs) and metadatastore (mds) attributes
+                that will be the target to export info
+            new_root : str
+                optional. root directory of files that are going to
+                be exported
+        """
+        for header in headers:
+            # insert mds
+            db.mds.insert_run_start(**header['start'])
+            events = self.get_events(header)
+            for descriptor in header['descriptor']:
+                db.mds.insert_descriptor(**descriptor)
+                for event in events:
+                    db.mds.insert_event(event, descriptor)
+            db.mds.insert_run_stop(**header['stop'])
+            # insert fs
+            res_uids = self.get_resource_uids(header)
+            for uid in res_uids:
+                res = self.fs.resource_given_uid(uid)
+                db.fs.insert_resource(res['spec'],
+                                      res['resource_path'],
+                                      res['resource_kwargs'],
+                                      root=new_root)
+                                      # FIXME: revisit root when dealing
+                                      # with complete file exporting 
+                datums = self.fs.datum_gen_given_resource(uid)
+                for datum in datums:
+                    db.fs.insert_datum(res, datum['datum_id'],
+                                       datum['datum_kwargs'])
+
+        return
 
 class ArchiverPlugin(object):
     def __init__(self, url, timezone):
