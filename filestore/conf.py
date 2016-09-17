@@ -8,7 +8,7 @@ connection_config = None
 
 
 class _PH:
-    ...
+    pass
 
 
 def load_configuration(name, prefix, fields, fname=None):
