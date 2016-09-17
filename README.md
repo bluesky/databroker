@@ -19,7 +19,6 @@ Find the tagged recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tr
 - `filestore` relies on you (the user!) to know the mapping between your file
   spec and the handler that can open it. If you do not have the handler that
   you need, you must write it yourself!
-- `filestore`
 
 ##Using filestore with pickled numpy files `(*.npy)`
 
