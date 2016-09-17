@@ -55,6 +55,8 @@ def load_configuration(name, prefix, fields, fname=None):
             logger.debug("Using db connection specified in config file. \n%r",
                          config)
 
+    config = {k: v for k, v in config.items() if k in fields}
+
     for field in fields:
         var_name = prefix + '_' + field.upper().replace(' ', '_')
 
