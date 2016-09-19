@@ -438,11 +438,11 @@ class NpyFrameWise(HandlerBase):
         return [self._fpath]
 
 
-class TiffHandler(HandlerBase):
+class SingleTiffHandler(HandlerBase):
     specs = {'TIFF'} | HandlerBase.specs
 
-    def __init__(self, name):
-        self._name = name
+    def __init__(self, filename):
+        self._name = filename
 
     def __call__(self):
         return tifffile.imread(self._name)
