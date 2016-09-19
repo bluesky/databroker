@@ -7,6 +7,10 @@ logger = logging.getLogger(__name__)
 connection_config = None
 
 
+class _PH:
+    pass
+
+
 def load_configuration(name, prefix, fields, fname=None):
     """
     Load configuration data form a cascading series of locations.
@@ -55,12 +59,15 @@ def load_configuration(name, prefix, fields, fname=None):
             logger.debug("Using db connection specified in config file. \n%r",
                          config)
 
+    config = {k: v for k, v in config.items() if k in fields}
+
     for field in fields:
         var_name = prefix + '_' + field.upper().replace(' ', '_')
 
-        config[field] = os.environ.get(var_name, config.get(field, None))
-        if field == 'port' and config[field] is not None:
-            config[field] = int(config[field])
+        config[field] = os.environ.get(var_name, config.get(field, _PH))
+        if field == 'port':
+            if config[field] is not None and config[field] is not _PH:
+                config[field] = int(config[field])
 
     if fname is not None:
         if os.path.isfile(fname):
@@ -69,7 +76,7 @@ def load_configuration(name, prefix, fields, fname=None):
             logger.debug("Using db connection specified in config file. \n%r",
                          config)
 
-    missing = [k for k, v in config.items() if v is None]
+    missing = [k for k, v in config.items() if v is _PH]
     if missing:
         raise KeyError("The configuration field(s) {0} were not found in any "
                        "file or environmental variable.".format(missing))
