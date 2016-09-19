@@ -436,3 +436,13 @@ class NpyFrameWise(HandlerBase):
 
     def get_file_list(self, datum_kwarg_gen):
         return [self._fpath]
+
+
+class SingleTiffHandler(HandlerBase):
+    specs = {'TIFF'} | HandlerBase.specs
+
+    def __init__(self, filename):
+        self._name = filename
+
+    def __call__(self):
+        return tifffile.imread(self._name)
