@@ -439,7 +439,7 @@ class NpyFrameWise(HandlerBase):
 
 
 class SingleTiffHandler(HandlerBase):
-    specs = {'TIFF'} | HandlerBase.specs
+    specs = {'SINGLE_TIFF'} | HandlerBase.specs
 
     def __init__(self, filename):
         self._name = filename
