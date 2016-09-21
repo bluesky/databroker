@@ -6,16 +6,30 @@ from contextlib import contextmanager
 import logging
 import os.path
 import shutil
-
-import boltons.cacheutils
-
-from filestore.handlers_base import DuplicateHandler
-from filestore.utils import _make_sure_path_exists
 import os
-
+import boltons.cacheutils
 from . import core
 
 _API_MAP = {1: core}
+
+
+if six.PY2:
+    # http://stackoverflow.com/a/5032238/380231
+    def _make_sure_path_exists(path):
+        import errno
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+else:
+    # technically, this won't work with py3.1, but no one uses that
+    def _make_sure_path_exists(path):
+        return os.makedirs(path, exist_ok=True)
+
+
+class DuplicateHandler(Exception):
+    pass
 
 
 logger = logging.getLogger(__name__)
@@ -66,6 +80,7 @@ except ImportError:
 class FileStoreTemplateRO(object):
     '''Base FileStore object that knows how to read the database.'''
     KNOWN_SPEC = dict()
+    DuplicateHandler = DuplicateHandler
 
     @property
     def version(self):
