@@ -80,14 +80,15 @@ import filestore.api as fsapi
 from filestore.handlers import NpyHandler
 # spec is the identifier that will be used later to link
 spec = 'npy'
+datum_kwargs = {}
 
 # insert the records into filestore for the x data set
 resource_document = fsapi.insert_resource(spec, x_datapath)
-datum_document = fsapi.insert_datum(resource_document, x_uid)
+datum_document = fsapi.insert_datum(resource_document, x_uid, datum_kwargs)
 
 # insert the records into filestore for the y data set
 resource_document = fsapi.insert_resource(spec, y_datapath)
-datum_document = fsapi.insert_datum(resource_document, y_uid)
+datum_document = fsapi.insert_datum(resource_document, y_uid, datum_kwargs)
 
 # Retrieve data from filestore
 # Here is where the payoff happens for using this framework
