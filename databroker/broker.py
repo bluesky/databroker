@@ -615,9 +615,7 @@ class Broker(object):
             for k, v in d['data_keys'].items():
                 if 'external' in v:
                     external_keys.add(k)
-
-        ev_gen = self.get_events(header, stream_name=None,
-                                 fields=external_keys, fill=False)
+        ev_gen = self.get_events(header, fields=external_keys, fill=False)
         resources = set()
         for ev in ev_gen:
             for v in ev['data'].values():
