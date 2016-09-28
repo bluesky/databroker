@@ -10,7 +10,7 @@ _API_MAP = {1: core}
 
 
 class MDSRO(object):
-    def __init__(self, config, version=1, auth=True):
+    def __init__(self, config, version=1, auth=False):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
