@@ -1,0 +1,82 @@
+#! /usr/bin/env python
+import sys
+
+# adapted from
+# https://code.activestate.com/recipes/577058/
+def query_yes_no(question, default="no"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is one of "yes" or "no".
+    """
+    valid = {"yes":"yes",   "y":"yes",  "ye":"yes",
+             "no":"no",     "n":"no"}
+    if default == None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while 1:
+        choice = input(question + prompt).lower()
+        if default is not None and choice == '':
+            return default
+        elif choice in valid.keys():
+            return valid[choice]
+        else:
+            print("Please respond with 'yes' or 'no' "
+                  "(or 'y' or 'n').\n")
+
+def move_header(db, header, new_root, pre_shift, **kwargs):
+    resource = list(db.get_resource_uids(header))
+    if pre_shift != 0:
+        for r in resource:
+            db.fs.shift_root(r, pre_shift)
+    for r in resource:
+        print("about to rename files in resource {}".format(r))
+        db.fs.change_root(r, new_root, **kwargs)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Rename all files associated with a '
+                                     'runstart and update filestore accordingly.\n\n'
+                                     'This tool is not recommended for use on production data.')
+    parser.add_argument('header', help='runstart uid to move the files of')
+    parser.add_argument('server_url', help='server where mds and fs are hosted')
+    parser.add_argument('new_root', help='the new root to move the files to')
+    parser.add_argument('--preshift', type=int,
+                        help='shift old root by this many level.  '
+                        'If a root has not been set in the '
+                        'resource documents this must be used to ensure that old root is '
+                        'non empty.', default=0)
+    args = parser.parse_args()
+
+    sure = query_yes_no("You are about to rename some files, "
+                        "are you sure you want do this?")
+    if sure == 'no':
+        sys.exit(0)
+
+    from databroker import Broker
+    from databroker.core import register_builtin_handlers
+    from metadatastore.mds import MDS
+    from filestore.fs import FileStoreMoving
+
+    mds = MDS({'host': args.server_url, 'port': 27017,
+               'database': 'datastore', 'timezone': 'US/Eastern'},
+              auth=False)
+    fs = FileStoreMoving({'host': args.server_url, 'port': 27017,
+                          'database': 'filestore'})
+    register_builtin_handlers(fs)
+    db = Broker(mds, fs)
+    header = db[args.header]
+    kwargs = {'verify': False, 'remove_origin': True,
+              'file_rename_hook': lambda n, N, s, d: print('{} -> {}'.format(s, d))}
+    move_header(db, header, args.new_root, args.preshift, **kwargs)
