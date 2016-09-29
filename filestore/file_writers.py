@@ -87,7 +87,8 @@ class NpyWriter(HandlerBase):
 
         np.save(self._fpath, np.asanyarray(data))
         self._writable = False
-        fb = fsc.insert_resource(self.SPEC_NAME, self._fpath, self._f_custom)
+        fb = fsc.insert_resource(self.SPEC_NAME, self._fpath, self._f_custom,
+                                 root='/')
         evl = fsc.insert_datum(fb, uid, {})
 
         return evl.datum_id
