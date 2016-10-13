@@ -376,7 +376,7 @@ class MDS(MDSRO):
         self._post(self._event_url, data=data)
         return uid
 
-    def bulk_insert_events(self, descriptor, events, validate):
+    def bulk_insert_events(self, descriptor, events, validate=False):
         events = list(events)
         def event_factory():
             for ev in events:
