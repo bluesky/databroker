@@ -23,8 +23,8 @@ class MDSRO:
     @property
     def _server_path(self):
         return "http://{}:{}/".format(self.config['host'],
-                                      self.config['port'],
-                                      self.timezone['timezone'])
+                                      self.config['port']
+                                      )
 
     @property
     def _rstart_url(self):
@@ -372,7 +372,7 @@ class MDS(MDSRO):
         self._post(self._event_url, data=data)
         return uid
 
-    def bulk_insert_events(self, descriptor, events, validate):
+    def bulk_insert_events(self, descriptor, events, validate=False):
         events = list(events)
         def event_factory():
             for ev in events:
