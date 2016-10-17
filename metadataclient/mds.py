@@ -18,13 +18,19 @@ class MDSRO:
         self._RUN_START_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
-        self.config = self._verify_cfg(config)
+        self.config = config
 
-    def _verify_cfg(self, config):
-        config['host']
-        config['port']
-        config['timezone']
-        return config
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        for key in ['host', 'port', 'timezone']:
+            if key not in config:
+                raise KeyError("The key {!r} is missing from the "
+                               "configuration.".format(key))
+        self._config = config
 
     @property
     def _server_path(self):
@@ -124,9 +130,6 @@ class MDSRO:
         self._RUN_START_CACHE.clear()
         self._RUNSTOP_CACHE.clear()
         self._DESCRIPTOR_CACHE.clear()
-
-    def reset_connection(self):
-        self.config.clear()
 
     def queryfactory(self, query, signature):
         """
@@ -373,7 +376,7 @@ class MDS(MDSRO):
         self._post(self._event_url, data=data)
         return uid
 
-    def bulk_insert_events(self, descriptor, events, validate):
+    def bulk_insert_events(self, descriptor, events, validate=False):
         events = list(events)
         def event_factory():
             for ev in events:
