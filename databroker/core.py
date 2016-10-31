@@ -9,7 +9,7 @@ from pims import FramesSequence, Frame
 import logging
 import numbers
 import boltons.cacheutils
-
+import re
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -113,7 +113,8 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
     headers : Header or iterable of Headers
         The headers to fetch the events for
     fields : list, optional
-        whitelist of field names of interest; if None, all are returned
+        whitelist of field names of interest or regular expression;
+        if None, all are returned
     stream_name : string, optional
         Get events from only one "event stream" with this name. Default value
         is special sentinel class, `ALL`, which gets all streams together.
@@ -149,10 +150,14 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
     else:
         headers = [headers]
 
+    no_fields_filter = False
     if fields is None:
-        fields = []
+        fields = ['.*']
+        no_fields_filter = True
     fields = set(fields)
     _check_fields_exist(fields, headers)
+
+    comp_re = re.compile('|'.join(fields))
 
     for k in kwargs:
         if k not in plugins:
@@ -175,26 +180,38 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
             extra_fields = set()
             if fields:
                 event_fields = set(descriptor['data_keys'])
-                discard_fields = event_fields - fields
-                extra_fields = fields - event_fields
+                selected_fields = set(filter(comp_re.fullmatch, event_fields))
+                discard_fields = event_fields - selected_fields
+
+            all_extra_data = {}
+            all_extra_ts = {}
+
+            if not no_fields_filter:
+                # Look in the descriptor, then start, then stop.
+                config_data_fields = set(filter(comp_re.fullmatch, config_data)) - selected_fields
+                for field in config_data_fields:
+                    selected_fields.append(field)
+                    all_extra_data[field] = config_data[field]
+                    all_extra_ts[field] = config_ts[field]
+
+                start_fields = set(filter(comp_re.fullmatch, start)) - selected_fields
+                for field in start_fields:
+                    all_extra_data[field] = start[field]
+                    all_extra_ts[field] = start['time']
+
+                stop_fields = set(filter(comp_re.fullmatch, stop)) - selected_fields
+                for field in stop_fields:
+                    all_extra_data[field] = stop[field]
+                    all_extra_ts[field] = stop['time']
+
             for event in mds.get_events_generator(descriptor):
                 event_data = event.data  # cache for perf
                 event_timestamps = event.timestamps
+                event_data.update(all_extra_data)
+                event_timestamps.update(all_extra_ts)
                 for field in discard_fields:
                     del event_data[field]
                     del event_timestamps[field]
-                for field in extra_fields:
-                    # Look in the descriptor, then start, then stop.
-                    if field in config_data:
-                        event_data[field] = config_data[field]
-                        event_timestamps[field] = config_ts[field]
-                    elif field in start:
-                        event_data[field] = start[field]
-                        event_timestamps[field] = start['time']
-                    elif field in stop:
-                        event_data[field] = stop[field]
-                        event_timestamps[field] = stop['time']
-                    # (else omit it from the events of this descriptor)
                 if not event_data:
                     # Skip events that are now empty because they had no
                     # applicable fields.
@@ -477,6 +494,9 @@ def get_fields(header, name=None):
 
 
 def _check_fields_exist(fields, headers):
+    if len(fields) == 0:
+        fields = ['.*']
+    comp_re = re.compile('|'.join(fields))
     all_fields = set()
     for header in headers:
         all_fields.update(header['start'])
@@ -486,9 +506,9 @@ def _check_fields_exist(fields, headers):
             objs_conf = descriptor.get('configuration', {})
             config_fields = [obj_conf['data'] for obj_conf in objs_conf.values()]
             all_fields.update(chain(*config_fields))
-    missing = fields - all_fields
-    if missing:
-        raise ValueError("The fields %r were not found." % missing)
+    missing = len(set(filter(comp_re.fullmatch,all_fields))) > 0
+    if not missing:
+        raise ValueError("The fields %r were not found." %fields)
 
 
 def get_images(fs, headers, name, handler_registry=None,
