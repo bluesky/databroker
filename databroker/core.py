@@ -182,30 +182,36 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
                 event_fields = set(descriptor['data_keys'])
                 selected_fields = set(filter(comp_re.fullmatch, event_fields))
                 discard_fields = event_fields - selected_fields
+
+            all_extra_data = {}
+            all_extra_ts = {}
+
+            if not no_fields_filter:
+                # Look in the descriptor, then start, then stop.
+                config_data_fields = set(filter(comp_re.fullmatch, config_data)) - selected_fields
+                for field in config_data_fields:
+                    selected_fields.append(field)
+                    all_extra_data[field] = config_data[field]
+                    all_extra_ts[field] = config_ts[field]
+
+                start_fields = set(filter(comp_re.fullmatch, start)) - selected_fields
+                for field in start_fields:
+                    all_extra_data[field] = start[field]
+                    all_extra_ts[field] = start['time']
+
+                stop_fields = set(filter(comp_re.fullmatch, stop)) - selected_fields
+                for field in stop_fields:
+                    all_extra_data[field] = stop[field]
+                    all_extra_ts[field] = stop['time']
+
             for event in mds.get_events_generator(descriptor):
                 event_data = event.data  # cache for perf
                 event_timestamps = event.timestamps
+                event_data.update(all_extra_data)
+                event_timestamps.update(all_extra_ts)
                 for field in discard_fields:
                     del event_data[field]
                     del event_timestamps[field]
-                if not no_fields_filter:
-                    # Look in the descriptor, then start, then stop.
-                    config_data = set(filter(comp_re.fullmatch, config_data)) - selected_fields
-                    for field in config_data:
-                        selected_fields.append(field)
-                        event_data[field] = config_data[field]
-                        event_timestamps[field] = config_ts[field]
-
-                    start = set(filter(comp_re.fullmatch, start)) - selected_fields
-                    for field in start:
-                        event_data[field] = start[field]
-                        event_timestamps[field] = start['time']
-
-                    stop = set(filter(comp_re.fullmatch, stop)) - selected_fields
-                    for field in stop:
-                        event_data[field] = stop[field]
-                        event_timestamps[field] = stop['time']
-                    # (else omit it from the events of this descriptor)
                 if not event_data:
                     # Skip events that are now empty because they had no
                     # applicable fields.
@@ -488,6 +494,8 @@ def get_fields(header, name=None):
 
 
 def _check_fields_exist(fields, headers):
+    if len(fields) == 0:
+        fields = ['.*']
     comp_re = re.compile('|'.join(fields))
     all_fields = set()
     for header in headers:

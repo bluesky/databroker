@@ -387,14 +387,14 @@ def test_get_fields(db, RE):
 
 @py3
 def test_configuration(db, RE):
-    det_with_conf = Reader('det_with_conf', {'a': lambda: 1}, {'b': lambda: 2})
+    det_with_conf = Reader('det_with_conf', {'a': lambda: 1, 'b': lambda: 2})
     RE.subscribe('all', db.mds.insert)
     uid, = RE(count([det_with_conf]), c=3)
     h = db[uid]
 
     # check that config is not included by default
     ev = next(db.get_events(h))
-    assert set(ev['data'].keys()) == set(['a'])
+    assert set(ev['data'].keys()) == set(['a','b'])
 
     # find config in descriptor['configuration']
     ev = next(db.get_events(h, fields=['a', 'b']))
