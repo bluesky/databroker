@@ -404,7 +404,7 @@ class Broker(object):
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
                   convert_times=True, timezone=None, handler_registry=None,
-                  handler_overrides=None):
+                  handler_overrides=None, localize_times=True):
         """
         Make a table (pandas.DataFrame) from given run(s).
 
@@ -432,6 +432,21 @@ class Broker(object):
             mapping filestore specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
+        localize_times : bool, optional
+            If the times should be localized to the 'local' time zone.  If
+            True (the default) the time stamps are converted to the localtime
+            zone (as configure in mds).
+
+            This is problematic for several reasons:
+
+              - apparent gaps or duplicate times around DST transitions
+              - incompatibility with every other time stamp (which is in UTC)
+
+            however, this makes the dataframe repr look nicer
+
+            This implies convert_times.
+
+            Defaults to True to preserve back-compatibility.
 
         Returns
         -------
@@ -443,7 +458,8 @@ class Broker(object):
                          fields=fields, stream_name=stream_name, fill=fill,
                          convert_times=convert_times,
                          timezone=timezone, handler_registry=handler_registry,
-                         handler_overrides=handler_overrides)
+                         handler_overrides=handler_overrides,
+                         localize_times=localize_times)
         return res
 
     def get_images(self, headers, name, handler_registry=None,
