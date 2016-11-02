@@ -525,7 +525,8 @@ class Broker(object):
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
                   convert_times=True, timezone=None, handler_registry=None,
-                  handler_overrides=None, localize_times=True):
+                  handler_overrides=None, localize_times=True,
+                  tz_aware_times=False):
         """
         Make a table (pandas.DataFrame) from given run(s).
 
@@ -566,9 +567,13 @@ class Broker(object):
 
             however, this makes the dataframe repr look nicer
 
-            This implies convert_times.
+            Ignored if `convert_times` is False
 
             Defaults to True to preserve back-compatibility.
+
+        tz_aware_times : bool, optional
+            If the 'time' column should be naive or TZ aware,  Default to False
+            (which returns naive values).  Ignored if `convert_times` is False
 
         Returns
         -------
@@ -581,7 +586,8 @@ class Broker(object):
                          convert_times=convert_times,
                          timezone=timezone, handler_registry=handler_registry,
                          handler_overrides=handler_overrides,
-                         localize_times=localize_times)
+                         localize_times=localize_times,
+                         tz_aware_times=tz_aware_times)
         return res
 
     def get_images(self, headers, name, handler_registry=None,
