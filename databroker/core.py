@@ -227,7 +227,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
 
 def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
               convert_times=True, timezone=None, handler_registry=None,
-              handler_overrides=None):
+              handler_overrides=None, localize_times=True):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -249,14 +249,29 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
         Whether externally-stored data should be filled in. Defaults to False.
     convert_times : bool, optional
         Whether to convert times from float (seconds since 1970) to
-        numpy datetime64, using pandas. True by default.
+        numpy datetime64, using pandas. True by default, returns naive
+        datetime64 objects in UTC
     timezone : str, optional
         e.g., 'US/Eastern'
     handler_registry : dict, optional
         mapping filestore specs (strings) to handlers (callable classes)
     handler_overrides : dict, optional
         mapping data keys (strings) to handlers (callable classes)
+    localize_times : bool, optional
+        If the times should be localized to the 'local' time zone.  If
+        True (the default) the time stamps are converted to the localtime
+        zone (as configure in mds).
 
+        This is problematic for several reasons:
+
+          - apparent gaps or duplicate times around DST transitions
+          - incompatibility with every other time stamp (which is in UTC)
+
+        however, this makes the dataframe repr look nicer
+
+        This implies convert_times.
+
+        Defaults to True to preserve back-compatibility.
     Returns
     -------
     table : pandas.DataFrame
@@ -311,10 +326,20 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
             payload = mds.get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
-            if convert_times:
-                times = pd.to_datetime(
-                    pd.Series(times, index=seq_nums),
-                    unit='s', utc=True).dt.tz_localize(timezone)
+            # if converting to datetime64 (in utc or 'local' tz)
+            if convert_times or localize_times:
+                times = pd.to_datetime(times, unit='s')
+            # make sure this is a series
+            times = pd.Series(times, index=seq_nums)
+
+            # if localizing to 'local' time
+            if localize_times:
+                times = (times
+                         .dt.tz_localize('UTC')     # first make tz aware
+                         .dt.tz_convert(timezone)   # convert to 'local'
+                         .dt.tz_localize(None)      # make naive again
+                         )
+
             df['time'] = times
             for field, values in six.iteritems(data):
                 if field in discard_fields:
