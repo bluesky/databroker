@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from ..mongoquery.mds import JSONCollection
 from ..template.mds import MDSTemplate, MDSROTemplate
 from ..template.core import ASCENDING, DESCENDING
-
+from .. import _make_sure_path_exists
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
 CREATE_TABLE = "CREATE TABLE %s "
@@ -193,6 +193,7 @@ class _CollectionMixin(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
+        _make_sure_path_exists(self._config['directory'])
 
     @property
     def config(self):

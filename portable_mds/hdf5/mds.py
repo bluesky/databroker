@@ -6,12 +6,15 @@ from collections import defaultdict
 from ..mongoquery.mds import JSONCollection
 from ..template.mds import MDSTemplate, MDSROTemplate
 from ..template.core import ASCENDING, DESCENDING
+from .. import _make_sure_path_exists
+
 
 def append(dataset, data):
     old_size = dataset.size
     new_size = old_size + len(data)
     dataset.resize((new_size,))
     dataset[old_size:] = data
+
 
 class RunStartCollection(JSONCollection):
     def __init__(self, event_col, *args, **kwargs):
@@ -146,6 +149,7 @@ class _CollectionMixin(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
+        _make_sure_path_exists(self._config['directory'])
 
     @property
     def config(self):
