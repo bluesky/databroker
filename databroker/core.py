@@ -152,12 +152,12 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
 
     no_fields_filter = False
     if fields is None:
-        fields = ['.*']
         no_fields_filter = True
+        fields = []
     fields = set(fields)
     _check_fields_exist(fields, headers)
 
-    comp_re = re.compile('|'.join(fields))
+    comp_re = _compile_re(fields)
 
     for k in kwargs:
         if k not in plugins:
@@ -180,7 +180,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
             extra_fields = set()
             if fields:
                 event_fields = set(descriptor['data_keys'])
-                selected_fields = set(filter(comp_re.fullmatch, event_fields))
+                selected_fields = set(filter(comp_re.match, event_fields))
                 discard_fields = event_fields - selected_fields
 
             all_extra_data = {}
@@ -188,18 +188,18 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
 
             if not no_fields_filter:
                 # Look in the descriptor, then start, then stop.
-                config_data_fields = set(filter(comp_re.fullmatch, config_data)) - selected_fields
+                config_data_fields = set(filter(comp_re.match, config_data)) - selected_fields
                 for field in config_data_fields:
                     selected_fields.append(field)
                     all_extra_data[field] = config_data[field]
                     all_extra_ts[field] = config_ts[field]
 
-                start_fields = set(filter(comp_re.fullmatch, start)) - selected_fields
+                start_fields = set(filter(comp_re.match, start)) - selected_fields
                 for field in start_fields:
                     all_extra_data[field] = start[field]
                     all_extra_ts[field] = start['time']
 
-                stop_fields = set(filter(comp_re.fullmatch, stop)) - selected_fields
+                stop_fields = set(filter(comp_re.match, stop)) - selected_fields
                 for field in stop_fields:
                     all_extra_data[field] = stop[field]
                     all_extra_ts[field] = stop['time']
@@ -518,10 +518,29 @@ def get_fields(header, name=None):
     return fields
 
 
-def _check_fields_exist(fields, headers):
+def _compile_re(fields=[]):
+    """
+    Return a regular expression object based on a list of regular expressions.
+
+    Parameters
+    ----------
+    fields : list, optional
+        List of regular expressions. If fields is empty returns a general RE.
+
+    Returns
+    -------
+    comp_re : regular expression object
+
+    """
     if len(fields) == 0:
         fields = ['.*']
-    comp_re = re.compile('|'.join(fields))
+    f = ["(?:" + regex + r")\Z" for regex in fields]
+    comp_re = re.compile('|'.join(f))
+    return comp_re
+
+
+def _check_fields_exist(fields, headers):
+    comp_re = _compile_re(fields)
     all_fields = set()
     for header in headers:
         all_fields.update(header['start'])
@@ -531,7 +550,7 @@ def _check_fields_exist(fields, headers):
             objs_conf = descriptor.get('configuration', {})
             config_fields = [obj_conf['data'] for obj_conf in objs_conf.values()]
             all_fields.update(chain(*config_fields))
-    missing = len(set(filter(comp_re.fullmatch,all_fields))) > 0
+    missing = len(set(filter(comp_re.match,all_fields))) > 0
     if not missing:
         raise ValueError("The fields %r were not found." %fields)
 
