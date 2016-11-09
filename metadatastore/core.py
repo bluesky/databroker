@@ -1032,19 +1032,21 @@ def find_events(start_col, start_cache,
                             ('time', pymongo.ASCENDING)],
                       no_cursor_timeout=True)
 
-    for ev in events:
-        ev.pop('_id', None)
-        # pop the descriptor oid
-        desc_uid = ev.pop('descriptor')
-        # replace it with the defererenced descriptor
-        ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
-                                                descriptor_cache,
-                                                start_col, start_cache)
+    try:
+        for ev in events:
+            ev.pop('_id', None)
+            # pop the descriptor oid
+            desc_uid = ev.pop('descriptor')
+            # replace it with the defererenced descriptor
+            ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
+                                                    descriptor_cache,
+                                                    start_col, start_cache)
 
-        # wrap it our fancy dict
-        ev = doc.Document('Event', ev)
-        yield ev
-    events.close()
+            # wrap it our fancy dict
+            ev = doc.Document('Event', ev)
+            yield ev
+    finally:
+        events.close()
 
 def find_last(start_col, start_cache, num):
     """Locate the last `num` RunStart Documents
