@@ -1029,7 +1029,8 @@ def find_events(start_col, start_cache,
     col = event_col
     events = col.find(kwargs,
                       sort=[('descriptor', pymongo.DESCENDING),
-                            ('time', pymongo.ASCENDING)])
+                            ('time', pymongo.ASCENDING)],
+                      no_cursor_timeout=True)
 
     for ev in events:
         ev.pop('_id', None)
@@ -1043,7 +1044,7 @@ def find_events(start_col, start_cache,
         # wrap it our fancy dict
         ev = doc.Document('Event', ev)
         yield ev
-
+    events.close()
 
 def find_last(start_col, start_cache, num):
     """Locate the last `num` RunStart Documents
