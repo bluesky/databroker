@@ -100,7 +100,7 @@ class Header(doc.Document):
         return cls('header', d)
 
 
-def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
+def get_events(mds, fs, es, headers, fields=None, stream_name=ALL, fill=False,
                handler_registry=None, handler_overrides=None, plugins=None,
                **kwargs):
     """
@@ -110,6 +110,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
     ----------
     mds : MDSRO
     fs : FileStoreRO
+    es : EventStoreRO
     headers : Header or iterable of Headers
         The headers to fetch the events for
     fields : list, optional
@@ -204,7 +205,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
                     all_extra_data[field] = stop[field]
                     all_extra_ts[field] = stop['time']
 
-            for event in mds.get_events_generator(descriptor):
+            for event in es.get_events_generator(descriptor):
                 event_data = event.data  # cache for perf
                 event_timestamps = event.timestamps
                 event_data.update(all_extra_data)
@@ -225,9 +226,10 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
                 yield ev
 
 
-def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
-              convert_times=True, timezone=None, handler_registry=None,
-              handler_overrides=None, localize_times=True):
+def get_table(mds, fs, es, headers, fields=None, stream_name='primary',
+              fill=False, convert_times=True, timezone=None,
+              handler_registry=None, handler_overrides=None,
+              localize_times=True):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -235,6 +237,7 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
     ----------
     mds : MDSRO
     fs : FileStoreRO
+    es : EventStoreRO
     headers : Header or iterable of Headers
         The headers to fetch the events for
     fields : list, optional
@@ -272,6 +275,7 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
         This implies convert_times.
 
         Defaults to True to preserve back-compatibility.
+
     Returns
     -------
     table : pandas.DataFrame
@@ -323,7 +327,7 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
                 event_fields = set(descriptor['data_keys'])
                 discard_fields = event_fields - fields
                 extra_fields = fields - event_fields
-            payload = mds.get_events_table(descriptor)
+            payload = es.get_events_table(descriptor)
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
             # if converting to datetime64 (in utc or 'local' tz)
@@ -383,7 +387,7 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
         return pd.DataFrame()
 
 
-def restream(mds, fs, headers, fields=None, fill=False):
+def restream(mds, fs, es, headers, fields=None, fill=False):
     """
     Get all Documents from given run(s).
 
@@ -391,6 +395,7 @@ def restream(mds, fs, headers, fields=None, fill=False):
     ----------
     mds : MDSRO
     fs : FileStoreRO
+    es : EventStoreRO
     headers : Header or iterable of Headers
         header or headers to fetch the documents for
     fields : list, optional
@@ -434,7 +439,7 @@ def restream(mds, fs, headers, fields=None, fill=False):
         for descriptor in header['descriptors']:
             yield 'descriptor', descriptor
         # When py2 compatibility is dropped, use yield from.
-        for event in get_events(mds, fs, header, fields=fields, fill=fill):
+        for event in get_events(mds, fs, es, header, fields=fields, fill=fill):
             yield 'event', event
         yield 'stop', header['stop']
 
@@ -442,7 +447,7 @@ def restream(mds, fs, headers, fields=None, fill=False):
 stream = restream  # compat
 
 
-def process(mds, fs, headers, func, fields=None, fill=False):
+def process(mds, fs, es, headers, func, fields=None, fill=False):
     """
     Get all Documents from given run to a callback.
 
@@ -450,6 +455,7 @@ def process(mds, fs, headers, func, fields=None, fill=False):
     ----------
     mds : MDSRO
     fs : FileStoreRO
+    es : EventStoreRO
     headers : Header or iterable of Headers
         header or headers to process documents from
     func : callable
@@ -477,7 +483,7 @@ def process(mds, fs, headers, func, fields=None, fill=False):
     --------
     restream
     """
-    for name, doc in restream(mds, fs, headers, fields, fill):
+    for name, doc in restream(mds, fs, es, headers, fields, fill):
         func(name, doc)
 
 
@@ -583,7 +589,7 @@ def get_images(fs, headers, name, handler_registry=None,
 
 
 class Images(FramesSequence):
-    def __init__(self, mds, fs, headers, name, handler_registry=None,
+    def __init__(self, mds, fs, es, headers, name, handler_registry=None,
                  handler_override=None):
         """
         Load images from a detector for given Header(s).
@@ -592,6 +598,7 @@ class Images(FramesSequence):
         ----------
         fs : FileStoreRO
         headers : Header or list of Headers
+        es : EventStoreRO
         name : str
             field name (data key) of a detector
         handler_registry : dict, optional
@@ -607,7 +614,7 @@ class Images(FramesSequence):
                 # do something
         """
         self.fs = fs
-        events = get_events(mds, fs, headers, [name], fill=False)
+        events = get_events(mds, fs, es, headers, [name], fill=False)
         self._datum_uids = [event.data[name] for event in events
                             if name in event.data]
         self._len = len(self._datum_uids)
