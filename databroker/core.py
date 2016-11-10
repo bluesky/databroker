@@ -176,12 +176,13 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
             config_ts = merge(obj_conf['timestamps']
                               for obj_conf in objs_config)
-            discard_fields = set()
-            extra_fields = set()
             if fields:
                 event_fields = set(descriptor['data_keys'])
                 selected_fields = set(filter(comp_re.match, event_fields))
                 discard_fields = event_fields - selected_fields
+            else:
+                discard_fields = set()
+                selected_fields = set()
 
             all_extra_data = {}
             all_extra_ts = {}
@@ -190,7 +191,7 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
                 # Look in the descriptor, then start, then stop.
                 config_data_fields = set(filter(comp_re.match, config_data)) - selected_fields
                 for field in config_data_fields:
-                    selected_fields.append(field)
+                    selected_fields.add(field)
                     all_extra_data[field] = config_data[field]
                     all_extra_ts[field] = config_ts[field]
 

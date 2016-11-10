@@ -49,10 +49,13 @@ def build_sqlite_backed_broker(request):
     return Broker(mds, fs)
 
 
-@pytest.fixture(params=['sqlite'], scope='function')
+@pytest.fixture(params=['sqlite', 'mongo'], scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
-    return lambda: build_sqlite_backed_broker(request)
+    param_map = {'sqlite': lambda: build_sqlite_backed_broker(request),
+                 'mongo': lambda: build_pymongo_backed_broker(request)}
+
+    return param_map[request.param]
 
 
 def build_pymongo_backed_broker(request):

@@ -538,8 +538,9 @@ def test_export(broker_factory, RE):
     # Subclass ReaderWithFSHandler to implement get_file_list, required for
     # file copying. This should be added upstream in bluesky.
     class Handler(ReaderWithFSHandler):
-        def get_file_list(self):
-            return glob.glob('{}_*.npy'.format(self._name))
+        def get_file_list(self, datum_kwarg_gen):
+            return ['{name}_{index}.npy'.format(name=self._name, **kwargs)
+                    for kwargs in datum_kwarg_gen]
 
     db1 = broker_factory()
     db2 = broker_factory()
@@ -552,6 +553,9 @@ def test_export(broker_factory, RE):
     assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
 
     # test file copying
+    if not hasattr(db1.fs, 'copy_files'):
+        raise pytest.skip("This filestore does not implement copy_files.")
+
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
     detfs = ReaderWithFileStore('detfs', {'image': lambda: np.ones((5, 5))},

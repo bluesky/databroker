@@ -628,16 +628,17 @@ class Broker(object):
         '''
         external_keys = set()
         for d in header['descriptors']:
-            for k, v in d['data_keys'].items():
+            for k, v in six.iteritems(d['data_keys']):
                 if 'external' in v:
                     external_keys.add(k)
         ev_gen = self.get_events(header, stream_name=ALL,
                                  fields=external_keys, fill=False)
         resources = set()
         for ev in ev_gen:
-            for v in ev['data'].values():
-                res = self.fs.resource_given_eid(v)
-                resources.add(res['uid'])
+            for k, v in six.iteritems(ev['data']):
+                if k in external_keys:
+                    res = self.fs.resource_given_eid(v)
+                    resources.add(res['uid'])
         return resources
 
     def restream(self, headers, fields=None, fill=False):
