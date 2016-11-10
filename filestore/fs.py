@@ -585,6 +585,17 @@ class FileStore(FileStoreRO):
         return self._api.get_file_list(actual_resource, datum_kwarg_gen,
                                        self.get_spec_handler)
 
+    def resource_given_eid(self, eid):
+        '''Given a datum eid return its Resource document
+        '''
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it so no need for this method')
+
+        res = self._api.resource_given_eid(self._datum_col, eid,
+                                           self._datum_cache, logger)
+        return self._resource_cache[res]
+
 
 class FileStoreMoving(FileStore):
     '''FileStore object that knows how to move files.'''
@@ -676,14 +687,3 @@ class FileStoreMoving(FileStore):
                 del self._handler_cache[k]
 
         return ret
-
-    def resource_given_eid(self, eid):
-        '''Given a datum eid return it's Resource document
-        '''
-        if self.version == 0:
-            raise NotImplementedError('V0 has no notion of root so can not '
-                                      'change it so no need for this method')
-
-        res = self._api.resource_given_eid(self._datum_col, eid,
-                                           self._datum_cache, logger)
-        return self._resource_cache[res]
