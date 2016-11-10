@@ -246,7 +246,7 @@ def _(key, db):
 
 
 class Broker(object):
-    def __init__(self, mds, fs, plugins=None, filters=None):
+    def __init__(self, mds, fs, plugins=None, filters=None, es=None):
         """
         Unified interface to data sources
 
@@ -260,9 +260,12 @@ class Broker(object):
         filters : list
             list of mongo queries to be combined with query using '$and',
             acting as a filter to restrict the results
+        es : EventStoreRO, optional
+            If not provides, mds is expected to provide event storage.
         """
         self.mds = mds
         self.fs = fs
+        self.es = es
         if plugins is None:
             plugins = {}
         self.plugins = plugins
@@ -270,6 +273,17 @@ class Broker(object):
             filters = []
         self.filters = filters
         self.aliases = {}
+
+    @property
+    def es(self):
+        return self._es
+
+    @es.setter
+    def es(self, es):
+        if es is None:
+            self._es = self.mds
+        else:
+            self._es = es
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -578,7 +592,7 @@ class Broker(object):
         """
         if timezone is None:
             timezone = self.mds.config['timezone']
-        res = _get_table(mds=self.mds, fs=self.fs, headers=headers,
+        res = _get_table(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
                          fields=fields, stream_name=stream_name, fill=fill,
                          convert_times=convert_times,
                          timezone=timezone, handler_registry=handler_registry,
@@ -610,8 +624,9 @@ class Broker(object):
         >>> for image in images:
                 # do something
         """
-        return Images(self.mds, self.fs, headers, name, handler_registry,
-                      handler_override)
+        return Images(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+                      name=name, handler_registry=handler_registry,
+                      handler_override=handler_override)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids
@@ -681,7 +696,8 @@ class Broker(object):
         --------
         process
         """
-        res = _restream(self.mds, self.fs, headers, fields=fields, fill=fill)
+        res = _restream(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+                        fields=fields, fill=fill)
         for name_doc_pair in res:
             yield name_doc_pair
 
@@ -721,8 +737,8 @@ class Broker(object):
         --------
         restream
         """
-        _process(mds=self.mds, fs=self.fs, headers=headers, func=func,
-                 fields=fields, fill=fill)
+        _process(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+                 func=func, fields=fields, fill=fill)
 
     get_fields = staticmethod(get_fields)  # for convenience
 
