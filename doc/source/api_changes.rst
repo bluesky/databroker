@@ -6,6 +6,7 @@
 
 Non-backward compatible API changes
 
+
 v0.7.0
 ======
 
@@ -44,6 +45,13 @@ Changes to functions in `databroker.core`
 
 Explicitly passed mds/fs have been removed, instead relying on the
 DataBroker instance included in the header.
+
+Break up internal structure of databroker
+-----------------------------------------
+
+* The core functions that touch events have a new required argument, ``es``.
+  This does not affect the API of the ``Broker`` object, only the functions in
+  the ``core`` module.
 
 v0.4.2
 ======
