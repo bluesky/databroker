@@ -244,33 +244,6 @@ def get_datum_by_res_gen(datum_col, resource_uid):
         yield Document('datum', d)
 
 
-def get_datumkw_by_res_gen(datum_col, resource_uid):
-    '''Given a resource uid, get all datum_kwargs
-
-    No order is guaranteed.
-
-    Parameters
-    ----------
-    datam_col : Collection
-        The Datum collection
-
-    resource_uid : Document or str
-       The resource to work on
-
-    Yields
-    ------
-    datum_kwarg : dict
-    '''
-    resource_uid = doc_or_uid_to_uid(resource_uid)
-    cur = datum_col.find({'resource': resource_uid})
-
-    for d in cur:
-        yield d['datum_kwargs']
-
-
-get_datumkw_by_resuid_gen = get_datumkw_by_res_gen  # back-compat
-
-
 def get_file_list(resource, datum_kwarg_gen, get_spec_handler):
     """
     Given a resource and an iterable of datum kwargs, get a list of
