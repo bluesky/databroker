@@ -217,8 +217,8 @@ def get_resource_history(col, resource):
         yield Document('update', doc)
 
 
-def get_datumkw_by_resuid_gen(datum_col, resource_uid):
-    '''Given a resource uid, get all datum_kwargs
+def get_datum_by_res_gen(datum_col, resource_uid):
+    '''Given a resource uid, get all datums
 
     No order is guaranteed.
 
@@ -235,13 +235,13 @@ def get_datumkw_by_resuid_gen(datum_col, resource_uid):
 
     Yields
     ------
-    datum_kwarg : dict
+    datum : doct.Document
     '''
     resource_uid = doc_or_uid_to_uid(resource_uid)
     cur = datum_col.find({'resource': resource_uid})
 
     for d in cur:
-        yield d['datum_kwargs']
+        yield Document('datum', d)
 
 
 def get_file_list(resource, datum_kwarg_gen, get_spec_handler):

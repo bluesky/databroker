@@ -542,7 +542,8 @@ class FileStore(FileStoreRO):
         resource.setdefault('root', '')
 
         datum_gen = self.datum_gen_given_resource(resource)
-        file_list = self.get_file_list(resource, datum_gen)
+        datum_kwarg_gen = (datum['datum_kwargs'] for datum in datum_gen)
+        file_list = self.get_file_list(resource, datum_kwarg_gen)
 
         # check that all files share the same root
         old_root = resource['root']
@@ -569,8 +570,8 @@ class FileStore(FileStoreRO):
         """Given resource or resource uid return associated datum documents.
         """
         actual_resource = self.resource_given_uid(resource_or_uid)
-        datum_gen = self._api.get_datumkw_by_resuid_gen(self._datum_col,
-                                                        actual_resource['uid'])
+        datum_gen = self._api.get_datum_by_res_gen(self._datum_col,
+                                                   actual_resource['uid'])
         return datum_gen
 
     def get_file_list(self, resource_or_uid, datum_kwarg_gen):
