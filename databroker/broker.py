@@ -781,13 +781,15 @@ class Broker(object):
                 fps = self.fs.copy_files(uid, new_root=new_root, **copy_kwargs)
                 file_pairs.extend(fps)
                 res = self.fs.resource_given_uid(uid)
-                db.fs.insert_resource(res['spec'],
-                                      res['resource_path'],
-                                      res['resource_kwargs'],
-                                      root=new_root)
+                new_res = db.fs.insert_resource(res['spec'],
+                                                res['resource_path'],
+                                                res['resource_kwargs'],
+                                                root=new_root)
+                # Note that new_res has a different resource id than res.
                 datums = self.fs.datum_gen_given_resource(uid)
                 for datum in datums:
-                    db.fs.insert_datum(res, datum['datum_id'],
+                    db.fs.insert_datum(new_res,
+                                       datum['datum_id'],
                                        datum['datum_kwargs'])
         return file_pairs
 
