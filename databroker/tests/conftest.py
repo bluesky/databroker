@@ -49,6 +49,15 @@ def build_sqlite_backed_broker(request):
     return Broker(mds, fs)
 
 
+@pytest.fixture(params=['sqlite', 'mongo'], scope='function')
+def broker_factory(request):
+    "Use this to get more than one broker in a test."
+    param_map = {'sqlite': lambda: build_sqlite_backed_broker(request),
+                 'mongo': lambda: build_pymongo_backed_broker(request)}
+
+    return param_map[request.param]
+
+
 def build_pymongo_backed_broker(request):
     '''Provide a function level scoped MDS instance talking to
     temporary database on localhost:27017 with v1 schema.
@@ -59,25 +68,20 @@ def build_pymongo_backed_broker(request):
     from filestore.fs import FileStore
 
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
-    test_conf = dict(database=db_name, host='localhost',
-                     port=27017, timezone='US/Eastern')
-    mds = MDS(test_conf, 1, auth=False)
-
-    def delete_mds():
-        print("DROPPING DB")
-        mds._connection.drop_database(db_name)
-
-    request.addfinalizer(delete_mds)
+    md_test_conf = dict(database=db_name, host='localhost',
+                        port=27017, timezone='US/Eastern')
+    mds = MDS(md_test_conf, 1, auth=False)
 
     db_name = "fs_testing_base_disposable_{uid}"
-    test_conf = create_test_database(host='localhost',
-                                     port=27017, version=1,
-                                     db_template=db_name)
-    fs = FileStore(test_conf, version=1)
+    fs_test_conf = create_test_database(host='localhost',
+                                        port=27017, version=1,
+                                        db_template=db_name)
+    fs = FileStore(fs_test_conf, version=1)
 
     def delete_fs():
         print("DROPPING DB")
-        fs._connection.drop_database(test_conf['database'])
+        fs._connection.drop_database(fs_test_conf['database'])
+        mds._connection.drop_database(md_test_conf['database'])
 
     request.addfinalizer(delete_fs)
 

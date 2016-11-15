@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import tempfile
+import os
+import glob
 import logging
 import sys
 import string
@@ -13,7 +16,8 @@ import six
 import numpy as np
 
 if sys.version_info >= (3, 0):
-    from bluesky.examples import det, det1, det2, Reader
+    from bluesky.examples import (det, det1, det2, Reader, ReaderWithFileStore,
+                                  ReaderWithFSHandler)
     from bluesky.plans import count, pchain, monitor_during_wrapper
 
 logger = logging.getLogger(__name__)
@@ -523,7 +527,47 @@ def test_plugins(db, RE):
         # A plugin for the keyword argument 'a' is not registered yet.
         list(db.get_events(hdr, a='echo-plugin-test'))
 
-
     db.plugins = {'a': EchoPlugin()}
     assert 'echo-plugin-test' in list(db.get_events(hdr, a='echo-plugin-test'))
     assert 'echo-plugin-test' not in list(db.get_events(hdr))
+
+
+@py3
+def test_export(broker_factory, RE):
+
+    # Subclass ReaderWithFSHandler to implement get_file_list, required for
+    # file copying. This should be added upstream in bluesky.
+    class Handler(ReaderWithFSHandler):
+        def get_file_list(self, datum_kwarg_gen):
+            return ['{name}_{index}.npy'.format(name=self._name, **kwargs)
+                    for kwargs in datum_kwarg_gen]
+
+    db1 = broker_factory()
+    db2 = broker_factory()
+    RE.subscribe('all', db1.mds.insert)
+
+    # test mds only
+    uid, = RE(count([det]))
+    db1.export(db1[uid], db2)
+    assert db2[uid] == db1[uid]
+    assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
+
+    # test file copying
+    if not hasattr(db1.fs, 'copy_files'):
+        raise pytest.skip("This filestore does not implement copy_files.")
+
+    dir1 = tempfile.mkdtemp()
+    dir2 = tempfile.mkdtemp()
+    detfs = ReaderWithFileStore('detfs', {'image': lambda: np.ones((5, 5))},
+                                fs=db1.fs, save_path=dir1)
+    uid, = RE(count([detfs]))
+
+    db1.fs.register_handler('RWFS_NPY', Handler)
+    db2.fs.register_handler('RWFS_NPY', Handler)
+
+    (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
+    assert os.path.dirname(from_path) == dir1
+    assert os.path.dirname(to_path) == dir2
+    assert db2[uid] == db1[uid]
+    image1, = db1.get_images(db1[uid], 'image')
+    image2, = db2.get_images(db2[uid], 'image')
