@@ -143,6 +143,7 @@ def moving_files(request, fs_v1, tmpdir):
                                 local_path,
                                 {'fmt': fmt},
                                 root=tmpdir)
+
     datum_uids = []
     fnames = []
     os.makedirs(os.path.join(tmpdir, local_path))
@@ -176,7 +177,10 @@ def test_moving(moving_files, remove):
     res2, log = fs.change_root(res, new_root, remove_origin=remove)
     print(res2['root'])
     for f in fnames:
-        assert os.path.exists(f.replace(old_root, new_root))
+        if old_root:
+            assert os.path.exists(f.replace(old_root, new_root))
+        else:
+            assert os.path.exists(os.path.join(new_root, f[1:]))
         if remove:
             assert not os.path.exists(f)
         else:
@@ -186,6 +190,20 @@ def test_moving(moving_files, remove):
     for j, d_id in enumerate(datum_uids):
         datum = fs.retrieve(d_id)
         assert np.prod(shape) * j == np.sum(datum)
+
+
+def test_no_root_fail(fs_v1, tmpdir):
+    fs = fs_v1
+    fs.register_handler('npy_series', FileMoveTestingHandler)
+
+    local_path = 'aardvark'
+    fmt = 'cub_{point_number:05}.npy'
+    res = fs.insert_resource('npy_series',
+                             os.path.join(str(tmpdir),
+                                          local_path),
+                             {'fmt': fmt})
+    with pytest.raises(ValueError):
+        fs_v1.change_root(res, '/foobar')
 
 
 def test_get_resource(moving_files):

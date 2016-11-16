@@ -539,7 +539,6 @@ class FileStore(FileStoreRO):
 
         # get list of files
         resource = dict(self.resource_given_uid(resource_or_uid))
-        resource.setdefault('root', '')
 
         datum_gen = self.datum_gen_given_resource(resource)
         datum_kwarg_gen = (datum['datum_kwargs'] for datum in datum_gen)
@@ -547,6 +546,12 @@ class FileStore(FileStoreRO):
 
         # check that all files share the same root
         old_root = resource['root']
+        if not old_root:
+            raise ValueError("There is no 'root' in this resource which "
+                             "is required to be able to change the root. "
+                             "Please use `fs.shift_root` to move some of "
+                             "the path from the 'resource_path' to the "
+                             "'root'.")
         for f in file_list:
             if not f.startswith(old_root):
                 raise RuntimeError('something is very wrong, the files '
