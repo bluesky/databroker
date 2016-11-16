@@ -728,10 +728,6 @@ class Broker(object):
         """
         Export a list of headers.
 
-        .. warning::
-
-            This does not yet support copying external files.
-
         Parameters:
         -----------
         headers : databroker.header
