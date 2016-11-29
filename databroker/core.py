@@ -5,11 +5,14 @@ from itertools import chain
 import pandas as pd
 import tzlocal
 import doct as doc
+import doct
 from pims import FramesSequence, Frame
 import logging
 import numbers
 import boltons.cacheutils
 import re
+import attr
+
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -62,11 +65,18 @@ def fill_event(fs, event, handler_registry=None, handler_overrides=None):
                     event.filled[data_key] = True
 
 
-class Header(doc.Document):
+@attr.s(frozen=True)
+class Header(object):
     """A dictionary-like object summarizing metadata for a run."""
 
+    _name = 'header'
+    db = attr.ib(cmp=False, hash=False)
+    start = attr.ib()
+    descriptors = attr.ib()
+    stop = attr.ib(default=attr.Factory(dict))
+
     @classmethod
-    def from_run_start(cls, mds, run_start, verify_integrity=False):
+    def from_run_start(cls, db, run_start):
         """
         Build a Header from a RunStart Document.
 
@@ -79,18 +89,20 @@ class Header(doc.Document):
         -------
         header : databroker.broker.Header
         """
+        mds = db
+
         if isinstance(run_start, six.string_types):
             run_start = mds.run_start_given_uid(run_start)
         run_start_uid = run_start['uid']
 
         try:
-            run_stop = doc.ref_doc_to_uid(mds.stop_by_start(run_start_uid),
-                                          'run_start')
+            run_stop = doct.ref_doc_to_uid(mds.stop_by_start(run_start_uid),
+                                           'run_start')
         except mds.NoRunStop:
             run_stop = None
 
         try:
-            ev_descs = [doc.ref_doc_to_uid(ev_desc, 'run_start')
+            ev_descs = [doct.ref_doc_to_uid(ev_desc, 'run_start')
                         for ev_desc in
                         mds.descriptors_by_start(run_start_uid)]
         except mds.NoEventDescriptors:
@@ -99,7 +111,43 @@ class Header(doc.Document):
         d = {'start': run_start, 'descriptors': ev_descs}
         if run_stop is not None:
             d['stop'] = run_stop
-        return cls('header', d)
+        h = cls(db, **d)
+        return h
+
+    def __getitem__(self, k):
+        try:
+            return getattr(self, k)
+        except AttributeError as e:
+            raise KeyError(k)
+
+    def get(self, *args, **kwargs):
+        return getattr(self, *args, **kwargs)
+
+    def items(self):
+        for k in self.keys():
+            yield k, getattr(self, k)
+
+    def values(self):
+        for k in self.keys():
+            yield getattr(self, k)
+
+    def keys(self):
+        for k in ('start', 'descriptors', 'stop'):
+            yield k
+
+    def to_name_dict_pair(self):
+        ret = attr.asdict(self)
+        ret.pop('db')
+        return self._name, ret
+
+    def __str__(self):
+        return doct.vstr(self)
+
+    def __len__(self):
+        return 3
+
+    def __iter__(self):
+        return self.keys()
 
 
 def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
