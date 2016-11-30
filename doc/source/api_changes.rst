@@ -1,15 +1,16 @@
 .. _api_changes:
 
-API changes
-***********
+=============
+ API changes
+=============
 
 Non-backward compatible API changes
 
 v0.7.0
-------
+======
 
 ``Header``
-==========
+----------
 
 Change `Header` from a `doct.Document` subclass to a ``attr`` based
 class.  A majority of the API has been maintained, however there are
@@ -33,13 +34,18 @@ instance.
 +----------------+--------------------------+---------------------------------------+
 
 ``Header.from_run_start``
-=========================
+-------------------------
 
 Take a `DataBroker` object instead of a `MetadataStore` object.  This
 is now tacked on the `Header` object.
 
+Changes to functions in `databroker.core`
+-----------------------------------------
+
+Explicitly passed mds/fs have been removed, instead relying on the
+DataBroker instance included in the header.
 
 v0.4.2
-------
+======
 
  - Change ``name`` -> ``stream_name`` in the signature of `get_table`

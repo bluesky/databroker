@@ -518,13 +518,11 @@ class Broker(object):
         ------
         ValueError if any key in `fields` is not in at least one descriptor pre header.
         """
-        res = _get_events(mds=self.mds, fs=self.fs, headers=headers,
-                          fields=fields, stream_name=stream_name, fill=fill,
-                          handler_registry=handler_registry,
-                          handler_overrides=handler_overrides,
-                          plugins=self.plugins, **kwargs)
-        for event in res:
-            yield event
+        return _get_events(headers=headers,
+                           fields=fields, stream_name=stream_name, fill=fill,
+                           handler_registry=handler_registry,
+                           handler_overrides=handler_overrides,
+                           plugins=self.plugins, **kwargs)
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,

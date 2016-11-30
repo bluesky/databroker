@@ -152,7 +152,7 @@ class Header(object):
         return self.keys()
 
 
-def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
+def get_events(headers, fields=None, stream_name=ALL, fill=False,
                handler_registry=None, handler_overrides=None, plugins=None,
                **kwargs):
     """
@@ -217,6 +217,8 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
                            "argument %r" % k)
 
     for header in headers:
+        mds = header.db.mds
+        fs = header.db.fs
         # cache these attribute look-ups for performance
         start = header['start']
         stop = header.get('stop', {})
@@ -241,18 +243,21 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
 
             if not no_fields_filter:
                 # Look in the descriptor, then start, then stop.
-                config_data_fields = set(filter(comp_re.match, config_data)) - selected_fields
+                config_data_fields = (set(filter(comp_re.match, config_data)) -
+                                      selected_fields)
                 for field in config_data_fields:
                     selected_fields.add(field)
                     all_extra_data[field] = config_data[field]
                     all_extra_ts[field] = config_ts[field]
 
-                start_fields = set(filter(comp_re.match, start)) - selected_fields
+                start_fields = (set(filter(comp_re.match, start)) -
+                                selected_fields)
                 for field in start_fields:
                     all_extra_data[field] = start[field]
                     all_extra_ts[field] = start['time']
 
-                stop_fields = set(filter(comp_re.match, stop)) - selected_fields
+                stop_fields = (set(filter(comp_re.match, stop)) -
+                               selected_fields)
                 for field in stop_fields:
                     all_extra_data[field] = stop[field]
                     all_extra_ts[field] = stop['time']
@@ -487,7 +492,7 @@ def restream(mds, fs, headers, fields=None, fill=False):
         for descriptor in header['descriptors']:
             yield 'descriptor', descriptor
         # When py2 compatibility is dropped, use yield from.
-        for event in get_events(mds, fs, header, fields=fields, fill=fill):
+        for event in get_events(header, fields=fields, fill=fill):
             yield 'event', event
         yield 'stop', header['stop']
 
@@ -660,7 +665,7 @@ class Images(FramesSequence):
                 # do something
         """
         self.fs = fs
-        events = get_events(mds, fs, headers, [name], fill=False)
+        events = get_events(headers, [name], fill=False)
         self._datum_uids = [event.data[name] for event in events
                             if name in event.data]
         self._len = len(self._datum_uids)
