@@ -22,3 +22,7 @@ def test_header_dict_conformance():
 
     # this is a dumb test
     assert len(list(h.values())) == len(h)
+
+    n, d = h.to_name_dict_pair()
+    assert n == 'header'
+    assert d == target
