@@ -470,6 +470,10 @@ class Broker(object):
         """
         Populate events with externally stored data.
 
+        .. warning
+
+            This mutates the event's ``data`` field in-place
+
         Parameters
         ----------
         event : document
