@@ -82,6 +82,8 @@ class Header(object):
 
         Parameters
         ----------
+        db : DataBroker
+
         run_start : dict or string
             RunStart document or uid of one
 
@@ -89,7 +91,7 @@ class Header(object):
         -------
         header : databroker.broker.Header
         """
-        mds = db
+        mds = db.mds
 
         if isinstance(run_start, six.string_types):
             run_start = mds.run_start_given_uid(run_start)

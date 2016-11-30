@@ -8,6 +8,9 @@ Non-backward compatible API changes
 v0.7.0
 ------
 
+``Header``
+==========
+
 Change `Header` from a `doct.Document` subclass to a ``attr`` based
 class.  A majority of the API has been maintained, however there are
 changes in what exceptions are raised when trying to mutate the
@@ -29,7 +32,11 @@ instance.
 | ``h['x'] * V`` | `doc.DocumentIsReadOnly` | `TypeError`                           |
 +----------------+--------------------------+---------------------------------------+
 
+``Header.from_run_start``
+=========================
 
+Take a `DataBroker` object instead of a `MetadataStore` object.  This
+is now tacked on the `Header` object.
 
 
 v0.4.2

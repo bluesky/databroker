@@ -146,7 +146,7 @@ logger = logging.getLogger(__name__)
 
 
 @singledispatch
-def search(key, mds):
+def search(key, db):
     logger.info('Using default search for key = %s' % key)
     raise ValueError("Must give an integer scan ID like [6], a slice "
                      "into past scans like [-5], [-5:], or [-5:-9:2], "
@@ -156,7 +156,7 @@ def search(key, mds):
 
 
 @search.register(slice)
-def _(key, mds):
+def _(key, db):
     # Interpret key as a slice into previous scans.
     logger.info('Interpreting key = %s as a slice' % key)
     if key.start is not None and key.start > -1:
@@ -177,53 +177,53 @@ def _(key, mds):
                          "the size of the result is non-deterministic "
                          "and could become too large.")
     start = -key.start
-    result = list(mds.find_last(start))[stop::key.step]
-    header = [Header.from_run_start(mds, h) for h in result]
+    result = list(db.mds.find_last(start))[stop::key.step]
+    header = [Header.from_run_start(db, h) for h in result]
     return header
 
 
 @search.register(numbers.Integral)
-def _(key, mds):
+def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
     if key > -1:
         # Interpret key as a scan_id.
-        gen = mds.find_run_starts(scan_id=key)
+        gen = db.mds.find_run_starts(scan_id=key)
         try:
             result = next(gen)  # most recent match
         except StopIteration:
             raise ValueError("No such run found for key=%s which is "
                              "being interpreted as a scan id." % key)
-        header = Header.from_run_start(mds, result)
+        header = Header.from_run_start(db, result)
     else:
         # Interpret key as the Nth last scan.
-        gen = mds.find_last(-key)
+        gen = db.mds.find_last(-key)
         for i in range(-key):
             try:
                 result = next(gen)
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-        header = Header.from_run_start(mds, result)
+        header = Header.from_run_start(db, result)
     return header
 
 
 @search.register(str)
 @search.register(six.text_type)
 @search.register(six.string_types,)
-def _(key, mds):
+def _(key, db):
     logger.info('Interpreting key = %s as a str' % key)
     results = None
     if len(key) == 36:
         # Interpret key as a complete uid.
         # (Try this first, for performance.)
         logger.debug('Treating %s as a full uuid' % key)
-        results = list(mds.find_run_starts(uid=key))
+        results = list(db.mds.find_run_starts(uid=key))
         logger.debug('%s runs found for key=%s treated as a full uuid'
                      % (len(results), key))
     if not results:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
-        gen = mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        gen = db.mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
@@ -232,17 +232,17 @@ def _(key, mds):
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    header = Header.from_run_start(mds, result)
+    header = Header.from_run_start(db, result)
     return header
 
 
 @search.register(set)
 @search.register(tuple)
 @search.register(MutableSequence)
-def _(key, mds):
+def _(key, db):
     logger.info('Interpreting key = {} as a set, tuple or MutableSequence'
                 ''.format(key))
-    return [search(k, mds) for k in key]
+    return [search(k, db) for k in key]
 
 
 class Broker(object):
@@ -329,7 +329,7 @@ class Broker(object):
 
     def __getitem__(self, key):
         """Do-What-I-Mean slicing"""
-        return search(key, self.mds)
+        return search(key, self)
 
     def __getattr__(self, key):
         try:
@@ -443,7 +443,7 @@ class Broker(object):
 
         headers = []
         for rs in run_start:
-            header = Header.from_run_start(self.mds, rs)
+            header = Header.from_run_start(self, rs)
             if data_key is None:
                 headers.append(header)
                 continue
