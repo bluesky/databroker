@@ -1,10 +1,9 @@
 from __future__ import print_function
 import six  # noqa
-from collections import defaultdict
+from collections import defaultdict, deque
 from itertools import chain
 import pandas as pd
 import tzlocal
-import doct as doc
 import doct
 from pims import FramesSequence, Frame
 import logging
@@ -730,3 +729,97 @@ def _external_keys(descriptor, _cache=boltons.cacheutils.LRU(max_size=500)):
         ek = {k: v.get('external', None) for k, v in data_keys.items()}
         _cache[descriptor['uid']] = ek
     return ek
+
+
+class DocBuffer:
+    '''Buffer a (name, document) sequence into parts
+
+    '''
+    def __init__(self, doc_gen, denormalize=False):
+
+        class InnerDict(dict):
+            def __getitem__(inner_self, key):
+                while key not in inner_self:
+                    try:
+                        self._get_next()
+                    except StopIteration:
+                        raise Exception("this stream does not contain a "
+                                        "descriptor with uid {}".format(key))
+                return super().__getitem__(key)
+
+        self.denormalize = denormalize
+        self.gen = doc_gen
+        self._start = None
+        self._stop = None
+        self.descriptors = InnerDict()
+        self._events = deque()
+
+    @property
+    def start(self):
+        while self._start is None:
+            try:
+                self._get_next()
+            except StopIteration:
+                raise Exception("stream does not contain a start?!")
+
+        return self._start
+
+    @property
+    def stop(self):
+        while self._stop is None:
+            try:
+                self._get_next()
+            except StopIteration:
+                raise Exception("stream does not contain a start")
+
+        return self._stop
+
+    def _get_next(self):
+        self.__stash_values(*next(self.gen))
+
+    def __stash_values(self, name, doc):
+        if name == 'start':
+            if self._start is not None:
+                raise Exception("only one start allowed")
+            self._start = doc
+        elif name == 'stop':
+            if self._stop is not None:
+                raise Exception("only one stop allowed")
+            self._stop = doc
+        elif name == 'descriptor':
+            self.descriptors[doc['uid']] = doc
+        elif name == 'event':
+            self._events.append(doc)
+        else:
+            raise ValueError("{} is unknown document type".format(name))
+
+    def __denormalize(self, ev):
+        ev = dict(ev)
+        desc = ev['descriptor']
+        try:
+            ev['descriptor'] = self.descriptors[desc]
+        except StopIteration:
+            raise Exception("{} is on an event, but not "
+                            "in event stream".format(desc))
+        return ev
+
+    def __iter__(self):
+        gen = self.gen
+        while True:
+            while len(self._events):
+                ev = self._events.popleft()
+                if self.denormalize:
+                    ev = self.__denormalize(ev)
+                yield ev
+
+            try:
+                name, doc = next(gen)
+            except StopIteration:
+                break
+
+            if name == 'event':
+                if self.denormalize:
+                    doc = self.__denormalize(doc)
+                yield doc
+            else:
+                self.__stash_values(name, doc)
