@@ -8,37 +8,108 @@ The Nouns
 
 ``Header``
 ----------
+ - Attributes
+    - ``Start`` Document
+    - ``Stop`` Document
+        - may want to flip non-existant behavior from ``{}`` -> ``None``
+    - Reference back to a ``DataBroker``
+ - properties:
+   - ``streams`` list of streams from all of the event stores
+   - ``descriptors`` mapping to lists of descriptors per stream
+ - Methods:
+   - ``h.stream(stream_name, fill=True) -> generator``
+     - generator for just this stream,
+     - (name, doc) for all document types
+   - ``h.table(stream_name, fill=True) -> DataFrame``
+     - Dataframe for just this stream
+   - ``h.events(fill=True) -> generator``
+     - all documents as (name, doc) pair
+     - this should maybe be renamed?
+   - ``h.es_given_stream(stream_name) -> EventSource``
+  - mimic ``doct.Document`` interface?
 
- - ``Start`` Document
- - ``Stop`` Document
- - ``Descriptors`` list or mapping to lists of descriptors (??)
-   - maybe this could be lazy?
- - Reference back to a ``DataBroker``
+
+The implementation of these methods should live in the ``Header`` class using the resources
+provided by the attached ``DataBroker``
 
 
 ``DataBroker``
 --------------
- - Exactly 1 ``HeaderSource``
- - 1 or more ``EventSource``
- - mirror out
+ - Attributes:
+   - Exactly 1 ``HeaderSource``
+   - ``EventSource`` list
+ - Methods:
+  - mirror out all search from ``HeaderSource``, converts to ``Header`` objects
+
 
 ``HeaderSource``
 ----------------
- - ``Start`` document collection / table
- - ``Stop`` document collection / table
- - provides search capabilities over the start / stop documents
-   - ``hs[uid]``
-   - ``hs[scan_id]``
-   - ``hs[-offset]``
-   - ``hs(full=text, search=method)``
+ - Attributes:
+   - ``Start`` document collection / table
+   - ``Stop`` document collection / table
+ - Methods
+   - provides search capabilities over the start / stop documents
+   - ``hs[uid] -> (Start, Stop)``
+   - ``hs[scan_id] -> (Start, Stop)``
+   - ``hs[-offset] -> (Start, Stop)``
+   - ``hs(full=text, search=method) -> (Start, Stop)``
 
 ``EventSource``
 ---------------
- - ``Event`` collection
- - ``Descriptor`` document collection
- - ``Filestore`` collection(s)
- - get data payload given a ``Header``
-    - ``es.event_gen_given_header(header, fill=False, **kwargs) -> generator``
-    - ``es.table_given_header(header, fill=False, **kwargs) -> DataFrame``
- - get descriptors given a ``Header``
-   - ``es.get_descriptor(header, **kwargs) -> Descriptor``
+ - Attributes
+   - ``Event`` collection
+   - ``Descriptor`` document collection
+   - ``Filestore`` collection(s) / object
+ - Methods:
+   - get streams given a ``Header``
+     - ``es.streams_given_header(header) -> [stream_names]``
+
+   - get descriptors
+     - ``es.descriptors_given_header(header, **kwargs) -> [Descriptor]``
+     - ``es.descriptor_for_stream(header, stream, **kwargs) -> Descriptor``
+
+   - get data payload given a ``Header``
+    - ``es.event_gen_given_header(header, stream, fill=False, fields=None,**kwargs) -> doc_generator``
+    - ``es.table_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> DataFrame``
+
+    The reason to keep both the generator and table versions of this is to allow the
+    event stores to optimize for a given access pattern.  Some data should be stored
+    in columnar / tabular fashion
+
+   - do de-referencing (not in place!!)
+     - ``es.fill_event(ev) -> new_Event``
+     - ``es.fill_table(tab, in_place=False) -> DataFrame``
+
+Helpers
+=======
+
+ - ``stream_to_table(doc_generator) -> DataFrame``
+ - ``table_to_stream(table, header=None, stream=None) -> doc_generator``
+   - this one may be tricky as going to a table may lose the link back to the run
+   - particularly if any synthetic columns (ex normalizations) have happened.
+ - a few accumulator/buffer objects to aid working with sequences of (name, document) pairs
+
+
+
+Random concerns
+===============
+
+ - should implement a global registry of known ``DataBroker`` /
+   components so that un-pickling a header does not recreate all of
+   the db connections.  We clearly do not have enough meta-classes.
+   The need for this goes away when
+ - how to not lose metadata back to descriptor / header when going to a table
+ - should we mutate descriptors when keys are added / removed from
+   events via filtering / broadcasting
+  - if we do this, should probably give new uid to descriptor.  This
+    will require doubling down on the idea that for streams of
+    documents are always mixed types and of the form ``(name, doc)``
+  - we may also want to back off on the aggressive de-normalization of
+    the descriptors at every level.  Working always in one process the
+    cost of de-normalizing is low because we can share an object
+    (which is the reason that `doct.Document` is immutable), however
+    if we move to a model where these documents are streamed between
+    process (local or not) this can result in massive overheads.  This dumps
+ - not clear we are not going to end up with two worlds, a document
+   streaming one and a DataFrame based one.
+ -
