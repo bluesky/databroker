@@ -835,3 +835,90 @@ class DocBuffer:
                 yield doc
             else:
                 self.__stash_values(name, doc)
+
+
+class HeaderSourceShim(object):
+    '''Shim class to turn a mds object into a HeaderSource
+
+    This will presumably be deleted if this API makes it's way back down
+    into the implementations
+    '''
+    def __init__(self, mds):
+        self.mds = mds
+
+    def __call__(self, *args, **kwargs):
+        return self.mds(*args, **kwargs)
+
+    def __getitem__(self, k):
+        return self.mds[k]
+
+
+class EventSourceShim(object):
+    '''Shim class to turn a mds object into a EventSource
+
+    This will presumably be deleted if this API makes it's way back down
+    into the implementations
+    '''
+    def __init__(self, mds, fs):
+        self.mds = mds
+        self.fs = fs
+
+    def streams_given_header(self, header):
+        return set(d['name'] for d in
+                   self.descriptors_given_header(header))
+
+    def descriptors_given_header(self, header):
+        return list(desc for desc in
+                    self.mds.descriptors_by_start(header.start['uid']))
+
+    def descriptors_for_stream(self, header, stream_name):
+        return [d for d in self.descriptors_given_header(header)
+                if d['name'] == stream_name]
+
+    def events_given_header(self, header, stream_name,
+                            fill=False, fields=None,
+                            **kwargs):
+        if fields is not None:
+            raise NotImplementedError
+
+        descs = self.descriptors_for_stream(header, stream_name)
+
+        yield 'start', header.start
+        for d in descs:
+            # TODO move over all of the data merging information
+            yield 'descriptor', d
+            for ev in self.mds.get_events_generator(d):
+                if fill:
+                    ev = self.fill_event(ev, **kwargs)
+                yield 'event', ev
+
+        yield 'stop', header.stop
+
+    def table_given_header(self, header, stream_name,
+                           fill=False, fields=None,
+                           **kwrags):
+
+        if fields is not None:
+            raise NotImplementedError
+
+        descs = self.descriptors_for_stream(header, stream_name)
+        dfs = []
+        for d in descs:
+            payload = self.mds.get_events_table(d)
+            _, data, seq_nums, times, uids, timestamps = payload
+            df = pd.DataFrame(data, index=seq_nums)
+            times = pd.Series(times, index=seq_nums)
+            df['time'] = times
+            dfs.append(df)
+
+        if dfs:
+            return pd.concat(dfs)
+        else:
+            # edge case: no data
+            return pd.DataFrame()
+
+    def fill_event(self, ev):
+        raise NotImplementedError
+
+    def fill_table(self, tab):
+        raise NotImplementedError
