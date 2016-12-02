@@ -26,6 +26,9 @@ class ALL:
     "Sentinel used as the default value for stream_name"
     pass
 
+class InvalidDocumentSequence(Exception):
+    pass
+
 
 def fill_event(fs, event, handler_registry=None, handler_overrides=None):
     """
@@ -91,7 +94,7 @@ class Header(object):
         header : databroker.broker.Header
         """
         mds = db.mds
-
+        es = db.es
         if isinstance(run_start, six.string_types):
             run_start = mds.run_start_given_uid(run_start)
         run_start_uid = run_start['uid']
@@ -105,7 +108,7 @@ class Header(object):
         try:
             ev_descs = [doct.ref_doc_to_uid(ev_desc, 'run_start')
                         for ev_desc in
-                        mds.descriptors_by_start(run_start_uid)]
+                        es.descriptors_by_start(run_start_uid)]
         except mds.NoEventDescriptors:
             ev_descs = []
 
@@ -217,7 +220,6 @@ def get_events(headers, fields=None, stream_name=ALL, fill=False,
                            "argument %r" % k)
 
     for header in headers:
-        mds = header.db.mds
         fs = header.db.fs
         es = header.db.es
         # cache these attribute look-ups for performance
@@ -768,7 +770,8 @@ class DocBuffer:
             try:
                 self._get_next()
             except StopIteration:
-                raise Exception("stream does not contain a start?!")
+                raise InvalidDocumentSequence(
+                    "stream does not contain a start?!")
 
         return self._start
 
@@ -778,7 +781,8 @@ class DocBuffer:
             try:
                 self._get_next()
             except StopIteration:
-                raise Exception("stream does not contain a start")
+                raise InvalidDocumentSequence(
+                    "stream does not contain a start")
 
         return self._stop
 
@@ -807,8 +811,8 @@ class DocBuffer:
         try:
             ev['descriptor'] = self.descriptors[desc]
         except StopIteration:
-            raise Exception("{} is on an event, but not "
-                            "in event stream".format(desc))
+            raise InvalidDocumentSequence(
+                "{} is on an event, but not in event stream".format(desc))
         return ev
 
     def __iter__(self):
