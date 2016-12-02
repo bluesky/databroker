@@ -42,12 +42,13 @@ provided by the attached ``DataBroker``
    - ``EventSource`` list
  - Methods:
   - mirror out all search from ``HeaderSource``, converts to ``Header`` objects
+  - manage filters + search state
   - drop everything else!
 
 
 ``HeaderSource``
 ----------------
- - Attributes:
+ - databases, not public:
    - ``Start`` document collection / table
    - ``Stop`` document collection / table
 
@@ -60,7 +61,7 @@ provided by the attached ``DataBroker``
 
 ``EventSource``
 ---------------
- - Attributes
+ - databases, not public:
    - ``Event`` collection
    - ``Descriptor`` document collection
    - ``Filestore`` collection(s) / object
