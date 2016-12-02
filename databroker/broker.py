@@ -15,8 +15,8 @@ from .core import (Header,
                    fill_event as _fill_event,
                    process as _process, Images,
                    get_fields,  # for conveniece
-                   ALL
-                  )
+                   ALL,
+                   EventSourceShim)
 
 
 def _format_time(search_dict, tz):
@@ -178,8 +178,8 @@ def _(key, db):
                          "and could become too large.")
     start = -key.start
     result = list(db.mds.find_last(start))[stop::key.step]
-    header = [Header.from_run_start(db, h) for h in result]
-    return header
+    stop = list(_safe_get_stop(db.mds, s) for s in result)
+    return list(zip(result, stop))
 
 
 @search.register(numbers.Integral)
@@ -193,7 +193,6 @@ def _(key, db):
         except StopIteration:
             raise ValueError("No such run found for key=%s which is "
                              "being interpreted as a scan id." % key)
-        header = Header.from_run_start(db, result)
     else:
         # Interpret key as the Nth last scan.
         gen = db.mds.find_last(-key)
@@ -203,8 +202,7 @@ def _(key, db):
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-        header = Header.from_run_start(db, result)
-    return header
+    return [(result, _safe_get_stop(db.mds, result))]
 
 
 @search.register(str)
@@ -232,8 +230,7 @@ def _(key, db):
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    header = Header.from_run_start(db, result)
-    return header
+    return [(result, _safe_get_stop(db.mds, result))]
 
 
 @search.register(set)
@@ -242,7 +239,7 @@ def _(key, db):
 def _(key, db):
     logger.info('Interpreting key = {} as a set, tuple or MutableSequence'
                 ''.format(key))
-    return [search(k, db) for k in key]
+    return sum((search(k, db) for k in key), [])
 
 
 class Broker(object):
@@ -263,9 +260,8 @@ class Broker(object):
         es : EventStoreRO, optional
             If not provides, mds is expected to provide event storage.
         """
-        self.mds = mds
-        self.fs = fs
-        self.es = es
+        self.hs = HeaderSourceShim(mds)
+        self.es = EventSourceShim(mds, fs)
         if plugins is None:
             plugins = {}
         self.plugins = plugins
@@ -275,15 +271,18 @@ class Broker(object):
         self.aliases = {}
 
     @property
-    def es(self):
-        return self._es
+    def mds(self):
+        warnings.warn("stop using raw mds")
+        return self.hs.mds
 
-    @es.setter
-    def es(self, es):
-        if es is None:
-            self._es = self.mds
-        else:
-            self._es = es
+    @property
+    def fs(self):
+        warnings.warn("stop using raw fs")
+        return self.es.fs
+
+    @property
+    def event_sources(self):
+        yield self.es
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -291,7 +290,7 @@ class Broker(object):
         "close over the timezone config"
         # modifies a query dict in place, remove keys 'start_time' and
         # 'stop_time' and adding $lte and/or $gte queries on 'time' key
-        _format_time(val, self.mds.config['timezone'])
+        _format_time(val, self.hs.mds.config['timezone'])
 
     @property
     def filters(self):
@@ -343,7 +342,12 @@ class Broker(object):
 
     def __getitem__(self, key):
         """Do-What-I-Mean slicing"""
-        return search(key, self)
+        ret = [Header(start=start, stop=stop, db=self) for
+               start, stop in search(key, self)]
+        squeeze = not isinstance(key, (set, tuple, MutableSequence, slice))
+        if squeeze and len(ret) == 1:
+            ret, = ret
+        return ret
 
     def __getattr__(self, key):
         try:
@@ -446,18 +450,14 @@ class Broker(object):
         >>> DataBroker(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
-        if text_search is not None:
-            query = {'$and': [{'$text': {'$search': text_search}}]
-                               + self.filters}
-        else:
-            # Include empty {} here so that '$and' gets at least one query.
-            self._format_time(kwargs)
-            query = {'$and': [{}] + [kwargs] + self.filters}
-        run_start = self.mds.find_run_starts(**query)
+
+        res = self.hs(text_search=text_search,
+                      filters=self.filters,
+                      **kwargs)
 
         headers = []
-        for rs in run_start:
-            header = Header.from_run_start(self, rs)
+        for start, stop in res:
+            header = Header(start=start, stop=stop, db=self)
             if data_key is None:
                 headers.append(header)
                 continue
@@ -591,8 +591,8 @@ class Broker(object):
         table : pandas.DataFrame
         """
         if timezone is None:
-            timezone = self.mds.config['timezone']
-        res = _get_table(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+            timezone = self.hs.mds.config['timezone']
+        res = _get_table(headers=headers,
                          fields=fields, stream_name=stream_name, fill=fill,
                          convert_times=convert_times,
                          timezone=timezone, handler_registry=handler_registry,
@@ -898,3 +898,38 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+class HeaderSourceShim(object):
+    '''Shim class to turn a mds object into a HeaderSource
+
+    This will presumably be deleted if this API makes it's way back down
+    into the implementations
+    '''
+    def __init__(self, mds):
+        self.mds = mds
+
+    def __call__(self, text_search=None, filters=None, **kwargs):
+        if filters is None:
+            filters = []
+        if text_search is not None:
+            query = {'$and': [{'$text': {'$search': text_search}}] + filters}
+        else:
+            # Include empty {} here so that '$and' gets at least one query.
+            _format_time(kwargs, self.mds.config['timezone'])
+            query = {'$and': [{}] + [kwargs] + filters}
+
+        starts = tuple(self.mds.find_run_starts(**query))
+
+        stops = tuple(_safe_get_stop(self.mds, s) for s in starts)
+        return zip(starts, stops)
+
+    def __getitem__(self, k):
+        return search(k, self)
+
+
+def _safe_get_stop(mds, s):
+    try:
+        return mds.stop_by_start(s)
+    except mds.NoRunStop:
+        return None

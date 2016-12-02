@@ -7,10 +7,12 @@ def test_header_dict_conformance():
     # TODO update this if / when we add conformance testing to
     # validate attrs in Header
     target = {'start': {'uid': 'start'},
-              'descriptors': [{'uid': 'desc', 'start_uid': 'start'}],
               'stop': {'uid': 'stop', 'start_uid': 'start'}}
 
     h = Header(None, **target)
+    # hack the descriptor lookup/cache mechanism
+    target['descriptors'] = [{'uid': 'desc', 'start_uid': 'start'}]
+    h._cache['desc'] = [{'uid': 'desc', 'start_uid': 'start'}]
 
     assert len(h) == len(target)
     assert set(h) == set(target)

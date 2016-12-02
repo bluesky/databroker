@@ -26,6 +26,7 @@ class ALL:
     "Sentinel used as the default value for stream_name"
     pass
 
+
 class InvalidDocumentSequence(Exception):
     pass
 
@@ -74,8 +75,8 @@ class Header(object):
     _name = 'header'
     db = attr.ib(cmp=False, hash=False)
     start = attr.ib()
-    descriptors = attr.ib()
     stop = attr.ib(default=attr.Factory(dict))
+    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False)
 
     @classmethod
     def from_run_start(cls, db, run_start):
@@ -93,8 +94,8 @@ class Header(object):
         -------
         header : databroker.broker.Header
         """
-        mds = db.mds
-        es = db.es
+        mds = db.hs.mds
+        es = db.es.mds
         if isinstance(run_start, six.string_types):
             run_start = mds.run_start_given_uid(run_start)
         run_start_uid = run_start['uid']
@@ -105,18 +106,18 @@ class Header(object):
         except mds.NoRunStop:
             run_stop = None
 
-        try:
-            ev_descs = [doct.ref_doc_to_uid(ev_desc, 'run_start')
-                        for ev_desc in
-                        es.descriptors_by_start(run_start_uid)]
-        except mds.NoEventDescriptors:
-            ev_descs = []
-
-        d = {'start': run_start, 'descriptors': ev_descs}
+        d = {'start': run_start}
         if run_stop is not None:
             d['stop'] = run_stop
         h = cls(db, **d)
         return h
+
+    @property
+    def descriptors(self):
+        if 'desc' not in self._cache:
+            self._cache['desc'] = sum((es.descriptors_given_header(self)
+                                       for es in self.db.event_sources), [])
+        return self._cache['desc']
 
     def __getitem__(self, k):
         try:
@@ -142,6 +143,8 @@ class Header(object):
     def to_name_dict_pair(self):
         ret = attr.asdict(self)
         ret.pop('db')
+        ret.pop('_cache')
+        ret['descriptors'] = self.descriptors
         return self._name, ret
 
     def __str__(self):
@@ -221,7 +224,7 @@ def get_events(headers, fields=None, stream_name=ALL, fill=False,
 
     for header in headers:
         fs = header.db.fs
-        es = header.db.es
+        es = header.db.es.mds
         # cache these attribute look-ups for performance
         start = header['start']
         stop = header.get('stop', {})
@@ -286,7 +289,7 @@ def get_events(headers, fields=None, stream_name=ALL, fill=False,
                 yield ev
 
 
-def get_table(mds, fs, es, headers, fields=None, stream_name='primary',
+def get_table(headers, fields=None, stream_name='primary',
               fill=False, convert_times=True, timezone=None,
               handler_registry=None, handler_overrides=None,
               localize_times=True):
@@ -363,6 +366,9 @@ def get_table(mds, fs, es, headers, fields=None, stream_name='primary',
 
     dfs = []
     for header in headers:
+        mds = header.db.hs
+        fs = header.db.es.fs
+        es = header.db.es.mds
         # cache these attribute look-ups for performance
         start = header['start']
         stop = header.get('stop', {})
@@ -835,22 +841,6 @@ class DocBuffer:
                 yield doc
             else:
                 self.__stash_values(name, doc)
-
-
-class HeaderSourceShim(object):
-    '''Shim class to turn a mds object into a HeaderSource
-
-    This will presumably be deleted if this API makes it's way back down
-    into the implementations
-    '''
-    def __init__(self, mds):
-        self.mds = mds
-
-    def __call__(self, *args, **kwargs):
-        return self.mds(*args, **kwargs)
-
-    def __getitem__(self, k):
-        return self.mds[k]
 
 
 class EventSourceShim(object):
