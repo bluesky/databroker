@@ -13,9 +13,11 @@ The Nouns
     - ``Stop`` Document
         - may want to flip non-existant behavior from ``{}`` -> ``None``
     - Reference back to a ``DataBroker``
- - properties:
+
+ - properties (ex, LAZY):
    - ``streams`` list of streams from all of the event stores
    - ``descriptors`` mapping to lists of descriptors per stream
+
  - Methods:
    - ``h.stream(stream_name, fill=True) -> generator``
      - generator for just this stream,
@@ -40,6 +42,7 @@ provided by the attached ``DataBroker``
    - ``EventSource`` list
  - Methods:
   - mirror out all search from ``HeaderSource``, converts to ``Header`` objects
+  - drop everything else!
 
 
 ``HeaderSource``
@@ -47,6 +50,7 @@ provided by the attached ``DataBroker``
  - Attributes:
    - ``Start`` document collection / table
    - ``Stop`` document collection / table
+
  - Methods
    - provides search capabilities over the start / stop documents
    - ``hs[uid] -> (Start, Stop)``
@@ -60,9 +64,10 @@ provided by the attached ``DataBroker``
    - ``Event`` collection
    - ``Descriptor`` document collection
    - ``Filestore`` collection(s) / object
+
  - Methods:
    - get streams given a ``Header``
-     - ``es.streams_given_header(header) -> [stream_names]``
+     - ``es.streams_given_header(header) -> {stream_names}``
 
    - get descriptors
      - ``es.descriptors_given_header(header, **kwargs) -> [Descriptor]``
@@ -87,7 +92,8 @@ Helpers
  - ``table_to_stream(table, header=None, stream=None) -> doc_generator``
    - this one may be tricky as going to a table may lose the link back to the run
    - particularly if any synthetic columns (ex normalizations) have happened.
- - a few accumulator/buffer objects to aid working with sequences of (name, document) pairs
+ - a few accumulator/buffer objects to aid working with sequences of
+   (name, document) pairs
 
 
 
@@ -97,7 +103,8 @@ Random concerns
  - should implement a global registry of known ``DataBroker`` /
    components so that un-pickling a header does not recreate all of
    the db connections.  We clearly do not have enough meta-classes.
-   The need for this goes away when
+   The need for this goes away when we move to a fully service model where the only
+   state the brokers need to keep is a url and maybe a process-local cache.
  - how to not lose metadata back to descriptor / header when going to a table
  - should we mutate descriptors when keys are added / removed from
    events via filtering / broadcasting
@@ -109,7 +116,9 @@ Random concerns
     cost of de-normalizing is low because we can share an object
     (which is the reason that `doct.Document` is immutable), however
     if we move to a model where these documents are streamed between
-    process (local or not) this can result in massive overheads.  This dumps
+    process (local or not) this can result in massive overheads.  This
+    dumps a lot of complexity into the clients, but it is complexity
+    that we are already having to deal with (because bluesky spits out
+    uids, DataBroker return the documents in-place.).
  - not clear we are not going to end up with two worlds, a document
    streaming one and a DataFrame based one.
- -
