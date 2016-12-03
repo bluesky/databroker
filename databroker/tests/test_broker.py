@@ -636,3 +636,23 @@ def test_export_noroot(broker_factory, RE):
     image2s = db2.get_images(db2[uid], 'image')
     for im1, im2 in zip(image1s, image2s):
         assert np.array_equal(im1, im2)
+
+
+@py3
+def test_export_size_smoke(broker_factory, RE):
+
+    db1 = broker_factory()
+    RE.subscribe('all', db1.mds.insert)
+
+    # test file copying
+    if not hasattr(db1.fs, 'copy_files'):
+        raise pytest.skip("This filestore does not implement copy_files.")
+
+    dir1 = tempfile.mkdtemp()
+    detfs = ReaderWithFileStore('detfs', {'image': lambda: np.ones((5, 5))},
+                                fs=db1.fs, save_path=dir1)
+    uid, = RE(count([detfs]))
+
+    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    size = db1.export_size(db1[uid])
+    assert size > 0.

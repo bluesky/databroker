@@ -917,7 +917,10 @@ class BrokerES(object):
             # get files from fs
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
-                files = self.fs.get_file_list(uid)
+                datum_gen = self.fs.datum_gen_given_resource(uid)
+                datum_kwarg_gen = (datum['datum_kwargs'] for datum in
+                                   datum_gen)
+                files = self.fs.get_file_list(uid, datum_kwarg_gen)
                 for file in files:
                     total_size += os.path.getsize(file)
 
