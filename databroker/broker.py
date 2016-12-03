@@ -9,6 +9,8 @@ import numbers
 import requests
 from doct import Document
 import pandas as pd
+import os
+
 
 from .core import (Header,
                    get_fields,  # for convenience
@@ -889,6 +891,37 @@ class BrokerES(object):
                                        datum['datum_id'],
                                        datum['datum_kwargs'])
         return file_pairs
+
+    def export_size(self, headers):
+        """
+        Get the size of files associated with a list of headers.
+
+        Parameters:
+        -----------
+        headers : databroker.header
+            one or more headers that are going to be exported
+
+        Returns
+        ------
+        total_size : float
+            total size of all the files associated with the ``headers`` in Gb
+        """
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
+        total_size = 0
+        for header in headers:
+            # get files from fs
+            res_uids = self.get_resource_uids(header)
+            for uid in res_uids:
+                files = self.fs.get_file_list(uid)
+                for file in files:
+                    total_size += os.path.getsize(file)
+
+        return total_size * 1e-9
 
 
 class ArchiverEventSource(object):
