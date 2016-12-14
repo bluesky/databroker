@@ -259,7 +259,7 @@ Here are just a few examples:
 =========================================== ============================================================
 syntax                                                          meaning
 =========================================== ============================================================
-``db(sample={'$exists': True})``            headers that include a custom metadata field labeled 'color'
+``db(color={'$exists': True})``             headers that include a custom metadata field labeled 'color'
 ``db(plan_name={'$ne': 'relative_scan'})``  headers where the type of scan was not a ``relative_scan``
 =========================================== ============================================================
 
