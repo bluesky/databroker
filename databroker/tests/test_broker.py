@@ -571,7 +571,6 @@ def test_export(broker_factory, RE):
     db1 = Broker(fs=fs3, mds=mds2)
 
     db1.fs.register_handler('RWFS_NPY', Handler)
-
     db2.fs.register_handler('RWFS_NPY', Handler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
