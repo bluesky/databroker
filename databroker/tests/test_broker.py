@@ -534,6 +534,8 @@ def test_plugins(db, RE):
 
 @py3
 def test_export(broker_factory, RE):
+    from databroker.broker import Broker
+    from filestore.fs import FileStoreRO
 
     # Subclass ReaderWithFSHandler to implement get_file_list, required for
     # file copying. This should be added upstream in bluesky.
@@ -562,7 +564,14 @@ def test_export(broker_factory, RE):
                                 fs=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
+    # Use a read only filestore
+    mds2 = db1.mds
+    fs2 = db1.fs
+    fs3 = FileStoreRO(fs2.config, version=1)
+    db1 = Broker(fs=fs3, mds=mds2)
+
     db1.fs.register_handler('RWFS_NPY', Handler)
+
     db2.fs.register_handler('RWFS_NPY', Handler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
