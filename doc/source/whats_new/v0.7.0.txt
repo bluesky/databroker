@@ -1,0 +1,26 @@
+v0.6.2
+------
+
+Enhancements
+++++++++++++
+
+* Add convenience method for exporting from one Broker instance into another.
+* Experimental: support regex-based field selection in Broker methods.
+
+Bug Fixes
++++++++++
+
+* Fix handling of timezones. To summarize: all times are *stored* as a float
+  number that is a UNIX timestamp (number of seconds since 1970 in Greenwich).
+  The ``get_events`` method simply returns this raw number. The ``get_table``
+  method provides the option (on by default) to convert these float numbers to
+  datetime objects, which can be more convenient in some circumstances. There
+  are two flags for controlling this feature: ``convert_times`` and
+  ``localize_times``. By default, ``convert_times=True`` and
+  ``localize_times=True``. This returns pandas datetime64 objects that are
+  "naive" (meaning they don't have a timezone attached) and are in the local
+  time. This tells you the wall clock time when the experiment was performed in
+  timezone configured in ``db.mds.config['timezone']``. If
+  ``localize_times=False``, the datetime objects are again "naive" but in UTC
+  time. This tells you the wall clock time of a clock in Greenwich when the
+  experiment was performed.
