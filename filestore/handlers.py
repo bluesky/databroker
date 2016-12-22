@@ -411,7 +411,7 @@ class NpyHandler(HandlerBase):
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
         if not os.path.exists(filename):
-            raise IOError("the requested file {fpath} does not exst")
+            raise IOError("the requested file {fpath} does not exist")
         self._fpath = filename
 
     def __call__(self):
@@ -427,7 +427,7 @@ class NpyFrameWise(HandlerBase):
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
         if not os.path.exists(filename):
-            raise IOError("the requested file {fpath} does not exst")
+            raise IOError("the requested file {fpath} does not exist")
         self._fpath = filename
         self._data = np.load(self._fpath, self._mmap_mode)
 
