@@ -28,7 +28,7 @@ Script-Based Configuration
     from databroker import Broker
 
     # This an example. You'll need to know your local configuration.
-    mds = MSDRO({'host': 'localhost',
+    mds = MDSRO({'host': 'localhost',
                  'port': 27017,
                  'database': 'metadatastore-production-v1',
                  'timezone': 'US/Eastern'})
