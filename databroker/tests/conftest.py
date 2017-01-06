@@ -6,7 +6,7 @@ from databroker.tests.utils import build_sqlite_backed_broker, \
     build_pymongo_backed_broker
 
 if sys.version_info >= (3, 0):
-    pass
+    from bluesky.tests.conftest import fresh_RE as RE
 
 
 @pytest.fixture(params=['sqlite', 'mongo'], scope='function')
