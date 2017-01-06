@@ -2,8 +2,8 @@ import sys
 
 import pytest
 
-from databroker.tests.utils import build_sqlite_backed_broker, \
-    build_pymongo_backed_broker
+from databroker.tests.utils import (build_sqlite_backed_broker,
+                                    build_pymongo_backed_broker)
 
 if sys.version_info >= (3, 0):
     from bluesky.tests.conftest import fresh_RE as RE
