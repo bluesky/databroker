@@ -2,14 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import tempfile
 import os
-import glob
+
 import logging
 import sys
 import string
 import time as ttime
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 import itertools
+from databroker import broker
 
 import pytest
 import six
@@ -22,7 +23,8 @@ if sys.version_info >= (3, 0):
 
 logger = logging.getLogger(__name__)
 
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3") 
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
+
 
 @py3
 def test_empty_fixture(db):
@@ -124,7 +126,7 @@ def test_indexing(db, RE):
     RE.subscribe('all', db.mds.insert)
     uids = []
     for i in range(10):
-        uids.extend(RE(count([det]))) 
+        uids.extend(RE(count([det])))
 
     assert uids[-1] == db[-1]['start']['uid']
     assert uids[-2] == db[-2]['start']['uid']
@@ -193,7 +195,7 @@ def test_scan_id_lookup(db, RE):
 @py3
 def test_partial_uid_lookup(db, RE):
     RE.subscribe('all', db.mds.insert)
-    
+
     # Create enough runs that there are two that begin with the same char.
     for _ in range(50):
         RE(count([det]))
@@ -327,7 +329,7 @@ def test_filters(db, RE):
 @py3
 @pytest.mark.parametrize(
     'key',
-    [slice(1, None, None), # raise because trying to slice by scan id
+    [slice(1, None, None),  # raise because trying to slice by scan id
      slice(-1, 2, None),  # raise because slice stop value is > 0
      slice(None, None, None),  # raise because slice has slice.start == None
      4500,  # raise on not finding a header by a scan id
@@ -358,7 +360,7 @@ def _stream(method_name, db, RE):
     name, doc = next(s)
     assert name == 'descriptor'
     assert 'data_keys' in doc
-    last_item  = 'event', {'data'}  # fake Event to prime loop
+    last_item = 'event', {'data'}  # fake Event to prime loop
     for item in s:
         name, doc = last_item
         assert name == 'event'
@@ -366,7 +368,7 @@ def _stream(method_name, db, RE):
         last_item = item
     name, doc = last_item
     assert name == 'stop'
-    assert 'exit_status' in doc # Stop
+    assert 'exit_status' in doc  # Stop
 
 
 @py3
@@ -374,6 +376,7 @@ def test_process(db, RE):
     uid = RE.subscribe('all', db.mds.insert)
     uid = RE(count([det]))
     c = itertools.count()
+
     def f(name, doc):
         next(c)
 
@@ -398,7 +401,7 @@ def test_configuration(db, RE):
 
     # check that config is not included by default
     ev = next(db.get_events(h))
-    assert set(ev['data'].keys()) == set(['a','b'])
+    assert set(ev['data'].keys()) == set(['a', 'b'])
 
     # find config in descriptor['configuration']
     ev = next(db.get_events(h, fields=['a', 'b']))
@@ -457,7 +460,6 @@ def test_handler_options(db, RE):
     with pytest.raises(KeyError):
         list(db.get_images(h, 'image'))
 
-
     class ImageHandler(object):
         RESULT = np.zeros((5, 5))
 
@@ -466,7 +468,6 @@ def test_handler_options(db, RE):
 
         def __call__(self, **datum_kwargs):
             return self.RESULT
-
 
     class DummyHandler(object):
         def __init__(*args, **kwargs):
@@ -493,13 +494,12 @@ def test_handler_options(db, RE):
                         handler_overrides={'image': DummyHandler})
     assert ev['data']['image'] == 'dummy'
 
-
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
                        handler_registry={'foo': DummyHandler})
-    assert res['image'].iloc[0] ==  'dummy'
+    assert res['image'].iloc[0] == 'dummy'
 
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-                    handler_overrides={'image': DummyHandler})
+                       handler_overrides={'image': DummyHandler})
     assert res['image'].iloc[0] == 'dummy'
 
     # Register the DummyHandler statefully so we can test overriding with
@@ -507,7 +507,7 @@ def test_handler_options(db, RE):
     db.fs.register_handler('foo', DummyHandler, overwrite=True)
 
     res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
-    assert res[0].shape ==  ImageHandler.RESULT.shape
+    assert res[0].shape == ImageHandler.RESULT.shape
 
     res = db.get_images(h, 'image', handler_override=ImageHandler)
     assert res[0].shape == ImageHandler.RESULT.shape
@@ -579,3 +579,53 @@ def test_export(broker_factory, RE):
     assert db2[uid] == db1[uid]
     image1, = db1.get_images(db1[uid], 'image')
     image2, = db2.get_images(db2[uid], 'image')
+
+
+@py3
+def test_get_value(db, image_example_uid):
+    # make sure we are getting the keys from the start document
+    hdr1 = db[image_example_uid]
+    hdr2 = db[-2:]
+    hdrs = [hdr1] + hdr2
+    keys = list(hdr1.start.keys())
+    start_keys = ['start-%s' % key for key in keys]
+    table1 = broker.summarize(hdrs, keys=keys)
+    table2 = broker.summarize(hdrs, keys=start_keys)
+
+    assert table1._rows == table2._rows
+
+
+@py3
+def test_special_keys(db, image_example_uid):
+    hdr1 = db[image_example_uid]
+    # smoketest the creation of the table
+    broker.summarize(hdr1, keys=broker.known_special_keys.keys())
+
+
+@py3
+def test_uid_keys(db):
+    hdrs = db[-2:]
+    nums = [0, 2, 40]
+    keys = ['uid-%s' % num for num in nums]
+    uids = [[hdr.start.uid[:num] for num in nums] for hdr in hdrs]
+    table = broker.summarize(hdrs, keys=keys)
+    assert uids == table._rows
+
+
+@py3
+def test_stop_keys(db):
+    hdrs = db[-2:]
+    keys = set(['stop-%s' % k for hdr in hdrs for k in hdr.stop.keys()])
+    keys.add('horsepower')
+    # smoketest the creation of the table
+    broker.summarize(hdrs, keys=keys)
+
+
+@py3
+def test_descriptor_keys(db):
+    hdrs = db[-2:]
+    keys = set(['descriptor-%s' % k for hdr in hdrs for k in
+                [key for descriptor in hdr.descriptors
+                 for key in descriptor.keys()]])
+    # smoketest the creation of the table
+    broker.summarize(hdrs, keys=keys)
