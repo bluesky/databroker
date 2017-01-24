@@ -862,18 +862,74 @@ class EventSourceShim(object):
     def events_given_header(self, header, stream_name,
                             fill=False, fields=None,
                             **kwargs):
-        if fields is not None:
-            raise NotImplementedError
+        no_fields_filter = False
+        if fields is None:
+            no_fields_filter = True
+            fields = []
+        fields = set(fields)
+        _check_fields_exist(fields, [header])
+
+        comp_re = _compile_re(fields)
 
         descs = self.descriptors_given_stream(header, stream_name)
 
+        start = header.start
+        stop = header.stop
+
         yield 'start', header.start
         for d in descs:
-            # TODO move over all of the data merging information
+            if fields:
+                event_fields = set(d['data_keys'])
+                selected_fields = set(filter(comp_re.match, event_fields))
+                discard_fields = event_fields - selected_fields
+            else:
+                discard_fields = set()
+                selected_fields = set()
+
+            objs_config = d.get('configuration', {}).values()
+            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+            config_ts = merge(obj_conf['timestamps']
+                              for obj_conf in objs_config)
+            all_extra_data = {}
+            all_extra_ts = {}
+
+            if not no_fields_filter:
+                # Look in the descriptor, then start, then stop.
+                config_data_fields = (set(filter(comp_re.match, config_data)) -
+                                      selected_fields)
+                for field in config_data_fields:
+                    selected_fields.add(field)
+                    all_extra_data[field] = config_data[field]
+                    all_extra_ts[field] = config_ts[field]
+
+                start_fields = (set(filter(comp_re.match, start)) -
+                                selected_fields)
+                for field in start_fields:
+                    all_extra_data[field] = start[field]
+                    all_extra_ts[field] = start['time']
+
+                stop_fields = (set(filter(comp_re.match, stop)) -
+                               selected_fields)
+                for field in stop_fields:
+                    all_extra_data[field] = stop[field]
+                    all_extra_ts[field] = stop['time']
+
+            # TODO update the descriptor
             yield 'descriptor', d
             for ev in self.mds.get_events_generator(d):
+                event_data = ev.data  # cache for perf
+                event_timestamps = ev.timestamps
+                event_data.update(all_extra_data)
+                event_timestamps.update(all_extra_ts)
+                for field in discard_fields:
+                    del event_data[field]
+                    del event_timestamps[field]
+                if not event_data:
+                    # Skip events that are now empty because they had no
+                    # applicable fields.
+                    continue
                 if fill:
-                    ev = self.fill_event(ev, **kwargs)
+                    ev = self.fill_event(ev, in_place=True, **kwargs)
                 yield 'event', ev
 
         yield 'stop', header.stop

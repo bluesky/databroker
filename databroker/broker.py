@@ -550,6 +550,10 @@ class Broker(object):
                     yield ev
         # TODO deal with plugins
         # plugins=self.plugins,
+        for k in kwargs:
+            if k not in self.plugins:
+                raise KeyError("No plugin was found to handle the keyword "
+                               "argument %r" % k)
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
