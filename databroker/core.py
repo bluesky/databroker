@@ -857,7 +857,7 @@ class EventSourceShim(object):
 
     def descriptors_given_stream(self, header, stream_name):
         return [d for d in self.descriptors_given_header(header)
-                if d['name'] == stream_name]
+                if stream_name is ALL or d['name'] == stream_name]
 
     def events_given_header(self, header, stream_name,
                             fill=False, fields=None,

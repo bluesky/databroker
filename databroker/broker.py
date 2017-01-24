@@ -495,8 +495,8 @@ class Broker(object):
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        return self.es(event, handler_registry=handler_registry,
-                       handler_overrides=handler_overrides)
+        return self.es.fill_event(event, handler_registry=handler_registry,
+                                  handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
                    handler_registry=None, handler_overrides=None, **kwargs):
@@ -531,11 +531,25 @@ class Broker(object):
         ------
         ValueError if any key in `fields` is not in at least one descriptor pre header.
         """
-        return _get_events(headers=headers,
-                           fields=fields, stream_name=stream_name, fill=fill,
-                           handler_registry=handler_registry,
-                           handler_overrides=handler_overrides,
-                           plugins=self.plugins, **kwargs)
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
+
+        for h in headers:
+            for nm, ev in self.es.events_given_header(
+                    header=h, stream_name=stream_name,
+                    fill=fill,
+                    fields=fields,
+                    handler_registry=handler_registry,
+                    handler_overrides=handler_overrides,
+                    **kwargs):
+                if nm == 'event':
+                    yield ev
+        # TODO deal with plugins
+        # plugins=self.plugins,
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
