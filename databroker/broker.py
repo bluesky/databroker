@@ -1,5 +1,4 @@
 from __future__ import print_function
-import copy
 import warnings
 import six  # noqa
 import uuid
@@ -913,7 +912,7 @@ def store_dec(db, external_writers=None):
                 # doc will pass through unchanged; fs_doc may be modified to
                 # replace some values with references to filestore.
                 if external_writers:
-                    fs_doc = copy.deepcopy(doc)
+                    fs_doc = dict(doc)
                 else:
                     fs_doc = doc  # for perf
 
@@ -990,7 +989,7 @@ def event_map(stream_name, data_keys, provenance):
                     if run_start_uid is None:
                         raise RuntimeError("Received EventDescriptor before "
                                            "RunStart.")
-                    new_data_keys = copy.deepcopy(doc['data_keys'])
+                    new_data_keys = dict(doc['data_keys'])
                     for k, v in data_keys.items():
                         new_data_keys[k].update(v)
                     new_descriptor = dict(uid=str(uuid.uuid4()),
@@ -1004,7 +1003,7 @@ def event_map(stream_name, data_keys, provenance):
                     if run_start_uid is None:
                         raise RuntimeError("Received Event before RunStart.")
                     try:
-                        new_event = copy.deepcopy(doc)
+                        new_event = dict(doc)
                         for data_key in data_keys:
                             value = event['data'][data_key]
                             new_event['data'][data_key] = f(value)
