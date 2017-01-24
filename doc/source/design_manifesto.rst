@@ -75,17 +75,17 @@ provided by the attached ``DataBroker``
      - ``es.descriptor_given_stream(header, stream, **kwargs) -> Descriptor``
 
    - get data payload given a ``Header``
-    - ``es.event_gen_given_header(header, stream_name, fill=False, fields=None,**kwargs) -> doc_generator``
+    - ``es.event_gen_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> doc_generator``
     - ``es.table_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> DataFrame``
 
     The reason to keep both the generator and table versions of this
     is to allow the event stores to optimize for a given access
     pattern.  Some data should be stored in columnar / tabular fashion
 
-   - do de-referencing (not in place!!)
-     - ``es.fill_event(ev) -> new_Event``
-     - ``es.fill_table(tab, in_place=False) -> DataFrame``
-
+   - do de-referencing (maybe in place)
+     - ``es.fill_event(ev, in_place=False, fields=None, handler_registry=None, handler_overrides=None)) -> new_Event``
+     - ``es.fill_table(tab, in_place=False, fields=None, handler_registry=None, handler_overrides=None)) -> DataFrame``
+     - ``es.fill_event_stream(ev_gen, in_place=False, fields=None, handler_registry=None, handler_overides=None)) -> Event_gen``
 Helpers
 =======
 

@@ -12,7 +12,6 @@ from .core import (Header,
                    get_events as _get_events,
                    get_table as _get_table,
                    restream as _restream,
-                   fill_event as _fill_event,
                    process as _process, Images,
                    get_fields,  # for conveniece
                    ALL,
@@ -496,8 +495,8 @@ class Broker(object):
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        _fill_event(self.fs, event, handler_registry=handler_registry,
-                    handler_overrides=handler_overrides)
+        return self.es(event, handler_registry=handler_registry,
+                       handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
                    handler_registry=None, handler_overrides=None, **kwargs):
