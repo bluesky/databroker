@@ -3,11 +3,9 @@ import six  # noqa
 from collections import defaultdict, deque
 from itertools import chain
 import pandas as pd
-import tzlocal
 import doct
 from pims import FramesSequence, Frame
 import logging
-import numbers
 import boltons.cacheutils
 import re
 import attr
@@ -867,7 +865,6 @@ class EventSourceShim(object):
             no_fields_filter = True
             fields = []
         fields = set(fields)
-        _check_fields_exist(fields, [header])
 
         comp_re = _compile_re(fields)
 

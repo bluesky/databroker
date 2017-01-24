@@ -15,7 +15,8 @@ from .core import (Header,
                    process as _process, Images,
                    get_fields,  # for conveniece
                    ALL,
-                   EventSourceShim)
+                   EventSourceShim,
+                   _check_fields_exist)
 
 
 def _format_time(search_dict, tz):
@@ -538,22 +539,28 @@ class Broker(object):
         else:
             headers = [headers]
 
+        for k, v in kwargs.items():
+            if k not in self.plugins:
+                raise KeyError("No plugin was found to handle the keyword "
+                               "argument %r" % k)
+
+        _check_fields_exist(fields if fields else [], headers)
+
         for h in headers:
-            for nm, ev in self.es.events_given_header(
+            gen = self.es.events_given_header(
                     header=h, stream_name=stream_name,
                     fill=fill,
                     fields=fields,
                     handler_registry=handler_registry,
                     handler_overrides=handler_overrides,
-                    **kwargs):
+                    **kwargs)
+            for nm, ev in gen:
                 if nm == 'event':
                     yield ev
-        # TODO deal with plugins
-        # plugins=self.plugins,
-        for k in kwargs:
-            if k not in self.plugins:
-                raise KeyError("No plugin was found to handle the keyword "
-                               "argument %r" % k)
+                if nm == 'stop':
+                    for k, v in kwargs.items():
+                        for ev in self.plugins[k].get_events(h, v):
+                            yield ev
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
