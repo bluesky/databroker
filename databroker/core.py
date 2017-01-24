@@ -861,7 +861,7 @@ class EventSourceShim(object):
         return list(desc for desc in
                     self.mds.descriptors_by_start(header.start['uid']))
 
-    def descriptors_for_stream(self, header, stream_name):
+    def descriptors_given_stream(self, header, stream_name):
         return [d for d in self.descriptors_given_header(header)
                 if d['name'] == stream_name]
 
@@ -871,7 +871,7 @@ class EventSourceShim(object):
         if fields is not None:
             raise NotImplementedError
 
-        descs = self.descriptors_for_stream(header, stream_name)
+        descs = self.descriptors_given_stream(header, stream_name)
 
         yield 'start', header.start
         for d in descs:
@@ -891,7 +891,7 @@ class EventSourceShim(object):
         if fields is not None:
             raise NotImplementedError
 
-        descs = self.descriptors_for_stream(header, stream_name)
+        descs = self.descriptors_given_stream(header, stream_name)
         dfs = []
         for d in descs:
             payload = self.mds.get_events_table(d)

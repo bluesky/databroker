@@ -72,7 +72,7 @@ provided by the attached ``DataBroker``
 
    - get descriptors
      - ``es.descriptors_given_header(header, **kwargs) -> [Descriptor]``
-     - ``es.descriptor_for_stream(header, stream, **kwargs) -> Descriptor``
+     - ``es.descriptor_given_stream(header, stream, **kwargs) -> Descriptor``
 
    - get data payload given a ``Header``
     - ``es.event_gen_given_header(header, stream_name, fill=False, fields=None,**kwargs) -> doc_generator``

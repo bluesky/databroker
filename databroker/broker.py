@@ -243,9 +243,11 @@ def _(key, db):
 
 
 class Broker(object):
-    def __init__(self, mds, fs, plugins=None, filters=None, es=None):
+    def __init__(self, mds, fs=None, plugins=None, filters=None):
         """
         Unified interface to data sources
+
+        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
 
         Parameters
         ----------
@@ -257,8 +259,6 @@ class Broker(object):
         filters : list
             list of mongo queries to be combined with query using '$and',
             acting as a filter to restrict the results
-        es : EventStoreRO, optional
-            If not provides, mds is expected to provide event storage.
         """
         self.hs = HeaderSourceShim(mds)
         self.es = EventSourceShim(mds, fs)
