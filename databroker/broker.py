@@ -883,6 +883,9 @@ def _munge_time(t, timezone):
     return timezone.localize(t).replace(microsecond=0).isoformat()
 
 
+mutated_keys = ['descriptor', 'event']
+
+
 def store_dec(db, external_writers=None):
     """Decorate a generator of documents to save them to the databases.
 
@@ -912,7 +915,11 @@ def store_dec(db, external_writers=None):
             for name, doc in gen:
                 # doc will pass through unchanged; fs_doc may be modified to
                 # replace some values with references to filestore.
-                if external_writers:
+                if external_writers and name in mutated_keys:
+                    # print('dbstore', name, type(doc))
+                    # print(doc)
+                    # import copy
+                    # fs_doc = copy.deepcopy(dict(doc))
                     fs_doc = dict(doc)
                 else:
                     fs_doc = doc  # for perf
@@ -939,6 +946,7 @@ def store_dec(db, external_writers=None):
 
                     doc.update(
                         filled={k: True for k in external_writers.keys()})
+                    fs_doc.pop('filled')
 
                 elif name == 'stop':
                     for data_key, writer in list(writers.items()):
@@ -1006,7 +1014,7 @@ def event_map(stream_name, data_keys, provenance):
                         raise RuntimeError("Received Event before RunStart.")
                     try:
                         new_event = dict(doc)
-                        print(doc)
+                        new_event.pop('_name')
                         for data_key in data_keys:
                             value = doc['data'][data_key]
                             new_event['data'][data_key] = f(value)

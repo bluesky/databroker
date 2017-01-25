@@ -82,8 +82,8 @@ def test_streaming(db, RE):
     input_stream = db.restream(input_hdr, fill=True)
     output_stream = multiply_by_two(input_stream)
     for name, doc in output_stream:
-        pprint(name)
-        pprint(doc)
+        # pprint(name)
+        # pprint(doc)
         if name == 'start':
             assert doc['parents'] == [input_hdr['start']['uid']]
             output_uid = doc['uid']
@@ -91,6 +91,7 @@ def test_streaming(db, RE):
             assert doc['exit_status'] == 'success'
         if name == 'event':
             assert doc['data']['image'] == 2 * IMG
+            assert 'filled' in doc.keys()
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
