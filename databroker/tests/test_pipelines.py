@@ -4,7 +4,7 @@ import os
 import uuid
 from functools import partial
 import numpy as np
-from databroker.broker import store_dec
+from databroker.broker import store_dec, event_map
 
 
 class NpyWriter:
@@ -83,6 +83,60 @@ def test_streaming(db, RE):
             output_uid = doc['uid']
         if name == 'event':
             assert doc['data']['image'] == 2 * IMG
+    output_hdr = db[output_uid]
+    for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
+                        db.get_events(output_hdr, fill=True)):
+        assert ev1['data']['image'] == ev2['data']['image']
+
+
+def test_almost_live_streaming(db, RE, tmp_dir):
+    ### GENERATE 'RAW' DATA ###
+    from bluesky.examples import (Reader, ReaderWithFileStore,
+                                  ReaderWithFSHandler)
+    import bluesky.plans as bp
+    from multiprocessing import Queue
+    Q = Queue()
+
+    def subs_Q(*args):
+        Q.put(args)
+
+    GQ = iter(Q.get_nowait, None)
+    RE.subscribe('all', subs_Q)
+
+    IMG = np.ones((13, 11))
+    dirname = tmp_dir  # where image_det will save
+
+    image_det = ReaderWithFileStore('image_det',
+                                    {'image': lambda: IMG},
+                                    fs=db.fs,
+                                    save_path=dirname)
+    db.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    RE.subscribe('all', db.mds.insert)
+
+    ### DEFINE AN ANALYSIS PIPELINE ###
+    @store_dec(db, {'image': partial(NpyWriter, root=dirname)})
+    @event_map('primary', {'image': {}}, {})
+    def multiply_by_two(arr):
+        return arr * 2
+
+    input_uid, = RE(bp.count([image_det]))
+
+    ### APPLY THE PIPELINE ###
+    # (This put analyzed data in the same db as the raw data, which is not
+    # encouraged but is simpler to do for this test.)
+    print('start analysis')
+    input_hdr = db[input_uid]
+    input_stream = db.restream(input_hdr, fill=True)
+    output_stream = multiply_by_two(GQ)
+    for name, doc in output_stream:
+        print(name, Q.empty())
+        if name == 'start':
+            assert doc['parents'] == [input_hdr['start']['uid']]
+            output_uid = doc['uid']
+        if name == 'event':
+            assert doc['data']['image'] == 2 * IMG
+        if Q.empty():
+            break
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):

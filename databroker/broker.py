@@ -17,7 +17,8 @@ from .core import (Header,
                    get_fields,  # for conveniece
                    ALL
                   )
-
+import time
+import traceback
 
 def _format_time(search_dict, tz):
     """Helper function to format the time arguments in a search dict
@@ -1005,7 +1006,7 @@ def event_map(stream_name, data_keys, provenance):
                     try:
                         new_event = dict(doc)
                         for data_key in data_keys:
-                            value = event['data'][data_key]
+                            value = doc['data'][data_key]
                             new_event['data'][data_key] = f(value)
                         yield 'event', new_event
                     except Exception:
