@@ -9,7 +9,6 @@ import logging
 import boltons.cacheutils
 import re
 import attr
-import copy
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -94,7 +93,6 @@ class Header(object):
         header : databroker.broker.Header
         """
         mds = db.hs.mds
-        es = db.es.mds
         if isinstance(run_start, six.string_types):
             run_start = mds.run_start_given_uid(run_start)
         run_start_uid = run_start['uid']
@@ -154,135 +152,6 @@ class Header(object):
 
     def __iter__(self):
         return self.keys()
-
-
-def get_events(headers, fields=None, stream_name=ALL, fill=False,
-               handler_registry=None, handler_overrides=None, plugins=None,
-               **kwargs):
-    """
-    Get Events from given run(s).
-
-    Parameters
-    ----------
-    headers : Header or iterable of Headers
-        The headers to fetch the events for
-    fields : list, optional
-        whitelist of field names of interest or regular expression;
-        if None, all are returned
-    stream_name : string, optional
-        Get events from only one "event stream" with this name. Default value
-        is special sentinel class, `ALL`, which gets all streams together.
-    fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to False.
-    handler_registry : dict, optional
-        mapping filestore specs (strings) to handlers (callable classes)
-    handler_overrides : dict, optional
-        mapping data keys (strings) to handlers (callable classes)
-    plugins : dict or None, optional
-        mapping keyword arguments (strings) to Plugins
-    kwargs
-        passed through to any plugins
-
-    Yields
-    ------
-    event : Event
-        The event, optionally with non-scalar data filled in
-
-    Raises
-    ------
-    ValueError if any key in `fields` is not in at least one descriptor pre header.
-    KeyError if a kwarg is passed without a corresponding plugin.
-    """
-    # A word about the 'fields' argument:
-    # Notice that we assume that the same field name cannot occur in
-    # more than one descriptor. We could relax this assumption, but
-    # we current enforce it in bluesky, so it is safe for now.
-    try:
-        headers.items()
-    except AttributeError:
-        pass
-    else:
-        headers = [headers]
-
-    no_fields_filter = False
-    if fields is None:
-        no_fields_filter = True
-        fields = []
-    fields = set(fields)
-    _check_fields_exist(fields, headers)
-
-    comp_re = _compile_re(fields)
-
-    for k in kwargs:
-        if k not in plugins:
-            raise KeyError("No plugin was found to handle the keyword "
-                           "argument %r" % k)
-
-    for header in headers:
-        fs = header.db.fs
-        es = header.db.es.mds
-        # cache these attribute look-ups for performance
-        start = header['start']
-        stop = header.get('stop', {})
-        for descriptor in header['descriptors']:
-            descriptor_name = descriptor.get('name')
-            if (stream_name is not ALL) and (stream_name != descriptor_name):
-                continue
-            objs_config = descriptor.get('configuration', {}).values()
-            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
-            config_ts = merge(obj_conf['timestamps']
-                              for obj_conf in objs_config)
-            if fields:
-                event_fields = set(descriptor['data_keys'])
-                selected_fields = set(filter(comp_re.match, event_fields))
-                discard_fields = event_fields - selected_fields
-            else:
-                discard_fields = set()
-                selected_fields = set()
-
-            all_extra_data = {}
-            all_extra_ts = {}
-
-            if not no_fields_filter:
-                # Look in the descriptor, then start, then stop.
-                config_data_fields = (set(filter(comp_re.match, config_data)) -
-                                      selected_fields)
-                for field in config_data_fields:
-                    selected_fields.add(field)
-                    all_extra_data[field] = config_data[field]
-                    all_extra_ts[field] = config_ts[field]
-
-                start_fields = (set(filter(comp_re.match, start)) -
-                                selected_fields)
-                for field in start_fields:
-                    all_extra_data[field] = start[field]
-                    all_extra_ts[field] = start['time']
-
-                stop_fields = (set(filter(comp_re.match, stop)) -
-                               selected_fields)
-                for field in stop_fields:
-                    all_extra_data[field] = stop[field]
-                    all_extra_ts[field] = stop['time']
-
-            for event in es.get_events_generator(descriptor):
-                event_data = event.data  # cache for perf
-                event_timestamps = event.timestamps
-                event_data.update(all_extra_data)
-                event_timestamps.update(all_extra_ts)
-                for field in discard_fields:
-                    del event_data[field]
-                    del event_timestamps[field]
-                if not event_data:
-                    # Skip events that are now empty because they had no
-                    # applicable fields.
-                    continue
-                if fill:
-                    fill_event(fs, event, handler_registry, handler_overrides)
-                yield event
-        # Now yield any events from plugins.
-        for k, v in kwargs.items():
-            for ev in plugins[k].get_events(header, v):
-                yield ev
 
 
 def get_table(headers, fields=None, stream_name='primary',
@@ -366,8 +235,6 @@ def get_table(headers, fields=None, stream_name='primary',
         start = header['start']
         stop = header.get('stop', {})
         descriptors = header['descriptors']
-        if stop is None:
-            stop = {}
 
         # shim for back-compat with old data that has no 'primary' descriptor
         if not any(d for d in descriptors if d.get('name') == 'primary'):
@@ -498,7 +365,7 @@ def restream(mds, fs, es, headers, fields=None, fill=False):
         for descriptor in header['descriptors']:
             yield 'descriptor', descriptor
         # When py2 compatibility is dropped, use yield from.
-        for event in get_events(header, fields=fields, fill=fill):
+        for event in header.db.get_events(header, fields=fields, fill=fill):
             yield 'event', event
         yield 'stop', header['stop']
 
@@ -672,8 +539,11 @@ class Images(FramesSequence):
         >>> for image in images:
                 # do something
         """
+        from .broker import Broker
         self.fs = fs
-        events = get_events(headers, [name], fill=False)
+        db = Broker(mds, fs)
+        events = db.get_events(headers, [name], fill=False)
+
         self._datum_uids = [event.data[name] for event in events
                             if name in event.data]
         self._len = len(self._datum_uids)
@@ -904,7 +774,7 @@ class EventSourceShim(object):
                 discard_fields = event_fields - selected_fields
             else:
                 discard_fields = set()
-                selected_fields = set()
+                selected_fields = set(d['data_keys'])
 
             objs_config = d.get('configuration', {}).values()
             config_data = merge(obj_conf['data'] for obj_conf in objs_config)
@@ -953,15 +823,16 @@ class EventSourceShim(object):
         yield 'stop', header.stop
 
     def table_given_header(self, header, stream_name,
-                           fill=False, fields=None,
-                           **kwrags):
-
-        if fields is not None:
-            raise NotImplementedError
-
+                           fields=None,
+                           fill=False, convert_times=True, timezone=None,
+                           handler_registry=None, handler_overrides=None,
+                           localize_times=True):
+        start = header['start']
+        stop = header.get('stop', {})
         descs = self.descriptors_given_stream(header, stream_name)
         dfs = []
         for d in descs:
+            external_map = _external_keys(d)
             payload = self.mds.get_events_table(d)
             _, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(data, index=seq_nums)
