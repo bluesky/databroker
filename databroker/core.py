@@ -9,6 +9,7 @@ import logging
 import boltons.cacheutils
 import re
 import attr
+import copy
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -835,6 +836,28 @@ class DocBuffer:
                 self.__stash_values(name, doc)
 
 
+def _project_header_data(source_data, source_ts, selected_fields, comp_re):
+    """Extract values from a header for merging into events
+
+    Parameters
+    ----------
+    source : dict
+    selected_fields : set
+    comp_re : SRE_Pattern
+
+    Returns
+    -------
+    data_keys : dict
+    data : dict
+    timestamps : dict
+    """
+    fields = (set(filter(comp_re.match, source_data)) - selected_fields)
+    data = {k: source_data[k] for k in fields}
+    timestamps = {k: source_ts[k] for k in fields}
+
+    return {}, data, timestamps
+
+
 class EventSourceShim(object):
     '''Shim class to turn a mds object into a EventSource
 
@@ -891,27 +914,25 @@ class EventSourceShim(object):
             all_extra_ts = {}
 
             if not no_fields_filter:
-                # Look in the descriptor, then start, then stop.
-                config_data_fields = (set(filter(comp_re.match, config_data)) -
-                                      selected_fields)
-                for field in config_data_fields:
-                    selected_fields.add(field)
-                    all_extra_data[field] = config_data[field]
-                    all_extra_ts[field] = config_ts[field]
+                for dt, ts in [(config_data, config_ts),
+                               (start, defaultdict(lambda: start['time'])),
+                               (stop, defaultdict(lambda: start['time']))]:
+                    # Look in the descriptor, then start, then stop.
+                    l_dk, l_data, l_ts = _project_header_data(
+                        dt, ts, selected_fields, comp_re)
+                    all_extra_data.update(l_data)
+                    all_extra_ts.update(l_ts)
+                    selected_fields.update(l_data)
+                    # TODO update descriptor
 
-                start_fields = (set(filter(comp_re.match, start)) -
-                                selected_fields)
-                for field in start_fields:
-                    all_extra_data[field] = start[field]
-                    all_extra_ts[field] = start['time']
+            d = d.copy()
+            dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
+            for k in discard_fields:
+                del d['data_keys'][k]
 
-                stop_fields = (set(filter(comp_re.match, stop)) -
-                               selected_fields)
-                for field in stop_fields:
-                    all_extra_data[field] = stop[field]
-                    all_extra_ts[field] = stop['time']
+            if not len(d['data_keys']) and not len(all_extra_data):
+                continue
 
-            # TODO update the descriptor
             yield 'descriptor', d
             for ev in self.mds.get_events_generator(d):
                 event_data = ev.data  # cache for perf
