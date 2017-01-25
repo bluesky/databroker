@@ -38,6 +38,26 @@ def _format_time(search_dict, tz):
         search_dict['time'] = time_dict
 
 
+def doc_or_uid_to_uid(doc_or_uid):
+    """Given Document or uid return the uid
+
+    Parameters
+    ----------
+    doc_or_uid : dict or str
+        If str, then assume uid and pass through, if not, return
+        the 'uid' field
+
+    Returns
+    -------
+    uid : str
+        A string version of the uid of the given document
+
+    """
+    if not isinstance(doc_or_uid, six.string_types):
+        doc_or_uid = doc_or_uid['uid']
+    return doc_or_uid
+
+
 # human friendly timestamp formats we'll parse
 _TS_FORMATS = [
     '%Y-%m-%d %H:%M:%S',
@@ -992,6 +1012,7 @@ def event_map(stream_name, data_keys, provenance):
                     if run_start_uid is None:
                         raise RuntimeError("Received EventDescriptor before "
                                            "RunStart.")
+                    descriptor_uid = doc_or_uid_to_uid(descriptor['uid'])
                     new_data_keys = dict(doc['data_keys'])
                     for k, v in new_data_keys.items():
                         new_data_keys[k].update(v)
@@ -1002,7 +1023,8 @@ def event_map(stream_name, data_keys, provenance):
                                           name=stream_name)
                     yield 'descriptor', new_descriptor
 
-                elif name == 'event' and doc['descriptor'] == descriptor_uid:
+                elif (name == 'event' and
+                      doc_or_uid_to_uid(doc['descriptor']) == descriptor_uid):
                     if run_start_uid is None:
                         raise RuntimeError("Received Event before RunStart.")
                     try:
