@@ -4,7 +4,7 @@ import os
 import uuid
 from functools import partial
 import numpy as np
-from databroker.broker import store_dec, event_map
+from databroker.broker import store_dec, event_map, header_io
 
 
 class NpyWriter:
@@ -94,4 +94,19 @@ def test_streaming(db, RE):
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
+        assert ev1['data']['image'] == ev2['data']['image']
+
+
+    # DEFINE A HIGHER-LEVEL WORKFLOW WITH JUST HEADERS EXPOSED TO USER
+
+    @header_io(db_in=db, db_out=db)  # usually these would be different
+    @store_dec(db, {'image': partial(NpyWriter, root=dirname)})
+    @event_map('primary', {'image': {}}, {})
+    def multiply_by_two(arr):
+        return arr * 2
+
+    input_hdr = db[input_uid]
+    output_hdr2 = multiply_by_two(input_hdr)
+    for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
+                        db.get_events(output_hdr2, fill=True)):
         assert ev1['data']['image'] == ev2['data']['image']

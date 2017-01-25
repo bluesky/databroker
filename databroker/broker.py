@@ -1060,3 +1060,16 @@ def event_map(stream_name, data_keys, provenance):
                     yield 'stop', new_stop
         return inner
     return outer
+
+
+def header_io(db_in, db_out):
+    def outer(f):
+        def inner(header):
+            output_uids = []
+            stream = db_in.restream(header, fill=True)
+            for name, doc in f(stream):
+                if name == 'start':
+                    output_uids.append(doc_or_uid_to_uid(doc))
+            return db_out[output_uids]
+        return inner
+    return outer
