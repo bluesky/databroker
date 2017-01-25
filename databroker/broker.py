@@ -8,8 +8,8 @@ import logging
 import numbers
 import requests
 from doct import Document
+
 from .core import (Header,
-                   get_events as _get_events,
                    get_table as _get_table,
                    restream as _restream,
                    process as _process, Images,
