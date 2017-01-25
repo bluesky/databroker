@@ -123,3 +123,5 @@ Random concerns
     uids, DataBroker return the documents in-place.).
  - not clear we are not going to end up with two worlds, a document
    streaming one and a DataFrame based one.
+ - there is a possible collision when we merge the config from all of
+   the objects to do the projection
