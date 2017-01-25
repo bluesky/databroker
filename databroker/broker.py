@@ -883,7 +883,7 @@ def _munge_time(t, timezone):
     return timezone.localize(t).replace(microsecond=0).isoformat()
 
 
-mutated_keys = ['descriptor', 'event']
+mutated_keys = {'descriptor': ('data_keys', ), 'event': ('data', )}
 
 
 def store_dec(db, external_writers=None):
@@ -915,12 +915,10 @@ def store_dec(db, external_writers=None):
             for name, doc in gen:
                 # doc will pass through unchanged; fs_doc may be modified to
                 # replace some values with references to filestore.
-                if external_writers and name in mutated_keys:
-                    # print('dbstore', name, type(doc))
-                    # print(doc)
-                    # import copy
-                    # fs_doc = copy.deepcopy(dict(doc))
+                if external_writers and name in mutated_keys.keys():
                     fs_doc = dict(doc)
+                    for v in mutated_keys[name]:
+                        fs_doc[v] = dict(doc[v])
                 else:
                     fs_doc = doc  # for perf
 
@@ -1015,11 +1013,16 @@ def event_map(stream_name, data_keys, provenance):
                     try:
                         new_event = dict(doc)
                         new_event.pop('_name')
+                        new_event.update(dict(uid=str(uuid.uuid4()),
+                                              time=time.time(),
+                                              descriptor=new_descriptor['uid'],
+                                              seq_num=0))
                         for data_key in data_keys:
                             value = doc['data'][data_key]
                             new_event['data'][data_key] = f(value)
                         yield 'event', new_event
                     except Exception as e:
+                        print(e)
                         new_stop = dict(uid=str(uuid.uuid4()),
                                         time=time.time(),
                                         run_start=run_start_uid,

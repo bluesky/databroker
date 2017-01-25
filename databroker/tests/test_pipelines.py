@@ -90,7 +90,7 @@ def test_streaming(db, RE):
         if name == 'stop':
             assert doc['exit_status'] == 'success'
         if name == 'event':
-            assert doc['data']['image'] == 2 * IMG
+            assert_array_equal(doc['data']['image'], 2 * IMG)
             assert 'filled' in doc.keys()
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
