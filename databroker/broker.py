@@ -7,6 +7,7 @@ import pytz
 import logging
 import numbers
 import requests
+import time
 from doct import Document
 from .core import (Header,
                    get_events as _get_events,
@@ -924,8 +925,10 @@ def store_dec(db, external_writers=None):
                 if name == 'descriptor':
                     # Mutate fs_doc here to mark data as external.
                     for data_name in external_writers.keys():
-                        fs_doc['data_keys'][data_name].update(
-                            external='FILESTORE:')
+                        # data doesn't have to exist?
+                        if data_name in fs_doc['data_keys']:
+                            fs_doc['data_keys'][data_name].update(
+                                external='FILESTORE:')
 
                 elif name == 'event':
                     # The writer writes data to an external file, creates a
@@ -990,7 +993,7 @@ def event_map(stream_name, data_keys, provenance):
                         raise RuntimeError("Received EventDescriptor before "
                                            "RunStart.")
                     new_data_keys = dict(doc['data_keys'])
-                    for k, v in data_keys.items():
+                    for k, v in new_data_keys.items():
                         new_data_keys[k].update(v)
                     new_descriptor = dict(uid=str(uuid.uuid4()),
                                           time=time.time(),
