@@ -4,7 +4,7 @@ import os
 import uuid
 from functools import partial
 import numpy as np
-from databroker.broker import store_dec
+from databroker.broker import store_dec, event_map
 
 
 class NpyWriter:
@@ -29,10 +29,10 @@ class NpyWriter:
             raise RuntimeError('This writer has been closed.')
         fp = os.path.join(self._root, '{}.npy'.format(str(uuid.uuid4())))
         np.save(fp, data)
-        resource = self._fs.insert_resource(self.SPEC, fp + self.EXT,
+        resource = self._fs.insert_resource(self.SPEC, "{}.npy".format(fp),
                                             resource_kwargs={})
         datum_id = str(uuid.uuid4())
-        self._fs.insert_datum(resource=self._resource, datum_id=datum_id,
+        self._fs.insert_datum(resource=resource, datum_id=datum_id,
                               datum_kwargs={})
         return datum_id
 
@@ -82,7 +82,7 @@ def test_streaming(db, RE):
             assert doc['parents'] == [input_hdr['start']['uid']]
             output_uid = doc['uid']
         if name == 'event':
-            assert doc['data']['image'] == 2 * IMG
+            np.testing.assert_array_equal(doc['data']['image'], 2 * IMG)
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):

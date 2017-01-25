@@ -1,6 +1,7 @@
 from __future__ import print_function
 import warnings
 import six  # noqa
+import traceback
 import uuid
 from datetime import datetime
 import pytz
@@ -932,10 +933,7 @@ def store_dec(db, external_writers=None):
             for name, doc in gen:
                 # doc will pass through unchanged; fs_doc may be modified to
                 # replace some values with references to filestore.
-                if external_writers:
-                    fs_doc = dict(doc)
-                else:
-                    fs_doc = doc  # for perf
+                fs_doc = dict(doc)
 
                 if name == 'start':
                     # Make a fresh instance of any WriterClass classes.
@@ -951,6 +949,9 @@ def store_dec(db, external_writers=None):
                                 external='FILESTORE:')
 
                 elif name == 'event':
+                    # We need a selectively deeper copy since we will mutate
+                    # fs_doc['data'].
+                    fs_doc['data'] = dict(fs_doc['data'])
                     # The writer writes data to an external file, creates a
                     # datum record in the filestore database, and return that
                     # datum_id. We modify fs_doc in place, replacing the data
@@ -967,7 +968,9 @@ def store_dec(db, external_writers=None):
                         writer.close()
                         writers.pop(data_key)
 
-                # The (maybe mutated) fs_doc is inserted into metadatastore.
+                # The mutated fs_doc is inserted into metadatastore.
+                fs_doc.pop('filled', None)
+                fs_doc.pop('_name', None)
                 db.mds.insert(name, fs_doc)
 
                 # The pristine doc is yielded.
@@ -1012,7 +1015,7 @@ def event_map(stream_name, data_keys, provenance):
                     if run_start_uid is None:
                         raise RuntimeError("Received EventDescriptor before "
                                            "RunStart.")
-                    descriptor_uid = doc_or_uid_to_uid(descriptor['uid'])
+                    descriptor_uid = doc_or_uid_to_uid(doc)
                     new_data_keys = dict(doc['data_keys'])
                     for k, v in new_data_keys.items():
                         new_data_keys[k].update(v)
@@ -1029,16 +1032,19 @@ def event_map(stream_name, data_keys, provenance):
                         raise RuntimeError("Received Event before RunStart.")
                     try:
                         new_event = dict(doc)
+                        # We need a selectively deeper copy since we will
+                        # mutate the contents of new_event['data'].
+                        new_event['data'] = dict(new_event['data'])
+                        new_event['uid'] = str(uuid.uuid4())
                         for data_key in data_keys:
-                            value = event['data'][data_key]
+                            value = doc['data'][data_key]
                             new_event['data'][data_key] = f(value)
                         yield 'event', new_event
-                    except Exception:
+                    except Exception as e:
                         new_stop = dict(uid=str(uuid.uuid4()),
                                         time=time.time(),
                                         run_start=run_start_uid,
-                                        exit_status='failure',
-                                        reason=traceback.format_exc(e))
+                                        exit_status='failure')
                         yield 'stop', new_stop
                         raise
 
