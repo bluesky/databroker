@@ -768,32 +768,9 @@ class EventSourceShim(object):
 
         yield 'start', header.start
         for d in descs:
-            if fields:
-                event_fields = set(d['data_keys'])
-                selected_fields = set(filter(comp_re.match, event_fields))
-                discard_fields = event_fields - selected_fields
-            else:
-                discard_fields = set()
-                selected_fields = set(d['data_keys'])
-
-            objs_config = d.get('configuration', {}).values()
-            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
-            config_ts = merge(obj_conf['timestamps']
-                              for obj_conf in objs_config)
-            all_extra_data = {}
-            all_extra_ts = {}
-
-            if not no_fields_filter:
-                for dt, ts in [(config_data, config_ts),
-                               (start, defaultdict(lambda: start['time'])),
-                               (stop, defaultdict(lambda: start['time']))]:
-                    # Look in the descriptor, then start, then stop.
-                    l_dk, l_data, l_ts = _project_header_data(
-                        dt, ts, selected_fields, comp_re)
-                    all_extra_data.update(l_data)
-                    all_extra_ts.update(l_ts)
-                    selected_fields.update(l_data)
-                    # TODO update descriptor
+            (all_extra_dk, all_extra_data,
+             all_extra_ts, discard_fields) = _extract_extra_data(
+                 start, stop, d, fields, comp_re, no_fields_filter)
 
             d = d.copy()
             dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
@@ -827,17 +804,32 @@ class EventSourceShim(object):
                            fill=False, convert_times=True, timezone=None,
                            handler_registry=None, handler_overrides=None,
                            localize_times=True):
+
+        no_fields_filter = False
+        if fields is None:
+            no_fields_filter = True
+            fields = []
+        fields = set(fields)
+
+        comp_re = _compile_re(fields)
+
+        descs = self.descriptors_given_stream(header, stream_name)
+
         start = header['start']
         stop = header.get('stop', {})
         descs = self.descriptors_given_stream(header, stream_name)
         dfs = []
         for d in descs:
-            external_map = _external_keys(d)
+            (all_extra_dk, all_extra_data,
+             all_extra_ts, discard_fields) = _extract_extra_data(
+                 start, stop, d, fields, comp_re, no_fields_filter)
             payload = self.mds.get_events_table(d)
             _, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(data, index=seq_nums)
             times = pd.Series(times, index=seq_nums)
             df['time'] = times
+
+            external_map = _external_keys(d)
             dfs.append(df)
 
         if dfs:
@@ -879,3 +871,36 @@ class EventSourceShim(object):
 
     def fill_table(self, tab, in_place=False, handler_registry=None, handler_overrides=None):
         raise NotImplementedError
+
+
+def _extract_extra_data(start, stop, d, fields, comp_re,
+                        no_fields_filter):
+    if fields:
+        event_fields = set(d['data_keys'])
+        selected_fields = set(filter(comp_re.match, event_fields))
+        discard_fields = event_fields - selected_fields
+    else:
+        discard_fields = set()
+        selected_fields = set(d['data_keys'])
+
+    objs_config = d.get('configuration', {}).values()
+    config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+    config_ts = merge(obj_conf['timestamps']
+                      for obj_conf in objs_config)
+    all_extra_data = {}
+    all_extra_ts = {}
+    all_extra_dk = {}
+    if not no_fields_filter:
+        for dt, ts in [(config_data, config_ts),
+                       (start, defaultdict(lambda: start['time'])),
+                       (stop, defaultdict(lambda: stop['time']))]:
+            # Look in the descriptor, then start, then stop.
+            l_dk, l_data, l_ts = _project_header_data(
+                dt, ts, selected_fields, comp_re)
+            all_extra_data.update(l_data)
+            all_extra_ts.update(l_ts)
+            selected_fields.update(l_data)
+            all_extra_dk.update(l_dk)
+
+    return (all_extra_dk, all_extra_data, all_extra_ts,
+            discard_fields)
