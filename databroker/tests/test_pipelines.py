@@ -29,8 +29,7 @@ class NpyWriter:
             raise RuntimeError('This writer has been closed.')
         fp = os.path.join(self._root, '{}.npy'.format(str(uuid.uuid4())))
         np.save(fp, data)
-        resource = self._fs.insert_resource(self.SPEC, "{}.npy".format(fp),
-                                            resource_kwargs={})
+        resource = self._fs.insert_resource(self.SPEC, fp, resource_kwargs={})
         datum_id = str(uuid.uuid4())
         self._fs.insert_datum(resource=resource, datum_id=datum_id,
                               datum_kwargs={})
@@ -43,6 +42,14 @@ class NpyWriter:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+
+class NpyHandler:
+    def __init__(self, fp):
+        self._fp = fp
+
+    def __call__(self):
+        return np.load(self._fp)
 
 
 def test_streaming(db, RE):
@@ -59,6 +66,7 @@ def test_streaming(db, RE):
                                     fs=db.fs,
                                     save_path=dirname)
     db.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db.fs.register_handler('npy', NpyHandler)
     RE.subscribe('all', db.mds.insert)
     input_uid, = RE(bp.count([image_det]))
 
