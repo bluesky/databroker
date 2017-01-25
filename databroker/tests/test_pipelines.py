@@ -6,7 +6,7 @@ from functools import partial
 import numpy as np
 from databroker.broker import store_dec, event_map
 from numpy.testing import assert_array_equal
-
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
 
 class NpyWriter:
     """
@@ -45,7 +45,7 @@ class NpyWriter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-
+@py3
 def test_streaming(db, RE):
 
     ### GENERATE 'RAW' DATA ###
@@ -90,7 +90,7 @@ def test_streaming(db, RE):
         assert ev1['data']['image'] == ev2['data']['image']
         assert_array_equal(ev1['data']['image'], ev2['data']['image']*2)
 
-
+@py3
 def test_almost_live_streaming(db, RE, tmp_dir):
     ### GENERATE 'RAW' DATA ###
     from bluesky.examples import (Reader, ReaderWithFileStore,
@@ -142,7 +142,7 @@ def test_almost_live_streaming(db, RE, tmp_dir):
         assert ev1['data']['image'] == ev2['data']['image']
         assert_array_equal(ev1['data']['image'], ev2['data']['image'] * 2)
 
-
+@py3
 def test_live_streaming(db, RE, tmp_dir):
     from portable_mds.sqlite.mds import MDS
     import pytest
