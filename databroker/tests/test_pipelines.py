@@ -5,6 +5,7 @@ import uuid
 from functools import partial
 import numpy as np
 from databroker.broker import store_dec, event_map
+from numpy.testing import assert_array_equal
 
 
 class NpyWriter:
@@ -87,6 +88,7 @@ def test_streaming(db, RE):
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
         assert ev1['data']['image'] == ev2['data']['image']
+        assert_array_equal(ev1['data']['image'], ev2['data']['image']*2)
 
 
 def test_almost_live_streaming(db, RE, tmp_dir):
@@ -124,11 +126,9 @@ def test_almost_live_streaming(db, RE, tmp_dir):
     ### APPLY THE PIPELINE ###
     # (This put analyzed data in the same db as the raw data, which is not
     # encouraged but is simpler to do for this test.)
-    print('start analysis')
     input_hdr = db[input_uid]
     output_stream = multiply_by_two(GQ)
     for name, doc in output_stream:
-        print(name, Q.empty())
         if name == 'start':
             assert doc['parents'] == [input_hdr['start']['uid']]
             output_uid = doc['uid']
@@ -140,6 +140,7 @@ def test_almost_live_streaming(db, RE, tmp_dir):
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
         assert ev1['data']['image'] == ev2['data']['image']
+        assert_array_equal(ev1['data']['image'], ev2['data']['image'] * 2)
 
 
 def test_live_streaming(db, RE, tmp_dir):
@@ -178,19 +179,20 @@ def test_live_streaming(db, RE, tmp_dir):
     @event_map('primary', {'image': {}}, {})
     def multiply_by_two(arr):
         return arr * 2
-    analysis_pipeline = multiply_by_two(GQ)
 
-    def process_queue():
+    def process_data(GQ, pipeline, **kwargs):
         while True:
-            try:
-                rq.put(next(analysis_pipeline))
-            except queue.Empty:
-                sleep(1)
-                pass
-            except StopIteration:
-                break
+            # make the generator
+            pipeline_gen = pipeline(GQ, **kwargs)
+            while True:
+                # pull the documents
+                name, doc = next(pipeline_gen)
+                rq.put((name, doc))
+                if name == 'stop':
+                    # Take it from the top!
+                    break
 
-    p = Process(target=process_queue)
+    p = Process(target=process_data, args=(GQ, multiply_by_two))
     p.start()
     input_uid, = RE(bp.count([image_det]))
 
@@ -212,3 +214,4 @@ def test_live_streaming(db, RE, tmp_dir):
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
         assert ev1['data']['image'] == ev2['data']['image']
+        assert_array_equal(ev1['data']['image'], ev2['data']['image'] * 2)
