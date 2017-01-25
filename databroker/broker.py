@@ -546,6 +546,7 @@ class Broker(object):
 
         _check_fields_exist(fields if fields else [], headers)
 
+        # TODO make self.es just like one of the plugins?
         for h in headers:
             gen = self.es.events_given_header(
                     header=h, stream_name=stream_name,
@@ -557,10 +558,10 @@ class Broker(object):
             for nm, ev in gen:
                 if nm == 'event':
                     yield ev
-                if nm == 'stop':
-                    for k, v in kwargs.items():
-                        for ev in self.plugins[k].get_events(h, v):
-                            yield ev
+
+            for k, v in kwargs.items():
+                for ev in self.plugins[k].get_events(h, v):
+                    yield ev
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
