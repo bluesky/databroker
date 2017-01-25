@@ -990,6 +990,7 @@ def event_map(stream_name, data_keys, provenance):
                     if run_start_uid is None:
                         raise RuntimeError("Received EventDescriptor before "
                                            "RunStart.")
+                    descriptor_uid = doc['uid']
                     new_data_keys = dict(doc['data_keys'])
                     for k, v in data_keys.items():
                         new_data_keys[k].update(v)
@@ -1000,16 +1001,17 @@ def event_map(stream_name, data_keys, provenance):
                                           name=stream_name)
                     yield 'descriptor', new_descriptor
 
-                elif name == 'event' and doc['descriptor'] == descriptor_uid:
+                elif name == 'event' and doc['descriptor']['uid'] == descriptor_uid:
                     if run_start_uid is None:
                         raise RuntimeError("Received Event before RunStart.")
                     try:
                         new_event = dict(doc)
+                        print(doc)
                         for data_key in data_keys:
                             value = doc['data'][data_key]
                             new_event['data'][data_key] = f(value)
                         yield 'event', new_event
-                    except Exception:
+                    except Exception as e:
                         new_stop = dict(uid=str(uuid.uuid4()),
                                         time=time.time(),
                                         run_start=run_start_uid,

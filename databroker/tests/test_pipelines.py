@@ -7,6 +7,7 @@ import numpy as np
 from databroker.broker import store_dec, event_map
 from numpy.testing import assert_array_equal
 from databroker.tests.utils import py3
+from pprint import pprint
 
 
 class NpyWriter:
@@ -16,6 +17,7 @@ class NpyWriter:
     """
 
     SPEC = 'npy'
+    EXT = 'npy'
 
     def __init__(self, fs, root):
         self._root = root
@@ -34,7 +36,7 @@ class NpyWriter:
         resource = self._fs.insert_resource(self.SPEC, fp + self.EXT,
                                             resource_kwargs={})
         datum_id = str(uuid.uuid4())
-        self._fs.insert_datum(resource=self._resource, datum_id=datum_id,
+        self._fs.insert_datum(resource=resource, datum_id=datum_id,
                               datum_kwargs={})
         return datum_id
 
@@ -80,14 +82,21 @@ def test_streaming(db, RE):
     input_stream = db.restream(input_hdr, fill=True)
     output_stream = multiply_by_two(input_stream)
     for name, doc in output_stream:
+        pprint(name)
+        pprint(doc)
         if name == 'start':
             assert doc['parents'] == [input_hdr['start']['uid']]
             output_uid = doc['uid']
+        if name == 'stop':
+            assert doc['exit_status'] == 'success'
         if name == 'event':
             assert doc['data']['image'] == 2 * IMG
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
+        pprint(ev1)
+        pprint(ev2)
+        AAA
         assert ev1['data']['image'] == ev2['data']['image']
         assert_array_equal(ev1['data']['image'], ev2['data']['image'] * 2)
 
