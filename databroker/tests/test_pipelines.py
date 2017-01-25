@@ -8,6 +8,7 @@ from databroker.broker import store_dec, event_map
 from numpy.testing import assert_array_equal
 from databroker.tests.utils import py3
 
+
 class NpyWriter:
     """
     Each call to the ``write`` method saves a file and creates a new filestore
@@ -45,9 +46,9 @@ class NpyWriter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+
 @py3
 def test_streaming(db, RE):
-
     ### GENERATE 'RAW' DATA ###
     from bluesky.examples import (Reader, ReaderWithFileStore,
                                   ReaderWithFSHandler)
@@ -88,7 +89,8 @@ def test_streaming(db, RE):
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
         assert ev1['data']['image'] == ev2['data']['image']
-        assert_array_equal(ev1['data']['image'], ev2['data']['image']*2)
+        assert_array_equal(ev1['data']['image'], ev2['data']['image'] * 2)
+
 
 @py3
 def test_almost_live_streaming(db, RE, tmp_dir):
@@ -142,6 +144,7 @@ def test_almost_live_streaming(db, RE, tmp_dir):
         assert ev1['data']['image'] == ev2['data']['image']
         assert_array_equal(ev1['data']['image'], ev2['data']['image'] * 2)
 
+
 @py3
 def test_live_streaming(db, RE, tmp_dir):
     from portable_mds.sqlite.mds import MDS
@@ -157,6 +160,7 @@ def test_live_streaming(db, RE, tmp_dir):
     from time import sleep
     Q = Queue()
     rq = Queue()
+
     def subs_Q(*args):
         Q.put(args)
 
