@@ -126,7 +126,6 @@ def test_almost_live_streaming(db, RE, tmp_dir):
     # encouraged but is simpler to do for this test.)
     print('start analysis')
     input_hdr = db[input_uid]
-    input_stream = db.restream(input_hdr, fill=True)
     output_stream = multiply_by_two(GQ)
     for name, doc in output_stream:
         print(name, Q.empty())
@@ -137,6 +136,78 @@ def test_almost_live_streaming(db, RE, tmp_dir):
             assert doc['data']['image'] == 2 * IMG
         if Q.empty():
             break
+    output_hdr = db[output_uid]
+    for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
+                        db.get_events(output_hdr, fill=True)):
+        assert ev1['data']['image'] == ev2['data']['image']
+
+
+def test_live_streaming(db, RE, tmp_dir):
+    from portable_mds.sqlite.mds import MDS
+    import pytest
+    if isinstance(db.mds, MDS):
+        pytest.skip('Some reason this fails with sqlite idk why')
+    ### GENERATE 'RAW' DATA ###
+    from bluesky.examples import (Reader, ReaderWithFileStore,
+                                  ReaderWithFSHandler)
+    import bluesky.plans as bp
+    from multiprocessing import Queue, Process
+    import queue
+    from time import sleep
+    Q = Queue()
+    rq = Queue()
+    def subs_Q(*args):
+        Q.put(args)
+
+    GQ = iter(Q.get, None)
+    RGQ = iter(rq.get, None)
+    RE.subscribe('all', subs_Q)
+
+    IMG = np.ones((13, 11))
+    dirname = tmp_dir  # where image_det will save
+
+    image_det = ReaderWithFileStore('image_det',
+                                    {'image': lambda: IMG},
+                                    fs=db.fs,
+                                    save_path=dirname)
+    db.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    RE.subscribe('all', db.mds.insert)
+
+    ### DEFINE AN ANALYSIS PIPELINE ###
+    @store_dec(db, {'image': partial(NpyWriter, root=dirname)})
+    @event_map('primary', {'image': {}}, {})
+    def multiply_by_two(arr):
+        return arr * 2
+    analysis_pipeline = multiply_by_two(GQ)
+
+    def process_queue():
+        while True:
+            try:
+                rq.put(next(analysis_pipeline))
+            except queue.Empty:
+                sleep(1)
+                pass
+            except StopIteration:
+                break
+
+    p = Process(target=process_queue)
+    p.start()
+    input_uid, = RE(bp.count([image_det]))
+
+    ### APPLY THE PIPELINE ###
+    # (This put analyzed data in the same db as the raw data, which is not
+    # encouraged but is simpler to do for this test.)
+    input_hdr = db[input_uid]
+    for name, doc in RGQ:
+        if name == 'start':
+            assert doc['parents'] == [input_hdr['start']['uid']]
+            output_uid = doc['uid']
+        if name == 'event':
+            assert doc['data']['image'] == 2 * IMG
+        if rq.empty():
+            p.terminate()
+            break
+
     output_hdr = db[output_uid]
     for ev1, ev2 in zip(db.get_events(input_hdr, fill=True),
                         db.get_events(output_hdr, fill=True)):
