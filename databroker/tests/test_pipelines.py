@@ -6,7 +6,7 @@ from functools import partial
 import numpy as np
 from databroker.broker import store_dec, event_map
 from numpy.testing import assert_array_equal
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
+from databroker.tests.utils import py3
 
 class NpyWriter:
     """

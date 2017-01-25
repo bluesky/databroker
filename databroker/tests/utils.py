@@ -1,8 +1,10 @@
 import os
 import shutil
+import sys
 import tempfile
 import uuid
 
+import pytest
 import tzlocal
 
 from databroker import Broker
@@ -66,3 +68,6 @@ def build_pymongo_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return Broker(mds, fs)
+
+
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
