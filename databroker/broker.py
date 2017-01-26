@@ -242,8 +242,8 @@ def _(key, db):
     return sum((search(k, db) for k in key), [])
 
 
-class Broker(object):
-    def __init__(self, mds, fs=None, plugins=None, filters=None):
+class BrokerES(object):
+    def __init__(self, hs, es, plugins=None, filters=None):
         """
         Unified interface to data sources
 
@@ -260,8 +260,8 @@ class Broker(object):
             list of mongo queries to be combined with query using '$and',
             acting as a filter to restrict the results
         """
-        self.hs = HeaderSourceShim(mds)
-        self.es = EventSourceShim(mds, fs)
+        self.hs = hs
+        self.es = es
         if plugins is None:
             plugins = {}
         self.plugins = plugins
@@ -920,6 +920,29 @@ class ArchiverPlugin(object):
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'descriptor': descriptor}
                 yield Document('Event', doc)
+
+
+class Broker(BrokerES):
+    def __init__(self, mds, fs=None, **kwargs):
+        """
+        Unified interface to data sources
+
+        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
+
+        Parameters
+        ----------
+        mds : metadatastore or metadataclient
+        fs : filestore
+        plugins : dict or None, optional
+            mapping keyword argument name (string) to Plugin, an object
+            that should implement ``get_events``
+        filters : list
+            list of mongo queries to be combined with query using '$and',
+            acting as a filter to restrict the results
+        """
+        super(Broker, self).__init__(HeaderSourceShim(mds),
+                                     EventSourceShim(mds, fs),
+                                     **kwargs)
 
 
 def _munge_time(t, timezone):

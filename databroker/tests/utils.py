@@ -6,6 +6,8 @@ import uuid
 import tzlocal
 
 from databroker import Broker
+from databroker.broker import HeaderSourceShim, BrokerES
+from databroker.core import EventSourceShim
 
 
 def build_sqlite_backed_broker(request):
@@ -35,7 +37,8 @@ def build_sqlite_backed_broker(request):
 
     request.addfinalizer(delete_fs)
 
-    return Broker(mds, fs)
+    return BrokerES(HeaderSourceShim(mds),
+                    EventSourceShim(mds, fs))
 
 
 def build_pymongo_backed_broker(request):
