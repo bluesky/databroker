@@ -29,43 +29,6 @@ class InvalidDocumentSequence(Exception):
     pass
 
 
-def fill_event(fs, event, handler_registry=None, handler_overrides=None):
-    """
-    Populate events with externally stored data.
-
-    Parameters
-    ----------
-    fs : FileStoreRO
-    event : document
-    handler_registry : dict, optional
-        mapping spec names (strings) to handlers (callable classes)
-    handler_overrides : dict, optional
-        mapping data keys (strings) to handlers (callable classes)
-
-    .. warning
-
-       This mutates the event's ``data`` field in-place
-    """
-    if handler_overrides is None:
-        handler_overrides = {}
-    if handler_registry is None:
-        handler_registry = {}
-    is_external = _external_keys(event.descriptor)
-    mock_registries = {data_key: defaultdict(lambda: handler)
-                       for data_key, handler in handler_overrides.items()}
-    for data_key, value in six.iteritems(event.data):
-        if is_external.get(data_key) is not None:
-            if data_key not in handler_overrides:
-                with fs.handler_context(handler_registry) as _fs:
-                    event.data[data_key] = _fs.get_datum(value)
-                    event.filled[data_key] = True
-            else:
-                mock_registry = mock_registries[data_key]
-                with fs.handler_context(mock_registry) as _fs:
-                    event.data[data_key] = _fs.get_datum(value)
-                    event.filled[data_key] = True
-
-
 @attr.s(frozen=True)
 class Header(object):
     """A dictionary-like object summarizing metadata for a run."""
