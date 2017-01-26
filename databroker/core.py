@@ -556,28 +556,6 @@ class DocBuffer:
                 self.__stash_values(name, doc)
 
 
-def _project_header_data(source_data, source_ts, selected_fields, comp_re):
-    """Extract values from a header for merging into events
-
-    Parameters
-    ----------
-    source : dict
-    selected_fields : set
-    comp_re : SRE_Pattern
-
-    Returns
-    -------
-    data_keys : dict
-    data : dict
-    timestamps : dict
-    """
-    fields = (set(filter(comp_re.match, source_data)) - selected_fields)
-    data = {k: source_data[k] for k in fields}
-    timestamps = {k: source_ts[k] for k in fields}
-
-    return {}, data, timestamps
-
-
 class EventSourceShim(object):
     '''Shim class to turn a mds object into a EventSource
 
@@ -858,6 +836,29 @@ class EventSourceShim(object):
 
 def _extract_extra_data(start, stop, d, fields, comp_re,
                         no_fields_filter):
+
+    def _project_header_data(source_data, source_ts,
+                             selected_fields, comp_re):
+        """Extract values from a header for merging into events
+
+        Parameters
+        ----------
+        source : dict
+        selected_fields : set
+        comp_re : SRE_Pattern
+
+        Returns
+        -------
+        data_keys : dict
+        data : dict
+        timestamps : dict
+        """
+        fields = (set(filter(comp_re.match, source_data)) - selected_fields)
+        data = {k: source_data[k] for k in fields}
+        timestamps = {k: source_ts[k] for k in fields}
+
+        return {}, data, timestamps
+
     if fields:
         event_fields = set(d['data_keys'])
         selected_fields = set(filter(comp_re.match, event_fields))
