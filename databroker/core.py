@@ -579,6 +579,9 @@ class EventSourceShim(object):
         self.mds = mds
         self.fs = fs
 
+    def insert(self, name, doc):
+        return self.mds.insert(name, doc)
+
     def streams_given_header(self, header):
         return set(d['name'] for d in
                    self.descriptors_given_header(header))

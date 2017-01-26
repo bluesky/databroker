@@ -270,6 +270,12 @@ class BrokerES(object):
         self.filters = filters
         self.aliases = {}
 
+    def insert(self, name, doc):
+        if name in {'start', 'stop'}:
+            return self.hs.insert(name, doc)
+        else:
+            return self.es.insert(name, doc)
+
     @property
     def mds(self):
         warnings.warn("stop using raw mds")
@@ -640,7 +646,6 @@ class BrokerES(object):
             # edge case: no data
             return pd.DataFrame()
 
-
     def get_images(self, headers, name, handler_registry=None,
                    handler_override=None):
         """
@@ -990,6 +995,9 @@ class HeaderSourceShim(object):
 
     def __getitem__(self, k):
         return search(k, self)
+
+    def insert(self, name, doc):
+        return self.mds.insert(name, doc)
 
 
 def _safe_get_stop(mds, s):

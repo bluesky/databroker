@@ -44,7 +44,8 @@ provided by the attached ``DataBroker``
   - mirror out all search from ``HeaderSource``, converts to ``Header`` objects
   - manage filters + search state
   - drop everything else!
-
+  - insert?
+    - how to handle ES distribution.
 
 ``HeaderSource``
 ----------------
@@ -86,6 +87,8 @@ provided by the attached ``DataBroker``
      - ``es.fill_event(ev, in_place=False, fields=None, handler_registry=None, handler_overrides=None)) -> new_Event``
      - ``es.fill_table(tab, in_place=False, fields=None, handler_registry=None, handler_overrides=None)) -> DataFrame``
      - ``es.fill_event_stream(ev_gen, in_place=False, fields=None, handler_registry=None, handler_overides=None)) -> Event_gen``
+
+
 Helpers
 =======
 
