@@ -445,7 +445,7 @@ def _external_keys(descriptor, _cache=boltons.cacheutils.LRU(max_size=500)):
     try:
         ek = _cache[descriptor['uid']]
     except KeyError:
-        data_keys = descriptor.data_keys
+        data_keys = descriptor['data_keys']
         ek = {k: v.get('external', None) for k, v in data_keys.items()}
         _cache[descriptor['uid']] = ek
     return ek
@@ -620,12 +620,17 @@ class EventSourceShim(object):
             dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
             for k in discard_fields:
                 del d['data_keys'][k]
+            d['data_keys'].update(all_extra_dk)
 
             if not len(d['data_keys']) and not len(all_extra_data):
                 continue
 
             yield 'descriptor', d
-            for ev in self.mds.get_events_generator(d):
+            ev_gen = self.mds.get_events_generator(d)
+            if fill:
+                ev_gen = self.fill_event_stream(
+                    ev_gen, d, in_place=True, **kwargs)
+            for ev in ev_gen:
                 event_data = ev.data  # cache for perf
                 event_timestamps = ev.timestamps
                 event_data.update(all_extra_data)
@@ -637,8 +642,7 @@ class EventSourceShim(object):
                     # Skip events that are now empty because they had no
                     # applicable fields.
                     continue
-                if fill:
-                    ev = self.fill_event(ev, in_place=True, **kwargs)
+
                 yield 'event', ev
 
         yield 'stop', header.stop
@@ -742,24 +746,9 @@ class EventSourceShim(object):
                 # no content
                 continue
             if fill:
-                external_map = _external_keys(d)
-                if handler_overrides is None:
-                    handler_overrides = {}
-                mock_registries = {data_key: defaultdict(lambda: handler)
-                                   for data_key, handler in
-                                   handler_overrides.items()}
-                for field in df.columns:
-                    if external_map.get(field) is not None:
-                        logger.debug('filling data for %s', field)
-                        # TODO someday we will have bulk get_datum in FS
-                        if handler_overrides:
-                            hr = mock_registries.get(field, handler_registry)
-                        else:
-                            hr = handler_registry
-                        with self.fs.handler_context(hr) as _fs:
-                            values = [_fs.get_datum(value)
-                                      for value in df[field]]
-                        df[field] = values
+                df = self.fill_table(df, d, in_place=True,
+                                     handler_registry=handler_registry,
+                                     handler_overrides=handler_overrides)
 
             for field, v in all_extra_data:
                 df[field] = v
@@ -803,8 +792,59 @@ class EventSourceShim(object):
 
         return ev
 
-    def fill_table(self, tab, in_place=False, handler_registry=None, handler_overrides=None):
-        raise NotImplementedError
+    def fill_event_stream(self, ev_gen, d, in_place=False, fields=None,
+                          handler_registry=None,
+                          handler_overrides=None):
+
+        external_map = _external_keys(d)
+
+        if fields is None:
+            fields = set(k for k, v in external_map.items() if v is not None)
+
+        # fast path with no by key name overrides
+        if not handler_overrides:
+            with self.fs.handler_context(handler_registry):
+                for ev in ev_gen:
+                    if not in_place:
+                        ev = ev.copy()
+                        # reach in and cheat >:)
+                        dict.__setitem__(ev, 'data', ev['data'].copy())
+
+                    data = ev['data']
+
+                    for k in fields:
+                        data[k] = self.fs.get_datum(data[k])
+
+                    yield ev
+        else:
+            for ev in ev_gen:
+                yield self.fill_event(ev, in_place, fields,
+                                      handler_registry,
+                                      handler_overrides)
+
+    def fill_table(self, tab, descriptor, in_place=False,
+                   handler_registry=None, handler_overrides=None):
+        external_map = _external_keys(descriptor)
+        if handler_overrides is None:
+            handler_overrides = {}
+        mock_registries = {data_key: defaultdict(lambda: handler)
+                           for data_key, handler in
+                           handler_overrides.items()}
+        if not in_place:
+            tab = tab.copy()
+        for field in tab.columns:
+            if external_map.get(field) is not None:
+                logger.debug('filling data for %s', field)
+                # TODO someday we will have bulk get_datum in FS
+                if handler_overrides:
+                    hr = mock_registries.get(field, handler_registry)
+                else:
+                    hr = handler_registry
+                with self.fs.handler_context(hr) as _fs:
+                    values = [_fs.get_datum(value)
+                              for value in tab[field]]
+                tab[field] = values
+        return tab
 
 
 def _extract_extra_data(start, stop, d, fields, comp_re,
