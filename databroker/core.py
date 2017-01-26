@@ -153,6 +153,15 @@ class Header(object):
     def __iter__(self):
         return self.keys()
 
+    def stream(self, stream_name=ALL, fill=True):
+        # TODO hit the plugins
+        gen = self.db.es.events_given_header(
+            header=self,
+            stream_name=stream_name,
+            fill=fill)
+        for payload in gen:
+            yield payload
+
 
 def restream(mds, fs, es, headers, fields=None, fill=False):
     """
