@@ -68,6 +68,7 @@ provided by the attached ``DataBroker``
    - ``Filestore`` collection(s) / object
 
  - Methods:
+   - insert ``es.insert(name, doc)``
    - get streams given a ``Header``
      - ``es.streams_given_header(header) -> {stream_names}``
 
@@ -76,7 +77,7 @@ provided by the attached ``DataBroker``
      - ``es.descriptor_given_stream(header, stream, **kwargs) -> Descriptor``
 
    - get data payload given a ``Header``
-    - ``es.event_gen_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> doc_generator``
+    - ``es.documents_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> doc_generator``
     - ``es.table_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> DataFrame``
 
     The reason to keep both the generator and table versions of this

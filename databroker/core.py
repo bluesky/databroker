@@ -155,7 +155,7 @@ class Header(object):
 
     def stream(self, stream_name=ALL, fill=True):
         # TODO hit the plugins
-        gen = self.db.es.events_given_header(
+        gen = self.db.es.docs_given_header(
             header=self,
             stream_name=stream_name,
             fill=fill)
@@ -603,7 +603,7 @@ class EventSourceShim(object):
         return [d for d in self.descriptors_given_header(header)
                 if stream_name is ALL or d['name'] == stream_name]
 
-    def events_given_header(self, header, stream_name,
+    def docs_given_header(self, header, stream_name,
                             fill=False, fields=None,
                             **kwargs):
         no_fields_filter = False

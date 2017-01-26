@@ -554,7 +554,7 @@ class BrokerES(object):
 
         # TODO make self.es just like one of the plugins?
         for h in headers:
-            gen = self.es.events_given_header(
+            gen = self.es.docs_given_header(
                     header=h, stream_name=stream_name,
                     fill=fill,
                     fields=fields,
