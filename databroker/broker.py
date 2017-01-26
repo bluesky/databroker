@@ -8,9 +8,9 @@ import logging
 import numbers
 import requests
 from doct import Document
+import pandas as pd
 
 from .core import (Header,
-                   get_table as _get_table,
                    restream as _restream,
                    process as _process, Images,
                    get_fields,  # for conveniece
@@ -617,13 +617,29 @@ class Broker(object):
         """
         if timezone is None:
             timezone = self.hs.mds.config['timezone']
-        res = _get_table(headers=headers,
-                         fields=fields, stream_name=stream_name, fill=fill,
-                         convert_times=convert_times,
-                         timezone=timezone, handler_registry=handler_registry,
-                         handler_overrides=handler_overrides,
-                         localize_times=localize_times)
-        return res
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
+
+        dfs = [self.es.table_given_header(header=h,
+                                          fields=fields,
+                                          stream_name=stream_name,
+                                          fill=fill,
+                                          convert_times=convert_times,
+                                          timezone=timezone,
+                                          handler_registry=handler_registry,
+                                          handler_overrides=handler_overrides,
+                                          localize_times=localize_times)
+               for h in headers]
+        if dfs:
+            return pd.concat(dfs)
+        else:
+            # edge case: no data
+            return pd.DataFrame()
+
 
     def get_images(self, headers, name, handler_registry=None,
                    handler_override=None):

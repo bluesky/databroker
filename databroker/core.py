@@ -154,165 +154,6 @@ class Header(object):
         return self.keys()
 
 
-def get_table(headers, fields=None, stream_name='primary',
-              fill=False, convert_times=True, timezone=None,
-              handler_registry=None, handler_overrides=None,
-              localize_times=True):
-    """
-    Make a table (pandas.DataFrame) from given run(s).
-
-    Parameters
-    ----------
-    headers : Header or iterable of Headers
-        The headers to fetch the events for
-    fields : list, optional
-        whitelist of field names of interest; if None, all are returned
-    stream_name : string, optional
-        Get data from a single "event stream." To obtain one comprehensive
-        table with all streams, use `stream_name=ALL` (where `ALL` is a
-        sentinel class defined in this module). The default name is
-        'primary', but if no event stream with that name is found, the
-        default reverts to `ALL` (for backward-compatibility).
-    fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to False.
-    convert_times : bool, optional
-        Whether to convert times from float (seconds since 1970) to
-        numpy datetime64, using pandas. True by default, returns naive
-        datetime64 objects in UTC
-    timezone : str, optional
-        e.g., 'US/Eastern'
-    handler_registry : dict, optional
-        mapping filestore specs (strings) to handlers (callable classes)
-    handler_overrides : dict, optional
-        mapping data keys (strings) to handlers (callable classes)
-    localize_times : bool, optional
-        If the times should be localized to the 'local' time zone.  If
-        True (the default) the time stamps are converted to the localtime
-        zone (as configure in mds).
-
-        This is problematic for several reasons:
-
-          - apparent gaps or duplicate times around DST transitions
-          - incompatibility with every other time stamp (which is in UTC)
-
-        however, this makes the dataframe repr look nicer
-
-        This implies convert_times.
-
-        Defaults to True to preserve back-compatibility.
-
-    Returns
-    -------
-    table : pandas.DataFrame
-    """
-    # A word about the 'fields' argument:
-    # Notice that we assume that the same field name cannot occur in
-    # more than one descriptor. We could relax this assumption, but
-    # we current enforce it in bluesky, so it is safe for now.
-    try:
-        headers.items()
-    except AttributeError:
-        pass
-    else:
-        headers = [headers]
-
-    if handler_overrides is None:
-        handler_overrides = {}
-    if handler_registry is None:
-        handler_registry = {}
-
-    if fields is None:
-        fields = []
-    fields = set(fields)
-    _check_fields_exist(fields, headers)
-
-    dfs = []
-    for header in headers:
-        mds = header.db.hs
-        fs = header.db.es.fs
-        es = header.db.es.mds
-        # cache these attribute look-ups for performance
-        start = header['start']
-        stop = header.get('stop', {})
-        descriptors = header['descriptors']
-
-        # shim for back-compat with old data that has no 'primary' descriptor
-        if not any(d for d in descriptors if d.get('name') == 'primary'):
-            stream_name = ALL
-
-        for descriptor in descriptors:
-            descriptor_name = descriptor.get('name')
-            if (stream_name is not ALL) and (stream_name != descriptor_name):
-                continue
-            is_external = _external_keys(descriptor)
-            objs_config = descriptor.get('configuration', {}).values()
-            config_data = merge(obj_conf['data'] for obj_conf in objs_config)
-            discard_fields = set()
-            extra_fields = set()
-            if fields:
-                event_fields = set(descriptor['data_keys'])
-                discard_fields = event_fields - fields
-                extra_fields = fields - event_fields
-            payload = es.get_events_table(descriptor)
-            descriptor, data, seq_nums, times, uids, timestamps = payload
-            df = pd.DataFrame(index=seq_nums)
-            # if converting to datetime64 (in utc or 'local' tz)
-            if convert_times or localize_times:
-                times = pd.to_datetime(times, unit='s')
-            # make sure this is a series
-            times = pd.Series(times, index=seq_nums)
-
-            # if localizing to 'local' time
-            if localize_times:
-                times = (times
-                         .dt.tz_localize('UTC')     # first make tz aware
-                         .dt.tz_convert(timezone)   # convert to 'local'
-                         .dt.tz_localize(None)      # make naive again
-                         )
-
-            df['time'] = times
-            for field, values in six.iteritems(data):
-                if field in discard_fields:
-                    logger.debug('Discarding field %s', field)
-                    continue
-                df[field] = values
-            if list(df.columns) == ['time']:
-                # no content
-                continue
-            for field in df.columns:
-                if is_external.get(field) is not None and fill:
-                    logger.debug('filling data for %s', field)
-                    # TODO someday we will have bulk get_datum in FS
-                    datum_uids = df[field]
-                    if field not in handler_overrides:
-                        with fs.handler_context(handler_registry) as _fs:
-                            values = [_fs.get_datum(value)
-                                      for value in datum_uids]
-                    else:
-                        handler = handler_overrides[field]
-                        mock_registry = defaultdict(lambda: handler)
-                        with fs.handler_context(mock_registry) as _fs:
-                            values = [_fs.get_datum(value)
-                                      for value in datum_uids]
-                    df[field] = values
-            for field in extra_fields:
-                # Look in the descriptor, then start, then stop.
-                # Broadcast any values through the whole df.
-                if field in config_data:
-                    df[field] = config_data[field]
-                elif field in start:
-                    df[field] = start[field]
-                elif field in stop:
-                    df[field] = stop[field]
-                # (else omit it from the events of this descriptor)
-            dfs.append(df)
-    if dfs:
-        return pd.concat(dfs)
-    else:
-        # edge case: no data
-        return pd.DataFrame()
-
-
 def restream(mds, fs, es, headers, fields=None, fill=False):
     """
     Get all Documents from given run(s).
@@ -804,6 +645,53 @@ class EventSourceShim(object):
                            fill=False, convert_times=True, timezone=None,
                            handler_registry=None, handler_overrides=None,
                            localize_times=True):
+        """
+        Make a table (pandas.DataFrame) from given header.
+
+        Parameters
+        ----------
+        header : Header
+            The header to fetch the table for
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        stream_name : string, optional
+            Get data from a single "event stream." To obtain one comprehensive
+            table with all streams, use `stream_name=ALL` (where `ALL` is a
+            sentinel class defined in this module). The default name is
+            'primary', but if no event stream with that name is found, the
+            default reverts to `ALL` (for backward-compatibility).
+        fill : bool, optional
+            Whether externally-stored data should be filled in. Defaults to False.
+        convert_times : bool, optional
+            Whether to convert times from float (seconds since 1970) to
+            numpy datetime64, using pandas. True by default, returns naive
+            datetime64 objects in UTC
+        timezone : str, optional
+            e.g., 'US/Eastern'
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+        handler_overrides : dict, optional
+            mapping data keys (strings) to handlers (callable classes)
+        localize_times : bool, optional
+            If the times should be localized to the 'local' time zone.  If
+            True (the default) the time stamps are converted to the localtime
+            zone (as configure in mds).
+
+            This is problematic for several reasons:
+
+              - apparent gaps or duplicate times around DST transitions
+              - incompatibility with every other time stamp (which is in UTC)
+
+            however, this makes the dataframe repr look nicer
+
+            This implies convert_times.
+
+            Defaults to True to preserve back-compatibility.
+
+        Returns
+        -------
+        table : pandas.DataFrame
+        """
 
         no_fields_filter = False
         if fields is None:
@@ -823,13 +711,56 @@ class EventSourceShim(object):
             (all_extra_dk, all_extra_data,
              all_extra_ts, discard_fields) = _extract_extra_data(
                  start, stop, d, fields, comp_re, no_fields_filter)
+
             payload = self.mds.get_events_table(d)
             _, data, seq_nums, times, uids, timestamps = payload
-            df = pd.DataFrame(data, index=seq_nums)
+            df = pd.DataFrame(index=seq_nums)
+            # if converting to datetime64 (in utc or 'local' tz)
+            if convert_times or localize_times:
+                times = pd.to_datetime(times, unit='s')
+            # make sure this is a series
             times = pd.Series(times, index=seq_nums)
-            df['time'] = times
 
-            external_map = _external_keys(d)
+            # if localizing to 'local' time
+            if localize_times:
+                times = (times
+                         .dt.tz_localize('UTC')     # first make tz aware
+                         .dt.tz_convert(timezone)   # convert to 'local'
+                         .dt.tz_localize(None)      # make naive again
+                         )
+
+            df['time'] = times
+            for field, values in six.iteritems(data):
+                if field in discard_fields:
+                    logger.debug('Discarding field %s', field)
+                    continue
+                df[field] = values
+            if list(df.columns) == ['time']:
+                # no content
+                continue
+            if fill:
+                external_map = _external_keys(d)
+                if handler_overrides is None:
+                    handler_overrides = {}
+                mock_registries = {data_key: defaultdict(lambda: handler)
+                                   for data_key, handler in
+                                   handler_overrides.items()}
+                for field in df.columns:
+                    if external_map.get(field) is not None:
+                        logger.debug('filling data for %s', field)
+                        # TODO someday we will have bulk get_datum in FS
+                        if handler_overrides:
+                            hr = mock_registries.get(field, handler_registry)
+                        else:
+                            hr = handler_registry
+                        with self.fs.handler_context(hr) as _fs:
+                            values = [_fs.get_datum(value)
+                                      for value in df[field]]
+                        df[field] = values
+
+            for field, v in all_extra_data:
+                df[field] = v
+
             dfs.append(df)
 
         if dfs:
