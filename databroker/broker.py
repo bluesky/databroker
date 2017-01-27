@@ -943,7 +943,7 @@ def store_dec(db, external_writers=None):
                 if name == 'descriptor':
                     # Mutate fs_doc here to mark data as external.
                     for data_name in external_writers.keys():
-                        # data doesn't have to exist?
+                        # data doesn't have to exist
                         if data_name in fs_doc['data_keys']:
                             fs_doc['data_keys'][data_name].update(
                                 external='FILESTORE:')
@@ -957,11 +957,13 @@ def store_dec(db, external_writers=None):
                     # datum_id. We modify fs_doc in place, replacing the data
                     # values with that datum_id.
                     for data_key, writer in writers.items():
-                        fs_uid = writer.write(fs_doc['data'][data_key])
-                        fs_doc['data'][data_key] = fs_uid
+                        # data doesn't have to exist
+                        if data_key in fs_doc['data']:
+                            fs_uid = writer.write(fs_doc['data'][data_key])
+                            fs_doc['data'][data_key] = fs_uid
 
                     doc.update(
-                        filled={k: True for k in external_writers.keys()})
+                        filled={k: False for k in external_writers.keys()})
 
                 elif name == 'stop':
                     for data_key, writer in list(writers.items()):
@@ -1019,7 +1021,8 @@ def event_map(stream_name, data_keys, provenance):
                     new_data_keys = dict(doc['data_keys'])
                     for k, v in new_data_keys.items():
                         new_data_keys[k].update(v)
-                    new_descriptor = dict(uid=str(uuid.uuid4()),
+                    new_descriptor_uid = str(uuid.uuid4())
+                    new_descriptor = dict(uid=new_descriptor_uid,
                                           time=time.time(),
                                           run_start=run_start_uid,
                                           data_keys=new_data_keys,
@@ -1036,7 +1039,8 @@ def event_map(stream_name, data_keys, provenance):
                         # mutate the contents of new_event['data'].
                         new_event['data'] = dict(new_event['data'])
                         new_event['uid'] = str(uuid.uuid4())
-                        for data_key in data_keys:
+                        new_event['descriptor'] = new_descriptor_uid
+                        for data_key in new_data_keys:
                             value = doc['data'][data_key]
                             new_event['data'][data_key] = f(value)
                         yield 'event', new_event
