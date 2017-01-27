@@ -1001,7 +1001,7 @@ def event_map(stream_name, data_keys, provenance):
         metadata about this operation
     """
     def outer(f):
-        def inner(stream):
+        def inner(stream, **kwargs):
             run_start_uid = None
             descriptor_uid = None
             for name, doc in stream:
@@ -1042,7 +1042,7 @@ def event_map(stream_name, data_keys, provenance):
                         new_event['descriptor'] = new_descriptor_uid
                         for data_key in new_data_keys:
                             value = doc['data'][data_key]
-                            new_event['data'][data_key] = f(value)
+                            new_event['data'][data_key] = f(value, **kwargs)
                         yield 'event', new_event
                     except Exception as e:
                         new_stop = dict(uid=str(uuid.uuid4()),
@@ -1068,10 +1068,10 @@ def event_map(stream_name, data_keys, provenance):
 
 def header_io(db_in, db_out):
     def outer(f):
-        def inner(header):
+        def inner(header, **kwargs):
             output_uids = []
             stream = db_in.restream(header, fill=True)
-            for name, doc in f(stream):
+            for name, doc in f(stream, **kwargs):
                 if name == 'start':
                     output_uids.append(doc_or_uid_to_uid(doc))
             return db_out[output_uids]
