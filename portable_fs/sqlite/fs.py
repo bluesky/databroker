@@ -120,7 +120,7 @@ class DatumCollection(object):
         keys = ['datum_id', 'datum_kwargs', 'resource']
         with cursor(self._conn) as c:
             c.executemany(INSERT_DATUM, ([d[k] for k in keys] for d in datums))
-    
+
     def find_one(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_DATUM_BY_UID, (query['datum_id'],))
@@ -184,7 +184,7 @@ class ResourceCollection(object):
     def find_one(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_RESOURCE, (query['uid'],))
-            raw= c.fetchone()
+            raw = c.fetchone()
         if raw is None:
             return None
         doc = dict(raw)
@@ -198,7 +198,7 @@ class _CollectionMixin(object):
         super().__init__(*args, **kwargs)
         self._db = FileStoreDatabase(self.config['dbpath'])
         self._conn = self._db._conn
-        self.__resource_col= None
+        self.__resource_col = None
         self.__resource_update_col = None
         self.__datum_col = None
 
@@ -209,7 +209,7 @@ class _CollectionMixin(object):
     @config.setter
     def config(self, val):
         self._config = val
-        self.__resource_col= None
+        self.__resource_col = None
         self.__resource_update_col = None
         self.__datum_col = None
 

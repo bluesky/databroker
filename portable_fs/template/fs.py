@@ -9,7 +9,7 @@ import shutil
 import os
 import boltons.cacheutils
 from . import core
-
+from collections import defaultdict
 _API_MAP = {1: core}
 
 
@@ -106,6 +106,21 @@ class FileStoreTemplateRO(object):
         self._handler_cache = boltons.cacheutils.LRU()
         self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
         self.known_spec = dict(self.KNOWN_SPEC)
+        self.root_map = defaultdict(lambda: self.config['dbpath'])
+
+    def set_root_map(self, root_map):
+        '''Set the root map
+
+        Parameters
+        ----------
+        root_map : dict
+            str -> str mapping to account for temporarily
+            moved/copied/remounted files.  Any resources which have a
+            ``root`` in ``root_map`` will have the resource path
+            updated before being handed to the Handler in
+            ``get_spec_handler``
+        '''
+        self.root_map = root_map
 
     def reconfigure(self, config):
         self.config = config
@@ -208,7 +223,9 @@ class FileStoreTemplateRO(object):
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
         root = resource.get('root', '')
+
         if root:
+            root = self.root_map.get(root, root)
             rpath = os.path.join(root, rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
