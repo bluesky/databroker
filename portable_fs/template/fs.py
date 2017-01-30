@@ -310,7 +310,6 @@ class FileStoreTemplate(FileStoreTemplateRO):
 
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
-
     def shift_root(self, resource_or_uid, shift):
         '''Shift directory levels between root and resource_path
 
@@ -346,7 +345,8 @@ class FileStoreTemplate(FileStoreTemplateRO):
                                        resource, actual_resource))
         resource = dict(actual_resource)
         resource.setdefault('root', '')
-        abs_path = resource['root'][0] == os.sep
+        full_path = os.path.join(resource['root'], resource['resource_path'])
+        abs_path = full_path and full_path[0] == os.sep
         root = [_ for _ in resource['root'].split(os.sep) if _]
         rpath = [_ for _ in resource['resource_path'].split(os.sep) if _]
 
@@ -382,6 +382,7 @@ class FileStoreTemplate(FileStoreTemplateRO):
                                          actual_resource, new,
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
+
 
 
 class FileStoreMovingTemplate(FileStoreTemplate):
