@@ -192,7 +192,7 @@ def test_moving(moving_files, remove):
         assert np.prod(shape) * j == np.sum(datum)
 
 
-def test_no_root_fail(fs_v1, tmpdir):
+def test_no_root(fs_v1, tmpdir):
     fs = fs_v1
     fs.register_handler('npy_series', FileMoveTestingHandler)
 
@@ -202,8 +202,7 @@ def test_no_root_fail(fs_v1, tmpdir):
                              os.path.join(str(tmpdir),
                                           local_path),
                              {'fmt': fmt})
-    with pytest.raises(ValueError):
-        fs_v1.change_root(res, '/foobar')
+    fs_v1.change_root(res, '/foobar')
 
 
 def test_get_resource(moving_files):
