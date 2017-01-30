@@ -293,14 +293,15 @@ def _check_fields_exist(fields, headers):
         for descriptor in header['descriptors']:
             all_fields.update(descriptor['data_keys'])
             objs_conf = descriptor.get('configuration', {})
-            config_fields = [obj_conf['data'] for obj_conf in objs_conf.values()]
+            config_fields = [obj_conf['data']
+                             for obj_conf in objs_conf.values()]
             all_fields.update(chain(*config_fields))
-    missing = len(set(filter(comp_re.match,all_fields))) > 0
+    missing = len(set(filter(comp_re.match, all_fields))) > 0
     if not missing:
-        raise ValueError("The fields %r were not found." %fields)
+        raise ValueError("The fields %r were not found." % fields)
 
 
-def get_images(fs, headers, name, handler_registry=None,
+def get_images(db, headers, name, handler_registry=None,
                handler_override=None):
     """
     Load images from a detector for given Header(s).
@@ -324,7 +325,8 @@ def get_images(fs, headers, name, handler_registry=None,
     >>> for image in images:
             # do something
     """
-    return Images(mds, fs, headers, name, handler_registry, handler_override)
+    return Images(db.mds, db.es, db.fs, headers, name, handler_registry,
+                  handler_override)
 
 
 class Images(FramesSequence):
@@ -407,6 +409,10 @@ def _external_keys(descriptor, _cache=boltons.cacheutils.LRU(max_size=500)):
     ----------
     descriptor : Doct
         The descriptor
+
+    _cache : Mapping
+        Cache to use.  Defaults to a boltons LRU closed over via
+        mutable defaults.
 
     Returns
     -------
@@ -544,9 +550,37 @@ class EventSourceShim(object):
         return [d for d in self.descriptors_given_header(header)
                 if stream_name is ALL or d['name'] == stream_name]
 
-    def docs_given_header(self, header, stream_name,
-                            fill=False, fields=None,
-                            **kwargs):
+    def docs_given_header(self, header, stream_name=ALL,
+                          fill=False, fields=None,
+                          **kwargs):
+        """Get Events from given run(s).
+
+        Parameters
+        ----------
+        header : Header
+            The headers to fetch the events for
+        stream_name : string, optional
+            Get events from only one "event stream" with this
+            name. Default value is special sentinel class, `ALL`,
+            which gets all streams together.
+        fill : bool, optional
+            Whether externally-stored data should be
+            filled in. Defaults to False.
+        fields : list, optional
+            whitelist of field names of interest or regular expression;
+            if None, all are returned
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+        handler_overrides : dict, optional
+            mapping data keys (strings) to handlers (callable classes)
+        Yields
+        ------
+        str : name
+            The name of the document being yielded
+        doc : Document
+            The data payload
+
+        """
         no_fields_filter = False
         if fields is None:
             no_fields_filter = True
@@ -602,8 +636,7 @@ class EventSourceShim(object):
                            fill=False, convert_times=True, timezone=None,
                            handler_registry=None, handler_overrides=None,
                            localize_times=True):
-        """
-        Make a table (pandas.DataFrame) from given header.
+        """Make a table (pandas.DataFrame) from given header.
 
         Parameters
         ----------
@@ -611,14 +644,15 @@ class EventSourceShim(object):
             The header to fetch the table for
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
-        stream_name : string, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use `stream_name=ALL` (where `ALL` is a
-            sentinel class defined in this module). The default name is
-            'primary', but if no event stream with that name is found, the
-            default reverts to `ALL` (for backward-compatibility).
+        stream_name : string, optional Get data from a single "event
+            stream." To obtain one comprehensive table with all
+            streams, use `stream_name=ALL` (where `ALL` is a sentinel
+            class defined in this module). The default name is
+            'primary', but if no event stream with that name is found,
+            the default reverts to `ALL` (for backward-compatibility).
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to False.
+            Whether externally-stored data should be
+            filled in. Defaults to False.
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default, returns naive
@@ -648,6 +682,7 @@ class EventSourceShim(object):
         Returns
         -------
         table : pandas.DataFrame
+
         """
 
         no_fields_filter = False
@@ -713,7 +748,19 @@ class EventSourceShim(object):
 
     def fill_event(self, ev, in_place=False, fields=None,
                    handler_registry=None, handler_overrides=None):
+        """Fill by de-referencing
 
+        fill : bool, optional
+            Whether externally-stored data should be
+            filled in. Defaults to False.
+        fields : list, optional
+            whitelist of field names of interest or regular expression;
+            if None, all are returned
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+        handler_overrides : dict, optional
+            mapping data keys (strings) to handlers (callable classes)
+        """
         external_map = _external_keys(ev.descriptor)
 
         if fields is None:
