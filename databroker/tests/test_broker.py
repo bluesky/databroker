@@ -22,7 +22,7 @@ if sys.version_info >= (3, 0):
 
 logger = logging.getLogger(__name__)
 
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3") 
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
 
 @py3
 def test_empty_fixture(db):
@@ -124,7 +124,7 @@ def test_indexing(db, RE):
     RE.subscribe('all', db.mds.insert)
     uids = []
     for i in range(10):
-        uids.extend(RE(count([det]))) 
+        uids.extend(RE(count([det])))
 
     assert uids[-1] == db[-1]['start']['uid']
     assert uids[-2] == db[-2]['start']['uid']
@@ -193,7 +193,7 @@ def test_scan_id_lookup(db, RE):
 @py3
 def test_partial_uid_lookup(db, RE):
     RE.subscribe('all', db.mds.insert)
-    
+
     # Create enough runs that there are two that begin with the same char.
     for _ in range(50):
         RE(count([det]))
@@ -537,13 +537,6 @@ def test_export(broker_factory, RE):
     from databroker.broker import Broker
     from filestore.fs import FileStoreRO
 
-    # Subclass ReaderWithFSHandler to implement get_file_list, required for
-    # file copying. This should be added upstream in bluesky.
-    class Handler(ReaderWithFSHandler):
-        def get_file_list(self, datum_kwarg_gen):
-            return ['{name}_{index}.npy'.format(name=self._name, **kwargs)
-                    for kwargs in datum_kwarg_gen]
-
     db1 = broker_factory()
     db2 = broker_factory()
     RE.subscribe('all', db1.mds.insert)
@@ -570,8 +563,8 @@ def test_export(broker_factory, RE):
     fs3 = FileStoreRO(fs2.config, version=1)
     db1 = Broker(fs=fs3, mds=mds2)
 
-    db1.fs.register_handler('RWFS_NPY', Handler)
-    db2.fs.register_handler('RWFS_NPY', Handler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
     assert os.path.dirname(from_path) == dir1
