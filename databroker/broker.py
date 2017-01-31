@@ -994,7 +994,7 @@ def event_map(stream_name, data_keys, provenance):
     data_keys : dict
         key(s) in event['data'] to apply function to (e.g., 'image') mapped to
         a dict with any updates to the data key value
-        (e.g., {'shape': [10, 10]}). In the simple case where the shape,
+        (e.g., {'image' : {'shape': [10, 10]}}). In the simple case where the shape,
         datatype, etc. are unchanged, the dict is just empty:
         ``{'image': {}}`` and the original metadata passed through.
     proveance : dict
