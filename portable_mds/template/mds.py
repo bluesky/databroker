@@ -44,6 +44,18 @@ class MDSROTemplate(object):
         self._api = _API_MAP[val]
         self._version = val
 
+    @property
+    def NoRunStart(self):
+        return self._api.NoRunStart
+
+    @property
+    def NoRunStop(self):
+        return self._api.NoRunStop
+
+    @property
+    def NoEventDescriptors(self):
+        return self._api.NoEventDescriptors
+
     def reconfigure(self, config):
         self.config = config
 
