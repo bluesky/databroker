@@ -9,7 +9,6 @@ import numpy as np
 import pymongo
 from numpy.testing import assert_array_equal
 
-from filestore.core import DatumNotFound
 from .utils import (insert_syn_data, insert_syn_data_bulk, install_sentinels)
 
 
@@ -25,7 +24,8 @@ def test_insert_funcs(func, fs):
 
 
 def test_non_exist(fs):
-    with pytest.raises(DatumNotFound):
+
+    with pytest.raises(fs.DatumNotFound):
         fs.retrieve('aardvark')
 
 
@@ -34,7 +34,7 @@ def test_non_unique_fail(fs):
     fb = fs.insert_resource('syn-mod', None, {'shape': shape})
     r_id = str(uuid.uuid4())
     fs.insert_datum(str(fb['id']), r_id, {'n': 0})
-    with pytest.raises(pymongo.errors.DuplicateKeyError):
+    with pytest.raises(fs.DuplicateKeyError):
         fs.insert_datum(str(fb['id']), r_id, {'n': 1})
 
 

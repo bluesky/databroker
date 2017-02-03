@@ -128,6 +128,14 @@ class FileStoreRO(object):
         self._api = _API_MAP[val]
         self._version = val
 
+    @property
+    def DatumNotFound(self):
+        return self._api.DatumNotFound
+
+    @property
+    def DuplicateKeyError(self):
+        return self._api.DuplicateKeyError
+
     def __init__(self, config, handler_reg=None, version=1, root_map=None):
         self.config = config
         self._api = None
