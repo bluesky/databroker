@@ -32,7 +32,7 @@ def doc_or_uid_to_uid(doc_or_uid):
     return doc_or_uid
 
 
-def retrieve(col, eid, datum_cache, get_spec_handler, logger):
+def _get_datum_from_eid(col, eid, datum_cache, logger):
     try:
         datum = datum_cache[eid]
     except KeyError:
@@ -56,8 +56,20 @@ def retrieve(col, eid, datum_cache, get_spec_handler, logger):
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
+    return datum
+
+
+def retrieve(col, eid, datum_cache, get_spec_handler, logger):
+    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
     handler = get_spec_handler(datum['resource'])
     return handler(**datum['datum_kwargs'])
+
+
+def resource_given_eid(col, eid, datum_cache, logger):
+    eid = doc_or_uid_to_uid(eid)
+    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
+    res = datum['resource']
+    return res
 
 
 def resource_given_uid(col, resource):
@@ -213,3 +225,42 @@ def get_datumkw_by_resuid_gen(datum_col, resource_uid):
 
     for d in cur:
         yield d['datum_kwargs']
+
+
+def get_datum_by_res_gen(datum_col, resource_uid):
+    '''Given a resource uid, get all datums
+
+    No order is guaranteed.
+
+    Internally the result of this is passed to the `get_file_list` method
+    of the handler object in `change_root`
+
+    Parameters
+    ----------
+    datam_col : Collection
+        The Datum collection
+
+    resource_uid : Document or str
+       The resource to work on
+
+    Yields
+    ------
+    datum : doct.Document
+    '''
+    resource_uid = doc_or_uid_to_uid(resource_uid)
+    cur = datum_col.find({'resource': resource_uid})
+
+    for d in cur:
+        yield Document('datum', d)
+
+
+def get_file_list(resource, datum_kwarg_gen, get_spec_handler):
+    """
+    Given a resource and an iterable of datum kwargs, get a list of
+    associated files.
+
+    DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
+    See the methods for moving and copying on the FileStore object.
+    """
+    handler = get_spec_handler(resource['uid'])
+    return handler.get_file_list(datum_kwarg_gen)
