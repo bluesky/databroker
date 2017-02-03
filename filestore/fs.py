@@ -8,6 +8,7 @@ import os.path
 import shutil
 from contextlib import contextmanager
 
+import warnings
 import boltons.cacheutils
 import pymongo
 import six
@@ -126,6 +127,14 @@ class FileStoreRO(object):
             raise RuntimeError("Can not change api version at runtime")
         self._api = _API_MAP[val]
         self._version = val
+
+    @property
+    def DatumNotFound(self):
+        return self._api.DatumNotFound
+
+    @property
+    def DuplicateKeyError(self):
+        return self._api.DuplicateKeyError
 
     def __init__(self, config, handler_reg=None, version=1, root_map=None):
         self.config = config
@@ -408,11 +417,13 @@ class FileStoreRO(object):
         # check that all files share the same root
         old_root = resource['root']
         if not old_root:
-            raise ValueError("There is no 'root' in this resource which "
-                             "is required to be able to change the root. "
-                             "Please use `fs.shift_root` to move some of "
-                             "the path from the 'resource_path' to the "
-                             "'root'.")
+            warnings.warn("There is no 'root' in this resource which "
+                          "is required to be able to change the root. "
+                          "Please use `fs.shift_root` to move some of "
+                          "the path from the 'resource_path' to the "
+                          "'root'.  For now assuming '/' as root")
+            old_root = os.path.sep
+
         for f in file_list:
             if not f.startswith(old_root):
                 raise RuntimeError('something is very wrong, the files '
@@ -661,7 +672,6 @@ class FileStoreMoving(FileStore):
 
         file_lists = self.copy_files(resource, new_root, verify,
                                      file_rename_hook)
-        old_file_list, new_file_list = zip(*file_lists)
 
         # update the database
         new_resource = dict(resource)
@@ -680,8 +690,8 @@ class FileStoreMoving(FileStore):
 
         # remove original files
         if remove_origin:
-            for f in old_file_list:
-                os.unlink(f)
+            for f_old, _ in file_lists:
+                os.unlink(f_old)
 
         # nuke caches
         uid = resource['uid']

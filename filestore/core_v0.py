@@ -5,7 +5,8 @@ import six
 from doct import Document
 from jsonschema import validate as js_validate
 from bson import ObjectId
-from .core import DatumNotFound
+# need both imports for API compat
+from .core import DatumNotFound, DuplicateKeyError
 import os.path
 
 

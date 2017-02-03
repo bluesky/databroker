@@ -8,7 +8,6 @@ import uuid
 import numpy as np
 
 from filestore.handlers_base import HandlerBase
-from .utils import insert_syn_data_with_resource
 
 
 def _verify_shifted_resource(last_res, new_res):
@@ -192,7 +191,7 @@ def test_moving(moving_files, remove):
         assert np.prod(shape) * j == np.sum(datum)
 
 
-def test_no_root_fail(fs_v1, tmpdir):
+def test_no_root(fs_v1, tmpdir):
     fs = fs_v1
     fs.register_handler('npy_series', FileMoveTestingHandler)
 
@@ -202,8 +201,7 @@ def test_no_root_fail(fs_v1, tmpdir):
                              os.path.join(str(tmpdir),
                                           local_path),
                              {'fmt': fmt})
-    with pytest.raises(ValueError):
-        fs_v1.change_root(res, '/foobar')
+    fs_v1.change_root(res, '/foobar')
 
 
 def test_get_resource(moving_files):
@@ -234,20 +232,3 @@ def test_temporary_root(fs_v1):
         path = fs.retrieve(dm['datum_id'])
 
     assert path == os.path.join('baz', 'foo')
-
-
-def test_read_old_in_new_resource(fs_v01):
-    fs0, fs1 = fs_v01
-    shape = [25, 32]
-    # save data using old schema
-    mod_ids, res = insert_syn_data_with_resource(fs0, 'syn-mod',
-                                                 shape, 10)
-
-    resource = fs0.resource_given_uid(res)
-    assert resource == res
-    assert res == fs1.resource_given_uid(res)
-
-    for j, d_id in enumerate(mod_ids):
-        # get back using new schema
-        d_res = fs1.resource_given_eid(d_id)
-        assert d_res == resource

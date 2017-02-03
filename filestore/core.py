@@ -7,10 +7,14 @@ from doct import Document
 from jsonschema import validate as js_validate
 import uuid
 import time as ttime
+import pymongo
 
 
 class DatumNotFound(Exception):
     pass
+
+
+DuplicateKeyError = pymongo.errors.DuplicateKeyError
 
 
 def doc_or_uid_to_uid(doc_or_uid):
