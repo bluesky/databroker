@@ -535,7 +535,6 @@ def test_plugins(db, RE):
 @py3
 def test_export(broker_factory, RE):
     from databroker.broker import Broker
-    from filestore.fs import FileStoreRO
 
     db1 = broker_factory()
     db2 = broker_factory()
@@ -557,12 +556,6 @@ def test_export(broker_factory, RE):
                                 fs=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    # Use a read only filestore
-    mds2 = db1.mds
-    fs2 = db1.fs
-    fs3 = FileStoreRO(fs2.config, version=1)
-    db1 = Broker(fs=fs3, mds=mds2)
-
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
     db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
 
@@ -572,3 +565,34 @@ def test_export(broker_factory, RE):
     assert db2[uid] == db1[uid]
     image1, = db1.get_images(db1[uid], 'image')
     image2, = db2.get_images(db2[uid], 'image')
+
+
+@py3
+def test_export_noroot(broker_factory, RE):
+    from bluesky.utils import short_uid
+    from bluesky.examples import GeneralReaderWithFileStore
+
+    class LocalWriter(GeneralReaderWithFileStore):
+        def stage(self):
+            self._file_stem = short_uid()
+            self._path_stem = os.path.join(self.save_path, self._file_stem)
+            self._resource_id = self.fs.insert_resource(
+                self.filestore_spec,
+                os.path.join(self.save_path, self._file_stem),
+                {})
+
+    dir1 = tempfile.mkdtemp()
+    db1 = broker_factory()
+    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+
+    detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
+                        fs=db1.fs, save_path=dir1)
+
+    RE.subscribe('all', db1.mds.insert)
+    uid, = RE(count([detfs], num=3))
+
+    db2 = broker_factory()
+    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+
+    dir2 = tempfile.mkdtemp()
+    db1.export(db1[uid], db2, new_root=dir2)
