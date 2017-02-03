@@ -100,6 +100,7 @@ class FileStoreDatabase(object):
                                     "tables: {}; found tables: {}".format(
                                         self._fp, EXPECTED_TABLES, tables))
 
+
 def shadow_with_json(d, keys):
     """Shadow keys of a dict with JSON-string replacements."""
     return _ChainMap({key: json.dumps(d[key]) for key in keys}, d)
@@ -152,7 +153,6 @@ class ResourceUpdatesCollection(object):
         keys = ['resource', 'old', 'new', 'time', 'cmd', 'cmd_kwargs']
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE_UPDATE, [log_object[k] for k in keys])
-
 
     def find(self, query):
         with cursor(self._conn) as c:
@@ -232,13 +232,19 @@ class _CollectionMixin(object):
         return self.__datum_col
 
 
-class FileStoreRO(_CollectionMixin, FileStoreTemplateRO):
+class _ExceptionMixin:
+    @property
+    def DuplicateKeyError(self):
+        return sqlite3.IntegrityError
+
+
+class FileStoreRO(_CollectionMixin, FileStoreTemplateRO, _ExceptionMixin):
     pass
 
 
-class FileStore(_CollectionMixin, FileStoreTemplate):
+class FileStore(_CollectionMixin, FileStoreTemplate, _ExceptionMixin):
     pass
 
 
-class FileStoreMoving(_CollectionMixin, FileStoreMovingTemplate):
+class FileStoreMoving(_CollectionMixin, FileStoreMovingTemplate, _ExceptionMixin):
     pass

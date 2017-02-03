@@ -93,6 +93,10 @@ class FileStoreTemplateRO(object):
         self._api = _API_MAP[val]
         self._version = val
 
+    @property
+    def DatumNotFound(self):
+        return self._api.DatumNotFound
+
     def __init__(self, config, handler_reg=None, version=1):
         self.config = config
         self._api = None
