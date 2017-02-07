@@ -422,12 +422,17 @@ def test_configuration(db, RE):
 @py3
 def test_handler_options(db, RE):
     datum_id = str(uuid.uuid4())
+    datum_id2 = str(uuid.uuid4())
     desc_uid = str(uuid.uuid4())
     event_uid = str(uuid.uuid4())
+    event_uid2 = str(uuid.uuid4())
 
     # Side-band resource and datum documents.
     res = db.fs.insert_resource('foo', '', {'x': 1})
     db.fs.insert_datum(res, datum_id, {'y': 2})
+
+    res2 = db.fs.insert_resource('foo', '', {'x': 1})
+    db.fs.insert_datum(res2, datum_id2, {'y': 2})
 
     # Generate a normal run.
     RE.subscribe('all', db.mds.insert)
@@ -443,15 +448,20 @@ def test_handler_options(db, RE):
                         data={'image': datum_id},
                         timestamps={'image': ttime.time()}, seq_num=0)
 
+    db.mds.insert_event(descriptor=desc_uid, time=ttime.time(), uid=event_uid2,
+                        data={'image': datum_id2},
+                        timestamps={'image': ttime.time()}, seq_num=0)
+
     h = db[rs_uid]
 
     # Get unfilled event.
-    ev, = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, fields=['image'])
     assert ev['data']['image'] == datum_id
+    assert not ev['filled']['image']
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        ev, = db.get_events(h, fields=['image'], fill=True)
+        ev, ev2 = db.get_events(h, fields=['image'], fill=True)
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
@@ -476,7 +486,7 @@ def test_handler_options(db, RE):
             return 'dummy'
 
     # Use a one-off handler registry.
-    ev, = db.get_events(h, fields=['image'], fill=True,
+    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
                         handler_registry={'foo': ImageHandler})
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
@@ -484,14 +494,23 @@ def test_handler_options(db, RE):
     # Statefully register the handler.
     db.fs.register_handler('foo', ImageHandler)
 
-    ev, = db.get_events(h, fields=['image'], fill=True)
+    ev, ev2 = db.get_events(h, fields=['image'], fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 
+    ev, ev2 = db.get_events(h, fields=['image'])
+    assert ev['filled'] is not ev2['filled']
+    assert not ev['filled']['image']
+    db.fill_event(ev)
+    assert ev['filled']['image']
+    assert not ev2['filled']['image']
+    db.fill_event(ev2)
+    assert ev2['filled']['image']
+
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
-    ev, = db.get_events(h, fields=['image'], fill=True,
+    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
                         handler_overrides={'image': DummyHandler})
     assert ev['data']['image'] == 'dummy'
     assert ev['filled']['image']
