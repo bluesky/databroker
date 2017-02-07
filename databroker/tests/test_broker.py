@@ -479,6 +479,7 @@ def test_handler_options(db, RE):
     ev, = db.get_events(h, fields=['image'], fill=True,
                         handler_registry={'foo': ImageHandler})
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
+    assert ev['filled']['image']
 
     # Statefully register the handler.
     db.fs.register_handler('foo', ImageHandler)
@@ -486,21 +487,24 @@ def test_handler_options(db, RE):
     ev, = db.get_events(h, fields=['image'], fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
+    assert ev['filled']['image']
 
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
     ev, = db.get_events(h, fields=['image'], fill=True,
                         handler_overrides={'image': DummyHandler})
     assert ev['data']['image'] == 'dummy'
-
+    assert ev['filled']['image']
 
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
                        handler_registry={'foo': DummyHandler})
-    assert res['image'].iloc[0] ==  'dummy'
+    assert res['image'].iloc[0] == 'dummy'
+    assert ev['filled']['image']
 
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
                     handler_overrides={'image': DummyHandler})
     assert res['image'].iloc[0] == 'dummy'
+    assert ev['filled']['image']
 
     # Register the DummyHandler statefully so we can test overriding with
     # ImageHandler for the get_images method below.
