@@ -363,7 +363,6 @@ def get_events_generator(descriptor, event_col, descriptor_col,
 
     data_keys = descriptor['data_keys']
     external_keys = [k for k in data_keys if 'external' in data_keys[k]]
-    filled = {k: False for k in external_keys}
     for ev in ev_cur:
         # ditch the ObjectID
         del ev['_id']
@@ -378,7 +377,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
                     ev['data'][k] = np.asarray(ev['data'][k])
 
         # note which keys refer to dereferences (external) data
-        ev['filled'] = filled
+        ev['filled'] = {k: False for k in external_keys}
 
         # wrap it in our fancy dict
         ev = doc.Document('Event', ev)
