@@ -54,10 +54,12 @@ def fill_event(fs, event, handler_registry=None, handler_overrides=None):
             if data_key not in handler_overrides:
                 with fs.handler_context(handler_registry) as _fs:
                     event.data[data_key] = _fs.get_datum(value)
+                    event.filled[data_key] = True
             else:
                 mock_registry = mock_registries[data_key]
                 with fs.handler_context(mock_registry) as _fs:
                     event.data[data_key] = _fs.get_datum(value)
+                    event.filled[data_key] = True
 
 
 class Header(doc.Document):

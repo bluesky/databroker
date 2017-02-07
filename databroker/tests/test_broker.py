@@ -496,10 +496,9 @@ def test_handler_options(db, RE):
     assert ev['data']['image'] == 'dummy'
     assert ev['filled']['image']
 
-
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
                        handler_registry={'foo': DummyHandler})
-    assert res['image'].iloc[0] ==  'dummy'
+    assert res['image'].iloc[0] == 'dummy'
     assert ev['filled']['image']
 
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
