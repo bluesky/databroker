@@ -500,6 +500,7 @@ def test_handler_options(db, RE):
     assert ev['filled']['image']
 
     ev, ev2 = db.get_events(h, fields=['image'])
+    assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
     db.fill_event(ev)
