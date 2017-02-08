@@ -283,7 +283,6 @@ def test_bulk_insert(mds_all):
 
 
 def test_iterative_insert(mds_all):
-    import copy
     mdsc = mds_all
     num = 50
     rs, e_desc, data_keys = setup_syn(mdsc)
