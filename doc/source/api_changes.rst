@@ -7,7 +7,7 @@
 Non-backward compatible API changes
 
 
-v0.7.0
+v0.8.0
 ======
 
 ``Header``
