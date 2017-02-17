@@ -549,7 +549,7 @@ class EventSourceShim(object):
     def docs_given_header(self, header, stream_name=ALL,
                           fill=False, fields=None,
                           **kwargs):
-        """Get Events from given run(s).
+        """Get documents for given Header.
 
         Parameters
         ----------
