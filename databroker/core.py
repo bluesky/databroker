@@ -613,7 +613,7 @@ class EventSourceShim(object):
             ev_gen = self.mds.get_events_generator(d)
             if fill:
                 ev_gen = self.fill_event_stream(
-                    ev_gen, d, in_place=True, **kwargs)
+                    ev_gen, d, inplace=True, **kwargs)
             for ev in ev_gen:
                 event_data = ev.data  # cache for perf
                 event_timestamps = ev.timestamps
@@ -731,7 +731,7 @@ class EventSourceShim(object):
                 # no content
                 continue
             if fill:
-                df = self.fill_table(df, d, in_place=True,
+                df = self.fill_table(df, d, inplace=True,
                                      handler_registry=handler_registry,
                                      handler_overrides=handler_overrides)
 
@@ -746,7 +746,7 @@ class EventSourceShim(object):
             # edge case: no data
             return pd.DataFrame()
 
-    def fill_event(self, ev, in_place=False, fields=None,
+    def fill_event(self, ev, inplace=False, fields=None,
                    handler_registry=None, handler_overrides=None):
         """Fill by de-referencing
 
@@ -766,14 +766,14 @@ class EventSourceShim(object):
         if fields is None:
             fields = set(k for k, v in external_map.items() if v is not None)
 
-        if not in_place:
+        if not inplace:
             ev = ev.copy()
             # reach in and cheat >:)
             dict.__setitem__(ev, 'data', ev['data'].copy())
             dict.__setitem__(ev, 'filled', ev['filled'].copy())
 
         data = ev['data']
-        data = ev['filled']
+        filled = ev['filled']
         # fast path with no by key name overrides
         if not handler_overrides:
             with self.fs.handler_context(handler_registry):
@@ -791,7 +791,7 @@ class EventSourceShim(object):
                     filled[k] = True
         return ev
 
-    def fill_event_stream(self, ev_gen, d, in_place=False, fields=None,
+    def fill_event_stream(self, ev_gen, d, inplace=False, fields=None,
                           handler_registry=None,
                           handler_overrides=None):
 
@@ -804,7 +804,7 @@ class EventSourceShim(object):
         if not handler_overrides:
             with self.fs.handler_context(handler_registry):
                 for ev in ev_gen:
-                    if not in_place:
+                    if not inplace:
                         ev = ev.copy()
                         # reach in and cheat >:)
                         dict.__setitem__(ev, 'data', ev['data'].copy())
@@ -818,11 +818,11 @@ class EventSourceShim(object):
                     yield ev
         else:
             for ev in ev_gen:
-                yield self.fill_event(ev, in_place, fields,
+                yield self.fill_event(ev, inplace, fields,
                                       handler_registry,
                                       handler_overrides)
 
-    def fill_table(self, tab, descriptor, in_place=False,
+    def fill_table(self, tab, descriptor, inplace=False,
                    handler_registry=None, handler_overrides=None):
         external_map = _external_keys(descriptor)
         if handler_overrides is None:
@@ -830,7 +830,7 @@ class EventSourceShim(object):
         mock_registries = {data_key: defaultdict(lambda: handler)
                            for data_key, handler in
                            handler_overrides.items()}
-        if not in_place:
+        if not inplace:
             tab = tab.copy()
         for field in tab.columns:
             if external_map.get(field) is not None:

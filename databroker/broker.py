@@ -486,23 +486,24 @@ class BrokerES(object):
         warnings.warn("Use .get_events() instead.")
         return self.get_events(headers, fill=fill)
 
-    def fill_event(self, event, handler_registry=None, handler_overrides=None):
+    def fill_event(self, event, inplace=False,
+                   handler_registry=None, handler_overrides=None):
         """
         Populate events with externally stored data.
-
-        .. warning
-
-            This mutates the event's ``data`` field in-place
 
         Parameters
         ----------
         event : document
+        inplace : bool, optional
+            If the event should be filled 'in-place' by mutating the data
+            dictionary.  Defaults to `False`.
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        return self.es.fill_event(event, handler_registry=handler_registry,
+        return self.es.fill_event(event, inplace=inplace,
+                                  handler_registry=handler_registry,
                                   handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
