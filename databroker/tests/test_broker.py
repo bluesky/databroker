@@ -1,19 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
-import tempfile
-import os
-import glob
+import itertools
 import logging
-import sys
+import os
 import string
+import sys
+import tempfile
 import time as ttime
 import uuid
-from datetime import datetime, date, timedelta
-import itertools
+from datetime import date, timedelta
 
+import numpy as np
 import pytest
 import six
-import numpy as np
+
+from databroker.tests.utils import py3
 
 if sys.version_info >= (3, 0):
     from bluesky.examples import (det, det1, det2, Reader, ReaderWithFileStore,
@@ -22,7 +23,6 @@ if sys.version_info >= (3, 0):
 
 logger = logging.getLogger(__name__)
 
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3") 
 
 @py3
 def test_empty_fixture(db):

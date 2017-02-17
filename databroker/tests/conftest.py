@@ -4,6 +4,9 @@ import pytest
 
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker)
+import tempfile
+import shutil
+import os
 
 if sys.version_info >= (3, 0):
     from bluesky.tests.conftest import fresh_RE as RE
@@ -24,3 +27,13 @@ def broker_factory(request):
                  'mongo': lambda: build_pymongo_backed_broker(request)}
 
     return param_map[request.param]
+
+
+@pytest.fixture(scope='module')
+def tmp_dir():
+    td = tempfile.mkdtemp()
+    print('creating {}'.format(td))
+    yield td
+    if os.path.exists(td):
+        print('removing {}'.format(td))
+        shutil.rmtree(td)

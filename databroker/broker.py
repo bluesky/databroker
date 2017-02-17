@@ -17,7 +17,8 @@ from .core import (Header,
                    get_fields,  # for conveniece
                    ALL
                   )
-
+import time
+import traceback
 
 def _format_time(search_dict, tz):
     """Helper function to format the time arguments in a search dict
@@ -880,3 +881,165 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+mutated_keys = {'descriptor': ('data_keys', ), 'event': ('data', )}
+
+
+def store_dec(db, external_writers=None):
+    """Decorate a generator of documents to save them to the databases.
+
+    The input stream of (name, document) pairs passes through unchanged.
+    As a side effect, documents are inserted into the databases and external
+    files may be written.
+
+    Parameters
+    ----------
+    db: ``databroker.Broker`` instance
+        The databroker to store the documents in, must have writeable
+        metadatastore and writeable filestore if ``external`` is not empty.
+    external_writers : dict
+        Maps data keys to a ``WriterClass``, which is responsible for writing
+        data to disk and creating a record in filestore. It will be
+        instantiated (possible multiple times) with the argument ``db.fs``.
+        If it requires additional arguments, use ``functools.partial`` to
+        produce a callable that requires only ``db.fs`` to instantiate the
+        ``WriterClass``.
+        """
+    if external_writers is None:
+        external_writers = {}  # {'name': WriterClass}
+
+    def wrap(f):
+        def wrapped_f(*args, **kwargs):
+            gen = f(*args, **kwargs)
+            for name, doc in gen:
+                # doc will pass through unchanged; fs_doc may be modified to
+                # replace some values with references to filestore.
+                if external_writers and name in mutated_keys.keys():
+                    fs_doc = dict(doc)
+                    for v in mutated_keys[name]:
+                        fs_doc[v] = dict(doc[v])
+                else:
+                    fs_doc = doc  # for perf
+
+                if name == 'start':
+                    # Make a fresh instance of any WriterClass classes.
+                    writers = {data_key: cl(db.fs)
+                               for data_key, cl in external_writers.items()}
+
+                if name == 'descriptor':
+                    # Mutate fs_doc here to mark data as external.
+                    for data_name in external_writers.keys():
+                        fs_doc['data_keys'][data_name].update(
+                            external='FILESTORE:')
+
+                elif name == 'event':
+                    # The writer writes data to an external file, creates a
+                    # datum record in the filestore database, and return that
+                    # datum_id. We modify fs_doc in place, replacing the data
+                    # values with that datum_id.
+                    for data_key, writer in writers.items():
+                        fs_uid = writer.write(fs_doc['data'][data_key])
+                        fs_doc['data'][data_key] = fs_uid
+
+                    doc.update(
+                        filled={k: True for k in external_writers.keys()})
+                    fs_doc.pop('filled')
+
+                elif name == 'stop':
+                    for data_key, writer in list(writers.items()):
+                        writer.close()
+                        writers.pop(data_key)
+
+                # The (maybe mutated) fs_doc is inserted into metadatastore.
+                db.mds.insert(name, fs_doc)
+
+                # The pristine doc is yielded.
+                yield name, doc
+
+        return wrapped_f
+
+    return wrap
+
+
+def event_map(stream_name, data_keys, provenance):
+    """
+    Map a function onto each event in a stream.
+
+    Parameters
+    ----------
+    stream_name : string
+        e.g., 'primary' or 'baseline'
+    data_keys : dict
+        key(s) in event['data'] to apply function to (e.g., 'image') mapped to
+        a dict with any updates to the data key value
+        (e.g., {'shape': [10, 10]}). In the simple case where the shape,
+        datatype, etc. are unchanged, the dict is just empty:
+        ``{'image': {}}`` and the original metadata passed through.
+    proveance : dict
+        metadata about this operation
+    """
+    def outer(f):
+        def inner(stream):
+            run_start_uid = None
+            descriptor_uid = None
+            for name, doc in stream:
+                if name == 'start':
+                    run_start_uid = str(uuid.uuid4())
+                    new_start_doc = dict(uid=run_start_uid,
+                                         time=time.time(),
+                                         parents=[doc['uid']],
+                                         provenance=provenance)
+                    yield 'start', new_start_doc
+
+                elif name == 'descriptor' and doc.get('name') == stream_name:
+                    if run_start_uid is None:
+                        raise RuntimeError("Received EventDescriptor before "
+                                           "RunStart.")
+                    descriptor_uid = doc['uid']
+                    new_data_keys = dict(doc['data_keys'])
+                    for k, v in data_keys.items():
+                        new_data_keys[k].update(v)
+                    new_descriptor = dict(uid=str(uuid.uuid4()),
+                                          time=time.time(),
+                                          run_start=run_start_uid,
+                                          data_keys=new_data_keys,
+                                          name=stream_name)
+                    yield 'descriptor', new_descriptor
+
+                elif name == 'event' and doc['descriptor']['uid'] == descriptor_uid:
+                    if run_start_uid is None:
+                        raise RuntimeError("Received Event before RunStart.")
+                    try:
+                        new_event = dict(doc)
+                        new_event.pop('_name')
+                        new_event.update(dict(uid=str(uuid.uuid4()),
+                                              time=time.time(),
+                                              descriptor=new_descriptor['uid'],
+                                              seq_num=0))
+                        for data_key in data_keys:
+                            value = doc['data'][data_key]
+                            new_event['data'][data_key] = f(value)
+                        yield 'event', new_event
+                    except Exception as e:
+                        print(e)
+                        new_stop = dict(uid=str(uuid.uuid4()),
+                                        time=time.time(),
+                                        run_start=run_start_uid,
+                                        exit_status='failure',
+                                        reason=traceback.format_exc(e))
+                        yield 'stop', new_stop
+                        raise
+
+                elif name == 'stop':
+                    if run_start_uid is None:
+                        raise RuntimeError("Received RunStop before RunStart.")
+                    new_stop = dict(uid=str(uuid.uuid4()),
+                                    time=time.time(),
+                                    run_start=run_start_uid,
+                                    exit_status='success')
+                    descriptor_uid = None
+                    run_start_uid = None
+                    yield 'stop', new_stop
+        return inner
+    return outer
