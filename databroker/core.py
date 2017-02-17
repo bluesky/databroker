@@ -542,12 +542,8 @@ class EventSourceShim(object):
         return set(d['name'] for d in
                    self.descriptors_given_header(header))
 
-    def descriptors_given_header(self, header):
-        return list(desc for desc in
-                    self.mds.descriptors_by_start(header.start['uid']))
-
-    def descriptors_given_stream(self, header, stream_name):
-        return [d for d in self.descriptors_given_header(header)
+    def descriptors_given_header(self, header, stream_name=ALL):
+        return [d for d in self.mds.descriptors_by_start(header.start['uid'])
                 if stream_name is ALL or d['name'] == stream_name]
 
     def docs_given_header(self, header, stream_name=ALL,
@@ -589,7 +585,7 @@ class EventSourceShim(object):
 
         comp_re = _compile_re(fields)
 
-        descs = self.descriptors_given_stream(header, stream_name)
+        descs = self.descriptors_given_header(header, stream_name)
 
         start = header.start
         stop = header.stop
@@ -693,11 +689,11 @@ class EventSourceShim(object):
 
         comp_re = _compile_re(fields)
 
-        descs = self.descriptors_given_stream(header, stream_name)
+        descs = self.descriptors_given_header(header, stream_name)
 
         start = header['start']
         stop = header.get('stop', {})
-        descs = self.descriptors_given_stream(header, stream_name)
+        descs = self.descriptors_given_header(header, stream_name)
         dfs = []
         for d in descs:
             (all_extra_dk, all_extra_data,

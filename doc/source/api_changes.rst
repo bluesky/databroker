@@ -53,6 +53,11 @@ Break up internal structure of databroker
   This does not affect the API of the ``Broker`` object, only the functions in
   the ``core`` module.
 
+Top level insert
+----------------
+
+The top level `DataBroker` now has an ``insert`` method, use this over ``db.mds.insert``.
+
 v0.4.2
 ======
 

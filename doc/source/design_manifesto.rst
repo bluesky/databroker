@@ -73,8 +73,7 @@ provided by the attached ``DataBroker``
      - ``es.stream_names_given_header(header) -> {stream_names}``
 
    - get descriptors
-     - ``es.descriptors_given_header(header, **kwargs) -> [Descriptor]``
-     - ``es.descriptor_given_stream(header, stream, **kwargs) -> Descriptor``
+     - ``es.descriptors_given_header(header, stream_name=ALL, **kwargs) -> [Descriptor]``
 
    - get data payload given a ``Header``
     - ``es.documents_given_header(header, stream_name, fill=False, fields=None, **kwargs) -> doc_generator``
