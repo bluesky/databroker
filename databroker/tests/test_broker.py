@@ -534,8 +534,6 @@ def test_plugins(db, RE):
 
 @py3
 def test_export(broker_factory, RE):
-    from databroker.broker import Broker
-
     db1 = broker_factory()
     db2 = broker_factory()
     RE.subscribe('all', db1.mds.insert)
@@ -586,7 +584,7 @@ def test_export_noroot(broker_factory, RE):
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
 
     detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
-                        fs=db1.fs, save_path=dir1)
+                        fs=db1.fs, save_path=dir1, save_ext='npy')
 
     RE.subscribe('all', db1.mds.insert)
     uid, = RE(count([detfs], num=3))
