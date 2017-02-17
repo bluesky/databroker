@@ -770,14 +770,16 @@ class EventSourceShim(object):
             ev = ev.copy()
             # reach in and cheat >:)
             dict.__setitem__(ev, 'data', ev['data'].copy())
+            dict.__setitem__(ev, 'filled', ev['filled'].copy())
 
         data = ev['data']
-
+        data = ev['filled']
         # fast path with no by key name overrides
         if not handler_overrides:
             with self.fs.handler_context(handler_registry):
                 for k in fields:
                     data[k] = self.fs.get_datum(data[k])
+                    filled[k] = True
         else:
             mock_registries = {dk: defaultdict(lambda: handler)
                                for dk, handler in handler_overrides.items()}
@@ -786,7 +788,7 @@ class EventSourceShim(object):
                 with self.fs.handler_context(
                         mock_registries.get(k, handler_registry)):
                     data[k] = self.fs.get_datum(data[k])
-
+                    filled[k] = True
         return ev
 
     def fill_event_stream(self, ev_gen, d, in_place=False, fields=None,
@@ -806,12 +808,13 @@ class EventSourceShim(object):
                         ev = ev.copy()
                         # reach in and cheat >:)
                         dict.__setitem__(ev, 'data', ev['data'].copy())
+                        dict.__setitem__(ev, 'filled', ev['filled'].copy())
 
                     data = ev['data']
-
+                    filled = ev['filled']
                     for k in fields:
                         data[k] = self.fs.get_datum(data[k])
-
+                        filled[k] = True
                     yield ev
         else:
             for ev in ev_gen:
