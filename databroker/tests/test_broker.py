@@ -593,4 +593,13 @@ def test_export_noroot(broker_factory, RE):
     db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
 
     dir2 = tempfile.mkdtemp()
-    db1.export(db1[uid], db2, new_root=dir2)
+    file_pairs = db1.export(db1[uid], db2, new_root=dir2)
+    for from_path, to_path in file_pairs:
+        assert os.path.dirname(from_path) == dir1
+        assert os.path.dirname(to_path) == os.path.join(dir2, dir1[1:])
+
+    assert db2[uid] == db1[uid]
+    image1s = db1.get_images(db1[uid], 'image')
+    image2s = db2.get_images(db2[uid], 'image')
+    for im1, im2 in zip(image1s, image2s):
+        assert np.array_equal(im1, im2)
