@@ -70,7 +70,7 @@ provided by the attached ``DataBroker``
  - Methods:
    - insert ``es.insert(name, doc)``
    - get streams given a ``Header``
-     - ``es.streams_given_header(header) -> {stream_names}``
+     - ``es.stream_names_given_header(header) -> {stream_names}``
 
    - get descriptors
      - ``es.descriptors_given_header(header, **kwargs) -> [Descriptor]``
