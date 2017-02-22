@@ -578,8 +578,8 @@ def test_export(db, db2, RE):
     assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
 
     # test file copying
-    # if not hasattr(db1.fs, 'copy_files'):
-    #     raise pytest.skip("This filestore does not implement copy_files.")
+    if not hasattr(db1.fs, 'copy_files'):
+        raise pytest.skip("This filestore does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
@@ -588,10 +588,8 @@ def test_export(db, db2, RE):
     uid, = RE(count([detfs]))
 
     # Use a read only filestore
-    mds2 = db1.mds
-    fs2 = db1.fs
-    fs3 = FileStoreRO(fs2.config, version=1)
-    db1 = Broker(fs=fs3, mds=mds2)
+    fs3 = FileStoreRO(db1.fs.config, version=1)
+    db1 = Broker(fs=fs3, mds=db1.mds)
 
     db1.fs.register_handler('RWFS_NPY', Handler)
     db2.fs.register_handler('RWFS_NPY', Handler)
