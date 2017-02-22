@@ -557,7 +557,7 @@ def test_plugins(db, RE):
 
 
 @py3
-def test_export(broker_factory, RE):
+def test_export(db, db2, RE):
     from databroker.broker import Broker
     from filestore.fs import FileStoreRO
 
@@ -568,8 +568,7 @@ def test_export(broker_factory, RE):
             return ['{name}_{index}.npy'.format(name=self._name, **kwargs)
                     for kwargs in datum_kwarg_gen]
 
-    db1 = broker_factory()
-    db2 = broker_factory()
+    db1 = db
     RE.subscribe('all', db1.mds.insert)
 
     # test mds only
@@ -579,8 +578,8 @@ def test_export(broker_factory, RE):
     assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
 
     # test file copying
-    if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+    # if not hasattr(db1.fs, 'copy_files'):
+    #     raise pytest.skip("This filestore does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()

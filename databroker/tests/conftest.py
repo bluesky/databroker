@@ -18,6 +18,15 @@ def db(request):
 
 
 @pytest.fixture(params=['sqlite', 'mongo'], scope='function')
+def db2(request):
+    "For when you need two DBs not built simultaniously"
+    param_map = {'sqlite': build_sqlite_backed_broker,
+                 'mongo': build_pymongo_backed_broker}
+
+    return param_map[request.param](request)
+
+
+@pytest.fixture(params=['sqlite', 'mongo'], scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
     param_map = {'sqlite': lambda: build_sqlite_backed_broker(request),
