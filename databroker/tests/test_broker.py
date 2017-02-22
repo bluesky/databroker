@@ -566,9 +566,8 @@ def test_handler_options(db, RE):
 
 
 @py3
-def test_export(broker_factory, RE):
-    db1 = broker_factory()
-    db2 = broker_factory()
+def test_export(db, db2, RE):
+    db1 = db
     RE.subscribe('all', db1.mds.insert)
 
     # test mds only
