@@ -163,6 +163,7 @@ def test_full_text_search(db, RE):
     # Full text search does *not* apply to keys.
     assert len(db('foo')) == 0
 
+
 @py3
 def test_table_alignment(db, RE):
     # test time shift issue GH9
@@ -603,3 +604,11 @@ def test_export(broker_factory, RE):
     assert db2[uid] == db1[uid]
     image1, = db1.get_images(db1[uid], 'image')
     image2, = db2.get_images(db2[uid], 'image')
+
+
+@py3
+def test_return_order(db, RE):
+    RE.subscribe('all', db.mds.insert)
+    for _ in range(5):
+        RE(count([det]))
+    assert db[-1] == db()[-1]
