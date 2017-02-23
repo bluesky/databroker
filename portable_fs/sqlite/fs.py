@@ -69,8 +69,15 @@ def cursor(connection):
     ...     c.execute(query)
     """
     c = connection.cursor()
-    yield c
-    c.close()
+    try:
+        yield c
+    except:
+        connection.rollback()
+        raise
+    else:
+        connection.commit()
+    finally:
+        c.close()
 
 
 class FileStoreDatabase(object):
