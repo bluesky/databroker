@@ -608,5 +608,6 @@ def test_export(db, db2, RE):
 
     fs4 = f_s_class(db2.fs.config, version=1)
     db3 = Broker(fs=fs4, mds=db2.mds)
+    db3.fs.register_handler('RWFS_NPY', Handler)
     assert db3[uid] == db1[uid]
-    image2, = db3.get_images(db2[uid], 'image')
+    image2, = db3.get_images(db3[uid], 'image')
