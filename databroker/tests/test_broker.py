@@ -559,7 +559,12 @@ def test_plugins(db, RE):
 @py3
 def test_export(db, db2, RE):
     from databroker.broker import Broker
-    from filestore.fs import FileStoreRO
+    from filestore.fs import FileStoreRO as fsfsro
+    from portable_fs.sqlite.fs import FileStoreRO as porfsro
+    if isinstance(db.fs, fsfsro):
+        f_s_class = fsfsro
+    else:
+        f_s_class = porfsro
 
     # Subclass ReaderWithFSHandler to implement get_file_list, required for
     # file copying. This should be added upstream in bluesky.
@@ -588,7 +593,7 @@ def test_export(db, db2, RE):
     uid, = RE(count([detfs]))
 
     # Use a read only filestore
-    fs3 = FileStoreRO(db1.fs.config, version=1)
+    fs3 = f_s_class(db1.fs.config, version=1)
     db1 = Broker(fs=fs3, mds=db1.mds)
 
     db1.fs.register_handler('RWFS_NPY', Handler)
@@ -600,3 +605,8 @@ def test_export(db, db2, RE):
     assert db2[uid] == db1[uid]
     image1, = db1.get_images(db1[uid], 'image')
     image2, = db2.get_images(db2[uid], 'image')
+
+    fs4 = f_s_class(db2.fs.config, version=1)
+    db3 = Broker(fs=fs4, mds=db2.mds)
+    assert db3[uid] == db1[uid]
+    image2, = db3.get_images(db2[uid], 'image')
