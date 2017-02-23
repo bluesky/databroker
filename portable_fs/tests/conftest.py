@@ -2,9 +2,7 @@ import uuid
 import os
 import pytest
 import numpy as np
-from filestore.utils import create_test_database
 import portable_fs.sqlite.fs
-import filestore
 import tempfile
 from filestore.test.utils import SynHandlerMod
 
@@ -26,9 +24,11 @@ def fs(request):
 
     return fs
 
+
 @pytest.fixture(params=[portable_fs.sqlite.fs], scope='function')
 def fs_v1(request):
     return fs(request)
+
 
 @pytest.fixture()
 def moving_files(fs_v1, tmpdir):

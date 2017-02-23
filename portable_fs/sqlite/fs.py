@@ -107,6 +107,7 @@ class FileStoreDatabase(object):
                                     "tables: {}; found tables: {}".format(
                                         self._fp, EXPECTED_TABLES, tables))
 
+
 def shadow_with_json(d, keys):
     """Shadow keys of a dict with JSON-string replacements."""
     return _ChainMap({key: json.dumps(d[key]) for key in keys}, d)
@@ -127,7 +128,7 @@ class DatumCollection(object):
         keys = ['datum_id', 'datum_kwargs', 'resource']
         with cursor(self._conn) as c:
             c.executemany(INSERT_DATUM, ([d[k] for k in keys] for d in datums))
-    
+
     def find_one(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_DATUM_BY_UID, (query['datum_id'],))
@@ -160,7 +161,6 @@ class ResourceUpdatesCollection(object):
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE_UPDATE, [log_object[k] for k in keys])
 
-
     def find(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_RESOURCE_UPDATES, (query['resource'],))
@@ -191,7 +191,7 @@ class ResourceCollection(object):
     def find_one(self, query):
         with cursor(self._conn) as c:
             c.execute(SELECT_RESOURCE, (query['uid'],))
-            raw= c.fetchone()
+            raw = c.fetchone()
         if raw is None:
             return None
         doc = dict(raw)
@@ -205,7 +205,7 @@ class _CollectionMixin(object):
         super().__init__(*args, **kwargs)
         self._db = FileStoreDatabase(self.config['dbpath'])
         self._conn = self._db._conn
-        self.__resource_col= None
+        self.__resource_col = None
         self.__resource_update_col = None
         self.__datum_col = None
 
@@ -216,7 +216,7 @@ class _CollectionMixin(object):
     @config.setter
     def config(self, val):
         self._config = val
-        self.__resource_col= None
+        self.__resource_col = None
         self.__resource_update_col = None
         self.__datum_col = None
 
@@ -239,13 +239,19 @@ class _CollectionMixin(object):
         return self.__datum_col
 
 
-class FileStoreRO(_CollectionMixin, FileStoreTemplateRO):
+class _ExceptionMixin:
+    @property
+    def DuplicateKeyError(self):
+        return sqlite3.IntegrityError
+
+
+class FileStoreRO(_CollectionMixin, FileStoreTemplateRO, _ExceptionMixin):
     pass
 
 
-class FileStore(_CollectionMixin, FileStoreTemplate):
+class FileStore(_CollectionMixin, FileStoreTemplate, _ExceptionMixin):
     pass
 
 
-class FileStoreMoving(_CollectionMixin, FileStoreMovingTemplate):
+class FileStoreMoving(_CollectionMixin, FileStoreMovingTemplate, _ExceptionMixin):
     pass
