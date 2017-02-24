@@ -22,7 +22,7 @@ if sys.version_info >= (3, 0):
 
 logger = logging.getLogger(__name__)
 
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3") 
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
 
 @py3
 def test_empty_fixture(db):
@@ -124,7 +124,7 @@ def test_indexing(db, RE):
     RE.subscribe('all', db.mds.insert)
     uids = []
     for i in range(10):
-        uids.extend(RE(count([det]))) 
+        uids.extend(RE(count([det])))
 
     assert uids[-1] == db[-1]['start']['uid']
     assert uids[-2] == db[-2]['start']['uid']
@@ -193,7 +193,7 @@ def test_scan_id_lookup(db, RE):
 @py3
 def test_partial_uid_lookup(db, RE):
     RE.subscribe('all', db.mds.insert)
-    
+
     # Create enough runs that there are two that begin with the same char.
     for _ in range(50):
         RE(count([det]))
@@ -558,16 +558,6 @@ def test_plugins(db, RE):
 
 @py3
 def test_export(broker_factory, RE):
-    from databroker.broker import Broker
-    from filestore.fs import FileStoreRO
-
-    # Subclass ReaderWithFSHandler to implement get_file_list, required for
-    # file copying. This should be added upstream in bluesky.
-    class Handler(ReaderWithFSHandler):
-        def get_file_list(self, datum_kwarg_gen):
-            return ['{name}_{index}.npy'.format(name=self._name, **kwargs)
-                    for kwargs in datum_kwarg_gen]
-
     db1 = broker_factory()
     db2 = broker_factory()
     RE.subscribe('all', db1.mds.insert)
@@ -588,14 +578,8 @@ def test_export(broker_factory, RE):
                                 fs=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    # Use a read only filestore
-    mds2 = db1.mds
-    fs2 = db1.fs
-    fs3 = FileStoreRO(fs2.config, version=1)
-    db1 = Broker(fs=fs3, mds=mds2)
-
-    db1.fs.register_handler('RWFS_NPY', Handler)
-    db2.fs.register_handler('RWFS_NPY', Handler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
     assert os.path.dirname(from_path) == dir1
@@ -603,3 +587,43 @@ def test_export(broker_factory, RE):
     assert db2[uid] == db1[uid]
     image1, = db1.get_images(db1[uid], 'image')
     image2, = db2.get_images(db2[uid], 'image')
+
+
+@py3
+def test_export_noroot(broker_factory, RE):
+    from bluesky.utils import short_uid
+    from bluesky.examples import GeneralReaderWithFileStore
+
+    class LocalWriter(GeneralReaderWithFileStore):
+        def stage(self):
+            self._file_stem = short_uid()
+            self._path_stem = os.path.join(self.save_path, self._file_stem)
+            self._resource_id = self.fs.insert_resource(
+                self.filestore_spec,
+                os.path.join(self.save_path, self._file_stem),
+                {})
+
+    dir1 = tempfile.mkdtemp()
+    db1 = broker_factory()
+    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+
+    detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
+                        fs=db1.fs, save_path=dir1, save_ext='npy')
+
+    RE.subscribe('all', db1.mds.insert)
+    uid, = RE(count([detfs], num=3))
+
+    db2 = broker_factory()
+    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+
+    dir2 = tempfile.mkdtemp()
+    file_pairs = db1.export(db1[uid], db2, new_root=dir2)
+    for from_path, to_path in file_pairs:
+        assert os.path.dirname(from_path) == dir1
+        assert os.path.dirname(to_path) == os.path.join(dir2, dir1[1:])
+
+    assert db2[uid] == db1[uid]
+    image1s = db1.get_images(db1[uid], 'image')
+    image2s = db2.get_images(db2[uid], 'image')
+    for im1, im2 in zip(image1s, image2s):
+        assert np.array_equal(im1, im2)

@@ -40,7 +40,6 @@ install:
   - pip install mongoquery
   - pip install https://github.com/NSLS-II/portable-mds/zipball/master
   - pip install https://github.com/NSLS-II/portable-fs/zipball/master
-  - pip install https://github.com/NSLS-II/filestore/zipball/master
   - pip install coveralls codecov
   - |
     if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
@@ -51,10 +50,15 @@ install:
     if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
       conda install bluesky;  # Use this to install deps.
       conda remove metadatastore --force;
+      conda remove filestore --force;
       conda remove bluesky --force;
       pip install https://github.com/NSLS-II/metadatastore/zipball/master;
       pip install https://github.com/NSLS-II/bluesky/zipball/master;
-    fi;
+
+      fi;
+
+  - pip install https://github.com/NSLS-II/filestore/zipball/master
+
   - python setup.py install
   # Need to clean the repo or pytest gets confused why there are *two* copies
   # of all the python files
