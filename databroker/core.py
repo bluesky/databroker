@@ -230,7 +230,8 @@ def get_events(mds, fs, headers, fields=None, stream_name=ALL, fill=False,
 
 def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
               convert_times=True, timezone=None, handler_registry=None,
-              handler_overrides=None, localize_times=True):
+              handler_overrides=None, localize_times=True,
+              tz_aware_times=False):
     """
     Make a table (pandas.DataFrame) from given run(s).
 
@@ -252,8 +253,9 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
         Whether externally-stored data should be filled in. Defaults to False.
     convert_times : bool, optional
         Whether to convert times from float (seconds since 1970) to
-        numpy datetime64, using pandas. True by default, returns naive
-        datetime64 objects in UTC
+        numpy datetime64, using pandas. True by default.
+
+        If False, return naive floats in UTC
     timezone : str, optional
         e.g., 'US/Eastern'
     handler_registry : dict, optional
@@ -272,9 +274,12 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
 
         however, this makes the dataframe repr look nicer
 
-        This implies convert_times.
+        Ignored if `convert_times` is False
 
         Defaults to True to preserve back-compatibility.
+    tz_aware_times : bool, optional
+        If the 'time' column should be naive or TZ aware,  Default to False (
+        which returns naive values).  Ignored if `convert_times` is False
     Returns
     -------
     table : pandas.DataFrame
@@ -330,18 +335,16 @@ def get_table(mds, fs, headers, fields=None, stream_name='primary', fill=False,
             descriptor, data, seq_nums, times, uids, timestamps = payload
             df = pd.DataFrame(index=seq_nums)
             # if converting to datetime64 (in utc or 'local' tz)
-            if convert_times or localize_times:
-                times = pd.to_datetime(times, unit='s')
-            # make sure this is a series
-            times = pd.Series(times, index=seq_nums)
-
-            # if localizing to 'local' time
-            if localize_times:
-                times = (times
-                         .dt.tz_localize('UTC')     # first make tz aware
-                         .dt.tz_convert(timezone)   # convert to 'local'
-                         .dt.tz_localize(None)      # make naive again
-                         )
+            if convert_times:
+                times = pd.Series(pd.to_datetime(times, unit='s'),
+                                  index=seq_nums)
+                times = times.dt.tz_localize('UTC')        # make tz aware
+                if localize_times:
+                    times = times.dt.tz_convert(timezone)  # convert to 'local'
+                if not tz_aware_times:
+                    times = times.dt.tz_localize(None)     # make naive again
+            else:
+                times = pd.Series(times, index=seq_nums)
 
             df['time'] = times
             for field, values in six.iteritems(data):
