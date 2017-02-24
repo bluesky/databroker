@@ -1,5 +1,4 @@
 import sys
-
 import pytest
 
 from databroker.tests.utils import (build_sqlite_backed_broker,
