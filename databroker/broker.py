@@ -486,7 +486,7 @@ class BrokerES(object):
         warnings.warn("Use .get_events() instead.")
         return self.get_events(headers, fill=fill)
 
-    def fill_event(self, event, inplace=False,
+    def fill_event(self, event, inplace=True,
                    handler_registry=None, handler_overrides=None):
         """
         Populate events with externally stored data.
@@ -496,7 +496,7 @@ class BrokerES(object):
         event : document
         inplace : bool, optional
             If the event should be filled 'in-place' by mutating the data
-            dictionary.  Defaults to `False`.
+            dictionary.  Defaults to `True`.
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
         handler_overrides : dict, optional

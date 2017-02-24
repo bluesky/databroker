@@ -504,10 +504,10 @@ def test_handler_options(db, RE):
     assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
-    db.fill_event(ev)
+    db.fill_event(ev)  # , inplace=True)
     assert ev['filled']['image']
     assert not ev2['filled']['image']
-    db.fill_event(ev2)
+    ev2 = db.fill_event(ev2, inplace=False)
     assert ev2['filled']['image']
 
     # Override the stateful registry with a one-off handler.
