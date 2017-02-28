@@ -8,15 +8,15 @@ import logging
 import numbers
 import requests
 from doct import Document
+import pandas as pd
+
 from .core import (Header,
-                   get_events as _get_events,
-                   get_table as _get_table,
                    restream as _restream,
-                   fill_event as _fill_event,
                    process as _process, Images,
                    get_fields,  # for conveniece
-                   ALL
-                  )
+                   ALL,
+                   EventSourceShim,
+                   _check_fields_exist)
 
 
 def _format_time(search_dict, tz):
@@ -146,7 +146,7 @@ logger = logging.getLogger(__name__)
 
 
 @singledispatch
-def search(key, mds):
+def search(key, db):
     logger.info('Using default search for key = %s' % key)
     raise ValueError("Must give an integer scan ID like [6], a slice "
                      "into past scans like [-5], [-5:], or [-5:-9:2], "
@@ -156,7 +156,7 @@ def search(key, mds):
 
 
 @search.register(slice)
-def _(key, mds):
+def _(key, db):
     # Interpret key as a slice into previous scans.
     logger.info('Interpreting key = %s as a slice' % key)
     if key.start is not None and key.start > -1:
@@ -177,53 +177,51 @@ def _(key, mds):
                          "the size of the result is non-deterministic "
                          "and could become too large.")
     start = -key.start
-    result = list(mds.find_last(start))[stop::key.step]
-    header = [Header.from_run_start(mds, h) for h in result]
-    return header
+    result = list(db.mds.find_last(start))[stop::key.step]
+    stop = list(_safe_get_stop(db.mds, s) for s in result)
+    return list(zip(result, stop))
 
 
 @search.register(numbers.Integral)
-def _(key, mds):
+def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
     if key > -1:
         # Interpret key as a scan_id.
-        gen = mds.find_run_starts(scan_id=key)
+        gen = db.mds.find_run_starts(scan_id=key)
         try:
             result = next(gen)  # most recent match
         except StopIteration:
             raise ValueError("No such run found for key=%s which is "
                              "being interpreted as a scan id." % key)
-        header = Header.from_run_start(mds, result)
     else:
         # Interpret key as the Nth last scan.
-        gen = mds.find_last(-key)
+        gen = db.mds.find_last(-key)
         for i in range(-key):
             try:
                 result = next(gen)
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-        header = Header.from_run_start(mds, result)
-    return header
+    return [(result, _safe_get_stop(db.mds, result))]
 
 
 @search.register(str)
 @search.register(six.text_type)
 @search.register(six.string_types,)
-def _(key, mds):
+def _(key, db):
     logger.info('Interpreting key = %s as a str' % key)
     results = None
     if len(key) == 36:
         # Interpret key as a complete uid.
         # (Try this first, for performance.)
         logger.debug('Treating %s as a full uuid' % key)
-        results = list(mds.find_run_starts(uid=key))
+        results = list(db.mds.find_run_starts(uid=key))
         logger.debug('%s runs found for key=%s treated as a full uuid'
                      % (len(results), key))
     if not results:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
-        gen = mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        gen = db.mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
@@ -232,23 +230,24 @@ def _(key, mds):
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    header = Header.from_run_start(mds, result)
-    return header
+    return [(result, _safe_get_stop(db.mds, result))]
 
 
 @search.register(set)
 @search.register(tuple)
 @search.register(MutableSequence)
-def _(key, mds):
+def _(key, db):
     logger.info('Interpreting key = {} as a set, tuple or MutableSequence'
                 ''.format(key))
-    return [search(k, mds) for k in key]
+    return sum((search(k, db) for k in key), [])
 
 
-class Broker(object):
-    def __init__(self, mds, fs, plugins=None, filters=None):
+class BrokerES(object):
+    def __init__(self, hs, es, plugins=None, filters=None):
         """
         Unified interface to data sources
+
+        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
 
         Parameters
         ----------
@@ -261,8 +260,8 @@ class Broker(object):
             list of mongo queries to be combined with query using '$and',
             acting as a filter to restrict the results
         """
-        self.mds = mds
-        self.fs = fs
+        self.hs = hs
+        self.es = es
         if plugins is None:
             plugins = {}
         self.plugins = plugins
@@ -271,13 +270,33 @@ class Broker(object):
         self.filters = filters
         self.aliases = {}
 
+    def insert(self, name, doc):
+        if name in {'start', 'stop'}:
+            return self.hs.insert(name, doc)
+        else:
+            return self.es.insert(name, doc)
+
+    @property
+    def mds(self):
+        warnings.warn("stop using raw mds")
+        return self.hs.mds
+
+    @property
+    def fs(self):
+        warnings.warn("stop using raw fs")
+        return self.es.fs
+
+    @property
+    def event_sources(self):
+        yield self.es
+
     ALL = ALL  # sentinel used as default value for `stream_name`
 
     def _format_time(self, val):
         "close over the timezone config"
         # modifies a query dict in place, remove keys 'start_time' and
         # 'stop_time' and adding $lte and/or $gte queries on 'time' key
-        _format_time(val, self.mds.config['timezone'])
+        _format_time(val, self.hs.mds.config['timezone'])
 
     @property
     def filters(self):
@@ -329,7 +348,12 @@ class Broker(object):
 
     def __getitem__(self, key):
         """Do-What-I-Mean slicing"""
-        return search(key, self.mds)
+        ret = [Header(start=start, stop=stop, db=self) for
+               start, stop in search(key, self)]
+        squeeze = not isinstance(key, (set, tuple, MutableSequence, slice))
+        if squeeze and len(ret) == 1:
+            ret, = ret
+        return ret
 
     def __getattr__(self, key):
         try:
@@ -432,18 +456,14 @@ class Broker(object):
         >>> DataBroker(data_key='motor1', start_time='2015-03-05')
         """
         data_key = kwargs.pop('data_key', None)
-        if text_search is not None:
-            query = {'$and': [{'$text': {'$search': text_search}}]
-                               + self.filters}
-        else:
-            # Include empty {} here so that '$and' gets at least one query.
-            self._format_time(kwargs)
-            query = {'$and': [{}] + [kwargs] + self.filters}
-        run_start = self.mds.find_run_starts(**query)
+
+        res = self.hs(text_search=text_search,
+                      filters=self.filters,
+                      **kwargs)
 
         headers = []
-        for rs in run_start:
-            header = Header.from_run_start(self.mds, rs)
+        for start, stop in res:
+            header = Header(start=start, stop=stop, db=self)
             if data_key is None:
                 headers.append(header)
                 continue
@@ -466,20 +486,25 @@ class Broker(object):
         warnings.warn("Use .get_events() instead.")
         return self.get_events(headers, fill=fill)
 
-    def fill_event(self, event, handler_registry=None, handler_overrides=None):
+    def fill_event(self, event, inplace=True,
+                   handler_registry=None, handler_overrides=None):
         """
         Populate events with externally stored data.
 
         Parameters
         ----------
         event : document
+        inplace : bool, optional
+            If the event should be filled 'in-place' by mutating the data
+            dictionary.  Defaults to `True`.
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        _fill_event(self.fs, event, handler_registry=handler_registry,
-                    handler_overrides=handler_overrides)
+        return self.es.fill_event(event, inplace=inplace,
+                                  handler_registry=handler_registry,
+                                  handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
                    handler_registry=None, handler_overrides=None, **kwargs):
@@ -514,13 +539,36 @@ class Broker(object):
         ------
         ValueError if any key in `fields` is not in at least one descriptor pre header.
         """
-        res = _get_events(mds=self.mds, fs=self.fs, headers=headers,
-                          fields=fields, stream_name=stream_name, fill=fill,
-                          handler_registry=handler_registry,
-                          handler_overrides=handler_overrides,
-                          plugins=self.plugins, **kwargs)
-        for event in res:
-            yield event
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
+
+        for k, v in kwargs.items():
+            if k not in self.plugins:
+                raise KeyError("No plugin was found to handle the keyword "
+                               "argument %r" % k)
+
+        _check_fields_exist(fields if fields else [], headers)
+
+        # TODO make self.es just like one of the plugins?
+        for h in headers:
+            gen = self.es.docs_given_header(
+                    header=h, stream_name=stream_name,
+                    fill=fill,
+                    fields=fields,
+                    handler_registry=handler_registry,
+                    handler_overrides=handler_overrides,
+                    **kwargs)
+            for nm, ev in gen:
+                if nm == 'event':
+                    yield ev
+
+            for k, v in kwargs.items():
+                for ev in self.plugins[k].get_events(h, v):
+                    yield ev
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
@@ -575,14 +623,29 @@ class Broker(object):
         table : pandas.DataFrame
         """
         if timezone is None:
-            timezone = self.mds.config['timezone']
-        res = _get_table(mds=self.mds, fs=self.fs, headers=headers,
-                         fields=fields, stream_name=stream_name, fill=fill,
-                         convert_times=convert_times,
-                         timezone=timezone, handler_registry=handler_registry,
-                         handler_overrides=handler_overrides,
-                         localize_times=localize_times)
-        return res
+            timezone = self.hs.mds.config['timezone']
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
+
+        dfs = [self.es.table_given_header(header=h,
+                                          fields=fields,
+                                          stream_name=stream_name,
+                                          fill=fill,
+                                          convert_times=convert_times,
+                                          timezone=timezone,
+                                          handler_registry=handler_registry,
+                                          handler_overrides=handler_overrides,
+                                          localize_times=localize_times)
+               for h in headers]
+        if dfs:
+            return pd.concat(dfs)
+        else:
+            # edge case: no data
+            return pd.DataFrame()
 
     def get_images(self, headers, name, handler_registry=None,
                    handler_override=None):
@@ -608,8 +671,9 @@ class Broker(object):
         >>> for image in images:
                 # do something
         """
-        return Images(self.mds, self.fs, headers, name, handler_registry,
-                      handler_override)
+        return Images(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+                      name=name, handler_registry=handler_registry,
+                      handler_override=handler_override)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids
@@ -679,7 +743,8 @@ class Broker(object):
         --------
         process
         """
-        res = _restream(self.mds, self.fs, headers, fields=fields, fill=fill)
+        res = _restream(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+                        fields=fields, fill=fill)
         for name_doc_pair in res:
             yield name_doc_pair
 
@@ -719,8 +784,8 @@ class Broker(object):
         --------
         restream
         """
-        _process(mds=self.mds, fs=self.fs, headers=headers, func=func,
-                 fields=fields, fill=fill)
+        _process(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+                 func=func, fields=fields, fill=fill)
 
     get_fields = staticmethod(get_fields)  # for convenience
 
@@ -747,7 +812,7 @@ class Broker(object):
         ------
         file_pairs : list
             list of (old_file_path, new_file_path) pairs generated by
-            ``copy_files`` moethdo on FileStore.
+            ``copy_files`` method on FileStore.
         """
         if copy_kwargs is None:
             copy_kwargs = {}
@@ -863,6 +928,29 @@ class ArchiverPlugin(object):
                 yield Document('Event', doc)
 
 
+class Broker(BrokerES):
+    def __init__(self, mds, fs=None, **kwargs):
+        """
+        Unified interface to data sources
+
+        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
+
+        Parameters
+        ----------
+        mds : metadatastore or metadataclient
+        fs : filestore
+        plugins : dict or None, optional
+            mapping keyword argument name (string) to Plugin, an object
+            that should implement ``get_events``
+        filters : list
+            list of mongo queries to be combined with query using '$and',
+            acting as a filter to restrict the results
+        """
+        super(Broker, self).__init__(HeaderSourceShim(mds),
+                                     EventSourceShim(mds, fs),
+                                     **kwargs)
+
+
 def _munge_time(t, timezone):
     """Close your eyes and trust @arkilic
 
@@ -880,3 +968,41 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+class HeaderSourceShim(object):
+    '''Shim class to turn a mds object into a HeaderSource
+
+    This will presumably be deleted if this API makes it's way back down
+    into the implementations
+    '''
+    def __init__(self, mds):
+        self.mds = mds
+
+    def __call__(self, text_search=None, filters=None, **kwargs):
+        if filters is None:
+            filters = []
+        if text_search is not None:
+            query = {'$and': [{'$text': {'$search': text_search}}] + filters}
+        else:
+            # Include empty {} here so that '$and' gets at least one query.
+            _format_time(kwargs, self.mds.config['timezone'])
+            query = {'$and': [{}] + [kwargs] + filters}
+
+        starts = tuple(self.mds.find_run_starts(**query))
+
+        stops = tuple(_safe_get_stop(self.mds, s) for s in starts)
+        return zip(starts, stops)
+
+    def __getitem__(self, k):
+        return search(k, self)
+
+    def insert(self, name, doc):
+        return self.mds.insert(name, doc)
+
+
+def _safe_get_stop(mds, s):
+    try:
+        return mds.stop_by_start(s)
+    except mds.NoRunStop:
+        return None
