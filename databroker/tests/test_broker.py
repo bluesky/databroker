@@ -633,7 +633,22 @@ def test_export_noroot(broker_factory, RE):
 
 @py3
 def test_return_order(db, RE):
-    RE.subscribe('all', db.mds.insert)
+    RE.subscribe('all', db.insert)
     for _ in range(5):
         RE(count([det]))
     assert db[-1] == db()[-1]
+
+
+@py3
+def test_return_order(db, RE):
+    RE.subscribe('all', db.insert)
+    for _ in range(5):
+        RE(count([det]))
+    hdrs = db()
+    hdr_time = None
+    for hdr in hdrs:
+        if hdr_time is None:
+            hdr_time = hdr['start']['time']
+        else:
+            assert hdr['start']['time'] < hdr_time
+            hdr_time = hdr['start']['time']
