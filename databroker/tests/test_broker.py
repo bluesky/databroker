@@ -637,6 +637,7 @@ def test_return_order(db, RE):
     for _ in range(5):
         RE(count([det]))
     assert db[-1] == db()[-1]
+    assert db[-1] == db()[0]
 
 
 @py3
@@ -650,5 +651,7 @@ def test_return_order(db, RE):
         if hdr_time is None:
             hdr_time = hdr['start']['time']
         else:
+            # as we go down the list the start times
+            # should get smaller and smaller
             assert hdr['start']['time'] < hdr_time
             hdr_time = hdr['start']['time']
