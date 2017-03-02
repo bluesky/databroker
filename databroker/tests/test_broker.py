@@ -53,11 +53,13 @@ def test_get_events(db, RE):
     uid, = RE(count([det]))
     h = db[uid]
     assert len(list(db.get_events(h))) == 1
+    assert len(list(h.stream())) == 1 + 3
 
     RE.subscribe('all', db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h))) == 7
+    assert len(list(h.stream())) == 7 + 3
 
 
 @py3
@@ -75,13 +77,20 @@ def test_filtering_stream_name(db, RE):
     RE.subscribe('all', db.insert)
     uid, = RE(count([det], num=7), bc=1)
     h = db[uid]
+    assert len(h.descriptors) == 1
+    assert list(h.stream_names) == ['primary']
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
     assert len(db.get_table(h, stream_name='primary')) == 7
     assert len(list(db.get_events(h, stream_name='primary',
                                   fields=['det']))) == 7
     assert len(db.get_table(h, stream_name='primary', fields=['det'])) == 7
+    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(h.table(stream_name='primary')) == 7
+    assert len(list(h.stream(stream_name='primary', fields=['det']))) == 7 + 3
+    assert len(h.table(stream_name='primary', fields=['det'])) == 7
     assert len(db.get_table(h, stream_name='primary',
                             fields=['det', 'bc'])) == 7
+
 
     # two event streams: 'primary' and 'd-monitor'
     d = Reader('d', read_fields={'d': lambda: 1}, monitor_intervals=[0.5],
@@ -89,13 +98,20 @@ def test_filtering_stream_name(db, RE):
     uid, = RE(monitor_during_wrapper(count([det], num=7, delay=0.1), [d]))
     h = db[uid]
     assert len(h.descriptors) == 2
+    assert h.stream_names == ['primary', 'd-monitor']
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
     assert len(list(db.get_events(h, stream_name='d-monitor'))) == 1
     assert len(list(db.get_events(h))) == 8  # ALL streams by default
+    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(list(h.stream(stream_name='d-monitor'))) == 1
+    assert len(list(h.stream())) == 8 + 3  # ALL streams by default
 
     assert len(db.get_table(h, stream_name='primary')) == 7
     assert len(db.get_table(h, stream_name='d-monitor')) == 1
     assert len(db.get_table(h)) == 7  # 'primary' by default
+    assert len(h.table(stream_name='primary')) == 7
+    assert len(h.table(stream_name='d-monitor')) == 1
+    assert len(h.table()) == 7  # 'primary' by default
 
 
 @py3
@@ -104,6 +120,7 @@ def test_get_events_filtering_field(db, RE):
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
+    assert len(list(headers.stream(fields=['det']))) == 7 + 3
 
     with pytest.raises(ValueError):
         list(db.get_events(h, fields=['not_a_field']))
@@ -390,7 +407,12 @@ def test_get_fields(db, RE):
     RE.subscribe('all', db.insert)
     uid, = RE(count([det1, det2]))
     actual = db.get_fields(db[uid])
-    assert actual == set(['det1', 'det2'])
+    expected = set(['det1', 'det2'])
+    assert actual == expected
+    actual = db[uid].fields()
+    assert actual == expected
+    actual = db[uid].fields('primary')
+    assert actual == expected
 
 
 @py3
