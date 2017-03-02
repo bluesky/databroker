@@ -142,8 +142,8 @@ class Header(object):
         for payload in gen:
             yield payload
 
-    def table(self, stream_name, fill=False, timezone=None, convert_times=True,
-              localize_times=True):
+    def table(self, stream_name='primary', fill=False,
+              timezone=None, convert_times=True, localize_times=True):
         es = self.es_given_stream(stream_name)
         if hasattr(es, 'table_given_header'):
             df = es.table_given_header(
