@@ -143,12 +143,16 @@ class Header(object):
         for payload in gen:
             yield payload
 
-    def table(self, stream_name, fill=False):
+    def table(self, stream_name, fill=False, timezone=None, convert_times=True,
+              localize_times=True):
         es = self.es_given_stream(stream_name)
         df = es.table_given_header(
             header=self,
             stream_name=stream_name,
-            fill=fill)
+            fill=fill,
+            timezone=timezone,
+            convert_times=convert_times,
+            localize_times=localize_times)
         return df
 
     def es_given_stream(self, stream_name):
