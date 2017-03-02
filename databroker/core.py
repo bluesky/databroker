@@ -940,3 +940,39 @@ def _extract_extra_data(start, stop, d, fields, comp_re,
 
     return (all_extra_dk, all_extra_data, all_extra_ts,
             discard_fields)
+
+
+def table_for_descriptor(descriptor, events, timezone=None, convert_times=True,
+                         localize_times=True):
+    # Take the 'transpose' of the events.
+    times = []
+    seq_nums = []
+    data = {key: [] for key in descriptor['data_keys']}
+    timestamps = {key: [] for key in descriptor['data_keys']}
+    for event in events:
+        times.append(event['time'])
+        seq_nums.append(event['seq_num'])
+        for key, val in six.iteritems(events):
+            data[key].append(event['data'][key])
+            timestamps[key].append(event['timestamps'][key])
+
+    df = pd.DataFrame(index=seq_nums)
+    # if converting to datetime64 (in utc or 'local' tz)
+    if convert_times or localize_times:
+        times = pd.to_datetime(times, unit='s')
+    # make sure this is a series
+    times = pd.Series(times, index=seq_nums)
+
+    # if localizing to 'local' time
+    if localize_times:
+        times = (times
+                    .dt.tz_localize('UTC')     # first make tz aware
+                    .dt.tz_convert(timezone)   # convert to 'local'
+                    .dt.tz_localize(None)      # make naive again
+                    )
+
+    df['time'] = times
+    for field, values in six.iteritems(data):
+        df[field] = values
+    for field, v in all_extra_data:
+        df[field] = v
