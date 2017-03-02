@@ -641,7 +641,7 @@ def test_return_order(db, RE):
 
 
 @py3
-def test_return_order(db, RE):
+def test_return_order2(db, RE):
     RE.subscribe('all', db.insert)
     for _ in range(5):
         RE(count([det]))
