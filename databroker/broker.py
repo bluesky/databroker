@@ -243,7 +243,7 @@ def _(key, db):
 
 
 class BrokerES(object):
-    def __init__(self, hs, es, plugins=None, filters=None):
+    def __init__(self, hs, *event_sources):
         """
         Unified interface to data sources
 
@@ -251,23 +251,15 @@ class BrokerES(object):
 
         Parameters
         ----------
-        mds : metadatastore or metadataclient
-        fs : filestore
-        plugins : dict or None, optional
-            mapping keyword argument name (string) to Plugin, an object
-            that should implement ``get_events``
-        filters : list
-            list of mongo queries to be combined with query using '$and',
-            acting as a filter to restrict the results
+        hs : HeaderSource
+        *event_sources :
+            one or more EventSource objects
         """
         self.hs = hs
-        self.es = es
-        if plugins is None:
-            plugins = {}
-        self.plugins = plugins
-        if filters is None:
-            filters = []
-        self.filters = filters
+        self.event_sources = event_sources
+        # Once we drop Python 2, we can accept initial filter and aliases as
+        # keyword-only args if we want to.
+        self.filters = []
         self.aliases = {}
 
     def insert(self, name, doc):
@@ -285,10 +277,6 @@ class BrokerES(object):
     def fs(self):
         warnings.warn("stop using raw fs")
         return self.es.fs
-
-    @property
-    def event_sources(self):
-        yield self.es
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -507,7 +495,7 @@ class BrokerES(object):
                                   handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
-                   handler_registry=None, handler_overrides=None, **kwargs):
+                   handler_registry=None, handler_overrides=None):
         """
         Get Events from given run(s).
 
@@ -527,8 +515,6 @@ class BrokerES(object):
             mapping filestore specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
-        kwargs
-            passed through the any plugins
 
         Yields
         ------
@@ -546,14 +532,8 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        for k, v in kwargs.items():
-            if k not in self.plugins:
-                raise KeyError("No plugin was found to handle the keyword "
-                               "argument %r" % k)
-
         _check_fields_exist(fields if fields else [], headers)
 
-        # TODO make self.es just like one of the plugins?
         for h in headers:
             gen = self.es.docs_given_header(
                     header=h, stream_name=stream_name,
@@ -564,10 +544,6 @@ class BrokerES(object):
                     **kwargs)
             for nm, ev in gen:
                 if nm == 'event':
-                    yield ev
-
-            for k, v in kwargs.items():
-                for ev in self.plugins[k].get_events(h, v):
                     yield ev
 
     def get_table(self, headers, fields=None, stream_name='primary',
@@ -929,26 +905,25 @@ class ArchiverPlugin(object):
 
 
 class Broker(BrokerES):
-    def __init__(self, mds, fs=None, **kwargs):
+    def __init__(self, mds, fs=None, filters=None):
         """
         Unified interface to data sources
 
-        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
+        Eventually this API will change to
+        ``__init__(self, hs, **event_sources)``
 
         Parameters
         ----------
         mds : metadatastore or metadataclient
         fs : filestore
-        plugins : dict or None, optional
-            mapping keyword argument name (string) to Plugin, an object
-            that should implement ``get_events``
-        filters : list
-            list of mongo queries to be combined with query using '$and',
-            acting as a filter to restrict the results
         """
+        if filters is not None:
+            warnings.warn("Future versions of the databroker will not accept "
+                          "'filters' in __init__. Set them using the filters "
+                          "attribute after initialization.")
         super(Broker, self).__init__(HeaderSourceShim(mds),
-                                     EventSourceShim(mds, fs),
-                                     **kwargs)
+                                     EventSourceShim(mds, fs))
+        self.filters = filters
 
 
 def _munge_time(t, timezone):
