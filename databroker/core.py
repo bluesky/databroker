@@ -126,8 +126,7 @@ class Header(object):
             stream_names.update(es.stream_names_given_header(header=self))
         return stream_names
 
-    @property
-    def fields(self):
+    def fields(self, stream_name=ALL):
         fields = {}
         for es in self.db.event_sources:
             fields.update(es.fields_given_header(header=self))
