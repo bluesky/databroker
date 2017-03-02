@@ -146,13 +146,40 @@ class Header(object):
     def table(self, stream_name, fill=False, timezone=None, convert_times=True,
               localize_times=True):
         es = self.es_given_stream(stream_name)
-        df = es.table_given_header(
-            header=self,
-            stream_name=stream_name,
-            fill=fill,
-            timezone=timezone,
-            convert_times=convert_times,
-            localize_times=localize_times)
+        if hasattr(es, 'table_given_header'):
+            df = es.table_given_header(
+                header=self,
+                stream_name=stream_name,
+                fill=fill,
+                timezone=timezone,
+                convert_times=convert_times,
+                localize_times=localize_times)
+        # If es does not implement table_given_header, we can build the table
+        # out of Documents. It will generally be slower.
+        else:
+            descs = []
+            events = {}  # map descriptor uids to their events
+            gen = es.docs_given_header(header=self,
+                                       stream_name=stream_name,
+                                       fill=fill)
+            name, doc = next(gen)
+            assert name == 'start'
+            start = doc
+            for name, doc in gen:
+                if name == 'descriptor':
+                    descs.append(doc)
+                    events[doc['uid']] = []
+                elif name == 'event':
+                    events[doc['descriptor']].append(doc)
+                elif name == 'stop':
+                    stop = doc
+            for desc in descs:
+                df = table_for_descriptor(desc, events[desc['uid']],
+                                          timezone=timezone,
+                                          convert_time=convert_times,
+                                          localize_times=localize_times)
+                dfs.append(df)
+            df = pd.concat(dfs)
         return df
 
     def es_given_stream(self, stream_name):
