@@ -247,13 +247,11 @@ class BrokerES(object):
         """
         Unified interface to data sources
 
-        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
-
         Parameters
         ----------
         hs : HeaderSource
         *event_sources :
-            one or more EventSource objects
+            zero, one or more EventSource objects
         """
         self.hs = hs
         self.event_sources = event_sources
@@ -261,12 +259,14 @@ class BrokerES(object):
         # keyword-only args if we want to.
         self.filters = []
         self.aliases = {}
+        self.event_source_for_insert = self.event_sources[0]
+        self.es = self.event_sources[0]  # supports legacy db methods
 
     def insert(self, name, doc):
         if name in {'start', 'stop'}:
             return self.hs.insert(name, doc)
         else:
-            return self.es.insert(name, doc)
+            return self.event_source_for_insert.insert(name, doc)
 
     @property
     def mds(self):
@@ -276,7 +276,7 @@ class BrokerES(object):
     @property
     def fs(self):
         warnings.warn("stop using raw fs")
-        return self.es.fs
+        return self.event_source_for_insert.fs
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -540,8 +540,7 @@ class BrokerES(object):
                     fill=fill,
                     fields=fields,
                     handler_registry=handler_registry,
-                    handler_overrides=handler_overrides,
-                    **kwargs)
+                    handler_overrides=handler_overrides)
             for nm, ev in gen:
                 if nm == 'event':
                     yield ev
@@ -905,7 +904,7 @@ class ArchiverPlugin(object):
 
 
 class Broker(BrokerES):
-    def __init__(self, mds, fs=None, filters=None):
+    def __init__(self, mds, fs=None, plugins=None, filters=None):
         """
         Unified interface to data sources
 
@@ -917,7 +916,12 @@ class Broker(BrokerES):
         mds : metadatastore or metadataclient
         fs : filestore
         """
-        if filters is not None:
+        if plugins is not None:
+            raise ValueError("The 'plugins' argument is no longer supported. "
+                             "Use an EventSource instead.")
+        if filters is None:
+            filters = []
+        if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.")

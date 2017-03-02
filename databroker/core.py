@@ -119,14 +119,44 @@ class Header(object):
     def __iter__(self):
         return self.keys()
 
-    def stream(self, stream_name=ALL, fill=True):
-        # TODO hit the plugins
-        gen = self.db.es.docs_given_header(
+    @property
+    def stream_names(self):
+        stream_names = {}
+        for es in self.db.event_sources:
+            stream_names.update(es.stream_names_given_header(header=self))
+        return stream_names
+
+    @property
+    def fields(self):
+        fields = {}
+        for es in self.db.event_sources:
+            fields.update(es.fields_given_header(header=self))
+        return fields
+
+    def stream(self, stream_name=ALL, fill=False):
+        es = self.es_given_stream(stream_name)
+        gen = es.docs_given_header(
             header=self,
             stream_name=stream_name,
             fill=fill)
+        # This can be replaced with `yield from` when we drop Python < 3.3.
         for payload in gen:
             yield payload
+
+    def table(self, stream_name, fill=False):
+        es = self.es_given_stream(stream_name)
+        df = es.table_given_header(
+            header=self,
+            stream_name=stream_name,
+            fill=fill)
+        return df
+
+    def es_given_stream(self, stream_name):
+        for es in self.db.event_sources:
+            if stream_name in es.stream_names_given_header(header=self):
+                return es
+        raise KeyError("No EventSource provides a stream named {!r}."
+                       "".format(stream_name))
 
 
 def restream(mds, fs, es, headers, fields=None, fill=False):
@@ -544,6 +574,12 @@ class EventSourceShim(object):
     def stream_names_given_header(self, header):
         return set(d['name'] for d in
                    self.descriptors_given_header(header))
+
+    def fields_given_header(self, header):
+        fields = set()
+        for d in self.descriptors_given_header(header):
+            fields.update(d['data_keys'])
+        return fields
 
     def descriptors_given_header(self, header, stream_name=ALL):
         return [d for d in self.mds.descriptors_by_start(header.start['uid'])
