@@ -830,8 +830,8 @@ class BrokerES(object):
         return file_pairs
 
 
-class ArchiverPlugin(object):
-    def __init__(self, url, timezone):
+class ArchiverEventSource(object):
+    def __init__(self, url, timezone, pvs):
         """
         DataBroker plugin
 
@@ -841,42 +841,61 @@ class ArchiverPlugin(object):
             e.g., 'http://host:port/'
         timezone : string
             e.g., 'US/Eastern'
-
-        Example
-        -------
-        >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/',
-        ...                    'US/Eastern')
-        >>> db = Broker(mds, fs, plugins={'archiver_pvs': p})
-        >>> header = db[-1]
-        >>> db.get_events(header, archiver_pvs=['...'])
+        pvs : dict
+            a dict mapping human-friendly names to PVs
         """
         if not url.endswith('/'):
             url += '/'
         self.url = url
         self.archiver_addr = self.url + "retrieval/data/getData.json"
         self.tz = pytz.timezone(timezone)
+        self.pvs = pvs
+        self._descriptors = {}
 
-    def get_events(self, header, pvs):
-        """
-        Return results of an EPICS Archiver Appliance query in Event documents.
+    def stream_names_given_header(self, header):
+        # We actually don't use the header in this case.
+        return ['archiver_{}'.format(name) for name in self.pvs]
 
-        That is, mock Event documents so that data from Archiver can be
-        analyzed the same as data from metadatastore.
+    def fields_given_header(self, header):
+        # We actually don't use the header in this case.
+        return list(self.pvs)
 
-        Parameters
-        ----------
-        header : Header
-        pvs : list or dict
-            a list of PVs or a dict mapping PVs to human-friendly names
-        """
-        if hasattr(pvs, 'items'):
-            # Interpret pvs as a dict mapping PVs to names.
-            pass
-        else:
-            # Interpret pvs as a list, and use PVs themselves as names.
-            pvs = {pv: pv for pv in pvs}
+    def descriptors_given_header(self, header):
+        run_start_uid = header['start']['uid']
+        try:
+            return self._descriptors[run_start_uid]
+        except KeyError:
+            # Mock up descriptors and cache them so that the ephemeral uid is
+            # stable for the duration of this process.
+            descs = []
+            for name, pv in six.iteritems(self.pvs):
+                data_keys = {name: {'source': pv,
+                                    'dtype': 'number',
+                                    'shape': []}}
+                                    # TODO Mark as external once Broker stops
+                                    # assuming all external data in filestore.
+                params = {'pv': pv, 'from': _from, 'to': _to}
+                desc = {'time': header['start']['time'],
+                        'uid': 'empheral-' + str(uuid.uuid4()),
+                        'data_keys': data_keys,
+                        'run_start': header['start']['uid'],
+                        'external_query': params,
+                        'external_url': self.url}
+                descs.append(Document('EventDescriptor', desc))
+            self._descriptors[run_start_uid] = descs
+            return self._descriptors[run_start_uid]
+
+    def docs_given_header(self, header, stream_name=ALL,
+                          fill=False, fields=None,
+                          **kwargs):
+        desc_uids = {}
+        for d in self.descriptors_given_header(header):
+            # Stash the desc uids in a local var so we can use them in events.
+            pv = list(d['data_keys'].values())[0]['source']
+            desc_uids[pv] = d['uid']
+            yield d
         start_time, stop_time = header['start']['time'], header['stop']['time']
-        for pv, name in pvs.items():
+        for name, pv in six.iteritems(pvs):
             _from = _munge_time(start_time, self.tz)
             _to = _munge_time(stop_time, self.tz)
             params = {'pv': pv, 'from': _from, 'to': _to}
@@ -885,21 +904,13 @@ class ArchiverPlugin(object):
             raw, = req.json()
             timestamps = [x['secs'] for x in raw['data']]
             data = [x['val'] for x in raw['data']]
-            # Roll these into an Event document.
-            descriptor = {'time': start_time,
-                          'uid': 'ephemeral-' + str(uuid.uuid4()),
-                          'data_keys': {name: {'source': pv, 'shape': [],
-                                               'dtype': 'number'}},
-                          # TODO Mark this as 'external' once Broker stops
-                          # assuming that all external data in is filestore.
-                          'run_start': header['start'],
-                          'external_query': params,
-                          'external_url': self.url}
-            descriptor = Document('EventDescriptor', descriptor)
-            for d, t in zip(data, timestamps):
-                doc = {'data': {name: d}, 'timestamps': {name: t}, 'time': t,
+            for seq_num, (d, t) in enumerate(zip(data, timestamps)):
+                doc = {'data': {name: d},
+                       'timestamps': {name: t},
+                       'time': t,
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
-                       'descriptor': descriptor}
+                       'seq_num': seq_num,
+                       'descriptor': desc_uids[pv]}
                 yield Document('Event', doc)
 
 
