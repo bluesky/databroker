@@ -542,25 +542,6 @@ def test_handler_options(db, RE):
 
 
 @py3
-def test_plugins(db, RE):
-    RE.subscribe('all', db.insert)
-    RE(count([det]))
-
-    class EchoPlugin:
-        def get_events(self, header, a):
-            yield a
-
-    hdr = db[-1]
-    with pytest.raises(KeyError):
-        # A plugin for the keyword argument 'a' is not registered yet.
-        list(db.get_events(hdr, a='echo-plugin-test'))
-
-    db.plugins = {'a': EchoPlugin()}
-    assert 'echo-plugin-test' in list(db.get_events(hdr, a='echo-plugin-test'))
-    assert 'echo-plugin-test' not in list(db.get_events(hdr))
-
-
-@py3
 def test_export(broker_factory, RE):
     db1 = broker_factory()
     db2 = broker_factory()
