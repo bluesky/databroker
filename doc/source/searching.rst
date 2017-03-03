@@ -63,7 +63,7 @@ Suppose we execute several experiments ("plans", in bluesky jargon) like so.
 .. code-block:: python
 
     from bluesky.plans import count, scan, relative_scan
-    from bluesky.examples motor, det  # simulated motor and detector
+    from bluesky.examples import motor, det  # simulated motor and detector
 
     RE(count([det]))  # 1
     RE(scan([det], motor, -1, 1, 5))  # 2
@@ -109,7 +109,7 @@ sample and the purpose of each run.
 .. code-block:: python
 
     from bluesky.plans import count, scan, relative_scan
-    from bluesky.examples motor, det  # simulated motor and detector
+    from bluesky.examples import motor, det  # simulated motor and detector
 
     # This adds {'operator': 'Ken'} to all future runs, unless overridden.
     RE.md['operator'] = 'Ken'
