@@ -133,17 +133,23 @@ class Header(object):
         return fields
 
     def stream(self, stream_name=ALL, fill=False):
-        es = self.es_given_stream(stream_name)
-        gen = es.docs_given_header(
-            header=self,
-            stream_name=stream_name,
-            fill=fill)
-        # This can be replaced with `yield from` when we drop Python < 3.3.
-        for payload in gen:
-            yield payload
+        if stream_name is ALL:
+            event_sources = self.db.event_sources
+        else:
+            event_sources = [self.es_given_stream(stream_name)]
+        for es in event_sources:
+            gen = es.docs_given_header(
+                header=self,
+                stream_name=stream_name,
+                fill=fill)
+            # This can be replaced with `yield from` when we drop Python < 3.3.
+            for payload in gen:
+                yield payload
 
     def table(self, stream_name='primary', fill=False,
               timezone=None, convert_times=True, localize_times=True):
+        if stream_name is ALL:
+            raise NotImplementedError("request one stream at a time")
         es = self.es_given_stream(stream_name)
         if hasattr(es, 'table_given_header'):
             df = es.table_given_header(
