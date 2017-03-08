@@ -120,7 +120,7 @@ def test_get_events_filtering_field(db, RE):
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
-    assert len(list(headers.stream(fields=['det']))) == 7 + 3
+    assert len(list(h.stream(fields=['det']))) == 7
 
     with pytest.raises(ValueError):
         list(db.get_events(h, fields=['not_a_field']))
