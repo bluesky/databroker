@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 
-import filestore.conf as fconf
+from .. import conf as fconf
 import os
 import yaml
 import tempfile

@@ -6,10 +6,10 @@ import datetime
 
 import pytz
 import pytest
-import metadatastore.core as core
+from .. import core
 import uuid
 import time
-from metadatastore.examples.sample_data import temperature_ramp
+from ..examples.sample_data import temperature_ramp
 
 
 @pytest.fixture(scope='module')

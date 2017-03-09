@@ -1,7 +1,7 @@
 import time as ttime
 import uuid
 import pytest
-from metadatastore.test.test_mds import (
+from ...metadatastore.test.test_mds import (
     test_bad_bulk_insert_event_data,
     test_bad_bulk_insert_event_timestamp,
     test_bad_event_desc,

@@ -6,15 +6,16 @@ import numpy as np
 import uuid
 import itertools
 
-from filestore.api import (insert_resource, insert_datum, retrieve,
+from ..api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler,
                            bulk_insert_datum)
-from filestore.core import DatumNotFound
+from ..core import DatumNotFound
 from numpy.testing import assert_array_equal
 
 from .utils import SynHandlerMod, fs_setup, fs_teardown
 import pymongo.errors
 import pytest
+
 
 def setup_module(module):
     fs_setup()
@@ -60,7 +61,6 @@ def test_insert_funcs(func):
         assert_array_equal(data, known_data)
 
 
-
 def test_non_exist():
     with pytest.raises(DatumNotFound):
         retrieve('aardvark')
@@ -76,8 +76,8 @@ def test_non_unique_fail():
 
 
 def test_index():
-    import filestore.api
-    fs = filestore.api._FS_SINGLETON
+    from .. import api
+    fs = api._FS_SINGLETON
 
     indx = fs._datum_col.index_information()
 

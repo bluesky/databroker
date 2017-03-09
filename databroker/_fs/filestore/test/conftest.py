@@ -1,7 +1,7 @@
 import pytest
-from filestore.utils import create_test_database
+from ..utils import create_test_database
 from .utils import (SynHandlerMod, install_sentinels)
-import filestore.fs
+from .. import fs as ffs
 import uuid
 
 
@@ -16,7 +16,7 @@ def fs(request):
     test_conf = create_test_database(host='localhost',
                                      port=27017, version=version,
                                      db_template=db_name)
-    fs = filestore.fs.FileStore(test_conf, version=version)
+    fs = ffs.FileStore(test_conf, version=version)
     fs.register_handler('syn-mod', SynHandlerMod)
 
     def delete_dm():
@@ -38,8 +38,8 @@ def fs_v01(request):
                      port=27017)
     # v0 does not check!
     install_sentinels(test_conf, 1)
-    fs0 = filestore.fs.FileStore(test_conf, version=0)
-    fs1 = filestore.fs.FileStoreMoving(test_conf, version=1)
+    fs0 = ffs.FileStore(test_conf, version=0)
+    fs1 = ffs.FileStoreMoving(test_conf, version=1)
 
     fs0.register_handler('syn-mod', SynHandlerMod)
     fs1.register_handler('syn-mod', SynHandlerMod)
@@ -63,8 +63,8 @@ def fs_v1(request):
     test_conf = dict(database=db_name, host='localhost',
                      port=27017)
     install_sentinels(test_conf, 1)
-    fs = filestore.fs.FileStoreMoving(test_conf,
-                                      version=1)
+    fs = ffs.FileStoreMoving(test_conf,
+                             version=1)
 
     def delete_dm():
         print("DROPPING DB")

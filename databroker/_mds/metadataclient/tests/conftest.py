@@ -3,9 +3,9 @@ import tempfile
 import shutil
 import tzlocal
 import pytest
-import metadataclient.mds
+from .. import mds
 
-variations = [metadataclient.mds]
+variations = [mds]
 
 
 @pytest.fixture(params=variations, scope='function')

@@ -3,13 +3,13 @@ import tempfile
 import shutil
 import tzlocal
 import pytest
-import portable_mds.mongoquery.mds
-import portable_mds.sqlite.mds
-import portable_mds.hdf5.mds
+from ..mongoquery import mds as mqmds
+from ..sqlite import mds as sqlmds
+from ..hdf5 import mds as hdfmds
 
-variations = [portable_mds.mongoquery.mds,
-              portable_mds.sqlite.mds,
-              portable_mds.hdf5.mds]
+variations = [mqmds,
+              sqlmds,
+              hdfmds]
 
 
 @pytest.fixture(params=variations, scope='function')

@@ -2,7 +2,7 @@ from __future__ import division
 import uuid
 
 import numpy as np
-from metadatastore.examples.sample_data import common
+from ..sample_data import common
 
 # "Magic numbers" for this simulation
 start, stop, step, points_per_step = 0, 6, 1, 7

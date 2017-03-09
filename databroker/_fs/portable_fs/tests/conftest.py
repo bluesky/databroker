@@ -2,12 +2,12 @@ import uuid
 import os
 import pytest
 import numpy as np
-import portable_fs.sqlite.fs
+from ..sqlite import fs as sqlfs
 import tempfile
-from databroker._fs.filestore.test.utils import SynHandlerMod
+from ...filestore.test.utils import SynHandlerMod
 
 
-@pytest.fixture(params=[portable_fs.sqlite.fs], scope='function')
+@pytest.fixture(params=[sqlfs], scope='function')
 def fs(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with both v0 and v1.
@@ -25,7 +25,7 @@ def fs(request):
     return fs
 
 
-@pytest.fixture(params=[portable_fs.sqlite.fs], scope='function')
+@pytest.fixture(params=[sqlfs], scope='function')
 def fs_v1(request):
     return fs(request)
 

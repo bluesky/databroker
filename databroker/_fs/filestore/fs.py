@@ -93,7 +93,8 @@ class FileStoreRO(object):
     '''
     KNOWN_SPEC = dict()
     # load the built-in schema
-    for spec_name in ['AD_HDF5', 'AD_SPE']:
+    # TODO fix resource lookp
+    for spec_name in []:  # ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
         resource_name = 'json/{}_resource.json'.format(spec_name)
         datum_name = 'json/{}_datum.json'.format(spec_name)

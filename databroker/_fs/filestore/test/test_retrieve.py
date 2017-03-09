@@ -40,7 +40,7 @@ import six
 import logging
 
 
-import filestore.api as fsa
+from .. import api as fsa
 from .utils import fs_setup, fs_teardown
 import numpy as np
 

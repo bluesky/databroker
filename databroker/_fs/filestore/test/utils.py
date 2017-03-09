@@ -2,9 +2,9 @@ from __future__ import (unicode_literals, print_function, division,
                         absolute_import)
 import uuid
 import itertools
-from filestore.handlers_base import HandlerBase
+from ..handlers_base import HandlerBase
 import numpy as np
-from filestore.utils import install_sentinels
+from ..utils import install_sentinels
 
 
 conn = None
@@ -14,8 +14,8 @@ old_conf = None
 
 def fs_setup():
     "Create a fresh database with unique (random) name."
-    from filestore.api import db_connect, db_disconnect
-    import filestore.conf as fconf
+    from ..api import db_connect, db_disconnect
+    from .. import conf as fconf
 
     global conn
     global old_conf
@@ -34,8 +34,8 @@ def fs_setup():
 
 def fs_teardown():
     "Drop the fresh database and disconnect."
-    from filestore.api import db_disconnect
-    import filestore.conf as fconf
+    from ..api import db_disconnect
+    from .. import conf as fconf
 
     conn.drop_database(db_name)
     db_disconnect()

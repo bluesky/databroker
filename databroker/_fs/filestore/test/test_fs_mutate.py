@@ -7,7 +7,7 @@ import os.path
 import uuid
 import numpy as np
 
-from filestore.handlers_base import HandlerBase
+from ..handlers_base import HandlerBase
 
 
 def _verify_shifted_resource(last_res, new_res):

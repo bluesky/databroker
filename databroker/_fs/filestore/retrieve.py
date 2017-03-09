@@ -7,8 +7,8 @@ import six
 from .core import DatumNotFound
 from .handlers_base import HandlerBase, DuplicateHandler
 
-from filestore.api import (handler_context, register_handler,
-                           deregister_handler, get_spec_handler, get_data)
+from .api import (handler_context, register_handler,
+                  deregister_handler, get_spec_handler, get_data)
 import warnings
 
 

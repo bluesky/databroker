@@ -41,9 +41,9 @@ import logging
 
 import numpy as np
 from itertools import chain, repeat
-import filestore.api as fsa
-import filestore.file_writers as fs_write
-import filestore.handlers as fs_read
+from .. import api as fsa
+from .. import file_writers as fs_write
+from .. import handlers as fs_read
 from .utils import fs_setup, fs_teardown
 import pytest
 import uuid

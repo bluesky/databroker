@@ -452,6 +452,6 @@ def test_bad_event_desc(mds_all):
 
 
 def test_load_configuration_smoke():
-    from metadatastore.conf import load_configuration
+    from ..conf import load_configuration
 
     load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])

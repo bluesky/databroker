@@ -1,6 +1,6 @@
-from metadatastore.examples.sample_data.common import apply_deadband, noisy
-from metadatastore.examples.sample_data import (temperature_ramp,
-                                                multisource_event)
+from ..examples.sample_data.common import apply_deadband, noisy
+from ..examples.sample_data import (temperature_ramp,
+                                    multisource_event)
 import numpy as np
 import itertools
 import pytest

@@ -12,8 +12,8 @@ from databroker.core import EventSourceShim
 
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
-    from portable_mds.sqlite.mds import MDS
-    from portable_fs.sqlite.fs import FileStore
+    from .._mds.portable_mds.sqlite.mds import MDS
+    from .._fs.portable_fs.sqlite.fs import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -46,9 +46,9 @@ def build_pymongo_backed_broker(request):
     temporary database on localhost:27017 with v1 schema.
 
     '''
-    from metadatastore.mds import MDS
-    from filestore.utils import create_test_database
-    from filestore.fs import FileStore
+    from .._mds.metadatastore.mds import MDS
+    from .._fs.filestore.utils import create_test_database
+    from .._fs.filestore.fs import FileStore
 
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     md_test_conf = dict(database=db_name, host='localhost',

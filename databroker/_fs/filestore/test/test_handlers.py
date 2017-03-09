@@ -8,21 +8,21 @@ import tempfile
 import uuid
 import tifffile
 
-from filestore.api import (insert_resource, insert_datum, retrieve,
+from ..api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler)
 
-from filestore.api import handler_context
+from ..api import handler_context
 from .utils import fs_setup, fs_teardown
-from filestore.handlers import AreaDetectorHDF5Handler
-from filestore.handlers import AreaDetectorHDF5SWMRHandler
-from filestore.handlers import AreaDetectorHDF5TimestampHandler
-from filestore.handlers import AreaDetectorHDF5SWMRTimestampHandler
-from filestore.handlers import AreaDetectorTiffHandler
-from filestore.handlers import DummyAreaDetectorHandler
-from filestore.handlers import HDFMapsSpectrumHandler as HDFM
-from filestore.handlers import HDFMapsEnergyHandler as HDFE
-from filestore.handlers import NpyFrameWise
-from filestore.path_only_handlers import (AreaDetectorTiffPathOnlyHandler,
+from ..handlers import AreaDetectorHDF5Handler
+from ..handlers import AreaDetectorHDF5SWMRHandler
+from ..handlers import AreaDetectorHDF5TimestampHandler
+from ..handlers import AreaDetectorHDF5SWMRTimestampHandler
+from ..handlers import AreaDetectorTiffHandler
+from ..handlers import DummyAreaDetectorHandler
+from ..handlers import HDFMapsSpectrumHandler as HDFM
+from ..handlers import HDFMapsEnergyHandler as HDFE
+from ..handlers import NpyFrameWise
+from ..path_only_handlers import (AreaDetectorTiffPathOnlyHandler,
                                           RawHandler)
 from numpy.testing import assert_array_equal
 import os

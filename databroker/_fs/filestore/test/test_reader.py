@@ -38,11 +38,12 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 import logging
-logger = logging.getLogger(__name__)
-import filestore.handlers as fs_read
+
+from .. import handlers as fs_read
 import pytest
 import uuid
 
+logger = logging.getLogger(__name__)
 
 def test_npy_nofile_fail():
     path = str(uuid.uuid4())

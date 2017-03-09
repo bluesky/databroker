@@ -1,4 +1,4 @@
-import filestore
+from ... import filestore
 import warnings
 
 
@@ -13,8 +13,8 @@ def test_import_warnings():
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
         # Trigger a warning.
-        import filestore.commands
-        import filestore.retrieve
+        from .. import commands
+        from .. import retrieve
         assert len(w) == 2
-        del filestore.commands
-        del filestore.retrieve
+        del commands
+        del retrieve

@@ -1,4 +1,4 @@
-from metadatastore.test.test_mds import setup_syn, syn_data
+from ...metadatastore.test.test_mds import setup_syn, syn_data
 import uuid
 import time as ttime
 import pytest
