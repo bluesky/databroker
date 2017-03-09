@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import portable_fs.sqlite.fs
 import tempfile
-from filestore.test.utils import SynHandlerMod
+from databroker._fs.filestore.test.utils import SynHandlerMod
 
 
 @pytest.fixture(params=[portable_fs.sqlite.fs], scope='function')

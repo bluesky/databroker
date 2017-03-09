@@ -1,7 +1,8 @@
 import uuid
 import pytest
-from metadatastore.mds import MDS
+from databroker._mds.metadatastore.mds import MDS
 import os
+
 
 AUTH = os.environ.get('MDSTESTWITHAUTH', False)
 
