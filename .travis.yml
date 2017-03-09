@@ -46,7 +46,7 @@ install:
     fi;
   - |
     if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
-      conda install bluesky;  # Use this to install deps.
+      pip install https://github.com/NSLS-II/bluesky/zipball/master#egg=bluesky
     fi;
   - 'pip install https://github.com/NSLS-II/event-model/zipball/master#egg=event_model'
   - pip install pytest-cov
