@@ -913,6 +913,9 @@ class ArchiverEventSource(object):
         self.pvs = pvs
         self._descriptors = {}
 
+    def insert(self, name, doc):
+        raise NotImplementedError()
+
     def stream_names_given_header(self, header):
         # We actually don't use the header in this case.
         return ['archiver_{}'.format(name) for name in self.pvs]
@@ -976,6 +979,15 @@ class ArchiverEventSource(object):
                        'seq_num': seq_num,
                        'descriptor': desc_uids[pv]}
                 yield Document('Event', doc)
+
+    def table_given_header(self, header, *args, **kwargs):
+        raise NotImplementedError()
+
+    def fill_event(self, *args, **kwrags):
+        raise NotImplementedError()
+
+    def fill_table(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class Broker(BrokerES):
