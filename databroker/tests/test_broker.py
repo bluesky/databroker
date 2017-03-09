@@ -73,12 +73,15 @@ def test_filtering_stream_name(db, RE):
 
     # one event stream
     RE.subscribe('all', db.insert)
-    uid, = RE(count([det], num=7))
+    uid, = RE(count([det], num=7), bc=1)
     h = db[uid]
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
     assert len(db.get_table(h, stream_name='primary')) == 7
-    assert len(list(db.get_events(h, stream_name='primary', fields=['det']))) == 7
+    assert len(list(db.get_events(h, stream_name='primary',
+                                  fields=['det']))) == 7
     assert len(db.get_table(h, stream_name='primary', fields=['det'])) == 7
+    assert len(db.get_table(h, stream_name='primary',
+                            fields=['det', 'bc'])) == 7
 
     # two event streams: 'primary' and 'd-monitor'
     d = Reader('d', read_fields={'d': lambda: 1}, monitor_intervals=[0.5],

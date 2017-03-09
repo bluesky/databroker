@@ -731,7 +731,7 @@ class EventSourceShim(object):
                                      handler_registry=handler_registry,
                                      handler_overrides=handler_overrides)
 
-            for field, v in all_extra_data:
+            for field, v in all_extra_data.items():
                 df[field] = v
 
             dfs.append(df)
