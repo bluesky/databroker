@@ -31,6 +31,8 @@ matrix:
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/ci_scripts
   - . ~/ci_scripts/install-miniconda.sh
+  - . ~/scripts/init-filestore.sh
+  - . ~/scripts/init-metadatastore.sh
   - git clone https://github.com/NSLS-II/metadataservice.git /home/travis/metadataservice
 
 install:
