@@ -27,6 +27,9 @@ setup(
 
     license='BSD (3-clause)',
 
+    install_requires=('attrs', 'cytoolz', 'pandas', 'doct', 'pims',
+                      'requests', 'six', 'boltons', 'numpy'),
+
     classifiers=[
         'License :: OSI Approved :: BSD License',
         'Development Status :: 4 - Beta',
