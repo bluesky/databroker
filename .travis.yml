@@ -35,7 +35,7 @@ before_install:
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION six numpy pandas h5py coverage jsonschema jinja2 cytoolz pyyaml mongoengine tzlocal boltons pymongo pims tifffile doct channelarchiver pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons pims tifffile doct nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema pyyaml pytz six pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION six numpy pandas h5py coverage jsonschema jinja2 cytoolz pyyaml mongoengine tzlocal boltons pymongo pims tifffile doct channelarchiver pip pytest python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy h5py jsonschema boltons pims tifffile doct nose python=$TRAVIS_PYTHON_VERSION pymongo ujson numpy tornado jsonschema pyyaml pytz six pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal six
   - source activate testenv
   - conda install --force requests  # hitting some 3.4-only requests bug
   - pip install mongoquery attrs
@@ -66,7 +66,9 @@ install:
   - pip install prettytable
   - pip install https://github.com/NSLS-II/metadatastore/zipball/master#egg=metadatastore
   - pip install https://github.com/NSLS-II/doct/zipball/master#egg=doct
-
+  - pip install boltons
+  - pip install https://github.com/NSLS-II/filestore/zipball/master
+  - pip install codecov
   - python setup.py install
   # Need to clean the repo or pytest gets confused why there are *two* copies
   # of all the python files
