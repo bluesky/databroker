@@ -11,9 +11,8 @@ from doct import Document
 import pandas as pd
 
 from .core import (Header,
-                   restream as _restream,
-                   process as _process, Images,
-                   get_fields,  # for conveniece
+                   get_fields,  # for convenience
+                   Images,
                    ALL,
                    EventSourceShim,
                    _check_fields_exist)
@@ -260,7 +259,10 @@ class BrokerES(object):
         self.filters = []
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
-        self.es = self.event_sources[0]  # supports legacy db methods
+
+    def stream_names_given_header(self, header):
+        return [n for es in self.event_sources
+                for n in es.stream_names_given_header(header)]
 
     def insert(self, name, doc):
         if name in {'start', 'stop'}:
@@ -490,9 +492,12 @@ class BrokerES(object):
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        return self.es.fill_event(event, inplace=inplace,
-                                  handler_registry=handler_registry,
-                                  handler_overrides=handler_overrides)
+        # TODO sort out how to (quickly) map events back to the
+        # correct event Source
+        return self.event_sources[0].fill_event(
+            event, inplace=inplace,
+            handler_registry=handler_registry,
+            handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
                    handler_registry=None, handler_overrides=None):
@@ -506,7 +511,8 @@ class BrokerES(object):
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to True
+            Whether externally-stored data should be filled in.
+            Defaults to True
         stream_name : string, optional
             Get events from only one "event stream" with this name. Default
             value is special sentinel class, ``ALL``, which gets all streams
@@ -523,7 +529,8 @@ class BrokerES(object):
 
         Raises
         ------
-        ValueError if any key in `fields` is not in at least one descriptor pre header.
+        ValueError if any key in `fields` is not in at least one descriptor
+        pre header.
         """
         try:
             headers.items()
@@ -535,15 +542,16 @@ class BrokerES(object):
         _check_fields_exist(fields if fields else [], headers)
 
         for h in headers:
-            gen = self.es.docs_given_header(
-                    header=h, stream_name=stream_name,
-                    fill=fill,
-                    fields=fields,
-                    handler_registry=handler_registry,
-                    handler_overrides=handler_overrides)
-            for nm, ev in gen:
-                if nm == 'event':
-                    yield ev
+            for es in self.event_sources:
+                gen = es.docs_given_header(
+                        header=h, stream_name=stream_name,
+                        fill=fill,
+                        fields=fields,
+                        handler_registry=handler_registry,
+                        handler_overrides=handler_overrides)
+                for nm, ev in gen:
+                    if nm == 'event':
+                        yield ev
 
     def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
                       handler_registry=None, handler_overrides=None):
@@ -557,7 +565,8 @@ class BrokerES(object):
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to True
+            Whether externally-stored data should be filled in.
+            Defaults to True
         stream_name : string, optional
             Get events from only one "event stream" with this name. Default
             value is special sentinel class, ``ALL``, which gets all streams
@@ -574,7 +583,8 @@ class BrokerES(object):
 
         Raises
         ------
-        ValueError if any key in `fields` is not in at least one descriptor pre header.
+        ValueError if any key in `fields` is not in at least one descriptor
+        pre header.
         """
         try:
             headers.items()
@@ -586,15 +596,15 @@ class BrokerES(object):
         _check_fields_exist(fields if fields else [], headers)
 
         for h in headers:
-            gen = self.es.docs_given_header(
-                    header=h, stream_name=stream_name,
-                    fill=fill,
-                    fields=fields,
-                    handler_registry=handler_registry,
-                    handler_overrides=handler_overrides)
-            for payload in gen:
-                yield payload
-
+            for es in self.event_sources:
+                gen = es.docs_given_header(
+                        header=h, stream_name=stream_name,
+                        fill=fill,
+                        fields=fields,
+                        handler_registry=handler_registry,
+                        handler_overrides=handler_overrides)
+                for payload in gen:
+                    yield payload
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
@@ -657,16 +667,16 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        dfs = [self.es.table_given_header(header=h,
-                                          fields=fields,
-                                          stream_name=stream_name,
-                                          fill=fill,
-                                          convert_times=convert_times,
-                                          timezone=timezone,
-                                          handler_registry=handler_registry,
-                                          handler_overrides=handler_overrides,
-                                          localize_times=localize_times)
-               for h in headers]
+        dfs = [es.table_given_header(header=h,
+                                     fields=fields,
+                                     stream_name=stream_name,
+                                     fill=fill,
+                                     convert_times=convert_times,
+                                     timezone=timezone,
+                                     handler_registry=handler_registry,
+                                     handler_overrides=handler_overrides,
+                                     localize_times=localize_times)
+               for h in headers for es in self.event_sources]
         if dfs:
             return pd.concat(dfs)
         else:
@@ -697,7 +707,9 @@ class BrokerES(object):
         >>> for image in images:
                 # do something
         """
-        return Images(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+        # TODO sort out how to broadcast this
+        return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
+                      headers=headers,
                       name=name, handler_registry=handler_registry,
                       handler_override=handler_override)
 
@@ -769,10 +781,8 @@ class BrokerES(object):
         --------
         process
         """
-        res = _restream(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
-                        fields=fields, fill=fill)
-        for name_doc_pair in res:
-            yield name_doc_pair
+        for payload in self.get_documents(headers, fields=fields, fill=fill):
+            yield payload
 
     stream = restream  # compat
 
@@ -810,8 +820,8 @@ class BrokerES(object):
         --------
         restream
         """
-        _process(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
-                 func=func, fields=fields, fill=fill)
+        for name, doc in self.get_documents(headers, fields=fields, fill=fill):
+            func(name, doc)
 
     get_fields = staticmethod(get_fields)  # for convenience
 

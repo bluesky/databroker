@@ -121,10 +121,7 @@ class Header(object):
 
     @property
     def stream_names(self):
-        stream_names = {}
-        for es in self.db.event_sources:
-            stream_names.update(es.stream_names_given_header(header=self))
-        return stream_names
+        return self.db.stream_names_given_header(self)
 
     def fields(self, stream_name=ALL):
         fields = set()
@@ -222,14 +219,8 @@ def restream(mds, fs, es, headers, fields=None, fill=False):
         headers = [headers]
 
     for header in headers:
-        yield 'start', header['start']
-        for descriptor in header['descriptors']:
-            yield 'descriptor', descriptor
-        # When py2 compatibility is dropped, use yield from.
-        for event in header.db.get_events(header, fields=fields, fill=fill):
-            yield 'event', event
-        yield 'stop', header['stop']
-
+        for payload in header.stream(fields=fields, fill=fill):
+            yield payload
 
 stream = restream  # compat
 
@@ -270,8 +261,7 @@ def process(mds, fs, es, headers, func, fields=None, fill=False):
     --------
     restream
     """
-    for name, doc in restream(mds, fs, es, headers, fields, fill):
-        func(name, doc)
+    header.db.process(header, func, fields=fields, fill=fill)
 
 
 def register_builtin_handlers(fs):
