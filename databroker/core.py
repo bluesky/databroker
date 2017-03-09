@@ -132,67 +132,46 @@ class Header(object):
             fields.update(es.fields_given_header(header=self))
         return fields
 
-    def stream(self, stream_name=ALL, fill=False):
-        if stream_name is ALL:
-            event_sources = self.db.event_sources
-        else:
-            event_sources = [self.es_given_stream(stream_name)]
-        for es in event_sources:
-            gen = es.docs_given_header(
-                header=self,
-                stream_name=stream_name,
-                fill=fill)
-            # This can be replaced with `yield from` when we drop Python < 3.3.
-            for payload in gen:
-                yield payload
+    def stream(self, stream_name=ALL, fill=False, **kwargs):
+        gen = self.db.get_documents(self, stream_name=stream_name,
+                                    fill=fill, **kwargs)
+        for payload in gen:
+            yield payload
 
-    def table(self, stream_name='primary', fill=False,
-              timezone=None, convert_times=True, localize_times=True):
-        if stream_name is ALL:
-            raise NotImplementedError("request one stream at a time")
-        es = self.es_given_stream(stream_name)
-        if hasattr(es, 'table_given_header'):
-            df = es.table_given_header(
-                header=self,
-                stream_name=stream_name,
-                fill=fill,
-                timezone=timezone,
-                convert_times=convert_times,
-                localize_times=localize_times)
-        # If es does not implement table_given_header, we can build the table
-        # out of Documents. It will generally be slower.
-        else:
-            descs = []
-            events = {}  # map descriptor uids to their events
-            gen = es.docs_given_header(header=self,
-                                       stream_name=stream_name,
-                                       fill=fill)
-            name, doc = next(gen)
-            assert name == 'start'
-            start = doc
-            for name, doc in gen:
-                if name == 'descriptor':
-                    descs.append(doc)
-                    events[doc['uid']] = []
-                elif name == 'event':
-                    events[doc['descriptor']].append(doc)
-                elif name == 'stop':
-                    stop = doc
-            for desc in descs:
-                df = table_for_descriptor(desc, events[desc['uid']],
-                                          timezone=timezone,
-                                          convert_time=convert_times,
-                                          localize_times=localize_times)
-                dfs.append(df)
-            df = pd.concat(dfs)
-        return df
+    def table(self, stream_name='primary', fill=False, fields=None,
+              timezone=None, convert_times=True, localize_times=True,
+              **kwargs):
+        '''
+        Make a table (pandas.DataFrame) from given run(s).
 
-    def es_given_stream(self, stream_name):
-        for es in self.db.event_sources:
-            if stream_name in es.stream_names_given_header(header=self):
-                return es
-        raise KeyError("No EventSource provides a stream named {!r}."
-                       "".format(stream_name))
+        Parameters
+        ----------
+        headers : Header or iterable of Headers
+            The headers to fetch the events for
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        stream_name : string, optional
+            Get data from a single "event stream." To obtain one comprehensive
+            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
+            sentinel class defined in this module). The default name is
+            'primary', but if no event stream with that name is found, the
+            default reverts to ``ALL`` (for backward-compatibility).
+        fill : bool, optional
+            Whether externally-stored data should be filled in.
+            Defaults to True
+        convert_times : bool, optional
+            Whether to convert times from float (seconds since 1970) to
+            numpy datetime64, using pandas. True by default.
+        timezone : str, optional
+            e.g., 'US/Eastern'; if None, use metadatastore configuration in
+            `self.mds.config['timezone']`
+        '''
+        return self.db.get_table(self, fields=fields,
+                                 stream_name=stream_name, fill=fill,
+                                 timezone=timezone,
+                                 convert_times=convert_times,
+                                 localize_times=localize_times,
+                                 **kwargs)
 
 
 def restream(mds, fs, es, headers, fields=None, fill=False):
@@ -972,39 +951,3 @@ def _extract_extra_data(start, stop, d, fields, comp_re,
 
     return (all_extra_dk, all_extra_data, all_extra_ts,
             discard_fields)
-
-
-def table_for_descriptor(descriptor, events, timezone=None, convert_times=True,
-                         localize_times=True):
-    # Take the 'transpose' of the events.
-    times = []
-    seq_nums = []
-    data = {key: [] for key in descriptor['data_keys']}
-    timestamps = {key: [] for key in descriptor['data_keys']}
-    for event in events:
-        times.append(event['time'])
-        seq_nums.append(event['seq_num'])
-        for key, val in six.iteritems(events):
-            data[key].append(event['data'][key])
-            timestamps[key].append(event['timestamps'][key])
-
-    df = pd.DataFrame(index=seq_nums)
-    # if converting to datetime64 (in utc or 'local' tz)
-    if convert_times or localize_times:
-        times = pd.to_datetime(times, unit='s')
-    # make sure this is a series
-    times = pd.Series(times, index=seq_nums)
-
-    # if localizing to 'local' time
-    if localize_times:
-        times = (times
-                    .dt.tz_localize('UTC')     # first make tz aware
-                    .dt.tz_convert(timezone)   # convert to 'local'
-                    .dt.tz_localize(None)      # make naive again
-                    )
-
-    df['time'] = times
-    for field, values in six.iteritems(data):
-        df[field] = values
-    for field, v in all_extra_data:
-        df[field] = v

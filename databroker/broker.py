@@ -545,6 +545,57 @@ class BrokerES(object):
                 if nm == 'event':
                     yield ev
 
+    def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
+                      handler_registry=None, handler_overrides=None):
+        """
+        Get Events from given run(s).
+
+        Parameters
+        ----------
+        headers : Header or iterable of Headers
+            The headers to fetch the events for
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        fill : bool, optional
+            Whether externally-stored data should be filled in. Defaults to True
+        stream_name : string, optional
+            Get events from only one "event stream" with this name. Default
+            value is special sentinel class, ``ALL``, which gets all streams
+            together.
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+        handler_overrides : dict, optional
+            mapping data keys (strings) to handlers (callable classes)
+
+        Yields
+        ------
+        event : Event
+            The event, optionally with non-scalar data filled in
+
+        Raises
+        ------
+        ValueError if any key in `fields` is not in at least one descriptor pre header.
+        """
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
+
+        _check_fields_exist(fields if fields else [], headers)
+
+        for h in headers:
+            gen = self.es.docs_given_header(
+                    header=h, stream_name=stream_name,
+                    fill=fill,
+                    fields=fields,
+                    handler_registry=handler_registry,
+                    handler_overrides=handler_overrides)
+            for payload in gen:
+                yield payload
+
+
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
                   convert_times=True, timezone=None, handler_registry=None,
