@@ -929,12 +929,15 @@ class ArchiverEventSource(object):
             # Mock up descriptors and cache them so that the ephemeral uid is
             # stable for the duration of this process.
             descs = []
+            start_time = header['start']['time'],
+            stop_time = header['stop']['time']
             for name, pv in six.iteritems(self.pvs):
                 data_keys = {name: {'source': pv,
                                     'dtype': 'number',
                                     'shape': []}}
-                                    # TODO Mark as external once Broker stops
-                                    # assuming all external data in filestore.
+
+                _from = _munge_time(start_time, self.tz)
+                _to = _munge_time(stop_time, self.tz)
                 params = {'pv': pv, 'from': _from, 'to': _to}
                 desc = {'time': header['start']['time'],
                         'uid': 'empheral-' + str(uuid.uuid4()),
@@ -956,7 +959,7 @@ class ArchiverEventSource(object):
             desc_uids[pv] = d['uid']
             yield d
         start_time, stop_time = header['start']['time'], header['stop']['time']
-        for name, pv in six.iteritems(pvs):
+        for name, pv in six.iteritems(self.pvs):
             _from = _munge_time(start_time, self.tz)
             _to = _munge_time(stop_time, self.tz)
             params = {'pv': pv, 'from': _from, 'to': _to}
