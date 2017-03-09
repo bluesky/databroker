@@ -3,14 +3,6 @@
 
 A unified interface to the various data sources at NSLS-II.
 
-Implemented:
-
-- [metadatastore](https://github.com/NSLS-II/metadatastore)
-- [filestore](https://github.com/NSLS-II/filestore)
-
-Planned:
-
-- channelarchiver
 
 [Databroker documentation](http://nsls-ii.github.io/databroker)
 

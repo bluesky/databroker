@@ -1,5 +1,6 @@
 [run]
 source = databroker
+branch=True
 
 [report]
 omit =
