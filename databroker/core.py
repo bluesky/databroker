@@ -111,10 +111,7 @@ class Header(object):
         return doct.vstr(self)
 
     def __len__(self):
-        if 'stop' in self:
-            return 3
-        else:
-            return 2
+        return 3
 
     def __iter__(self):
         return self.keys()
