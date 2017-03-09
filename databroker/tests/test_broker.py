@@ -186,6 +186,7 @@ def test_full_text_search(db, RE):
     # Full text search does *not* apply to keys.
     assert len(db('foo')) == 0
 
+
 @py3
 def test_table_alignment(db, RE):
     # test time shift issue GH9
@@ -636,3 +637,29 @@ def test_export_noroot(broker_factory, RE):
     image2s = db2.get_images(db2[uid], 'image')
     for im1, im2 in zip(image1s, image2s):
         assert np.array_equal(im1, im2)
+
+
+@py3
+def test_return_order(db, RE):
+    RE.subscribe('all', db.insert)
+    for _ in range(5):
+        RE(count([det]))
+    assert db[-1] == db()[-1]
+    assert db[-1] == db()[0]
+
+
+@py3
+def test_return_order2(db, RE):
+    RE.subscribe('all', db.insert)
+    for _ in range(5):
+        RE(count([det]))
+    hdrs = db()
+    hdr_time = None
+    for hdr in hdrs:
+        if hdr_time is None:
+            hdr_time = hdr['start']['time']
+        else:
+            # as we go down the list the start times
+            # should get smaller and smaller
+            assert hdr['start']['time'] < hdr_time
+            hdr_time = hdr['start']['time']
