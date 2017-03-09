@@ -446,3 +446,31 @@ class SingleTiffHandler(HandlerBase):
 
     def __call__(self):
         return tifffile.imread(self._name)
+
+
+class DATHandler(HandlerBase):
+    ''' This handles vague text files through numpy's loadtxt module.
+            Useful for the ubiquitous, vague and well loved ".DAT" file.
+            Uses defaults from np.loadtxt.
+
+        See Also
+        --------
+        np.loadtxt
+    '''
+    specs = {'DAT'} | HandlerBase.specs
+    allowed_kwargs = ['comments', 'delimiter', 'converters', 'skiprows',
+                      'usecols', 'unpack', 'ndmin']
+
+    def __init__(self, fpath, **kwargs):
+        self._path = fpath
+        # parse kwargs to make sure np.loadtxt can handle them, ignore rest
+        # TODO : maybe warn if there are extra arguments? (symptom of improper
+        # data handling?)
+        newkwargs = dict()
+        for key in self.allowed_kwargs:
+            if key in kwargs:
+                newkwargs[key] = kwargs[key]
+        self.kwargs = newkwargs
+
+    def __call__(self):
+        return np.loadtxt(self._path, **self.kwargs)
