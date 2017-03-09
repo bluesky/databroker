@@ -53,11 +53,13 @@ def test_get_events(db, RE):
     uid, = RE(count([det]))
     h = db[uid]
     assert len(list(db.get_events(h))) == 1
+    assert len(list(h.stream())) == 1 + 3
 
     RE.subscribe('all', db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h))) == 7
+    assert len(list(h.stream())) == 7 + 3
 
 
 @py3
@@ -68,34 +70,50 @@ def test_get_events_multiple_headers(db, RE):
 
 
 @py3
-@pytest.mark.xfail(run=False)
 def test_filtering_stream_name(db, RE):
 
     # one event stream
     RE.subscribe('all', db.insert)
     uid, = RE(count([det], num=7), bc=1)
     h = db[uid]
+    assert len(h.descriptors) == 1
+    assert list(h.stream_names) == ['primary']
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
     assert len(db.get_table(h, stream_name='primary')) == 7
     assert len(list(db.get_events(h, stream_name='primary',
                                   fields=['det']))) == 7
     assert len(db.get_table(h, stream_name='primary', fields=['det'])) == 7
+    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(h.table(stream_name='primary')) == 7
+    assert len(list(h.stream(stream_name='primary', fields=['det']))) == 7 + 3
+    assert len(h.table(stream_name='primary', fields=['det'])) == 7
     assert len(db.get_table(h, stream_name='primary',
                             fields=['det', 'bc'])) == 7
 
-    # two event streams: 'primary' and 'd-monitor'
-    d = Reader('d', read_fields={'d': lambda: 1}, monitor_intervals=[0.5],
+    # two event streams: 'primary' and 'd_monitor'
+    d = Reader('d', fields={'d': lambda: 1}, monitor_intervals=[0.5],
                loop=RE.loop)
     uid, = RE(monitor_during_wrapper(count([det], num=7, delay=0.1), [d]))
     h = db[uid]
     assert len(h.descriptors) == 2
+    assert set(h.stream_names) == set(['primary', 'd_monitor'])
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
-    assert len(list(db.get_events(h, stream_name='d-monitor'))) == 1
-    assert len(list(db.get_events(h))) == 8  # ALL streams by default
+    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
 
     assert len(db.get_table(h, stream_name='primary')) == 7
-    assert len(db.get_table(h, stream_name='d-monitor')) == 1
+
     assert len(db.get_table(h)) == 7  # 'primary' by default
+    assert len(h.table(stream_name='primary')) == 7
+    assert len(h.table()) == 7  # 'primary' by default
+
+    # TODO sort out why the monitor does not fire during the test
+    # assert len(list(db.get_events(h))) == 8  # ALL streams by default
+
+    # assert len(list(h.stream())) == 8 + 3  # ALL streams by default
+    # assert len(db.get_table(h, stream_name='d_monitor')) == 1
+    # assert len(h.table(stream_name='d_monitor')) == 1
+    # assert len(list(h.stream(stream_name='d_monitor'))) == 1 + 3
+    # assert len(list(db.get_events(h, stream_name='d_monitor'))) == 1
 
 
 @py3
@@ -104,6 +122,7 @@ def test_get_events_filtering_field(db, RE):
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
+    assert len(list(h.stream(fields=['det']))) == 7 + 3
 
     with pytest.raises(ValueError):
         list(db.get_events(h, fields=['not_a_field']))
@@ -390,7 +409,12 @@ def test_get_fields(db, RE):
     RE.subscribe('all', db.insert)
     uid, = RE(count([det1, det2]))
     actual = db.get_fields(db[uid])
-    assert actual == set(['det1', 'det2'])
+    expected = set(['det1', 'det2'])
+    assert actual == expected
+    actual = db[uid].fields()
+    assert actual == expected
+    actual = db[uid].fields('primary')
+    assert actual == expected
 
 
 @py3
@@ -539,25 +563,6 @@ def test_handler_options(db, RE):
 
     res = db.get_images(h, 'image', handler_override=ImageHandler)
     assert res[0].shape == ImageHandler.RESULT.shape
-
-
-@py3
-def test_plugins(db, RE):
-    RE.subscribe('all', db.insert)
-    RE(count([det]))
-
-    class EchoPlugin:
-        def get_events(self, header, a):
-            yield a
-
-    hdr = db[-1]
-    with pytest.raises(KeyError):
-        # A plugin for the keyword argument 'a' is not registered yet.
-        list(db.get_events(hdr, a='echo-plugin-test'))
-
-    db.plugins = {'a': EchoPlugin()}
-    assert 'echo-plugin-test' in list(db.get_events(hdr, a='echo-plugin-test'))
-    assert 'echo-plugin-test' not in list(db.get_events(hdr))
 
 
 @py3

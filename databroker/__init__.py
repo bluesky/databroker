@@ -21,7 +21,7 @@ else:
     register_builtin_handlers()
     del register_builtin_handlers
 
-from .broker import Broker, ArchiverPlugin
+from .broker import Broker, ArchiverEventSource
 
 # set version string using versioneer
 from ._version import get_versions

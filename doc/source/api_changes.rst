@@ -10,6 +10,17 @@ Non-backward compatible API changes
 v0.8.0
 ======
 
+
+``databroker.core``
+-------------------
+
+This module is semi-private
+
+Removed ``process``, ``stream``, and ``restream`` as top-level
+functions.  The implementation now lives in
+`databroker.broker.BrokerES`.  These functions knew too much about the
+internals of the databroker to remain as separate functions.
+
 ``Header``
 ----------
 

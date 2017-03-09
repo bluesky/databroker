@@ -11,9 +11,8 @@ from doct import Document
 import pandas as pd
 
 from .core import (Header,
-                   restream as _restream,
-                   process as _process, Images,
-                   get_fields,  # for conveniece
+                   get_fields,  # for convenience
+                   Images,
                    ALL,
                    EventSourceShim,
                    _check_fields_exist)
@@ -243,38 +242,33 @@ def _(key, db):
 
 
 class BrokerES(object):
-    def __init__(self, hs, es, plugins=None, filters=None):
+    def __init__(self, hs, *event_sources):
         """
         Unified interface to data sources
 
-        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
-
         Parameters
         ----------
-        mds : metadatastore or metadataclient
-        fs : filestore
-        plugins : dict or None, optional
-            mapping keyword argument name (string) to Plugin, an object
-            that should implement ``get_events``
-        filters : list
-            list of mongo queries to be combined with query using '$and',
-            acting as a filter to restrict the results
+        hs : HeaderSource
+        *event_sources :
+            zero, one or more EventSource objects
         """
         self.hs = hs
-        self.es = es
-        if plugins is None:
-            plugins = {}
-        self.plugins = plugins
-        if filters is None:
-            filters = []
-        self.filters = filters
+        self.event_sources = event_sources
+        # Once we drop Python 2, we can accept initial filter and aliases as
+        # keyword-only args if we want to.
+        self.filters = []
         self.aliases = {}
+        self.event_source_for_insert = self.event_sources[0]
+
+    def stream_names_given_header(self, header):
+        return [n for es in self.event_sources
+                for n in es.stream_names_given_header(header)]
 
     def insert(self, name, doc):
         if name in {'start', 'stop'}:
             return self.hs.insert(name, doc)
         else:
-            return self.es.insert(name, doc)
+            return self.event_source_for_insert.insert(name, doc)
 
     @property
     def mds(self):
@@ -284,11 +278,7 @@ class BrokerES(object):
     @property
     def fs(self):
         warnings.warn("stop using raw fs")
-        return self.es.fs
-
-    @property
-    def event_sources(self):
-        yield self.es
+        return self.event_source_for_insert.fs
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -502,12 +492,15 @@ class BrokerES(object):
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        return self.es.fill_event(event, inplace=inplace,
-                                  handler_registry=handler_registry,
-                                  handler_overrides=handler_overrides)
+        # TODO sort out how to (quickly) map events back to the
+        # correct event Source
+        return self.event_sources[0].fill_event(
+            event, inplace=inplace,
+            handler_registry=handler_registry,
+            handler_overrides=handler_overrides)
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
-                   handler_registry=None, handler_overrides=None, **kwargs):
+                   handler_registry=None, handler_overrides=None):
         """
         Get Events from given run(s).
 
@@ -518,7 +511,8 @@ class BrokerES(object):
         fields : list, optional
             whitelist of field names of interest; if None, all are returned
         fill : bool, optional
-            Whether externally-stored data should be filled in. Defaults to True
+            Whether externally-stored data should be filled in.
+            Defaults to True
         stream_name : string, optional
             Get events from only one "event stream" with this name. Default
             value is special sentinel class, ``ALL``, which gets all streams
@@ -527,8 +521,6 @@ class BrokerES(object):
             mapping filestore specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
-        kwargs
-            passed through the any plugins
 
         Yields
         ------
@@ -537,7 +529,8 @@ class BrokerES(object):
 
         Raises
         ------
-        ValueError if any key in `fields` is not in at least one descriptor pre header.
+        ValueError if any key in `fields` is not in at least one descriptor
+        pre header.
         """
         try:
             headers.items()
@@ -546,29 +539,72 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        for k, v in kwargs.items():
-            if k not in self.plugins:
-                raise KeyError("No plugin was found to handle the keyword "
-                               "argument %r" % k)
+        _check_fields_exist(fields if fields else [], headers)
+
+        for h in headers:
+            for es in self.event_sources:
+                gen = es.docs_given_header(
+                        header=h, stream_name=stream_name,
+                        fill=fill,
+                        fields=fields,
+                        handler_registry=handler_registry,
+                        handler_overrides=handler_overrides)
+                for nm, ev in gen:
+                    if nm == 'event':
+                        yield ev
+
+    def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
+                      handler_registry=None, handler_overrides=None):
+        """
+        Get Events from given run(s).
+
+        Parameters
+        ----------
+        headers : Header or iterable of Headers
+            The headers to fetch the events for
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        fill : bool, optional
+            Whether externally-stored data should be filled in.
+            Defaults to True
+        stream_name : string, optional
+            Get events from only one "event stream" with this name. Default
+            value is special sentinel class, ``ALL``, which gets all streams
+            together.
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+        handler_overrides : dict, optional
+            mapping data keys (strings) to handlers (callable classes)
+
+        Yields
+        ------
+        event : Event
+            The event, optionally with non-scalar data filled in
+
+        Raises
+        ------
+        ValueError if any key in `fields` is not in at least one descriptor
+        pre header.
+        """
+        try:
+            headers.items()
+        except AttributeError:
+            pass
+        else:
+            headers = [headers]
 
         _check_fields_exist(fields if fields else [], headers)
 
-        # TODO make self.es just like one of the plugins?
         for h in headers:
-            gen = self.es.docs_given_header(
-                    header=h, stream_name=stream_name,
-                    fill=fill,
-                    fields=fields,
-                    handler_registry=handler_registry,
-                    handler_overrides=handler_overrides,
-                    **kwargs)
-            for nm, ev in gen:
-                if nm == 'event':
-                    yield ev
-
-            for k, v in kwargs.items():
-                for ev in self.plugins[k].get_events(h, v):
-                    yield ev
+            for es in self.event_sources:
+                gen = es.docs_given_header(
+                        header=h, stream_name=stream_name,
+                        fill=fill,
+                        fields=fields,
+                        handler_registry=handler_registry,
+                        handler_overrides=handler_overrides)
+                for payload in gen:
+                    yield payload
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
@@ -631,16 +667,16 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        dfs = [self.es.table_given_header(header=h,
-                                          fields=fields,
-                                          stream_name=stream_name,
-                                          fill=fill,
-                                          convert_times=convert_times,
-                                          timezone=timezone,
-                                          handler_registry=handler_registry,
-                                          handler_overrides=handler_overrides,
-                                          localize_times=localize_times)
-               for h in headers]
+        dfs = [es.table_given_header(header=h,
+                                     fields=fields,
+                                     stream_name=stream_name,
+                                     fill=fill,
+                                     convert_times=convert_times,
+                                     timezone=timezone,
+                                     handler_registry=handler_registry,
+                                     handler_overrides=handler_overrides,
+                                     localize_times=localize_times)
+               for h in headers for es in self.event_sources]
         if dfs:
             return pd.concat(dfs)
         else:
@@ -671,7 +707,9 @@ class BrokerES(object):
         >>> for image in images:
                 # do something
         """
-        return Images(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
+        # TODO sort out how to broadcast this
+        return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
+                      headers=headers,
                       name=name, handler_registry=handler_registry,
                       handler_override=handler_override)
 
@@ -743,10 +781,8 @@ class BrokerES(object):
         --------
         process
         """
-        res = _restream(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
-                        fields=fields, fill=fill)
-        for name_doc_pair in res:
-            yield name_doc_pair
+        for payload in self.get_documents(headers, fields=fields, fill=fill):
+            yield payload
 
     stream = restream  # compat
 
@@ -784,8 +820,8 @@ class BrokerES(object):
         --------
         restream
         """
-        _process(mds=self.mds, fs=self.fs, es=self.es, headers=headers,
-                 func=func, fields=fields, fill=fill)
+        for name, doc in self.get_documents(headers, fields=fields, fill=fill):
+            func(name, doc)
 
     get_fields = staticmethod(get_fields)  # for convenience
 
@@ -855,8 +891,8 @@ class BrokerES(object):
         return file_pairs
 
 
-class ArchiverPlugin(object):
-    def __init__(self, url, timezone):
+class ArchiverEventSource(object):
+    def __init__(self, url, timezone, pvs):
         """
         DataBroker plugin
 
@@ -866,42 +902,67 @@ class ArchiverPlugin(object):
             e.g., 'http://host:port/'
         timezone : string
             e.g., 'US/Eastern'
-
-        Example
-        -------
-        >>> p = ArchiverPlugin('http://xf16idc-ca.cs.nsls2.local:17668/',
-        ...                    'US/Eastern')
-        >>> db = Broker(mds, fs, plugins={'archiver_pvs': p})
-        >>> header = db[-1]
-        >>> db.get_events(header, archiver_pvs=['...'])
+        pvs : dict
+            a dict mapping human-friendly names to PVs
         """
         if not url.endswith('/'):
             url += '/'
         self.url = url
         self.archiver_addr = self.url + "retrieval/data/getData.json"
         self.tz = pytz.timezone(timezone)
+        self.pvs = pvs
+        self._descriptors = {}
 
-    def get_events(self, header, pvs):
-        """
-        Return results of an EPICS Archiver Appliance query in Event documents.
+    def insert(self, name, doc):
+        raise NotImplementedError()
 
-        That is, mock Event documents so that data from Archiver can be
-        analyzed the same as data from metadatastore.
+    def stream_names_given_header(self, header):
+        # We actually don't use the header in this case.
+        return ['archiver_{}'.format(name) for name in self.pvs]
 
-        Parameters
-        ----------
-        header : Header
-        pvs : list or dict
-            a list of PVs or a dict mapping PVs to human-friendly names
-        """
-        if hasattr(pvs, 'items'):
-            # Interpret pvs as a dict mapping PVs to names.
-            pass
-        else:
-            # Interpret pvs as a list, and use PVs themselves as names.
-            pvs = {pv: pv for pv in pvs}
+    def fields_given_header(self, header):
+        # We actually don't use the header in this case.
+        return list(self.pvs)
+
+    def descriptors_given_header(self, header):
+        run_start_uid = header['start']['uid']
+        try:
+            return self._descriptors[run_start_uid]
+        except KeyError:
+            # Mock up descriptors and cache them so that the ephemeral uid is
+            # stable for the duration of this process.
+            descs = []
+            start_time = header['start']['time'],
+            stop_time = header['stop']['time']
+            for name, pv in six.iteritems(self.pvs):
+                data_keys = {name: {'source': pv,
+                                    'dtype': 'number',
+                                    'shape': []}}
+
+                _from = _munge_time(start_time, self.tz)
+                _to = _munge_time(stop_time, self.tz)
+                params = {'pv': pv, 'from': _from, 'to': _to}
+                desc = {'time': header['start']['time'],
+                        'uid': 'empheral-' + str(uuid.uuid4()),
+                        'data_keys': data_keys,
+                        'run_start': header['start']['uid'],
+                        'external_query': params,
+                        'external_url': self.url}
+                descs.append(Document('EventDescriptor', desc))
+            self._descriptors[run_start_uid] = descs
+            return self._descriptors[run_start_uid]
+
+    def docs_given_header(self, header, stream_name=ALL,
+                          fill=False, fields=None,
+                          **kwargs):
+        desc_uids = {}
+        for d in self.descriptors_given_header(header):
+            # Stash the desc uids in a local var so we can use them in events.
+            pv = list(d['data_keys'].values())[0]['source']
+            desc_uids[pv] = d['uid']
+            yield d
         start_time, stop_time = header['start']['time'], header['stop']['time']
-        for pv, name in pvs.items():
+        for name, pv in six.iteritems(self.pvs):
             _from = _munge_time(start_time, self.tz)
             _to = _munge_time(stop_time, self.tz)
             params = {'pv': pv, 'from': _from, 'to': _to}
@@ -910,45 +971,50 @@ class ArchiverPlugin(object):
             raw, = req.json()
             timestamps = [x['secs'] for x in raw['data']]
             data = [x['val'] for x in raw['data']]
-            # Roll these into an Event document.
-            descriptor = {'time': start_time,
-                          'uid': 'ephemeral-' + str(uuid.uuid4()),
-                          'data_keys': {name: {'source': pv, 'shape': [],
-                                               'dtype': 'number'}},
-                          # TODO Mark this as 'external' once Broker stops
-                          # assuming that all external data in is filestore.
-                          'run_start': header['start'],
-                          'external_query': params,
-                          'external_url': self.url}
-            descriptor = Document('EventDescriptor', descriptor)
-            for d, t in zip(data, timestamps):
-                doc = {'data': {name: d}, 'timestamps': {name: t}, 'time': t,
+            for seq_num, (d, t) in enumerate(zip(data, timestamps)):
+                doc = {'data': {name: d},
+                       'timestamps': {name: t},
+                       'time': t,
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
-                       'descriptor': descriptor}
+                       'seq_num': seq_num,
+                       'descriptor': desc_uids[pv]}
                 yield Document('Event', doc)
+
+    def table_given_header(self, header, *args, **kwargs):
+        raise NotImplementedError()
+
+    def fill_event(self, *args, **kwrags):
+        raise NotImplementedError()
+
+    def fill_table(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class Broker(BrokerES):
-    def __init__(self, mds, fs=None, **kwargs):
+    def __init__(self, mds, fs=None, plugins=None, filters=None):
         """
         Unified interface to data sources
 
-        Eventually this API will change to ``__init__(self, hs, es, **kwargs)``
+        Eventually this API will change to
+        ``__init__(self, hs, **event_sources)``
 
         Parameters
         ----------
         mds : metadatastore or metadataclient
         fs : filestore
-        plugins : dict or None, optional
-            mapping keyword argument name (string) to Plugin, an object
-            that should implement ``get_events``
-        filters : list
-            list of mongo queries to be combined with query using '$and',
-            acting as a filter to restrict the results
         """
+        if plugins is not None:
+            raise ValueError("The 'plugins' argument is no longer supported. "
+                             "Use an EventSource instead.")
+        if filters is None:
+            filters = []
+        if filters:
+            warnings.warn("Future versions of the databroker will not accept "
+                          "'filters' in __init__. Set them using the filters "
+                          "attribute after initialization.")
         super(Broker, self).__init__(HeaderSourceShim(mds),
-                                     EventSourceShim(mds, fs),
-                                     **kwargs)
+                                     EventSourceShim(mds, fs))
+        self.filters = filters
 
 
 def _munge_time(t, timezone):

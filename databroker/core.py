@@ -116,114 +116,56 @@ class Header(object):
     def __iter__(self):
         return self.keys()
 
-    def stream(self, stream_name=ALL, fill=True):
-        # TODO hit the plugins
-        gen = self.db.es.docs_given_header(
-            header=self,
-            stream_name=stream_name,
-            fill=fill)
+    @property
+    def stream_names(self):
+        return self.db.stream_names_given_header(self)
+
+    def fields(self, stream_name=ALL):
+        fields = set()
+        for es in self.db.event_sources:
+            fields.update(es.fields_given_header(header=self))
+        return fields
+
+    def stream(self, stream_name=ALL, fill=False, **kwargs):
+        gen = self.db.get_documents(self, stream_name=stream_name,
+                                    fill=fill, **kwargs)
         for payload in gen:
             yield payload
 
+    def table(self, stream_name='primary', fill=False, fields=None,
+              timezone=None, convert_times=True, localize_times=True,
+              **kwargs):
+        '''
+        Make a table (pandas.DataFrame) from given run(s).
 
-def restream(mds, fs, es, headers, fields=None, fill=False):
-    """
-    Get all Documents from given run(s).
-
-    Parameters
-    ----------
-    mds : MDSRO
-    fs : FileStoreRO
-    es : EventStoreRO
-    headers : Header or iterable of Headers
-        header or headers to fetch the documents for
-    fields : list, optional
-        whitelist of field names of interest; if None, all are returned
-    fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to False.
-
-    Yields
-    ------
-    name, doc : tuple
-        string name of the Document type and the Document itself.
-        Example: ('start', {'time': ..., ...})
-
-    Example
-    -------
-    >>> def f(name, doc):
-    ...     # do something
-    ...
-    >>> h = DataBroker[-1]  # most recent header
-    >>> for name, doc in restream(h):
-    ...     f(name, doc)
-
-    Note
-    ----
-    This output can be used as a drop-in replacement for the output of the
-    bluesky Run Engine.
-
-    See Also
-    --------
-    process
-    """
-    try:
-        headers.items()
-    except AttributeError:
-        pass
-    else:
-        headers = [headers]
-
-    for header in headers:
-        yield 'start', header['start']
-        for descriptor in header['descriptors']:
-            yield 'descriptor', descriptor
-        # When py2 compatibility is dropped, use yield from.
-        for event in header.db.get_events(header, fields=fields, fill=fill):
-            yield 'event', event
-        yield 'stop', header['stop']
-
-
-stream = restream  # compat
-
-
-def process(mds, fs, es, headers, func, fields=None, fill=False):
-    """
-    Get all Documents from given run to a callback.
-
-    Parameters
-    ----------
-    mds : MDSRO
-    fs : FileStoreRO
-    es : EventStoreRO
-    headers : Header or iterable of Headers
-        header or headers to process documents from
-    func : callable
-        function with the signature `f(name, doc)`
-        where `name` is a string and `doc` is a dict
-    fields : list, optional
-        whitelist of field names of interest; if None, all are returned
-    fill : bool, optional
-        Whether externally-stored data should be filled in. Defaults to False.
-
-    Example
-    -------
-    >>> def f(name, doc):
-    ...     # do something
-    ...
-    >>> h = DataBroker[-1]  # most recent header
-    >>> process(h, f)
-
-    Note
-    ----
-    This output can be used as a drop-in replacement for the output of the
-    bluesky Run Engine.
-
-    See Also
-    --------
-    restream
-    """
-    for name, doc in restream(mds, fs, es, headers, fields, fill):
-        func(name, doc)
+        Parameters
+        ----------
+        headers : Header or iterable of Headers
+            The headers to fetch the events for
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        stream_name : string, optional
+            Get data from a single "event stream." To obtain one comprehensive
+            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
+            sentinel class defined in this module). The default name is
+            'primary', but if no event stream with that name is found, the
+            default reverts to ``ALL`` (for backward-compatibility).
+        fill : bool, optional
+            Whether externally-stored data should be filled in.
+            Defaults to True
+        convert_times : bool, optional
+            Whether to convert times from float (seconds since 1970) to
+            numpy datetime64, using pandas. True by default.
+        timezone : str, optional
+            e.g., 'US/Eastern'; if None, use metadatastore configuration in
+            `self.mds.config['timezone']`
+        '''
+        return self.db.get_table(self, fields=fields,
+                                 stream_name=stream_name, fill=fill,
+                                 timezone=timezone,
+                                 convert_times=convert_times,
+                                 localize_times=localize_times,
+                                 **kwargs)
 
 
 def register_builtin_handlers(fs):
@@ -541,6 +483,12 @@ class EventSourceShim(object):
     def stream_names_given_header(self, header):
         return set(d['name'] for d in
                    self.descriptors_given_header(header))
+
+    def fields_given_header(self, header):
+        fields = set()
+        for d in self.descriptors_given_header(header):
+            fields.update(d['data_keys'])
+        return fields
 
     def descriptors_given_header(self, header, stream_name=ALL):
         return [d for d in self.mds.descriptors_by_start(header.start['uid'])
