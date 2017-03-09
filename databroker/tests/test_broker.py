@@ -186,6 +186,7 @@ def test_full_text_search(db, RE):
     # Full text search does *not* apply to keys.
     assert len(db('foo')) == 0
 
+
 @py3
 def test_table_alignment(db, RE):
     # test time shift issue GH9
