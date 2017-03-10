@@ -236,9 +236,9 @@ class FileStoreTemplateRO(object):
         kwargs = resource['resource_kwargs']
         rpath = resource['resource_path']
         root = resource.get('root', '')
+        root = self.root_map.get(root, root)
 
         if root:
-            root = self.root_map.get(root, root)
             rpath = os.path.join(root, rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
