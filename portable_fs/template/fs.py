@@ -11,6 +11,7 @@ import boltons.cacheutils
 from . import core
 from collections import defaultdict
 import warnings
+import pathlib
 _API_MAP = {1: core}
 
 
@@ -239,7 +240,8 @@ class FileStoreTemplateRO(object):
         root = self.root_map.get(root, root)
         if root:
             if os.path.isabs(rpath):
-                rpath = rpath[1:]
+                pp_rpath = pathlib.PurePath(rpath)
+                rpath = rpath.strip(pp_rpath.root)
             rpath = os.path.join(root, rpath)
         print(rpath)
         ret = handler(rpath, **kwargs)
