@@ -243,7 +243,6 @@ class FileStoreTemplateRO(object):
                 pp_rpath = pathlib.PurePath(rpath)
                 rpath = rpath.strip(pp_rpath.root)
             rpath = os.path.join(root, rpath)
-        print(rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
         return ret
