@@ -5,9 +5,9 @@ import six
 import pymongo
 import numpy as np
 from pymongo import MongoClient
-from . import core
+from . import mongo_core
 
-_API_MAP = {1: core}
+_API_MAP = {1: mongo_core}
 
 
 def _sanitize_np(val):

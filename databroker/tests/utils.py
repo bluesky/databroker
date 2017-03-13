@@ -76,7 +76,7 @@ def build_pymongo_backed_broker(request):
     temporary database on localhost:27017 with v1 schema.
 
     '''
-    from .._mds.metadatastore.mds import MDS
+    from ..headersource.mongo import MDS
     from .._fs.filestore.utils import create_test_database
     from .._fs.filestore.fs import FileStore
 
