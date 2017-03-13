@@ -8,9 +8,8 @@ import warnings
 import numpy as np
 import logging
 from requests import HTTPError
-from ...headersource.mongo_core import (NoRunStart, NoEventDescriptors,
-                                        NoRunStop,
-                                        BAD_KEYS_FMT)
+from .mongo_core import (NoRunStart, NoEventDescriptors, NoRunStop,
+                         BAD_KEYS_FMT)
 
 logger = logging.getLogger(__name__)
 
