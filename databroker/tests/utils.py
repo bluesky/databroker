@@ -41,6 +41,36 @@ def build_sqlite_backed_broker(request):
                     EventSourceShim(mds, fs))
 
 
+def build_hdf5_backed_broker(request):
+    from ..headersource.hdf5 import MDS
+    from .._fs.portable_fs.sqlite.fs import FileStore
+
+    tempdirname = tempfile.mkdtemp()
+    mds = MDS({'directory': tempdirname,
+                             'timezone': tzlocal.get_localzone().zone}, version=1)
+    filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
+                 'events.json']
+    for fn in filenames:
+        with open(os.path.join(tempdirname, fn), 'w') as f:
+            f.write('[]')
+
+    def delete_mds():
+        shutil.rmtree(tempdirname)
+
+    request.addfinalizer(delete_mds)
+
+    tf = tempfile.NamedTemporaryFile()
+    fs = FileStore({'dbpath': tf.name}, version=1)
+
+    def delete_fs():
+        os.remove(tf.name)
+
+    request.addfinalizer(delete_fs)
+
+    return BrokerES(HeaderSourceShim(mds),
+                    EventSourceShim(mds, fs))
+
+
 def build_pymongo_backed_broker(request):
     '''Provide a function level scoped MDS instance talking to
     temporary database on localhost:27017 with v1 schema.
