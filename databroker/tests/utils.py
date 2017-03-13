@@ -12,7 +12,7 @@ from databroker.eventsource import EventSourceShim
 
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
-    from .._mds.portable_mds.sqlite.mds import MDS
+    from ..headersource.sqlite import MDS
     from .._fs.portable_fs.sqlite.fs import FileStore
 
     tempdirname = tempfile.mkdtemp()

@@ -3,10 +3,10 @@ import sqlite3
 import re
 from collections import defaultdict
 from contextlib import contextmanager
-from ..mongoquery.mds import JSONCollection
-from ..template.mds import MDSTemplate, MDSROTemplate
-from ..template.core import ASCENDING, DESCENDING
-from .. import _make_sure_path_exists
+from .mongoquery import JSONCollection
+from .base import MDSTemplate, MDSROTemplate
+from .core import ASCENDING, DESCENDING
+from ..utils import _make_sure_path_exists
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
 CREATE_TABLE = "CREATE TABLE %s "

@@ -1,9 +1,9 @@
 import os
 import json
 from mongoquery import Query
-from ..template.mds import MDSTemplate, MDSROTemplate
-from ..template.core import ASCENDING, DESCENDING
-from .. import _make_sure_path_exists
+from .base import MDSTemplate, MDSROTemplate
+from .core import ASCENDING, DESCENDING
+from ..utils import _make_sure_path_exists
 
 
 class JSONCollection(object):
