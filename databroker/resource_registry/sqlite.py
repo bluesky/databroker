@@ -2,8 +2,8 @@ import os
 import sqlite3
 import json
 from contextlib import contextmanager
-from ..template.fs import (FileStoreTemplate, FileStoreTemplateRO, _ChainMap,
-                           FileStoreMovingTemplate)
+from .base import (FileStoreTemplate, FileStoreTemplateRO, _ChainMap,
+                   FileStoreMovingTemplate)
 
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"

@@ -4,7 +4,7 @@ import six
 import logging
 from contextlib import contextmanager
 
-from .fs import FileStore
+from .mongo import FileStore
 from .conf import connection_config
 from .core import DatumNotFound
 

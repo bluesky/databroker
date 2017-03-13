@@ -1,7 +1,7 @@
 import pytest
 from ..utils import create_test_database
 from .utils import (SynHandlerMod, install_sentinels)
-from .. import fs as ffs
+from databroker.resource_registry import mongo as ffs
 import uuid
 
 

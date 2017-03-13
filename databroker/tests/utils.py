@@ -13,7 +13,7 @@ from databroker.eventsource import EventSourceShim
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
     from ..headersource.sqlite import MDS
-    from .._fs.portable_fs.sqlite.fs import FileStore
+    from ..resource_registry.sqlite import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -43,7 +43,7 @@ def build_sqlite_backed_broker(request):
 
 def build_hdf5_backed_broker(request):
     from ..headersource.hdf5 import MDS
-    from .._fs.portable_fs.sqlite.fs import FileStore
+    from ..resource_registry.sqlite import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -77,8 +77,8 @@ def build_pymongo_backed_broker(request):
 
     '''
     from ..headersource.mongo import MDS
-    from .._fs.filestore.utils import create_test_database
-    from .._fs.filestore.fs import FileStore
+    from ..resource_registry.utils import create_test_database
+    from ..resource_registry.mongo import FileStore
 
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     md_test_conf = dict(database=db_name, host='localhost',

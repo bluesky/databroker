@@ -15,13 +15,11 @@ import six
 from pkg_resources import resource_filename
 from pymongo import MongoClient
 
-from . import core
-from . import core_v0
+from . import mongo_core
 from .handlers_base import DuplicateHandler
-from .utils import _make_sure_path_exists
+from ..utils import _make_sure_path_exists
 
-_API_MAP = {0: core_v0,
-            1: core}
+_API_MAP = {1: mongo_core}
 
 
 logger = logging.getLogger(__name__)
