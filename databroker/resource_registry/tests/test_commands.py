@@ -9,7 +9,6 @@ import itertools
 from ..api import (insert_resource, insert_datum, retrieve,
                            register_handler, deregister_handler,
                            bulk_insert_datum)
-from ..core import DatumNotFound
 from numpy.testing import assert_array_equal
 
 from .utils import SynHandlerMod, fs_setup, fs_teardown
@@ -62,7 +61,8 @@ def test_insert_funcs(func):
 
 
 def test_non_exist():
-    with pytest.raises(DatumNotFound):
+    from .. import api
+    with pytest.raises(api._FS_SINGLETON.DatumNotFound):
         retrieve('aardvark')
 
 
