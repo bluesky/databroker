@@ -25,9 +25,15 @@ class ImageStack(FramesSequence):
         self._stop = stop
         self._dataset = dataset
 
-        # work around inconsistent naming choices in databroker's Image object
-        self.dtype = self.pixel_type
-        self.shape = self.frame_shape
+        # Old PIMS has no dtype, shape. Try adding it.
+        try:
+            self.dtype = self.pixel_type
+        except AttributeError:
+            pass
+        try:
+            self.shape = self.frame_shape
+        except AttributeError:
+            pass
 
     def get_frame(self, i):
         return Frame(self._dataset[self._start + i], frame_no=i)
