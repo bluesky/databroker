@@ -241,7 +241,7 @@ class FileStoreTemplateRO(object):
         if root:
             if os.path.isabs(rpath):
                 pp_rpath = pathlib.PurePath(rpath)
-                rpath = rpath.strip(pp_rpath.root)
+                rpath = rpath.lstrip(pp_rpath.root)
             rpath = os.path.join(root, rpath)
         ret = handler(rpath, **kwargs)
         h_cache[key] = ret
