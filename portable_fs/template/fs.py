@@ -11,7 +11,8 @@ import boltons.cacheutils
 from . import core
 from collections import defaultdict
 import warnings
-import pathlib
+import pathlib2
+
 _API_MAP = {1: core}
 
 
