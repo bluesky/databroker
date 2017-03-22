@@ -5,7 +5,7 @@ cache:
     - $HOME/.cache/pip
 
 python:
-  #   - 2.7
+  - 2.7
   - 3.4
   - 3.5
 
@@ -23,7 +23,7 @@ install:
   - conda update conda
   - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION mongoquery numpy h5py coverage doct six tzlocal six
   - source activate testenv
-  - pip install boltons
+  - pip install boltons pathlib2
   - pip install https://github.com/NSLS-II/filestore/zipball/master
   - pip install codecov
   - pip  install -v .
