@@ -49,7 +49,6 @@ def setup_syn(mds, custom=None):
 
 
 def syn_data(data_keys, count):
-
     all_data = deque()
     for seq_num in range(count):
         data = {k: float(seq_num) for k in data_keys}
@@ -330,7 +329,7 @@ def test_cache_clear_lookups(mds_all):
     mdsc = mds_all
     run_start_uid, e_desc_uid, data_keys = setup_syn(mdsc)
     run_stop_uid = mdsc.insert_run_stop(run_start_uid,
-                                       ttime.time(), uid=str(uuid.uuid4()))
+                                        ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.run_stop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
@@ -401,6 +400,38 @@ def test_find_run_stop(mds_all):
     run_stop3, = list(mdsc.find_run_stops(run_start=run_start))
     assert run_stop == run_stop2
     assert run_stop == run_stop3
+
+
+def test_double_run_start(mds_all):
+    mdsc = mds_all
+
+    custom = {}
+    data_keys = {k: {'source': k,
+                     'dtype': 'number',
+                     'shape': None} for k in 'ABCEDEFGHIJKL'
+                 }
+    data_keys['Z'] = {'source': 'Z', 'dtype': 'array', 'shape': [5, 5],
+                      'external': 'foo'}
+    scan_id = 1
+
+    # Create a BeginRunEvent that serves as entry point for a run
+    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
+                               time=ttime.time(),
+                               uid=str(uuid.uuid4()),
+                               **custom)
+
+    # Create an EventDescriptor that indicates the data
+    # keys and serves as header for set of Event(s)
+    e_desc = mdsc.insert_descriptor(data_keys=data_keys,
+                                    time=ttime.time(),
+                                    run_start=rs, uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(rs, ttime.time(),
+                         uid=str(uuid.uuid4()))
+    with pytest.raises(RuntimeError):
+        mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
+                              time=ttime.time(),
+                              uid=str(uuid.uuid4()),
+                              **custom)
 
 
 def test_double_run_stop(mds_all):
