@@ -415,10 +415,11 @@ def test_double_run_start(mds_all):
     scan_id = 1
 
     # Create a BeginRunEvent that serves as entry point for a run
-    rs = mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
-                               time=ttime.time(),
-                               uid=str(uuid.uuid4()),
-                               **custom)
+    start_dict = dict(scan_id=scan_id, beamline_id='testing',
+                      time=ttime.time(),
+                      uid=str(uuid.uuid4()),
+                      **custom)
+    rs = mdsc.insert_run_start(**start_dict)
 
     # Create an EventDescriptor that indicates the data
     # keys and serves as header for set of Event(s)
@@ -427,11 +428,8 @@ def test_double_run_start(mds_all):
                                     run_start=rs, uid=str(uuid.uuid4()))
     mdsc.insert_run_stop(rs, ttime.time(),
                          uid=str(uuid.uuid4()))
-    with pytest.raises(RuntimeError):
-        mdsc.insert_run_start(scan_id=scan_id, beamline_id='testing',
-                              time=ttime.time(),
-                              uid=str(uuid.uuid4()),
-                              **custom)
+    with pytest.raises(Exception):
+        mdsc.insert_run_start(**start_dict)
 
 
 def test_double_run_stop(mds_all):
