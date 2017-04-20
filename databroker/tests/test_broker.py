@@ -196,6 +196,16 @@ def test_table_alignment(db, RE):
 
 
 @py3
+def test_double_table(db, RE):
+    RE.subscribe('all', db.insert)
+    uid, = RE(count([det]))
+    table = db.get_table(db[uid])
+    assert table.notnull().all().all()
+    table = db.get_table(db[uid])
+    assert table.notnull().all().all()
+
+
+@py3
 def test_scan_id_lookup(db, RE):
     RE.subscribe('all', db.insert)
 
