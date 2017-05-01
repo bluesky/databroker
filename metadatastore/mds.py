@@ -685,7 +685,12 @@ class MDS(MDSRO):
         uid : str
             Globally unique id string provided to metadatastore
         """
-
+        for k, v in data.items():
+            if not isinstance(v, str):
+                try:
+                    data[k] = list(v)
+                except TypeError:
+                    pass
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
@@ -695,7 +700,13 @@ class MDS(MDSRO):
                                       validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
-
+        for e in events:
+            for k, v in e['data'].items():
+                if not isinstance(v, str):
+                    try:
+                        e['data'][k] = list(v)
+                    except TypeError:
+                        pass
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,
