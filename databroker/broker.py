@@ -243,6 +243,29 @@ def _(key, db):
     return sum((search(k, db) for k in key), [])
 
 
+class Results(object):
+    """
+    Iterable object encapsulating a results set of Headers
+    """
+    def __init__(self, res, db, data_key):
+        self._db = db
+        self._res = res
+        self._data_key = data_key
+
+    def __iter__(self):
+        for start, stop in self._res:
+            header = Header(start=start, stop=stop, db=self._db)
+            if self._data_key is None:
+                yield header
+            else:
+                # Only include this header in the result if `data_key` is found
+                # in one of its descriptors' data_keys.
+                for descriptor in header.descriptors:
+                    if self._data_key in descriptor['data_keys']:
+                        yield header
+                        break
+
+
 class BrokerES(object):
     def __init__(self, hs, *event_sources):
         """
@@ -453,20 +476,7 @@ class BrokerES(object):
                       filters=self.filters,
                       **kwargs)
 
-        headers = []
-        for start, stop in res:
-            header = Header(start=start, stop=stop, db=self)
-            if data_key is None:
-                headers.append(header)
-                continue
-            else:
-                # Only include this header in the result if `data_key` is found
-                # in one of its descriptors' data_keys.
-                for descriptor in header.descriptors:
-                    if data_key in descriptor['data_keys']:
-                        headers.append(header)
-                        break
-        return headers
+        return Results(res, self, data_key)
 
     def find_headers(self, **kwargs):
         "This function is deprecated."
