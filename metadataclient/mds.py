@@ -5,12 +5,21 @@ import json
 from doct import Document
 import six
 import warnings
+import numpy as np
 import logging
 from requests import HTTPError
 from metadatastore.core import (NoRunStart, NoEventDescriptors, NoRunStop,
                                BAD_KEYS_FMT)
 
 logger = logging.getLogger(__name__)
+
+def _sanitize_np(val):
+    "Convert any numpy objects into built-in Python types."
+    if isinstance(val, (np.generic, np.ndarray)):
+        if np.isscalar(val):
+            return val.item()
+        return val.tolist()
+    return val
 
 
 class MDSRO:
@@ -684,6 +693,8 @@ class MDS(MDSRO):
         uid : str
             Globally unique id string provided to metadatastore
         """
+        for k, v in data.items():
+            data[k] = _sanitize_np(v)
         if validate:
             raise NotImplementedError('Insert event validation not written yet')
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
@@ -710,7 +721,10 @@ class MDS(MDSRO):
         ret : dict
             dictionary of details about the insertion
         """
-        events = list(events)
+        events = list(events) # if iterator, make json serializable
+        for e in events:
+            for k, v in e['data'].items():
+                e['data'][k] = _sanitize_np(v)
         def event_factory():
             for ev in events:
                 # check keys, this could be expensive
