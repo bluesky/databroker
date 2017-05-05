@@ -5,6 +5,7 @@ import uuid
 import pytest
 import warnings
 
+import numpy as np
 from types import GeneratorType
 from doct import Document
 
@@ -48,7 +49,7 @@ def setup_syn(mds, custom=None):
     return rs, e_desc, data_keys
 
 
-def syn_data(data_keys, count):
+def syn_data(data_keys, count, is_np=False):
     all_data = deque()
     for seq_num in range(count):
         data = {k: float(seq_num) for k in data_keys}
@@ -56,9 +57,14 @@ def syn_data(data_keys, count):
 
         _time = ttime.time()
         uid = str(uuid.uuid4())
-        all_data.append({'data': data, 'timestamps': timestamps,
+        if is_np:
+            all_data.append({'data': data, 'timestamps': timestamps,
                          'seq_num': seq_num, 'time': _time,
                          'uid': uid})
+        else:
+            all_data.append({'data': data, 'timestamps': timestamps,
+                             'seq_num': seq_num, 'time': _time,
+                             'uid': uid})
     return all_data
 
 
@@ -238,6 +244,23 @@ def test_bad_bulk_insert_event_data(mds_all):
     del all_data[-1]['data']['E']
     with pytest.raises(ValueError):
         mdsc.bulk_insert_events(e_desc, all_data, validate=True)
+
+
+def test_sanitize_np(mds_all):
+    mdsc = mds_all
+    num = 50
+    rs, e_desc, data_keys = setup_syn(mdsc)
+    all_data = syn_data(data_keys, num, is_np=True)
+    mdsc.bulk_insert_events(e_desc, all_data, validate=False)
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+
+    ev_gen = mdsc.get_events_generator(e_desc)
+
+    for ret, expt in zip(ev_gen, all_data):
+        assert ret['descriptor']['uid'] == e_desc
+        for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
+            assert ret[k] == expt[k]
+        assert ret['filled'] == {'Z': False}
 
 
 def test_bad_bulk_insert_event_timestamp(mds_all):

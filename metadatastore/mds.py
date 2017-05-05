@@ -10,6 +10,15 @@ from . import core
 _API_MAP = {1: core}
 
 
+def _sanitize_np(val):
+    "Convert any numpy objects into built-in Python types."
+    if isinstance(val, (np.generic, np.ndarray)):
+        if np.isscalar(val):
+            return val.item()
+        return val.tolist()
+    return val
+
+
 class MDSRO(object):
     def __init__(self, config, version=1, auth=False):
         self._RUNSTART_CACHE = {}
@@ -657,13 +666,6 @@ class MDS(MDSRO):
                                            data_keys=data_keys,
                                            time=time, uid=uid,
                                            **kwargs)
-    def _sanitize_np(self, val):
-        "Convert any numpy objects into built-in Python types."
-        if isinstance(val, (np.generic, np.ndarray)):
-            if np.isscalar(val):
-                return val.item()
-            return val.tolist()
-        return val
 
     def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
                      validate=False):
@@ -694,7 +696,7 @@ class MDS(MDSRO):
             Globally unique id string provided to metadatastore
         """
         for k, v in data.items():
-            data[k] = self._sanitize_np(v)
+            data[k] = _sanitize_np(v)
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
@@ -706,7 +708,7 @@ class MDS(MDSRO):
     def bulk_insert_events(self, descriptor, events, validate=False):
         for e in events:
             for k, v in e['data'].items():
-                e['data'][k] = self._sanitize_np(v)
+                e['data'][k] = _sanitize_np(v)
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,
