@@ -56,7 +56,7 @@ class AreaDetectorSPEHandler(HandlerBase):
 
     def __init__(self, fpath, template, filename,
                  frame_per_point=1):
-        self._path = fpath
+        self._path = os.path.join(fpath, '')
         self._fpp = frame_per_point
         self._template = template
         self._filename = filename
@@ -89,7 +89,7 @@ class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs
 
     def __init__(self, fpath, template, filename, frame_per_point=1):
-        self._path = fpath
+        self._path = os.path.join(fpath, '')
         self._fpp = frame_per_point
         self._template = template
         self._filename = filename
