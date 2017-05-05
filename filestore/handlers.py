@@ -3,17 +3,14 @@ from __future__ import (absolute_import, division, print_function,
 import six
 
 import logging
-import h5py
 import numpy as np
 import os.path
-import tifffile
 
 from .handlers_base import HandlerBase
 from .readers.spe import PrincetonSPEFile
+from pims import FramesSequence, Frame
 
 logger = logging.getLogger(__name__)
-
-from pims import FramesSequence, Frame
 
 
 # The ImageCube class is used for a per event representation of
@@ -100,6 +97,7 @@ class AreaDetectorTiffHandler(HandlerBase):
             yield self._template % (self._path, self._filename, j)
 
     def __call__(self, point_number):
+        import tifffile
         ret = []
         for fn in self._fnames_for_point(point_number):
             with tifffile.TiffFile(fn) as tif:
@@ -162,6 +160,7 @@ class HDF5DatasetSliceHandler(HandlerBase):
         return self._data_objects[point_number]
 
     def open(self):
+        import h5py
         if self._file:
             return
 
@@ -213,6 +212,7 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     specs = {'AD_HDF5_SWMR'} | HDF5DatasetSliceHandler.specs
 
     def open(self):
+        import h5py
         if self._file:
             return
 
@@ -263,6 +263,7 @@ class AreaDetectorHDF5TimestampHandler(HandlerBase):
         return rtn
 
     def open(self):
+        import h5py
         if self._file:
             return
         self._file = h5py.File(self._filename, 'r')
@@ -289,6 +290,7 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
     specs = {'AD_HDF5_SWMR_TS'} | HandlerBase.specs
 
     def open(self):
+        import h5py
         if self._file:
             return
         self._file = h5py.File(self._filename, 'r', swmr=True)
@@ -445,6 +447,7 @@ class SingleTiffHandler(HandlerBase):
         self._name = filename
 
     def __call__(self):
+        import tifffile
         return tifffile.imread(self._name)
 
 
