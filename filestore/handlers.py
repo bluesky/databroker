@@ -465,3 +465,38 @@ class DATHandler(HandlerBase):
 
     def __call__(self):
         return np.loadtxt(self._path, **self.kwargs)
+
+
+class PilatusCBFHandler(HandlerBase):
+    specs = {'AD_CBF'} | HandlerBase.specs
+
+    def __init__(self, rpath, template, filename, frame_per_point=1,
+                 initial_number=1):
+        self._path = os.path.join(rpath, '')
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
+        self._initial_number = initial_number
+
+    def __call__(self, point_number):
+        import fabio
+        start, stop = (self._initial_number + point_number *
+                       self._fpp, (point_number + 2) * self._fpp)
+        ret = []
+        # commented out by LY to test scan speed imperovement, 2017-01-24
+        for j in range(start, stop):
+            fn = self._template % (self._path, self._filename, j)
+            img = fabio.open(fn)
+            ret.append(img.data)
+        return np.array(ret).squeeze()
+
+    def get_file_list(self, datum_kwargs_gen):
+        file_list = []
+        for dk in datum_kwargs_gen:
+            point_number = dk['point_number']
+            start, stop = (self._initial_number + point_number *
+                           self._fpp, (point_number + 2) * self._fpp)
+            for j in range(start, stop):
+                fn = self._template % (self._path, self._filename, j)
+                file_list.append(fn)
+        return file_list
