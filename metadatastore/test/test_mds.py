@@ -325,6 +325,28 @@ def test_iterative_insert(mds_all):
         if ret_lag:
             assert ret['filled'] is not ret_lag['filled']
         ret_lag = ret
+        
+def test_iterative_insert_np(mds_all):
+    mdsc = mds_all
+    num = 50
+    rs, e_desc, data_keys = setup_syn(mdsc)
+    all_data = syn_data(data_keys, num, is_np=True)
+
+    for d in all_data:
+        mdsc.insert_event(e_desc, **d)
+
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+
+    ev_gen = mdsc.get_events_generator(e_desc)
+    ret_lag = None
+    assert isinstance(ev_gen, GeneratorType)
+    for ret, expt in zip(ev_gen, all_data):
+        assert ret['descriptor']['uid'] == e_desc
+        for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
+            assert ret[k] == expt[k]
+        if ret_lag:
+            assert ret['filled'] is not ret_lag['filled']
+        ret_lag = ret
 
 
 def test_bulk_table(mds_all):
