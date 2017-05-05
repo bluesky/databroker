@@ -92,7 +92,8 @@ class AreaDetectorTiffHandler(HandlerBase):
         self._filename = filename
 
     def _fnames_for_point(self, point_number):
-        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
+        start = int(point_number * self._fpp)
+        stop = int((point_number + 1) * self._fpp)
         for j in range(start, stop):
             yield self._template % (self._path, self._filename, j)
 
