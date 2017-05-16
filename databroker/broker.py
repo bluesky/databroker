@@ -178,8 +178,8 @@ def _(key, db):
                          "the size of the result is non-deterministic "
                          "and could become too large.")
     start = -key.start
-    result = list(db.mds.find_last(start))[stop::key.step]
     stop = list(_safe_get_stop(db.mds, s) for s in result)
+    result = list(db.hs.find_last(start))[stop::key.step]
     return list(zip(result, stop))
 
 
@@ -1109,6 +1109,9 @@ class HeaderSourceShim(object):
 
     def insert(self, name, doc):
         return self.mds.insert(name, doc)
+
+    def find_last(self, num):
+        return self.mds.find_last(num)
 
 
 def _safe_get_stop(mds, s):
