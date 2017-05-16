@@ -297,12 +297,12 @@ class BrokerES(object):
 
     @property
     def mds(self):
-        warnings.warn("stop using raw mds")
+        warnings.warn("stop using raw mds", stacklevel=2)
         return self.hs.mds
 
     @property
     def fs(self):
-        warnings.warn("stop using raw fs")
+        warnings.warn("stop using raw fs", stacklevel=2)
         return self.event_source_for_insert.fs
 
     ALL = ALL  # sentinel used as default value for `stream_name`
@@ -480,12 +480,12 @@ class BrokerES(object):
 
     def find_headers(self, **kwargs):
         "This function is deprecated."
-        warnings.warn("Use .__call__() instead of .find_headers()")
+        warnings.warn("Use .__call__() instead of .find_headers()", stacklevel=2)
         return self(**kwargs)
 
     def fetch_events(self, headers, fill=True):
         "This function is deprecated."
-        warnings.warn("Use .get_events() instead.")
+        warnings.warn("Use .get_events() instead.", stacklevel=2)
         return self.get_events(headers, fill=fill)
 
     def fill_event(self, event, inplace=True,
@@ -1055,7 +1055,7 @@ class Broker(BrokerES):
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
-                          "attribute after initialization.")
+                          "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      EventSourceShim(mds, fs))
         self.filters = filters
