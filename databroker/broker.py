@@ -670,8 +670,6 @@ class BrokerES(object):
         -------
         table : pandas.DataFrame
         """
-        if timezone is None:
-            timezone = self.hs.mds.config['timezone']
         try:
             headers.items()
         except AttributeError:

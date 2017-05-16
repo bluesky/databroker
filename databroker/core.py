@@ -628,6 +628,8 @@ class EventSourceShim(object):
         table : pandas.DataFrame
 
         """
+        if timezone is None:
+            timezone = self.mds.config['timezone']
 
         no_fields_filter = False
         if fields is None:
