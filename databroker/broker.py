@@ -178,8 +178,8 @@ def _(key, db):
                          "the size of the result is non-deterministic "
                          "and could become too large.")
     start = -key.start
-    stop = list(_safe_get_stop(db.mds, s) for s in result)
     result = list(db.hs.find_last(start))[stop::key.step]
+    stop = list(_safe_get_stop(db.hs, s) for s in result)
     return list(zip(result, stop))
 
 
@@ -188,7 +188,7 @@ def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
     if key > -1:
         # Interpret key as a scan_id.
-        gen = db.mds.find_run_starts(scan_id=key)
+        gen = db.hs.find_run_starts(scan_id=key)
         try:
             result = next(gen)  # most recent match
         except StopIteration:
@@ -196,14 +196,14 @@ def _(key, db):
                              "being interpreted as a scan id." % key)
     else:
         # Interpret key as the Nth last scan.
-        gen = db.mds.find_last(-key)
+        gen = db.hs.find_last(-key)
         for i in range(-key):
             try:
                 result = next(gen)
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-    return [(result, _safe_get_stop(db.mds, result))]
+    return [(result, _safe_get_stop(db.hs, result))]
 
 
 @search.register(str)
@@ -216,13 +216,13 @@ def _(key, db):
         # Interpret key as a complete uid.
         # (Try this first, for performance.)
         logger.debug('Treating %s as a full uuid' % key)
-        results = list(db.mds.find_run_starts(uid=key))
+        results = list(db.hs.find_run_starts(uid=key))
         logger.debug('%s runs found for key=%s treated as a full uuid'
                      % (len(results), key))
     if not results:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
-        gen = db.mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        gen = db.hs.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
@@ -231,7 +231,7 @@ def _(key, db):
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    return [(result, _safe_get_stop(db.mds, result))]
+    return [(result, _safe_get_stop(db.hs, result))]
 
 
 @search.register(set)
@@ -1112,6 +1112,12 @@ class HeaderSourceShim(object):
 
     def find_last(self, num):
         return self.mds.find_last(num)
+
+    def find_run_starts(self, *args, **kwargs):
+        return self.mds.find_run_starts(*args, **kwargs)
+
+    def stop_by_start(self, s):
+        return self.mds.stop_by_start(s)
 
 
 def _safe_get_stop(mds, s):
