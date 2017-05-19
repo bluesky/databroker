@@ -1119,9 +1119,21 @@ class HeaderSourceShim(object):
     def stop_by_start(self, s):
         return self.mds.stop_by_start(s)
 
+    @property
+    def NoRunStart(self):
+        return self.mds.NoRunStart
 
-def _safe_get_stop(mds, s):
+    @property
+    def NoRunStop(self):
+        return self.mds.NoRunStop
+
+    @property
+    def NoEventDescriptors(self):
+        return self.mds.NoEventDescriptors
+
+
+def _safe_get_stop(db, s):
     try:
-        return mds.stop_by_start(s)
-    except mds.NoRunStop:
+        return db.stop_by_start(s)
+    except db.hs.NoRunStop:
         return None
