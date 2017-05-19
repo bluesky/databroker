@@ -337,6 +337,10 @@ class Images(FramesSequence):
     def frame_shape(self):
         return self._shape
 
+    @property
+    def shape(self):
+        return (len(self), ) + self.frame_shape
+
     def __len__(self):
         return self._len
 
