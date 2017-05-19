@@ -245,21 +245,22 @@ def _check_fields_exist(fields, headers):
 
 
 def get_images(db, headers, name, handler_registry=None,
-               handler_override=None):
+               handler_override=None, stream_name=None):
     """
     Load images from a detector for given Header(s).
 
     Parameters
     ----------
-    fs: FileStoreRO
+    db : DataBroker
     headers : Header or list of Headers
-    name : string
+    name : str
         field name (data key) of a detector
     handler_registry : dict, optional
         mapping spec names (strings) to handlers (callable classes)
     handler_override : callable class, optional
         overrides registered handlers
-
+    stream_name : str, optional
+        The event stream to pull from.
 
     Example
     -------
@@ -269,12 +270,12 @@ def get_images(db, headers, name, handler_registry=None,
             # do something
     """
     return Images(db.mds, db.es, db.fs, headers, name, handler_registry,
-                  handler_override)
+                  handler_override, stream_name=stream_name)
 
 
 class Images(FramesSequence):
     def __init__(self, mds, fs, es, headers, name, handler_registry=None,
-                 handler_override=None):
+                 handler_override=None, stream_name=None):
         """
         Load images from a detector for given Header(s).
 
@@ -289,7 +290,8 @@ class Images(FramesSequence):
             mapping spec names (strings) to handlers (callable classes)
         handler_override : callable class, optional
             overrides registered handlers
-
+        stream_name : str, optional
+            The event stream to pull from.
         Example
         -------
         >>> header = DataBroker[-1]
@@ -299,8 +301,11 @@ class Images(FramesSequence):
         """
         from .broker import Broker
         self.fs = fs
+        if stream_name is None:
+            stream_name = 'primary'
         db = Broker(mds, fs)
-        events = db.get_events(headers, [name], fill=False)
+        events = db.get_events(headers, [name], fill=False,
+                               stream_name=stream_name)
 
         self._datum_uids = [event.data[name] for event in events
                             if name in event.data]
