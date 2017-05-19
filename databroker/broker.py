@@ -1101,7 +1101,7 @@ class HeaderSourceShim(object):
 
         starts = tuple(self.mds.find_run_starts(**query))
 
-        stops = tuple(_safe_get_stop(self.mds, s) for s in starts)
+        stops = tuple(_safe_get_stop(self, s) for s in starts)
         return zip(starts, stops)
 
     def __getitem__(self, k):
@@ -1132,8 +1132,8 @@ class HeaderSourceShim(object):
         return self.mds.NoEventDescriptors
 
 
-def _safe_get_stop(db, s):
+def _safe_get_stop(hs, s):
     try:
-        return db.stop_by_start(s)
-    except db.hs.NoRunStop:
+        return hs.stop_by_start(s)
+    except hs.NoRunStop:
         return None
