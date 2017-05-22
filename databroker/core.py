@@ -76,7 +76,8 @@ class Header(object):
     def descriptors(self):
         if 'desc' not in self._cache:
             self._cache['desc'] = sum((es.descriptors_given_header(self)
-                                       for es in self.db.event_sources), [])
+                                       for es in self.db.event_sources),
+                                      [])
         return self._cache['desc']
 
     def __getitem__(self, k):
@@ -473,6 +474,11 @@ class EventSourceShim(object):
     This will presumably be deleted if this API makes it's way back down
     into the implementations
     '''
+
+    @property
+    def NoEventDescriptors(self):
+        return self.mds.NoEventDescriptors
+
     def __init__(self, mds, fs):
         self.mds = mds
         self.fs = fs
@@ -491,8 +497,12 @@ class EventSourceShim(object):
         return fields
 
     def descriptors_given_header(self, header, stream_name=ALL):
-        return [d for d in self.mds.descriptors_by_start(header.start['uid'])
-                if stream_name is ALL or d['name'] == stream_name]
+        try:
+            return [d
+                    for d in self.mds.descriptors_by_start(header.start['uid'])
+                    if stream_name is ALL or d['name'] == stream_name]
+        except self.NoEventDescriptors:
+            return []
 
     def docs_given_header(self, header, stream_name=ALL,
                           fill=False, fields=None,
