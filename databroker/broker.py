@@ -178,8 +178,8 @@ def _(key, db):
                          "the size of the result is non-deterministic "
                          "and could become too large.")
     start = -key.start
-    result = list(db.mds.find_last(start))[stop::key.step]
-    stop = list(_safe_get_stop(db.mds, s) for s in result)
+    result = list(db.hs.find_last(start))[stop::key.step]
+    stop = list(_safe_get_stop(db.hs, s) for s in result)
     return list(zip(result, stop))
 
 
@@ -188,7 +188,7 @@ def _(key, db):
     logger.info('Interpreting key = %s as an integer' % key)
     if key > -1:
         # Interpret key as a scan_id.
-        gen = db.mds.find_run_starts(scan_id=key)
+        gen = db.hs.find_run_starts(scan_id=key)
         try:
             result = next(gen)  # most recent match
         except StopIteration:
@@ -196,14 +196,14 @@ def _(key, db):
                              "being interpreted as a scan id." % key)
     else:
         # Interpret key as the Nth last scan.
-        gen = db.mds.find_last(-key)
+        gen = db.hs.find_last(-key)
         for i in range(-key):
             try:
                 result = next(gen)
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-    return [(result, _safe_get_stop(db.mds, result))]
+    return [(result, _safe_get_stop(db.hs, result))]
 
 
 @search.register(str)
@@ -216,13 +216,13 @@ def _(key, db):
         # Interpret key as a complete uid.
         # (Try this first, for performance.)
         logger.debug('Treating %s as a full uuid' % key)
-        results = list(db.mds.find_run_starts(uid=key))
+        results = list(db.hs.find_run_starts(uid=key))
         logger.debug('%s runs found for key=%s treated as a full uuid'
                      % (len(results), key))
     if not results:
         # No dice? Try searching as if we have a partial uid.
         logger.debug('Treating %s as a partial uuid' % key)
-        gen = db.mds.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
+        gen = db.hs.find_run_starts(uid={'$regex': '{0}.*'.format(key)})
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
@@ -231,7 +231,7 @@ def _(key, db):
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    return [(result, _safe_get_stop(db.mds, result))]
+    return [(result, _safe_get_stop(db.hs, result))]
 
 
 @search.register(set)
@@ -297,12 +297,12 @@ class BrokerES(object):
 
     @property
     def mds(self):
-        warnings.warn("stop using raw mds")
+        warnings.warn("stop using raw mds", stacklevel=2)
         return self.hs.mds
 
     @property
     def fs(self):
-        warnings.warn("stop using raw fs")
+        warnings.warn("stop using raw fs", stacklevel=2)
         return self.event_source_for_insert.fs
 
     ALL = ALL  # sentinel used as default value for `stream_name`
@@ -480,12 +480,12 @@ class BrokerES(object):
 
     def find_headers(self, **kwargs):
         "This function is deprecated."
-        warnings.warn("Use .__call__() instead of .find_headers()")
+        warnings.warn("Use .__call__() instead of .find_headers()", stacklevel=2)
         return self(**kwargs)
 
     def fetch_events(self, headers, fill=True):
         "This function is deprecated."
-        warnings.warn("Use .get_events() instead.")
+        warnings.warn("Use .get_events() instead.", stacklevel=2)
         return self.get_events(headers, fill=fill)
 
     def fill_event(self, event, inplace=True,
@@ -670,8 +670,6 @@ class BrokerES(object):
         -------
         table : pandas.DataFrame
         """
-        if timezone is None:
-            timezone = self.hs.mds.config['timezone']
         try:
             headers.items()
         except AttributeError:
@@ -1057,7 +1055,7 @@ class Broker(BrokerES):
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
-                          "attribute after initialization.")
+                          "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      EventSourceShim(mds, fs))
         self.filters = filters
@@ -1103,7 +1101,7 @@ class HeaderSourceShim(object):
 
         starts = tuple(self.mds.find_run_starts(**query))
 
-        stops = tuple(_safe_get_stop(self.mds, s) for s in starts)
+        stops = tuple(_safe_get_stop(self, s) for s in starts)
         return zip(starts, stops)
 
     def __getitem__(self, k):
@@ -1112,9 +1110,30 @@ class HeaderSourceShim(object):
     def insert(self, name, doc):
         return self.mds.insert(name, doc)
 
+    def find_last(self, num):
+        return self.mds.find_last(num)
 
-def _safe_get_stop(mds, s):
+    def find_run_starts(self, *args, **kwargs):
+        return self.mds.find_run_starts(*args, **kwargs)
+
+    def stop_by_start(self, s):
+        return self.mds.stop_by_start(s)
+
+    @property
+    def NoRunStart(self):
+        return self.mds.NoRunStart
+
+    @property
+    def NoRunStop(self):
+        return self.mds.NoRunStop
+
+    @property
+    def NoEventDescriptors(self):
+        return self.mds.NoEventDescriptors
+
+
+def _safe_get_stop(hs, s):
     try:
-        return mds.stop_by_start(s)
-    except mds.NoRunStop:
+        return hs.stop_by_start(s)
+    except hs.NoRunStop:
         return None
