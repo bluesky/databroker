@@ -48,6 +48,14 @@ def test_uid_list_multiple_headers(db, RE):
 
 
 @py3
+def test_no_descriptors(db, RE):
+    RE.subscribe('all', db.insert)
+    uid,  = RE(count([]))
+    header = db[uid]
+    assert [] == header.descriptors
+
+
+@py3
 def test_get_events(db, RE):
     RE.subscribe('all', db.insert)
     uid, = RE(count([det]))

@@ -1127,10 +1127,6 @@ class HeaderSourceShim(object):
     def NoRunStop(self):
         return self.mds.NoRunStop
 
-    @property
-    def NoEventDescriptors(self):
-        return self.mds.NoEventDescriptors
-
 
 def _safe_get_stop(hs, s):
     try:
