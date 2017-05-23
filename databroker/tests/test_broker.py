@@ -183,7 +183,7 @@ def test_full_text_search(db, RE):
     assert len(list(db())) == 2
 
     try:
-        db('some words')
+        list(db('some words'))
     except NotImplementedError:
         raise pytest.skip("This mongo-like backend does not support $text.")
 
