@@ -199,7 +199,7 @@ def get_fields(header, name=None):
     """
     fields = set()
     for descriptor in header['descriptors']:
-        if name is not None and name != descriptor.get('name'):
+        if name is not None and name != descriptor.get('name', 'primary'):
             continue
         for field in descriptor['data_keys'].keys():
             fields.add(field)
@@ -487,7 +487,7 @@ class EventSourceShim(object):
         return self.mds.insert(name, doc)
 
     def stream_names_given_header(self, header):
-        return set(d['name'] for d in
+        return set(d.get('name', 'primary') for d in
                    self.descriptors_given_header(header))
 
     def fields_given_header(self, header):
@@ -500,7 +500,8 @@ class EventSourceShim(object):
         try:
             return [d
                     for d in self.mds.descriptors_by_start(header.start['uid'])
-                    if stream_name is ALL or d['name'] == stream_name]
+                    if (stream_name is ALL or
+                        d.get('name', 'primary') == stream_name)]
         except self.NoEventDescriptors:
             return []
 
