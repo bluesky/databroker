@@ -1,4 +1,5 @@
 from __future__ import print_function
+import itertools
 import warnings
 import six  # noqa
 import uuid
@@ -253,7 +254,8 @@ class Results(object):
         self._data_key = data_key
 
     def __iter__(self):
-        for start, stop in self._res:
+        self._res, res = itertools.tee(self._res)
+        for start, stop in res:
             header = Header(start=start, stop=stop, db=self._db)
             if self._data_key is None:
                 yield header
@@ -1099,10 +1101,8 @@ class HeaderSourceShim(object):
             _format_time(kwargs, self.mds.config['timezone'])
             query = {'$and': [{}] + [kwargs] + filters}
 
-        starts = tuple(self.mds.find_run_starts(**query))
-
-        stops = tuple(_safe_get_stop(self, s) for s in starts)
-        return zip(starts, stops)
+        starts = self.mds.find_run_starts(**query)
+        return ((s, _safe_get_stop(self, s)) for s in starts)
 
     def __getitem__(self, k):
         return search(k, self)

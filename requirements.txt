@@ -1,0 +1,10 @@
+attrs
+boltons
+doct
+numpy
+pandas
+pims
+requests
+six
+toolz
+tzlocal
