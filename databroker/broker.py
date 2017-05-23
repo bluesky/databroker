@@ -1099,10 +1099,8 @@ class HeaderSourceShim(object):
             _format_time(kwargs, self.mds.config['timezone'])
             query = {'$and': [{}] + [kwargs] + filters}
 
-        starts = tuple(self.mds.find_run_starts(**query))
-
-        stops = tuple(_safe_get_stop(self, s) for s in starts)
-        return zip(starts, stops)
+        starts = self.mds.find_run_starts(**query)
+        return ((s, _safe_get_stop(self, s)) for s in starts)
 
     def __getitem__(self, k):
         return search(k, self)
