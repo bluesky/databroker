@@ -664,3 +664,15 @@ def test_export_size_smoke(broker_factory, RE):
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
     size = db1.export_size(db1[uid])
     assert size > 0.
+
+
+@py3
+def test_results_multiple_iters(db, RE):
+    RE.subscribe('all', db.insert)
+    RE(count([det]))
+    RE(count([det]))
+    res = db()
+    first = list(res)  # First pass through Result is lazy.
+    second = list(res)  # The Result object's tee should cache results.
+    third = list(res)  # The Result object's tee should cache results.
+    assert first == second == third

@@ -1,4 +1,5 @@
 from __future__ import print_function
+import itertools
 import warnings
 import six  # noqa
 import uuid
@@ -253,7 +254,8 @@ class Results(object):
         self._data_key = data_key
 
     def __iter__(self):
-        for start, stop in self._res:
+        self._res, res = itertools.tee(self._res)
+        for start, stop in res:
             header = Header(start=start, stop=stop, db=self._db)
             if self._data_key is None:
                 yield header
