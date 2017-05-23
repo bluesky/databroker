@@ -690,3 +690,12 @@ def test_results_multiple_iters(db, RE):
     second = list(res)  # The Result object's tee should cache results.
     third = list(res)  # The Result object's tee should cache results.
     assert first == second == third
+
+
+@py3
+def test_results_next(db, RE):
+    RE.subscribe('all', db.insert)
+    RE(count([det]))
+    RE(count([det]))
+    res = db()
+    assert next(res)
