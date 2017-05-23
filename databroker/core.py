@@ -500,7 +500,7 @@ class EventSourceShim(object):
         try:
             return [d
                     for d in self.mds.descriptors_by_start(header.start['uid'])
-                    if stream_name is ALL or d['name'] == stream_name]
+                    if stream_name is ALL or d.get('name') is None or d['name'] == stream_name]
         except self.NoEventDescriptors:
             return []
 
