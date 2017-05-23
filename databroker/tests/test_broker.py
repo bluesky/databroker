@@ -40,6 +40,20 @@ def test_uid_roundtrip(db, RE):
 
 
 @py3
+def test_no_descriptor_name(db, RE):
+    def local_insert(name, doc):
+        doc.pop('name', None)
+        return db.insert(name, doc)
+    RE.subscribe('all', local_insert)
+    uid, = RE(count([det]))
+    h = db[uid]
+    db.get_fields(h, name='primary')
+    assert h['start']['uid'] == uid
+    assert len(h.descriptors) == 1
+    assert h.stream_names == ['primary']
+
+
+@py3
 def test_uid_list_multiple_headers(db, RE):
     RE.subscribe('all', db.insert)
     uids = RE(pchain(count([det]), count([det])))
