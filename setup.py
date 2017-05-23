@@ -11,6 +11,9 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+with open(path.join(here, 'requirements.txt')) as f:
+    requirements = f.read().split()
+
 setup(
     name='databroker',
     version=versioneer.get_version(),
@@ -27,8 +30,7 @@ setup(
 
     license='BSD (3-clause)',
 
-    install_requires=('attrs', 'cytoolz', 'pandas', 'doct', 'pims',
-                      'requests', 'six', 'boltons', 'numpy'),
+    install_requires=requirements,
 
     classifiers=[
         'License :: OSI Approved :: BSD License',
