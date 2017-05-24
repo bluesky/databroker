@@ -690,3 +690,14 @@ def test_results_multiple_iters(db, RE):
     second = list(res)  # The Result object's tee should cache results.
     third = list(res)  # The Result object's tee should cache results.
     assert first == second == third
+
+
+@py3
+def test_dict_header(db, RE):
+    # Ensure that we aren't relying on h being a doct as opposed to a dict.
+    RE.subscribe('all', db.insert)
+    RE(count([det]))
+    h, = db()
+    expected = list(db.get_events(h))
+    actual = list(db.get_events(dict(h)))
+    assert actual == expected
