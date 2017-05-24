@@ -262,7 +262,7 @@ class Results(object):
             else:
                 # Only include this header in the result if `data_key` is found
                 # in one of its descriptors' data_keys.
-                for descriptor in header.descriptors:
+                for descriptor in header['descriptors']:
                     if self._data_key in descriptor['data_keys']:
                         yield header
                         break

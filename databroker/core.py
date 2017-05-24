@@ -498,8 +498,8 @@ class EventSourceShim(object):
 
     def descriptors_given_header(self, header, stream_name=ALL):
         try:
-            return [d
-                    for d in self.mds.descriptors_by_start(header.start['uid'])
+            return [d for d in
+                    self.mds.descriptors_by_start(header['start']['uid'])
                     if (stream_name is ALL or
                         d.get('name', 'primary') == stream_name)]
         except self.NoEventDescriptors:
@@ -546,10 +546,10 @@ class EventSourceShim(object):
 
         descs = self.descriptors_given_header(header, stream_name)
 
-        start = header.start
-        stop = header.stop
+        start = header['start']
+        stop = header['stop']
 
-        yield 'start', header.start
+        yield 'start', header['start']
         for d in descs:
             (all_extra_dk, all_extra_data,
              all_extra_ts, discard_fields) = _extract_extra_data(
@@ -584,7 +584,7 @@ class EventSourceShim(object):
 
                 yield 'event', ev
 
-        yield 'stop', header.stop
+        yield 'stop', header['stop']
 
     def table_given_header(self, header, stream_name,
                            fields=None,
