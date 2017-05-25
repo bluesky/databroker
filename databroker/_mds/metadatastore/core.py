@@ -384,7 +384,6 @@ def get_events_generator(descriptor, event_col, descriptor_col,
 
         yield ev
 
-
 def _transpose(in_data, keys, field):
     """Turn a list of dicts into dict of lists
 

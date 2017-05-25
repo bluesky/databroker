@@ -5,6 +5,7 @@ import uuid
 import pytest
 import warnings
 
+import numpy as np
 from types import GeneratorType
 from doct import Document
 
@@ -48,8 +49,7 @@ def setup_syn(mds, custom=None):
     return rs, e_desc, data_keys
 
 
-def syn_data(data_keys, count):
-
+def syn_data(data_keys, count, is_np=False):
     all_data = deque()
     for seq_num in range(count):
         data = {k: float(seq_num) for k in data_keys}
@@ -57,9 +57,14 @@ def syn_data(data_keys, count):
 
         _time = ttime.time()
         uid = str(uuid.uuid4())
-        all_data.append({'data': data, 'timestamps': timestamps,
+        if is_np:
+            all_data.append({'data': data, 'timestamps': timestamps,
                          'seq_num': seq_num, 'time': _time,
                          'uid': uid})
+        else:
+            all_data.append({'data': data, 'timestamps': timestamps,
+                             'seq_num': seq_num, 'time': _time,
+                             'uid': uid})
     return all_data
 
 
@@ -241,6 +246,23 @@ def test_bad_bulk_insert_event_data(mds_all):
         mdsc.bulk_insert_events(e_desc, all_data, validate=True)
 
 
+def test_sanitize_np(mds_all):
+    mdsc = mds_all
+    num = 50
+    rs, e_desc, data_keys = setup_syn(mdsc)
+    all_data = syn_data(data_keys, num, is_np=True)
+    mdsc.bulk_insert_events(e_desc, all_data, validate=False)
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+
+    ev_gen = mdsc.get_events_generator(e_desc)
+
+    for ret, expt in zip(ev_gen, all_data):
+        assert ret['descriptor']['uid'] == e_desc
+        for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
+            assert ret[k] == expt[k]
+        assert ret['filled'] == {'Z': False}
+
+
 def test_bad_bulk_insert_event_timestamp(mds_all):
     """Test what happens when one event is missing a timestamp for one key"""
     mdsc = mds_all
@@ -303,6 +325,28 @@ def test_iterative_insert(mds_all):
         if ret_lag:
             assert ret['filled'] is not ret_lag['filled']
         ret_lag = ret
+        
+def test_iterative_insert_np(mds_all):
+    mdsc = mds_all
+    num = 50
+    rs, e_desc, data_keys = setup_syn(mdsc)
+    all_data = syn_data(data_keys, num, is_np=True)
+
+    for d in all_data:
+        mdsc.insert_event(e_desc, **d)
+
+    mdsc.insert_run_stop(rs, ttime.time(), uid=str(uuid.uuid4()))
+
+    ev_gen = mdsc.get_events_generator(e_desc)
+    ret_lag = None
+    assert isinstance(ev_gen, GeneratorType)
+    for ret, expt in zip(ev_gen, all_data):
+        assert ret['descriptor']['uid'] == e_desc
+        for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
+            assert ret[k] == expt[k]
+        if ret_lag:
+            assert ret['filled'] is not ret_lag['filled']
+        ret_lag = ret
 
 
 def test_bulk_table(mds_all):
@@ -330,7 +374,7 @@ def test_cache_clear_lookups(mds_all):
     mdsc = mds_all
     run_start_uid, e_desc_uid, data_keys = setup_syn(mdsc)
     run_stop_uid = mdsc.insert_run_stop(run_start_uid,
-                                       ttime.time(), uid=str(uuid.uuid4()))
+                                        ttime.time(), uid=str(uuid.uuid4()))
     run_start = mdsc.run_start_given_uid(run_start_uid)
     run_stop = mdsc.run_stop_given_uid(run_stop_uid)
     ev_desc = mdsc.descriptor_given_uid(e_desc_uid)
@@ -401,6 +445,36 @@ def test_find_run_stop(mds_all):
     run_stop3, = list(mdsc.find_run_stops(run_start=run_start))
     assert run_stop == run_stop2
     assert run_stop == run_stop3
+
+
+def test_double_run_start(mds_all):
+    mdsc = mds_all
+
+    custom = {}
+    data_keys = {k: {'source': k,
+                     'dtype': 'number',
+                     'shape': None} for k in 'ABCEDEFGHIJKL'
+                 }
+    data_keys['Z'] = {'source': 'Z', 'dtype': 'array', 'shape': [5, 5],
+                      'external': 'foo'}
+    scan_id = 1
+
+    # Create a BeginRunEvent that serves as entry point for a run
+    start_dict = dict(scan_id=scan_id, beamline_id='testing',
+                      time=ttime.time(),
+                      uid=str(uuid.uuid4()),
+                      **custom)
+    rs = mdsc.insert_run_start(**start_dict)
+
+    # Create an EventDescriptor that indicates the data
+    # keys and serves as header for set of Event(s)
+    e_desc = mdsc.insert_descriptor(data_keys=data_keys,
+                                    time=ttime.time(),
+                                    run_start=rs, uid=str(uuid.uuid4()))
+    mdsc.insert_run_stop(rs, ttime.time(),
+                         uid=str(uuid.uuid4()))
+    with pytest.raises(Exception):
+        mdsc.insert_run_start(**start_dict)
 
 
 def test_double_run_stop(mds_all):
