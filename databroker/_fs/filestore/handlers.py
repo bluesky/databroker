@@ -3,17 +3,14 @@ from __future__ import (absolute_import, division, print_function,
 import six
 
 import logging
-import h5py
 import numpy as np
 import os.path
-import tifffile
 
 from .handlers_base import HandlerBase
 from .readers.spe import PrincetonSPEFile
+from pims import FramesSequence, Frame
 
 logger = logging.getLogger(__name__)
-
-from pims import FramesSequence, Frame
 
 
 # The ImageCube class is used for a per event representation of
@@ -56,7 +53,7 @@ class AreaDetectorSPEHandler(HandlerBase):
 
     def __init__(self, fpath, template, filename,
                  frame_per_point=1):
-        self._path = fpath
+        self._path = os.path.join(fpath, '')
         self._fpp = frame_per_point
         self._template = template
         self._filename = filename
@@ -89,17 +86,19 @@ class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs
 
     def __init__(self, fpath, template, filename, frame_per_point=1):
-        self._path = fpath
+        self._path = os.path.join(fpath, '')
         self._fpp = frame_per_point
         self._template = template
         self._filename = filename
 
     def _fnames_for_point(self, point_number):
-        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
+        start = int(point_number * self._fpp)
+        stop = int((point_number + 1) * self._fpp)
         for j in range(start, stop):
             yield self._template % (self._path, self._filename, j)
 
     def __call__(self, point_number):
+        import tifffile
         ret = []
         for fn in self._fnames_for_point(point_number):
             with tifffile.TiffFile(fn) as tif:
@@ -162,6 +161,7 @@ class HDF5DatasetSliceHandler(HandlerBase):
         return self._data_objects[point_number]
 
     def open(self):
+        import h5py
         if self._file:
             return
 
@@ -213,6 +213,7 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     specs = {'AD_HDF5_SWMR'} | HDF5DatasetSliceHandler.specs
 
     def open(self):
+        import h5py
         if self._file:
             return
 
@@ -263,6 +264,7 @@ class AreaDetectorHDF5TimestampHandler(HandlerBase):
         return rtn
 
     def open(self):
+        import h5py
         if self._file:
             return
         self._file = h5py.File(self._filename, 'r')
@@ -289,6 +291,7 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
     specs = {'AD_HDF5_SWMR_TS'} | HandlerBase.specs
 
     def open(self):
+        import h5py
         if self._file:
             return
         self._file = h5py.File(self._filename, 'r', swmr=True)
@@ -445,6 +448,7 @@ class SingleTiffHandler(HandlerBase):
         self._name = filename
 
     def __call__(self):
+        import tifffile
         return tifffile.imread(self._name)
 
 
@@ -465,3 +469,122 @@ class DATHandler(HandlerBase):
 
     def __call__(self):
         return np.loadtxt(self._path, **self.kwargs)
+
+
+class PilatusCBFHandler(HandlerBase):
+    specs = {'AD_CBF'} | HandlerBase.specs
+
+    def __init__(self, rpath, template, filename, frame_per_point=1,
+                 initial_number=1):
+        self._path = os.path.join(rpath, '')
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
+        self._initial_number = initial_number
+
+    def __call__(self, point_number):
+        import fabio
+        start, stop = (self._initial_number + point_number *
+                       self._fpp, (point_number + 2) * self._fpp)
+        ret = []
+        # commented out by LY to test scan speed imperovement, 2017-01-24
+        for j in range(start, stop):
+            fn = self._template % (self._path, self._filename, j)
+            img = fabio.open(fn)
+            ret.append(img.data)
+        return np.array(ret).squeeze()
+
+    def get_file_list(self, datum_kwargs_gen):
+        file_list = []
+        for dk in datum_kwargs_gen:
+            point_number = dk['point_number']
+            start, stop = (self._initial_number + point_number *
+                           self._fpp, (point_number + 2) * self._fpp)
+            for j in range(start, stop):
+                fn = self._template % (self._path, self._filename, j)
+                file_list.append(fn)
+        return file_list
+
+
+XS3_XRF_DATA_KEY = 'entry/instrument/detector/data'
+
+
+class Xspress3HDF5Handler(HandlerBase):
+    specs = {'XSP3'} | HandlerBase.specs
+    HANDLER_NAME = 'XSP3'
+
+    def __init__(self, filename, key=XS3_XRF_DATA_KEY):
+        import h5py
+        if isinstance(filename, h5py.File):
+            self._file = filename
+            self._filename = self._file.filename
+        else:
+            self._filename = filename
+            self._file = None
+        self._key = key
+        self._dataset = None
+
+        self.open()
+
+    def open(self):
+        import h5py
+        if self._file:
+            return
+
+        self._file = h5py.File(self._filename, 'r')
+
+    def close(self):
+        super(Xspress3HDF5Handler, self).close()
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+        self._dataset = None
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    def _get_dataset(self):
+        if self._dataset is not None:
+            return
+
+        hdf_dataset = self._file[self._key]
+        try:
+            self._dataset = np.asarray(hdf_dataset)
+        except MemoryError as ex:
+            logger.warning('Unable to load the full dataset into memory',
+                           exc_info=ex)
+            self._dataset = hdf_dataset
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception as ex:
+            logger.warning('Failed to close file',
+                           exc_info=ex)
+
+    def __call__(self, frame=None, channel=None):
+        # Don't read out the dataset until it is requested for the first time.
+        self._get_dataset()
+        return self._dataset[frame, channel - 1, :].squeeze()
+
+    def get_roi(self, chan, bin_low, bin_high, frame=None, max_points=None):
+        self._get_dataset()
+
+        roi = np.sum(self._dataset[:, chan - 1, bin_low:bin_high], axis=1)
+        if max_points is not None:
+            roi = roi[:max_points]
+
+            if len(roi) < max_points:
+                roi = np.pad(roi, ((0, max_points - len(roi)), ), 'constant')
+
+        if frame is not None:
+            roi = roi[frame, :]
+
+        return roi
+
+    def get_file_list(self, datum_kwarg_gen):
+        return [self._filename]
+
+    def __repr__(self):
+        return '{0.__class__.__name__}(filename={0._filename!r})'.format(self)
