@@ -37,7 +37,7 @@ before_install:
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda create -n testenv channelarchiver pytest cytoolz pandas ujson six jsonschema doct mongoquery h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION mongoengine pims prettytable pip boltons -c lightsource2-tag -c conda-forge
+  - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct mongoquery h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION mongoengine pims prettytable pip boltons -c lightsource2-tag -c conda-forge
   - source activate testenv
   - conda install pims -c lightsource2-tag
   - conda install --force requests  # hitting some 3.4-only requests bug
