@@ -10,6 +10,36 @@ from databroker.broker import HeaderSourceShim, BrokerES
 from databroker.core import EventSourceShim
 
 
+def build_json_backed_broker(request):
+    from portable_mds.mongoquery.mds import MDS
+    from portable_fs.sqlite.fs import FileStore
+
+    tempdirname = tempfile.mkdtemp()
+    mds = MDS({'directory': tempdirname,
+               'timezone': tzlocal.get_localzone().zone}, version=1)
+    filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
+                 'events.json']
+    for fn in filenames:
+        with open(os.path.join(tempdirname, fn), 'w') as f:
+            f.write('[]')
+
+    def delete_mds():
+        shutil.rmtree(tempdirname)
+
+    request.addfinalizer(delete_mds)
+
+    tf = tempfile.NamedTemporaryFile()
+    fs = FileStore({'dbpath': tf.name}, version=1)
+
+    def delete_fs():
+        os.remove(tf.name)
+
+    request.addfinalizer(delete_fs)
+
+    return BrokerES(HeaderSourceShim(mds),
+                    EventSourceShim(mds, fs))
+
+
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
     from portable_mds.sqlite.mds import MDS
