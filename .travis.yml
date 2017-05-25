@@ -34,11 +34,11 @@ before_install:
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION six numpy pandas h5py coverage jsonschema jinja2 cytoolz pyyaml mongoengine tzlocal boltons pymongo tifffile doct
+  - conda create -n testenv pip pytest python=$TRAVIS_PYTHON_VERSION six numpy pandas h5py coverage jsonschema jinja2 cytoolz pyyaml mongoengine tzlocal boltons pymongo tifffile doct attrs
   - source activate testenv
   - conda install pims -c lightsource2-tag
   - conda install --force requests  # hitting some 3.4-only requests bug
-  - pip install mongoquery attrs
+  - pip install mongoquery
   - pip install https://github.com/NSLS-II/portable-mds/zipball/master
   - pip install https://github.com/NSLS-II/portable-fs/zipball/master
   - pip install coveralls codecov
