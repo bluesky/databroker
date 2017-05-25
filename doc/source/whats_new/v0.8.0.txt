@@ -1,0 +1,10 @@
+v0.8.0
+------
+
+API Changes
+++++++++++++
+
+* ``Broker.__call__`` returns an iterable ``Results`` object, akin to a
+  generator, instead of a list. This means that queries with large results sets
+  return quickly. Iterating through the Headers in the result set is up to the
+  caller.

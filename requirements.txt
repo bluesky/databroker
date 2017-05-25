@@ -1,4 +1,13 @@
+attrs
+boltons
+doct
 h5py
-numpy
-pymongo
 jsonschema
+numpy
+pandas
+pims
+pymongo
+requests
+six
+toolz
+tzlocal

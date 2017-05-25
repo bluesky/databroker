@@ -76,7 +76,8 @@ class Header(object):
     def descriptors(self):
         if 'desc' not in self._cache:
             self._cache['desc'] = sum((es.descriptors_given_header(self)
-                                       for es in self.db.event_sources), [])
+                                       for es in self.db.event_sources),
+                                      [])
         return self._cache['desc']
 
     def __getitem__(self, k):
@@ -198,7 +199,7 @@ def get_fields(header, name=None):
     """
     fields = set()
     for descriptor in header['descriptors']:
-        if name is not None and name != descriptor.get('name'):
+        if name is not None and name != descriptor.get('name', 'primary'):
             continue
         for field in descriptor['data_keys'].keys():
             fields.add(field)
@@ -473,6 +474,11 @@ class EventSourceShim(object):
     This will presumably be deleted if this API makes it's way back down
     into the implementations
     '''
+
+    @property
+    def NoEventDescriptors(self):
+        return self.mds.NoEventDescriptors
+
     def __init__(self, mds, fs):
         self.mds = mds
         self.fs = fs
@@ -481,7 +487,7 @@ class EventSourceShim(object):
         return self.mds.insert(name, doc)
 
     def stream_names_given_header(self, header):
-        return set(d['name'] for d in
+        return set(d.get('name', 'primary') for d in
                    self.descriptors_given_header(header))
 
     def fields_given_header(self, header):
@@ -491,8 +497,13 @@ class EventSourceShim(object):
         return fields
 
     def descriptors_given_header(self, header, stream_name=ALL):
-        return [d for d in self.mds.descriptors_by_start(header.start['uid'])
-                if stream_name is ALL or d['name'] == stream_name]
+        try:
+            return [d for d in
+                    self.mds.descriptors_by_start(header['start']['uid'])
+                    if (stream_name is ALL or
+                        d.get('name', 'primary') == stream_name)]
+        except self.NoEventDescriptors:
+            return []
 
     def docs_given_header(self, header, stream_name=ALL,
                           fill=False, fields=None,
@@ -535,10 +546,10 @@ class EventSourceShim(object):
 
         descs = self.descriptors_given_header(header, stream_name)
 
-        start = header.start
-        stop = header.stop
+        start = header['start']
+        stop = header['stop']
 
-        yield 'start', header.start
+        yield 'start', header['start']
         for d in descs:
             (all_extra_dk, all_extra_data,
              all_extra_ts, discard_fields) = _extract_extra_data(
@@ -573,7 +584,7 @@ class EventSourceShim(object):
 
                 yield 'event', ev
 
-        yield 'stop', header.stop
+        yield 'stop', header['stop']
 
     def table_given_header(self, header, stream_name,
                            fields=None,
@@ -628,6 +639,8 @@ class EventSourceShim(object):
         table : pandas.DataFrame
 
         """
+        if timezone is None:
+            timezone = self.mds.config['timezone']
 
         no_fields_filter = False
         if fields is None:

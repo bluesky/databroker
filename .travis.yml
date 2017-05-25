@@ -23,9 +23,9 @@ matrix:
   include:
     - python: 2.7
       env: BUILD_DOCS=false
-    - python: 3.4
-      env: BUILD_DOCS=false
     - python: 3.5
+      env: BUILD_DOCS=false
+    - python: 3.6
       env: BUILD_DOCS=true
 
 before_install:
@@ -39,6 +39,7 @@ install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda create -n testenv channelarchiver pytest cytoolz pandas ujson six jsonschema doct mongoquery h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION mongoengine pims prettytable pip -c lightsource2-tag -c conda-forge
   - source activate testenv
+  - conda install pims -c lightsource2-tag
   - conda install --force requests  # hitting some 3.4-only requests bug
   - pip install mongoquery attrs
   - pip install coveralls codecov

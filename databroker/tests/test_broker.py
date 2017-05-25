@@ -28,7 +28,7 @@ py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
 @py3
 def test_empty_fixture(db):
     "Test that the db pytest fixture works."
-    assert len(db()) == 0
+    assert len(list(db())) == 0
 
 
 @py3
@@ -40,11 +40,33 @@ def test_uid_roundtrip(db, RE):
 
 
 @py3
+def test_no_descriptor_name(db, RE):
+    def local_insert(name, doc):
+        doc.pop('name', None)
+        return db.insert(name, doc)
+    RE.subscribe('all', local_insert)
+    uid, = RE(count([det]))
+    h = db[uid]
+    db.get_fields(h, name='primary')
+    assert h['start']['uid'] == uid
+    assert len(h.descriptors) == 1
+    assert h.stream_names == ['primary']
+
+
+@py3
 def test_uid_list_multiple_headers(db, RE):
     RE.subscribe('all', db.insert)
     uids = RE(pchain(count([det]), count([det])))
     headers = db[uids]
     assert uids == [h['start']['uid'] for h in headers]
+
+
+@py3
+def test_no_descriptors(db, RE):
+    RE.subscribe('all', db.insert)
+    uid,  = RE(count([]))
+    header = db[uid]
+    assert [] == header.descriptors
 
 
 @py3
@@ -76,7 +98,7 @@ def test_filtering_stream_name(db, RE):
     RE.subscribe('all', db.insert)
     uid, = RE(count([det], num=7), bc=1)
     h = db[uid]
-    assert len(h.descriptors) == 1
+    assert len(list(h.descriptors)) == 1
     assert list(h.stream_names) == ['primary']
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
     assert len(db.get_table(h, stream_name='primary')) == 7
@@ -95,7 +117,7 @@ def test_filtering_stream_name(db, RE):
                loop=RE.loop)
     uid, = RE(monitor_during_wrapper(count([det], num=7, delay=0.1), [d]))
     h = db[uid]
-    assert len(h.descriptors) == 2
+    assert len(list(h.descriptors)) == 2
     assert set(h.stream_names) == set(['primary', 'd_monitor'])
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
     assert len(list(h.stream(stream_name='primary'))) == 7 + 3
@@ -110,8 +132,8 @@ def test_filtering_stream_name(db, RE):
     # assert len(list(db.get_events(h))) == 8  # ALL streams by default
 
     # assert len(list(h.stream())) == 8 + 3  # ALL streams by default
-    # assert len(db.get_table(h, stream_name='d_monitor')) == 1
-    # assert len(h.table(stream_name='d_monitor')) == 1
+    # assert len(list(db.get_table(h, stream_name='d_monitor'))) == 1
+    # assert len(list(h.table(stream_name='d_monitor'))) == 1
     # assert len(list(h.stream(stream_name='d_monitor'))) == 1 + 3
     # assert len(list(db.get_events(h, stream_name='d_monitor'))) == 1
 
@@ -138,7 +160,7 @@ def test_get_events_filtering_field(db, RE):
 def test_deprecated_api(db, RE):
     RE.subscribe('all', db.insert)
     uid, = RE(count([det]))
-    h = db.find_headers(uid=uid)
+    h, = db.find_headers(uid=uid)
     assert list(db.fetch_events(h))
 
 
@@ -172,19 +194,19 @@ def test_full_text_search(db, RE):
     uid, = RE(count([det]), foo='some words')
     RE(count([det]))
 
-    assert len(db()) == 2
+    assert len(list(db())) == 2
 
     try:
-        db('some words')
+        list(db('some words'))
     except NotImplementedError:
         raise pytest.skip("This mongo-like backend does not support $text.")
 
-    assert len(db('some words')) == 1
+    assert len(list(db('some words'))) == 1
     header, = db('some words')
     assert header['start']['uid'] == uid
 
     # Full text search does *not* apply to keys.
-    assert len(db('foo')) == 0
+    assert len(list(db('foo'))) == 0
 
 @py3
 def test_table_alignment(db, RE):
@@ -210,7 +232,7 @@ def test_scan_id_lookup(db, RE):
     # Now we find uid2 for scan_id=1, but we can get the old one by
     # being more specific.
     assert uid2 == db[1]['start']['uid']
-    assert uid1 == db(scan_id=1, marked=True)[0]['start']['uid']
+    assert uid1 == list(db(scan_id=1, marked=True))[0]['start']['uid']
 
 
 @py3
@@ -239,7 +261,7 @@ def test_find_by_float_time(db, RE):
     after, = RE(count([det]))
 
     # Three runs in total were saved.
-    assert len(db()) == 3
+    assert len(list(db())) == 3
 
     # We'll find the one by specifying a time window around its start time.
     header, = db(start_time=t - 0.1, stop_time=t + 0.2)
@@ -257,8 +279,8 @@ def test_find_by_string_time(db, RE):
     tomorrow_str = tomorrow.strftime('%Y-%m-%d')
     day_after_tom = date.today() + timedelta(days=2)
     day_after_tom_str = day_after_tom.strftime('%Y-%m-%d')
-    assert len(db(start_time=today_str, stop_time=tomorrow_str)) == 1
-    assert len(db(start_time=tomorrow_str, stop_time=day_after_tom_str)) == 0
+    assert len(list(db(start_time=today_str, stop_time=tomorrow_str))) == 1
+    assert len(list(db(start_time=tomorrow_str, stop_time=day_after_tom_str))) == 0
 
 
 @py3
@@ -266,8 +288,8 @@ def test_data_key(db, RE):
     RE.subscribe('all', db.insert)
     RE(count([det1]))
     RE(count([det1, det2]))
-    result1 = db(data_key='det1')
-    result2 = db(data_key='det2')
+    result1 = list(db(data_key='det1'))
+    result2 = list(db(data_key='det2'))
     assert len(result1) == 2
     assert len(result2) == 1
 
@@ -305,7 +327,7 @@ def test_alias(db, RE):
 
     # basic usage of alias
     db.alias('foo', uid=uid)
-    assert db.foo == db(uid=uid)
+    assert list(db.foo) == list(db(uid=uid))
 
     # can't set alias to existing attribute name
     with pytest.raises(ValueError):
@@ -315,7 +337,7 @@ def test_alias(db, RE):
 
     # basic usage of dynamic alias
     db.dynamic_alias('bar', lambda: {'uid': uid})
-    assert db.bar == db(uid=uid)
+    assert list(db.bar) == list(db(uid=uid))
 
     # normal AttributeError still works
     with pytest.raises(AttributeError):
@@ -329,19 +351,19 @@ def test_filters(db, RE):
     dan_uid, = RE(count([det]), user='Dan', purpose='calibration')
     ken_calib_uid, = RE(count([det]), user='Ken', purpose='calibration')
 
-    assert len(db()) == 3
+    assert len(list(db())) == 3
     db.add_filter(user='Dan')
-    assert len(db.filters) == 1
-    assert len(db()) == 1
+    assert len(list(db.filters)) == 1
+    assert len(list(db())) == 1
     header, = db()
     assert header['start']['uid'] == dan_uid
 
     db.clear_filters()
-    assert len(db.filters) == 0
+    assert len(list(db.filters)) == 0
 
-    assert len(db(purpose='calibration')) == 2
+    assert len(list(db(purpose='calibration'))) == 2
     db.add_filter(user='Ken')
-    assert len(db(purpose='calibration')) == 1
+    assert len(list(db(purpose='calibration'))) == 1
     header, = db(purpose='calibration')
 
     assert header['start']['uid'] == ken_calib_uid
@@ -656,3 +678,26 @@ def test_export_size_smoke(broker_factory, RE):
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
     size = db1.export_size(db1[uid])
     assert size > 0.
+
+
+@py3
+def test_results_multiple_iters(db, RE):
+    RE.subscribe('all', db.insert)
+    RE(count([det]))
+    RE(count([det]))
+    res = db()
+    first = list(res)  # First pass through Result is lazy.
+    second = list(res)  # The Result object's tee should cache results.
+    third = list(res)  # The Result object's tee should cache results.
+    assert first == second == third
+
+
+@py3
+def test_dict_header(db, RE):
+    # Ensure that we aren't relying on h being a doct as opposed to a dict.
+    RE.subscribe('all', db.insert)
+    RE(count([det]))
+    h, = db()
+    expected = list(db.get_events(h))
+    actual = list(db.get_events(dict(h)))
+    assert actual == expected
