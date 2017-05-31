@@ -2,6 +2,7 @@ from collections import deque
 import pickle
 import time as ttime
 import uuid
+import os
 import pytest
 import warnings
 
@@ -526,6 +527,16 @@ def test_bad_event_desc(mds_all):
 
 
 def test_load_configuration_smoke():
+    original_env = os.environ.copy()
     from databroker._mds.metadatastore.conf import load_configuration
 
-    load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])
+    os.environ['MDS_HOST'] = 'localhost'
+    os.environ['MDS_PORT'] = '27017'
+    os.environ['MDS_DATABASE'] = 'testingconfig'
+    os.environ['MDS_TIMEZONE'] = 'US/Eastern'
+
+    try:
+        load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])
+    finally:
+        os.environ.clear()
+        os.environ.update(original_env)
