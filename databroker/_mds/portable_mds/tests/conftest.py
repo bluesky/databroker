@@ -3,13 +3,12 @@ import tempfile
 import shutil
 import tzlocal
 import pytest
-from ..mongoquery import mds as mqmds
-from ..sqlite import mds as sqlmds
-from ..hdf5 import mds as hdfmds
+import databroker.headersource.mongoquery as mqmds
+
+from ....headersource import sqlite as sqlmds
 
 variations = [mqmds,
-              sqlmds,
-              hdfmds]
+              sqlmds]
 
 
 @pytest.fixture(params=variations, scope='function')
