@@ -1,11 +1,9 @@
 import os
-import numpy as np
 import h5py
-import re
+import numpy as np
 from collections import defaultdict
 from .mongoquery import JSONCollection
 from .base import MDSTemplate, MDSROTemplate
-from .core import ASCENDING, DESCENDING
 from ..utils import _make_sure_path_exists
 
 
@@ -62,8 +60,6 @@ class EventCollection(object):
             g.create_group('timestamps')
             for key in doc['data_keys']:
                 # Create an empty, resizable dataset for each key.
-                g['data'].create_dataset(key, shape=(0,), maxshape=(None,),
-                                         dtype='float64')
                 g['timestamps'].create_dataset(key, shape=(0,),
                                                maxshape=(None,),
                                                dtype='float64')
@@ -94,7 +90,10 @@ class EventCollection(object):
             event['data'] = {}
             event['timestamps'] = {}
             for key in transposed_data:
-                event['data'][key] = transposed_data[key].pop(0)
+                data = transposed_data[key].pop(0)
+                if data.dtype.kind == 'S':
+                    data = bytes(data).decode('utf-8')
+                event['data'][key] = data
                 event['timestamps'][key] = transposed_ts[key].pop(0)
             yield event
 
@@ -137,7 +136,18 @@ class EventCollection(object):
                 append(g['time'], transposed_time)
                 append(g['seq_num'], transposed_seq_num)
                 for k in keys:
-                    append(g['data'][k], transposed_data[k])
+                    data = np.asarray(transposed_data[k])
+                    dtype = data.dtype
+                    if dtype.kind == 'U':
+                        data = data.astype('S')
+                        dtype = data.dtype
+                    if k not in g['data']:
+
+                        g['data'].create_dataset(k, shape=(0,),
+                                                 maxshape=(None,),
+                                                 dtype=dtype)
+
+                    append(g['data'][k], data)
                     append(g['timestamps'][k], transposed_ts[k])
 
 
