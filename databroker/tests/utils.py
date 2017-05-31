@@ -7,7 +7,7 @@ import tzlocal
 
 from databroker import Broker
 from databroker.broker import HeaderSourceShim, BrokerES
-from databroker.core import EventSourceShim
+from databroker.eventsource import EventSourceShim
 
 
 def build_sqlite_backed_broker(request):
