@@ -1,6 +1,6 @@
 import uuid
 import pytest
-from databroker._mds.metadatastore.mds import MDS
+from databroker.headersource.mongo import MDS
 import os
 
 

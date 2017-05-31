@@ -8,10 +8,12 @@ import warnings
 import numpy as np
 import logging
 from requests import HTTPError
-from ..metadatastore.core import (NoRunStart, NoEventDescriptors, NoRunStop,
-                                  BAD_KEYS_FMT)
+from ...headersource.mongo_core import (NoRunStart, NoEventDescriptors,
+                                        NoRunStop,
+                                        BAD_KEYS_FMT)
 
 logger = logging.getLogger(__name__)
+
 
 def _sanitize_np(val):
     "Convert any numpy objects into built-in Python types."

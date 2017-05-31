@@ -6,7 +6,7 @@ import datetime
 
 import pytz
 import pytest
-from .. import core
+from ....headersource import mongo_core as core
 import uuid
 import time
 from ..examples.sample_data import temperature_ramp
