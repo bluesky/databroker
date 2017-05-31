@@ -202,7 +202,7 @@ class ResourceCollection(object):
 class _CollectionMixin(object):
     def __init__(self, *args, **kwargs):
         self._config = None
-        super().__init__(*args, **kwargs)
+        super(_CollectionMixin, self).__init__(*args, **kwargs)
         self._db = FileStoreDatabase(self.config['dbpath'])
         self._conn = self._db._conn
         self.__resource_col = None

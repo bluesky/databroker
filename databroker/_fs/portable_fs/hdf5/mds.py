@@ -122,7 +122,7 @@ class ResourceCollection(object):
 class _CollectionMixin(object):
     def __init__(self, *args, **kwargs):
         self._config = None
-        super().__init__(*args, **kwargs)
+        super(_CollectionMixin, self).__init__(*args, **kwargs)
         self.__event_col = None
         self.__descriptor_col = None
         self.__runstart_col = None

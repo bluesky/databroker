@@ -386,7 +386,7 @@ class DocBuffer:
                     except StopIteration:
                         raise Exception("this stream does not contain a "
                                         "descriptor with uid {}".format(key))
-                return super().__getitem__(key)
+                return super(DocBuffer, self).__getitem__(key)
 
         self.denormalize = denormalize
         self.gen = doc_gen

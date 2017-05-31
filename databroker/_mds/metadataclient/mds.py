@@ -511,7 +511,7 @@ class MDS(MDSRO):
     """Read-write client for metadataservice"""
     def __init__(self, *args, **kwargs):
         """Extends the read-only client class"""
-        super().__init__(*args, **kwargs)
+        super(MDS, self).__init__(*args, **kwargs)
         self._INS_METHODS = {'start': 'insert_run_start',
                              'stop': 'insert_run_stop',
                              'descriptor': 'insert_descriptor',
