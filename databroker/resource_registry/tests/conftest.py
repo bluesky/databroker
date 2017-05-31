@@ -5,7 +5,7 @@ from databroker.resource_registry import mongo as ffs
 import uuid
 
 
-@pytest.fixture(params=[0, 1], scope='function')
+@pytest.fixture(params=[1], scope='function')
 def fs(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with both v0 and v1.
@@ -25,32 +25,6 @@ def fs(request):
 
     request.addfinalizer(delete_dm)
     return fs
-
-
-@pytest.fixture(scope='function')
-def fs_v01(request):
-    '''Provide a function level scoped FileStore instance talking to
-    temporary database on localhost:27017 with both v0 and v1.
-
-    '''
-    db_name = "fs_testing_v01_disposable_{}".format(str(uuid.uuid4()))
-    test_conf = dict(database=db_name, host='localhost',
-                     port=27017)
-    # v0 does not check!
-    install_sentinels(test_conf, 1)
-    fs0 = ffs.FileStore(test_conf, version=0)
-    fs1 = ffs.FileStoreMoving(test_conf, version=1)
-
-    fs0.register_handler('syn-mod', SynHandlerMod)
-    fs1.register_handler('syn-mod', SynHandlerMod)
-
-    def delete_dm():
-        print("DROPPING DB")
-        fs1._connection.drop_database(db_name)
-
-    request.addfinalizer(delete_dm)
-
-    return fs0, fs1
 
 
 @pytest.fixture(scope='function')
