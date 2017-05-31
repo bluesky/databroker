@@ -325,7 +325,7 @@ def test_iterative_insert(mds_all):
         if ret_lag:
             assert ret['filled'] is not ret_lag['filled']
         ret_lag = ret
-        
+
 def test_iterative_insert_np(mds_all):
     mdsc = mds_all
     num = 50
@@ -526,6 +526,6 @@ def test_bad_event_desc(mds_all):
 
 
 def test_load_configuration_smoke():
-    from ..conf import load_configuration
+    from databroker._mds.metadatastore.conf import load_configuration
 
     load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])

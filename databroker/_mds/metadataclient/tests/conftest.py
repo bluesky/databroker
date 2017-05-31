@@ -1,9 +1,5 @@
-import os
-import tempfile
-import shutil
-import tzlocal
 import pytest
-from .. import mds
+from ....headersource import client as mds
 
 variations = [mds]
 
