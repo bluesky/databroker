@@ -6,26 +6,9 @@ import datetime
 
 import pytz
 import pytest
-from ....headersource import mongo_core as core
+from databroker.headersource import mongo_core as core
 import uuid
 import time
-from ..examples.sample_data import temperature_ramp
-
-
-@pytest.fixture(scope='module')
-def filled_mds(mds_all_mod):
-    mdsc = mds_all_mod
-    temperature_ramp.run(mdsc)
-    run_start_uid = mdsc.insert_run_start(scan_id=3022013,
-                                          beamline_id='testbed',
-                                          owner='tester',
-                                          group='awesome-devs',
-                                          project='Nikea',
-                                          time=time.time(),
-                                          uid=str(uuid.uuid4()))
-    rs = mdsc.run_start_given_uid(run_start_uid)
-
-    return mdsc, run_start_uid, rs
 
 
 # ### Testing metadatastore find functionality ################################
@@ -68,21 +51,6 @@ def _make_fint_func_dectorator():
             targets.append([func, dct])
 
     return pytest.mark.parametrize('func,kw', targets)
-
-
-@_make_fint_func_dectorator()
-def test_find_funcs_for_smoke(filled_mds, func, kw):
-    # dereference the generator...
-    mdsc, run_start_uid, rs = filled_mds
-    func = getattr(mdsc, func)
-    for k, v in kw.items():
-        if v == 'rs':
-            kw[k] = rs
-        if v == 'rs.uid':
-            kw[k] = rs.uid
-        if v == 'run_start_uid':
-            kw[k] = run_start_uid
-    list(func(**kw))
 
 
 # ### Test metadatastore time formatting ######################################
@@ -171,9 +139,3 @@ def prep_header():
     hdr = {'time': time.time(), 'uid': testuid,
            'tag': 'find_last_test_tag'}
     return hdr
-
-
-def test_find_last(prep_header, mds_all):
-    refhdr = prep_header
-    mds_all.insert('start', refhdr)
-    next(mds_all.find_last())['uid'] == refhdr['uid']
