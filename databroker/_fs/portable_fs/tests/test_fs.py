@@ -1,3 +1,2 @@
-from ...filestore.test.test_fs import *
-
-from ...filestore.test.test_fs_mutate import *
+from databroker.resource_registry.tests.test_fs import *
+from databroker.resource_registry.tests.test_fs_mutate import *

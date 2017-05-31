@@ -2,9 +2,9 @@ import uuid
 import os
 import pytest
 import numpy as np
-from ..sqlite import fs as sqlfs
+from databroker.resource_registry import sqlite as sqlfs
 import tempfile
-from ...filestore.test.utils import SynHandlerMod
+from databroker.resource_registry.tests.utils import SynHandlerMod
 
 
 @pytest.fixture(params=[sqlfs], scope='function')
