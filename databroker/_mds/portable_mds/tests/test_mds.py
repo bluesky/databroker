@@ -1,4 +1,4 @@
-from databroker.tests.mds_tests.test_mds import (
+from databroker.tests.test_mds import (
     test_bad_bulk_insert_event_data,
     test_bad_bulk_insert_event_timestamp,
     test_bad_event_desc,
