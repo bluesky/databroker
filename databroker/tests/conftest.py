@@ -30,7 +30,6 @@ def broker_factory(request):
     return param_map[request.param]
 
 
-
 AUTH = os.environ.get('MDSTESTWITHAUTH', False)
 
 
