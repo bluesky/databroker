@@ -37,11 +37,11 @@ _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 def _normalize_human_friendly_time(val, tz):
     """Given one of :
     - string (in one of the formats below)
-    - datetime (eg. datetime.datetime.now()), with or without tzinfo)
+    - datetime (eg. datetime.now()), with or without tzinfo)
     - timestamp (eg. time.time())
     return a timestamp (seconds since jan 1 1970 UTC).
 
-    Non string/datetime.datetime values are returned unaltered.
+    Non string/datetime values are returned unaltered.
     Leading/trailing whitespace is stripped.
     Supported formats:
     {}
@@ -76,7 +76,7 @@ def _normalize_human_friendly_time(val, tz):
                 check = False
             else:
                 # what else could the type be here?
-                raise TypeError('expected datetime.datetime,'
+                raise TypeError('expected datetime,'
                                 ' got {:r}'.format(ts))
 
         except NameError:
@@ -97,8 +97,6 @@ def _normalize_human_friendly_time(val, tz):
 _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
-
-
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -424,7 +422,7 @@ class BrokerES(object):
                 - '2015-01'
                 - '2015-01-30'
                 - '2015-03-30 03:00:00'
-                - Python datetime objects, such as datetime.datetime.now()
+                - Python datetime objects, such as datetime.now()
         stop_time: time-like, optional
             Include Headers for runs started before this time. See
             `start_time` above for examples.

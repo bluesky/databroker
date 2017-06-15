@@ -6,7 +6,7 @@ import datetime
 
 import pytz
 import pytest
-from databroker.headersource import mongo_core as core
+from databroker.broker import _normalize_human_friendly_time
 
 
 # ### Testing metadatastore find functionality ################################
@@ -120,7 +120,7 @@ def test_normalize_human_friendly_time(val, should_succeed, etype):
         (val, check_output) = val
 
     if should_succeed:
-        output = core._normalize_human_friendly_time(val, 'US/Eastern')
+        output = _normalize_human_friendly_time(val, 'US/Eastern')
         assert(isinstance(output, float))
         try:
             assert output == check_output
@@ -128,4 +128,4 @@ def test_normalize_human_friendly_time(val, should_succeed, etype):
             pass
     else:
         with pytest.raises(etype):
-            core._normalize_human_friendly_time(val, 'US/Eastern')
+            _normalize_human_friendly_time(val, 'US/Eastern')
