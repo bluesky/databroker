@@ -45,8 +45,11 @@ class JSONCollection(object):
                 return doc
         return None
 
-    def insert_one(self, doc):
+    def insert_one(self, doc, fk=None):
         self.refresh()
+        if fk is not None:
+            if self.find_one({fk: doc[fk]}) is not None:
+                raise RuntimeError('Duplicate {}: {}'.format(fk, doc[fk]))
         self._docs.append(doc)
         with open(self._fp, 'w') as f:
             json.dump(self._docs, f)

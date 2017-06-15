@@ -21,7 +21,7 @@ class RunStartCollection(JSONCollection):
 
     def insert_one(self, doc):
         self._event_col.new_runstart(doc)
-        super(RunStartCollection, self).insert_one(doc)
+        super(RunStartCollection, self).insert_one(doc, fk='uid')
 
 
 class DescriptorCollection(JSONCollection):
