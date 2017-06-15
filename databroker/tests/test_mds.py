@@ -211,6 +211,8 @@ def test_run_stop_insertion(mds_all):
 
 def test_find_events_smoke(mds_all):
     mds = mds_all
+    if not hasattr(mds, 'find_events'):
+        pytest.skip("This mds flavor does not have find_events")
     num = 50
     rs, e_desc, data_keys = setup_syn(mds)
     all_data = syn_data(data_keys, num)
@@ -229,6 +231,8 @@ def test_find_events_smoke(mds_all):
 
 def test_find_events_ValueError(mds_all):
     mdsc = mds_all
+    if not hasattr(mdsc, 'find_events'):
+        pytest.skip("This mds flavor does not have find_events")
     with pytest.raises(ValueError):
         list(mdsc.find_events(event_descriptor='cat'))
 
