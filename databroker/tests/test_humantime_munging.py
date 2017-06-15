@@ -7,8 +7,6 @@ import datetime
 import pytz
 import pytest
 from databroker.headersource import mongo_core as core
-import uuid
-import time
 
 
 # ### Testing metadatastore find functionality ################################
@@ -131,11 +129,3 @@ def test_normalize_human_friendly_time(val, should_succeed, etype):
     else:
         with pytest.raises(etype):
             core._normalize_human_friendly_time(val, 'US/Eastern')
-
-
-@pytest.fixture
-def prep_header():
-    testuid = str(uuid.uuid4())
-    hdr = {'time': time.time(), 'uid': testuid,
-           'tag': 'find_last_test_tag'}
-    return hdr
