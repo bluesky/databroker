@@ -39,8 +39,8 @@ install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
   - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION pims prettytable pip boltons requests -c lightsource2-tag -c conda-forge
   - source activate testenv
-  - pip install mongoquery attrs
-  - pip install coveralls codecov
+  - pip install mongoquery attrs tzlocal
+  - pip install coveralls codecov pytest-cov
   - |
     if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch pathlib2;
@@ -50,11 +50,6 @@ install:
       pip install https://github.com/NSLS-II/bluesky/zipball/master#egg=bluesky
     fi;
   - 'pip install https://github.com/NSLS-II/event-model/zipball/master#egg=event_model'
-  - pip install pytest-cov
-  - pip install coveralls codecov
-  - pip install tzlocal
-  - pip install codecov
-
   - pip install -ve .
 
 script:
