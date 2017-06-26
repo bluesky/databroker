@@ -28,30 +28,3 @@ def fs(request):
 @pytest.fixture(params=[sqlfs], scope='function')
 def fs_v1(request):
     return fs(request)
-
-
-@pytest.fixture()
-def moving_files(fs_v1, tmpdir):
-    tmpdir = str(tmpdir)
-    cnt = 15
-    shape = (7, 13)
-
-    local_path = '2016/04/28/aardvark'
-    fmt = 'cub_{point_number:05}.npy'
-    res = fs_v1.insert_resource('npy_series',
-                                local_path,
-                                {'fmt': fmt},
-                                root=tmpdir)
-    datum_uids = []
-    fnames = []
-    os.makedirs(os.path.join(tmpdir, local_path))
-    for j in range(cnt):
-        fpath = os.path.join(tmpdir, local_path,
-                             fmt.format(point_number=j))
-        np.save(fpath, np.ones(shape) * j)
-        d = fs_v1.insert_datum(res, str(uuid.uuid4()),
-                               {'point_number': j})
-        datum_uids.append(d['datum_id'])
-        fnames.append(fpath)
-
-    return fs_v1, res, datum_uids, shape, cnt, fnames
