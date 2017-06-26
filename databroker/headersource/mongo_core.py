@@ -15,103 +15,11 @@ import doct as doc
 from ..core import format_time as _format_time
 from .core import (doc_or_uid_to_uid,
                    NoRunStart, NoRunStop, NoEventDescriptors,
-                   _cache_run_start, _cache_run_stop, _cache_descriptor)
+                   _cache_run_start, _cache_run_stop, _cache_descriptor,
+                   run_start_given_uid, run_stop_given_uid,
+                   descriptor_given_uid)
 
 logger = logging.getLogger(__name__)
-
-
-def run_start_given_uid(uid, run_start_col, run_start_cache):
-    """Given a uid, return the RunStart document
-
-    Parameters
-    ----------
-    uid : str
-        The uid
-
-    run_start_col : pymongo.Collection
-        The collection to search for documents
-
-    run_start_cache : MutableMapping
-        Mutable mapping to serve as a local cache
-
-    Returns
-    -------
-    run_start : doc.Document
-        The RunStart document.
-
-    """
-    try:
-        return run_start_cache[uid]
-    except KeyError:
-        pass
-
-    run_start = run_start_col.find_one({'uid': uid})
-
-    if run_start is None:
-        raise NoRunStart("No runstart with uid {!r}".format(uid))
-    return _cache_run_start(run_start, run_start_cache)
-
-
-def run_stop_given_uid(uid, run_stop_col, run_stop_cache,
-                       run_start_col, run_start_cache):
-    """Given a uid, return the RunStop document
-
-    Parameters
-    ----------
-    uid : str
-        The uid
-
-    run_stop_col : pymongo.Collection
-        The collection to search for documents
-
-    run_stop_cache : MutableMapping
-        Mutable mapping to serve as a local cache
-
-    Returns
-    -------
-    run_stop : doc.Document
-        The RunStop document fully de-referenced
-
-    """
-    try:
-        return run_stop_cache[uid]
-    except KeyError:
-        pass
-    # get the raw run_stop
-    run_stop = run_stop_col.find_one({'uid': uid})
-
-    return _cache_run_stop(run_stop, run_stop_cache,
-                           run_start_col, run_start_cache)
-
-
-def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
-                         run_start_col, run_start_cache):
-    """Given a uid, return the EventDescriptor document
-
-    Parameters
-    ----------
-    uid : str
-        The uid
-
-    descriptor_col : pymongo.Collection
-        The collection to search for documents
-
-    descriptor_cache : MutableMapping
-        Mutable mapping to serve as a local cache
-
-    Returns
-    -------
-    descriptor : doc.Document
-        The EventDescriptor document fully de-referenced
-    """
-    try:
-        return descriptor_cache[uid]
-    except KeyError:
-        pass
-    descriptor = descriptor_col.find_one({'uid': uid})
-
-    return _cache_descriptor(descriptor, descriptor_cache, run_start_col,
-                             run_start_cache)
 
 
 def stop_by_start(run_start, run_stop_col, run_stop_cache,
