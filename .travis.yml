@@ -37,7 +37,7 @@ before_install:
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION mongoengine pims prettytable pip boltons requests -c lightsource2-tag -c conda-forge
+  - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION pims prettytable pip boltons requests -c lightsource2-tag -c conda-forge
   - source activate testenv
   - pip install mongoquery attrs
   - pip install coveralls codecov
