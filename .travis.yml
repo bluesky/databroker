@@ -18,6 +18,7 @@ addons:
     - mongodb-3.2-precise
     packages:
     - mongodb-org-server
+    - mongodb-org
 
 matrix:
   include:
@@ -33,14 +34,12 @@ before_install:
   - . ~/ci_scripts/install-miniconda.sh
   - . ~/ci_scripts/init-filestore.sh
   - . ~/ci_scripts/init-metadatastore.sh
-  - git clone https://github.com/NSLS-II/metadataservice.git /home/travis/metadataservice
+  - mongo localhost:27017/admin ~/scripts/admin.js
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION mongoengine pims prettytable pip boltons -c lightsource2-tag -c conda-forge
+  - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION mongoengine pims prettytable pip boltons requests -c lightsource2-tag -c conda-forge
   - source activate testenv
-  - conda install pims -c lightsource2-tag
-  - conda install --force requests  # hitting some 3.4-only requests bug
   - pip install mongoquery attrs
   - pip install coveralls codecov
   - |
