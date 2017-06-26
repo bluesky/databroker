@@ -695,6 +695,7 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
                  descriptor_uid)
     return uid
 
+
 BAD_KEYS_FMT = """Event documents are malformed, the keys on 'data' and
 'timestamps do not match:\n data: {}\ntimestamps:{}"""
 
