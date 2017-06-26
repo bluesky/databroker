@@ -13,11 +13,12 @@ import numpy as np
 
 import doct as doc
 from ..core import format_time as _format_time
-from .core import (doc_or_uid_to_uid,
+from .core import (doc_or_uid_to_uid,   # noqa
                    NoRunStart, NoRunStop, NoEventDescriptors,
                    _cache_run_start, _cache_run_stop, _cache_descriptor,
                    run_start_given_uid, run_stop_given_uid,
-                   descriptor_given_uid, stop_by_start, descriptors_by_start)
+                   descriptor_given_uid, stop_by_start, descriptors_by_start,
+                   get_events_table)
 
 logger = logging.getLogger(__name__)
 
@@ -72,92 +73,6 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         ev = doc.Document('Event', ev)
 
         yield ev
-
-def _transpose(in_data, keys, field):
-    """Turn a list of dicts into dict of lists
-
-    Parameters
-    ----------
-    in_data : list
-        A list of dicts which contain at least one dict.
-        All of the inner dicts must have at least the keys
-        in `keys`
-
-    keys : list
-        The list of keys to extract
-
-    field : str
-        The field in the outer dict to use
-
-    Returns
-    -------
-    transpose : dict
-        The transpose of the data
-    """
-    out = {k: [None] * len(in_data) for k in keys}
-    for j, ev in enumerate(in_data):
-        dd = ev[field]
-        for k in keys:
-            out[k][j] = dd[k]
-    return out
-
-
-def get_events_table(descriptor, event_col, descriptor_col,
-                     descriptor_cache, run_start_col, run_start_cache):
-    """All event data as tables
-
-    Parameters
-    ----------
-    descriptor : dict or str
-        The EventDescriptor to get the Events for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
-
-    Returns
-    -------
-    descriptor : doc.Document
-        EventDescriptor document
-    data_table : dict
-        dict of lists of the transposed data
-    seq_nums : list
-        The sequence number of each event.
-    times : list
-        The time of each event.
-    uids : list
-        The uid of each event.
-    timestamps_table : dict
-        The timestamps of each of the measurements as dict of lists.  Same
-        keys as `data_table`.
-    """
-    desc_uid = doc_or_uid_to_uid(descriptor)
-    descriptor = descriptor_given_uid(desc_uid, descriptor_col,
-                                      descriptor_cache, run_start_col,
-                                      run_start_cache)
-    # this will get more complicated once transpose caching layer is in place
-    all_events = list(get_events_generator(desc_uid, event_col,
-                                           descriptor_col,
-                                           descriptor_cache,
-                                           run_start_col,
-                                           run_start_cache))
-
-    # get event sequence numbers
-    seq_nums = [ev['seq_num'] for ev in all_events]
-
-    # get event times
-    times = [ev['time'] for ev in all_events]
-
-    # get uids
-    uids = [ev['uid'] for ev in all_events]
-
-    keys = list(descriptor['data_keys'])
-
-    # get data values
-    data_table = _transpose(all_events, keys, 'data')
-
-    # get timestamps
-    timestamps_table = _transpose(all_events, keys, 'timestamps')
-
-    # return the whole lot
-    return descriptor, data_table, seq_nums, times, uids, timestamps_table
 
 
 # database INSERTION ###################################################
