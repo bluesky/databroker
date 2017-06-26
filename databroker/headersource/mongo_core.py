@@ -17,82 +17,9 @@ from .core import (doc_or_uid_to_uid,
                    NoRunStart, NoRunStop, NoEventDescriptors,
                    _cache_run_start, _cache_run_stop, _cache_descriptor,
                    run_start_given_uid, run_stop_given_uid,
-                   descriptor_given_uid)
+                   descriptor_given_uid, stop_by_start, descriptors_by_start)
 
 logger = logging.getLogger(__name__)
-
-
-def stop_by_start(run_start, run_stop_col, run_stop_cache,
-                  run_start_col, run_start_cache):
-    """Given a RunStart return it's RunStop
-
-    Raises if no RunStop exists.
-
-    Parameters
-    ----------
-    run_start : doc.Document or dict or str
-        The RunStart to get the RunStop for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
-
-    Returns
-    -------
-    run_stop : doc.Document
-        The RunStop document
-
-    Raises
-    ------
-    NoRunStop
-        If no RunStop document exists for the given RunStart
-    """
-    run_start_uid = doc_or_uid_to_uid(run_start)
-    run_stop = run_stop_col.find_one({'run_start': run_start_uid})
-    if run_stop is None:
-        raise NoRunStop("No run stop exists for {!r}".format(run_start))
-
-    return _cache_run_stop(run_stop, run_stop_cache,
-                           run_start_col, run_start_cache)
-
-
-def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
-                         run_start_col, run_start_cache):
-    """Given a RunStart return a list of it's descriptors
-
-    Raises if no EventDescriptors exist.
-
-    Parameters
-    ----------
-    run_start : doc.Document or dict or str
-        The RunStart to get the EventDescriptors for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
-
-    Returns
-    -------
-    event_descriptors : list
-        A list of EventDescriptor documents
-
-    Raises
-    ------
-    NoEventDescriptors
-        If no EventDescriptor documents exist for the given RunStart
-    """
-    # normalize the input and get the run_start oid
-    run_start_uid = doc_or_uid_to_uid(run_start)
-
-    # query the database for any event descriptors which
-    # refer to the given run_start
-    descriptors = descriptor_col.find({'run_start': run_start_uid})
-    # loop over the found documents, cache, and dereference
-    rets = [_cache_descriptor(descriptor, descriptor_cache,
-                              run_start_col, run_start_cache)
-            for descriptor in descriptors]
-
-    # if nothing found, raise
-    if not rets:
-        raise NoEventDescriptors("No EventDescriptors exists "
-                                 "for {!r}".format(run_start))
-
-    # return the list of event descriptors
-    return rets
 
 
 def get_events_generator(descriptor, event_col, descriptor_col,
