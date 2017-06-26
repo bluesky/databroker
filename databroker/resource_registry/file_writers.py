@@ -12,7 +12,7 @@ import os.path as op
 import datetime
 
 from . import api as fsc
-from .utils import _make_sure_path_exists
+from ..utils import _make_sure_path_exists
 
 logger = logging.getLogger(__name__)
 
