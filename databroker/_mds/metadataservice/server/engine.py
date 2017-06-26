@@ -116,7 +116,7 @@ class RunStartHandler(DefaultHandler):
         it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(RunStartHandler, self).__init__(*args, **kwargs)
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'find_run_starts': mdsro.find_run_starts,
@@ -145,7 +145,7 @@ class EventDescriptorHandler(DefaultHandler):
         it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(EventDescriptorHandler, self).__init__(*args, **kwargs)
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'descriptor_given_uid': mdsro.descriptor_given_uid,
@@ -173,7 +173,7 @@ class RunStopHandler(DefaultHandler):
         it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(RunStopHandler, self).__init__(*args, **kwargs)
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'stop_by_start': mdsro.stop_by_start,
@@ -201,7 +201,7 @@ class EventHandler(DefaultHandler):
         it returns the appropriate handle from metadatastore
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(EventHandler, self).__init__(*args, **kwargs)
         mdsro = self.settings['mdsro']
         mdsrw = self.settings['mdsrw']
         self.queryables = {'get_events_generator': mdsro.get_events_generator,
