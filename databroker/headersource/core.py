@@ -739,17 +739,6 @@ def bulk_insert_events(event_col, descriptor, events, validate):
     return event_col.insert(event_factory())
 
 
-def _transform_data(data, timestamps):
-    """
-    Transform from Document spec:
-        {'data': {'key': <value>},
-         'timestamps': {'key': <timestamp>}}
-    to storage format:
-        {'data': {<key>: (<value>, <timestamp>)}.
-    """
-    return {k: (data[k], timestamps[k]) for k in data}
-
-
 # DATABASE RETRIEVAL ##########################################################
 
 def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
