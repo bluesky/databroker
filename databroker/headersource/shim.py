@@ -1,10 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import warnings
 import six  # noqa
 import logging
-import doct as doc
-import numpy as np
 from ..core import format_time as _format_time
 
 logger = logging.getLogger(__name__)
