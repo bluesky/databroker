@@ -1,14 +1,11 @@
 import tornado.ioloop
 import tornado.web
-from tornado import gen
-import pymongo.errors as perr
 import doct
 import ujson
-import jsonschema
 import json
 import types
-from metadataservice.server import utils
-from metadatastore.core import NoRunStop, NoEventDescriptors, NoRunStart
+from . import utils
+from ....headersource.core import NoRunStop, NoEventDescriptors, NoRunStart
 
 loop = tornado.ioloop.IOLoop.instance()
 
