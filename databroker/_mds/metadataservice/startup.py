@@ -69,7 +69,8 @@ if __name__ == "__main__":
         config['mongo_pwd'] = None
     libconfig = dict(host=config['mongohost'], port=config['mongoport'],
                      timezone=config['timezone'], database=config['database'],
-                     mongo_user= config['mongo_user'], mongo_pwd=config['mongo_pwd'])
+                     mongo_user=config['mongo_user'],
+                     mongo_pwd=config['mongo_pwd'])
     mdsro = MDSRO(version=1, config=libconfig, auth=args.auth)
     mdsrw = MDS(version=1, config=libconfig, auth=args.auth)
 

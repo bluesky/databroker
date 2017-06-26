@@ -34,7 +34,6 @@ before_install:
   - . ~/ci_scripts/install-miniconda.sh
   - . ~/ci_scripts/init-filestore.sh
   - . ~/ci_scripts/init-metadatastore.sh
-  - mongo localhost:27017/admin ~/scripts/admin.js
 
 install:
   - export GIT_FULL_HASH=`git rev-parse HEAD`
