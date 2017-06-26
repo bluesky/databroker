@@ -12,7 +12,7 @@ import pymongo
 import numpy as np
 
 import doct as doc
-from databroker.broker import _TS_FORMATS, _normalize_human_friendly_time
+from ..core import format_time as _format_time
 
 logger = logging.getLogger(__name__)
 
@@ -746,22 +746,6 @@ def _transform_data(data, timestamps):
 
 # DATABASE RETRIEVAL ##########################################################
 
-def _format_time(search_dict, tz):
-    """Helper function to format the time arguments in a search dict
-
-    Expects 'start_time' and 'stop_time'
-
-    ..warning: Does in-place mutation of the search_dict
-    """
-    time_dict = {}
-    start_time = search_dict.pop('start_time', None)
-    stop_time = search_dict.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = _normalize_human_friendly_time(start_time, tz)
-    if stop_time:
-        time_dict['$lte'] = _normalize_human_friendly_time(stop_time, tz)
-    if time_dict:
-        search_dict['time'] = time_dict
 
 def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     """Given search criteria, locate RunStart Documents.
@@ -964,6 +948,7 @@ def find_events(start_col, start_cache,
             yield ev
     finally:
         events.close()
+
 
 def find_last(start_col, start_cache, num):
     """Locate the last `num` RunStart Documents

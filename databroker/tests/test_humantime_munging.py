@@ -6,7 +6,7 @@ import datetime
 
 import pytz
 import pytest
-from databroker.broker import _normalize_human_friendly_time
+from databroker.core import _normalize_human_friendly_time
 
 
 # ### Testing metadatastore find functionality ################################
