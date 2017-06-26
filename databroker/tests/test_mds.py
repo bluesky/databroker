@@ -530,7 +530,7 @@ def test_bad_event_desc(mds_all):
 
 def test_load_configuration_smoke():
     original_env = os.environ.copy()
-    from databroker._mds.metadatastore.conf import load_configuration
+    from databroker.config import load_configuration
 
     os.environ['MDS_HOST'] = 'localhost'
     os.environ['MDS_PORT'] = '27017'
@@ -538,7 +538,8 @@ def test_load_configuration_smoke():
     os.environ['MDS_TIMEZONE'] = 'US/Eastern'
 
     try:
-        load_configuration('metadatastore', 'MDS', ['host', 'database', 'port'])
+        load_configuration('metadatastore',
+                           'MDS', ['host', 'database', 'port'])
     finally:
         os.environ.clear()
         os.environ.update(original_env)
