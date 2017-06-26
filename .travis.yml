@@ -58,8 +58,6 @@ install:
   - pip install -ve .
 
 script:
-  - mkdir -p /home/travis/.config/metadataclient
-  - cp connection.yml /home/travis/.config/metadataclient
   - source activate testenv
   # - nohup python /home/travis/metadataservice/startup.py --mongo-host localhost --mongo-port 27017 --service-port 7778 --database mdservicetest --timezone US/Eastern --auth --mongo-user tom --mongo-pwd jerry &
   # - sleep 5
