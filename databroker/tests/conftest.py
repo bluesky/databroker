@@ -1,11 +1,16 @@
 import os
 import pytest
 import sys
-import uuid
-from databroker.headersource.mongo import MDS
+
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker,
                                     build_hdf5_backed_broker)
+import tempfile
+import shutil
+import tzlocal
+import databroker.headersource.mongoquery as mqmds
+
+from ..headersource import sqlite as sqlmds
 
 if sys.version_info >= (3, 0):
     from bluesky.tests.conftest import fresh_RE as RE
@@ -43,3 +48,27 @@ def mds_all(request):
                  'hdf5': build_hdf5_backed_broker}
 
     return param_map[request.param](request).mds
+
+
+@pytest.fixture(params=[mqmds,
+                        sqlmds], scope='function')
+def mds_portable(request):
+    '''Provide a function level scoped FileStore instance talking to
+    temporary database on localhost:27017 with both v0 and v1.
+
+    '''
+    tempdirname = tempfile.mkdtemp()
+    mds = request.param.MDS({'directory': tempdirname,
+                             'timezone': tzlocal.get_localzone().zone}, version=1)
+    filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
+                 'events.json']
+    for fn in filenames:
+        with open(os.path.join(tempdirname, fn), 'w') as f:
+            f.write('[]')
+
+    def delete_dm():
+        shutil.rmtree(tempdirname)
+
+    request.addfinalizer(delete_dm)
+
+    return mds
