@@ -9,48 +9,6 @@ import pytest
 from databroker.core import _normalize_human_friendly_time
 
 
-# ### Testing metadatastore find functionality ################################
-def _make_fint_func_dectorator():
-    test_dict = {
-        'find_run_starts': [
-            {'limit': 5},
-            {'start_time': ttime.time()},
-            {'start_time': '2015'},
-            {'start_time': '2015-03-30'},
-            {'start_time': '2015-03-30 03:00:00'},
-            {'start_time': datetime.datetime.now()},
-            {'stop_time': ttime.time()},
-            {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
-            {'beamline_id': 'csx'},
-            {'project': 'world-domination'},
-            {'owner': 'drdrake'},
-            {'scan_id': 1},
-            {'uid': 'run_start_uid'}],
-        'find_run_stops': [
-            {'start_time': ttime.time()},
-            {'stop_time': ttime.time()},
-            {'start_time': ttime.time()-1, 'stop_time': ttime.time()},
-            {'reason': 'whimsy'},
-            {'exit_status': 'success'},
-            {'run_start': 'rs'},
-            {'run_start_uid': 'rs.uid'},
-            {'uid': 'foo'}],
-        'find_descriptors': [
-            {'run_start': 'rs'},
-            {'run_start': 'rs.uid'},
-            {'start_time': ttime.time()},
-            {'stop_time': ttime.time()},
-            {'start_time': ttime.time() - 1, 'stop_time': ttime.time()},
-            {'uid': 'foo'}],
-    }
-    targets = []
-    for func, list_o_dicts in test_dict.items():
-        for dct in list_o_dicts:
-            targets.append([func, dct])
-
-    return pytest.mark.parametrize('func,kw', targets)
-
-
 # ### Test metadatastore time formatting ######################################
 
 def _make_time_params():
