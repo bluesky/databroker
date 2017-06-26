@@ -23,7 +23,7 @@ def _sanitize_np(val):
     return val
 
 
-class MDSRO:
+class MDSRO(object):
     """Read-only client for metadataservice
 
     Configuration is required to connect to a metadataservice server.
