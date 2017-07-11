@@ -396,13 +396,14 @@ def test_stream(db, RE):
 def _stream(method_name, db, RE):
     RE.subscribe('all', db.insert)
     uid = RE(count([det]), owner='Dan')
-    s = getattr(db, method_name)(db[uid])
+    s = getattr(db, method_name)(db[uid], fill=True)
     name, doc = next(s)
     assert name == 'start'
     assert 'owner' in doc
     name, doc = next(s)
     assert name == 'descriptor'
     assert 'data_keys' in doc
+    doc['data_keys'] = None
     last_item  = 'event', {'data'}  # fake Event to prime loop
     for item in s:
         name, doc = last_item
