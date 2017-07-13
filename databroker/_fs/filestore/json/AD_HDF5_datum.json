@@ -1,0 +1,11 @@
+{
+    "properties": {
+        "point_number": {
+            "type": "integer",
+            "description": "The data-point number"
+        }
+    },
+    "required": ["point_number"],
+    "type": "object",
+    "additionalProperties": false
+}

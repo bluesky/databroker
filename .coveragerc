@@ -1,14 +1,12 @@
 [run]
 source = databroker
+branch=True
 
 [report]
 omit =
     */python?.?/*
     */site-packages/nose/*
-    *test*
     databroker/__init__.py
-    databroker/tests/*
-    databroker/testing/*
     # ignore _version.py and versioneer.py
     .*version.*
     *_version.py

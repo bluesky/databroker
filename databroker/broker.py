@@ -16,107 +16,9 @@ import os
 from .core import (Header,
                    get_fields,  # for convenience
                    Images,
-                   ALL,
-                   EventSourceShim,
-                   _check_fields_exist)
-
-
-def _format_time(search_dict, tz):
-    """Helper function to format the time arguments in a search dict
-
-    Expects 'start_time' and 'stop_time'
-
-    ..warning: Does in-place mutation of the search_dict
-    """
-    time_dict = {}
-    start_time = search_dict.pop('start_time', None)
-    stop_time = search_dict.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = _normalize_human_friendly_time(start_time, tz)
-    if stop_time:
-        time_dict['$lte'] = _normalize_human_friendly_time(stop_time, tz)
-    if time_dict:
-        search_dict['time'] = time_dict
-
-
-# human friendly timestamp formats we'll parse
-_TS_FORMATS = [
-    '%Y-%m-%d %H:%M:%S',
-    '%Y-%m-%d %H:%M',  # these 2 are not as originally doc'd,
-    '%Y-%m-%d %H',     # but match previous pandas behavior
-    '%Y-%m-%d',
-    '%Y-%m',
-    '%Y']
-
-# build a tab indented, '-' bulleted list of supported formats
-# to append to the parsing function docstring below
-_doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
-
-
-def _normalize_human_friendly_time(val, tz):
-    """Given one of :
-    - string (in one of the formats below)
-    - datetime (eg. datetime.datetime.now()), with or without tzinfo)
-    - timestamp (eg. time.time())
-    return a timestamp (seconds since jan 1 1970 UTC).
-
-    Non string/datetime.datetime values are returned unaltered.
-    Leading/trailing whitespace is stripped.
-    Supported formats:
-    {}
-    """
-    # {} is placeholder for formats; filled in after def...
-
-    zone = pytz.timezone(tz)  # tz as datetime.tzinfo object
-    epoch = pytz.UTC.localize(datetime(1970, 1, 1))
-    check = True
-
-    if isinstance(val, six.string_types):
-        # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but
-        # doesn't get TZ?
-
-        # Could cleanup input a bit? remove leading/trailing [ :,-]?
-        # Yes, leading/trailing whitespace to match pandas behavior...
-        # Actually, pandas doesn't ignore trailing space, it assumes
-        # the *current* month/day if they're missing and there's
-        # trailing space, or the month is a single, non zero-padded digit.?!
-        val = val.strip()
-
-        for fmt in _TS_FORMATS:
-            try:
-                ts = datetime.strptime(val, fmt)
-                break
-            except ValueError:
-                pass
-
-        try:
-            if isinstance(ts, datetime):
-                val = ts
-                check = False
-            else:
-                # what else could the type be here?
-                raise TypeError('expected datetime.datetime,'
-                                ' got {:r}'.format(ts))
-
-        except NameError:
-            raise ValueError('failed to parse time: ' + repr(val))
-
-    if check and not isinstance(val, datetime):
-        return val
-
-    if val.tzinfo is None:
-        # is_dst=None raises NonExistent and Ambiguous TimeErrors
-        # when appropriate, same as pandas
-        val = zone.localize(val, is_dst=None)
-
-    return (val - epoch).total_seconds()
-
-
-# fill in the placeholder we left in the previous docstring
-_normalize_human_friendly_time.__doc__ = (
-    _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-)
-
+                   ALL, format_time)
+from .eventsource import EventSourceShim, check_fields_exist
+from .headersource import HeaderSourceShim, safe_get_stop
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -180,7 +82,7 @@ def _(key, db):
                          "and could become too large.")
     start = -key.start
     result = list(db.hs.find_last(start))[stop::key.step]
-    stop = list(_safe_get_stop(db.hs, s) for s in result)
+    stop = list(safe_get_stop(db.hs, s) for s in result)
     return list(zip(result, stop))
 
 
@@ -204,7 +106,7 @@ def _(key, db):
             except StopIteration:
                 raise IndexError(
                     "There are only {0} runs.".format(i))
-    return [(result, _safe_get_stop(db.hs, result))]
+    return [(result, safe_get_stop(db.hs, result))]
 
 
 @search.register(str)
@@ -232,7 +134,7 @@ def _(key, db):
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
     result, = results
-    return [(result, _safe_get_stop(db.hs, result))]
+    return [(result, safe_get_stop(db.hs, result))]
 
 
 @search.register(set)
@@ -313,7 +215,7 @@ class BrokerES(object):
         "close over the timezone config"
         # modifies a query dict in place, remove keys 'start_time' and
         # 'stop_time' and adding $lte and/or $gte queries on 'time' key
-        _format_time(val, self.hs.mds.config['timezone'])
+        format_time(val, self.hs.mds.config['timezone'])
 
     @property
     def filters(self):
@@ -443,7 +345,7 @@ class BrokerES(object):
                 - '2015-01'
                 - '2015-01-30'
                 - '2015-03-30 03:00:00'
-                - Python datetime objects, such as datetime.datetime.now()
+                - Python datetime objects, such as datetime.now()
         stop_time: time-like, optional
             Include Headers for runs started before this time. See
             `start_time` above for examples.
@@ -553,7 +455,7 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        _check_fields_exist(fields if fields else [], headers)
+        check_fields_exist(fields if fields else [], headers)
 
         for h in headers:
             for es in self.event_sources:
@@ -607,7 +509,7 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        _check_fields_exist(fields if fields else [], headers)
+        check_fields_exist(fields if fields else [], headers)
 
         for h in headers:
             for es in self.event_sources:
@@ -1080,56 +982,3 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
-
-
-class HeaderSourceShim(object):
-    '''Shim class to turn a mds object into a HeaderSource
-
-    This will presumably be deleted if this API makes it's way back down
-    into the implementations
-    '''
-    def __init__(self, mds):
-        self.mds = mds
-
-    def __call__(self, text_search=None, filters=None, **kwargs):
-        if filters is None:
-            filters = []
-        if text_search is not None:
-            query = {'$and': [{'$text': {'$search': text_search}}] + filters}
-        else:
-            # Include empty {} here so that '$and' gets at least one query.
-            _format_time(kwargs, self.mds.config['timezone'])
-            query = {'$and': [{}] + [kwargs] + filters}
-
-        starts = self.mds.find_run_starts(**query)
-        return ((s, _safe_get_stop(self, s)) for s in starts)
-
-    def __getitem__(self, k):
-        return search(k, self)
-
-    def insert(self, name, doc):
-        return self.mds.insert(name, doc)
-
-    def find_last(self, num):
-        return self.mds.find_last(num)
-
-    def find_run_starts(self, *args, **kwargs):
-        return self.mds.find_run_starts(*args, **kwargs)
-
-    def stop_by_start(self, s):
-        return self.mds.stop_by_start(s)
-
-    @property
-    def NoRunStart(self):
-        return self.mds.NoRunStart
-
-    @property
-    def NoRunStop(self):
-        return self.mds.NoRunStop
-
-
-def _safe_get_stop(hs, s):
-    try:
-        return hs.stop_by_start(s)
-    except hs.NoRunStop:
-        return None

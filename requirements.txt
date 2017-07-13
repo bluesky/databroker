@@ -1,9 +1,12 @@
 attrs
 boltons
 doct
+h5py
+jsonschema
 numpy
 pandas
 pims
+pymongo
 requests
 six
 toolz

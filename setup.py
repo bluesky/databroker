@@ -24,7 +24,7 @@ setup(
     packages=find_packages(),
     description='Unification of NSLS-II data sources',
     long_description=long_description,
-
+    package_data={'databroker/_fs/filestore': ['json/*.json']},
     # The project's main homepage.
     url='https://github.com/NSLS-II/databroker',
 
@@ -40,5 +40,6 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ]
 )
