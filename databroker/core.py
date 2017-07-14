@@ -125,6 +125,52 @@ class Header(object):
             fields.update(es.fields_given_header(header=self))
         return fields
 
+    def config_data(self, obj_name):
+        """
+        Extract device configuration data from Event Descriptors.
+
+        This refers to the data obtained from ``device.read_configuration()``.
+
+        See example below. The result is structed as a [...deep breath...]
+        dictionary of lists of dictionaries because:
+
+        * The device might have been read in multiple event streams
+          ('primary', 'baseline', etc.). Each stream name is a key in the
+          outer dictionary.
+        * The configuration is typically read once per event stream, but in
+          general may be read multiple times if the configuration is changed
+          mid-stream. Thus, a list is needed.
+        * Each device typically produces multiple configuration fields
+          ('exposure_time', 'period', etc.). These are the keys of the inner
+          dictionary.
+
+        Parameters
+        ----------
+        obj_name : string
+            device name (as in ``device.name``)
+
+        Returns
+        -------
+        result : dict
+            mapping each stream name (such as 'primary' or 'baseline') to a
+            list of data dictionaries
+
+        Example
+        --------
+
+        Get the device configuration recorded for the object det.
+
+        >>> h.config_data('det')
+        {'primary': [{'exposure_time': 1.0}]}
+        >>> exp_time = h.config_data('det')['primary'][0]['exposure_time']
+        """
+        result = defaultdict(list)
+        for d in sorted(self.descriptors, key=lambda d: d['time']):
+            config = d['configuration'].get(obj_name)
+            if config:
+                result[d['name']].append(config['data'])
+        return dict(result)  # strip off defaultdict behavior
+
     def stream(self, stream_name=ALL, fill=False, **kwargs):
         gen = self.db.get_documents(self, stream_name=stream_name,
                                     fill=fill, **kwargs)

@@ -18,7 +18,9 @@ import numpy as np
 if sys.version_info >= (3, 0):
     from bluesky.examples import (det, det1, det2, Reader, ReaderWithFileStore,
                                   ReaderWithFSHandler)
-    from bluesky.plans import count, pchain, monitor_during_wrapper
+    from bluesky.plans import (count, pchain, monitor_during_wrapper,
+                               configure, trigger_and_read, run_decorator,
+                               baseline_wrapper)
 
 logger = logging.getLogger(__name__)
 
@@ -700,4 +702,44 @@ def test_dict_header(db, RE):
     h, = db()
     expected = list(db.get_events(h))
     actual = list(db.get_events(dict(h)))
+    assert actual == expected
+
+
+@py3
+def test_config_data(db, RE):
+    # simple case: one Event Descriptor, one stream
+    RE.subscribe('all', db.insert)
+    det = Reader('det', {'x': lambda: 1}, conf={'y': 2, 'z': 3})
+    uid, = RE(count([det]))
+    h = db[uid]
+    actual = h.config_data('det')
+    expected = {'primary': [{'y': 2, 'z': 3}]}
+    assert actual == expected
+
+    # generate two Event Descriptors in the primary stream
+    @run_decorator()
+    def plan():
+        # working around 'yield from' here which breaks py2
+        for msg in configure(det, {'z': 3}):  # no-op
+            yield msg
+        for msg in trigger_and_read([det]):
+            yield msg
+        # changing the config after a read generates a new Event Descriptor
+        for msg in configure(det, {'z': 4}):
+            yield msg
+        for msg in trigger_and_read([det]):
+            yield msg
+
+    uid, = RE(plan())
+    h = db[uid]
+    actual = h.config_data('det')
+    expected = {'primary': [{'y': 2, 'z': 3}, {'y': 2, 'z': 4}]}
+    assert actual == expected
+
+    # generate two streams, primary and baseline -- one Event Descriptor each
+    uid, = RE(baseline_wrapper(count([det]), [det]))
+    h = db[uid]
+    actual = h.config_data('det')
+    expected = {'primary': [{'y': 2, 'z': 4}],
+                'baseline': [{'y': 2, 'z': 4}]}
     assert actual == expected
