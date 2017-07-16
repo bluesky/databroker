@@ -743,3 +743,12 @@ def test_config_data(db, RE):
     expected = {'primary': [{'y': 2, 'z': 4}],
                 'baseline': [{'y': 2, 'z': 4}]}
     assert actual == expected
+
+
+@py3
+def test_events(db, RE):
+    RE.subscribe('all', db.insert)
+    RE(count([det]))
+    h, = db()
+    events = list(h.events())
+    assert len(events) == 1

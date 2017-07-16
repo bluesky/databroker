@@ -29,7 +29,9 @@ class InvalidDocumentSequence(Exception):
 
 @attr.s(frozen=True)
 class Header(object):
-    """A dictionary-like object summarizing metadata for a run."""
+    """
+    A dictionary-like object summarizing metadata for a run.
+    """
 
     _name = 'header'
     db = attr.ib(cmp=False, hash=False)
@@ -44,14 +46,14 @@ class Header(object):
 
         Parameters
         ----------
-        db : DataBroker
+        db : Broker
 
         run_start : dict or string
             RunStart document or uid of one
 
         Returns
         -------
-        header : databroker.broker.Header
+        header : databroker.core.Header
         """
         mds = db.hs.mds
         if isinstance(run_start, six.string_types):
@@ -70,13 +72,7 @@ class Header(object):
         h = cls(db, **d)
         return h
 
-    @property
-    def descriptors(self):
-        if 'desc' not in self._cache:
-            self._cache['desc'] = sum((es.descriptors_given_header(self)
-                                       for es in self.db.event_sources),
-                                      [])
-        return self._cache['desc']
+    ### dict-like methods ###
 
     def __getitem__(self, k):
         try:
@@ -116,16 +112,80 @@ class Header(object):
         return self.keys()
 
     @property
+    def descriptors(self):
+        if 'desc' not in self._cache:
+            self._cache['desc'] = sum((es.descriptors_given_header(self)
+                                       for es in self.db.event_sources),
+                                      [])
+        return self._cache['desc']
+
+    ### convenience methods and properties, encapsulating common one-liners ###
+
+    @property
     def stream_names(self):
         return self.db.stream_names_given_header(self)
 
     def fields(self, stream_name=ALL):
+        """
+        Return the names of the fields ('data keys') in this run.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
+
+        Returns
+        -------
+        fields : set
+
+        Examples
+        --------
+        Load the most recent run and list its fields.
+
+        >>> h = db[-1]
+        >>> h.fields()
+        {'eiger_stats1_total', 'eiger_image'}
+
+        See Also
+        --------
+        :meth:devices
+        """
         fields = set()
         for es in self.db.event_sources:
             fields.update(es.fields_given_header(header=self))
         return fields
 
-    def config_data(self, obj_name):
+    def devices(self, stream_name=ALL):
+        """
+        Return the names of the devices in this run.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
+
+        Returns
+        -------
+        devices : set
+
+        Examples
+        --------
+        Load the most recent run and list its devices.
+
+        >>> h = db[-1]
+        >>> h.devices()
+        {'eiger'}
+
+        See Also
+        --------
+        :meth:fields
+        """
+        return set(d['object_keys'] for d in self.descriptors
+                   if stream_name is ALL or stream_name == d['name'])
+
+    def config_data(self, device_name):
         """
         Extract device configuration data from Event Descriptors.
 
@@ -146,8 +206,9 @@ class Header(object):
 
         Parameters
         ----------
-        obj_name : string
-            device name (as in ``device.name``)
+        device_name : string
+            device name (originally obtained from the ``name`` attribute of
+            some readable Device)
 
         Returns
         -------
@@ -155,27 +216,90 @@ class Header(object):
             mapping each stream name (such as 'primary' or 'baseline') to a
             list of data dictionaries
 
-        Example
+        Examples
         --------
+        Get the device configuration recorded for the device named 'eiger'.
 
-        Get the device configuration recorded for the object det.
-
-        >>> h.config_data('det')
+        >>> h.config_data('eiger')
         {'primary': [{'exposure_time': 1.0}]}
-        >>> exp_time = h.config_data('det')['primary'][0]['exposure_time']
+        >>> exp_time = h.config_data('eiger')['primary'][0]['exposure_time']
+
+        Backing up a step, to get the list of eligible device names:
+
+        >>> h.device_names()
+        {'eiger', 'cs700'}
         """
         result = defaultdict(list)
         for d in sorted(self.descriptors, key=lambda d: d['time']):
-            config = d['configuration'].get(obj_name)
+            config = d['configuration'].get(device_name)
             if config:
                 result[d['name']].append(config['data'])
         return dict(result)  # strip off defaultdict behavior
 
     def stream(self, stream_name=ALL, fill=False, **kwargs):
+        """
+        The most raw access to the data. A generator of documents.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Get data from a single "event stream." To obtain one comprehensive
+            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
+            sentinel class defined in this module). This is the default.
+        fill : bool, optional
+            Whether externally-stored data should be filled in. False by
+            default.
+
+        Yields
+        ------
+        name, doc : (string, Doct)
+
+        Example
+        -------
+        Loop through the documents from a run.
+
+        >>> h = db[-1]
+        >>> for name, doc in h.stream():
+        ...     # do something
+        """
         gen = self.db.get_documents(self, stream_name=stream_name,
                                     fill=fill, **kwargs)
         for payload in gen:
             yield payload
+
+    def events(self, stream_name=ALL, fill=False, **kwargs):
+        """
+        Generator of like :meth:`stream` but with only the Event documents.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Get data from a single "event stream." To obtain one comprehensive
+            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
+            sentinel class defined in this module). This is the default.
+        fill : bool, optional
+            Whether externally-stored data should be filled in. False by
+            default.
+
+        Examples
+        --------
+        Loop through the Event documents from a run. This is 'lazy', meaning
+        that only one Event at a time is loaded into memory.
+
+        >>> h = db[-1]
+        >>> for event in h.events():
+        ...    # do something
+
+        List the Events documents from a run, loading them all into memory at
+        once.
+
+        >>> list(h.events())
+        """
+        for name, doc in self.stream(stream_name=stream_name,
+                                     fill=fill,
+                                     **kwargs):
+            if name == 'event':
+                yield name, doc
 
     def table(self, stream_name='primary', fill=False, fields=None,
               timezone=None, convert_times=True, localize_times=True,
@@ -187,23 +311,52 @@ class Header(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
-            whitelist of field names of interest; if None, all are returned
-        stream_name : string, optional
+        stream_name : string or ``ALL``, optional
             Get data from a single "event stream." To obtain one comprehensive
             table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
             sentinel class defined in this module). The default name is
             'primary', but if no event stream with that name is found, the
             default reverts to ``ALL`` (for backward-compatibility).
         fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
-        convert_times : bool, optional
-            Whether to convert times from float (seconds since 1970) to
-            numpy datetime64, using pandas. True by default.
+            Whether externally-stored data should be filled in. False by
+            default.
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
         timezone : str, optional
             e.g., 'US/Eastern'; if None, use metadatastore configuration in
             `self.mds.config['timezone']`
+        convert_times : bool, optional
+            Whether to convert times from float (seconds since 1970) to
+            numpy datetime64, using pandas. True by default.
+        localize_times : bool, optional
+            If the times should be localized to the 'local' time zone.  If
+            True (the default) the time stamps are converted to the localtime
+            zone (as configure in mds).
+
+        Returns
+        -------
+        table : pandas.DataFrame
+
+        Examples
+        --------
+        Load the 'primary' data stream from the most recent run into a table.
+
+        >>> h = db[-1]
+        >>> h.table()
+
+        This is equivalent. (The default stream_name is 'primary'.)
+
+        >>> h.table(stream_name='primary')
+                                    time intensity
+        0  2017-07-16 12:12:37.239582345       102
+        1  2017-07-16 12:12:39.958385283       103
+
+        Load the 'baseline' data stream.
+
+        >>> h.table(stream_name='baseline')
+                                    time temperature
+        0  2017-07-16 12:12:35.128515999         273
+        1  2017-07-16 12:12:40.128515999         274
         '''
         return self.db.get_table(self, fields=fields,
                                  stream_name=stream_name, fill=fill,
