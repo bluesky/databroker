@@ -364,8 +364,8 @@ class BrokerES(object):
 
         Returns
         -------
-        data : list
-            Header objects
+        data : Results instance
+            Iterable object encapsulating a results set of Headers
 
         Examples
         --------
