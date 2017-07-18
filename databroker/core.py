@@ -110,7 +110,9 @@ class Header(object):
 
     def __iter__(self):
         return self.keys()
-
+    
+    # ## convenience methods and properties, encapsulating common one-liners ## #
+        
     @property
     def descriptors(self):
         if 'desc' not in self._cache:
@@ -118,8 +120,6 @@ class Header(object):
                                        for es in self.db.event_sources),
                                       [])
         return self._cache['desc']
-
-    ### convenience methods and properties, encapsulating common one-liners ###
 
     @property
     def stream_names(self):
