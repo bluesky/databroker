@@ -752,3 +752,58 @@ def test_events(db, RE):
     h, = db()
     events = list(h.events())
     assert len(events) == 1
+
+
+@py3
+def test_ingest_array_data(db, RE):
+    RE.subscribe('all', db.insert)
+
+    # These will blow up if the event source backing db cannot ingest numpy
+    # arrays. (For example, the pymongo-backed db has to convert them to plain
+    # lists.)
+
+    class Detector:
+        def __init__(self, name, array):
+            self.name = name
+            self.parent = None
+            self.array = array
+
+        def read(self):
+            return {'x': {'value': self.array, 'timestamp': ttime.time()}}
+
+        def describe(self):
+            return {'x': {'shape': self.array.shape,
+                          'dtype': 'array',
+                          'source': 'test'}}
+
+        def describe_configuration(self):
+            return {}
+
+        def read_configuration(self):
+            return {}
+
+    # 1D array in event['data']
+    det = Detector('det', np.array([1, 2, 3]))
+    RE(count([det]))
+
+    # 3D array in event['data']
+    det = Detector('det', np.ones((3, 3, 3)))
+    RE(count([det]))
+
+@py3
+def test_ingest_array_metadata(db, RE):
+    RE.subscribe('all', db.insert)
+
+    # These will blow up if the header source backing db cannot ingest numpy
+    # arrays. (For example, the pymongo-backed db has to convert them to plain
+    # lists.)
+
+    # 1D array in start document.
+    RE(count([]), mask=np.array([1,2,3]))
+
+    # 1D array in nested keys in start document.
+    RE(count([]), nested=dict(mask=np.array([1,2,3])))
+    RE(count([]), deeply=dict(nested=dict(mask=np.array([1,2,3]))))
+
+    # 3D array in start document.
+    RE(count([]), mask=np.ones((3, 3, 3)))
