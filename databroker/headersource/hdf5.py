@@ -8,10 +8,10 @@ from ..utils import _make_sure_path_exists
 
 
 def append(dataset, data):
-    old_size = dataset.size
-    new_size = old_size + len(data)
-    dataset.resize((new_size,))
-    dataset[old_size:] = data
+    num_events = dataset.shape[0]
+    new_shape = (num_events + 1,) + dataset.shape[1:]
+    dataset.resize(new_shape)
+    dataset[num_events:] = data
 
 
 class RunStartCollection(JSONCollection):
@@ -142,9 +142,9 @@ class EventCollection(object):
                         data = data.astype('S')
                         dtype = data.dtype
                     if k not in g['data']:
-
-                        g['data'].create_dataset(k, shape=(0,),
-                                                 maxshape=(None,),
+                        shape = np.asarray(data).shape
+                        g['data'].create_dataset(k, shape=(0,) + shape,
+                                                 maxshape=(None,) + shape,
                                                  dtype=dtype)
 
                     append(g['data'][k], data)
