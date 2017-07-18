@@ -6,17 +6,9 @@ import pymongo
 import numpy as np
 from pymongo import MongoClient
 from . import mongo_core
+from ..utils import sanitize_np
 
 _API_MAP = {1: mongo_core}
-
-
-def _sanitize_np(val):
-    "Convert any numpy objects into built-in Python types."
-    if isinstance(val, (np.generic, np.ndarray)):
-        if np.isscalar(val):
-            return val.item()
-        return val.tolist()
-    return val
 
 
 class MDSRO(object):
@@ -696,7 +688,7 @@ class MDS(MDSRO):
             Globally unique id string provided to metadatastore
         """
         for k, v in data.items():
-            data[k] = _sanitize_np(v)
+            data[k] = sanitize_np(v)
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
@@ -708,7 +700,7 @@ class MDS(MDSRO):
     def bulk_insert_events(self, descriptor, events, validate=False):
         for e in events:
             for k, v in e['data'].items():
-                e['data'][k] = _sanitize_np(v)
+                e['data'][k] = sanitize_np(v)
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,
