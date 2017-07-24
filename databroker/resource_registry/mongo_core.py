@@ -4,9 +4,6 @@ from bson import ObjectId
 from bson.errors import InvalidId
 import six
 from doct import Document
-from jsonschema import validate as js_validate
-import uuid
-import time as ttime
 import pymongo
 from .core import (DatumNotFound, _get_datum_from_eid, retrieve,
                    resource_given_eid, insert_datum, insert_resource,
