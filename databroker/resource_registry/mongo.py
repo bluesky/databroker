@@ -91,14 +91,16 @@ class FileStoreRO(object):
     '''
     KNOWN_SPEC = dict()
     # load the built-in schema
-    # TODO fix resource lookp
-    for spec_name in []:  # ['AD_HDF5', 'AD_SPE']:
+    for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
-        resource_name = 'json/{}_resource.json'.format(spec_name)
-        datum_name = 'json/{}_datum.json'.format(spec_name)
-        with open(resource_filename('filestore', resource_name), 'r') as fin:
+        base_name = 'resource_registry/json/'
+        resource_name = '{}{}_resource.json'.format(base_name, spec_name)
+        datum_name = '{}{}_datum.json'.format(base_name, spec_name)
+        with open(resource_filename('databroker',
+                                    resource_name), 'r') as fin:
             tmp_dict['resource'] = json.load(fin)
-        with open(resource_filename('filestore', datum_name), 'r') as fin:
+        with open(resource_filename('databroker',
+                                    datum_name), 'r') as fin:
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
