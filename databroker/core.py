@@ -368,7 +368,8 @@ class Header(object):
 
 def register_builtin_handlers(fs):
     "Register all the handlers built in to filestore."
-    from filestore import handlers, HandlerBase
+    from databroker.resource_registry.handlers_base import HandlerBase
+    from databroker.resource_registry import handlers
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
     for cls in vars(handlers).values():

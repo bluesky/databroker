@@ -135,10 +135,11 @@ class FileStoreRO(object):
     def DuplicateKeyError(self):
         return self._api.DuplicateKeyError
 
-    def __init__(self, config, handler_reg=None, version=1, root_map=None):
+    def __init__(self, config, handler_reg=None, version=1, root_map=None, auth=False):
         self.config = config
         self._api = None
         self.version = version
+        self.auth = auth
 
         if handler_reg is None:
             handler_reg = {}
@@ -270,8 +271,11 @@ class FileStoreRO(object):
     @property
     def _connection(self):
         if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
+            self.__conn = MongoClient(host=self.config['host'], port=self.config.get('port', None))
+            if self.auth and 'mechanism' in self.config:
+                getattr(self.__conn, self.config['database']).authenticate(self.config['mongo_user'],
+                                                                           self.config['mongo_pwd'],
+                                                                           mechanism=self.config['mechanism'])
         return self.__conn
 
     def get_spec_handler(self, resource):

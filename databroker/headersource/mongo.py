@@ -97,15 +97,11 @@ class MDSRO(object):
     @property
     def _connection(self):
         if self.__conn is None:
-            if self.auth:
-                uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(self.config['mongo_user'],
-                                                          self.config['mongo_pwd'],
-                                                          self.config['host'],
-                                                          self.config['port'])
-                self.__conn = MongoClient(uri)
-            else:
-                self.__conn = MongoClient(self.config['host'],
-                                          self.config.get('port', None))
+            self.__conn = MongoClient(host=self.config['host'], port=self.config.get('port', None))
+            if self.auth and 'mechanism' in self.config:
+                getattr(self.__conn, self.config['database']).authenticate(self.config['mongo_user'],
+                                                                           self.config['mongo_pwd'],
+                                                                           mechanism=self.config['mechanism'])
         return self.__conn
 
     @property
