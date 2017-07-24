@@ -8,10 +8,7 @@ from jsonschema import validate as js_validate
 import uuid
 import time as ttime
 import pymongo
-
-
-class DatumNotFound(Exception):
-    pass
+from .core import (DatumNotFound, )
 
 
 DuplicateKeyError = pymongo.errors.DuplicateKeyError
