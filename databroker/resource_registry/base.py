@@ -516,7 +516,6 @@ class FileStoreTemplate(FileStoreTemplateRO):
                                          cmd='shift_root')
 
 
-
 class FileStoreMovingTemplate(FileStoreTemplate):
     '''FileStore object that knows how to move files.'''
     def change_root(self, resource_or_uid, new_root, remove_origin=True,

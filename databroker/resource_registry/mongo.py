@@ -18,53 +18,11 @@ from pymongo import MongoClient
 from . import mongo_core
 from .handlers_base import DuplicateHandler
 from ..utils import _make_sure_path_exists
-
+from .base import _ChainMap
 _API_MAP = {1: mongo_core}
 
 
 logger = logging.getLogger(__name__)
-
-try:
-    from collections import ChainMap as _ChainMap
-except ImportError:
-    class _ChainMap(object):
-        def __init__(self, primary, fallback=None):
-            if fallback is None:
-                fallback = {}
-            self.fallback = fallback
-            self.primary = primary
-
-        def __getitem__(self, k):
-            try:
-                return self.primary[k]
-            except KeyError:
-                return self.fallback[k]
-
-        def __setitem__(self, k, v):
-            self.primary[k] = v
-
-        def __contains__(self, k):
-            return k in self.primary or k in self.fallback
-
-        def __delitem__(self, k):
-            del self.primary[k]
-
-        def pop(self, k, v):
-            return self.primary.pop(k, v)
-
-        @property
-        def maps(self):
-            return [self.primary, self.fallback]
-
-        @property
-        def parents(self):
-            return self.fallback
-
-        def new_child(self, m=None):
-            if m is None:
-                m = {}
-
-            return _ChainMap(m, self)
 
 
 class FileStoreRO(object):
