@@ -268,7 +268,7 @@ class AreaDetectorHDF5StatsHandler(HDF5HandlerBase):
     frame_per_point : integer, optional
         number of frames to return as one datum, default 1
     """
-    specs = {'AD_HDF5_TS'} | HandlerBase.specs
+    specs = {'AD_HDF5_ROISTATS'} | HandlerBase.specs
 
     def __init__(self, filename, frame_per_point=1):
         _key = ['/entry/instrument/NDAttributes/Total_{}'.format(n)
