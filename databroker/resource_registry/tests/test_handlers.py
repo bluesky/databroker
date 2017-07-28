@@ -14,9 +14,8 @@ from ..api import (insert_resource, insert_datum, retrieve,
 from ..api import handler_context
 from .utils import fs_setup, fs_teardown
 from ..handlers import AreaDetectorHDF5Handler
-from ..handlers import AreaDetectorHDF5SWMRHandler
 from ..handlers import AreaDetectorHDF5TimestampHandler
-from ..handlers import AreaDetectorHDF5SWMRTimestampHandler
+from ..handlers import AreaDetectorHDF5StatsHandler
 from ..handlers import AreaDetectorTiffHandler
 from ..handlers import DummyAreaDetectorHandler
 from ..handlers import HDFMapsSpectrumHandler as HDFM
@@ -39,17 +38,15 @@ def setup_module(module):
     fs_setup()
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
-    register_handler('AD_HDF5_SWMR', AreaDetectorHDF5SWMRHandler)
     register_handler('AD_HDF5_TS', AreaDetectorHDF5TimestampHandler)
-    register_handler('AD_HDF5_SWMR_TS', AreaDetectorHDF5SWMRTimestampHandler)
+    register_handler('AD_HDF5_ROISTATS', AreaDetectorHDF5SWMRStatsHandler)
 
 
 def teardown_module(module):
     fs_teardown()
     deregister_handler('AD_HDF5')
-    deregister_handler('AD_HDF5_SWMR')
     deregister_handler('AD_HDF5_TS')
-    deregister_handler('AD_HDF5_SWMR_TS')
+    deregister_handler('AD_HDF5_ROISTATS')
 
 
 class _with_file(object):
@@ -154,13 +151,6 @@ class Test_AD_hdf5_files(_with_file):
         assert hand._file is None
 
 
-# class Test_AD_hdf5_SWMR_files(Test_AD_hdf5_files):
-#     # test the HDF5 product emitted by the hdf5 plugin to area detector
-#
-#     spec = 'AD_HDF5_SWMR'
-#     handler = AreaDetectorHDF5SWMRHandler
-#
-#
 class Test_AD_hdf5_timestamp_files(_with_file):
     # test the HDF5 product emitted by the hdf5 plugin to area detector
     # This is for the timestamp field
@@ -214,13 +204,6 @@ class Test_AD_hdf5_timestamp_files(_with_file):
         assert hand._file is None
 
 
-# class Test_AD_hdf5_SWMR_timestamp_files(Test_AD_hdf5_timestamp_files):
-#    # test the HDF5 product emitted by the hdf5 plugin to area detector
-#
-#    spec = 'AD_HDF5_SWMR_TS'
-#    handler = AreaDetectorHDF5SWMRTimestampHandler
-#
-#
 class Test_maps_hdf5(_with_file):
     n_pts = 20
     N = 10
