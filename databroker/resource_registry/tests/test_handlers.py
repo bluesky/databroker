@@ -15,7 +15,7 @@ from ..api import handler_context
 from .utils import fs_setup, fs_teardown
 from ..handlers import AreaDetectorHDF5Handler
 from ..handlers import AreaDetectorHDF5TimestampHandler
-from ..handlers import AreaDetectorHDF5StatsHandler
+from ..handlers import AreaDetectorHDF5ROIStatsHandler
 from ..handlers import AreaDetectorTiffHandler
 from ..handlers import DummyAreaDetectorHandler
 from ..handlers import HDFMapsSpectrumHandler as HDFM
@@ -39,7 +39,7 @@ def setup_module(module):
 
     register_handler('AD_HDF5', AreaDetectorHDF5Handler)
     register_handler('AD_HDF5_TS', AreaDetectorHDF5TimestampHandler)
-    register_handler('AD_HDF5_ROISTATS', AreaDetectorHDF5SWMRStatsHandler)
+    register_handler('AD_HDF5_ROISTATS', AreaDetectorHDF5ROIStatsHandler)
 
 
 def teardown_module(module):
