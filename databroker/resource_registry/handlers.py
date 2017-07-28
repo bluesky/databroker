@@ -194,7 +194,6 @@ class HDF5DatasetSliceHandler(HDF5HandlerBase):
     """
     def __call__(self, point_number):
         super(HDF5DatasetSliceHandler, self).__call__(point_number)
-        print(self._dataset)
         if point_number not in self._data_objects:
             start = point_number * self._fpp
             stop = (point_number + 1) * self._fpp
@@ -224,6 +223,19 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
         super(AreaDetectorHDF5Handler, self).__init__(
             filename=filename, key=[hardcoded_key],
             frame_per_point=frame_per_point)
+
+    def get_metadata(self, datum_kwarg_gen):
+        """
+        Retrieve info about datafile and return as dict
+        """
+        rtn = {}
+        base = '/entry/instrument/NDAttributes/'
+        fields = ['AcquireTime', 'AcquirePeriod', 'CameraManufacturer',
+                  'CameraModel', 'SDKVersion', 'FirmwareVersion']
+        for f in fields:
+            rtn[f] = self._file[base + f][0]
+
+        return rtn
 
 
 class AreaDetectorHDF5TimestampHandler(HDF5HandlerBase):
@@ -304,7 +316,6 @@ class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
         self._dset_path = dset_path
         self._file = None
         self._dset = None
-        self._swmr = False
         self.open()
 
     def open(self):
@@ -320,9 +331,6 @@ class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
 
         if not self._file:
             raise RuntimeError("File is not open")
-
-        if self._swmr:
-            self._dataset.id.refresh()
 
 
 class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
