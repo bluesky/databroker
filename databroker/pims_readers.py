@@ -3,7 +3,7 @@ from .core import Images as _Images
 
 
 def get_images(headers, name, handler_registry=None,
-               handler_override=None):
+               handler_override=None, pipeline=None):
     """
     Load images from a detector for given Header(s).
 
@@ -28,7 +28,8 @@ def get_images(headers, name, handler_registry=None,
     """
     res = DataBroker.get_images(headers=headers, name=name,
                                 handler_registry=handler_registry,
-                                handler_override=handler_override)
+                                handler_override=handler_override,
+                                pipeline=pipeline)
     return res
 
 

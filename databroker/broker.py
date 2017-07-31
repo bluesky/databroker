@@ -598,7 +598,7 @@ class BrokerES(object):
             return pd.DataFrame()
 
     def get_images(self, headers, name, handler_registry=None,
-                   handler_override=None):
+                   handler_override=None, pipeline=None):
         """
         Load images from a detector for given Header(s).
 
@@ -625,7 +625,8 @@ class BrokerES(object):
         return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
                       headers=headers,
                       name=name, handler_registry=handler_registry,
-                      handler_override=handler_override)
+                      handler_override=handler_override,
+                      pipeline=pipeline)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids

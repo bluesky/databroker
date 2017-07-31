@@ -110,9 +110,9 @@ class Header(object):
 
     def __iter__(self):
         return self.keys()
-    
+
     # ## convenience methods and properties, encapsulating common one-liners ## #
-        
+
     @property
     def descriptors(self):
         if 'desc' not in self._cache:
@@ -404,7 +404,8 @@ def get_fields(header, name=None):
 
 
 def get_images(db, headers, name, handler_registry=None,
-               handler_override=None):
+               handler_override=None, pipeline=None,
+               pl_args=None, pl_kwargs=None):
     """
     Load images from a detector for given Header(s).
 
@@ -428,12 +429,13 @@ def get_images(db, headers, name, handler_registry=None,
             # do something
     """
     return Images(db.mds, db.es, db.fs, headers, name, handler_registry,
-                  handler_override)
+                  handler_override, pipeline, pl_args, pl_kwargs)
 
 
 class Images(FramesSequence):
     def __init__(self, mds, fs, es, headers, name, handler_registry=None,
-                 handler_override=None):
+                 handler_override=None, pipeline=None, pl_args=None,
+                 pl_kwargs=None):
         """
         Load images from a detector for given Header(s).
 
@@ -458,6 +460,13 @@ class Images(FramesSequence):
         """
         from .broker import Broker
         self.fs = fs
+        self._pipeline = pipeline
+        self._pl_args = pl_args
+        if self._pl_args is None:
+            self._pl_args = tuple()
+        self._pl_kwargs = pl_kwargs
+        if self._pl_kwargs is None:
+            self._pl_kwargs = dict()
         db = Broker(mds, fs)
         events = db.get_events(headers, [name], fill=False)
 
@@ -499,8 +508,9 @@ class Images(FramesSequence):
             img = fs.get_datum(self._datum_uids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
+        elif isinstance(img, FramesSequence) and self._pipeline is not None:
+            return self._pipeline(img, *self._pl_args, **self._pl_kwargs)
         else:
-            # some non-numpy-like type
             return img
 
 
