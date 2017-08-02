@@ -7,6 +7,7 @@ import logging
 import numpy as np
 import doct as doc
 from ..core import format_time as _format_time
+from ..utils import apply_to_dict_recursively, sanitize_np
 
 logger = logging.getLogger(__name__)
 
@@ -520,6 +521,7 @@ def insert_run_start(run_start_col, run_start_cache,
 
     col = run_start_col
     run_start = dict(time=time, uid=uid, **kwargs)
+    apply_to_dict_recursively(run_start, sanitize_np)
 
     col.insert_one(run_start)
 
@@ -581,6 +583,7 @@ def insert_run_stop(run_start_col, run_start_cache,
     col = run_stop_col
     run_stop = dict(run_start=run_start_uid, time=time, uid=uid,
                     exit_status=exit_status, **kwargs)
+    apply_to_dict_recursively(run_stop, sanitize_np)
     if reason is not None and reason != '':
         run_stop['reason'] = reason
 
@@ -635,6 +638,7 @@ def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
 
     descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
                       time=time, uid=uid, **kwargs)
+    apply_to_dict_recursively(descriptor, sanitize_np)
     # TODO validation
     col.insert_one(descriptor)
 
