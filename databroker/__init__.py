@@ -6,6 +6,14 @@ logger = logging.getLogger(__name__)
 
 
 try:
+    import attr  # confusingly, this comes from 'attrs' on PyPI, not 'attr'
+    attr.s
+except AttributeError:
+    raise ImportError("Wrong attr module imported. Please uninstall 'attr' "
+                      "and install 'attrs' which provides the correct module.")
+
+
+try:
     from .databroker import DataBroker
 except ImportError:
     # The .databroker module emits a warning, no need to duplicate it here.
