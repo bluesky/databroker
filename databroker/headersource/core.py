@@ -59,16 +59,16 @@ def doc_or_uid_to_uid(doc_or_uid):
 
 
 def _cache_run_start(run_start, run_start_cache):
-    """De-reference and cache a RunStart document
-
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
+    """Cache a RunStart document
 
     Parameters
     ----------
     run_start : dict
         raw pymongo dictionary. This is expected to have
         an entry `_id` with the ObjectId used by mongo.
+
+    run_start_cache : dict
+        Dict[str, Document]
 
     Returns
     -------
@@ -93,12 +93,9 @@ def _cache_run_start(run_start, run_start_cache):
     return run_start
 
 
-def _cache_run_stop(run_stop, run_stop_cache,
-                    run_start_col, run_start_cache):
-    """De-reference and cache a RunStop document
+def _cache_run_stop(run_stop, run_stop_cache):
+    """Cache a RunStop document
 
-    The de-referenced Document is cached against the
-    ObjectId and the uid -> ObjectID mapping is stored.
 
     Parameters
     ----------
@@ -106,35 +103,35 @@ def _cache_run_stop(run_stop, run_stop_cache,
         raw pymongo dictionary. This is expected to have
         an entry `_id` with the ObjectId used by mongo.
 
+    run_stop_cache : dict
+        Dict[str, Document]
+
     Returns
     -------
     run_stop : doc.Document
         Document instance for this RunStop document.
-        The ObjectId has been stripped.
+        The ObjectId (if it exists) has been stripped.
     """
     run_stop = dict(run_stop)
     # pop off the ObjectId of this document
     oid = run_stop.pop('_id', None)
     try:
-        run_start_uid = run_stop['run_start']
+        run_stop['run_start']
     except KeyError:
-        run_start_uid = run_stop.pop('run_start_id')
-    # do the run-start de-reference
-    run_stop['run_start'] = run_start_given_uid(run_start_uid,
-                                                run_start_col,
-                                                run_start_cache)
+        run_stop['run_start'] = run_stop.pop('run_start_id')
 
     # create the Document object
     run_stop = doc.Document('RunStop', run_stop)
 
     run_stop_cache[run_stop['uid']] = run_stop
-    run_stop_cache[oid] = run_stop
+    # this is
+    if oid is not None:
+        run_stop_cache[oid] = run_stop
 
     return run_stop
 
 
-def _cache_descriptor(descriptor, descritor_cache,
-                      run_start_col, run_start_cache):
+def _cache_descriptor(descriptor, descritor_cache):
     """De-reference and cache a RunStop document
 
     The de-referenced Document is cached against the
@@ -156,20 +153,16 @@ def _cache_descriptor(descriptor, descritor_cache,
     # pop the ObjectID
     oid = descriptor.pop('_id', None)
     try:
-        run_start_uid = descriptor['run_start']
+        descriptor['run_start']
     except KeyError:
-        run_start_uid = descriptor.pop('run_start_id')
-
-    # do the run_start referencing
-    descriptor['run_start'] = run_start_given_uid(run_start_uid,
-                                                  run_start_col,
-                                                  run_start_cache)
+        descriptor['run_start'] = descriptor.pop('run_start_id')
 
     # create the Document instance
     descriptor = doc.Document('EventDescriptor', descriptor)
 
     descritor_cache[descriptor['uid']] = descriptor
-    descritor_cache[oid] = descriptor
+    if oid is not None:
+        descritor_cache[oid] = descriptor
 
     return descriptor
 
@@ -206,8 +199,7 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
     return _cache_run_start(run_start, run_start_cache)
 
 
-def run_stop_given_uid(uid, run_stop_col, run_stop_cache,
-                       run_start_col, run_start_cache):
+def run_stop_given_uid(uid, run_stop_col, run_stop_cache):
     """Given a uid, return the RunStop document
 
     Parameters
@@ -234,12 +226,10 @@ def run_stop_given_uid(uid, run_stop_col, run_stop_cache,
     # get the raw run_stop
     run_stop = run_stop_col.find_one({'uid': uid})
 
-    return _cache_run_stop(run_stop, run_stop_cache,
-                           run_start_col, run_start_cache)
+    return _cache_run_stop(run_stop, run_stop_cache)
 
 
-def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
-                         run_start_col, run_start_cache):
+def descriptor_given_uid(uid, descriptor_col, descriptor_cache):
     """Given a uid, return the EventDescriptor document
 
     Parameters
@@ -264,12 +254,10 @@ def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
         pass
     descriptor = descriptor_col.find_one({'uid': uid})
 
-    return _cache_descriptor(descriptor, descriptor_cache, run_start_col,
-                             run_start_cache)
+    return _cache_descriptor(descriptor, descriptor_cache)
 
 
-def stop_by_start(run_start, run_stop_col, run_stop_cache,
-                  run_start_col, run_start_cache):
+def stop_by_start(run_start, run_stop_col, run_stop_cache):
     """Given a RunStart return it's RunStop
 
     Raises if no RunStop exists.
@@ -295,12 +283,10 @@ def stop_by_start(run_start, run_stop_col, run_stop_cache,
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
-    return _cache_run_stop(run_stop, run_stop_cache,
-                           run_start_col, run_start_cache)
+    return _cache_run_stop(run_stop, run_stop_cache)
 
 
-def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
-                         run_start_col, run_start_cache):
+def descriptors_by_start(run_start, descriptor_col, descriptor_cache):
     """Given a RunStart return a list of it's descriptors
 
     Raises if no EventDescriptors exist.
@@ -310,6 +296,12 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
     run_start : doc.Document or dict or str
         The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+
+    descriptor_col
+        A collection we can search against
+
+    descriptor_cache : dict
+        Dict[str, Document]
 
     Returns
     -------
@@ -328,8 +320,7 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
     # refer to the given run_start
     descriptors = descriptor_col.find({'run_start': run_start_uid})
     # loop over the found documents, cache, and dereference
-    rets = [_cache_descriptor(descriptor, descriptor_cache,
-                              run_start_col, run_start_cache)
+    rets = [_cache_descriptor(descriptor, descriptor_cache)
             for descriptor in descriptors]
 
     # if nothing found, raise
@@ -351,6 +342,16 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     descriptor : doc.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+
+    event_col
+        Collection we can search for events given descriptor in.
+
+    descriptor_col
+        Collection we can search for descriptors given a uid
+
+    descriptor_cache : dict
+        Dict[str, Document]
+
     convert_arrays: boolean, optional
         convert 'array' type to numpy.ndarray; True by default
 
@@ -362,8 +363,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(descriptor_uid, descriptor_col,
-                                      descriptor_cache, run_start_col,
-                                      run_start_cache)
+                                      descriptor_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
                       sort=[('time', ASCENDING)])
@@ -373,9 +373,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     for ev in ev_cur:
         # ditch the ObjectID
         ev.pop('_id', None)
-
-        # replace descriptor with the defererenced descriptor
-        ev['descriptor'] = descriptor
+        ev['descriptor'] = descriptor_uid
         for k, v in ev['data'].items():
             _dk = data_keys[k]
             # convert any arrays stored directly in mds into ndarray
@@ -427,9 +425,22 @@ def get_events_table(descriptor, event_col, descriptor_col,
 
     Parameters
     ----------
-    descriptor : dict or str
+    descriptor : doc.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+
+    event_col
+        Collection we can search for events given descriptor in.
+
+    descriptor_col
+        Collection we can search for descriptors given a uid
+
+    descriptor_cache : dict
+        Dict[str, Document]
+
+    convert_arrays: boolean, optional
+        convert 'array' type to numpy.ndarray; True by default
+
 
     Returns
     -------
@@ -449,8 +460,7 @@ def get_events_table(descriptor, event_col, descriptor_col,
     """
     desc_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(desc_uid, descriptor_col,
-                                      descriptor_cache, run_start_col,
-                                      run_start_cache)
+                                      descriptor_cache)
     # this will get more complicated once transpose caching layer is in place
     all_events = list(get_events_generator(desc_uid, event_col,
                                            descriptor_col,
@@ -487,21 +497,17 @@ def insert_run_start(run_start_col, run_start_cache,
 
     Parameters
     ----------
+    run_start_col
+        Collection to insert the start document into
+
+    run_start_cache : dict
+        Dict[str, Document]
+
     time : float
         The date/time as found at the client side when the run is started
     uid : str
         Globally unique id string provided to metadatastore
-    scan_id : int, optional
-        Scan identifier visible to the user and data analysis.  This is not
-        a unique identifier.
-    owner : str, optional
-        A username associated with the RunStart
-    group : str, optional
-        An experimental group associated with the RunStart
-    project : str, optional
-        Any project name to help users locate the data
-    sample : str or dict, optional
-    kwargs
+    **kwargs
         additional optional or custom fields
 
     Returns
@@ -529,14 +535,18 @@ def insert_run_start(run_start_col, run_start_cache,
     return uid
 
 
-def insert_run_stop(run_start_col, run_start_cache,
-                    run_stop_col, run_stop_cache,
+def insert_run_stop(run_stop_col, run_stop_cache,
                     run_start, time, uid, exit_status, reason=None,
                     **kwargs):
     """Insert RunStop document into database
 
     Parameters
     ----------
+    run_stop_col
+        Collection to insert the start document into
+    run_stop_cache : dict
+        Dict[str, Document]
+
     run_start : doc.Document or dict or str
         The RunStart to insert the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
@@ -567,12 +577,10 @@ def insert_run_stop(run_start_col, run_start_cache,
         kwargs.update(custom)
 
     run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = run_start_given_uid(run_start_uid, run_start_col,
-                                    run_start_cache)
+
     try:
         stop_by_start(run_start_uid,
-                      run_stop_col, run_stop_cache,
-                      run_start_col, run_start_cache)
+                      run_stop_col, run_stop_cache)
     except NoRunStop:
         pass
     else:
@@ -585,20 +593,25 @@ def insert_run_stop(run_start_col, run_start_cache,
         run_stop['reason'] = reason
 
     col.insert_one(run_stop)
-    _cache_run_stop(run_stop, run_stop_cache, run_start_col, run_start_cache)
+    _cache_run_stop(run_stop, run_stop_cache)
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop['uid'], run_start['uid'])
+                 " with uid %s", run_stop['uid'], run_start_uid)
 
     return uid
 
 
-def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
+def insert_descriptor(descriptor_col,
                       descriptor_cache, run_start, data_keys, time, uid,
                       **kwargs):
     """Insert an EventDescriptor document in to database.
 
     Parameters
     ----------
+    descriptor_col
+        Collection to insert the start document into
+    descriptor_cache : dict
+        Dict[str, Document]
+
     run_start : doc.Document or dict or str
         The RunStart to insert a Descriptor for.  Can be either
         a Document/dict with a 'uid' key or a uid string
@@ -638,13 +651,14 @@ def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
     # TODO validation
     col.insert_one(descriptor)
 
-    descriptor = _cache_descriptor(descriptor, descriptor_cache,
-                                   run_start_col, run_start_cache)
+    descriptor = _cache_descriptor(descriptor, descriptor_cache)
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
                  "RunStart with uid %s", descriptor['uid'], run_start_uid)
 
     return uid
+
+
 insert_event_descriptor = insert_descriptor
 
 
@@ -659,6 +673,9 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
 
     Parameters
     ----------
+    event_col
+         Collection to insert the Event into.
+
     descriptor : doc.Document or dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
@@ -705,7 +722,10 @@ def bulk_insert_events(event_col, descriptor, events, validate):
 
     Parameters
     ----------
-    event_descriptor : doc.Document or dict or str
+    event_col
+         The collection to insert the Events into
+
+    descriptor : doc.Document or dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     events : iterable
@@ -793,8 +813,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
         yield _cache_run_start(rs, run_start_cache)
 
 
-def find_run_stops(start_col, start_cache,
-                   stop_col, stop_cache, tz,
+def find_run_stops(stop_col, stop_cache, tz,
                    run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
@@ -837,11 +856,10 @@ def find_run_stops(start_col, start_cache,
     run_stop = col.find(kwargs, sort=[('time', ASCENDING)])
 
     for rs in run_stop:
-        yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
+        yield _cache_run_stop(rs, stop_cache)
 
 
-def find_descriptors(start_col, start_cache,
-                     descriptor_col, descriptor_cache,
+def find_descriptors(descriptor_col, descriptor_cache,
                      tz,
                      run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
@@ -881,8 +899,7 @@ def find_descriptors(start_col, start_cache,
                                         sort=[('time', ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor, descriptor_cache,
-                                start_col, start_cache)
+        yield _cache_descriptor(event_descriptor, descriptor_cache)
 
 
 def find_last(start_col, start_cache, num):

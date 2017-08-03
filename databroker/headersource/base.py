@@ -1,22 +1,28 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from . import core
+import numpy as np
 
 
-_API_MAP = {1: core}
+def sanitize_np(val):
+    "Convert any numpy objects into built-in Python types."
+    if isinstance(val, (np.generic, np.ndarray)):
+        if np.isscalar(val):
+            return val.item()
+        return val.tolist()
+    return val
 
 
 class MDSROTemplate(object):
-    def __init__(self, config, version=1, auth=False):
-        if auth:
-            raise NotImplementedError("This implementation of MDS does not "
-                                      "support authentication.")
+    _API_MAP = {1: core}
+
+    def __init__(self, config):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
         self.config = config
         self._api = None
-        self.version = version
+        self.version = config.get('version', 1)
 
     def reset_caches(self):
         self._RUNSTART_CACHE.clear()
@@ -41,7 +47,7 @@ class MDSROTemplate(object):
     def version(self, val):
         if self._api is not None:
             raise RuntimeError("Can not change api version at runtime")
-        self._api = _API_MAP[val]
+        self._api = self._API_MAP[val]
         self._version = val
 
     @property
@@ -98,9 +104,7 @@ class MDSROTemplate(object):
         """
         return self._api.run_stop_given_uid(uid,
                                             self._runstop_col,
-                                            self._RUNSTOP_CACHE,
-                                            self._runstart_col,
-                                            self._RUNSTART_CACHE)
+                                            self._RUNSTOP_CACHE)
 
     def descriptor_given_uid(self, uid):
         """Given a uid, return the EventDescriptor document
@@ -116,9 +120,7 @@ class MDSROTemplate(object):
             The EventDescriptor document fully de-referenced
         """
         return self._api.descriptor_given_uid(uid, self._descriptor_col,
-                                              self._DESCRIPTOR_CACHE,
-                                              self._runstart_col,
-                                              self._RUNSTART_CACHE)
+                                              self._DESCRIPTOR_CACHE)
 
     def stop_by_start(self, run_start):
         """Given a RunStart return it's RunStop
@@ -143,9 +145,7 @@ class MDSROTemplate(object):
         """
         return self._api.stop_by_start(run_start,
                                        self._runstop_col,
-                                       self._RUNSTOP_CACHE,
-                                       self._runstart_col,
-                                       self._RUNSTART_CACHE)
+                                       self._RUNSTOP_CACHE)
 
     def descriptors_by_start(self, run_start):
         """Given a RunStart return a list of it's descriptors
@@ -170,9 +170,7 @@ class MDSROTemplate(object):
         """
         return self._api.descriptors_by_start(run_start,
                                               self._descriptor_col,
-                                              self._DESCRIPTOR_CACHE,
-                                              self._runstart_col,
-                                              self._RUNSTART_CACHE)
+                                              self._DESCRIPTOR_CACHE)
 
     def get_events_generator(self, descriptor, convert_arrays=True):
         """A generator which yields all events from the event stream
@@ -316,9 +314,7 @@ class MDSROTemplate(object):
         run_stop : doc.Document
             The requested RunStop documents
         """
-        gen = self._api.find_run_stops(self._runstart_col,
-                                       self._RUNSTART_CACHE,
-                                       self._runstop_col,
+        gen = self._api.find_run_stops(self._runstop_col,
                                        self._RUNSTOP_CACHE,
                                        self.config['timezone'],
                                        **kwargs)
@@ -352,9 +348,7 @@ class MDSROTemplate(object):
         descriptor : doc.Document
             The requested EventDescriptor
         """
-        gen = self._api.find_descriptors(self._runstart_col,
-                                         self._RUNSTART_CACHE,
-                                         self._descriptor_col,
+        gen = self._api.find_descriptors(self._descriptor_col,
                                          self._DESCRIPTOR_CACHE,
                                          self.config['timezone'],
                                          **kwargs)
@@ -453,9 +447,7 @@ class MDSTemplate(MDSROTemplate):
         RuntimeError
             Only one RunStop per RunStart, raises if you try to insert a second
         """
-        return self._api.insert_run_stop(self._runstart_col,
-                                         self._RUNSTART_CACHE,
-                                         self._runstop_col,
+        return self._api.insert_run_stop(self._runstop_col,
                                          self._RUNSTOP_CACHE,
                                          run_start=run_start,
                                          time=time, uid=uid,
@@ -485,9 +477,7 @@ class MDSTemplate(MDSROTemplate):
         descriptor : str
             uid of inserted Document
         """
-        return self._api.insert_descriptor(self._runstart_col,
-                                           self._RUNSTART_CACHE,
-                                           self._descriptor_col,
+        return self._api.insert_descriptor(self._descriptor_col,
                                            self._DESCRIPTOR_CACHE,
                                            run_start=run_start,
                                            data_keys=data_keys,
@@ -522,6 +512,9 @@ class MDSTemplate(MDSROTemplate):
         uid : str
             Globally unique id string provided to metadatastore
         """
+        for k, v in data.items():
+            data[k] = sanitize_np(v)
+
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
@@ -531,6 +524,10 @@ class MDSTemplate(MDSROTemplate):
                                       validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
+        for e in events:
+            for k, v in e['data'].items():
+                e['data'][k] = sanitize_np(v)
+
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,

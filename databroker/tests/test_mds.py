@@ -108,7 +108,7 @@ def test_event_descriptor_insertion(mds_all):
 
     # make sure the event descriptor is pointing to the correct run start
     referenced_run_start = ev_desc_mds['run_start']
-    assert referenced_run_start.uid == run_start_uid
+    assert referenced_run_start == run_start_uid
     assert ev_desc_mds['time'] == time
 
     for k in data_keys:
@@ -198,7 +198,7 @@ def test_run_stop_insertion(mds_all):
     check_for_id(run_stop)
     # make sure the run stop is pointing to the correct run start
     referenced_run_start = run_stop['run_start']
-    assert referenced_run_start.uid == run_start_uid
+    assert referenced_run_start == run_start_uid
 
     # check the remaining fields
     comparisons = {'time': time,
@@ -260,7 +260,7 @@ def test_sanitize_np(mds_all):
     ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         assert ret['filled'] == {'Z': False}
@@ -301,7 +301,7 @@ def test_bulk_insert(mds_all):
     ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         assert ret['filled'] == {'Z': False}
@@ -322,7 +322,7 @@ def test_iterative_insert(mds_all):
     ret_lag = None
     assert isinstance(ev_gen, GeneratorType)
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         if ret_lag:
@@ -344,7 +344,7 @@ def test_iterative_insert_np(mds_all):
     ret_lag = None
     assert isinstance(ev_gen, GeneratorType)
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         if ret_lag:
@@ -565,7 +565,7 @@ def test_reload(mds_portable):
     ev_gen_reloaded = mds_new.get_events_generator(e_desc)
 
     for ret, ret_n, expt in zip(ev_gen_base, ev_gen_reloaded, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
             assert ret_n[k] == expt[k]

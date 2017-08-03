@@ -265,7 +265,6 @@ class MDSRO(object):
                                    signature='find_descriptors')
         response = self._get(self._desc_url, params=params)
         for r in response:
-            r['run_start'] = Document('RunStart', r['run_start'])
             yield Document('EventDescriptor', r)
 
 
@@ -302,7 +301,6 @@ class MDSRO(object):
                                    signature='find_run_stops')
         response = self._get(self._rstop_url, params=params)
         for r in response:
-            r['run_start'] = Document('RunStart', r['run_start'])
             yield Document('RunStop', r)
 
     def run_stop_given_uid(self, uid):
@@ -324,7 +322,6 @@ class MDSRO(object):
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_stop_given_uid')
         response = self._get(self._rstop_url, params=params)
-        response['run_start'] = Document('RunStart', response['run_start'])
         response = Document('RunStop', response)
         return response
 
@@ -399,7 +396,6 @@ class MDSRO(object):
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
-        response['run_start'] = Document('RunStart', response['run_start'])
         return Document('RunStop', response)
         # return self._cache_run_stop(response, self._RUNSTOP_CACHE)
 
@@ -421,13 +417,11 @@ class MDSRO(object):
             newest
         """
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-        descriptor = self.descriptor_given_uid(descriptor_uid)
         params = self.queryfactory(query={'descriptor': descriptor_uid,
                                           'convert_arrays': convert_arrays},
                                    signature='get_events_generator')
         events = self._get(self._event_url, params=params)
         for e in events:
-            e['descriptor'] = descriptor
             yield Document('Event', e)
 
     def get_events_table(self, descriptor):

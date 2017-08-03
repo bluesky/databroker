@@ -59,7 +59,8 @@ def mds_portable(request):
     '''
     tempdirname = tempfile.mkdtemp()
     mds = request.param.MDS({'directory': tempdirname,
-                             'timezone': tzlocal.get_localzone().zone}, version=1)
+                             'timezone': tzlocal.get_localzone().zone,
+                             'version': 1})
     filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
                  'events.json']
     for fn in filenames:

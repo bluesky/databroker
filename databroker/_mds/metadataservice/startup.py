@@ -71,8 +71,8 @@ if __name__ == "__main__":
                      timezone=config['timezone'], database=config['database'],
                      mongo_user=config['mongo_user'],
                      mongo_pwd=config['mongo_pwd'])
-    mdsro = MDSRO(version=1, config=libconfig, auth=args.auth)
-    mdsrw = MDS(version=1, config=libconfig, auth=args.auth)
+    mdsro = MDSRO(config=libconfig, auth=args.auth)
+    mdsrw = MDS(config=libconfig, auth=args.auth)
 
     print('Connecting to mongodb...{}:{}/{}'.format(config['mongohost'],
                                                     config['mongoport'],

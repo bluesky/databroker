@@ -45,8 +45,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     """
     descriptor_uid = doc_or_uid_to_uid(descriptor)
     descriptor = descriptor_given_uid(descriptor_uid, descriptor_col,
-                                      descriptor_cache, run_start_col,
-                                      run_start_cache)
+                                      descriptor_cache)
     col = event_col
     ev_cur = col.find({'descriptor': descriptor_uid},
                       sort=[('descriptor', pymongo.DESCENDING),
@@ -59,7 +58,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         del ev['_id']
 
         # replace descriptor with the defererenced descriptor
-        ev['descriptor'] = descriptor
+        ev['descriptor'] = descriptor_uid
         for k, v in ev['data'].items():
             _dk = data_keys[k]
             # convert any arrays stored directly in mds into ndarray
@@ -174,8 +173,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
         yield _cache_run_start(rs, run_start_cache)
 
 
-def find_run_stops(start_col, start_cache,
-                   stop_col, stop_cache, tz,
+def find_run_stops(stop_col, stop_cache, tz,
                    run_start=None, **kwargs):
     """Given search criteria, locate RunStop Documents.
 
@@ -218,11 +216,10 @@ def find_run_stops(start_col, start_cache,
     run_stop = col.find(kwargs, sort=[('time', pymongo.ASCENDING)])
 
     for rs in run_stop:
-        yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
+        yield _cache_run_stop(rs, stop_cache)
 
 
-def find_descriptors(start_col, start_cache,
-                     descriptor_col, descriptor_cache,
+def find_descriptors(descriptor_col, descriptor_cache,
                      tz,
                      run_start=None, **kwargs):
     """Given search criteria, locate EventDescriptor Documents.
@@ -262,8 +259,8 @@ def find_descriptors(start_col, start_cache,
                                         sort=[('time', pymongo.ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor, descriptor_cache,
-                                start_col, start_cache)
+        yield _cache_descriptor(event_descriptor, descriptor_cache)
+
 
 
 def find_events(start_col, start_cache,
@@ -316,8 +313,7 @@ def find_events(start_col, start_cache,
             desc_uid = ev.pop('descriptor')
             # replace it with the defererenced descriptor
             ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
-                                                    descriptor_cache,
-                                                    start_col, start_cache)
+                                                    descriptor_cache)
 
             # wrap it our fancy dict
             ev = doc.Document('Event', ev)
