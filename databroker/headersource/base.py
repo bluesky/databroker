@@ -447,9 +447,7 @@ class MDSTemplate(MDSROTemplate):
         RuntimeError
             Only one RunStop per RunStart, raises if you try to insert a second
         """
-        return self._api.insert_run_stop(self._runstart_col,
-                                         self._RUNSTART_CACHE,
-                                         self._runstop_col,
+        return self._api.insert_run_stop(self._runstop_col,
                                          self._RUNSTOP_CACHE,
                                          run_start=run_start,
                                          time=time, uid=uid,

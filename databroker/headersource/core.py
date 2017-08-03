@@ -516,8 +516,7 @@ def insert_run_start(run_start_col, run_start_cache,
     return uid
 
 
-def insert_run_stop(run_start_col, run_start_cache,
-                    run_stop_col, run_stop_cache,
+def insert_run_stop(run_stop_col, run_stop_cache,
                     run_start, time, uid, exit_status, reason=None,
                     **kwargs):
     """Insert RunStop document into database
@@ -554,8 +553,7 @@ def insert_run_stop(run_start_col, run_start_cache,
         kwargs.update(custom)
 
     run_start_uid = doc_or_uid_to_uid(run_start)
-    run_start = run_start_given_uid(run_start_uid, run_start_col,
-                                    run_start_cache)
+
     try:
         stop_by_start(run_start_uid,
                       run_stop_col, run_stop_cache)
@@ -573,7 +571,7 @@ def insert_run_stop(run_start_col, run_start_cache,
     col.insert_one(run_stop)
     _cache_run_stop(run_stop, run_stop_cache)
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
-                 " with uid %s", run_stop['uid'], run_start['uid'])
+                 " with uid %s", run_stop['uid'], run_start_uid)
 
     return uid
 
