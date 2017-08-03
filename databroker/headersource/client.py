@@ -302,7 +302,6 @@ class MDSRO(object):
                                    signature='find_run_stops')
         response = self._get(self._rstop_url, params=params)
         for r in response:
-            r['run_start'] = Document('RunStart', r['run_start'])
             yield Document('RunStop', r)
 
     def run_stop_given_uid(self, uid):
@@ -324,7 +323,6 @@ class MDSRO(object):
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_stop_given_uid')
         response = self._get(self._rstop_url, params=params)
-        response['run_start'] = Document('RunStart', response['run_start'])
         response = Document('RunStop', response)
         return response
 
@@ -399,7 +397,6 @@ class MDSRO(object):
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
-        response['run_start'] = Document('RunStart', response['run_start'])
         return Document('RunStop', response)
         # return self._cache_run_stop(response, self._RUNSTOP_CACHE)
 

@@ -198,7 +198,7 @@ def test_run_stop_insertion(mds_all):
     check_for_id(run_stop)
     # make sure the run stop is pointing to the correct run start
     referenced_run_start = run_stop['run_start']
-    assert referenced_run_start.uid == run_start_uid
+    assert referenced_run_start == run_start_uid
 
     # check the remaining fields
     comparisons = {'time': time,

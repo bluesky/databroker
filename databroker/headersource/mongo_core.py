@@ -218,7 +218,7 @@ def find_run_stops(start_col, start_cache,
     run_stop = col.find(kwargs, sort=[('time', pymongo.ASCENDING)])
 
     for rs in run_stop:
-        yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
+        yield _cache_run_stop(rs, stop_cache)
 
 
 def find_descriptors(start_col, start_cache,
