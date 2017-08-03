@@ -342,6 +342,16 @@ def get_events_generator(descriptor, event_col, descriptor_col,
     descriptor : doc.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+
+    event_col
+        Collection we can search for events given descriptor in.
+
+    descriptor_col
+        Collection we can search for descriptors given a uid
+
+    descriptor_cache : dict
+        Dict[str, Document]
+
     convert_arrays: boolean, optional
         convert 'array' type to numpy.ndarray; True by default
 
@@ -415,9 +425,22 @@ def get_events_table(descriptor, event_col, descriptor_col,
 
     Parameters
     ----------
-    descriptor : dict or str
+    descriptor : doc.Document or dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
+
+    event_col
+        Collection we can search for events given descriptor in.
+
+    descriptor_col
+        Collection we can search for descriptors given a uid
+
+    descriptor_cache : dict
+        Dict[str, Document]
+
+    convert_arrays: boolean, optional
+        convert 'array' type to numpy.ndarray; True by default
+
 
     Returns
     -------
@@ -474,21 +497,17 @@ def insert_run_start(run_start_col, run_start_cache,
 
     Parameters
     ----------
+    run_start_col
+        Collection to insert the start document into
+
+    run_start_cache : dict
+        Dict[str, Document]
+
     time : float
         The date/time as found at the client side when the run is started
     uid : str
         Globally unique id string provided to metadatastore
-    scan_id : int, optional
-        Scan identifier visible to the user and data analysis.  This is not
-        a unique identifier.
-    owner : str, optional
-        A username associated with the RunStart
-    group : str, optional
-        An experimental group associated with the RunStart
-    project : str, optional
-        Any project name to help users locate the data
-    sample : str or dict, optional
-    kwargs
+    **kwargs
         additional optional or custom fields
 
     Returns
@@ -523,6 +542,11 @@ def insert_run_stop(run_stop_col, run_stop_cache,
 
     Parameters
     ----------
+    run_stop_col
+        Collection to insert the start document into
+    run_stop_cache : dict
+        Dict[str, Document]
+
     run_start : doc.Document or dict or str
         The RunStart to insert the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
@@ -644,6 +668,9 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
 
     Parameters
     ----------
+    event_col
+         Collection to insert the Event into.
+
     descriptor : doc.Document or dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
@@ -690,7 +717,10 @@ def bulk_insert_events(event_col, descriptor, events, validate):
 
     Parameters
     ----------
-    event_descriptor : doc.Document or dict or str
+    event_col
+         The collection to insert the Events into
+
+    descriptor : doc.Document or dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     events : iterable
