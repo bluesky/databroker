@@ -3,10 +3,11 @@ from __future__ import (absolute_import, division, print_function,
 from . import core
 
 
-_API_MAP = {1: core}
 
 
 class MDSROTemplate(object):
+    _API_MAP = {1: core}
+
     def __init__(self, config, version=1):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
@@ -38,7 +39,7 @@ class MDSROTemplate(object):
     def version(self, val):
         if self._api is not None:
             raise RuntimeError("Can not change api version at runtime")
-        self._api = _API_MAP[val]
+        self._api = self._API_MAP[val]
         self._version = val
 
     @property
