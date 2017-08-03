@@ -7,10 +7,7 @@ _API_MAP = {1: core}
 
 
 class MDSROTemplate(object):
-    def __init__(self, config, version=1, auth=False):
-        if auth:
-            raise NotImplementedError("This implementation of MDS does not "
-                                      "support authentication.")
+    def __init__(self, config, version=1):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
