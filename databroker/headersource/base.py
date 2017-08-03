@@ -1,8 +1,16 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from . import core
+import numpy as np
 
 
+def _sanitize_np(val):
+    "Convert any numpy objects into built-in Python types."
+    if isinstance(val, (np.generic, np.ndarray)):
+        if np.isscalar(val):
+            return val.item()
+        return val.tolist()
+    return val
 
 
 class MDSROTemplate(object):
@@ -520,6 +528,9 @@ class MDSTemplate(MDSROTemplate):
         uid : str
             Globally unique id string provided to metadatastore
         """
+        for k, v in data.items():
+            data[k] = _sanitize_np(v)
+
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
@@ -529,6 +540,10 @@ class MDSTemplate(MDSROTemplate):
                                       validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
+        for e in events:
+            for k, v in e['data'].items():
+                e['data'][k] = _sanitize_np(v)
+
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,
