@@ -270,7 +270,8 @@ class EventSourceShim(object):
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """
-        external_map = _external_keys(ev.descriptor)
+        descriptor = self.mds.descriptor_given_uid(ev['descriptor'])
+        external_map = _external_keys(descriptor)
 
         if fields is None:
             fields = set(k for k, v in external_map.items() if v is not None)

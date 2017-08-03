@@ -417,13 +417,11 @@ class MDSRO(object):
             newest
         """
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-        descriptor = self.descriptor_given_uid(descriptor_uid)
         params = self.queryfactory(query={'descriptor': descriptor_uid,
                                           'convert_arrays': convert_arrays},
                                    signature='get_events_generator')
         events = self._get(self._event_url, params=params)
         for e in events:
-            e['descriptor'] = descriptor
             yield Document('Event', e)
 
     def get_events_table(self, descriptor):

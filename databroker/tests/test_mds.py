@@ -260,7 +260,7 @@ def test_sanitize_np(mds_all):
     ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         assert ret['filled'] == {'Z': False}
@@ -301,7 +301,7 @@ def test_bulk_insert(mds_all):
     ev_gen = mdsc.get_events_generator(e_desc)
 
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         assert ret['filled'] == {'Z': False}
@@ -322,7 +322,7 @@ def test_iterative_insert(mds_all):
     ret_lag = None
     assert isinstance(ev_gen, GeneratorType)
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         if ret_lag:
@@ -344,7 +344,7 @@ def test_iterative_insert_np(mds_all):
     ret_lag = None
     assert isinstance(ev_gen, GeneratorType)
     for ret, expt in zip(ev_gen, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
         if ret_lag:
@@ -565,7 +565,7 @@ def test_reload(mds_portable):
     ev_gen_reloaded = mds_new.get_events_generator(e_desc)
 
     for ret, ret_n, expt in zip(ev_gen_base, ev_gen_reloaded, all_data):
-        assert ret['descriptor']['uid'] == e_desc
+        assert ret['descriptor'] == e_desc
         for k in ['data', 'timestamps', 'time', 'uid', 'seq_num']:
             assert ret[k] == expt[k]
             assert ret_n[k] == expt[k]

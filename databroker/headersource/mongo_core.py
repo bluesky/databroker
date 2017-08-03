@@ -58,7 +58,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         del ev['_id']
 
         # replace descriptor with the defererenced descriptor
-        ev['descriptor'] = descriptor
+        ev['descriptor'] = descriptor_uid
         for k, v in ev['data'].items():
             _dk = data_keys[k]
             # convert any arrays stored directly in mds into ndarray
