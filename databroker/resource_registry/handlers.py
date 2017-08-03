@@ -129,9 +129,9 @@ class DummyAreaDetectorHandler(HandlerBase):
         return out_stack.squeeze()
 
 
-class HDF5DatasetSliceHandler(HandlerBase):
+class HDF5HandlerBase(HandlerBase):
     """
-    Handler for data stored in one Dataset of an HDF5 file.
+    Base Handler for data stored in an HDF5 File
 
     Parameters
     ----------
@@ -149,34 +149,57 @@ class HDF5DatasetSliceHandler(HandlerBase):
         self._file = None
         self._dataset = None
         self._data_objects = {}
+        self._swmr = False
         self.open()
 
     def get_file_list(self, datum_kwarg_gen):
         return [self._filename]
 
     def __call__(self, point_number):
-        # Don't read out the dataset until it is requested for the first time.
-        if not self._dataset:
-            self._dataset = self._file[self._key]
-
-        if point_number not in self._data_objects:
-            start = point_number * self._fpp
-            stop = (point_number + 1) * self._fpp
-            self._data_objects[point_number] = ImageStack(self._dataset,
-                                                          start, stop)
-        return self._data_objects[point_number]
+        if self._dataset is None:
+            self._dataset = [self._file[k] for k in self._key]
+        else:
+            if self._swmr:
+                [d.id.refresh() for d in self._dataset]
 
     def open(self):
         import h5py
+        if h5py.version.hdf5_version_tuple >= (1,9,178):
+            self._swmr = True
+        else:
+            self._swmr = False
         if self._file:
             return
 
-        self._file = h5py.File(self._filename, 'r')
+        self._file = h5py.File(self._filename, 'r', swmr=self._swmr)
 
     def close(self):
-        super(HDF5DatasetSliceHandler, self).close()
+        super(HDF5HandlerBase, self).close()
         self._file.close()
         self._file = None
+
+
+class HDF5DatasetSliceHandler(HDF5HandlerBase):
+    """
+    Handler for data stored in one Dataset of an HDF5 file.
+
+    Parameters
+    ----------
+    filename : string
+        path to HDF5 file
+    key : string
+        key of the single HDF5 Dataset used by this Handler
+    frame_per_point : integer, optional
+        number of frames to return as one datum, default 1
+    """
+    def __call__(self, point_number):
+        super(HDF5DatasetSliceHandler, self).__call__(point_number)
+        if point_number not in self._data_objects:
+            start = point_number * self._fpp
+            stop = (point_number + 1) * self._fpp
+            self._data_objects[point_number] = ImageStack(self._dataset[0],
+                                                          start, stop)
+        return self._data_objects[point_number]
 
 
 class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
@@ -198,43 +221,24 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
     def __init__(self, filename, frame_per_point=1):
         hardcoded_key = '/entry/data/data'
         super(AreaDetectorHDF5Handler, self).__init__(
-            filename=filename, key=hardcoded_key,
+            filename=filename, key=[hardcoded_key],
             frame_per_point=frame_per_point)
 
-
-class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
-    """
-    Handler for the 'AD_HDF5_SWMR' spec used by Area Detectors.
-
-    In this spec, the key (i.e., HDF5 dataset path) is always
-    '/entry/data/data'.
-
-    Parameters
-    ----------
-    filename : string
-        path to HDF5 file
-    frame_per_point : integer, optional
-        number of frames to return as one datum, default 1
-    """
-    specs = {'AD_HDF5_SWMR'} | HDF5DatasetSliceHandler.specs
-
-    def open(self):
-        import h5py
-        if self._file:
-            return
-
-        self._file = h5py.File(self._filename, 'r', swmr=True)
-
-    def __call__(self, point_number):
-        if self._dataset is not None:
-            self._dataset.id.refresh()
-        rtn = super(AreaDetectorHDF5SWMRHandler, self).__call__(
-            point_number)
+    def get_metadata(self, datum_kwarg_gen):
+        """
+        Retrieve info about datafile and return as dict
+        """
+        rtn = {}
+        base = '/entry/instrument/NDAttributes/'
+        fields = ['AcquireTime', 'AcquirePeriod', 'CameraManufacturer',
+                  'CameraModel', 'SDKVersion', 'FirmwareVersion']
+        for f in fields:
+            rtn[f] = self._file[base + f][0]
 
         return rtn
 
 
-class AreaDetectorHDF5TimestampHandler(HandlerBase):
+class AreaDetectorHDF5TimestampHandler(HDF5HandlerBase):
     """ Handler to retrieve timestamps from Areadetector HDF5 File
 
     In this spec, the timestamps of the images are read.
@@ -249,43 +253,25 @@ class AreaDetectorHDF5TimestampHandler(HandlerBase):
     specs = {'AD_HDF5_TS'} | HandlerBase.specs
 
     def __init__(self, filename, frame_per_point=1):
-        self._fpp = frame_per_point
-        self._filename = filename
-        self._key = ['/entry/instrument/NDAttributes/NDArrayEpicsTSSec',
-                     '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec']
-        self._file = None
-        self._dataset1 = None
-        self._dataset2 = None
-        self.open()
+        _key = ['/entry/instrument/NDAttributes/NDArrayEpicsTSSec',
+                '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec']
+        super(AreaDetectorHDF5TimestampHandler, self).__init__(
+            filename=filename, key=_key,
+            frame_per_point=frame_per_point)
 
     def __call__(self, point_number):
-        # Don't read out the dataset until it is requested for the first time.
-        if not self._dataset1:
-            self._dataset1 = self._file[self._key[0]]
-        if not self._dataset2:
-            self._dataset2 = self._file[self._key[1]]
+        super(AreaDetectorHDF5TimestampHandler, self).__call__(point_number)
         start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
-        rtn = self._dataset1[start:stop].squeeze()
-        rtn = rtn + (self._dataset2[start:stop].squeeze() * 1e-9)
+        rtn = self._dataset[0][start:stop].squeeze()
+        rtn = rtn + (self._dataset[1][start:stop].squeeze() * 1e-9)
         return rtn
 
-    def open(self):
-        import h5py
-        if self._file:
-            return
-        self._file = h5py.File(self._filename, 'r')
 
-    def close(self):
-        super(AreaDetectorHDF5TimestampHandler, self).close()
-        self._file.close()
-        self._file = None
+class AreaDetectorHDF5ROIStatsHandler(HDF5HandlerBase):
+    """ Handler to retrieve stats from Areadetector HDF5 File
 
-
-class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
-    """ Handler to retrieve timestamps from Areadetector HDF5 File
-
-    In this spec, the timestamps of the images are read. Reading
-    is done using SWMR option to allow read during processing
+    In this spec, the stats generated by the ROISTATS plugin
+    are read.
 
     Parameters
     ----------
@@ -294,19 +280,20 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
     frame_per_point : integer, optional
         number of frames to return as one datum, default 1
     """
-    specs = {'AD_HDF5_SWMR_TS'} | HandlerBase.specs
+    specs = {'AD_HDF5_ROISTATS'} | HandlerBase.specs
 
-    def open(self):
-        import h5py
-        if self._file:
-            return
-        self._file = h5py.File(self._filename, 'r', swmr=True)
+    def __init__(self, filename, frame_per_point=1):
+        _key = ['/entry/instrument/NDAttributes/Total_{}'.format(n)
+                for n in range(8)]
+        super(AreaDetectorHDF5ROIStatsHandler, self).__init__(
+            filename=filename, key=_key,
+            frame_per_point=frame_per_point)
 
     def __call__(self, point_number):
-        if (self._dataset1 is not None) and (self._dataset2 is not None):
-            self._dataset.id.refresh()
-        rtn = super(AreaDetectorHDF5SWMRTimestampHandler, self).__call__(
-            point_number)
+        super(AreaDetectorHDF5ROIStatsHandler, self).__call__(point_number)
+        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
+        rtn = [d[start:stop].squeeze() for d in self._dataset]
+        rtn = np.array(rtn).T
         return rtn
 
 
@@ -329,7 +316,6 @@ class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
         self._dset_path = dset_path
         self._file = None
         self._dset = None
-        self._swmr = False
         self.open()
 
     def open(self):
@@ -345,9 +331,6 @@ class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
 
         if not self._file:
             raise RuntimeError("File is not open")
-
-        if self._swmr:
-            self._dataset.id.refresh()
 
 
 class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
