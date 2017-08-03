@@ -600,13 +600,18 @@ def insert_run_stop(run_stop_col, run_stop_cache,
     return uid
 
 
-def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
+def insert_descriptor(descriptor_col,
                       descriptor_cache, run_start, data_keys, time, uid,
                       **kwargs):
     """Insert an EventDescriptor document in to database.
 
     Parameters
     ----------
+    descriptor_col
+        Collection to insert the start document into
+    descriptor_cache : dict
+        Dict[str, Document]
+
     run_start : doc.Document or dict or str
         The RunStart to insert a Descriptor for.  Can be either
         a Document/dict with a 'uid' key or a uid string

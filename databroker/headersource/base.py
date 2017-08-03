@@ -477,9 +477,7 @@ class MDSTemplate(MDSROTemplate):
         descriptor : str
             uid of inserted Document
         """
-        return self._api.insert_descriptor(self._runstart_col,
-                                           self._RUNSTART_CACHE,
-                                           self._descriptor_col,
+        return self._api.insert_descriptor(self._descriptor_col,
                                            self._DESCRIPTOR_CACHE,
                                            run_start=run_start,
                                            data_keys=data_keys,
