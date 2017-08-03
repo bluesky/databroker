@@ -104,9 +104,7 @@ class MDSROTemplate(object):
         """
         return self._api.run_stop_given_uid(uid,
                                             self._runstop_col,
-                                            self._RUNSTOP_CACHE,
-                                            self._runstart_col,
-                                            self._RUNSTART_CACHE)
+                                            self._RUNSTOP_CACHE)
 
     def descriptor_given_uid(self, uid):
         """Given a uid, return the EventDescriptor document
@@ -122,9 +120,7 @@ class MDSROTemplate(object):
             The EventDescriptor document fully de-referenced
         """
         return self._api.descriptor_given_uid(uid, self._descriptor_col,
-                                              self._DESCRIPTOR_CACHE,
-                                              self._runstart_col,
-                                              self._RUNSTART_CACHE)
+                                              self._DESCRIPTOR_CACHE)
 
     def stop_by_start(self, run_start):
         """Given a RunStart return it's RunStop
@@ -149,9 +145,7 @@ class MDSROTemplate(object):
         """
         return self._api.stop_by_start(run_start,
                                        self._runstop_col,
-                                       self._RUNSTOP_CACHE,
-                                       self._runstart_col,
-                                       self._RUNSTART_CACHE)
+                                       self._RUNSTOP_CACHE)
 
     def descriptors_by_start(self, run_start):
         """Given a RunStart return a list of it's descriptors
@@ -176,9 +170,7 @@ class MDSROTemplate(object):
         """
         return self._api.descriptors_by_start(run_start,
                                               self._descriptor_col,
-                                              self._DESCRIPTOR_CACHE,
-                                              self._runstart_col,
-                                              self._RUNSTART_CACHE)
+                                              self._DESCRIPTOR_CACHE)
 
     def get_events_generator(self, descriptor, convert_arrays=True):
         """A generator which yields all events from the event stream
@@ -322,9 +314,7 @@ class MDSROTemplate(object):
         run_stop : doc.Document
             The requested RunStop documents
         """
-        gen = self._api.find_run_stops(self._runstart_col,
-                                       self._RUNSTART_CACHE,
-                                       self._runstop_col,
+        gen = self._api.find_run_stops(self._runstop_col,
                                        self._RUNSTOP_CACHE,
                                        self.config['timezone'],
                                        **kwargs)
@@ -358,9 +348,7 @@ class MDSROTemplate(object):
         descriptor : doc.Document
             The requested EventDescriptor
         """
-        gen = self._api.find_descriptors(self._runstart_col,
-                                         self._RUNSTART_CACHE,
-                                         self._descriptor_col,
+        gen = self._api.find_descriptors(self._descriptor_col,
                                          self._DESCRIPTOR_CACHE,
                                          self.config['timezone'],
                                          **kwargs)
