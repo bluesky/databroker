@@ -16,13 +16,13 @@ def sanitize_np(val):
 class MDSROTemplate(object):
     _API_MAP = {1: core}
 
-    def __init__(self, config, version=1):
+    def __init__(self, config):
         self._RUNSTART_CACHE = {}
         self._RUNSTOP_CACHE = {}
         self._DESCRIPTOR_CACHE = {}
         self.config = config
         self._api = None
-        self.version = version
+        self.version = config.get('version', 1)
 
     def reset_caches(self):
         self._RUNSTART_CACHE.clear()

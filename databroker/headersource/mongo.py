@@ -11,8 +11,8 @@ from .base import MDSROTemplate, MDSTemplate
 class MDSRO(MDSROTemplate):
     _API_MAP = {1: mongo_core}
 
-    def __init__(self, config, version=1, auth=False):
-        super(MDSRO, self).__init__(config, version=version)
+    def __init__(self, config, auth=False):
+        super(MDSRO, self).__init__(config)
         self.reset_connection()
         self.auth = auth
 
