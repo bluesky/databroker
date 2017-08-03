@@ -262,8 +262,8 @@ def find_descriptors(start_col, start_cache,
                                         sort=[('time', pymongo.ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor, descriptor_cache,
-                                start_col, start_cache)
+        yield _cache_descriptor(event_descriptor, descriptor_cache)
+
 
 
 def find_events(start_col, start_cache,

@@ -133,8 +133,7 @@ def _cache_run_stop(run_stop, run_stop_cache):
     return run_stop
 
 
-def _cache_descriptor(descriptor, descritor_cache,
-                      run_start_col, run_start_cache):
+def _cache_descriptor(descriptor, descritor_cache):
     """De-reference and cache a RunStop document
 
     The de-referenced Document is cached against the
@@ -156,20 +155,16 @@ def _cache_descriptor(descriptor, descritor_cache,
     # pop the ObjectID
     oid = descriptor.pop('_id', None)
     try:
-        run_start_uid = descriptor['run_start']
+        descriptor['run_start']
     except KeyError:
-        run_start_uid = descriptor.pop('run_start_id')
-
-    # do the run_start referencing
-    descriptor['run_start'] = run_start_given_uid(run_start_uid,
-                                                  run_start_col,
-                                                  run_start_cache)
+        descriptor['run_start'] = descriptor.pop('run_start_id')
 
     # create the Document instance
     descriptor = doc.Document('EventDescriptor', descriptor)
 
     descritor_cache[descriptor['uid']] = descriptor
-    descritor_cache[oid] = descriptor
+    if oid is not None:
+        descritor_cache[oid] = descriptor
 
     return descriptor
 
@@ -234,8 +229,7 @@ def run_stop_given_uid(uid, run_stop_col, run_stop_cache,
     # get the raw run_stop
     run_stop = run_stop_col.find_one({'uid': uid})
 
-    return _cache_run_stop(run_stop, run_stop_cache,
-                           run_start_col, run_start_cache)
+    return _cache_run_stop(run_stop, run_stop_cache)
 
 
 def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
@@ -264,8 +258,7 @@ def descriptor_given_uid(uid, descriptor_col, descriptor_cache,
         pass
     descriptor = descriptor_col.find_one({'uid': uid})
 
-    return _cache_descriptor(descriptor, descriptor_cache, run_start_col,
-                             run_start_cache)
+    return _cache_descriptor(descriptor, descriptor_cache)
 
 
 def stop_by_start(run_start, run_stop_col, run_stop_cache,
@@ -295,8 +288,7 @@ def stop_by_start(run_start, run_stop_col, run_stop_cache,
     if run_stop is None:
         raise NoRunStop("No run stop exists for {!r}".format(run_start))
 
-    return _cache_run_stop(run_stop, run_stop_cache,
-                           run_start_col, run_start_cache)
+    return _cache_run_stop(run_stop, run_stop_cache)
 
 
 def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
@@ -328,8 +320,7 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache,
     # refer to the given run_start
     descriptors = descriptor_col.find({'run_start': run_start_uid})
     # loop over the found documents, cache, and dereference
-    rets = [_cache_descriptor(descriptor, descriptor_cache,
-                              run_start_col, run_start_cache)
+    rets = [_cache_descriptor(descriptor, descriptor_cache)
             for descriptor in descriptors]
 
     # if nothing found, raise
@@ -585,7 +576,7 @@ def insert_run_stop(run_start_col, run_start_cache,
         run_stop['reason'] = reason
 
     col.insert_one(run_stop)
-    _cache_run_stop(run_stop, run_stop_cache, run_start_col, run_start_cache)
+    _cache_run_stop(run_stop, run_stop_cache)
     logger.debug("Inserted RunStop with uid %s referencing RunStart "
                  " with uid %s", run_stop['uid'], run_start['uid'])
 
@@ -638,8 +629,8 @@ def insert_descriptor(run_start_col, run_start_cache, descriptor_col,
     # TODO validation
     col.insert_one(descriptor)
 
-    descriptor = _cache_descriptor(descriptor, descriptor_cache,
-                                   run_start_col, run_start_cache)
+    descriptor = _cache_descriptor(descriptor, descriptor_cache)
+
 
     logger.debug("Inserted EventDescriptor with uid %s referencing "
                  "RunStart with uid %s", descriptor['uid'], run_start_uid)
@@ -837,7 +828,7 @@ def find_run_stops(start_col, start_cache,
     run_stop = col.find(kwargs, sort=[('time', ASCENDING)])
 
     for rs in run_stop:
-        yield _cache_run_stop(rs, stop_cache, start_col, start_cache)
+        yield _cache_run_stop(rs, stop_cache)
 
 
 def find_descriptors(start_col, start_cache,
@@ -881,8 +872,8 @@ def find_descriptors(start_col, start_cache,
                                         sort=[('time', ASCENDING)])
 
     for event_descriptor in event_descriptor_objects:
-        yield _cache_descriptor(event_descriptor, descriptor_cache,
-                                start_col, start_cache)
+        yield _cache_descriptor(event_descriptor, descriptor_cache)
+
 
 
 def find_last(start_col, start_cache, num):

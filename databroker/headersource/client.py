@@ -265,7 +265,6 @@ class MDSRO(object):
                                    signature='find_descriptors')
         response = self._get(self._desc_url, params=params)
         for r in response:
-            r['run_start'] = Document('RunStart', r['run_start'])
             yield Document('EventDescriptor', r)
 
 

@@ -108,7 +108,7 @@ def test_event_descriptor_insertion(mds_all):
 
     # make sure the event descriptor is pointing to the correct run start
     referenced_run_start = ev_desc_mds['run_start']
-    assert referenced_run_start.uid == run_start_uid
+    assert referenced_run_start == run_start_uid
     assert ev_desc_mds['time'] == time
 
     for k in data_keys:
