@@ -594,3 +594,33 @@ class Xspress3HDF5Handler(HandlerBase):
 
     def __repr__(self):
         return '{0.__class__.__name__}(filename={0._filename!r})'.format(self)
+
+
+class DebugHandler(HandlerBase):
+    print_attrs = ['_path', '_template', '_filename']
+    """Useful when you want info out of FileStore"""
+    def __init__(self, fpath, template, filename, frame_per_point=1):
+        self._path = os.path.join(fpath, '')
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
+
+    def _fnames_for_point(self, point_number):
+        start = int(point_number * self._fpp)
+        stop = int((point_number + 1) * self._fpp)
+        for j in range(start, stop):
+            yield self._template % (self._path, self._filename, j)
+
+    def __call__(self, point_number):
+        for at in self.print_attrs:
+            s = at + '={}'
+            print(s.format(getattr(self, at)))
+        for fn in self._fnames_for_point(point_number):
+            print('fn={}'.format(fn))
+        return None
+
+    def get_file_list(self, datum_kwargs):
+        ret = []
+        for d_kw in datum_kwargs:
+            ret.extend(self._fnames_for_point(**d_kw))
+        return ret

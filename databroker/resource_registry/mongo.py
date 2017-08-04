@@ -660,3 +660,76 @@ class FileStoreMoving(FileStore):
                 del self._handler_cache[k]
 
         return ret
+
+    def change_only_root(self, resource_or_uid, new_root):
+        '''Change the root directory of a given resource without moving files
+
+        The registered handler must have a `get_file_list` method and the
+        process running this method must have read/write access to both the
+        source and destination file systems.
+
+        Internally the resource level directory information is stored
+        as two parts: the root and the resource_path.  The 'root' is
+        the non-semantic component (typically a mount point) and the
+        'resource_path' is the 'semantic' part of the file path.  For
+        example, it is common to collect data into paths that look like
+        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
+        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
+
+
+
+        Parameters
+        ----------
+        resource_or_uid : Document or str
+            The resource to move the files of
+
+        new_root : str
+            The new 'root' to copy the files into
+
+        verify : bool, optional (False)
+            Verify that the move happened correctly.  This currently
+            is not implemented and will raise if ``verify == True``.
+
+        file_rename_hook : callable, optional
+            If provided, must be a callable with signature ::
+
+               def hook(file_counter, total_number, old_name, new_name):
+                   pass
+
+            This will be run in the inner loop of the file copy step and is
+            run inside of an unconditional try/except block.
+
+        See Also
+        --------
+        `FileStore.shift_root`
+
+
+        .. Warning
+
+           This will change documents in your data base.
+           Be sure you know what you are doing.
+
+        '''
+        resource = dict(self.resource_given_uid(resource_or_uid))
+
+        # update the database
+        new_resource = dict(resource)
+        new_resource['root'] = new_root
+
+        update_col = self._resource_update_col
+        resource_col = self._resource_col
+        ret = self._api.update_resource(update_col, resource_col,
+                                        old=resource,
+                                        new=new_resource,
+                                        cmd_kwargs=dict(
+                                            new_root=new_root),
+                                        cmd='change_only_root')
+
+        # nuke caches
+        uid = resource['uid']
+        self._resource_cache.pop(uid, None)
+        for k in list(self._handler_cache):
+            if k[0] == uid:
+                del self._handler_cache[k]
+
+        return ret
