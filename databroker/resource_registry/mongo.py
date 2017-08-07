@@ -2,19 +2,13 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import logging
-import os
-import os.path
-import shutil
-from contextlib import contextmanager
 
-import warnings
 import boltons.cacheutils
 import pymongo
 import six
 from pymongo import MongoClient
 
 from . import mongo_core
-from ..utils import _make_sure_path_exists
 
 from .base import (_ChainMap, FileStoreTemplateRO,
                    FileStoreTemplate, FileStoreMovingTemplate)
