@@ -1,4 +1,5 @@
 from __future__ import print_function
+from importlib import import_module
 import itertools
 import warnings
 import six  # noqa
@@ -11,6 +12,7 @@ import requests
 from doct import Document
 import pandas as pd
 import os
+import yaml
 
 
 from .core import (Header,
@@ -168,6 +170,56 @@ class Results(object):
                     if self._data_key in descriptor['data_keys']:
                         yield header
                         break
+
+
+CONFIG_SEARCH_PATH = (os.path.expanduser('~/.config/databroker/'),
+                      '/etc/databroker',)
+
+
+if six.PY2:
+    FileNotFoundError = IOError
+
+
+def lookup_config(name):
+    """
+    Search for a databroker configuration file with a given name.
+
+    For exmaple, the name 'dba' will cause the function to search for:
+
+    * ~/.config/databroker/dba.yml
+    * ~/etc/databroker/dba.yml
+
+    Parameters
+    ----------
+    name : string
+
+    Returns
+    -------
+    config : dict
+    """
+    if not name.endswith('.yml'):
+        name += '.yml'
+    tried = []
+    for path in CONFIG_SEARCH_PATH:
+        filename = os.path.join(path, name)
+        tried.append(filename)
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                return yaml.load(f)
+    else:
+        raise FileNotFoundError("No config file named {!r} could be found in "
+                                "the following locations:\n{}"
+                                "".format(name,'\n'.join(tried)))
+
+
+
+def load_component(config):
+    modname = config['module']
+    clsname = config['class']
+    config = config['config']
+    mod = import_module(modname)
+    cls = getattr(mod, clsname)
+    return cls(config)
 
 
 class BrokerES(object):
@@ -961,6 +1013,17 @@ class Broker(BrokerES):
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      EventSourceShim(mds, fs))
         self.filters = filters
+
+    @classmethod
+    def from_config(cls, config):
+        mds = load_component(config['metadatastore'])
+        assets = load_component(config['assets'])
+        return cls(mds, assets)
+
+    @classmethod
+    def named(cls, name):
+        return cls.from_config(lookup_config(name))
+
 
 
 def _munge_time(t, timezone):

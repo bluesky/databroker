@@ -13,7 +13,7 @@ except AttributeError:
                       "and install 'attrs' which provides the correct module.")
 
 
-from .broker import Broker, ArchiverEventSource
+from .broker import Broker, ArchiverEventSource, lookup_config
 
 # set version string using versioneer
 from ._version import get_versions
