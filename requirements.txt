@@ -11,3 +11,8 @@ requests
 six
 toolz
 tzlocal
+ujson
+mongoquery
+pyyaml
+tifffile
+tornado
