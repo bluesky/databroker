@@ -68,6 +68,13 @@ except ImportError:
 
             return _ChainMap(m, self)
 
+        def __iter__(self):
+            for k in set(self.primary) | set(self.fallback):
+                yield k
+
+        def __len__(self):
+            return len(set(self.primary) | set(self.fallback))
+
 
 class FileStoreTemplateRO(object):
     '''Base FileStore object that knows how to read the database.'''
