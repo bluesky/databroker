@@ -228,7 +228,6 @@ class FileStoreTemplateRO(object):
             document returns the externally stored data
 
         """
-        res_in = resource
         resource = self._resource_cache[resource]
 
         h_cache = self._handler_cache
@@ -236,10 +235,7 @@ class FileStoreTemplateRO(object):
         spec = resource['spec']
         handler = self.handler_reg[spec]
 
-        if isinstance(res_in, six.string_types):
-            key = (str(resource['uid']), handler.__name__)
-        else:
-            key = (str(resource['_id']), handler.__name__)
+        key = (str(resource['uid']), handler.__name__)
 
         try:
             return h_cache[key]
