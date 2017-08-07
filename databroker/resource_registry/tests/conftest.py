@@ -40,7 +40,8 @@ def _use_factory(request):
     return fs
 
 
-@pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory])
+@pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory],
+                ids=['mongo', 'sqlite'])
 def fs(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with v1.
@@ -61,7 +62,8 @@ def fs_mongo(request):
 fs_v1 = fs
 
 
-@pytest.fixture(scope='class', params=[mongo_fs_factory, sqlite_fs_factory])
+@pytest.fixture(scope='class', params=[mongo_fs_factory, sqlite_fs_factory],
+                ids=['mongo', 'sqlite'])
 def fs_cls(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with v1.
