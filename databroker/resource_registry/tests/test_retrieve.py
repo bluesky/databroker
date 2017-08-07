@@ -68,8 +68,9 @@ def test_register_fail(fs):
 def test_context_manager_replace(fs):
     fsa = fs
     # nuke anything already registered, just to be safe.
-    for k in fs.handler_reg:
-        fs.deregister_handler(k)
+    while len(fs.handler_reg):
+        for k in list(fs.handler_reg):
+            fs.deregister_handler(k)
     # check syn-mod not in the registry
     assert 'syn-mod' not in fsa.handler_reg
 
