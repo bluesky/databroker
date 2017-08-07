@@ -20,7 +20,7 @@ from ..utils import _make_sure_path_exists
 _API_MAP = {1: core}
 
 
-class DuplicateHandler(Exception):
+class DuplicateHandler(RuntimeError):
     pass
 
 

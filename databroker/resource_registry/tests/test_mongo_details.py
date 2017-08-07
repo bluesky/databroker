@@ -6,12 +6,14 @@ import pytest
 from ..utils import install_sentinels
 
 
-def test_double_sentinel(fs):
+def test_double_sentinel(fs_mongo):
+    fs = fs_mongo
     with pytest.raises(RuntimeError):
         install_sentinels(fs.config, fs.version)
 
 
-def test_index(fs):
+def test_index(fs_mongo):
+    fs = fs_mongo
     indx = fs._datum_col.index_information()
 
     assert len(indx) == 3
