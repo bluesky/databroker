@@ -57,11 +57,13 @@ def _make_time_params():
                        '2015-03-08 02:59:59']
     for val in bad_test_values:
         rets.append([val, False, pytz.NonExistentTimeError])
+    ids += [None] * len(bad_test_values)
 
     bad_test_values = ['2015-11-01 01:00:00',
                        '2015-11-01 01:59:59']
     for val in bad_test_values:
         rets.append([val, False, pytz.AmbiguousTimeError])
+    ids += [None] * len(bad_test_values)
 
     bad_test_values = ['2015-04-15 03:',
                        str(ttime.time()),
@@ -69,6 +71,7 @@ def _make_time_params():
                        ]
     for val in bad_test_values:
         rets.append([val, False, ValueError])
+    ids += [None, 'curtime', None]
 
     return pytest.mark.parametrize('val,should_succeed,etype', rets, ids=ids)
 
