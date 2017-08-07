@@ -16,8 +16,6 @@ try:
 except ImportError:
     import pathlib2 as pathlib
 from ..utils import _make_sure_path_exists
-
-_API_MAP = {1: core}
 from pkg_resources import resource_filename
 import json
 
@@ -106,7 +104,7 @@ class FileStoreTemplateRO(object):
     def version(self, val):
         if self._api is not None:
             raise RuntimeError("Can not change api version at runtime")
-        self._api = _API_MAP[val]
+        self._api = self._API_MAP[val]
         self._version = val
 
     @property
