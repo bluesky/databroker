@@ -18,6 +18,8 @@ except ImportError:
 from ..utils import _make_sure_path_exists
 
 _API_MAP = {1: core}
+from pkg_resources import resource_filename
+import json
 
 
 class DuplicateHandler(RuntimeError):
@@ -80,6 +82,21 @@ class FileStoreTemplateRO(object):
     '''Base FileStore object that knows how to read the database.'''
     KNOWN_SPEC = dict()
     DuplicateHandler = DuplicateHandler
+    _API_MAP = {1: core}
+
+    # load the built-in schema
+    for spec_name in ['AD_HDF5', 'AD_SPE']:
+        tmp_dict = {}
+        base_name = 'resource_registry/json/'
+        resource_name = '{}{}_resource.json'.format(base_name, spec_name)
+        datum_name = '{}{}_datum.json'.format(base_name, spec_name)
+        with open(resource_filename('databroker',
+                                    resource_name), 'r') as fin:
+            tmp_dict['resource'] = json.load(fin)
+        with open(resource_filename('databroker',
+                                    datum_name), 'r') as fin:
+            tmp_dict['datum'] = json.load(fin)
+        KNOWN_SPEC[spec_name] = tmp_dict
 
     @property
     def version(self):
