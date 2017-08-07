@@ -354,7 +354,7 @@ class FileStoreTemplateRO(object):
         file_list = self.get_file_list(resource, datum_kwarg_gen)
 
         # check that all files share the same root
-        old_root = resource['root']
+        old_root = resource.get('root')
         if not old_root:
             warnings.warn("There is no 'root' in this resource which "
                           "is required to be able to change the root. "
