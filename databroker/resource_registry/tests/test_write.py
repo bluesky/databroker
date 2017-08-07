@@ -68,7 +68,8 @@ def _data_dec(func):
 
 
 @_data_dec
-@pytest.mark.parametrize('base_path', [None, BASE_PATH])
+@pytest.mark.parametrize('base_path', [None, BASE_PATH],
+                         ids=['None', 'tmpdir'])
 def test_np_save(dd, base_path, fs):
 
     eid = fs_write.save_ndarray(dd, fs, base_path)

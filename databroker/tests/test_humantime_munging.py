@@ -48,6 +48,7 @@ def _make_time_params():
                         zone.localize(datetime.datetime.now()),
                         ]
 
+    ids = [None] * (len(good_test_values) - 3) + ['time', 'now', 'tznow']
     rets = []
     for val in good_test_values:
         rets.append([val, True, None])
@@ -69,7 +70,7 @@ def _make_time_params():
     for val in bad_test_values:
         rets.append([val, False, ValueError])
 
-    return pytest.mark.parametrize('val,should_succeed,etype', rets)
+    return pytest.mark.parametrize('val,should_succeed,etype', rets, ids=ids)
 
 
 @_make_time_params()
