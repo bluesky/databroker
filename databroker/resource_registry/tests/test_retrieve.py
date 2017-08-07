@@ -40,8 +40,6 @@ import six
 import logging
 
 
-from .. import api as fsa
-from .utils import fs_setup, fs_teardown
 import numpy as np
 
 from .utils import SynHandlerMod, SynHandlerEcho
@@ -50,55 +48,14 @@ import pytest
 logger = logging.getLogger(__name__)
 
 
-def setup_module(module):
-    fs_setup()
-
-
-def teardown_module(module):
-    fs_teardown()
-
-
-def test_get_handler_global():
-    h_cache = fsa._FS_SINGLETON._handler_cache
-    mock_base = dict(spec='syn-mod',
-                     resource_path='',
-                     resource_kwargs={'shape': (5, 7)})
-
-    res = fsa.insert_resource(**mock_base)
-    cache_key = (str(res['id']), SynHandlerMod.__name__)
-    with fsa.handler_context({'syn-mod': SynHandlerMod}):
-
-        handle = fsa.get_spec_handler(res['id'])
-
-        assert isinstance(handle, SynHandlerMod)
-        assert cache_key in h_cache
-
-    assert cache_key not in h_cache
-
-
-def test_overwrite_global():
-    h_cache = fsa._FS_SINGLETON._handler_cache
-    mock_base = dict(spec='syn-mod',
-                     resource_path='',
-                     resource_kwargs={'shape': (5, 7)})
-
-    res = fsa.insert_resource(**mock_base)
-
-    cache_key = (str(res['id']), SynHandlerMod.__name__)
-    with fsa.handler_context({'syn-mod': SynHandlerMod}):
-        fsa.get_spec_handler(res['id'])
-        assert cache_key in h_cache
-        fsa.register_handler('syn-mod', SynHandlerEcho, overwrite=True)
-        assert cache_key not in h_cache
-
-
 def test_context():
     with SynHandlerMod('', (4, 2)) as hand:
         for j in range(1, 5):
             assert np.all(hand(j) < j)
 
 
-def test_register_fail():
+def test_register_fail(fs):
+    fsa = fs
     with fsa.handler_context({'syn-mod': SynHandlerMod}):
         # shouldn't raise, it is a no-op as it is regiristering
         # the same class with the same name
@@ -108,19 +65,35 @@ def test_register_fail():
             fsa.register_handler('syn-mod', SynHandlerEcho)
 
 
-def test_context_manager_replace():
+def test_context_manager_replace(fs):
+    fsa = fs
+    # nuke anything already registered, just to be safe.
+    for k in fs.handler_reg:
+        fs.deregister_handler(k)
+    # check syn-mod not in the registry
+    assert 'syn-mod' not in fsa.handler_reg
+
+    # put syn-mod in with context manager
     with fsa.handler_context({'syn-mod': SynHandlerMod}):
-        assert fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerMod
+        # check that it is the version we expect
+        assert fsa.handler_reg['syn-mod'] is SynHandlerMod
+
+        # over-ride syn-mod with a second context manager
         with fsa.handler_context({'syn-mod': SynHandlerEcho}):
-            assert fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerEcho
-        assert fsa._FS_SINGLETON.handler_reg['syn-mod'] is SynHandlerMod
-    assert 'syn-mod' not in fsa._FS_SINGLETON.handler_reg
+            # check that we get the second one
+            assert fsa.handler_reg['syn-mod'] is SynHandlerEcho
+
+        # and that it correctly rollsback to first value
+        assert fsa.handler_reg['syn-mod'] is SynHandlerMod
+    # and is empty again when we are done.
+    assert 'syn-mod' not in fsa.handler_reg
 
 
-def test_deregister():
-    test_reg = fsa._FS_SINGLETON.handler_reg
+def test_deregister(fs):
+
+    test_reg = fs.handler_reg
     test_spec_name = str(uuid.uuid4())
-    fsa.register_handler(test_spec_name, SynHandlerMod)
+    fs.register_handler(test_spec_name, SynHandlerMod)
     assert test_reg[test_spec_name] is SynHandlerMod
-    fsa.deregister_handler(test_spec_name)
+    fs.deregister_handler(test_spec_name)
     assert test_spec_name not in test_reg

@@ -4,43 +4,6 @@ import uuid
 import itertools
 from ..handlers_base import HandlerBase
 import numpy as np
-from ..utils import install_sentinels
-
-
-conn = None
-db_name = "fs_testing_disposable_{}".format(str(uuid.uuid4()))
-old_conf = None
-
-
-def fs_setup():
-    "Create a fresh database with unique (random) name."
-    from ..api import db_connect, db_disconnect
-    from .. import conf as fconf
-
-    global conn
-    global old_conf
-
-    old_conf = dict(fconf.connection_config)
-    db_disconnect()
-    test_conf = dict(database=db_name, host='localhost',
-                     port=27017)
-    install_sentinels(test_conf, 1)
-    conn = db_connect(**test_conf)
-    old_conf.clear()
-    old_conf.update(fconf.connection_config)
-    fconf.connection_config.clear()
-    fconf.connection_config.update(test_conf)
-
-
-def fs_teardown():
-    "Drop the fresh database and disconnect."
-    from ..api import db_disconnect
-    from .. import conf as fconf
-
-    conn.drop_database(db_name)
-    db_disconnect()
-    fconf.connection_config.clear()
-    fconf.connection_config.update(old_conf)
 
 
 class SynHandlerMod(HandlerBase):

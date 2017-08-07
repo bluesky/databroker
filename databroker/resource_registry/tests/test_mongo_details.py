@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import pytest
 
-from .utils import install_sentinels
+from ..utils import install_sentinels
 
 
 def test_double_sentinel(fs):
