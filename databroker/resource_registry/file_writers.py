@@ -11,7 +11,6 @@ import os
 import os.path as op
 import datetime
 
-from . import api as fsc
 from ..utils import _make_sure_path_exists
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ class NpyWriter(HandlerBase):
 
     SPEC_NAME = 'npy'
 
-    def __init__(self, fpath, resource_kwargs=None):
+    def __init__(self, fpath, fs, resource_kwargs=None):
         if op.exists(fpath):
             raise IOError("the requested file {fpath} already exist")
         self._fpath = fpath
@@ -50,6 +49,7 @@ class NpyWriter(HandlerBase):
         self._f_custom = dict(resource_kwargs)
 
         self._writable = True
+        self.fs = fs
 
     def add_data(self, data, uid=None, resource_kwargs=None):
         """
@@ -87,14 +87,16 @@ class NpyWriter(HandlerBase):
 
         np.save(self._fpath, np.asanyarray(data))
         self._writable = False
-        fb = fsc.insert_resource(self.SPEC_NAME, self._fpath, self._f_custom,
-                                 root='/')
-        evl = fsc.insert_datum(fb, uid, {})
+        fb = self.fs.insert_resource(self.SPEC_NAME,
+                                     self._fpath,
+                                     self._f_custom,
+                                     root='/')
+        evl = self.fs.insert_datum(fb, uid, {})
 
         return evl.datum_id
 
 
-def save_ndarray(data, base_path=None, filename=None):
+def save_ndarray(data, fs, base_path=None, filename=None):
     """
     Helper method to mindlessly save a numpy array to disk.
 
@@ -125,7 +127,7 @@ def save_ndarray(data, base_path=None, filename=None):
         filename = str(uuid.uuid4())
     _make_sure_path_exists(base_path)
     fpath = op.join(base_path, filename + '.npy')
-    with NpyWriter(fpath) as fout:
+    with NpyWriter(fpath, fs) as fout:
         eid = fout.add_data(data)
 
     return eid
