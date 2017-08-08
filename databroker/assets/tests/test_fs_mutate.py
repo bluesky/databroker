@@ -173,7 +173,7 @@ def test_moving(moving_files, remove):
     for f in fnames:
         assert os.path.exists(f)
 
-    res2, log = fs.change_root(res, new_root, remove_origin=remove)
+    res2, log = fs.move_files(res, new_root, remove_origin=remove)
     print(res2['root'])
     for f in fnames:
         if old_root:
@@ -201,7 +201,7 @@ def test_no_root(fs_v1, tmpdir):
                              os.path.join(str(tmpdir),
                                           local_path),
                              {'fmt': fmt})
-    fs_v1.change_root(res, '/foobar')
+    fs_v1.move_files(res, '/foobar')
 
 
 def test_get_resource(moving_files):

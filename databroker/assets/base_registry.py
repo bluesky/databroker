@@ -512,8 +512,8 @@ class FileStoreTemplate(BaseRegistryRO):
 
 class FileStoreMovingTemplate(FileStoreTemplate):
     '''FileStore object that knows how to move files.'''
-    def change_root(self, resource_or_uid, new_root, remove_origin=True,
-                    verify=False, file_rename_hook=None):
+    def move_files(self, resource_or_uid, new_root, remove_origin=True,
+                   verify=False, file_rename_hook=None):
         '''Change the root directory of a given resource
 
         The registered handler must have a `get_file_list` method and the

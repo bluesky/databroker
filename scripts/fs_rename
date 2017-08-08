@@ -41,7 +41,7 @@ def move_header(db, header, new_root, pre_shift, **kwargs):
             db.fs.shift_root(r, pre_shift)
     for r in resource:
         print("about to rename files in resource {}".format(r))
-        db.fs.change_root(r, new_root, **kwargs)
+        db.fs.move_files(r, new_root, **kwargs)
 
 
 if __name__ == '__main__':
