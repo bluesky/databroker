@@ -167,7 +167,8 @@ def test_deprecated_api(db, RE):
 
 
 @py3
-def test_indexing(db, RE):
+def test_indexing(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
     uids = []
     for i in range(10):
@@ -190,18 +191,17 @@ def test_indexing(db, RE):
 
 
 @py3
-def test_full_text_search(db, RE):
+def test_full_text_search(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
 
     uid, = RE(count([det]), foo='some words')
     RE(count([det]))
 
-    assert len(list(db())) == 2
-
     try:
         list(db('some words'))
     except NotImplementedError:
-        raise pytest.skip("This mongo-like backend does not support $text.")
+        raise pytest.skip("This backend does not support $text.")
 
     assert len(list(db('some words'))) == 1
     header, = db('some words')
@@ -209,6 +209,7 @@ def test_full_text_search(db, RE):
 
     # Full text search does *not* apply to keys.
     assert len(list(db('foo'))) == 0
+
 
 @py3
 def test_table_alignment(db, RE):
@@ -252,7 +253,8 @@ def test_partial_uid_lookup(db, RE):
 
 
 @py3
-def test_find_by_float_time(db, RE):
+def test_find_by_float_time(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
 
     before, = RE(count([det]))
@@ -262,7 +264,6 @@ def test_find_by_float_time(db, RE):
     ttime.sleep(0.25)
     after, = RE(count([det]))
 
-    # Three runs in total were saved.
     assert len(list(db())) == 3
 
     # We'll find the one by specifying a time window around its start time.
@@ -271,7 +272,8 @@ def test_find_by_float_time(db, RE):
 
 
 @py3
-def test_find_by_string_time(db, RE):
+def test_find_by_string_time(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
 
     uid, = RE(count([det]))
@@ -282,11 +284,13 @@ def test_find_by_string_time(db, RE):
     day_after_tom = date.today() + timedelta(days=2)
     day_after_tom_str = day_after_tom.strftime('%Y-%m-%d')
     assert len(list(db(start_time=today_str, stop_time=tomorrow_str))) == 1
-    assert len(list(db(start_time=tomorrow_str, stop_time=day_after_tom_str))) == 0
+    assert len(list(db(start_time=tomorrow_str,
+                       stop_time=day_after_tom_str))) == 0
 
 
 @py3
-def test_data_key(db, RE):
+def test_data_key(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
     RE(count([det1]))
     RE(count([det1, det2]))
@@ -347,7 +351,8 @@ def test_alias(db, RE):
 
 
 @py3
-def test_filters(db, RE):
+def test_filters(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
     RE(count([det]), user='Ken')
     dan_uid, = RE(count([det]), user='Dan', purpose='calibration')
@@ -525,7 +530,6 @@ def test_handler_options(db, RE):
     with pytest.raises(KeyError):
         list(db.get_images(h, 'image'))
 
-
     class ImageHandler(object):
         RESULT = np.zeros((5, 5))
 
@@ -534,7 +538,6 @@ def test_handler_options(db, RE):
 
         def __call__(self, **datum_kwargs):
             return self.RESULT
-
 
     class DummyHandler(object):
         def __init__(*args, **kwargs):
@@ -545,7 +548,7 @@ def test_handler_options(db, RE):
 
     # Use a one-off handler registry.
     ev, ev2 = db.get_events(h, fields=['image'], fill=True,
-                        handler_registry={'foo': ImageHandler})
+                            handler_registry={'foo': ImageHandler})
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 
@@ -570,7 +573,7 @@ def test_handler_options(db, RE):
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
     ev, ev2 = db.get_events(h, fields=['image'], fill=True,
-                        handler_overrides={'image': DummyHandler})
+                            handler_overrides={'image': DummyHandler})
     assert ev['data']['image'] == 'dummy'
     assert ev['filled']['image']
 
@@ -580,7 +583,7 @@ def test_handler_options(db, RE):
     assert ev['filled']['image']
 
     res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-                    handler_overrides={'image': DummyHandler})
+                       handler_overrides={'image': DummyHandler})
     assert res['image'].iloc[0] == 'dummy'
     assert ev['filled']['image']
 
@@ -589,7 +592,7 @@ def test_handler_options(db, RE):
     db.fs.register_handler('foo', DummyHandler, overwrite=True)
 
     res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
-    assert res[0].shape ==  ImageHandler.RESULT.shape
+    assert res[0].shape == ImageHandler.RESULT.shape
 
     res = db.get_images(h, 'image', handler_override=ImageHandler)
     assert res[0].shape == ImageHandler.RESULT.shape
@@ -704,8 +707,8 @@ def test_results_multiple_iters(db, RE):
 def test_dict_header(db, RE):
     # Ensure that we aren't relying on h being a doct as opposed to a dict.
     RE.subscribe('all', db.insert)
-    RE(count([det]))
-    h, = db()
+    uid, = RE(count([det]))
+    h = db[uid]
     expected = list(db.get_events(h))
     actual = list(db.get_events(dict(h)))
     assert actual == expected
@@ -754,7 +757,7 @@ def test_config_data(db, RE):
 @py3
 def test_events(db, RE):
     RE.subscribe('all', db.insert)
-    RE(count([det]))
-    h, = db()
+    uid, = RE(count([det]))
+    h = db[uid]
     events = list(h.events())
     assert len(events) == 1

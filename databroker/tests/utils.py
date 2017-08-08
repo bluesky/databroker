@@ -108,7 +108,6 @@ def build_pymongo_backed_broker(request):
 
 
 def start_md_server(testing_config):
-    f = os.path.dirname(os.path.realpath(__file__))
     proc = Popen(["start_md_server", "--mongo-host",
                   testing_config["mongohost"],
                   "--mongo-port",
@@ -116,8 +115,7 @@ def start_md_server(testing_config):
                   "--database", testing_config['database'],
                   "--timezone", testing_config['tzone'],
                   "--service-port",
-                  str(testing_config['serviceport'])],
-                 cwd=f)
+                  str(testing_config['serviceport'])])
     print('Started the server with configuration..:{}'.format(testing_config))
     ttime.sleep(5)  # make sure the process is started
     return proc
@@ -130,22 +128,22 @@ def stop_md_server(proc, testing_config):
     conn = MongoClient(host=testing_config['mongohost'],
                        port=testing_config['mongoport'])
     conn.drop_database(testing_config['database'])
-    ttime.sleep(2)  # make sure the process is stopped
 
 
 def build_client_backend_broker(request):
     from ..headersource.client import MDS
     from ..assets.utils import create_test_database
     from ..assets.mongo import FileStore
-
+    from random import randint
+    port = randint(9000, 60000)
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),
-                          serviceport=9009, tzone='US/Eastern')
+                          serviceport=port, tzone='US/Eastern')
 
     proc = start_md_server(testing_config)
 
     tmds = MDS({'host': 'localhost',
-                'port': 9009,
+                'port': port,
                 'timezone': 'US/Eastern'})
     db_name = "fs_testing_base_disposable_{uid}"
     fs_test_conf = create_test_database(host='localhost',
