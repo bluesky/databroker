@@ -224,10 +224,6 @@ class RegistryRO(BaseRegistryRO):
             self.__db.disconnect()
         self.__db = None
 
-    def reconfigure(self, config):
-        self.disconnect()
-        super(RegistryRO, self).reconfigure(config)
-
     @property
     def _db(self):
         if self.__db is None:

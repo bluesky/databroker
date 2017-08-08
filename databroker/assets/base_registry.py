@@ -107,6 +107,9 @@ class BaseRegistryRO(object):
                                    m=set(self.REQ_CONFIG) - set(config)))
         self._config = config
 
+    def disconnect(self):
+        pass
+
     def reconfigure(self, config):
         '''Reconfigure the Registry object
 
@@ -116,6 +119,7 @@ class BaseRegistryRO(object):
         ----------
         config : dict
         '''
+        self.disconnect()
         self.clear_process_cache()
         self.config = config
         self._api = None

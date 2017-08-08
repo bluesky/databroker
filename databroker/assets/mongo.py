@@ -53,10 +53,6 @@ class RegistryRO(BaseRegistryRO):
         self.__datum_col = None
         self.__res_col = None
 
-    def reconfigure(self, config):
-        self.disconnect()
-        super(RegistryRO, self).reconfigure(config)
-
     @property
     def _db(self):
         if self.__db is None:
