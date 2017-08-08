@@ -297,7 +297,6 @@ class BaseRegistryRO(object):
                 self._resource_update_col, resource_uid):
             yield doc
 
-
     # ## Lo-level API: Direct access to documents (for internal use)
     def resource_given_eid(self, eid):
         '''Given a datum eid return its Resource document
@@ -321,7 +320,6 @@ class BaseRegistryRO(object):
         datum_gen = self._api.get_datum_by_res_gen(self._datum_col,
                                                    actual_resource['uid'])
         return datum_gen
-
 
     # ## File-related API
     # This may move to a mix-in class or something
@@ -430,7 +428,6 @@ class BaseRegistryRO(object):
         return zip(file_list, new_file_list)
 
 
-
 class RegistryTemplate(BaseRegistryRO):
     '''Registry object that knows how to create new documents.'''
 
@@ -495,6 +492,7 @@ class RegistryTemplate(BaseRegistryRO):
 
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
+
     # ## Hi-level API: updates
     def shift_root(self, resource_or_uid, shift):
         '''Shift directory levels between root and resource_path
@@ -526,8 +524,8 @@ class RegistryTemplate(BaseRegistryRO):
         if not isinstance(resource, six.string_types):
             if dict(actual_resource) != dict(resource):
                 raise RuntimeError('The resource you hold and the resource '
-                                   'the data registry_template holds do not match '
-                                   'yours: {!r} db: {!r}'.format(
+                                   'the registry holds do not match '
+                                   'yours: {!r} registry: {!r}'.format(
                                        resource, actual_resource))
         resource = dict(actual_resource)
         resource.setdefault('root', '')
