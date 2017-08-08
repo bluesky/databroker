@@ -119,7 +119,7 @@ def start_md_server(testing_config):
                   str(testing_config['serviceport'])],
                  cwd=f)
     print('Started the server with configuration..:{}'.format(testing_config))
-    ttime.sleep(5)  # make sure the process is started
+    ttime.sleep(2)  # make sure the process is started
     return proc
 
 
@@ -127,7 +127,6 @@ def stop_md_server(proc, testing_config):
 
     from pymongo import MongoClient
     Popen(['kill', '-9', str(proc.pid)])
-    ttime.sleep(5)  # make sure the process is killed
     conn = MongoClient(host=testing_config['mongohost'],
                        port=testing_config['mongoport'])
     conn.drop_database(testing_config['database'])
@@ -135,6 +134,9 @@ def stop_md_server(proc, testing_config):
 
 def build_client_backend_broker(request):
     from ..headersource.client import MDS
+    from ..resource_registry.utils import create_test_database
+    from ..resource_registry.mongo import FileStore
+
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),
                           serviceport=9009, tzone='US/Eastern')
@@ -144,10 +146,15 @@ def build_client_backend_broker(request):
     tmds = MDS({'host': 'localhost',
                 'port': 9009,
                 'timezone': 'US/Eastern'})
+    db_name = "fs_testing_base_disposable_{uid}"
+    fs_test_conf = create_test_database(host='localhost',
+                                        port=27017, version=1,
+                                        db_template=db_name)
+    fs = FileStore(fs_test_conf, version=1)
 
     def tear_down():
         stop_md_server(proc, testing_config)
 
     request.addfinalizer(tear_down)
 
-    return tmds
+    return Broker(tmds, fs)
