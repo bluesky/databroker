@@ -3,7 +3,7 @@ import sqlite3
 import json
 from contextlib import contextmanager
 from .base_registry import (FileStoreTemplate, BaseRegistryRO, _ChainMap,
-                   FileStoreMovingTemplate)
+                            FileStoreMovingTemplate)
 
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
@@ -89,13 +89,13 @@ class FileStoreDatabase(object):
         conn = sqlite3.connect(self._fp)
         # Return rows as objects that support getitem.
         conn.row_factory = sqlite3.Row
-        self._conn = conn
+        self.conn = conn
 
-        with cursor(self._conn) as c:
+        with cursor(self.conn) as c:
             c.execute(LIST_TABLES)
             tables = set([row['name'] for row in c.fetchall()])
         if tables == set():
-            with cursor(self._conn) as c:
+            with cursor(self.conn) as c:
                 c.execute(CREATE_RESOURCES_TABLE)
                 c.execute(CREATE_DATUMS_TABLE)
                 c.execute(CREATE_RESOURCE_UPDATES_TABLE)
@@ -106,6 +106,11 @@ class FileStoreDatabase(object):
                                     "have expected schema. Expected "
                                     "tables: {}; found tables: {}".format(
                                         self._fp, EXPECTED_TABLES, tables))
+
+    def disconnect(self):
+        self.conn.close()
+        self.conn = None
+
 
 
 def shadow_with_json(d, keys):
@@ -199,59 +204,62 @@ class ResourceCollection(object):
         return doc
 
 
-class _CollectionMixin(object):
+class FileStoreRO(BaseRegistryRO):
+    REQ_CONFIG = ('dbpath', )
+
     def __init__(self, *args, **kwargs):
         self._config = None
-        super(_CollectionMixin, self).__init__(*args, **kwargs)
-        self._db = FileStoreDatabase(self.config['dbpath'])
-        self._conn = self._db._conn
+        super(FileStoreRO, self).__init__(*args, **kwargs)
+        self.__db = None
         self.__resource_col = None
         self.__resource_update_col = None
         self.__datum_col = None
+
+    def disconnect(self):
+        self.__resource_col = None
+        self.__resource_update_col = None
+        self.__datum_col = None
+        if self.__db:
+            self.__db.disconnect()
+        self.__db = None
+
+    def reconfigure(self, config):
+        self.disconnect()
+        super(FileStoreRO, self).reconfigure(config)
 
     @property
-    def config(self):
-        return self._config
-
-    @config.setter
-    def config(self, val):
-        self._config = val
-        self.__resource_col = None
-        self.__resource_update_col = None
-        self.__datum_col = None
+    def _db(self):
+        if self.__db is None:
+            self.__db = FileStoreDatabase(self.config['dbpath'])
+        return self.__db
 
     @property
     def _resource_col(self):
         if self.__resource_col is None:
-            self.__resource_col = ResourceCollection(self._conn)
+            self.__resource_col = ResourceCollection(self._db.conn)
         return self.__resource_col
 
     @property
     def _resource_update_col(self):
         if self.__resource_update_col is None:
-            self.__resource_update_col = ResourceUpdatesCollection(self._conn)
+            self.__resource_update_col = ResourceUpdatesCollection(
+                self._db.conn)
         return self.__resource_update_col
 
     @property
     def _datum_col(self):
         if self.__datum_col is None:
-            self.__datum_col = DatumCollection(self._conn)
+            self.__datum_col = DatumCollection(self._db.conn)
         return self.__datum_col
 
-
-class _ExceptionMixin:
     @property
     def DuplicateKeyError(self):
         return sqlite3.IntegrityError
 
 
-class FileStoreRO(_CollectionMixin, BaseRegistryRO, _ExceptionMixin):
+class FileStore(FileStoreRO, FileStoreTemplate):
     pass
 
 
-class FileStore(_CollectionMixin, FileStoreTemplate, _ExceptionMixin):
-    pass
-
-
-class FileStoreMoving(_CollectionMixin, FileStoreMovingTemplate, _ExceptionMixin):
+class FileStoreMoving(FileStore, FileStoreMovingTemplate):
     pass
