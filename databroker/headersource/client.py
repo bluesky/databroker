@@ -42,6 +42,18 @@ class MDSRO(object):
         self.config = config
 
     @property
+    def NoRunStart(self):
+        return NoRunStart
+
+    @property
+    def NoRunStop(self):
+        return NoRunStop
+
+    @property
+    def NoEventDescriptors(self):
+        return NoEventDescriptors
+
+    @property
     def config(self):
         return self._config
 
@@ -160,6 +172,8 @@ class MDSRO(object):
         self._RUNSTOP_CACHE.clear()
         self._DESCRIPTOR_CACHE.clear()
 
+    clear_process_cache = reset_caches
+
     def queryfactory(self, query, signature):
         """
         Currently only returns a simple dict mdservice expects.
@@ -194,7 +208,7 @@ class MDSRO(object):
         response = self._get(self._rstart_url, params=params)
         if not response:
             raise NoRunStart('No RunStart found with uid {}'.format(uid))
-        return response
+        return Document('RunStart', response)
 
     def find_run_starts(self, **kwargs):
         """Given search criteria, locate RunStart Documents.

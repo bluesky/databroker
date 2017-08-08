@@ -201,12 +201,10 @@ class BrokerES(object):
 
     @property
     def mds(self):
-        warnings.warn("stop using raw mds", stacklevel=2)
         return self.hs.mds
 
     @property
     def fs(self):
-        warnings.warn("stop using raw fs", stacklevel=2)
         return self.event_source_for_insert.fs
 
     ALL = ALL  # sentinel used as default value for `stream_name`

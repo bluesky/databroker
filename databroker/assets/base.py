@@ -1,57 +1,91 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import json
+import six
+from contextlib import contextmanager
 import logging
-import os
 import os.path
 import shutil
-from contextlib import contextmanager
-
-import warnings
+import os
 import boltons.cacheutils
-import pymongo
-import six
-from pkg_resources import resource_filename
-from pymongo import MongoClient
-
-from . import mongo_core
-from .handlers_base import DuplicateHandler
+from . import core
+from collections import defaultdict
+import warnings
+try:
+    import pathlib
+except ImportError:
+    import pathlib2 as pathlib
 from ..utils import _make_sure_path_exists
-from .base import _ChainMap
-_API_MAP = {1: mongo_core}
+from pkg_resources import resource_filename
+import json
+
+
+class DuplicateHandler(RuntimeError):
+    pass
 
 
 logger = logging.getLogger(__name__)
 
+try:
+    from collections import ChainMap as _ChainMap
+except ImportError:
+    class _ChainMap(object):
+        def __init__(self, primary, fallback=None):
+            if fallback is None:
+                fallback = {}
+            self.fallback = fallback
+            self.primary = primary
 
-class FileStoreRO(object):
-    '''Base FileStore object that knows how to read the database.
+        def __getitem__(self, k):
+            try:
+                return self.primary[k]
+            except KeyError:
+                return self.fallback[k]
 
-    Parameters
-    ----------
-    config : dict
-       Much have keys {'database', 'collection', 'host'} and may have a 'port'
+        def __setitem__(self, k, v):
+            self.primary[k] = v
 
-    handler_reg : dict, optional
-       Mapping between spec names and handler classes
+        def __contains__(self, k):
+            return k in self.primary or k in self.fallback
 
-    version : int, optional
-        schema version of the database.
-        Defaults to 1
+        def __delitem__(self, k):
+            del self.primary[k]
 
-    root_map : dict, optional
-        str -> str mapping to account for temporarily moved/copied/remounted
-        files.  Any resources which have a ``root`` in ``root_map``
-        will have the resource path updated before being handed to the
-        Handler in ``get_spec_handler``
+        def pop(self, k, v):
+            return self.primary.pop(k, v)
 
-    '''
+        @property
+        def maps(self):
+            return [self.primary, self.fallback]
+
+        @property
+        def parents(self):
+            return self.fallback
+
+        def new_child(self, m=None):
+            if m is None:
+                m = {}
+
+            return _ChainMap(m, self)
+
+        def __iter__(self):
+            for k in set(self.primary) | set(self.fallback):
+                yield k
+
+        def __len__(self):
+            return len(set(self.primary) | set(self.fallback))
+
+
+class FileStoreTemplateRO(object):
+    '''Base FileStore object that knows how to read the database.'''
     KNOWN_SPEC = dict()
+    DuplicateHandler = DuplicateHandler
+    _API_MAP = {1: core}
+
     # load the built-in schema
     for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
-        base_name = 'resource_registry/json/'
+        base_name = 'assets/json/'
         resource_name = '{}{}_resource.json'.format(base_name, spec_name)
         datum_name = '{}{}_datum.json'.format(base_name, spec_name)
         with open(resource_filename('databroker',
@@ -61,6 +95,36 @@ class FileStoreRO(object):
                                     datum_name), 'r') as fin:
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
+
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, val):
+        if self._api is not None:
+            raise RuntimeError("Can not change api version at runtime")
+        self._api = self._API_MAP[val]
+        self._version = val
+
+    @property
+    def DatumNotFound(self):
+        return self._api.DatumNotFound
+
+    def __init__(self, config, handler_reg=None, version=1):
+        self.config = config
+        self._api = None
+        self.version = version
+        if handler_reg is None:
+            handler_reg = {}
+
+        self.handler_reg = _ChainMap(handler_reg)
+
+        self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
+        self._handler_cache = boltons.cacheutils.LRU()
+        self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
+        self.known_spec = dict(self.KNOWN_SPEC)
+        self.root_map = defaultdict(lambda: self.config['dbpath'])
 
     def set_root_map(self, root_map):
         '''Set the root map
@@ -76,61 +140,26 @@ class FileStoreRO(object):
         '''
         self.root_map = root_map
 
-    @property
-    def version(self):
-        return self._version
-
-    @version.setter
-    def version(self, val):
-        if self._api is not None:
-            raise RuntimeError("Can not change api version at runtime")
-        self._api = _API_MAP[val]
-        self._version = val
-
-    @property
-    def DatumNotFound(self):
-        return self._api.DatumNotFound
-
-    @property
-    def DuplicateKeyError(self):
-        return self._api.DuplicateKeyError
-
-    def __init__(self, config, handler_reg=None, version=1, root_map=None):
-        self.config = config
-        self._api = None
-        self.version = version
-
-        if handler_reg is None:
-            handler_reg = {}
-        self.handler_reg = _ChainMap(handler_reg)
-
-        if root_map is None:
-            root_map = {}
-        self.root_map = root_map
-
-        self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
-        self._handler_cache = boltons.cacheutils.LRU()
-        self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
-        self.__db = None
-        self.__conn = None
-        self.__datum_col = None
-        self.__res_col = None
-        self.__res_update_col = None
-        self.known_spec = dict(self.KNOWN_SPEC)
-
-    def disconnect(self):
-        self.__db = None
-        self.__conn = None
-        self.__datum_col = None
-        self.__res_col = None
-
     def reconfigure(self, config):
-        self.disconnect()
         self.config = config
 
     def _r_on_miss(self, k):
         col = self._resource_col
-        return self._api.resource_given_uid(col, k)
+        ret = self._api.resource_given_uid(col, k)
+        if ret is None:
+            raise RuntimeError('did not find resource {!r}'.format(k))
+        return ret
+
+    def resource_given_eid(self, eid):
+        '''Given a datum eid return its Resource document
+        '''
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it so no need for this method')
+
+        res = self._api.resource_given_eid(self._datum_col, eid,
+                                           self._datum_cache, logger)
+        return self._resource_cache[res]
 
     def resource_given_uid(self, uid):
         col = self._resource_col
@@ -177,62 +206,6 @@ class FileStoreRO(object):
                 for k in list(self._handler_cache):
                     if k[1] == name:
                         del self._handler_cache[k]
-
-    @property
-    def _db(self):
-        if self.__db is None:
-            conn = self._connection
-            self.__db = conn.get_database(self.config['database'])
-            if self.version > 0:
-                sentinel = self.__db.get_collection('sentinel')
-                versioned_collection = ['resource', 'datum']
-                for col_name in versioned_collection:
-                    val = sentinel.find_one({'collection': col_name})
-                    if val is None:
-                        raise RuntimeError('there is no version sentinel for '
-                                           'the {} collection'.format(col_name)
-                                           )
-                    if val['version'] != self.version:
-                        raise RuntimeError('DB version {!r} does not match'
-                                           'API version of FS {} for the '
-                                           '{} collection'.format(
-                                               val, self.version, col_name))
-        return self.__db
-
-    @property
-    def _resource_col(self):
-        if self.__res_col is None:
-            self.__res_col = self._db.get_collection('resource')
-            self.__res_col.create_index('resource_id')
-
-        return self.__res_col
-
-    @property
-    def _resource_update_col(self):
-        if self.__res_update_col is None:
-            self.__res_update_col = self._db.get_collection('resource_update')
-            self.__res_update_col.create_index([
-                ('resource', pymongo.DESCENDING),
-                ('time', pymongo.DESCENDING)
-            ])
-
-        return self.__res_update_col
-
-    @property
-    def _datum_col(self):
-        if self.__datum_col is None:
-            self.__datum_col = self._db.get_collection('datum')
-            self.__datum_col.create_index('datum_id', unique=True)
-            self.__datum_col.create_index('resource')
-
-        return self.__datum_col
-
-    @property
-    def _connection(self):
-        if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
-        return self.__conn
 
     def get_spec_handler(self, resource):
         """
@@ -422,19 +395,8 @@ class FileStoreRO(object):
         return self._api.get_file_list(actual_resource, datum_kwarg_gen,
                                        self.get_spec_handler)
 
-    def resource_given_eid(self, eid):
-        '''Given a datum eid return its Resource document
-        '''
-        if self.version == 0:
-            raise NotImplementedError('V0 has no notion of root so can not '
-                                      'change it so no need for this method')
 
-        res = self._api.resource_given_eid(self._datum_col, eid,
-                                           self._datum_cache, logger)
-        return self._resource_cache[res]
-
-
-class FileStore(FileStoreRO):
+class FileStoreTemplate(FileStoreTemplateRO):
     '''FileStore object that knows how to create new documents.'''
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
         '''
@@ -571,7 +533,7 @@ class FileStore(FileStoreRO):
                                          cmd='shift_root')
 
 
-class FileStoreMoving(FileStore):
+class FileStoreMovingTemplate(FileStoreTemplate):
     '''FileStore object that knows how to move files.'''
     def change_root(self, resource_or_uid, new_root, remove_origin=True,
                     verify=False, file_rename_hook=None):

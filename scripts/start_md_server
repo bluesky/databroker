@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 """ Startup script for the server."""
 import argparse
 import sys
@@ -5,7 +6,7 @@ import tornado.web
 import socket
 import tornado.options
 from databroker.headersource.mongo import MDS, MDSRO
-from databroker._mds.metadataservice.server.engine import (
+from databroker.service.metadata import (
     RunStartHandler, RunStopHandler,
     EventDescriptorHandler,
     EventHandler, loop)

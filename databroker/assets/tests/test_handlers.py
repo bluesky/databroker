@@ -1,6 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import unittest
 import six
 import numpy as np
 import h5py
@@ -8,11 +8,6 @@ import tempfile
 import uuid
 import tifffile
 
-from ..api import (insert_resource, insert_datum, retrieve,
-                           register_handler, deregister_handler)
-
-from ..api import handler_context
-from .utils import fs_setup, fs_teardown
 from ..handlers import AreaDetectorHDF5Handler
 from ..handlers import AreaDetectorHDF5SWMRHandler
 from ..handlers import AreaDetectorHDF5TimestampHandler
@@ -23,7 +18,7 @@ from ..handlers import HDFMapsSpectrumHandler as HDFM
 from ..handlers import HDFMapsEnergyHandler as HDFE
 from ..handlers import NpyFrameWise
 from ..path_only_handlers import (AreaDetectorTiffPathOnlyHandler,
-                                          RawHandler)
+                                  RawHandler)
 from numpy.testing import assert_array_equal
 import os
 import shutil
@@ -31,78 +26,91 @@ from itertools import product
 import pytest
 import itertools
 from six.moves import range
-db_name = str(uuid.uuid4())
-conn = None
 
 
-def setup_module(module):
-    fs_setup()
+@pytest.fixture(scope='class')
+def fs_with_handlers(request, fs_cls):
+    fs = fs_cls
+    print('IN FIXTURE')
+    fs.register_handler('AD_HDF5', AreaDetectorHDF5Handler)
+    fs.register_handler('AD_HDF5_SWMR', AreaDetectorHDF5SWMRHandler)
+    fs.register_handler('AD_HDF5_TS', AreaDetectorHDF5TimestampHandler)
+    fs.register_handler('AD_HDF5_SWMR_TS',
+                        AreaDetectorHDF5SWMRTimestampHandler)
 
-    register_handler('AD_HDF5', AreaDetectorHDF5Handler)
-    register_handler('AD_HDF5_SWMR', AreaDetectorHDF5SWMRHandler)
-    register_handler('AD_HDF5_TS', AreaDetectorHDF5TimestampHandler)
-    register_handler('AD_HDF5_SWMR_TS', AreaDetectorHDF5SWMRTimestampHandler)
+    def deregister_handlers():
+        fs.deregister_handler('AD_HDF5')
+        fs.deregister_handler('AD_HDF5_SWMR')
+        fs.deregister_handler('AD_HDF5_TS')
+        fs.deregister_handler('AD_HDF5_SWMR_TS')
+
+    request.addfinalizer(deregister_handlers)
+    request.cls.fs = fs
+    request.cls._setup_class()
+    return fs
 
 
-def teardown_module(module):
-    fs_teardown()
-    deregister_handler('AD_HDF5')
-    deregister_handler('AD_HDF5_SWMR')
-    deregister_handler('AD_HDF5_TS')
-    deregister_handler('AD_HDF5_SWMR_TS')
-
-
+@pytest.mark.usefixtures('fs_with_handlers')
 class _with_file(object):
     # a base-class for testing which provides a temporary file for
     # I/O tests.  This class provides a setup function which creates
     # a temporary file (path stored in `self.filename`).  Sub-classes
     # should over-ride `_make_data` to fill the file with data for the test.
-    def setup(self):
+    @classmethod
+    def _setup_class(self):
         with tempfile.NamedTemporaryFile(delete=False) as fn:
             self.filename = fn.name
         self._make_data()
 
-    def teardown(self):
+    @classmethod
+    def teardown_class(self):
         os.unlink(self.filename)
 
-    def _make_data(self):
+    @classmethod
+    def _make_data(self, fs):
         # sub-classes need to override this to put data into the test file
         pass
 
 
+@pytest.mark.usefixtures('fs_with_handlers')
 class _with_path(object):
     # a base-class for testing which provides a temporary directory for
     # I/O tests.  This class provides a setup function which creates
     # a temporary directory (path stored in `self.filepath`).  Sub-classes
     # should over-ride `_make_data` to fill the file with data for the test.
-    def setup(self):
+    @classmethod
+    def _setup_class(self):
         self.filepath = tempfile.mkdtemp() + '/'
         self._make_data()
 
-    def teardown(self):
+    @classmethod
+    def teardown_class(self):
         shutil.rmtree(self.filepath)
 
-    def _make_data(self):
+    @classmethod
+    def _make_data(self, fs):
         # sub-classes need to override this to put data into the test file
         pass
 
 
 class Test_np_FW(_with_file):
+    @classmethod
     def _make_data(self):
         N = 15
         filename = self.filename
         data = np.ones((N, 9, 8)) * np.arange(N).reshape(N, 1, 1)
         np.save(filename, data)
         # Insert the data records.
-        resource_id = insert_resource('npy_FRAMEWISE', filename + '.npy', {})
+        resource_id = self.fs.insert_resource(
+            'npy_FRAMEWISE', filename + '.npy', {})
         self.datum_ids = [str(uuid.uuid4()) for i in range(N)]
         for i, datum_id in enumerate(self.datum_ids):
-            insert_datum(resource_id, datum_id, dict(frame_no=i))
+            self.fs.insert_datum(resource_id, datum_id, dict(frame_no=i))
 
     def test_retrieval(self):
-        with handler_context({'npy_FRAMEWISE': NpyFrameWise}):
+        with self.fs.handler_context({'npy_FRAMEWISE': NpyFrameWise}):
             for i, datum_id in enumerate(self.datum_ids):
-                data = retrieve(datum_id)
+                data = self.fs.retrieve(datum_id)
                 known_data = i * np.ones((9, 8))
                 assert_array_equal(data, known_data)
 
@@ -113,6 +121,7 @@ class Test_AD_hdf5_files(_with_file):
     spec = 'AD_HDF5'
     handler = AreaDetectorHDF5Handler
 
+    @classmethod
     def _make_data(self):
         filename = self.filename
         with h5py.File(filename) as f:
@@ -122,16 +131,16 @@ class Test_AD_hdf5_files(_with_file):
             f.create_dataset('/entry/data/data', data=data)
 
         # Insert the data records.
-        resource_id = insert_resource(self.spec, filename)
+        resource_id = self.fs.insert_resource(self.spec, filename, {})
         self.datum_ids = [str(uuid.uuid4()) for i in range(N)]
         for i, datum_id in enumerate(self.datum_ids):
-            insert_datum(resource_id, datum_id, dict(point_number=i))
+            self.fs.insert_datum(resource_id, datum_id, dict(point_number=i))
 
     def test_AD_round_trip(self):
 
         # Retrieve the data.
         for i, datum_id in enumerate(self.datum_ids):
-            data = retrieve(datum_id)
+            data = self.fs.retrieve(datum_id)
             known_data = i * np.ones((1, 2, 2))
             assert_array_equal(data, known_data)
 
@@ -168,6 +177,7 @@ class Test_AD_hdf5_timestamp_files(_with_file):
     spec = 'AD_HDF5_TS'
     handler = AreaDetectorHDF5TimestampHandler
 
+    @classmethod
     def _make_data(self):
         filename = self.filename
         with h5py.File(filename) as f:
@@ -182,16 +192,16 @@ class Test_AD_hdf5_timestamp_files(_with_file):
                 data=data * 1e9)
 
         # Insert the data records.
-        resource_id = insert_resource(self.spec, filename)
+        resource_id = self.fs.insert_resource(self.spec, filename, {})
         self.datum_ids = [str(uuid.uuid4()) for i in range(N)]
         for i, datum_id in enumerate(self.datum_ids):
-            insert_datum(resource_id, datum_id, dict(point_number=i))
+            self.fs.insert_datum(resource_id, datum_id, dict(point_number=i))
 
     def test_AD_round_trip(self):
 
         # Retrieve the data.
         for i, datum_id in zip(np.arange(len(self.datum_ids)), self.datum_ids):
-            data = retrieve(datum_id)
+            data = self.fs.retrieve(datum_id)
             known_data = 2 * i
             assert_array_equal(data, known_data)
 
@@ -227,6 +237,7 @@ class Test_maps_hdf5(_with_file):
     M = 11
 
     # tests the MAPS handler (product specification from APS)
+    @classmethod
     def _make_data(self):
         self.th = np.linspace(0, 2*np.pi, self.n_pts)
         self.scale = np.arange(self.N*self.M)
@@ -246,36 +257,36 @@ class Test_maps_hdf5(_with_file):
             ds_data.attrs['comments'] = comment
 
         # insert spectrum-wise resource and datum
-        resource_id = insert_resource('hdf5_maps', self.filename,
-                                      {'dset_path': 'mca_arr'})
+        resource_id = self.fs.insert_resource('hdf5_maps', self.filename,
+                                              {'dset_path': 'mca_arr'})
         self.eids_spectrum = [str(uuid.uuid4()) for j in range(self.N*self.M)]
 
         for uid, (i, j) in zip(self.eids_spectrum,
                                product(range(self.N), range(self.M))):
-            insert_datum(resource_id, uid, {'x': i, 'y': j})
+            self.fs.insert_datum(resource_id, uid, {'x': i, 'y': j})
 
         # insert plane-wise resource and datum
-        resource_id = insert_resource('hdf5_planes', self.filename,
-                                      {'dset_path': 'mca_arr'})
+        resource_id = self.fs.insert_resource('hdf5_planes', self.filename,
+                                              {'dset_path': 'mca_arr'})
         self.eids_planes = [str(uuid.uuid4()) for j in range(self.n_pts)]
 
         for uid, n in zip(self.eids_planes, range(self.n_pts)):
-            insert_datum(resource_id, uid, {'e_index': n})
+            self.fs.insert_datum(resource_id, uid, {'e_index': n})
 
     def test_maps_spectrum_round_trip(self):
         sn = np.sin(self.th)
 
-        with handler_context({'hdf5_maps': HDFM}):
+        with self.fs.handler_context({'hdf5_maps': HDFM}):
             for eid, sc in zip(self.eids_spectrum, self.scale):
                 print(eid)
-                data = retrieve(eid)
+                data = self.fs.retrieve(eid)
                 assert_array_equal(data, sc * sn)
 
     def test_maps_plane_round_trip(self):
         base = self.scale.reshape(self.N, self.M)
-        with handler_context({'hdf5_planes': HDFE}):
+        with self.fs.handler_context({'hdf5_planes': HDFE}):
             for eid, v in zip(self.eids_planes, np.sin(self.th)):
-                data = retrieve(eid)
+                data = self.fs.retrieve(eid)
                 assert_array_equal(data, base * v)
 
     def test_closed_raise(self):
@@ -292,6 +303,7 @@ class Test_ADTiff_files(_with_path):
     fname = 'FS_TESTING'
     fr_shape = (10, 15)
 
+    @classmethod
     def _make_data(self):
         self.fn_list = []
         for j in range(self.n_frames * self.fpp):

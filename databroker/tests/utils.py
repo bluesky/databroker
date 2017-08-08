@@ -8,12 +8,15 @@ import tzlocal
 from databroker import Broker
 from databroker.broker import HeaderSourceShim, BrokerES
 from databroker.eventsource import EventSourceShim
+import time as ttime
+from subprocess import Popen
+
 
 
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
     from ..headersource.sqlite import MDS
-    from ..resource_registry.sqlite import FileStore
+    from ..assets.sqlite import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -44,7 +47,7 @@ def build_sqlite_backed_broker(request):
 
 def build_hdf5_backed_broker(request):
     from ..headersource.hdf5 import MDS
-    from ..resource_registry.sqlite import FileStore
+    from ..assets.sqlite import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -79,8 +82,8 @@ def build_pymongo_backed_broker(request):
 
     '''
     from ..headersource.mongo import MDS
-    from ..resource_registry.utils import create_test_database
-    from ..resource_registry.mongo import FileStore
+    from ..assets.utils import create_test_database
+    from ..assets.mongo import FileStore
 
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     md_test_conf = dict(database=db_name, host='localhost',
@@ -102,3 +105,57 @@ def build_pymongo_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return Broker(mds, fs)
+
+
+def start_md_server(testing_config):
+    f = os.path.dirname(os.path.realpath(__file__))
+    proc = Popen(["start_md_server", "--mongo-host",
+                  testing_config["mongohost"],
+                  "--mongo-port",
+                  str(testing_config['mongoport']),
+                  "--database", testing_config['database'],
+                  "--timezone", testing_config['tzone'],
+                  "--service-port",
+                  str(testing_config['serviceport'])],
+                 cwd=f)
+    print('Started the server with configuration..:{}'.format(testing_config))
+    ttime.sleep(5)  # make sure the process is started
+    return proc
+
+
+def stop_md_server(proc, testing_config):
+
+    from pymongo import MongoClient
+    Popen(['kill', '-9', str(proc.pid)])
+    conn = MongoClient(host=testing_config['mongohost'],
+                       port=testing_config['mongoport'])
+    conn.drop_database(testing_config['database'])
+    ttime.sleep(2)  # make sure the process is stopped
+
+
+def build_client_backend_broker(request):
+    from ..headersource.client import MDS
+    from ..assets.utils import create_test_database
+    from ..assets.mongo import FileStore
+
+    testing_config = dict(mongohost='localhost', mongoport=27017,
+                          database='mds_test'+str(uuid.uuid4()),
+                          serviceport=9009, tzone='US/Eastern')
+
+    proc = start_md_server(testing_config)
+
+    tmds = MDS({'host': 'localhost',
+                'port': 9009,
+                'timezone': 'US/Eastern'})
+    db_name = "fs_testing_base_disposable_{uid}"
+    fs_test_conf = create_test_database(host='localhost',
+                                        port=27017, version=1,
+                                        db_template=db_name)
+    fs = FileStore(fs_test_conf, version=1)
+
+    def tear_down():
+        stop_md_server(proc, testing_config)
+
+    request.addfinalizer(tear_down)
+
+    return Broker(tmds, fs)

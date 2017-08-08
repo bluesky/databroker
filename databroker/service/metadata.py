@@ -4,10 +4,34 @@ import doct
 import ujson
 import json
 import types
-from . import utils
-from ....headersource.core import NoRunStop, NoEventDescriptors, NoRunStart
+
+from ..headersource.core import NoRunStop, NoEventDescriptors, NoRunStart
 
 loop = tornado.ioloop.IOLoop.instance()
+
+
+def unpack_params(handler):
+    """Unpacks the queries from the body of the header
+    Parameters
+    ----------
+    handler: tornado.web.RequestHandler
+        Handler for incoming request to collection
+
+    Returns dict
+    -------
+        Unpacked query in dict format.
+    """
+    if isinstance(handler, tornado.web.RequestHandler):
+        return ujson.loads(list(handler.request.arguments.keys())[0])
+    else:
+        raise TypeError("Handler provided must be of "
+                        "tornado.web.RequestHandler type")
+
+
+def report_error(code, status, m_str=''):
+    """Compose and raise an HTTPError message"""
+    fmsg = str(status) + ' ' + str(m_str)
+    raise tornado.web.HTTPError(status_code=code, reason=fmsg)
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -29,30 +53,30 @@ class DefaultHandler(tornado.web.RequestHandler):
         try:
             return self.queryables[func]
         except KeyError as err:
-            utils.report_error(500, 'Provided query method {} is not supported'.format(func))
+            report_error(500, 'Provided query method {} is not supported'.format(func))
 
     def insertable(self, func):
         try:
             return self.insertables[func]
         except KeyError as err:
-            utils.report_error(500, 'Not a valid insert routine', func)
+            report_error(500, 'Not a valid insert routine', func)
 
     @tornado.web.asynchronous
     def get(self):
-        request = utils.unpack_params(self)
+        request = unpack_params(self)
         try:
             sign = request['signature']
         except KeyError:
-            utils.report_error(400,
+            report_error(400,
                                'No valid signature function provided!')
         try:
             func = self.queryable(sign)
         except AttributeError as err:
-            utils.report_error(500, err)
+            report_error(500, err)
         try:
             query = request['query']
         except KeyError:
-            utils.report_error(400,
+            report_error(400,
                                'A query string must be provided')
         try:
             docs_gen = func(**query)
@@ -70,29 +94,29 @@ class DefaultHandler(tornado.web.RequestHandler):
         try:
             data = payload.pop('data')
         except KeyError:
-            utils.report_error(400, 'No data provided to insert ')
+            report_error(400, 'No data provided to insert ')
         try:
             sign = payload.pop('signature')
         except KeyError:
-            utils.report_error(400, 'No signature provided for insert')
+            report_error(400, 'No signature provided for insert')
         try:
             func = self.insertable(sign)
         except AttributeError as err:
-            utils.report_error(500, err)
+            report_error(500, err)
         try:
             func(**data)
         except (RuntimeError, TypeError, KeyError) as err:
-            utils.report_error(500, err, data)
+            report_error(500, err, data)
         self.write(ujson.dumps({"status": True}))
         self.finish()
 
     @tornado.web.asynchronous
     def put(self):
-        utils.report_error(403, 'Not allowed on server')
+        report_error(403, 'Not allowed on server')
 
     @tornado.web.asynchronous
     def delete(self):
-        utils.report_error(403, 'Not allowed on server')
+        report_error(403, 'Not allowed on server')
 
 
 class RunStartHandler(DefaultHandler):

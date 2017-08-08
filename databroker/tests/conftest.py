@@ -1,10 +1,13 @@
 import os
 import pytest
 import sys
-
+import uuid
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker,
-                                    build_hdf5_backed_broker)
+                                    build_hdf5_backed_broker,
+                                    build_client_backend_broker,
+                                    start_md_server,
+                                    stop_md_server)
 import tempfile
 import shutil
 import tzlocal
@@ -38,14 +41,15 @@ def broker_factory(request):
 AUTH = os.environ.get('MDSTESTWITHAUTH', False)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='function')
+@pytest.fixture(params=['sqlite', 'mongo', 'hdf5', 'client'], scope='function')
 def mds_all(request):
     '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with both v0 and v1.
     '''
     param_map = {'sqlite': build_sqlite_backed_broker,
                  'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker}
+                 'hdf5': build_hdf5_backed_broker,
+                 'client': build_client_backend_broker}
 
     return param_map[request.param](request).mds
 
@@ -73,3 +77,21 @@ def mds_portable(request):
     request.addfinalizer(delete_dm)
 
     return mds
+
+
+@pytest.fixture()
+def md_server_url(request):
+    testing_config = dict(mongohost='localhost', mongoport=27017,
+                          database='mds_test'+str(uuid.uuid4()),
+                          serviceport=9009, tzone='US/Eastern')
+
+    proc = start_md_server(testing_config)
+
+    def tear_down():
+        stop_md_server(proc, testing_config)
+
+    request.addfinalizer(tear_down)
+    base_url = 'http://{}:{}/'.format('localhost',
+                                      testing_config['serviceport'])
+
+    return base_url

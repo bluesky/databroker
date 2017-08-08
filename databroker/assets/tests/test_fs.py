@@ -6,10 +6,9 @@ import pytest
 import os.path
 import uuid
 import numpy as np
-import pymongo
 from numpy.testing import assert_array_equal
 
-from .utils import (insert_syn_data, insert_syn_data_bulk, install_sentinels)
+from .utils import insert_syn_data, insert_syn_data_bulk
 
 
 @pytest.mark.parametrize('func', [insert_syn_data, insert_syn_data_bulk])
@@ -36,6 +35,7 @@ def test_non_unique_fail(fs):
     fs.insert_datum(str(fb['id']), r_id, {'n': 0})
     with pytest.raises(fs.DuplicateKeyError):
         fs.insert_datum(str(fb['id']), r_id, {'n': 1})
+
 
 def test_root(fs):
     print(fs._db)

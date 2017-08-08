@@ -379,7 +379,13 @@ def test_filters(db, RE):
      slice(None, None, None),  # raise because slice has slice.start == None
      4500,  # raise on not finding a header by a scan id
      str(uuid.uuid4()),  # raise on not finding a header by uuid
-     ])
+     ],
+    ids=['slice by scan id',
+         'positve slice stop',
+         'no start',
+         'no scan id',
+         'no uuid']
+    )
 def test_raise_conditions(key, db, RE):
     RE.subscribe('all', db.insert)
     for _ in range(5):
