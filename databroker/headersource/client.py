@@ -42,6 +42,18 @@ class MDSRO(object):
         self.config = config
 
     @property
+    def NoRunStart(self):
+        return NoRunStart
+
+    @property
+    def NoRunStop(self):
+        return NoRunStop
+
+    @property
+    def NoEventDescriptors(self):
+        return NoEventDescriptors
+
+    @property
     def config(self):
         return self._config
 
@@ -159,6 +171,8 @@ class MDSRO(object):
         self._RUN_START_CACHE.clear()
         self._RUNSTOP_CACHE.clear()
         self._DESCRIPTOR_CACHE.clear()
+
+    clear_process_cache = reset_caches
 
     def queryfactory(self, query, signature):
         """
