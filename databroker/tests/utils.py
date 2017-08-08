@@ -134,7 +134,7 @@ def stop_md_server(proc, testing_config):
 
 
 def build_client_backend_broker(request):
-    from ..resource_registry.client import MDS
+    from ..headersource.client import MDS
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),
                           serviceport=9009, tzone='US/Eastern')
