@@ -1,11 +1,9 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import six   # noqa
 import logging
-
-import boltons.cacheutils
 import pymongo
-import six
+
 from pymongo import MongoClient
 
 from . import mongo_core
