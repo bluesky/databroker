@@ -107,6 +107,26 @@ class BaseRegistryRO(object):
                                    m=set(self.REQ_CONFIG) - set(config)))
         self._config = config
 
+    def reconfigure(self, config):
+        '''Reconfigure the Registry object
+
+        This clears all the local caches and starts from scratch.
+
+        Parameters
+        ----------
+        config : dict
+        '''
+        self.clear_process_cache()
+        self.config = config
+        self._api = None
+        self.version = config.get('version', 1)
+
+    def clear_process_cache(self):
+        self._datum_cache.clear()
+        self._handler_cache.clear()
+        self._resource_cache.clear()
+
+    # ## INIT
     def __init__(self, config, handler_reg=None, root_map=None):
         # set up configuration + version
         self.config = config
@@ -134,6 +154,7 @@ class BaseRegistryRO(object):
         # copy the class level known spec to an instance attribute
         self.known_spec = dict(self.KNOWN_SPEC)
 
+    # ## Rootmap
     def set_root_map(self, root_map):
         '''Set the root map
 
@@ -148,24 +169,8 @@ class BaseRegistryRO(object):
         '''
         self.root_map = root_map
 
-    def reconfigure(self, config):
-        self.config = config
-
-    def resource_given_eid(self, eid):
-        '''Given a datum eid return its Resource document
-        '''
-        if self.version == 0:
-            raise NotImplementedError('V0 has no notion of root so can not '
-                                      'change it so no need for this method')
-
-        res = self._api.resource_given_eid(self._datum_col, eid,
-                                           self._datum_cache, logger)
-        return self._resource_cache[res]
-
-    def resource_given_uid(self, uid):
-        col = self._resource_col
-        return self._api.resource_given_uid(col, uid)
-
+    # ## Hi-level API
+    # Users typically should not need anything outside of these methods
     def retrieve(self, eid):
         return self._api.retrieve(self._datum_col, eid,
                                   self._datum_cache, self.get_spec_handler,
@@ -205,6 +210,8 @@ class BaseRegistryRO(object):
                     if k[1] == name:
                         del self._handler_cache[k]
 
+    # ## Mid-level API (for internal use)
+    # Do mapping between a resource document -> a usable Handler object
     def get_spec_handler(self, resource):
         """
         Given a document from the registry_template FS collection return
@@ -250,6 +257,18 @@ class BaseRegistryRO(object):
         h_cache[key] = ret
         return ret
 
+    def get_file_list(self, resource_or_uid, datum_kwarg_gen):
+        """Given a resource or resource uid and an iterable of datum kwargs,
+        return filepaths.
+
+
+        DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
+        See the methods for moving and copying on the FileStore object.
+        """
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        return self._api.get_file_list(actual_resource, datum_kwarg_gen,
+                                       self.get_spec_handler)
+
     def get_history(self, resource_uid):
         '''Generator of all updates to the given resource
 
@@ -269,6 +288,34 @@ class BaseRegistryRO(object):
                 self._resource_update_col, resource_uid):
             yield doc
 
+
+    # ## Lo-level API: Direct access to documents (for internal use)
+    def resource_given_eid(self, eid):
+        '''Given a datum eid return its Resource document
+        '''
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it so no need for this method')
+
+        res = self._api.resource_given_eid(self._datum_col, eid,
+                                           self._datum_cache, logger)
+        return self._resource_cache[res]
+
+    def resource_given_uid(self, uid):
+        col = self._resource_col
+        return self._api.resource_given_uid(col, uid)
+
+    def datum_gen_given_resource(self, resource_or_uid):
+        """Given resource or resource uid return associated datum documents.
+        """
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        datum_gen = self._api.get_datum_by_res_gen(self._datum_col,
+                                                   actual_resource['uid'])
+        return datum_gen
+
+
+    # ## File-related API
+    # This may move to a mix-in class or something
     def copy_files(self, resource_or_uid, new_root,
                    verify=False, file_rename_hook=None):
         """
@@ -373,29 +420,12 @@ class BaseRegistryRO(object):
 
         return zip(file_list, new_file_list)
 
-    def datum_gen_given_resource(self, resource_or_uid):
-        """Given resource or resource uid return associated datum documents.
-        """
-        actual_resource = self.resource_given_uid(resource_or_uid)
-        datum_gen = self._api.get_datum_by_res_gen(self._datum_col,
-                                                   actual_resource['uid'])
-        return datum_gen
-
-    def get_file_list(self, resource_or_uid, datum_kwarg_gen):
-        """Given a resource or resource uid and an iterable of datum kwargs,
-        return filepaths.
-
-
-        DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
-        See the methods for moving and copying on the FileStore object.
-        """
-        actual_resource = self.resource_given_uid(resource_or_uid)
-        return self._api.get_file_list(actual_resource, datum_kwarg_gen,
-                                       self.get_spec_handler)
 
 
 class FileStoreTemplate(BaseRegistryRO):
     '''FileStore object that knows how to create new documents.'''
+
+    # ## Hi-level API: insertion
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
         '''
          Parameters
@@ -456,7 +486,7 @@ class FileStoreTemplate(BaseRegistryRO):
 
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
-
+    # ## Hi-level API: updates
     def shift_root(self, resource_or_uid, shift):
         '''Shift directory levels between root and resource_path
 
@@ -530,6 +560,31 @@ class FileStoreTemplate(BaseRegistryRO):
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
 
+    def correct_root(self, resource, new_root, verify):
+        '''Change the root of a resource
+
+        This is for the case where externally we know that
+        '''
+
+        if verify:
+            raise NotImplementedError('verify is not implemented yet')
+
+        # update the dataregistry_template
+        new_resource = dict(resource)
+        new_resource['root'] = new_root
+
+        update_col = self._resource_update_col
+        resource_col = self._resource_col
+        ret = self._api.update_resource(update_col, resource_col,
+                                        old=resource,
+                                        new=new_resource,
+                                        cmd_kwargs=dict(
+                                            verify=verify,
+                                            new_root=new_root),
+                                        cmd='correct_root')
+
+        return ret
+
 
 class FileStoreMovingTemplate(FileStoreTemplate):
     '''FileStore object that knows how to move files.'''
@@ -589,23 +644,17 @@ class FileStoreMovingTemplate(FileStoreTemplate):
         '''
         resource = dict(self.resource_given_uid(resource_or_uid))
 
-        file_lists = self.copy_files(resource, new_root, verify,
-                                     file_rename_hook)
-
-        # update the dataregistry_template
-        new_resource = dict(resource)
-        new_resource['root'] = new_root
-
-        update_col = self._resource_update_col
-        resource_col = self._resource_col
-        ret = self._api.update_resource(update_col, resource_col,
-                                        old=resource,
-                                        new=new_resource,
-                                        cmd_kwargs=dict(
-                                            remove_origin=remove_origin,
-                                            verify=verify,
-                                            new_root=new_root),
-                                        cmd='change_root')
+        try:
+            file_lists = self.copy_files(resource, new_root, verify,
+                                         file_rename_hook)
+        except:
+            # TODO clean up partially copied files if this fails
+            raise
+        try:
+            updates = self.correct_root(resource, new_root, verify)
+        except:
+            # TODO clean up copied files if this fails
+            raise
 
         # remove original files
         if remove_origin:
@@ -619,4 +668,4 @@ class FileStoreMovingTemplate(FileStoreTemplate):
             if k[0] == uid:
                 del self._handler_cache[k]
 
-        return ret
+        return updates
