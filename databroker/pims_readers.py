@@ -9,7 +9,7 @@ def get_images(headers, name, handler_registry=None,
 
     Parameters
     ----------
-    fs: FileStoreRO
+    fs: RegistryRO
     headers : Header or list of Headers
     name : string
         field name (data key) of a detector

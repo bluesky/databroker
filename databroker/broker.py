@@ -602,7 +602,7 @@ class BrokerES(object):
 
         Parameters
         ----------
-        fs: FileStoreRO
+        fs: RegistryRO
         headers : Header or list of Headers
         name : string
             field name (data key) of a detector

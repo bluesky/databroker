@@ -13,13 +13,13 @@ try:
     fs_config = filestore.conf.load_configuration('filestore', 'FS',
                                                   ['host', 'database', 'port'])
 
-    from filestore.fs import FileStoreRO
-    from metadatastore.mds import MDSRO
+    from .assets.mongo import RegistryRO
+    from .headersource.mongo import MDSRO
 except (KeyError, ImportError) as exc:
     warnings.warn("No default DataBroker object will be created because "
                   "the necessary configuration was not found: %s" % exc)
 else:
-    DataBroker = Broker(MDSRO(mds_config), FileStoreRO(fs_config))
+    DataBroker = Broker(MDSRO(mds_config), RegistryRO(fs_config))
 
     get_events = DataBroker.get_events
     get_table = DataBroker.get_table

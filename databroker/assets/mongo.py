@@ -17,7 +17,7 @@ from .base_registry import (BaseRegistryRO,
 logger = logging.getLogger(__name__)
 
 
-class FileStoreRO(BaseRegistryRO):
+class RegistryRO(BaseRegistryRO):
     '''Base FileStore object that knows how to read the database.
 
     Parameters
@@ -40,9 +40,9 @@ class FileStoreRO(BaseRegistryRO):
     OPT_CONFIG = ('port',)
 
     def __init__(self, config, handler_reg=None, root_map=None):
-        super(FileStoreRO, self).__init__(config,
-                                          handler_reg=handler_reg,
-                                          root_map=root_map)
+        super(RegistryRO, self).__init__(config,
+                                         handler_reg=handler_reg,
+                                         root_map=root_map)
         self.__db = None
         self.__conn = None
         self.__datum_col = None
@@ -57,7 +57,7 @@ class FileStoreRO(BaseRegistryRO):
 
     def reconfigure(self, config):
         self.disconnect()
-        super(FileStoreRO, self).reconfigure(config)
+        super(RegistryRO, self).reconfigure(config)
 
     @property
     def _db(self):
@@ -120,7 +120,7 @@ class FileStoreRO(BaseRegistryRO):
         return self._api.DuplicateKeyError
 
 
-class FileStore(FileStoreRO, FileStoreTemplate):
+class FileStore(RegistryRO, FileStoreTemplate):
     '''FileStore object that knows how to create new documents.'''
 
 

@@ -16,7 +16,7 @@ Script-Based Configuration
 
 1. Connect to metadatastore through an ``MDSRO`` ("metadata store read-only")
    instance.
-2. Connect to filestore through a ``FileStoreRO`` ("file store read-only")
+2. Connect to filestore through a ``RegistryRO`` ("file store read-only")
    instance.
 3. Pass these two to ``Broker``, which provides a user-friendly interface the
    information in both of these together.
@@ -24,7 +24,7 @@ Script-Based Configuration
 .. code-block:: python
 
     from metadatastore.mds import MDSRO  # "metadata store read-only"
-    from filestore.fs import FileStoreRO  # "file store read-only"
+    from filestore.fs import RegistryRO  # "file store read-only"
     from databroker import Broker
 
     # This an example. You'll need to know your local configuration.
@@ -34,9 +34,9 @@ Script-Based Configuration
                  'timezone': 'US/Eastern'})
 
     # This an example. You'll need to know your local configuration.
-    fs = FileStoreRO({'host': 'localhost',
-                      'port': 27017,
-                      'database': 'filestore-production-v1'})
+    fs = RegistryRO({'host': 'localhost',
+                     'port': 27017,
+                     'database': 'filestore-production-v1'})
 
     db = Broker(mds, fs)
 
@@ -95,7 +95,7 @@ Now connecting is as simple as:
     from databroker import db
 
 Under the hood, this locates the configuration, instantiates ``MDSRO`` and
-``FileStoreRO`` using those parameters, and then instantiates ``Broker``, as
+``RegistryRO`` using those parameters, and then instantiates ``Broker``, as
 illustrated in the script-based configuration above.
 
 If no configuration can be found, this will raise an error.

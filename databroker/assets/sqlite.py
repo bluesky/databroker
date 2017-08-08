@@ -204,12 +204,12 @@ class ResourceCollection(object):
         return doc
 
 
-class FileStoreRO(BaseRegistryRO):
+class RegistryRO(BaseRegistryRO):
     REQ_CONFIG = ('dbpath', )
 
     def __init__(self, *args, **kwargs):
         self._config = None
-        super(FileStoreRO, self).__init__(*args, **kwargs)
+        super(RegistryRO, self).__init__(*args, **kwargs)
         self.__db = None
         self.__resource_col = None
         self.__resource_update_col = None
@@ -225,7 +225,7 @@ class FileStoreRO(BaseRegistryRO):
 
     def reconfigure(self, config):
         self.disconnect()
-        super(FileStoreRO, self).reconfigure(config)
+        super(RegistryRO, self).reconfigure(config)
 
     @property
     def _db(self):
@@ -257,7 +257,7 @@ class FileStoreRO(BaseRegistryRO):
         return sqlite3.IntegrityError
 
 
-class FileStore(FileStoreRO, FileStoreTemplate):
+class FileStore(RegistryRO, FileStoreTemplate):
     pass
 
 

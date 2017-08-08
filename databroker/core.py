@@ -410,7 +410,7 @@ def get_images(db, headers, name, handler_registry=None,
 
     Parameters
     ----------
-    fs: FileStoreRO
+    fs: RegistryRO
     headers : Header or list of Headers
     name : string
         field name (data key) of a detector
@@ -439,7 +439,7 @@ class Images(FramesSequence):
 
         Parameters
         ----------
-        fs : FileStoreRO
+        fs : RegistryRO
         headers : Header or list of Headers
         es : EventStoreRO
         name : str
