@@ -47,7 +47,7 @@ install:
     fi;
   - |
     if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
-      pip install https://github.com/NSLS-II/bluesky/zipball/master#egg=bluesky
+      pip install https://github.com/tacaswell/bluesky/zipball/API_db_api_patchup#egg=bluesky
     fi;
   - 'pip install https://github.com/NSLS-II/event-model/zipball/master#egg=event_model'
   - pip install -ve .
