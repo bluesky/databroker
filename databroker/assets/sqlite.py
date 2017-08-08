@@ -2,7 +2,7 @@ import os
 import sqlite3
 import json
 from contextlib import contextmanager
-from .base_registry import (FileStoreTemplate, FileStoreTemplateRO, _ChainMap,
+from .base_registry import (FileStoreTemplate, BaseRegistryRO, _ChainMap,
                    FileStoreMovingTemplate)
 
 
@@ -245,7 +245,7 @@ class _ExceptionMixin:
         return sqlite3.IntegrityError
 
 
-class FileStoreRO(_CollectionMixin, FileStoreTemplateRO, _ExceptionMixin):
+class FileStoreRO(_CollectionMixin, BaseRegistryRO, _ExceptionMixin):
     pass
 
 

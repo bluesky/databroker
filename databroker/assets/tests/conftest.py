@@ -8,7 +8,7 @@ def mongo_fs_factory():
     test_conf = create_test_database(host='localhost',
                                      port=27017, version=1,
                                      db_template=db_name)
-    fs = ffs.FileStoreMoving(test_conf, version=1)
+    fs = ffs.FileStoreMoving(test_conf)
 
     def delete_dm():
         print("DROPPING DB")
@@ -22,7 +22,7 @@ def sqlite_fs_factory():
     import tempfile
     import os
     tf = tempfile.NamedTemporaryFile()
-    fs = sqlfs.FileStoreMoving({'dbpath': tf.name}, version=1)
+    fs = sqlfs.FileStoreMoving({'dbpath': tf.name, 'version': 1})
 
     def delete_dm():
         os.remove(tf.name)

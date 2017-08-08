@@ -9,7 +9,6 @@ import shutil
 import os
 import boltons.cacheutils
 from . import core
-from collections import defaultdict
 import warnings
 from ..utils import _make_sure_path_exists
 from pkg_resources import resource_filename
@@ -41,6 +40,8 @@ class BaseRegistryRO(object):
     This class provides the implementation of the handler registry.
 
     This class provides a set of caches for the documents and handlers.
+
+    This class provides management of the 'root' and 'root_map'.
     """
     # ### Database implementation source
     # map to the underlying database implementation
@@ -60,7 +61,6 @@ class BaseRegistryRO(object):
         self._api = self._API_MAP[val]
         self._version = val
 
-
     # ### Exceptions
 
     # An exception for use in registering handlers #
@@ -69,7 +69,6 @@ class BaseRegistryRO(object):
     @property
     def DatumNotFound(self):
         return self._api.DatumNotFound
-
 
     # ### known schemas
 
@@ -87,31 +86,32 @@ class BaseRegistryRO(object):
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
-
-    def __init__(self, config, handler_reg=None, version=1):
+    def __init__(self, config, handler_reg=None, root_map=None):
+        # set up configuration + version
         self.config = config
         self._api = None
-        self.version = version
-        if handler_reg is None:
-            handler_reg = {}
+        self.version = config.get('version', 1)
 
-        self.handler_reg = _ChainMap(handler_reg)
+        # set up the initial handler registry
+        self.handler_reg = _ChainMap(handler_reg or {})
+
+        # set up the initial root_map
+        self.root_map = root_map or {}
+
+        # ## set up the caches
+        def _r_on_miss(k):
+            col = self._resource_col
+            ret = self._api.resource_given_uid(col, k)
+            if ret is None:
+                raise RuntimeError('did not find resource {!r}'.format(k))
+            return ret
 
         self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
         self._handler_cache = boltons.cacheutils.LRU()
-        self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
+        self._resource_cache = boltons.cacheutils.LRU(on_miss=_r_on_miss)
+
+        # copy the class level known spec to an instance attribute
         self.known_spec = dict(self.KNOWN_SPEC)
-        self.root_map = {}
-
-    def _r_on_miss(self, k):
-        col = self._resource_col
-        ret = self._api.resource_given_uid(col, k)
-        if ret is None:
-            raise RuntimeError('did not find resource {!r}'.format(k))
-        return ret
-
-
-
 
     def set_root_map(self, root_map):
         '''Set the root map
@@ -376,8 +376,7 @@ class BaseRegistryRO(object):
                                        self.get_spec_handler)
 
 
-
-class FileStoreTemplate(FileStoreTemplateRO):
+class FileStoreTemplate(BaseRegistryRO):
     '''FileStore object that knows how to create new documents.'''
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
         '''

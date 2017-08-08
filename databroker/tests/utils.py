@@ -34,7 +34,7 @@ def build_sqlite_backed_broker(request):
     request.addfinalizer(delete_mds)
 
     tf = tempfile.NamedTemporaryFile()
-    fs = FileStore({'dbpath': tf.name}, version=1)
+    fs = FileStore({'dbpath': tf.name})
 
     def delete_fs():
         os.remove(tf.name)
@@ -65,7 +65,7 @@ def build_hdf5_backed_broker(request):
     request.addfinalizer(delete_mds)
 
     tf = tempfile.NamedTemporaryFile()
-    fs = FileStore({'dbpath': tf.name}, version=1)
+    fs = FileStore({'dbpath': tf.name})
 
     def delete_fs():
         os.remove(tf.name)
@@ -95,7 +95,7 @@ def build_pymongo_backed_broker(request):
     fs_test_conf = create_test_database(host='localhost',
                                         port=27017, version=1,
                                         db_template=db_name)
-    fs = FileStore(fs_test_conf, version=1)
+    fs = FileStore(fs_test_conf)
 
     def delete_fs():
         print("DROPPING DB")
@@ -149,7 +149,7 @@ def build_client_backend_broker(request):
     fs_test_conf = create_test_database(host='localhost',
                                         port=27017, version=1,
                                         db_template=db_name)
-    fs = FileStore(fs_test_conf, version=1)
+    fs = FileStore(fs_test_conf)
 
     def tear_down():
         stop_md_server(proc, testing_config)

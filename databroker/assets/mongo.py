@@ -10,26 +10,23 @@ from pymongo import MongoClient
 
 from . import mongo_core
 
-from .base_registry import (_ChainMap, FileStoreTemplateRO,
-                   FileStoreTemplate, FileStoreMovingTemplate)
+from .base_registry import (BaseRegistryRO,
+                            FileStoreTemplate,
+                            FileStoreMovingTemplate)
 
 logger = logging.getLogger(__name__)
 
 
-class FileStoreRO(FileStoreTemplateRO):
+class FileStoreRO(BaseRegistryRO):
     '''Base FileStore object that knows how to read the database.
 
     Parameters
     ----------
     config : dict
-       Much have keys {'database', 'collection', 'host'} and may have a 'port'
+       Much have keys {'database', 'host'} and may have a 'port'
 
     handler_reg : dict, optional
        Mapping between spec names and handler classes
-
-    version : int, optional
-        schema version of the database.
-        Defaults to 1
 
     root_map : dict, optional
         str -> str mapping to account for temporarily moved/copied/remounted
@@ -39,23 +36,20 @@ class FileStoreRO(FileStoreTemplateRO):
 
     '''
     _API_MAP = {1: mongo_core}
+    REQ_CONFIG = ('database', 'host')
+    OPT_CONFIG = ('port',)
 
-    def __init__(self, config, handler_reg=None, version=1, root_map=None):
-        self.config = config
-        self._api = None
-        self.version = version
+    def __init__(self, config, handler_reg=None, root_map=None):
+        if not all(k in config for k in self.REQ_CONFIG):
+            raise RuntimeError('The provided config {c!r} must have {r} '
+                               'keys and is missing {m}'.format(
+                                   c=config,
+                                   r=self.REQ_CONFIG,
+                                   m=set(self.REQ_CONFIG) - set(config)))
 
-        if handler_reg is None:
-            handler_reg = {}
-        self.handler_reg = _ChainMap(handler_reg)
-
-        if root_map is None:
-            root_map = {}
-        self.root_map = root_map
-
-        self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
-        self._handler_cache = boltons.cacheutils.LRU()
-        self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
+        super(FileStoreRO, self).__init__(config,
+                                          handler_reg=handler_reg,
+                                          root_map=root_map)
         self.__db = None
         self.__conn = None
         self.__datum_col = None
@@ -71,7 +65,7 @@ class FileStoreRO(FileStoreTemplateRO):
 
     def reconfigure(self, config):
         self.disconnect()
-        self.config = config
+        super(FileStoreRO, self).reconfigure(config)
 
     @property
     def _db(self):
