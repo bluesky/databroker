@@ -55,7 +55,7 @@ AUTH = os.environ.get('MDSTESTWITHAUTH', False)
 
 @pytest.fixture(scope='module')
 def mds_all(request, db):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with both v0 and v1.
     '''
     return db.mds
@@ -64,7 +64,7 @@ def mds_all(request, db):
 @pytest.fixture(params=[mqmds,
                         sqlmds], scope='function')
 def mds_portable(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with both v0 and v1.
 
     '''

@@ -1,7 +1,7 @@
 .. _FEP-index:
 
 ###############################
-FileStore Enhancement Proposals
+Registry Enhancement Proposals
 ###############################
 
 .. htmlonly::

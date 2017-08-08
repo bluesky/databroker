@@ -268,7 +268,7 @@ class BaseRegistryRO(object):
 
 
         DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
-        See the methods for moving and copying on the FileStore object.
+        See the methods for moving and copying on the Registry object.
         """
         actual_resource = self.resource_given_uid(resource_or_uid)
         return self._api.get_file_list(actual_resource, datum_kwarg_gen,
@@ -365,8 +365,8 @@ class BaseRegistryRO(object):
 
         See Also
         --------
-        `FileStoreMoving.shift_root`
-        `FileStoreMoving.change_root`
+        `RegistryMoving.shift_root`
+        `RegistryMoving.change_root`
         """
         if self.version == 0:
             raise NotImplementedError('V0 has no notion of root so can not '
@@ -427,8 +427,8 @@ class BaseRegistryRO(object):
 
 
 
-class FileStoreTemplate(BaseRegistryRO):
-    '''FileStore object that knows how to create new documents.'''
+class RegistryTemplate(BaseRegistryRO):
+    '''Registry object that knows how to create new documents.'''
 
     # ## Hi-level API: insertion
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
@@ -591,8 +591,8 @@ class FileStoreTemplate(BaseRegistryRO):
         return ret
 
 
-class FileStoreMovingTemplate(FileStoreTemplate):
-    '''FileStore object that knows how to move files.'''
+class RegistryMovingTemplate(RegistryTemplate):
+    '''Registry object that knows how to move files.'''
     def move_files(self, resource_or_uid, new_root, remove_origin=True,
                    verify=False, file_rename_hook=None):
         '''Change the root directory of a given resource
@@ -637,7 +637,7 @@ class FileStoreMovingTemplate(FileStoreTemplate):
 
         See Also
         --------
-        `FileStore.shift_root`
+        `Registry.shift_root`
 
 
         .. Warning

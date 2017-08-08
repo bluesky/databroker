@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class NpyWriter(HandlerBase):
     """
     Class to handle writing a numpy array out to disk and registering
-    that write with FileStore.
+    that write with Registry.
 
     This class is only good for one call to add_data.
 

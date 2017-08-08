@@ -16,7 +16,7 @@ import six
 import numpy as np
 
 if sys.version_info >= (3, 0):
-    from bluesky.examples import (det, det1, det2, Reader, ReaderWithFileStore,
+    from bluesky.examples import (det, det1, det2, Reader, ReaderWithRegistry,
                                   ReaderWithFSHandler)
     from bluesky.plans import (count, pchain, monitor_during_wrapper,
                                configure, trigger_and_read, run_decorator,
@@ -616,7 +616,7 @@ def test_export(broker_factory, RE):
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
-    detfs = ReaderWithFileStore('detfs', {'image': lambda: np.ones((5, 5))},
+    detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
                                 fs=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
@@ -634,9 +634,9 @@ def test_export(broker_factory, RE):
 @py3
 def test_export_noroot(broker_factory, RE):
     from bluesky.utils import short_uid
-    from bluesky.examples import GeneralReaderWithFileStore
+    from bluesky.examples import GeneralReaderWithRegistry
 
-    class LocalWriter(GeneralReaderWithFileStore):
+    class LocalWriter(GeneralReaderWithRegistry):
         def stage(self):
             self._file_stem = short_uid()
             self._path_stem = os.path.join(self.save_path, self._file_stem)
@@ -682,7 +682,7 @@ def test_export_size_smoke(broker_factory, RE):
         raise pytest.skip("This filestore does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
-    detfs = ReaderWithFileStore('detfs', {'image': lambda: np.ones((5, 5))},
+    detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
                                 fs=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 

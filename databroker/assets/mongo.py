@@ -9,14 +9,14 @@ from pymongo import MongoClient
 from . import mongo_core
 
 from .base_registry import (BaseRegistryRO,
-                            FileStoreTemplate,
-                            FileStoreMovingTemplate)
+                            RegistryTemplate,
+                            RegistryMovingTemplate)
 
 logger = logging.getLogger(__name__)
 
 
 class RegistryRO(BaseRegistryRO):
-    '''Base FileStore object that knows how to read the database.
+    '''Base Registry object that knows how to read the database.
 
     Parameters
     ----------
@@ -118,9 +118,9 @@ class RegistryRO(BaseRegistryRO):
         return self._api.DuplicateKeyError
 
 
-class FileStore(RegistryRO, FileStoreTemplate):
-    '''FileStore object that knows how to create new documents.'''
+class Registry(RegistryRO, RegistryTemplate):
+    '''Registry object that knows how to create new documents.'''
 
 
-class FileStoreMoving(FileStore, FileStoreMovingTemplate):
-    '''FileStore object that knows how to move files.'''
+class RegistryMoving(Registry, RegistryMovingTemplate):
+    '''Registry object that knows how to move files.'''

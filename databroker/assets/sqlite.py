@@ -4,8 +4,8 @@ import six  # noqa
 import sqlite3
 import json
 from contextlib import contextmanager
-from .base_registry import (FileStoreTemplate, BaseRegistryRO, _ChainMap,
-                            FileStoreMovingTemplate)
+from .base_registry import (RegistryTemplate, BaseRegistryRO, _ChainMap,
+                            RegistryMovingTemplate)
 
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
@@ -82,7 +82,7 @@ def cursor(connection):
         c.close()
 
 
-class FileStoreDatabase(object):
+class RegistryDatabase(object):
     def __init__(self, fp):
         self._fp = fp
         self.reconnect()
@@ -232,7 +232,7 @@ class RegistryRO(BaseRegistryRO):
     @property
     def _db(self):
         if self.__db is None:
-            self.__db = FileStoreDatabase(self.config['dbpath'])
+            self.__db = RegistryDatabase(self.config['dbpath'])
         return self.__db
 
     @property
@@ -259,9 +259,9 @@ class RegistryRO(BaseRegistryRO):
         return sqlite3.IntegrityError
 
 
-class FileStore(RegistryRO, FileStoreTemplate):
+class Registry(RegistryRO, RegistryTemplate):
     pass
 
 
-class FileStoreMoving(FileStore, FileStoreMovingTemplate):
+class RegistryMoving(Registry, RegistryMovingTemplate):
     pass
