@@ -105,14 +105,13 @@ class RegistryDatabase(object):
             EXPECTED_TABLES = ['Resources', 'Datums', 'ResourceUpdates']
             if tables != set(EXPECTED_TABLES):
                 raise RuntimeError("Database exists at {} but does not "
-                                    "have expected schema. Expected "
-                                    "tables: {}; found tables: {}".format(
-                                        self._fp, EXPECTED_TABLES, tables))
+                                   "have expected schema. Expected "
+                                   "tables: {}; found tables: {}".format(
+                                       self._fp, EXPECTED_TABLES, tables))
 
     def disconnect(self):
         self.conn.close()
         self.conn = None
-
 
 
 def shadow_with_json(d, keys):
