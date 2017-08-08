@@ -119,7 +119,7 @@ def start_md_server(testing_config):
                   str(testing_config['serviceport'])],
                  cwd=f)
     print('Started the server with configuration..:{}'.format(testing_config))
-    ttime.sleep(2)  # make sure the process is started
+    ttime.sleep(5)  # make sure the process is started
     return proc
 
 
@@ -130,6 +130,7 @@ def stop_md_server(proc, testing_config):
     conn = MongoClient(host=testing_config['mongohost'],
                        port=testing_config['mongoport'])
     conn.drop_database(testing_config['database'])
+    ttime.sleep(2)  # make sure the process is stopped
 
 
 def build_client_backend_broker(request):
