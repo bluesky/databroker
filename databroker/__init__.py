@@ -13,18 +13,6 @@ except AttributeError:
                       "and install 'attrs' which provides the correct module.")
 
 
-try:
-    from .databroker import DataBroker
-except ImportError:
-    # The .databroker module emits a warning, no need to duplicate it here.
-    pass
-else:
-    from .databroker import (DataBroker, DataBroker as db,
-                             get_events, get_table, stream, get_fields,
-                             restream, process)
-    from .pims_readers import get_images
-
-
 from .broker import Broker, ArchiverEventSource
 
 # set version string using versioneer
