@@ -208,7 +208,7 @@ class MDSRO(object):
         response = self._get(self._rstart_url, params=params)
         if not response:
             raise NoRunStart('No RunStart found with uid {}'.format(uid))
-        return response
+        return Document('RunStart', response)
 
     def find_run_starts(self, **kwargs):
         """Given search criteria, locate RunStart Documents.
