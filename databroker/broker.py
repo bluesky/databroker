@@ -596,13 +596,13 @@ class BrokerES(object):
             return pd.DataFrame()
 
     def get_images(self, headers, name, handler_registry=None,
-                   handler_override=None):
+                   handler_override=None,
+                   stream_name=None):
         """
         Load images from a detector for given Header(s).
 
         Parameters
         ----------
-        fs: FileStoreRO
         headers : Header or list of Headers
         name : string
             field name (data key) of a detector
@@ -610,7 +610,8 @@ class BrokerES(object):
             mapping spec names (strings) to handlers (callable classes)
         handler_override : callable class, optional
             overrides registered handlers
-
+        stream_name : str, optional
+            The event stream to pull from.
 
         Example
         -------
@@ -623,7 +624,8 @@ class BrokerES(object):
         return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
                       headers=headers,
                       name=name, handler_registry=handler_registry,
-                      handler_override=handler_override)
+                      handler_override=handler_override,
+                      stream_name=stream_name)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids
