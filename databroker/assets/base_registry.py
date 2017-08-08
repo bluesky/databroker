@@ -176,6 +176,11 @@ class BaseRegistryRO(object):
                                   self._datum_cache, self.get_spec_handler,
                                   logger)
 
+    def get_datum(self, eid):
+        warnings.warn('get_datum is deprecated, use retrieve instead',
+                      stacklevel=2)
+        return self.retrieve(eid)
+
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
             if self.handler_reg[key] is handler:
