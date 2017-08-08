@@ -288,7 +288,7 @@ class EventSourceShim(object):
         if not handler_overrides:
             with self.fs.handler_context(handler_registry):
                 for k in fields:
-                    data[k] = self.fs.get_datum(data[k])
+                    data[k] = self.fs.retrieve(data[k])
                     filled[k] = True
         else:
             mock_registries = {dk: defaultdict(lambda: handler)
@@ -297,7 +297,7 @@ class EventSourceShim(object):
             for k in fields:
                 with self.fs.handler_context(
                         mock_registries.get(k, handler_registry)):
-                    data[k] = self.fs.get_datum(data[k])
+                    data[k] = self.fs.retrieve(data[k])
                     filled[k] = True
         return ev
 
@@ -323,7 +323,7 @@ class EventSourceShim(object):
                     data = ev['data']
                     filled = ev['filled']
                     for k in fields:
-                        data[k] = self.fs.get_datum(data[k])
+                        data[k] = self.fs.retrieve(data[k])
                         filled[k] = True
                     yield ev
         else:
@@ -351,7 +351,7 @@ class EventSourceShim(object):
                 else:
                     hr = handler_registry
                 with self.fs.handler_context(hr) as _fs:
-                    values = [_fs.get_datum(value)
+                    values = [_fs.retrieve(value)
                               for value in tab[field]]
                 tab[field] = values
         return tab

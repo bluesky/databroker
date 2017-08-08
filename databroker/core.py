@@ -471,7 +471,7 @@ class Images(FramesSequence):
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
         with self.fs.handler_context(self.handler_registry) as fs:
-            example_frame = fs.get_datum(first_uid)
+            example_frame = fs.retrieve(first_uid)
         # Try to duck-type as a numpy array, but fall back as a general
         # Python object.
         try:
@@ -496,7 +496,7 @@ class Images(FramesSequence):
 
     def get_frame(self, i):
         with self.fs.handler_context(self.handler_registry) as fs:
-            img = fs.get_datum(self._datum_uids[i])
+            img = fs.retrieve(self._datum_uids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
         else:

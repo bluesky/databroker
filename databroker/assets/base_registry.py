@@ -150,9 +150,6 @@ class BaseRegistryRO(object):
                                   self._datum_cache, self.get_spec_handler,
                                   logger)
 
-    # back compat
-    get_datum = retrieve
-
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
             if self.handler_reg[key] is handler:
