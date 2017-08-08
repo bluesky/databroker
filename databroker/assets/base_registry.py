@@ -86,6 +86,27 @@ class BaseRegistryRO(object):
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
+    # ## Configuration management
+
+    # required configuration, sub-classes can over-ride this to do validation
+    REQ_CONFIG = ()
+    # optional configuration, mostly for documentation
+    OPT_CONFIG = ()
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        if not all(k in config for k in self.REQ_CONFIG):
+            raise RuntimeError('The provided config {c!r} must have {r} '
+                               'keys and is missing {m}'.format(
+                                   c=config,
+                                   r=self.REQ_CONFIG,
+                                   m=set(self.REQ_CONFIG) - set(config)))
+        self._config = config
+
     def __init__(self, config, handler_reg=None, root_map=None):
         # set up configuration + version
         self.config = config

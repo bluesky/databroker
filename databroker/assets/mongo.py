@@ -40,13 +40,6 @@ class FileStoreRO(BaseRegistryRO):
     OPT_CONFIG = ('port',)
 
     def __init__(self, config, handler_reg=None, root_map=None):
-        if not all(k in config for k in self.REQ_CONFIG):
-            raise RuntimeError('The provided config {c!r} must have {r} '
-                               'keys and is missing {m}'.format(
-                                   c=config,
-                                   r=self.REQ_CONFIG,
-                                   m=set(self.REQ_CONFIG) - set(config)))
-
         super(FileStoreRO, self).__init__(config,
                                           handler_reg=handler_reg,
                                           root_map=root_map)
@@ -55,7 +48,6 @@ class FileStoreRO(BaseRegistryRO):
         self.__datum_col = None
         self.__res_col = None
         self.__res_update_col = None
-        self.known_spec = dict(self.KNOWN_SPEC)
 
     def disconnect(self):
         self.__db = None
