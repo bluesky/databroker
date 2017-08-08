@@ -10,7 +10,7 @@ from pymongo import MongoClient
 
 from . import mongo_core
 
-from .base import (_ChainMap, FileStoreTemplateRO,
+from .base_registry import (_ChainMap, FileStoreTemplateRO,
                    FileStoreTemplate, FileStoreMovingTemplate)
 
 logger = logging.getLogger(__name__)

@@ -58,3 +58,52 @@ def create_test_database(host, port=None, version=1,
     install_sentinels(config, version)
 
     return config
+
+try:
+    from collections import ChainMap as _ChainMap
+except ImportError:
+    class _ChainMap(object):
+        def __init__(self, primary, fallback=None):
+            if fallback is None:
+                fallback = {}
+            self.fallback = fallback
+            self.primary = primary
+
+        def __getitem__(self, k):
+            try:
+                return self.primary[k]
+            except KeyError:
+                return self.fallback[k]
+
+        def __setitem__(self, k, v):
+            self.primary[k] = v
+
+        def __contains__(self, k):
+            return k in self.primary or k in self.fallback
+
+        def __delitem__(self, k):
+            del self.primary[k]
+
+        def pop(self, k, v):
+            return self.primary.pop(k, v)
+
+        @property
+        def maps(self):
+            return [self.primary, self.fallback]
+
+        @property
+        def parents(self):
+            return self.fallback
+
+        def new_child(self, m=None):
+            if m is None:
+                m = {}
+
+            return _ChainMap(m, self)
+
+        def __iter__(self):
+            for k in set(self.primary) | set(self.fallback):
+                yield k
+
+        def __len__(self):
+            return len(set(self.primary) | set(self.fallback))

@@ -2,7 +2,7 @@ import os
 import sqlite3
 import json
 from contextlib import contextmanager
-from .base import (FileStoreTemplate, FileStoreTemplateRO, _ChainMap,
+from .base_registry import (FileStoreTemplate, FileStoreTemplateRO, _ChainMap,
                    FileStoreMovingTemplate)
 
 

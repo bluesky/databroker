@@ -11,13 +11,10 @@ import boltons.cacheutils
 from . import core
 from collections import defaultdict
 import warnings
-try:
-    import pathlib
-except ImportError:
-    import pathlib2 as pathlib
 from ..utils import _make_sure_path_exists
 from pkg_resources import resource_filename
 import json
+from .utils import _ChainMap
 
 
 class DuplicateHandler(RuntimeError):
@@ -26,63 +23,57 @@ class DuplicateHandler(RuntimeError):
 
 logger = logging.getLogger(__name__)
 
-try:
-    from collections import ChainMap as _ChainMap
-except ImportError:
-    class _ChainMap(object):
-        def __init__(self, primary, fallback=None):
-            if fallback is None:
-                fallback = {}
-            self.fallback = fallback
-            self.primary = primary
 
-        def __getitem__(self, k):
-            try:
-                return self.primary[k]
-            except KeyError:
-                return self.fallback[k]
+class BaseRegistryRO(object):
+    """This is the base-class for asset registries.
 
-        def __setitem__(self, k, v):
-            self.primary[k] = v
+    It is indented to be sub-classed by specific implementations that
+    will proved their required collections.
 
-        def __contains__(self, k):
-            return k in self.primary or k in self.fallback
+    Most of the methods on this class are shims which defer to
+    functions on `self._api` which provides the actual implementation.
+    See `cls._API_MAP` for how to control this.
 
-        def __delitem__(self, k):
-            del self.primary[k]
+    This class provides the exception objects it will raise as
+    attributes, this is to support raising custom Exception classes
+    that mixin the underlying Exceptions from the database layer.
 
-        def pop(self, k, v):
-            return self.primary.pop(k, v)
+    This class provides the implementation of the handler registry.
 
-        @property
-        def maps(self):
-            return [self.primary, self.fallback]
-
-        @property
-        def parents(self):
-            return self.fallback
-
-        def new_child(self, m=None):
-            if m is None:
-                m = {}
-
-            return _ChainMap(m, self)
-
-        def __iter__(self):
-            for k in set(self.primary) | set(self.fallback):
-                yield k
-
-        def __len__(self):
-            return len(set(self.primary) | set(self.fallback))
-
-
-class FileStoreTemplateRO(object):
-    '''Base FileStore object that knows how to read the database.'''
-    KNOWN_SPEC = dict()
-    DuplicateHandler = DuplicateHandler
+    This class provides a set of caches for the documents and handlers.
+    """
+    # ### Database implementation source
+    # map to the underlying database implementation
+    # this may change in the future to be done in a more standard way, but
+    # doing it this ways allows run-time support for more than 1 version of the
+    # underlying database layout.
     _API_MAP = {1: core}
 
-    # load the built-in schema
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, val):
+        if self._api is not None:
+            raise RuntimeError("Can not change api version at runtime")
+        self._api = self._API_MAP[val]
+        self._version = val
+
+
+    # ### Exceptions
+
+    # An exception for use in registering handlers #
+    DuplicateHandler = DuplicateHandler
+
+    @property
+    def DatumNotFound(self):
+        return self._api.DatumNotFound
+
+
+    # ### known schemas
+
+    KNOWN_SPEC = dict()
     for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
         base_name = 'assets/json/'
@@ -96,20 +87,6 @@ class FileStoreTemplateRO(object):
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
-    @property
-    def version(self):
-        return self._version
-
-    @version.setter
-    def version(self, val):
-        if self._api is not None:
-            raise RuntimeError("Can not change api version at runtime")
-        self._api = self._API_MAP[val]
-        self._version = val
-
-    @property
-    def DatumNotFound(self):
-        return self._api.DatumNotFound
 
     def __init__(self, config, handler_reg=None, version=1):
         self.config = config
@@ -124,7 +101,17 @@ class FileStoreTemplateRO(object):
         self._handler_cache = boltons.cacheutils.LRU()
         self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
         self.known_spec = dict(self.KNOWN_SPEC)
-        self.root_map = defaultdict(lambda: self.config['dbpath'])
+        self.root_map = {}
+
+    def _r_on_miss(self, k):
+        col = self._resource_col
+        ret = self._api.resource_given_uid(col, k)
+        if ret is None:
+            raise RuntimeError('did not find resource {!r}'.format(k))
+        return ret
+
+
+
 
     def set_root_map(self, root_map):
         '''Set the root map
@@ -142,13 +129,6 @@ class FileStoreTemplateRO(object):
 
     def reconfigure(self, config):
         self.config = config
-
-    def _r_on_miss(self, k):
-        col = self._resource_col
-        ret = self._api.resource_given_uid(col, k)
-        if ret is None:
-            raise RuntimeError('did not find resource {!r}'.format(k))
-        return ret
 
     def resource_given_eid(self, eid):
         '''Given a datum eid return its Resource document
@@ -209,7 +189,7 @@ class FileStoreTemplateRO(object):
 
     def get_spec_handler(self, resource):
         """
-        Given a document from the base FS collection return
+        Given a document from the registry_template FS collection return
         the proper Handler
 
         This should get memozied or shoved into a class eventually
@@ -280,7 +260,7 @@ class FileStoreTemplateRO(object):
         process running this method must have read/write access to both the
         source and destination file systems.
 
-        This method does *not* update the filestore database.
+        This method does *not* update the filestore dataregistry_template.
 
         Internally the resource level directory information is stored
         as two parts: the root and the resource_path.  The 'root' is
@@ -396,6 +376,7 @@ class FileStoreTemplateRO(object):
                                        self.get_spec_handler)
 
 
+
 class FileStoreTemplate(FileStoreTemplateRO):
     '''FileStore object that knows how to create new documents.'''
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
@@ -489,7 +470,7 @@ class FileStoreTemplate(FileStoreTemplateRO):
         if not isinstance(resource, six.string_types):
             if dict(actual_resource) != dict(resource):
                 raise RuntimeError('The resource you hold and the resource '
-                                   'the data base holds do not match '
+                                   'the data registry_template holds do not match '
                                    'yours: {!r} db: {!r}'.format(
                                        resource, actual_resource))
         resource = dict(actual_resource)
@@ -594,7 +575,7 @@ class FileStoreMovingTemplate(FileStoreTemplate):
         file_lists = self.copy_files(resource, new_root, verify,
                                      file_rename_hook)
 
-        # update the database
+        # update the dataregistry_template
         new_resource = dict(resource)
         new_resource['root'] = new_root
 
