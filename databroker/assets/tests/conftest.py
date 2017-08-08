@@ -3,7 +3,7 @@ from ..utils import create_test_database
 
 
 def mongo_fs_factory():
-    from databroker.resource_registry import mongo as ffs
+    from databroker.assets import mongo as ffs
     db_name = "fs_testing_base_disposable_{uid}"
     test_conf = create_test_database(host='localhost',
                                      port=27017, version=1,
@@ -18,7 +18,7 @@ def mongo_fs_factory():
 
 
 def sqlite_fs_factory():
-    from databroker.resource_registry import sqlite as sqlfs
+    from databroker.assets import sqlite as sqlfs
     import tempfile
     import os
     tf = tempfile.NamedTemporaryFile()

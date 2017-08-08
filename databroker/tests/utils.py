@@ -16,7 +16,7 @@ from subprocess import Popen
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
     from ..headersource.sqlite import MDS
-    from ..resource_registry.sqlite import FileStore
+    from ..assets.sqlite import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -47,7 +47,7 @@ def build_sqlite_backed_broker(request):
 
 def build_hdf5_backed_broker(request):
     from ..headersource.hdf5 import MDS
-    from ..resource_registry.sqlite import FileStore
+    from ..assets.sqlite import FileStore
 
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
@@ -82,8 +82,8 @@ def build_pymongo_backed_broker(request):
 
     '''
     from ..headersource.mongo import MDS
-    from ..resource_registry.utils import create_test_database
-    from ..resource_registry.mongo import FileStore
+    from ..assets.utils import create_test_database
+    from ..assets.mongo import FileStore
 
     db_name = "mds_testing_disposable_{}".format(str(uuid.uuid4()))
     md_test_conf = dict(database=db_name, host='localhost',
@@ -134,8 +134,8 @@ def stop_md_server(proc, testing_config):
 
 def build_client_backend_broker(request):
     from ..headersource.client import MDS
-    from ..resource_registry.utils import create_test_database
-    from ..resource_registry.mongo import FileStore
+    from ..assets.utils import create_test_database
+    from ..assets.mongo import FileStore
 
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),

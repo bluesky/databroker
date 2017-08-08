@@ -85,7 +85,7 @@ class FileStoreTemplateRO(object):
     # load the built-in schema
     for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
-        base_name = 'resource_registry/json/'
+        base_name = 'assets/json/'
         resource_name = '{}{}_resource.json'.format(base_name, spec_name)
         datum_name = '{}{}_datum.json'.format(base_name, spec_name)
         with open(resource_filename('databroker',
