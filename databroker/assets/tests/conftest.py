@@ -22,12 +22,22 @@ def sqlite_fs_factory():
     import tempfile
     import os
     tf = tempfile.NamedTemporaryFile()
-    fs = sqlfs.RegistryMoving({'dbpath': tf.name, 'version': 1})
+    fs = sqlfs.RegistryMoving({'dbpath': tf.name})
 
     def delete_dm():
         os.remove(tf.name)
 
     return fs, delete_dm
+
+
+def hdf5_fs_factory():
+    from databroker.assets import column_hdf5 as chdf5
+    import tempfile
+
+    tp = tempfile.TemporaryDirectory()
+    fs = chdf5.RegistryMoving({'dbpath': tp.name})
+
+    return fs, tp.cleanup
 
 
 def _use_factory(request):
@@ -40,10 +50,11 @@ def _use_factory(request):
     return fs
 
 
-@pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory],
-                ids=['mongo', 'sqlite'])
+@pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory,
+                                          hdf5_fs_factory],
+                ids=['mongo', 'sqlite', 'column_hdf5'])
 def fs(request):
-    '''Provide a function level scoped Registry instance talking to
+    '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
@@ -52,7 +63,7 @@ def fs(request):
 
 @pytest.fixture(scope='function', params=[mongo_fs_factory])
 def fs_mongo(request):
-    '''Provide a function level scoped Registry instance talking to
+    '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
@@ -65,7 +76,7 @@ fs_v1 = fs
 @pytest.fixture(scope='class', params=[mongo_fs_factory, sqlite_fs_factory],
                 ids=['mongo', 'sqlite'])
 def fs_cls(request):
-    '''Provide a function level scoped Registry instance talking to
+    '''Provide a function level scoped FileStore instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
