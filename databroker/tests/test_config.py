@@ -51,8 +51,7 @@ def test_lookup_config():
     assert actual == EXAMPLE
 
     if six.PY2:
-        with pytest.raises(IOError):
-            lookup_config('__does_not_exist')
-    else:
-        with pytest.raises(FileNotFoundError):
-            lookup_config('__does_not_exist')
+        FileNotFoundError = IOError
+
+    with pytest.raises(FileNotFoundError):
+        lookup_config('__does_not_exist')

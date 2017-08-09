@@ -528,23 +528,6 @@ def test_bad_event_desc(mds_all):
                                run_start=rs, uid=str(uuid.uuid4()))
 
 
-def test_load_configuration_smoke():
-    original_env = os.environ.copy()
-    from databroker.config import load_configuration
-
-    os.environ['MDS_HOST'] = 'localhost'
-    os.environ['MDS_PORT'] = '27017'
-    os.environ['MDS_DATABASE'] = 'testingconfig'
-    os.environ['MDS_TIMEZONE'] = 'US/Eastern'
-
-    try:
-        load_configuration('metadatastore',
-                           'MDS', ['host', 'database', 'port'])
-    finally:
-        os.environ.clear()
-        os.environ.update(original_env)
-
-
 def test_reload(mds_portable):
     if 'hdf5' in type(mds_portable).__module__:
         pytest.xfail('know bug in hdf5 backend')
