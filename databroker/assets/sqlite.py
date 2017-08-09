@@ -15,6 +15,7 @@ CREATE TABLE Resources(
     spec TEXT NOT NULL,
     resource_path TEXT NOT NULL,
     root TEXT NOT NULL,
+    path_semantics TEXT NOT NULL,
     resource_kwargs BLOB NOT NULL
 );"""
 CREATE_DATUMS_TABLE = """
@@ -38,8 +39,9 @@ INSERT_DATUM = """
 INSERT INTO Datums (datum_id, datum_kwargs, resource)
 VALUES (?, ?, ?);"""
 INSERT_RESOURCE = """
-INSERT INTO Resources (uid, spec, resource_path, root, resource_kwargs)
-VALUES (?, ?, ?, ?, ?);"""
+INSERT INTO Resources (uid, spec, resource_path, root, path_semantics,
+                       resource_kwargs)
+VALUES (?, ?, ?, ?, ?, ?);"""
 SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
 SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_id=?;"
 SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource=?;"
@@ -184,7 +186,8 @@ class ResourceCollection(object):
 
     def insert_one(self, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
-        keys = ['uid', 'spec', 'resource_path', 'root', 'resource_kwargs']
+        keys = ['uid', 'spec', 'resource_path', 'root', 'path_semantics',
+                'resource_kwargs']
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE, [resource[k] for k in keys])
 

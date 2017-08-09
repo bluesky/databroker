@@ -119,7 +119,7 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
-                    known_spec, root):
+                    known_spec, root, path_semantics='posix'):
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
@@ -128,6 +128,7 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
                            resource_path=str(resource_path),
                            root=str(root),
                            resource_kwargs=resource_kwargs,
+                           path_semantics=path_semantics,
                            uid=str(uuid.uuid4()))
 
     col.insert_one(resource_object)
