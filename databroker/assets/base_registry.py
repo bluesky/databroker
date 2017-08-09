@@ -547,11 +547,10 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
-        self._api.bulk_register_datum_table(self._datum_col,
-                                            self._resource_col,
-                                            resource_uid,
-                                            dkwargs_table,
-                                            validate)
+        return self._api.bulk_register_datum_table(
+            self._datum_col, self._resource_col,
+            resource_uid, dkwargs_table,
+            validate)
 
     # ## API for export
     def ingest_resource(self, resource_doc):

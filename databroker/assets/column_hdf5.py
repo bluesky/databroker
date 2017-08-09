@@ -2,6 +2,7 @@ import h5py
 import json
 import uuid
 import os
+import pandas as pd
 
 # from .base_registry import BaseRegistry
 from databroker.assets.base_registry import RegistryTemplate
@@ -44,23 +45,48 @@ def bulk_register_datum_table(datum_col, resource_col,
     if validate:
         raise
 
-    datum_uids = ['{}/{}'.format(resource_uid, uuid.uuid4())
-                  for j in range(len(dkwargs_table))]
+    d_ids = [uuid.uuid4() for j in range(len(dkwargs_table))]
+    datum_ids = ['{}/{}'.format(resource_uid, d)
+                 for d in d_ids]
 
     with h5py.File(f'{datum_col}/{resource_uid}.h5', 'w') as fout:
-        fout['datum_uid'] = [d.encode('utf-8') for d in datum_uids]
+        fout['datum_id'] = [d.encode('utf-8') for d in d_ids]
         for k, v in dkwargs_table.items():
             fout.create_dataset(k, (len(v),),
                                 dtype=v.dtype,
                                 data=v,
                                 maxshape=(None, ))
 
-    return datum_uids
+    return datum_ids
+
+
+def resource_given_uid(col, res_uid):
+    with open(f'{col}/{res_uid}.json', 'r') as fin:
+        resource_object = json.load(fin)
+    return resource_object
+
+
+def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
+    r_uid, _, d_uid = datum_id.partition('/')
+
+    handler = get_spec_handler(r_uid)
+    try:
+        df = datum_cache[r_uid]
+    except:
+        with h5py.File(f'{col}/{r_uid}.h5', 'r') as fout:
+            df = pd.DataFrame({k: fout[k] for k in fout})
+            df['datum_id'] = df['datum_id'].str.decode('utf-8')
+            df = df.set_index('datum_id')
+        datum_cache[r_uid] = df
+
+    return handler(**dict(df.loc[datum_id]))
 
 
 api = SimpleNamespace(
     insert_resource=insert_resource,
-    bulk_register_datum_table=bulk_register_datum_table)
+    bulk_register_datum_table=bulk_register_datum_table,
+    resource_given_uid=resource_given_uid,
+    retrieve=retrieve)
 
 
 class ColumnHdf5Registry(RegistryTemplate):
