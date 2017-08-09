@@ -18,7 +18,7 @@ EXAMPLE = {
     },
     'assets': {
         'module': 'databroker.assets.mongo',
-        'class': 'FileStoreRO',
+        'class': 'RegistryRO',
         'config': {
             'host': 'localhost',
             'port': 27017,
