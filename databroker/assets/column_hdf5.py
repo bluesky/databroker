@@ -1,5 +1,4 @@
 import h5py
-import json
 import uuid
 import os
 import pandas as pd
@@ -9,15 +8,20 @@ import itertools
 import numpy as np
 
 # from .base_registry import BaseRegistry
-from databroker.assets.base_registry import RegistryTemplate, RegistryMovingTemplate
-from databroker.assets.sqlite import (ResourceCollection, ResourceUpdatesCollection,
+from databroker.assets.base_registry import (RegistryTemplate,
+                                             RegistryMovingTemplate)
+from databroker.assets.sqlite import (ResourceCollection,
+                                      ResourceUpdatesCollection,
                                       RegistryDatabase)
 from databroker.assets.core import (resource_given_uid, insert_resource,
                                     update_resource, get_resource_history,
                                     doc_or_uid_to_uid, get_file_list)
 from databroker.headersource.hdf5 import append
+
+
 class DatumNotFound(Exception):
     ...
+
 
 try:
     from types import SimpleNamespace
@@ -97,6 +101,7 @@ def resource_given_datum_id(col, datum_id, datum_cache, logger):
     r_uid, _, d_uid = datum_id.partition('/')
     return r_uid
 
+
 def bulk_insert_datum(col, resource, datum_ids,
                       datum_kwarg_list):
     d_uids = bulk_register_datum_table(col, None,
@@ -105,6 +110,7 @@ def bulk_insert_datum(col, resource, datum_ids,
                                        False)
 
     return d_uids
+
 
 def insert_datum(datum_col, resource, datum_id, datum_kwargs,
                  known_spec, resource_col):
@@ -153,14 +159,9 @@ class Registry(RegistryTemplate):
         # we are going to be caching dataframes so be
         # smaller!
         self._datum_cache.max_size = 100
-
-        self.__db = None
         self.__resource_col = None
+        self.__db = None
         self.__resource_update_col = None
-
-    @property
-    def _resource_col(self):
-        return self.config['dbpath']
 
     @property
     def _datum_col(self):
