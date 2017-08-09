@@ -19,21 +19,33 @@ if sys.version_info >= (3, 0):
     from bluesky.tests.conftest import fresh_RE as RE
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='function')
+@pytest.fixture(params=['sqlite', 'mongo', 'hdf5', 'client'], scope='module')
 def db(request):
     param_map = {'sqlite': build_sqlite_backed_broker,
                  'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker}
+                 'hdf5': build_hdf5_backed_broker,
+                 'client': build_client_backend_broker}
 
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='function')
+@pytest.fixture(params=['sqlite', 'mongo', 'hdf5', 'client'], scope='function')
+def db_empty(request):
+    param_map = {'sqlite': build_sqlite_backed_broker,
+                 'mongo': build_pymongo_backed_broker,
+                 'hdf5': build_hdf5_backed_broker,
+                 'client': build_client_backend_broker}
+
+    return param_map[request.param](request)
+
+
+@pytest.fixture(params=['sqlite', 'mongo', 'hdf5', 'client'], scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
     param_map = {'sqlite': lambda: build_sqlite_backed_broker(request),
                  'mongo': lambda: build_pymongo_backed_broker(request),
-                 'hdf5': lambda: build_hdf5_backed_broker(request)}
+                 'hdf5': lambda: build_hdf5_backed_broker(request),
+                 'client': lambda: build_client_backend_broker(request)}
 
     return param_map[request.param]
 
@@ -41,23 +53,18 @@ def broker_factory(request):
 AUTH = os.environ.get('MDSTESTWITHAUTH', False)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5', 'client'], scope='function')
-def mds_all(request):
-    '''Provide a function level scoped FileStore instance talking to
+@pytest.fixture(scope='module')
+def mds_all(request, db):
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with both v0 and v1.
     '''
-    param_map = {'sqlite': build_sqlite_backed_broker,
-                 'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker,
-                 'client': build_client_backend_broker}
-
-    return param_map[request.param](request).mds
+    return db.mds
 
 
 @pytest.fixture(params=[mqmds,
                         sqlmds], scope='function')
 def mds_portable(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with both v0 and v1.
 
     '''
@@ -79,7 +86,7 @@ def mds_portable(request):
     return mds
 
 
-@pytest.fixture()
+@pytest.fixture(scope='module')
 def md_server_url(request):
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),

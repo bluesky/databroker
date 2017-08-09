@@ -5,8 +5,9 @@ from bson.errors import InvalidId
 import six
 from doct import Document
 import pymongo
-from .core import (DatumNotFound, _get_datum_from_eid, retrieve,
-                   resource_given_eid, insert_datum, insert_resource,
+from collections import deque
+from .core import (DatumNotFound, _get_datum_from_datum_id, retrieve,
+                   resource_given_datum_id, insert_datum, insert_resource,
                    update_resource, get_datum_by_res_gen, get_file_list)
 
 
@@ -68,10 +69,12 @@ def bulk_insert_datum(col, resource, datum_ids,
             yield datum
 
     bulk = col.initialize_unordered_bulk_op()
+    d_uids = deque()
     for dm in datum_factory():
         bulk.insert(dm)
-
-    return bulk.execute()
+        d_uids.append(dm['datum_id'])
+    bulk.execute()
+    return d_uids
 
 
 def get_resource_history(col, resource):

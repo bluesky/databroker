@@ -410,7 +410,7 @@ def get_images(db, headers, name, handler_registry=None,
 
     Parameters
     ----------
-    fs: FileStoreRO
+    fs: RegistryRO
     headers : Header or list of Headers
     name : string
         field name (data key) of a detector
@@ -439,7 +439,7 @@ class Images(FramesSequence):
 
         Parameters
         ----------
-        fs : FileStoreRO
+        fs : RegistryRO
         headers : Header or list of Headers
         es : EventStoreRO
         name : str
@@ -461,17 +461,17 @@ class Images(FramesSequence):
         db = Broker(mds, fs)
         events = db.get_events(headers, [name], fill=False)
 
-        self._datum_uids = [event.data[name] for event in events
+        self._datum_ids = [event.data[name] for event in events
                             if name in event.data]
-        self._len = len(self._datum_uids)
-        first_uid = self._datum_uids[0]
+        self._len = len(self._datum_ids)
+        first_uid = self._datum_ids[0]
         if handler_override is None:
             self.handler_registry = handler_registry
         else:
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
         with self.fs.handler_context(self.handler_registry) as fs:
-            example_frame = fs.get_datum(first_uid)
+            example_frame = fs.retrieve(first_uid)
         # Try to duck-type as a numpy array, but fall back as a general
         # Python object.
         try:
@@ -496,7 +496,7 @@ class Images(FramesSequence):
 
     def get_frame(self, i):
         with self.fs.handler_context(self.handler_registry) as fs:
-            img = fs.get_datum(self._datum_uids[i])
+            img = fs.retrieve(self._datum_ids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
         else:

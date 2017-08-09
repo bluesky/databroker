@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class NpyWriter(HandlerBase):
     """
     Class to handle writing a numpy array out to disk and registering
-    that write with FileStore.
+    that write with Registry.
 
     This class is only good for one call to add_data.
 
@@ -93,7 +93,7 @@ class NpyWriter(HandlerBase):
                                      root='/')
         evl = self.fs.insert_datum(fb, uid, {})
 
-        return evl.datum_id
+        return evl['datum_id']
 
 
 def save_ndarray(data, fs, base_path=None, filename=None):
@@ -128,6 +128,6 @@ def save_ndarray(data, fs, base_path=None, filename=None):
     _make_sure_path_exists(base_path)
     fpath = op.join(base_path, filename + '.npy')
     with NpyWriter(fpath, fs) as fout:
-        eid = fout.add_data(data)
+        datum_id = fout.add_data(data)
 
-    return eid
+    return datum_id

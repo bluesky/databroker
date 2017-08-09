@@ -1,35 +1,30 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import six   # noqa
 import logging
-
-import boltons.cacheutils
 import pymongo
-import six
+
 from pymongo import MongoClient
 
 from . import mongo_core
 
-from .base import (_ChainMap, FileStoreTemplateRO,
-                   FileStoreTemplate, FileStoreMovingTemplate)
+from .base_registry import (BaseRegistryRO,
+                            RegistryTemplate,
+                            RegistryMovingTemplate)
 
 logger = logging.getLogger(__name__)
 
 
-class FileStoreRO(FileStoreTemplateRO):
-    '''Base FileStore object that knows how to read the database.
+class RegistryRO(BaseRegistryRO):
+    '''Base Registry object that knows how to read the database.
 
     Parameters
     ----------
     config : dict
-       Much have keys {'database', 'collection', 'host'} and may have a 'port'
+       Much have keys {'database', 'host'} and may have a 'port'
 
     handler_reg : dict, optional
        Mapping between spec names and handler classes
-
-    version : int, optional
-        schema version of the database.
-        Defaults to 1
 
     root_map : dict, optional
         str -> str mapping to account for temporarily moved/copied/remounted
@@ -39,39 +34,24 @@ class FileStoreRO(FileStoreTemplateRO):
 
     '''
     _API_MAP = {1: mongo_core}
+    REQ_CONFIG = ('database', 'host')
+    OPT_CONFIG = ('port',)
 
-    def __init__(self, config, handler_reg=None, version=1, root_map=None):
-        self.config = config
-        self._api = None
-        self.version = version
-
-        if handler_reg is None:
-            handler_reg = {}
-        self.handler_reg = _ChainMap(handler_reg)
-
-        if root_map is None:
-            root_map = {}
-        self.root_map = root_map
-
-        self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
-        self._handler_cache = boltons.cacheutils.LRU()
-        self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
+    def __init__(self, config, handler_reg=None, root_map=None):
+        super(RegistryRO, self).__init__(config,
+                                         handler_reg=handler_reg,
+                                         root_map=root_map)
         self.__db = None
         self.__conn = None
         self.__datum_col = None
         self.__res_col = None
         self.__res_update_col = None
-        self.known_spec = dict(self.KNOWN_SPEC)
 
     def disconnect(self):
         self.__db = None
         self.__conn = None
         self.__datum_col = None
         self.__res_col = None
-
-    def reconfigure(self, config):
-        self.disconnect()
-        self.config = config
 
     @property
     def _db(self):
@@ -134,9 +114,9 @@ class FileStoreRO(FileStoreTemplateRO):
         return self._api.DuplicateKeyError
 
 
-class FileStore(FileStoreRO, FileStoreTemplate):
-    '''FileStore object that knows how to create new documents.'''
+class Registry(RegistryRO, RegistryTemplate):
+    '''Registry object that knows how to create new documents.'''
 
 
-class FileStoreMoving(FileStore, FileStoreMovingTemplate):
-    '''FileStore object that knows how to move files.'''
+class RegistryMoving(Registry, RegistryMovingTemplate):
+    '''Registry object that knows how to move files.'''

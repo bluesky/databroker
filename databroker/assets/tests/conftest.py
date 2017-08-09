@@ -8,7 +8,7 @@ def mongo_fs_factory():
     test_conf = create_test_database(host='localhost',
                                      port=27017, version=1,
                                      db_template=db_name)
-    fs = ffs.FileStoreMoving(test_conf, version=1)
+    fs = ffs.RegistryMoving(test_conf)
 
     def delete_dm():
         print("DROPPING DB")
@@ -22,7 +22,7 @@ def sqlite_fs_factory():
     import tempfile
     import os
     tf = tempfile.NamedTemporaryFile()
-    fs = sqlfs.FileStoreMoving({'dbpath': tf.name}, version=1)
+    fs = sqlfs.RegistryMoving({'dbpath': tf.name, 'version': 1})
 
     def delete_dm():
         os.remove(tf.name)
@@ -43,7 +43,7 @@ def _use_factory(request):
 @pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory],
                 ids=['mongo', 'sqlite'])
 def fs(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
@@ -52,7 +52,7 @@ def fs(request):
 
 @pytest.fixture(scope='function', params=[mongo_fs_factory])
 def fs_mongo(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
@@ -65,7 +65,7 @@ fs_v1 = fs
 @pytest.fixture(scope='class', params=[mongo_fs_factory, sqlite_fs_factory],
                 ids=['mongo', 'sqlite'])
 def fs_cls(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''

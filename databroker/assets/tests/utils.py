@@ -55,8 +55,8 @@ def insert_syn_data_with_resource(fs, f_type, shape, count):
                                      lambda x: str(x['id'])))
     for k, rmap in zip(range(count), res_map_cycle):
         r_id = str(uuid.uuid4())
-        fs.insert_datum(rmap(fb), r_id, {'n': k + 1})
-        ret.append(r_id)
+        datum = fs.insert_datum(rmap(fb), r_id, {'n': k + 1})
+        ret.append(datum['datum_id'])
     return ret, fb
 
 
@@ -64,6 +64,7 @@ def insert_syn_data_bulk(fs, f_type, shape, count):
     fb = fs.insert_resource(f_type, None, {'shape': shape})
     d_uid = [str(uuid.uuid4()) for k in range(count)]
     d_kwargs = [{'n': k + 1} for k in range(count)]
-    fs.bulk_insert_datum(fb, d_uid, d_kwargs)
-
+    out = fs.bulk_insert_datum(fb, d_uid, d_kwargs)
+    if out is not None:
+        d_uid = out
     return d_uid

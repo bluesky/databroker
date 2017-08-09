@@ -9,15 +9,11 @@ import shutil
 import os
 import boltons.cacheutils
 from . import core
-from collections import defaultdict
 import warnings
-try:
-    import pathlib
-except ImportError:
-    import pathlib2 as pathlib
 from ..utils import _make_sure_path_exists
 from pkg_resources import resource_filename
 import json
+from .utils import _ChainMap
 
 
 class DuplicateHandler(RuntimeError):
@@ -26,63 +22,57 @@ class DuplicateHandler(RuntimeError):
 
 logger = logging.getLogger(__name__)
 
-try:
-    from collections import ChainMap as _ChainMap
-except ImportError:
-    class _ChainMap(object):
-        def __init__(self, primary, fallback=None):
-            if fallback is None:
-                fallback = {}
-            self.fallback = fallback
-            self.primary = primary
 
-        def __getitem__(self, k):
-            try:
-                return self.primary[k]
-            except KeyError:
-                return self.fallback[k]
+class BaseRegistryRO(object):
+    """This is the base-class for asset registries.
 
-        def __setitem__(self, k, v):
-            self.primary[k] = v
+    It is indented to be sub-classed by specific implementations that
+    will proved their required collections.
 
-        def __contains__(self, k):
-            return k in self.primary or k in self.fallback
+    Most of the methods on this class are shims which defer to
+    functions on `self._api` which provides the actual implementation.
+    See `cls._API_MAP` for how to control this.
 
-        def __delitem__(self, k):
-            del self.primary[k]
+    This class provides the exception objects it will raise as
+    attributes, this is to support raising custom Exception classes
+    that mixin the underlying Exceptions from the database layer.
 
-        def pop(self, k, v):
-            return self.primary.pop(k, v)
+    This class provides the implementation of the handler registry.
 
-        @property
-        def maps(self):
-            return [self.primary, self.fallback]
+    This class provides a set of caches for the documents and handlers.
 
-        @property
-        def parents(self):
-            return self.fallback
-
-        def new_child(self, m=None):
-            if m is None:
-                m = {}
-
-            return _ChainMap(m, self)
-
-        def __iter__(self):
-            for k in set(self.primary) | set(self.fallback):
-                yield k
-
-        def __len__(self):
-            return len(set(self.primary) | set(self.fallback))
-
-
-class FileStoreTemplateRO(object):
-    '''Base FileStore object that knows how to read the database.'''
-    KNOWN_SPEC = dict()
-    DuplicateHandler = DuplicateHandler
+    This class provides management of the 'root' and 'root_map'.
+    """
+    # ### Database implementation source
+    # map to the underlying database implementation
+    # this may change in the future to be done in a more standard way, but
+    # doing it this ways allows run-time support for more than 1 version of the
+    # underlying database layout.
     _API_MAP = {1: core}
 
-    # load the built-in schema
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, val):
+        if self._api is not None:
+            raise RuntimeError("Can not change api version at runtime")
+        self._api = self._API_MAP[val]
+        self._version = val
+
+    # ### Exceptions
+
+    # An exception for use in registering handlers #
+    DuplicateHandler = DuplicateHandler
+
+    @property
+    def DatumNotFound(self):
+        return self._api.DatumNotFound
+
+    # ### known schemas
+
+    KNOWN_SPEC = dict()
     for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
         base_name = 'assets/json/'
@@ -96,36 +86,79 @@ class FileStoreTemplateRO(object):
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
 
-    @property
-    def version(self):
-        return self._version
+    # ## Configuration management
 
-    @version.setter
-    def version(self, val):
-        if self._api is not None:
-            raise RuntimeError("Can not change api version at runtime")
-        self._api = self._API_MAP[val]
-        self._version = val
+    # required configuration, sub-classes can over-ride this to do validation
+    REQ_CONFIG = ()
+    # optional configuration, mostly for documentation
+    OPT_CONFIG = ()
 
     @property
-    def DatumNotFound(self):
-        return self._api.DatumNotFound
+    def config(self):
+        return self._config
 
-    def __init__(self, config, handler_reg=None, version=1):
+    @config.setter
+    def config(self, config):
+        if not all(k in config for k in self.REQ_CONFIG):
+            raise RuntimeError('The provided config {c!r} must have {r} '
+                               'keys and is missing {m}'.format(
+                                   c=config,
+                                   r=self.REQ_CONFIG,
+                                   m=set(self.REQ_CONFIG) - set(config)))
+        self._config = config
+
+    def disconnect(self):
+        pass
+
+    def reconfigure(self, config):
+        '''Reconfigure the Registry object
+
+        This clears all the local caches and starts from scratch.
+
+        Parameters
+        ----------
+        config : dict
+        '''
+        self.disconnect()
+        self.clear_process_cache()
         self.config = config
         self._api = None
-        self.version = version
-        if handler_reg is None:
-            handler_reg = {}
+        self.version = config.get('version', 1)
 
-        self.handler_reg = _ChainMap(handler_reg)
+    def clear_process_cache(self):
+        self._datum_cache.clear()
+        self._handler_cache.clear()
+        self._resource_cache.clear()
+
+    # ## INIT
+    def __init__(self, config, handler_reg=None, root_map=None):
+        # set up configuration + version
+        self.config = config
+        self._api = None
+        self.version = config.get('version', 1)
+
+        # set up the initial handler registry
+        self.handler_reg = _ChainMap(handler_reg or {})
+
+        # set up the initial root_map
+        self.root_map = root_map or {}
+
+        # ## set up the caches
+        def _r_on_miss(k):
+            col = self._resource_col
+            ret = self._api.resource_given_uid(col, k)
+            if ret is None:
+                raise RuntimeError('did not find resource {!r}'.format(k))
+            return ret
 
         self._datum_cache = boltons.cacheutils.LRU(max_size=1000000)
         self._handler_cache = boltons.cacheutils.LRU()
-        self._resource_cache = boltons.cacheutils.LRU(on_miss=self._r_on_miss)
-        self.known_spec = dict(self.KNOWN_SPEC)
-        self.root_map = defaultdict(lambda: self.config['dbpath'])
+        self._resource_cache = boltons.cacheutils.LRU(on_miss=_r_on_miss)
 
+        # copy the class level known spec to an instance attribute
+        self.known_spec = dict(self.KNOWN_SPEC)
+
+    # ## Rootmap
     def set_root_map(self, root_map):
         '''Set the root map
 
@@ -140,38 +173,17 @@ class FileStoreTemplateRO(object):
         '''
         self.root_map = root_map
 
-    def reconfigure(self, config):
-        self.config = config
-
-    def _r_on_miss(self, k):
-        col = self._resource_col
-        ret = self._api.resource_given_uid(col, k)
-        if ret is None:
-            raise RuntimeError('did not find resource {!r}'.format(k))
-        return ret
-
-    def resource_given_eid(self, eid):
-        '''Given a datum eid return its Resource document
-        '''
-        if self.version == 0:
-            raise NotImplementedError('V0 has no notion of root so can not '
-                                      'change it so no need for this method')
-
-        res = self._api.resource_given_eid(self._datum_col, eid,
-                                           self._datum_cache, logger)
-        return self._resource_cache[res]
-
-    def resource_given_uid(self, uid):
-        col = self._resource_col
-        return self._api.resource_given_uid(col, uid)
-
-    def retrieve(self, eid):
-        return self._api.retrieve(self._datum_col, eid,
+    # ## Hi-level API
+    # Users typically should not need anything outside of these methods
+    def retrieve(self, datum_id):
+        return self._api.retrieve(self._datum_col, datum_id,
                                   self._datum_cache, self.get_spec_handler,
                                   logger)
 
-    # back compat
-    get_datum = retrieve
+    def get_datum(self, datum_id):
+        warnings.warn('get_datum is deprecated, use retrieve instead',
+                      stacklevel=2)
+        return self.retrieve(datum_id)
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
@@ -207,9 +219,11 @@ class FileStoreTemplateRO(object):
                     if k[1] == name:
                         del self._handler_cache[k]
 
+    # ## Mid-level API (for internal use)
+    # Do mapping between a resource document -> a usable Handler object
     def get_spec_handler(self, resource):
         """
-        Given a document from the base FS collection return
+        Given a document from the registry_template FS collection return
         the proper Handler
 
         This should get memozied or shoved into a class eventually
@@ -252,6 +266,18 @@ class FileStoreTemplateRO(object):
         h_cache[key] = ret
         return ret
 
+    def get_file_list(self, resource_or_uid, datum_kwarg_gen):
+        """Given a resource or resource uid and an iterable of datum kwargs,
+        return filepaths.
+
+
+        DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
+        See the methods for moving and copying on the Registry object.
+        """
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        return self._api.get_file_list(actual_resource, datum_kwarg_gen,
+                                       self.get_spec_handler)
+
     def get_history(self, resource_uid):
         '''Generator of all updates to the given resource
 
@@ -271,6 +297,32 @@ class FileStoreTemplateRO(object):
                 self._resource_update_col, resource_uid):
             yield doc
 
+    # ## Lo-level API: Direct access to documents (for internal use)
+    def resource_given_datum_id(self, datum_id):
+        '''Given a datum datum_id return its Resource document
+        '''
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it so no need for this method')
+
+        res = self._api.resource_given_datum_id(self._datum_col, datum_id,
+                                           self._datum_cache, logger)
+        return self._resource_cache[res]
+
+    def resource_given_uid(self, uid):
+        col = self._resource_col
+        return self._api.resource_given_uid(col, uid)
+
+    def datum_gen_given_resource(self, resource_or_uid):
+        """Given resource or resource uid return associated datum documents.
+        """
+        actual_resource = self.resource_given_uid(resource_or_uid)
+        datum_gen = self._api.get_datum_by_res_gen(self._datum_col,
+                                                   actual_resource['uid'])
+        return datum_gen
+
+    # ## File-related API
+    # This may move to a mix-in class or something
     def copy_files(self, resource_or_uid, new_root,
                    verify=False, file_rename_hook=None):
         """
@@ -280,7 +332,7 @@ class FileStoreTemplateRO(object):
         process running this method must have read/write access to both the
         source and destination file systems.
 
-        This method does *not* update the filestore database.
+        This method does *not* update the filestore dataregistry_template.
 
         Internally the resource level directory information is stored
         as two parts: the root and the resource_path.  The 'root' is
@@ -315,8 +367,8 @@ class FileStoreTemplateRO(object):
 
         See Also
         --------
-        `FileStoreMoving.shift_root`
-        `FileStoreMoving.change_root`
+        `RegistryMoving.shift_root`
+        `RegistryMoving.change_root`
         """
         if self.version == 0:
             raise NotImplementedError('V0 has no notion of root so can not '
@@ -375,29 +427,11 @@ class FileStoreTemplateRO(object):
 
         return zip(file_list, new_file_list)
 
-    def datum_gen_given_resource(self, resource_or_uid):
-        """Given resource or resource uid return associated datum documents.
-        """
-        actual_resource = self.resource_given_uid(resource_or_uid)
-        datum_gen = self._api.get_datum_by_res_gen(self._datum_col,
-                                                   actual_resource['uid'])
-        return datum_gen
 
-    def get_file_list(self, resource_or_uid, datum_kwarg_gen):
-        """Given a resource or resource uid and an iterable of datum kwargs,
-        return filepaths.
+class RegistryTemplate(BaseRegistryRO):
+    '''Registry object that knows how to create new documents.'''
 
-
-        DO NOT USE FOR COPYING OR MOVING. This is for debugging only.
-        See the methods for moving and copying on the FileStore object.
-        """
-        actual_resource = self.resource_given_uid(resource_or_uid)
-        return self._api.get_file_list(actual_resource, datum_kwarg_gen,
-                                       self.get_spec_handler)
-
-
-class FileStoreTemplate(FileStoreTemplateRO):
-    '''FileStore object that knows how to create new documents.'''
+    # ## Hi-level API: insertion
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
         '''
          Parameters
@@ -459,6 +493,7 @@ class FileStoreTemplate(FileStoreTemplateRO):
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
 
+    # ## Hi-level API: updates
     def shift_root(self, resource_or_uid, shift):
         '''Shift directory levels between root and resource_path
 
@@ -489,8 +524,8 @@ class FileStoreTemplate(FileStoreTemplateRO):
         if not isinstance(resource, six.string_types):
             if dict(actual_resource) != dict(resource):
                 raise RuntimeError('The resource you hold and the resource '
-                                   'the data base holds do not match '
-                                   'yours: {!r} db: {!r}'.format(
+                                   'the registry holds do not match '
+                                   'yours: {!r} registry: {!r}'.format(
                                        resource, actual_resource))
         resource = dict(actual_resource)
         resource.setdefault('root', '')
@@ -532,11 +567,36 @@ class FileStoreTemplate(FileStoreTemplateRO):
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
 
+    def correct_root(self, resource, new_root, verify):
+        '''Change the root of a resource
 
-class FileStoreMovingTemplate(FileStoreTemplate):
-    '''FileStore object that knows how to move files.'''
-    def change_root(self, resource_or_uid, new_root, remove_origin=True,
-                    verify=False, file_rename_hook=None):
+        This is for the case where externally we know that
+        '''
+
+        if verify:
+            raise NotImplementedError('verify is not implemented yet')
+
+        # update the dataregistry_template
+        new_resource = dict(resource)
+        new_resource['root'] = new_root
+
+        update_col = self._resource_update_col
+        resource_col = self._resource_col
+        ret = self._api.update_resource(update_col, resource_col,
+                                        old=resource,
+                                        new=new_resource,
+                                        cmd_kwargs=dict(
+                                            verify=verify,
+                                            new_root=new_root),
+                                        cmd='correct_root')
+
+        return ret
+
+
+class RegistryMovingTemplate(RegistryTemplate):
+    '''Registry object that knows how to move files.'''
+    def move_files(self, resource_or_uid, new_root, remove_origin=True,
+                   verify=False, file_rename_hook=None):
         '''Change the root directory of a given resource
 
         The registered handler must have a `get_file_list` method and the
@@ -579,7 +639,7 @@ class FileStoreMovingTemplate(FileStoreTemplate):
 
         See Also
         --------
-        `FileStore.shift_root`
+        `Registry.shift_root`
 
 
         .. Warning
@@ -591,23 +651,17 @@ class FileStoreMovingTemplate(FileStoreTemplate):
         '''
         resource = dict(self.resource_given_uid(resource_or_uid))
 
-        file_lists = self.copy_files(resource, new_root, verify,
-                                     file_rename_hook)
-
-        # update the database
-        new_resource = dict(resource)
-        new_resource['root'] = new_root
-
-        update_col = self._resource_update_col
-        resource_col = self._resource_col
-        ret = self._api.update_resource(update_col, resource_col,
-                                        old=resource,
-                                        new=new_resource,
-                                        cmd_kwargs=dict(
-                                            remove_origin=remove_origin,
-                                            verify=verify,
-                                            new_root=new_root),
-                                        cmd='change_root')
+        try:
+            file_lists = self.copy_files(resource, new_root, verify,
+                                         file_rename_hook)
+        except:
+            # TODO clean up partially copied files if this fails
+            raise
+        try:
+            updates = self.correct_root(resource, new_root, verify)
+        except:
+            # TODO clean up copied files if this fails
+            raise
 
         # remove original files
         if remove_origin:
@@ -621,4 +675,4 @@ class FileStoreMovingTemplate(FileStoreTemplate):
             if k[0] == uid:
                 del self._handler_cache[k]
 
-        return ret
+        return updates
