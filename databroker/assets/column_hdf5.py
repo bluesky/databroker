@@ -85,8 +85,10 @@ def get_datum_by_res_gen(datum_col, resource_uid):
     # HACK!
     col = datum_col
     r_uid = resource_uid
-
-    with h5py.File(f'{col}/{r_uid}.h5', 'r') as fin:
+    fname = Path(f'{col}/{r_uid}.h5')
+    if not fname.is_file():
+        return
+    with h5py.File(str(fname), 'r') as fin:
         df = pd.DataFrame({k: fin[k] for k in fin})
         df['datum_id'] = df['datum_id'].str.decode('utf-8')
         df = df.set_index('datum_id')

@@ -15,7 +15,6 @@ import time as ttime
 from subprocess import Popen
 
 
-
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
     from ..headersource.sqlite import MDS
