@@ -21,7 +21,7 @@ from .core import (resource_given_uid, insert_resource,
                    update_resource, get_resource_history,
                    doc_or_uid_to_uid, get_file_list)
 from ..headersource.hdf5 import append
-from ..utils import _make_sure_path_exists as makedirs
+from ..utils import ensure_path_exists as makedirs
 
 
 class DatumNotFound(Exception):
@@ -66,7 +66,7 @@ def bulk_register_datum_table(datum_col, resource_col,
                  for d in d_ids]
 
     path, fname = make_file_name(datum_col, resource_uid)
-    os.makedirs(path, exist_ok=True)
+    makedirs(path, exist_ok=True)
 
     with h5py.File(os.path.join(path, fname), 'x') as fout:
         for k, v in itertools.chain(
@@ -175,7 +175,7 @@ class Registry(RegistryTemplate):
 
     def __init__(self, config):
         super().__init__(config)
-        os.makedirs(self.config['dbpath'], exist_ok=True)
+        makedirs(self.config['dbpath'], exist_ok=True)
         # we are going to be caching dataframes so be
         # smaller!
         self._datum_cache.max_size = 100
