@@ -11,6 +11,7 @@ import numbers
 import requests
 from doct import Document
 import pandas as pd
+import sys
 import os
 import yaml
 
@@ -171,9 +172,17 @@ class Results(object):
                         yield header
                         break
 
+# Search order is:
+# ~/.config/databroker
+# <sys.executable directory>/../etc/databroker
+# /etc/databroker
 
-CONFIG_SEARCH_PATH = (os.path.expanduser('~/.config/databroker/'),
-                      '/etc/databroker',)
+
+_user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
+_local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
+                         'etc', 'databroker')
+_system_etc = os.path.join('etc', 'databroker')
+CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 
 if six.PY2:
