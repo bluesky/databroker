@@ -1,6 +1,5 @@
 import tornado.ioloop
 import tornado.web
-import doct
 import ujson
 import json
 import types
@@ -82,7 +81,7 @@ class DefaultHandler(tornado.web.RequestHandler):
             docs_gen = func(**query)
         except (NoRunStop, NoRunStart, NoEventDescriptors):
            docs_gen = []
-        if isinstance(docs_gen, (doct.Document, list)):
+        if isinstance(docs_gen, (dict, list)):
             self.write(json.dumps(docs_gen))
         elif isinstance(docs_gen, types.GeneratorType):
             self.write(json.dumps(list(docs_gen)))

@@ -1,9 +1,9 @@
 from __future__ import print_function
+from functools import partial
 import six  # noqa
 from collections import defaultdict, deque
 from datetime import datetime
 import pytz
-import doct
 from pims import FramesSequence, Frame
 import logging
 import attr
@@ -61,14 +61,13 @@ class Header(object):
         run_start_uid = run_start['uid']
 
         try:
-            run_stop = doct.ref_doc_to_uid(mds.stop_by_start(run_start_uid),
-                                           'run_start')
+            run_stop = mds.stop_by_start(run_start_uid)
         except mds.NoRunStop:
             run_stop = None
 
-        d = {'start': run_start}
+        d = {'start': db.prepare_hook('start', run_start)}
         if run_stop is not None:
-            d['stop'] = run_stop
+            d['stop'] = db.prepare_hook('stop', run_stop)
         h = cls(db, **d)
         return h
 
@@ -102,9 +101,6 @@ class Header(object):
         ret['descriptors'] = self.descriptors
         return self._name, ret
 
-    def __str__(self):
-        return doct.vstr(self)
-
     def __len__(self):
         return 3
 
@@ -119,7 +115,8 @@ class Header(object):
             self._cache['desc'] = sum((es.descriptors_given_header(self)
                                        for es in self.db.event_sources),
                                       [])
-        return self._cache['desc']
+        prepare = partial(self.db.prepare_hook, 'descriptor')
+        return list(map(prepare, self._cache['desc']))
 
     @property
     def stream_names(self):

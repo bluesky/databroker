@@ -11,7 +11,6 @@ import pymongo
 
 import numpy as np
 
-import doct as doc
 from ..core import format_time as _format_time
 from .core import (doc_or_uid_to_uid,   # noqa
                    NoRunStart, NoRunStop, NoEventDescriptors,
@@ -31,15 +30,15 @@ def get_events_generator(descriptor, event_col, descriptor_col,
 
     Parameters
     ----------
-    descriptor : doc.Document or dict or str
+    descriptor : dict or str
         The EventDescriptor to get the Events for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
+        a dict with a 'uid' key or a uid string
     convert_arrays: boolean, optional
         convert 'array' type to numpy.ndarray; True by default
 
     Yields
     ------
-    event : doc.Document
+    event : dict
         All events for the given EventDescriptor from oldest to
         newest
     """
@@ -69,9 +68,6 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         # note which keys refer to dereferences (external) data
         ev['filled'] = {k: False for k in external_keys}
 
-        # wrap it in our fancy dict
-        ev = doc.Document('Event', ev)
-
         yield ev
 
 
@@ -82,9 +78,9 @@ def bulk_insert_events(event_col, descriptor, events, validate):
 
     Parameters
     ----------
-    event_descriptor : doc.Document or dict or str
+    event_descriptor : dict or str
         The Descriptor to insert event for.  Can be either
-        a Document/dict with a 'uid' key or a uid string
+        a dict with a 'uid' key or a uid string
     events : iterable
        iterable of dicts matching the bs.Event schema
     validate : bool
@@ -150,7 +146,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
 
     Returns
     -------
-    rs_objects : iterable of doc.Document objects
+    rs_objects : iterable of dicts
 
 
     Examples
@@ -179,7 +175,7 @@ def find_run_stops(stop_col, stop_cache, tz,
 
     Parameters
     ----------
-    run_start : doc.Document or str, optional
+    run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
@@ -202,7 +198,7 @@ def find_run_stops(stop_col, stop_cache, tz,
 
     Yields
     ------
-    run_stop : doc.Document
+    run_stop : dict
         The requested RunStop documents
     """
     # if trying to find by run_start, there can be only one
@@ -226,7 +222,7 @@ def find_descriptors(descriptor_col, descriptor_cache,
 
     Parameters
     ----------
-    run_start : doc.Document or str, optional
+    run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
@@ -245,7 +241,7 @@ def find_descriptors(descriptor_col, descriptor_cache,
 
     Yields
     -------
-    descriptor : doc.Document
+    descriptor : dict
         The requested EventDescriptor
     """
     if run_start:
@@ -282,14 +278,14 @@ def find_events(start_col, start_cache,
     stop_time : time-like, optional
         timestamp of the latest time that an Event was created. See
         docs for `start_time` for examples.
-    descriptor : doc.Document or str, optional
+    descriptor : dict or str, optional
        Find events for a given EventDescriptor
     uid : str, optional
         Globally unique id string provided to metadatastore
 
     Returns
     -------
-    events : iterable of doc.Document objects
+    events : iterable of dict objects
     """
     # Some user-friendly error messages for an easy mistake to make
     if 'event_descriptor' in kwargs:
@@ -315,8 +311,6 @@ def find_events(start_col, start_cache,
             ev['descriptor'] = descriptor_given_uid(desc_uid, descriptor_col,
                                                     descriptor_cache)
 
-            # wrap it our fancy dict
-            ev = doc.Document('Event', ev)
             yield ev
     finally:
         events.close()
@@ -332,7 +326,7 @@ def find_last(start_col, start_cache, num):
 
     Yields
     ------
-    run_start doc.Document
+    run_start : dict
        The requested RunStart documents
     """
     col = start_col

@@ -2,6 +2,7 @@ import os
 import pytest
 import sys
 import uuid
+import ujson
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker,
                                     build_hdf5_backed_broker,
@@ -9,6 +10,8 @@ from databroker.tests.utils import (build_sqlite_backed_broker,
                                     start_md_server,
                                     stop_md_server)
 import tempfile
+import time
+import requests.exceptions
 import shutil
 import tzlocal
 import databroker.headersource.mongoquery as mqmds
@@ -101,4 +104,22 @@ def md_server_url(request):
     base_url = 'http://{}:{}/'.format('localhost',
                                       testing_config['serviceport'])
 
+    # Wait here until the server responds. Time out after 1 minute.
+    TIMEOUT = 60  # seconds
+    startup_time = time.time()
+    url = base_url + 'run_start'
+    message = dict(query={}, signature='find_run_starts')
+    print("Waiting up to 60 seconds for the server to start up....")
+    while True:
+        if time.time() - startup_time > TIMEOUT:
+            raise Exception("Server startup timed out.")
+        try:
+            r = requests.get(url, params=ujson.dumps(message))
+        except requests.exceptions.ConnectionError:
+            time.sleep(1)
+            continue
+        else:
+            break
+    print("Server is up!")
+    
     return base_url

@@ -2,7 +2,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import six
-from doct import Document
 from jsonschema import validate as js_validate
 import uuid
 import time as ttime
@@ -77,7 +76,7 @@ def resource_given_uid(col, resource):
     ret = col.find_one({'uid': uid})
     ret.pop('_id', None)
     ret['id'] = ret['uid']
-    return Document('resource', ret)
+    return ret
 
 
 def bulk_insert_datum(col, resource, datum_ids,
@@ -115,7 +114,7 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
     # do not leak mongo objectID
     datum.pop('_id', None)
 
-    return Document('datum', datum)
+    return datum
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
@@ -135,7 +134,7 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
     # maintain back compatibility
     resource_object['id'] = resource_object['uid']
     resource_object.pop('_id', None)
-    return Document('resource', resource_object)
+    return resource_object
 
 
 def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
@@ -163,7 +162,7 @@ def update_resource(update_col, resource_col, old, new, cmd, cmd_kwargs):
 
     Returns
     -------
-    ret : Document
+    ret : dict
         The new resource document
 
     log_object : dict
@@ -196,9 +195,9 @@ def get_resource_history(col, resource):
             d = doc[k]
             d.pop('_id', None)
             d['id'] = d['uid']
-            doc[k] = Document('resource', d)
+            doc[k] = d
         doc.pop('_id', None)
-        yield Document('update', doc)
+        yield doc
 
 
 def get_datumkw_by_resuid_gen(datum_col, resource_uid):
@@ -214,7 +213,7 @@ def get_datumkw_by_resuid_gen(datum_col, resource_uid):
     datam_col : Collection
         The Datum collection
 
-    resource_uid : Document or str
+    resource_uid : dict or str
        The resource to work on
 
     Yields
@@ -241,18 +240,18 @@ def get_datum_by_res_gen(datum_col, resource_uid):
     datam_col : Collection
         The Datum collection
 
-    resource_uid : Document or str
+    resource_uid : dict or str
        The resource to work on
 
     Yields
     ------
-    datum : doct.Document
+    datum : dict
     '''
     resource_uid = doc_or_uid_to_uid(resource_uid)
     cur = datum_col.find({'resource': resource_uid})
 
     for d in cur:
-        yield Document('datum', d)
+        yield d
 
 
 def get_file_list(resource, datum_kwarg_gen, get_spec_handler):

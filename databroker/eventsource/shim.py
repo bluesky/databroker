@@ -3,7 +3,6 @@ import six  # noqa
 from collections import defaultdict, deque
 from itertools import chain
 import pandas as pd
-import doct
 from pims import FramesSequence, Frame
 import logging
 import boltons.cacheutils
@@ -122,8 +121,8 @@ class EventSourceShim(object):
                 ev_gen = self.fill_event_stream(
                     ev_gen, d, inplace=True, **kwargs)
             for ev in ev_gen:
-                event_data = ev.data  # cache for perf
-                event_timestamps = ev.timestamps
+                event_data = ev['data']  # cache for perf
+                event_timestamps = ev['timestamps']
                 event_data.update(all_extra_data)
                 event_timestamps.update(all_extra_ts)
                 for field in discard_fields:

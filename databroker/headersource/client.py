@@ -2,7 +2,6 @@ from __future__ import (absolute_import, unicode_literals, generators)
 import requests
 from functools import wraps
 import json
-from doct import Document
 import six
 import warnings
 import numpy as np
@@ -100,7 +99,6 @@ class MDSRO(object):
         adds a document to the provided cache
         """
         doc = dict(doc)
-        doc = Document(doc_type, doc)
         doc_cache[doc['uid']] = doc
         return doc
 
@@ -118,7 +116,7 @@ class MDSRO(object):
 
         Returns
         -------
-        run_start : doc.Document
+        run_start : dict
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
@@ -138,7 +136,7 @@ class MDSRO(object):
 
         Returns
         -------
-        run_start : doc.Document
+        run_start : dict
             Document instance for this RunStart document.
             The ObjectId has been stripped.
         """
@@ -195,7 +193,7 @@ class MDSRO(object):
             The uid
         Returns
         -------
-        run_start : doc.Document
+        run_start : dict
             The RunStart document.
         """
         uid = self.doc_or_uid_to_uid(uid)
@@ -208,7 +206,7 @@ class MDSRO(object):
         response = self._get(self._rstart_url, params=params)
         if not response:
             raise NoRunStart('No RunStart found with uid {}'.format(uid))
-        return Document('RunStart', response)
+        return response
 
     def find_run_starts(self, **kwargs):
         """Given search criteria, locate RunStart Documents.
@@ -234,7 +232,7 @@ class MDSRO(object):
             Integer scan identifier
         Returns
         -------
-        rs_objects : iterable of doc.Document objects
+        rs_objects : iterable of dicts
         Examples
         --------
         >>> find_run_starts(scan_id=123)
@@ -248,13 +246,13 @@ class MDSRO(object):
                                    signature='find_run_starts')
         response = self._get(self._rstart_url, params=params)
         for r in response:
-            yield Document('RunStart', r)
+            yield r
 
     def find_descriptors(self, **kwargs):
         """Given search criteria, locate EventDescriptor Documents.
         Parameters
         ----------
-        run_start : doc.Document or str, optional
+        run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
         start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
@@ -272,21 +270,21 @@ class MDSRO(object):
             Globally unique id string provided to metadatastore
         Yields
         -------
-        descriptor : doc.Document
+        descriptor : dict
             The requested EventDescriptor
         """
         params = self.queryfactory(query=kwargs,
                                    signature='find_descriptors')
         response = self._get(self._desc_url, params=params)
         for r in response:
-            yield Document('EventDescriptor', r)
+            yield r
 
 
     def find_run_stops(self, **kwargs):
         """Given search criteria, locate RunStop Documents.
         Parameters
         ----------
-        run_start : doc.Document or str, optional
+        run_start : dict or str, optional
             The RunStart document or uid to get the corresponding run end for
         start_time : time-like, optional
             time-like representation of the earliest time that a RunStop
@@ -308,14 +306,14 @@ class MDSRO(object):
             Globally unique id string provided to metadatastore
         Yields
         ------
-        run_stop : doc.Document
+        run_stop : dict
             The requested RunStop documents
         """
         params = self.queryfactory(query=kwargs,
                                    signature='find_run_stops')
         response = self._get(self._rstop_url, params=params)
         for r in response:
-            yield Document('RunStop', r)
+            yield r
 
     def run_stop_given_uid(self, uid):
         """Given a uid, return the RunStop document
@@ -325,7 +323,7 @@ class MDSRO(object):
             The uid
         Returns
         -------
-        run_stop : doc.Document
+        run_stop : dict
             The RunStop document fully de-referenced
         """
         uid = self.doc_or_uid_to_uid(uid)
@@ -336,7 +334,6 @@ class MDSRO(object):
         params = self.queryfactory(query={'uid': uid},
                                    signature='run_stop_given_uid')
         response = self._get(self._rstop_url, params=params)
-        response = Document('RunStop', response)
         return response
 
     def descriptor_given_uid(self, uid):
@@ -347,14 +344,14 @@ class MDSRO(object):
             The uid
         Returns
         -------
-        descriptor : doc.Document
+        descriptor : dict
             The EventDescriptor document fully de-referenced
         """
         uid = self.doc_or_uid_to_uid(uid)
         params = self.queryfactory(query={'uid': uid},
                                    signature='descriptor_given_uid')
         response = self._get(self._desc_url, params=params)
-        return Document('EventDescriptor', response)
+        return response
 
     def descriptors_by_start(self, run_start):
         """Given a RunStart return a list of it's descriptors
@@ -363,9 +360,9 @@ class MDSRO(object):
 
         Parameters
         ----------
-        run_start : doc.Document or dict or str
+        run_start : dict
             The RunStart to get the EventDescriptors for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
 
         Returns
         -------
@@ -383,7 +380,7 @@ class MDSRO(object):
         response = self._get(self._desc_url, params=params)
         if not response:
             raise NoEventDescriptors('No descriptor is found provided run_start {}'.format(rstart_uid))
-        return [Document('EventDescriptor', r) for r in response]
+        return response
 
     def stop_by_start(self, run_start):
         """Given a RunStart return it's RunStop
@@ -392,13 +389,13 @@ class MDSRO(object):
 
         Parameters
         ----------
-        run_start : doc.Document or dict or str
+        run_start : dict or str
             The RunStart to get the RunStop for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
 
         Returns
         -------
-        run_stop : doc.Document
+        run_stop : dict
             The RunStop document
 
         Raises
@@ -410,7 +407,7 @@ class MDSRO(object):
         params = self.queryfactory(query={'run_start': uid},
                                    signature='stop_by_start')
         response = self._get(self._rstop_url, params=params)
-        return Document('RunStop', response)
+        return response
         # return self._cache_run_stop(response, self._RUNSTOP_CACHE)
 
     def get_events_generator(self, descriptor, convert_arrays=True):
@@ -418,15 +415,15 @@ class MDSRO(object):
 
         Parameters
         ----------
-        descriptor : doc.Document or dict or str
+        descriptor : dict or str
             The EventDescriptor to get the Events for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
         convert_arrays : boolean
             convert 'array' type to numpy.ndarray; True by default
 
         Yields
         ------
-        event : doc.Document
+        event : dict
             All events for the given EventDescriptor from oldest to
             newest
         """
@@ -436,7 +433,7 @@ class MDSRO(object):
                                    signature='get_events_generator')
         events = self._get(self._event_url, params=params)
         for e in events:
-            yield Document('Event', e)
+            yield e
 
     def get_events_table(self, descriptor):
         """All event data as tables
@@ -445,11 +442,11 @@ class MDSRO(object):
         ----------
         descriptor : dict or str
             The EventDescriptor to get the Events for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
 
         Returns
         -------
-        descriptor : doc.Document
+        descriptor : dict
             EventDescriptor document
         data_table : dict
             dict of lists of the transposed data
@@ -506,14 +503,13 @@ class MDSRO(object):
             number of RunStart documents to return, default 1
         Yields
         ------
-        run_start doc.Document
-        The requested RunStart documents
+        run_start : dict
         """
         params = self.queryfactory(query={'num': num},
                                    signature='find_last')
         response = self._get(self._rstart_url, params=params)
         for r in response:
-            yield Document('RunStart', r)
+            yield r
 
 
 class MDS(MDSRO):
@@ -597,9 +593,9 @@ class MDS(MDSRO):
 
         Parameters
         ----------
-        run_start : doc.Document or dict or str
+        run_start : dict or str
             The RunStart to insert the RunStop for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
         time : float
             The date/time as found at the client side
         uid : str
@@ -641,9 +637,9 @@ class MDS(MDSRO):
 
         Parameters
         ----------
-        run_start : doc.Document or dict or str
+        run_start : dict or str
             The RunStart to insert a Descriptor for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
         data_keys : dict
             Provides information about keys of the data dictionary in
             an event will contain.  No key name may include '.'.  See
@@ -685,9 +681,9 @@ class MDS(MDSRO):
 
         Parameters
         ----------
-        descriptor : doc.Document or dict or str
+        descriptor : dict or str
             The Descriptor to insert event for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
         time : float
             The date/time as found at the client side when an event is
             created.
@@ -717,9 +713,9 @@ class MDS(MDSRO):
         """Bulk insert many events
         Parameters
         ----------
-        event_descriptor : doc.Document or dict or str
+        event_descriptor : dict or str
             The Descriptor to insert event for.  Can be either
-            a Document/dict with a 'uid' key or a uid string
+            a dict with a 'uid' key or a uid string
         events : iterable
         iterable of dicts matching the bs.Event schema
         validate : bool, optional
