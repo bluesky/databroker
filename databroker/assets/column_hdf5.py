@@ -12,15 +12,16 @@ import numpy as np
 import hashlib
 
 # from .base_registry import BaseRegistry
-from databroker.assets.base_registry import (RegistryTemplate,
-                                             RegistryMovingTemplate)
-from databroker.assets.sqlite import (ResourceCollection,
-                                      ResourceUpdatesCollection,
-                                      RegistryDatabase)
-from databroker.assets.core import (resource_given_uid, insert_resource,
-                                    update_resource, get_resource_history,
-                                    doc_or_uid_to_uid, get_file_list)
-from databroker.headersource.hdf5 import append
+from .base_registry import (RegistryTemplate,
+                            RegistryMovingTemplate)
+from .sqlite import (ResourceCollection,
+                     ResourceUpdatesCollection,
+                     RegistryDatabase)
+from .core import (resource_given_uid, insert_resource,
+                   update_resource, get_resource_history,
+                   doc_or_uid_to_uid, get_file_list)
+from ..headersource.hdf5 import append
+from ..utils import _make_sure_path_exists as makedirs
 
 
 class DatumNotFound(Exception):
