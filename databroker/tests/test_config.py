@@ -1,5 +1,6 @@
 from databroker import lookup_config, Broker
 from databroker.broker import load_component
+from databroker.utils import ensure_path_exists
 import os
 import pytest
 import six
@@ -43,6 +44,7 @@ def test_lookup_config():
     name = '__test_lookup_config'
     path = os.path.join(os.path.expanduser('~'), '.config', 'databroker',
                         name + '.yml')
+    ensure_path_exists(os.path.dirname(path))
     with open(path, 'w') as f:
         yaml.dump(EXAMPLE, f)
     actual = lookup_config(name) 
