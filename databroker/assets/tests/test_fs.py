@@ -28,15 +28,6 @@ def test_non_exist(fs):
         fs.retrieve('aardvark')
 
 
-def test_non_unique_fail(fs):
-    shape = (25, 32)
-    fb = fs.insert_resource('syn-mod', None, {'shape': shape})
-    r_id = str(uuid.uuid4())
-    fs.insert_datum(str(fb['id']), r_id, {'n': 0})
-    with pytest.raises(fs.DuplicateKeyError):
-        fs.insert_datum(str(fb['id']), r_id, {'n': 1})
-
-
 def test_root(fs):
     print(fs._db)
     res = fs.insert_resource('root-test', 'foo', {}, root='bar')
