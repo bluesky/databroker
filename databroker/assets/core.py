@@ -32,16 +32,16 @@ def doc_or_uid_to_uid(doc_or_uid):
     return doc_or_uid
 
 
-def _get_datum_from_eid(col, eid, datum_cache, logger):
+def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
     try:
-        datum = datum_cache[eid]
+        datum = datum_cache[datum_id]
     except KeyError:
         keys = ['datum_kwargs', 'resource']
         # find the current document
-        edoc = col.find_one({'datum_id': eid})
+        edoc = col.find_one({'datum_id': datum_id})
         if edoc is None:
             raise DatumNotFound(
-                "No datum found with datum_id {!r}".format(eid))
+                "No datum found with datum_id {!r}".format(datum_id))
         # save it for later
         datum = {k: edoc[k] for k in keys}
 
@@ -59,15 +59,15 @@ def _get_datum_from_eid(col, eid, datum_cache, logger):
     return datum
 
 
-def retrieve(col, eid, datum_cache, get_spec_handler, logger):
-    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
+def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
+    datum = _get_datum_from_datum_id(col, datum_id, datum_cache, logger)
     handler = get_spec_handler(datum['resource'])
     return handler(**datum['datum_kwargs'])
 
 
-def resource_given_eid(col, eid, datum_cache, logger):
-    eid = doc_or_uid_to_uid(eid)
-    datum = _get_datum_from_eid(col, eid, datum_cache, logger)
+def resource_given_datum_id(col, datum_id, datum_cache, logger):
+    datum_id = doc_or_uid_to_uid(datum_id)
+    datum = _get_datum_from_datum_id(col, datum_id, datum_cache, logger)
     res = datum['resource']
     return res
 

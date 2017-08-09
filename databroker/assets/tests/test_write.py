@@ -72,9 +72,9 @@ def _data_dec(func):
                          ids=['None', 'tmpdir'])
 def test_np_save(dd, base_path, fs):
 
-    eid = fs_write.save_ndarray(dd, fs, base_path)
+    datum_id = fs_write.save_ndarray(dd, fs, base_path)
     with fs.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fs.retrieve(eid)
+        ret = fs.retrieve(datum_id)
 
     assert_array_equal(dd, ret)
 
@@ -122,8 +122,8 @@ def test_give_uid(fs):
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
     uid = str(uuid.uuid4())
     with fs_write.NpyWriter(test_path, fs=fs) as fout:
-        eid = fout.add_data([1, 2, 3], uid)
-    assert uid == eid
+        datum_id = fout.add_data([1, 2, 3], uid)
+    assert uid == datum_id
 
 
 def test_custom(fs):
@@ -133,8 +133,8 @@ def test_custom(fs):
     with fs_write.NpyWriter(test_path,
                             resource_kwargs={'mmap_mode': 'r'},
                             fs=fs) as f:
-        eid = f.add_data(dd)
+        datum_id = f.add_data(dd)
     with fsa.handler_context({'npy': fs_read.NpyHandler}):
-        ret = fsa.retrieve(eid)
+        ret = fsa.retrieve(datum_id)
 
     assert_array_equal(dd, ret)

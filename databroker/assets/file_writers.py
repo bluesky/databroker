@@ -128,6 +128,6 @@ def save_ndarray(data, fs, base_path=None, filename=None):
     _make_sure_path_exists(base_path)
     fpath = op.join(base_path, filename + '.npy')
     with NpyWriter(fpath, fs) as fout:
-        eid = fout.add_data(data)
+        datum_id = fout.add_data(data)
 
-    return eid
+    return datum_id

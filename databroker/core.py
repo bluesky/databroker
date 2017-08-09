@@ -461,10 +461,10 @@ class Images(FramesSequence):
         db = Broker(mds, fs)
         events = db.get_events(headers, [name], fill=False)
 
-        self._datum_uids = [event.data[name] for event in events
+        self._datum_ids = [event.data[name] for event in events
                             if name in event.data]
-        self._len = len(self._datum_uids)
-        first_uid = self._datum_uids[0]
+        self._len = len(self._datum_ids)
+        first_uid = self._datum_ids[0]
         if handler_override is None:
             self.handler_registry = handler_registry
         else:
@@ -496,7 +496,7 @@ class Images(FramesSequence):
 
     def get_frame(self, i):
         with self.fs.handler_context(self.handler_registry) as fs:
-            img = fs.retrieve(self._datum_uids[i])
+            img = fs.retrieve(self._datum_ids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
         else:

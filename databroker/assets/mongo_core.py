@@ -5,8 +5,8 @@ from bson.errors import InvalidId
 import six
 from doct import Document
 import pymongo
-from .core import (DatumNotFound, _get_datum_from_eid, retrieve,
-                   resource_given_eid, insert_datum, insert_resource,
+from .core import (DatumNotFound, _get_datum_from_datum_id, retrieve,
+                   resource_given_datum_id, insert_datum, insert_resource,
                    update_resource, get_datum_by_res_gen, get_file_list)
 
 

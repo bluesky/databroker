@@ -175,15 +175,15 @@ class BaseRegistryRO(object):
 
     # ## Hi-level API
     # Users typically should not need anything outside of these methods
-    def retrieve(self, eid):
-        return self._api.retrieve(self._datum_col, eid,
+    def retrieve(self, datum_id):
+        return self._api.retrieve(self._datum_col, datum_id,
                                   self._datum_cache, self.get_spec_handler,
                                   logger)
 
-    def get_datum(self, eid):
+    def get_datum(self, datum_id):
         warnings.warn('get_datum is deprecated, use retrieve instead',
                       stacklevel=2)
-        return self.retrieve(eid)
+        return self.retrieve(datum_id)
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
@@ -298,14 +298,14 @@ class BaseRegistryRO(object):
             yield doc
 
     # ## Lo-level API: Direct access to documents (for internal use)
-    def resource_given_eid(self, eid):
-        '''Given a datum eid return its Resource document
+    def resource_given_datum_id(self, datum_id):
+        '''Given a datum datum_id return its Resource document
         '''
         if self.version == 0:
             raise NotImplementedError('V0 has no notion of root so can not '
                                       'change it so no need for this method')
 
-        res = self._api.resource_given_eid(self._datum_col, eid,
+        res = self._api.resource_given_datum_id(self._datum_col, datum_id,
                                            self._datum_cache, logger)
         return self._resource_cache[res]
 

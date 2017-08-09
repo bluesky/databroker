@@ -143,7 +143,7 @@ def moving_files(request, fs_v1, tmpdir):
                                 {'fmt': fmt},
                                 root=tmpdir)
 
-    datum_uids = []
+    datum_ids = []
     fnames = []
     os.makedirs(os.path.join(tmpdir, local_path))
     for j in range(cnt):
@@ -152,19 +152,19 @@ def moving_files(request, fs_v1, tmpdir):
         np.save(fpath, np.ones(shape) * j)
         d = fs_v1.insert_datum(res, str(uuid.uuid4()),
                                {'point_number': j})
-        datum_uids.append(d['datum_id'])
+        datum_ids.append(d['datum_id'])
         fnames.append(fpath)
 
-    return fs_v1, res, datum_uids, shape, cnt, fnames
+    return fs_v1, res, datum_ids, shape, cnt, fnames
 
 
 @pytest.mark.parametrize("remove", [True, False])
 def test_moving(moving_files, remove):
-    fs, res, datum_uids, shape, cnt, fnames = moving_files
+    fs, res, datum_ids, shape, cnt, fnames = moving_files
     fs.register_handler('npy_series', FileMoveTestingHandler)
 
     # sanity check on the way in
-    for j, d_id in enumerate(datum_uids):
+    for j, d_id in enumerate(datum_ids):
         datum = fs.retrieve(d_id)
         assert np.prod(shape) * j == np.sum(datum)
 
@@ -186,7 +186,7 @@ def test_moving(moving_files, remove):
             assert os.path.exists(f)
 
     # sanity check on the way out
-    for j, d_id in enumerate(datum_uids):
+    for j, d_id in enumerate(datum_ids):
         datum = fs.retrieve(d_id)
         assert np.prod(shape) * j == np.sum(datum)
 
@@ -205,9 +205,9 @@ def test_no_root(fs_v1, tmpdir):
 
 
 def test_get_resource(moving_files):
-    fs, res, datum_uids, shape, cnt, fnames = moving_files
-    for d in datum_uids:
-        d_res = fs.resource_given_eid(d)
+    fs, res, datum_ids, shape, cnt, fnames = moving_files
+    for d in datum_ids:
+        d_res = fs.resource_given_datum_id(d)
         assert d_res == res
         print(d_res, res)
 

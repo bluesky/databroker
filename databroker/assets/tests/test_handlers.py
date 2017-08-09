@@ -259,34 +259,34 @@ class Test_maps_hdf5(_with_file):
         # insert spectrum-wise resource and datum
         resource_id = self.fs.insert_resource('hdf5_maps', self.filename,
                                               {'dset_path': 'mca_arr'})
-        self.eids_spectrum = [str(uuid.uuid4()) for j in range(self.N*self.M)]
+        self.datum_ids_spectrum = [str(uuid.uuid4()) for j in range(self.N*self.M)]
 
-        for uid, (i, j) in zip(self.eids_spectrum,
+        for uid, (i, j) in zip(self.datum_ids_spectrum,
                                product(range(self.N), range(self.M))):
             self.fs.insert_datum(resource_id, uid, {'x': i, 'y': j})
 
         # insert plane-wise resource and datum
         resource_id = self.fs.insert_resource('hdf5_planes', self.filename,
                                               {'dset_path': 'mca_arr'})
-        self.eids_planes = [str(uuid.uuid4()) for j in range(self.n_pts)]
+        self.datum_ids_planes = [str(uuid.uuid4()) for j in range(self.n_pts)]
 
-        for uid, n in zip(self.eids_planes, range(self.n_pts)):
+        for uid, n in zip(self.datum_ids_planes, range(self.n_pts)):
             self.fs.insert_datum(resource_id, uid, {'e_index': n})
 
     def test_maps_spectrum_round_trip(self):
         sn = np.sin(self.th)
 
         with self.fs.handler_context({'hdf5_maps': HDFM}):
-            for eid, sc in zip(self.eids_spectrum, self.scale):
-                print(eid)
-                data = self.fs.retrieve(eid)
+            for datum_id, sc in zip(self.datum_ids_spectrum, self.scale):
+                print(datum_id)
+                data = self.fs.retrieve(datum_id)
                 assert_array_equal(data, sc * sn)
 
     def test_maps_plane_round_trip(self):
         base = self.scale.reshape(self.N, self.M)
         with self.fs.handler_context({'hdf5_planes': HDFE}):
-            for eid, v in zip(self.eids_planes, np.sin(self.th)):
-                data = self.fs.retrieve(eid)
+            for datum_id, v in zip(self.datum_ids_planes, np.sin(self.th)):
+                data = self.fs.retrieve(datum_id)
                 assert_array_equal(data, base * v)
 
     def test_closed_raise(self):

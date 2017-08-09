@@ -651,7 +651,7 @@ class BrokerES(object):
         for ev in ev_gen:
             for k, v in six.iteritems(ev['data']):
                 if k in external_keys:
-                    res = self.fs.resource_given_eid(v)
+                    res = self.fs.resource_given_datum_id(v)
                     resources.add(res['uid'])
         return resources
 
