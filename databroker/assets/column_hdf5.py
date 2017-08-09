@@ -3,9 +3,13 @@ import uuid
 import os
 import pandas as pd
 import sqlite3
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import itertools
 import numpy as np
+import hashlib
 
 # from .base_registry import BaseRegistry
 from databroker.assets.base_registry import (RegistryTemplate,
@@ -40,6 +44,16 @@ except ImportError:
             return self.__dict__ == other.__dict__
 
 
+def make_file_name(datum_path, resource_uid,
+                   dir_generations=2, dir_width=2):
+    r_uid = resource_uid
+    r_hash = hashlib.md5(r_uid.encode('utf-8')).hexdigest()
+    dir_levels = [r_hash[dir_width*j:dir_width*(j+1)]
+                  for j in range(dir_generations)]
+    final_path = os.path.join(datum_path, *dir_levels)
+    return final_path, '{}.h5'.format(r_uid)
+
+
 def bulk_register_datum_table(datum_col, resource_col,
                               resource_uid, dkwargs_table,
                               validate):
@@ -50,7 +64,10 @@ def bulk_register_datum_table(datum_col, resource_col,
     datum_ids = ['{}/{}'.format(resource_uid, d)
                  for d in d_ids]
 
-    with h5py.File(f'{datum_col}/{resource_uid}.h5', 'w') as fout:
+    path, fname = make_file_name(datum_col, resource_uid)
+    os.makedirs(path, exist_ok=True)
+
+    with h5py.File(os.path.join(path, fname), 'x') as fout:
         for k, v in itertools.chain(
                 dkwargs_table.items(),
                 (('datum_id', np.array([d.encode('utf-8') for d in d_ids])),)):
@@ -72,7 +89,8 @@ def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
     try:
         df = datum_cache[r_uid]
     except:
-        with h5py.File(f'{col}/{r_uid}.h5', 'r') as fin:
+        path, fname = make_file_name(col, r_uid)
+        with h5py.File(os.path.join(path, fname), 'r') as fin:
             df = pd.DataFrame({k: fin[k] for k in fin})
             df['datum_id'] = df['datum_id'].str.decode('utf-8')
             df = df.set_index('datum_id')
@@ -82,13 +100,11 @@ def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
 
 
 def get_datum_by_res_gen(datum_col, resource_uid):
-    # HACK!
-    col = datum_col
-    r_uid = resource_uid
-    fname = Path(f'{col}/{r_uid}.h5')
-    if not fname.is_file():
+    path, fname = make_file_name(datum_col, resource_uid)
+    fpath = Path(path) / Path(fname)
+    if not fpath.is_file():
         return
-    with h5py.File(str(fname), 'r') as fin:
+    with h5py.File(str(fpath), 'r') as fin:
         df = pd.DataFrame({k: fin[k] for k in fin})
         df['datum_id'] = df['datum_id'].str.decode('utf-8')
         df = df.set_index('datum_id')
@@ -117,10 +133,11 @@ def bulk_insert_datum(col, resource, datum_ids,
 def insert_datum(datum_col, resource, datum_id, datum_kwargs,
                  known_spec, resource_col):
     resource = doc_or_uid_to_uid(resource)
-    p = Path(datum_col) / Path(f'{resource}.h5')
+    path, fname = make_file_name(datum_col, resource)
+    p = Path(path) / Path(fname)
     if p.is_file():
         d_id = str(uuid.uuid4())
-        d_uid = f'{resource}/{d_id}'
+        d_uid = '{resource}/{d_id}'.format(resource=resource, d_id=d_id)
         with h5py.File(str(p), 'a') as fout:
             append(fout['datum_id'], [d_id.encode('utf-8')])
             for k, v in datum_kwargs.items():
