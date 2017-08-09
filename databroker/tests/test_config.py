@@ -1,6 +1,8 @@
 from databroker import lookup_config, Broker
 from databroker.broker import load_component
+import databroker.databroker
 from databroker.utils import ensure_path_exists
+import imp
 import os
 import pytest
 import six
@@ -57,3 +59,52 @@ def test_lookup_config():
 
     with pytest.raises(FileNotFoundError):
         lookup_config('__does_not_exist')
+
+
+def test_legacy_config():
+    name = databroker.databroker.SPECIAL_NAME
+    assert 'test' in name
+    # assert not hasattr(databroker.databroker, 'DataBroker')
+
+    path = os.path.join(os.path.expanduser('~'), '.config', 'databroker',
+                        name + '.yml')
+
+    if os.path.isfile(path):
+        os.remove(path)
+        # Test config was dirty. We cleaned up for next time, but we cannot
+        # recover. Tests must be re-run.
+        assert False
+
+    # Since it does not exist, no singleton should be made on import.
+
+    with pytest.raises(AttributeError):
+        databroker.databroker.DataBroker
+
+    with pytest.raises(AttributeError):
+        databroker.databroker.get_table
+
+    # Now make a working legacy config file.
+    ensure_path_exists(os.path.dirname(path))
+    with open(path, 'w') as f:
+        yaml.dump(EXAMPLE, f)
+
+    # The singleton should be made this time.
+    imp.reload(databroker.databroker)
+    databroker.databroker.DataBroker
+    databroker.databroker.get_table
+    imp.reload(databroker)
+    from databroker import db, DataBroker, get_table, get_images
+
+    # now make a broken legacy config file.
+    broken_example = EXAMPLE.copy()
+    broken_example['metadatastore'].pop('module')
+    with open(path, 'w') as f:
+        yaml.dump(broken_example, f)
+
+    # The singleton should not be made, and it should warn on import
+    # about the legacy config being broken.
+    with pytest.warns(UserWarning):
+        imp.reload(databroker.databroker)
+
+    # Clean up
+    os.remove(path)

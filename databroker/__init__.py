@@ -19,3 +19,16 @@ from .broker import Broker, ArchiverEventSource, lookup_config
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
+
+
+### Legacy imports ###
+
+try:
+    from .databroker import DataBroker
+except ImportError:
+    pass
+else:
+    from .databroker import (DataBroker, DataBroker as db,
+                             get_events, get_table, stream, get_fields,
+                             restream, process)
+    from .pims_readers import get_images

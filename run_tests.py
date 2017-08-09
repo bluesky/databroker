@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import sys
+import os
 import pytest
+
+os.environ['DATABROKER_TEST_MODE'] = '1'
 
 if __name__ == '__main__':
     # show output results from every test function
