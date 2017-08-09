@@ -432,14 +432,9 @@ class RegistryTemplate(BaseRegistryRO):
     '''Registry object that knows how to create new documents.'''
 
     # ## Hi-level API: insertion
-    def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
-        '''
-         Parameters
-         ----------
-
-         spec : str
-             spec used to determine what handler to use to open this
-             resource.
+    def register_resource(self, spec, root, rpath, rkwargs,
+                          path_semantics='posix'):
+        '''Register a Resource with this Registry.
 
          resource_path : str or None
              Url to the physical location of this resource
@@ -451,6 +446,124 @@ class RegistryTemplate(BaseRegistryRO):
          root : str, optional
              The 'root' part of the resource path.
 
+
+        '''
+        if root is None:
+            root = ''
+
+        col = self._resource_col
+
+        return self._api.insert_resource(col, spec, resource_path,
+                                         resource_kwargs,
+                                         self.known_spec,
+                                         root=root)
+
+    def register_datum(self, resource_uid, datum_kwargs, validate=False):
+        '''Register a datum with the Registry.
+
+        Parameters
+        ----------
+        resource_uid : str
+            The uid of the resource that this Datum is part of.
+
+        datum_kwargs : Dict[str, Any]
+            The dictionary of keyword arguments to call the Handler with
+            to get this Datum back at retrieve time.
+
+        validate : bool, optional
+            If we should attempt to validate against a known spec.
+
+            If `True` and we do not have a schema for the spec, fail.
+
+        Returns
+        -------
+        uid : str
+            Datum uid to put put into the Event data.
+
+        '''
+        if validate:
+            raise RuntimeError('validate not implemented yet')
+        col = self._datum_col
+
+        return self._api.register_datum(col, resource_uid,
+                                        datum_kwargs)
+
+    def bulk_register_datum_list(self, resource_uid, dkwargs_list,
+                                 validate=False):
+        '''Bulk register datum with the registry
+
+        Parameters
+        ----------
+        resource_uid : str
+            The uid of the resource that this Datum is part of.
+
+        dkwargs_list : list[Dict[str, Any]]
+            A list of dictionaries of keyword arguments to call the
+            Handler with to get this Datum back at retrieve time.
+
+            All Datum will be associated with
+
+        validate : bool, optional
+            If we should attempt to validate against a known spec.
+
+            If `True` and we do not have a schema for the spec, fail.
+
+        Returns
+        -------
+        uids : iterable
+            Datum uids to put put into the Event data for each
+            entry
+
+        '''
+        col = self._datum_col
+
+        return self._api.register_datum(col, resource_uid,
+                                        dkwargs_list)
+
+    def bulk_register_datum_table(self, resource_uid, dkwargs_table,
+                                  validate=False):
+        '''Bulk register datum with the registry
+
+        Parameters
+        ----------
+        resource_uid : str
+            The uid of the resource that this Datum is part of.
+
+        dkwargs_table : Dict[str, list] or pd.DataFrame
+            A list of dictionaries of keyword arguments to call the
+            Handler with to get this Datum back at retrieve time.
+
+            All Datum will be associated with
+
+        validate : bool, optional
+            If we should attempt to validate against a known spec.
+
+            If `True` and we do not have a schema for the spec, fail.
+
+        Returns
+        -------
+        uids : iterable
+            Datum uids to put put into the Event data for each
+            entry
+
+        '''
+        self._api.bulk_register_datum_table(self._datum_col,
+                                            self._resource_col,
+                                            resource_uid,
+                                            dkwargs_table,
+                                            validate)
+
+    # ## API for export
+    def ingest_resource(self, resource_doc):
+        ...
+
+    def bulk_ingest_datum(self, resource_uid, datum_doc_iterable,
+                          validate=False):
+        ...
+
+    # ## OLD API
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
+        '''
 
         '''
         if root is None:
@@ -492,6 +605,7 @@ class RegistryTemplate(BaseRegistryRO):
 
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
+
 
     # ## Hi-level API: updates
     def shift_root(self, resource_or_uid, shift):
