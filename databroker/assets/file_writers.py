@@ -93,7 +93,7 @@ class NpyWriter(HandlerBase):
                                      root='/')
         evl = self.fs.insert_datum(fb, uid, {})
 
-        return evl.datum_id
+        return evl['datum_id']
 
 
 def save_ndarray(data, fs, base_path=None, filename=None):
