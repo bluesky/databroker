@@ -3,9 +3,13 @@ import json
 import uuid
 import os
 import pandas as pd
+import sqlite3
 
 # from .base_registry import BaseRegistry
 from databroker.assets.base_registry import RegistryTemplate
+from databroker.assets.sqlite import (ResourceCollection, ResourceUpdatesCollection,
+                                      RegistryDatabase)
+from databroker.assets.core import resource_given_uid, insert_resource
 
 try:
     from types import SimpleNamespace
@@ -24,28 +28,13 @@ except ImportError:
             return self.__dict__ == other.__dict__
 
 
-def insert_resource(col, spec, rpath, rkwargs,
-                    known_spec, root, path_semantics):
-    resource_kwargs = dict(rkwargs)
-    res_uid = str(uuid.uuid4())
-    resource_object = dict(spec=str(spec),
-                           resource_path=str(rpath),
-                           root=str(root),
-                           resource_kwargs=resource_kwargs,
-                           uid=res_uid,
-                           path_semantics=path_semantics)
-    with open(f'{col}/{res_uid}.json', 'w') as fout:
-        json.dump(resource_object, fout)
-    return resource_object
-
-
 def bulk_register_datum_table(datum_col, resource_col,
                               resource_uid, dkwargs_table,
                               validate):
     if validate:
         raise
 
-    d_ids = [uuid.uuid4() for j in range(len(dkwargs_table))]
+    d_ids = [str(uuid.uuid4()) for j in range(len(dkwargs_table))]
     datum_ids = ['{}/{}'.format(resource_uid, d)
                  for d in d_ids]
 
@@ -58,12 +47,6 @@ def bulk_register_datum_table(datum_col, resource_col,
                                 maxshape=(None, ))
 
     return datum_ids
-
-
-def resource_given_uid(col, res_uid):
-    with open(f'{col}/{res_uid}.json', 'r') as fin:
-        resource_object = json.load(fin)
-    return resource_object
 
 
 def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
@@ -79,7 +62,7 @@ def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
             df = df.set_index('datum_id')
         datum_cache[r_uid] = df
 
-    return handler(**dict(df.loc[datum_id]))
+    return handler(**dict(df.loc[d_uid]))
 
 
 api = SimpleNamespace(
@@ -101,6 +84,10 @@ class ColumnHdf5Registry(RegistryTemplate):
         # smaller!
         self._datum_cache.max_size = 100
 
+        self.__db = None
+        self.__resource_col = None
+        self.__resource_update_col = None
+
     @property
     def _resource_col(self):
         return self.config['dbpath']
@@ -108,3 +95,26 @@ class ColumnHdf5Registry(RegistryTemplate):
     @property
     def _datum_col(self):
         return self.config['dbpath']
+
+    @property
+    def _db(self):
+        if self.__db is None:
+            self.__db = RegistryDatabase(self.config['dbpath'] + '/r.sqlite')
+        return self.__db
+
+    @property
+    def _resource_col(self):
+        if self.__resource_col is None:
+            self.__resource_col = ResourceCollection(self._db.conn)
+        return self.__resource_col
+
+    @property
+    def _resource_update_col(self):
+        if self.__resource_update_col is None:
+            self.__resource_update_col = ResourceUpdatesCollection(
+                self._db.conn)
+        return self.__resource_update_col
+
+    @property
+    def DuplicateKeyError(self):
+        return sqlite3.IntegrityError
