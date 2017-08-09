@@ -11,7 +11,7 @@ import os
 import os.path as op
 import datetime
 
-from ..utils import _make_sure_path_exists
+from ..utils import ensure_path_exists
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ def save_ndarray(data, fs, base_path=None, filename=None):
                             str(datetime.date.today()))
     if filename is None:
         filename = str(uuid.uuid4())
-    _make_sure_path_exists(base_path)
+    ensure_path_exists(base_path)
     fpath = op.join(base_path, filename + '.npy')
     with NpyWriter(fpath, fs) as fout:
         datum_id = fout.add_data(data)

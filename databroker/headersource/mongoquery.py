@@ -5,7 +5,7 @@ import json
 from mongoquery import Query
 from .base import MDSTemplate, MDSROTemplate
 from .core import ASCENDING, DESCENDING
-from ..utils import _make_sure_path_exists
+from ..utils import ensure_path_exists
 
 
 class JSONCollection(object):
@@ -69,7 +69,7 @@ class _CollectionMixin(object):
         self.__descriptor_col = None
         self.__runstart_col = None
         self.__runstop_col = None
-        _make_sure_path_exists(self._config['directory'])
+        ensure_path_exists(self._config['directory'])
 
     @property
     def config(self):
