@@ -10,7 +10,7 @@ import os
 import boltons.cacheutils
 from . import core
 import warnings
-from ..utils import _make_sure_path_exists
+from ..utils import ensure_path_exists
 from pkg_resources import resource_filename
 import json
 from .utils import _ChainMap
@@ -422,7 +422,7 @@ class BaseRegistryRO(object):
         for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
             # copy files
             file_rename_hook(n, N, fin, fout)
-            _make_sure_path_exists(os.path.dirname(fout))
+            ensure_path_exists(os.path.dirname(fout))
             shutil.copy2(fin, fout)
 
         return zip(file_list, new_file_list)
