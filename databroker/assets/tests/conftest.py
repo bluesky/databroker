@@ -33,11 +33,15 @@ def sqlite_fs_factory():
 def hdf5_fs_factory():
     from databroker.assets import column_hdf5 as chdf5
     import tempfile
+    import os
 
-    tp = tempfile.TemporaryDirectory()
-    fs = chdf5.RegistryMoving({'dbpath': tp.name})
+    tp = tempfile.mkdtemp()
+    fs = chdf5.RegistryMoving({'dbpath': tp})
 
-    return fs, tp.cleanup
+    def cleanup():
+        os.remove(tp)
+
+    return fs, cleanup
 
 
 def _use_factory(request):
