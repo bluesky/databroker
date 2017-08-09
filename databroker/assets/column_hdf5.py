@@ -25,7 +25,7 @@ from ..utils import _make_sure_path_exists as makedirs
 
 
 class DatumNotFound(Exception):
-    ...
+    pass
 
 
 try:

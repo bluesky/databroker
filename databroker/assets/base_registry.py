@@ -554,11 +554,11 @@ class RegistryTemplate(BaseRegistryRO):
 
     # ## API for export
     def ingest_resource(self, resource_doc):
-        ...
+        pass
 
     def bulk_ingest_datum(self, resource_uid, datum_doc_iterable,
                           validate=False):
-        ...
+        pass
 
     # ## OLD API
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
