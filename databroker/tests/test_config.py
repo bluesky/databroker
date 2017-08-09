@@ -6,6 +6,9 @@ import pytest
 import six
 import yaml
 
+if six.PY2:
+    FileNotFoundError = IOError
+
 
 EXAMPLE = {
     'metadatastore': {
@@ -51,9 +54,6 @@ def test_lookup_config():
     broker = Broker.named(name)  # smoke test
     os.remove(path)
     assert actual == EXAMPLE
-
-    if six.PY2:
-        FileNotFoundError = IOError
 
     with pytest.raises(FileNotFoundError):
         lookup_config('__does_not_exist')
