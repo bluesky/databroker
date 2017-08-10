@@ -147,7 +147,7 @@ class Header(object):
 
         See Also
         --------
-        :meth:devices
+        :meth:`Header.devices`
         """
         fields = set()
         for es in self.db.event_sources:
@@ -178,7 +178,7 @@ class Header(object):
 
         See Also
         --------
-        :meth:fields
+        :meth:`Header.fields`
         """
         return set(d['object_keys'] for d in self.descriptors
                    if stream_name is ALL or stream_name == d['name'])
@@ -220,9 +220,13 @@ class Header(object):
 
         >>> h.config_data('eiger')
         {'primary': [{'exposure_time': 1.0}]}
+
+        Assign the exposure time to a variable.
+
         >>> exp_time = h.config_data('eiger')['primary'][0]['exposure_time']
 
-        Backing up a step, to get the list of eligible device names:
+        How did we know that ``'eiger'`` was a valid argument? We can query for
+        the complete list of device names:
 
         >>> h.device_names()
         {'eiger', 'cs700'}
@@ -241,9 +245,8 @@ class Header(object):
         Parameters
         ----------
         stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). This is the default.
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.
@@ -316,11 +319,7 @@ class Header(object):
         Parameters
         ----------
         stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). The default name is
-            'primary', but if no event stream with that name is found, the
-            default reverts to ``ALL`` (for backward-compatibility).
+            Get data from a single "event stream." Default is 'primary'
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.

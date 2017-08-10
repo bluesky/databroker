@@ -14,6 +14,7 @@ except AttributeError:
 
 
 from .broker import Broker, lookup_config
+from .core import Header, ALL
 
 # set version string using versioneer
 from ._version import get_versions

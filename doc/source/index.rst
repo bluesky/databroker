@@ -17,6 +17,7 @@ Index
 
     configuration
     headers
+    api
     searching
     fetching
     whats_new
