@@ -1,15 +1,10 @@
 from __future__ import print_function
 from importlib import import_module
-from functools import partial
 import itertools
 import warnings
 import six  # noqa
-import uuid
-from datetime import datetime
-import pytz
 import logging
 import numbers
-import requests
 import doct
 import pandas as pd
 import sys
@@ -936,106 +931,6 @@ class BrokerES(object):
         return total_size * 1e-9
 
 
-class ArchiverEventSource(object):
-    def __init__(self, url, timezone, pvs):
-        """
-        DataBroker plugin
-
-        Parameters
-        ----------
-        url : string
-            e.g., 'http://host:port/'
-        timezone : string
-            e.g., 'US/Eastern'
-        pvs : dict
-            a dict mapping human-friendly names to PVs
-        """
-        if not url.endswith('/'):
-            url += '/'
-        self.url = url
-        self.archiver_addr = self.url + "retrieval/data/getData.json"
-        self.tz = pytz.timezone(timezone)
-        self.pvs = pvs
-        self._descriptors = {}
-
-    def insert(self, name, doc):
-        raise NotImplementedError()
-
-    def stream_names_given_header(self, header):
-        # We actually don't use the header in this case.
-        return ['archiver_{}'.format(name) for name in self.pvs]
-
-    def fields_given_header(self, header):
-        # We actually don't use the header in this case.
-        return list(self.pvs)
-
-    def descriptors_given_header(self, header):
-        run_start_uid = header['start']['uid']
-        try:
-            return self._descriptors[run_start_uid]
-        except KeyError:
-            # Mock up descriptors and cache them so that the ephemeral uid is
-            # stable for the duration of this process.
-            descs = []
-            start_time = header['start']['time'],
-            stop_time = header['stop']['time']
-            for name, pv in six.iteritems(self.pvs):
-                data_keys = {name: {'source': pv,
-                                    'dtype': 'number',
-                                    'shape': []}}
-
-                _from = _munge_time(start_time, self.tz)
-                _to = _munge_time(stop_time, self.tz)
-                params = {'pv': pv, 'from': _from, 'to': _to}
-                desc = {'time': header['start']['time'],
-                        'uid': 'empheral-' + str(uuid.uuid4()),
-                        'data_keys': data_keys,
-                        'run_start': header['start']['uid'],
-                        'external_query': params,
-                        'external_url': self.url}
-                descs.append(desc)
-            self._descriptors[run_start_uid] = descs
-            prepare = partial(self.prepare_hook, 'descriptor')
-            return list(map(prepare, self._descriptors[run_start_uid]))
-
-    def docs_given_header(self, header, stream_name=ALL,
-                          fill=False, fields=None,
-                          **kwargs):
-        desc_uids = {}
-        for d in self.descriptors_given_header(header):
-            # Stash the desc uids in a local var so we can use them in events.
-            pv = list(d['data_keys'].values())[0]['source']
-            desc_uids[pv] = d['uid']
-            yield d
-        start_time, stop_time = header['start']['time'], header['stop']['time']
-        for name, pv in six.iteritems(self.pvs):
-            _from = _munge_time(start_time, self.tz)
-            _to = _munge_time(stop_time, self.tz)
-            params = {'pv': pv, 'from': _from, 'to': _to}
-            req = requests.get(self.archiver_addr, params=params, stream=True)
-            req.raise_for_status()
-            raw, = req.json()
-            timestamps = [x['secs'] for x in raw['data']]
-            data = [x['val'] for x in raw['data']]
-            for seq_num, (d, t) in enumerate(zip(data, timestamps)):
-                doc = {'data': {name: d},
-                       'timestamps': {name: t},
-                       'time': t,
-                       'uid': 'ephemeral-' + str(uuid.uuid4()),
-                       'seq_num': seq_num,
-                       'descriptor': desc_uids[pv]}
-                yield self.prepare_hook('event', doc)
-
-    def table_given_header(self, header, *args, **kwargs):
-        raise NotImplementedError()
-
-    def fill_event(self, *args, **kwrags):
-        raise NotImplementedError()
-
-    def fill_table(self, *args, **kwargs):
-        raise NotImplementedError()
-
-
 class Broker(BrokerES):
     def __init__(self, mds, fs=None, plugins=None, filters=None):
         """
@@ -1071,26 +966,6 @@ class Broker(BrokerES):
     @classmethod
     def named(cls, name):
         return cls.from_config(lookup_config(name))
-
-
-
-def _munge_time(t, timezone):
-    """Close your eyes and trust @arkilic
-
-    Parameters
-    ----------
-    t : float
-        POSIX (seconds since 1970)
-    timezone : pytz object
-        e.g. ``pytz.timezone('US/Eastern')``
-
-    Return
-    ------
-    time
-        as ISO-8601 format
-    """
-    t = datetime.fromtimestamp(t)
-    return timezone.localize(t).replace(microsecond=0).isoformat()
 
 
 def _sanitize(doc):
