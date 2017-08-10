@@ -7,6 +7,7 @@ import pytz
 from pims import FramesSequence, Frame
 import logging
 import attr
+from warnings import warn
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -233,7 +234,7 @@ class Header(object):
                 result[d['name']].append(config['data'])
         return dict(result)  # strip off defaultdict behavior
 
-    def stream(self, stream_name=ALL, fill=False, **kwargs):
+    def documents(self, stream_name=ALL, fill=False, **kwargs):
         """
         The most raw access to the data. A generator of documents.
 
@@ -249,19 +250,25 @@ class Header(object):
 
         Yields
         ------
-        name, doc : (string, Doct)
+        name, doc : (string, dict)
 
         Example
         -------
         Loop through the documents from a run.
 
         >>> h = db[-1]
-        >>> for name, doc in h.stream():
+        >>> for name, doc in h.documents():
         ...     # do something
         """
         gen = self.db.get_documents(self, stream_name=stream_name,
                                     fill=fill, **kwargs)
         for payload in gen:
+            yield payload
+
+    def stream(self, *args, **kwargs):
+        warn("The 'stream' method been renamed to 'documents'. The old name "
+             "will be removed in the future.")
+        for payload in self.documents(*args, **kwargs):
             yield payload
 
     def events(self, stream_name='primary', fill=False, **kwargs):
@@ -275,6 +282,10 @@ class Header(object):
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.
+
+        Yields
+        ------
+        doc : dict
 
         Examples
         --------
@@ -290,9 +301,9 @@ class Header(object):
 
         >>> events = list(h.events())
         """
-        for name, doc in self.stream(stream_name=stream_name,
-                                     fill=fill,
-                                     **kwargs):
+        for name, doc in self.documents(stream_name=stream_name,
+                                        fill=fill,
+                                        **kwargs):
             if name == 'event':
                 yield doc
 

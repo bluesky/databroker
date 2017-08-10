@@ -81,13 +81,13 @@ def test_get_events(db, RE):
     uid, = RE(count([det]))
     h = db[uid]
     assert len(list(db.get_events(h))) == 1
-    assert len(list(h.stream())) == 1 + 3
+    assert len(list(h.documents())) == 1 + 3
 
     RE.subscribe('all', db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h))) == 7
-    assert len(list(h.stream())) == 7 + 3
+    assert len(list(h.documents())) == 7 + 3
 
 
 @py3
@@ -111,9 +111,9 @@ def test_filtering_stream_name(db, RE):
     assert len(list(db.get_events(h, stream_name='primary',
                                   fields=['det']))) == 7
     assert len(db.get_table(h, stream_name='primary', fields=['det'])) == 7
-    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(list(h.documents(stream_name='primary'))) == 7 + 3
     assert len(h.table(stream_name='primary')) == 7
-    assert len(list(h.stream(stream_name='primary', fields=['det']))) == 7 + 3
+    assert len(list(h.documents(stream_name='primary', fields=['det']))) == 7 + 3
     assert len(h.table(stream_name='primary', fields=['det'])) == 7
     assert len(db.get_table(h, stream_name='primary',
                             fields=['det', 'bc'])) == 7
@@ -126,7 +126,7 @@ def test_filtering_stream_name(db, RE):
     assert len(list(h.descriptors)) == 2
     assert set(h.stream_names) == set(['primary', 'd_monitor'])
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
-    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(list(h.documents(stream_name='primary'))) == 7 + 3
 
     assert len(db.get_table(h, stream_name='primary')) == 7
 
@@ -137,10 +137,10 @@ def test_filtering_stream_name(db, RE):
     # TODO sort out why the monitor does not fire during the test
     # assert len(list(db.get_events(h))) == 8  # ALL streams by default
 
-    # assert len(list(h.stream())) == 8 + 3  # ALL streams by default
+    # assert len(list(h.documents())) == 8 + 3  # ALL streams by default
     # assert len(list(db.get_table(h, stream_name='d_monitor'))) == 1
     # assert len(list(h.table(stream_name='d_monitor'))) == 1
-    # assert len(list(h.stream(stream_name='d_monitor'))) == 1 + 3
+    # assert len(list(h.documents(stream_name='d_monitor'))) == 1 + 3
     # assert len(list(db.get_events(h, stream_name='d_monitor'))) == 1
 
 
@@ -150,7 +150,7 @@ def test_get_events_filtering_field(db, RE):
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
-    assert len(list(h.stream(fields=['det']))) == 7 + 3
+    assert len(list(h.documents(fields=['det']))) == 7 + 3
 
     with pytest.raises(ValueError):
         list(db.get_events(h, fields=['not_a_field']))
@@ -771,7 +771,7 @@ def _get_docs(h):
     # Access documents in all the public ways.
     docs = []
     docs.extend(h.descriptors)
-    docs.extend([pair[1] for pair in h.stream()])
+    docs.extend([pair[1] for pair in h.documents()])
     docs.extend(list(h.events()))
     docs.extend(list(h.db.get_events(h)))
     docs.append(h.stop)
@@ -913,3 +913,15 @@ def test_ingest_array_metadata(db, RE):
 
     # 3D array in start document.
     RE(count([]), mask=np.ones((3, 3, 3)))
+
+
+def test_deprecated_stream_method(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # h.stream() is the same as h.documents() but it warns
+    expected = list(h.documents())
+    with pytest.warns(UserWarning):
+        actual = list(h.stream())
+    assert actual == expected
