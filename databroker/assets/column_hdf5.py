@@ -12,7 +12,8 @@ import numpy as np
 import hashlib
 
 # from .base_registry import BaseRegistry
-from .base_registry import (RegistryTemplate,
+from .base_registry import (BaseRegistryRO,
+                            RegistryTemplate,
                             RegistryMovingTemplate)
 from .sqlite import (ResourceCollection,
                      ResourceUpdatesCollection,
@@ -168,7 +169,7 @@ api = SimpleNamespace(
     bulk_insert_datum=bulk_insert_datum)
 
 
-class Registry(RegistryTemplate):
+class RegistryRO(BaseRegistryRO):
 
     _API_MAP = {1: api}
     REQ_CONFIG = ('dbpath',)
@@ -209,6 +210,10 @@ class Registry(RegistryTemplate):
     @property
     def DuplicateKeyError(self):
         return sqlite3.IntegrityError
+
+
+class Registry(RegistryRO, RegistryTemplate):
+    pass
 
 
 class RegistryMoving(Registry, RegistryMovingTemplate):
