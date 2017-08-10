@@ -174,7 +174,7 @@ class Registry(RegistryTemplate):
     REQ_CONFIG = ('dbpath',)
 
     def __init__(self, config):
-        super().__init__(config)
+        super(Registry, self).__init__(config)
         makedirs(self.config['dbpath'], exist_ok=True)
         # we are going to be caching dataframes so be
         # smaller!
