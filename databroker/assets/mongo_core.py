@@ -3,7 +3,6 @@ from __future__ import (absolute_import, division, print_function,
 from bson import ObjectId
 from bson.errors import InvalidId
 import six
-from doct import Document
 import pymongo
 from collections import deque
 from .core import (DatumNotFound, _get_datum_from_datum_id, retrieve,
@@ -53,7 +52,7 @@ def resource_given_uid(col, resource):
     oid = ret.pop('_id')
     ret.setdefault('uid', oid)
     ret['id'] = ret['uid']
-    return Document('resource', ret)
+    return ret
 
 
 def bulk_insert_datum(col, resource, datum_ids,
@@ -85,6 +84,6 @@ def get_resource_history(col, resource):
             d = doc[k]
             d.pop('_id', None)
             d['id'] = d['uid']
-            doc[k] = Document('resource', d)
+            doc[k] = d
         doc.pop('_id')
-        yield Document('update', doc)
+        yield doc

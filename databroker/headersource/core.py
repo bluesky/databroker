@@ -5,7 +5,6 @@ import six
 import warnings
 import logging
 import numpy as np
-import doct as doc
 from ..core import format_time as _format_time
 
 logger = logging.getLogger(__name__)
@@ -72,7 +71,7 @@ def _cache_run_start(run_start, run_start_cache):
 
     Returns
     -------
-    run_start : doc.Document
+    run_start : dict
         Document instance for this RunStart document.
         The ObjectId has been stripped.
     """
@@ -84,9 +83,6 @@ def _cache_run_start(run_start, run_start_cache):
 
     # get the mongo ObjectID
     oid = run_start.pop('_id', None)
-
-    # convert the remaining document to a Document object
-    run_start = doc.Document('RunStart', run_start)
 
     run_start_cache[run_start['uid']] = run_start
     run_start_cache[oid] = run_start
@@ -108,7 +104,7 @@ def _cache_run_stop(run_stop, run_stop_cache):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : dict
         Document instance for this RunStop document.
         The ObjectId (if it exists) has been stripped.
     """
@@ -119,9 +115,6 @@ def _cache_run_stop(run_stop, run_stop_cache):
         run_stop['run_start']
     except KeyError:
         run_stop['run_start'] = run_stop.pop('run_start_id')
-
-    # create the Document object
-    run_stop = doc.Document('RunStop', run_stop)
 
     run_stop_cache[run_stop['uid']] = run_stop
     # this is
@@ -145,7 +138,7 @@ def _cache_descriptor(descriptor, descritor_cache):
 
     Returns
     -------
-    descriptor : doc.Document
+    descriptor : dict
         Document instance for this EventDescriptor document.
         The ObjectId has been stripped.
     """
@@ -156,9 +149,6 @@ def _cache_descriptor(descriptor, descritor_cache):
         descriptor['run_start']
     except KeyError:
         descriptor['run_start'] = descriptor.pop('run_start_id')
-
-    # create the Document instance
-    descriptor = doc.Document('EventDescriptor', descriptor)
 
     descritor_cache[descriptor['uid']] = descriptor
     if oid is not None:
@@ -183,7 +173,7 @@ def run_start_given_uid(uid, run_start_col, run_start_cache):
 
     Returns
     -------
-    run_start : doc.Document
+    run_start : dict
         The RunStart document.
 
     """
@@ -215,7 +205,7 @@ def run_stop_given_uid(uid, run_stop_col, run_stop_cache):
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : dict
         The RunStop document fully de-referenced
 
     """
@@ -245,7 +235,7 @@ def descriptor_given_uid(uid, descriptor_col, descriptor_cache):
 
     Returns
     -------
-    descriptor : doc.Document
+    descriptor : dict
         The EventDescriptor document fully de-referenced
     """
     try:
@@ -264,13 +254,13 @@ def stop_by_start(run_start, run_stop_col, run_stop_cache):
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    run_start : dict or str
         The RunStart to get the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
     Returns
     -------
-    run_stop : doc.Document
+    run_stop : dict
         The RunStop document
 
     Raises
@@ -293,7 +283,7 @@ def descriptors_by_start(run_start, descriptor_col, descriptor_cache):
 
     Parameters
     ----------
-    run_start : doc.Document or dict or str
+    run_start : dict or str
         The RunStart to get the EventDescriptors for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -339,7 +329,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
 
     Parameters
     ----------
-    descriptor : doc.Document or dict or str
+    descriptor : dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -357,7 +347,7 @@ def get_events_generator(descriptor, event_col, descriptor_col,
 
     Yields
     ------
-    event : doc.Document
+    event : dict
         All events for the given EventDescriptor from oldest to
         newest
     """
@@ -383,9 +373,6 @@ def get_events_generator(descriptor, event_col, descriptor_col,
 
         # note which keys refer to dereferences (external) data
         ev['filled'] = {k: False for k in external_keys}
-
-        # wrap it in our fancy dict
-        ev = doc.Document('Event', ev)
 
         yield ev
 
@@ -425,7 +412,7 @@ def get_events_table(descriptor, event_col, descriptor_col,
 
     Parameters
     ----------
-    descriptor : doc.Document or dict or str
+    descriptor : dict or str
         The EventDescriptor to get the Events for.  Can be either
         a Document/dict with a 'uid' key or a uid string
 
@@ -444,7 +431,7 @@ def get_events_table(descriptor, event_col, descriptor_col,
 
     Returns
     -------
-    descriptor : doc.Document
+    descriptor : dict
         EventDescriptor document
     data_table : dict
         dict of lists of the transposed data
@@ -547,7 +534,7 @@ def insert_run_stop(run_stop_col, run_stop_cache,
     run_stop_cache : dict
         Dict[str, Document]
 
-    run_start : doc.Document or dict or str
+    run_start : dict or str
         The RunStart to insert the RunStop for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     time : float
@@ -612,7 +599,7 @@ def insert_descriptor(descriptor_col,
     descriptor_cache : dict
         Dict[str, Document]
 
-    run_start : doc.Document or dict or str
+    run_start : dict or str
         The RunStart to insert a Descriptor for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     data_keys : dict
@@ -676,7 +663,7 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     event_col
          Collection to insert the Event into.
 
-    descriptor : doc.Document or dict or str
+    descriptor : dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     time : float
@@ -725,7 +712,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
     event_col
          The collection to insert the Events into
 
-    descriptor : doc.Document or dict or str
+    descriptor : dict or str
         The Descriptor to insert event for.  Can be either
         a Document/dict with a 'uid' key or a uid string
     events : iterable
@@ -789,7 +776,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
 
     Returns
     -------
-    rs_objects : iterable of doc.Document objects
+    rs_objects : iterable of dicts
 
 
     Examples
@@ -819,7 +806,7 @@ def find_run_stops(stop_col, stop_cache, tz,
 
     Parameters
     ----------
-    run_start : doc.Document or str, optional
+    run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that a RunStop
@@ -842,7 +829,7 @@ def find_run_stops(stop_col, stop_cache, tz,
 
     Yields
     ------
-    run_stop : doc.Document
+    run_stop : dict
         The requested RunStop documents
     """
     # if trying to find by run_start, there can be only one
@@ -866,7 +853,7 @@ def find_descriptors(descriptor_col, descriptor_cache,
 
     Parameters
     ----------
-    run_start : doc.Document or str, optional
+    run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
     start_time : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
@@ -885,7 +872,7 @@ def find_descriptors(descriptor_col, descriptor_cache,
 
     Yields
     -------
-    descriptor : doc.Document
+    descriptor : dict
         The requested EventDescriptor
     """
     if run_start:
@@ -912,7 +899,7 @@ def find_last(start_col, start_cache, num):
 
     Yields
     ------
-    run_start doc.Document
+    run_start : dict
        The requested RunStart documents
     """
     col = start_col

@@ -1,15 +1,18 @@
 from __future__ import absolute_import, division, print_function
+import copy
 
 from databroker.core import Header
 
 
-def test_header_dict_conformance():
+def test_header_dict_conformance(db):
+    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+
     # TODO update this if / when we add conformance testing to
     # validate attrs in Header
     target = {'start': {'uid': 'start'},
               'stop': {'uid': 'stop', 'start_uid': 'start'}}
 
-    h = Header(None, **target)
+    h = Header(db, **target)
     # hack the descriptor lookup/cache mechanism
     target['descriptors'] = [{'uid': 'desc', 'start_uid': 'start'}]
     h._cache['desc'] = [{'uid': 'desc', 'start_uid': 'start'}]

@@ -2,6 +2,9 @@ import os
 import shutil
 import tempfile
 import uuid
+import time
+import requests.exceptions
+import ujson
 
 import tzlocal
 
@@ -117,7 +120,6 @@ def start_md_server(testing_config):
                   "--service-port",
                   str(testing_config['serviceport'])])
     print('Started the server with configuration..:{}'.format(testing_config))
-    ttime.sleep(5)  # make sure the process is started
     return proc
 
 
@@ -155,5 +157,25 @@ def build_client_backend_broker(request):
         stop_md_server(proc, testing_config)
 
     request.addfinalizer(tear_down)
+
+    base_url = 'http://{}:{}/'.format('localhost',
+                                      testing_config['serviceport'])
+    # Wait here until the server responds. Time out after 1 minute.
+    TIMEOUT = 60  # seconds
+    startup_time = time.time()
+    url = base_url + 'run_start'
+    message = dict(query={}, signature='find_run_starts')
+    print("Waiting up to 60 seconds for the server to start up....")
+    while True:
+        if time.time() - startup_time > TIMEOUT:
+            raise Exception("Server startup timed out.")
+        try:
+            r = requests.get(url, params=ujson.dumps(message))
+        except requests.exceptions.ConnectionError:
+            time.sleep(1)
+            continue
+        else:
+            break
+    print("Server is up!")
 
     return Broker(tmds, fs)

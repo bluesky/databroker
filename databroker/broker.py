@@ -1,5 +1,6 @@
 from __future__ import print_function
 from importlib import import_module
+from functools import partial
 import itertools
 import warnings
 import six  # noqa
@@ -9,7 +10,7 @@ import pytz
 import logging
 import numbers
 import requests
-from doct import Document
+import doct
 import pandas as pd
 import sys
 import os
@@ -161,7 +162,9 @@ class Results(object):
     def __iter__(self):
         self._res, res = itertools.tee(self._res)
         for start, stop in res:
-            header = Header(start=start, stop=stop, db=self._db)
+            header = Header(start=self._db.prepare_hook('start', start),
+                            stop=self._db.prepare_hook('stop', stop),
+                            db=self._db)
             if self._data_key is None:
                 yield header
             else:
@@ -231,6 +234,38 @@ def load_component(config):
     return cls(config)
 
 
+DOCT_NAMES = {'resource': 'Resource',
+              'datum': 'Datum',
+              'descriptor': 'Event Descriptor',
+              'event': 'Event',
+              'start': 'Run Start',
+              'stop': 'Run Stop'}
+
+
+def wrap_in_doct(name, doc):
+    return doct.Document(DOCT_NAMES[name], doc)
+
+
+_STANDARD_DICT_ATTRS = dir(dict)
+
+
+class DeprecatedDoct(doct.Document):
+    def __getattribute__(self, key):
+        # Get the result first and let any errors be raised.
+        res = super(DeprecatedDoct, self).__getattribute__(key)
+        # Now warn before returning it.
+        if key not in _STANDARD_DICT_ATTRS:
+            # This is not a standard dict attribute.
+            # Warn that dot access is deprecated.
+            warnings.warn("Dot access may be removed in a future version."
+                          "Use [{0}] instead of .{0}".format(key))
+        return res
+
+
+def wrap_in_deprecated_doct(name, doc):
+    return DeprecatedDoct(DOCT_NAMES[name], doc)
+
+
 class BrokerES(object):
     def __init__(self, hs, *event_sources):
         """
@@ -249,6 +284,7 @@ class BrokerES(object):
         self.filters = []
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
+        self.prepare_hook = wrap_in_deprecated_doct
 
     def stream_names_given_header(self, header):
         return [n for es in self.event_sources
@@ -326,8 +362,10 @@ class BrokerES(object):
 
     def __getitem__(self, key):
         """Do-What-I-Mean slicing"""
-        ret = [Header(start=start, stop=stop, db=self) for
-               start, stop in search(key, self)]
+        ret = [Header(start=self.prepare_hook('start', start),
+                      stop=self.prepare_hook('stop', stop),
+                      db=self)
+               for start, stop in search(key, self)]
         squeeze = not isinstance(key, (set, tuple, MutableSequence, slice))
         if squeeze and len(ret) == 1:
             ret, = ret
@@ -526,7 +564,7 @@ class BrokerES(object):
                         handler_overrides=handler_overrides)
                 for nm, ev in gen:
                     if nm == 'event':
-                        yield ev
+                        yield self.prepare_hook('event', ev)
 
     def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
                       handler_registry=None, handler_overrides=None):
@@ -578,8 +616,8 @@ class BrokerES(object):
                         fields=fields,
                         handler_registry=handler_registry,
                         handler_overrides=handler_overrides)
-                for payload in gen:
-                    yield payload
+                for name, doc in gen:
+                    yield name, self.prepare_hook(name, doc)
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
@@ -834,17 +872,17 @@ class BrokerES(object):
         file_pairs = []
         for header in headers:
             # insert mds
-            db.mds.insert_run_start(**header['start'].to_name_dict_pair()[1])
+            db.mds.insert_run_start(**_sanitize(header['start']))
             events = self.get_events(header)
             for descriptor in header['descriptors']:
-                db.mds.insert_descriptor(**descriptor.to_name_dict_pair()[1])
+                db.mds.insert_descriptor(**_sanitize(descriptor))
                 for event in events:
                     event = event.to_name_dict_pair()[1]
                     # 'filled' is obtained from the descriptor, not stored
                     # in each event.
                     event.pop('filled', None)
-                    db.mds.insert_event(**event)
-            db.mds.insert_run_stop(**header['stop'].to_name_dict_pair()[1])
+                    db.mds.insert_event(**_sanitize(event))
+            db.mds.insert_run_stop(**_sanitize(header['stop']))
             # insert fs
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
@@ -955,9 +993,10 @@ class ArchiverEventSource(object):
                         'run_start': header['start']['uid'],
                         'external_query': params,
                         'external_url': self.url}
-                descs.append(Document('EventDescriptor', desc))
+                descs.append(desc)
             self._descriptors[run_start_uid] = descs
-            return self._descriptors[run_start_uid]
+            prepare = partial(self.prepare_hook, 'descriptor')
+            return list(map(prepare, self._descriptors[run_start_uid]))
 
     def docs_given_header(self, header, stream_name=ALL,
                           fill=False, fields=None,
@@ -985,7 +1024,7 @@ class ArchiverEventSource(object):
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'seq_num': seq_num,
                        'descriptor': desc_uids[pv]}
-                yield Document('Event', doc)
+                yield self.prepare_hook('event', doc)
 
     def table_given_header(self, header, *args, **kwargs):
         raise NotImplementedError()
@@ -1052,3 +1091,10 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+
+
+def _sanitize(doc):
+    # Make this a plain dict and strip off doct.Document artifacts.
+    d = dict(doc)
+    d.pop('_name', None)
+    return d

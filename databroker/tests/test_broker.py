@@ -10,6 +10,10 @@ import time as ttime
 import uuid
 from datetime import datetime, date, timedelta
 import itertools
+from databroker.broker import (wrap_in_doct, wrap_in_deprecated_doct,
+                               DeprecatedDoct)
+import doct
+import copy
 
 import pytest
 import six
@@ -761,3 +765,94 @@ def test_events(db, RE):
     h = db[uid]
     events = list(h.events())
     assert len(events) == 1
+
+
+def _get_docs(h):
+    # Access documents in all the public ways.
+    docs = []
+    docs.extend(h.descriptors)
+    docs.extend([pair[1] for pair in h.stream()])
+    docs.extend(list(h.events()))
+    docs.extend(list(h.db.get_events(h)))
+    docs.append(h.stop)
+    docs.append(h.start)
+    return docs
+
+
+@py3
+def test_prepare_hook_default(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+    
+    # check default -- returning a subclass of doct.Document that warns
+    # when you use getattr for getitem
+    assert db.prepare_hook == wrap_in_deprecated_doct
+
+    h = db[uid]
+    for doc in _get_docs(h):
+        assert isinstance(doc, DeprecatedDoct)
+        assert isinstance(doc, doct.Document)
+
+@py3
+def test_prepare_hook_old_style(db, RE):
+    # configure to return old-style doct.Document objects
+    db.prepare_hook = wrap_in_doct
+
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+
+    # Test Broker.__getitem__ and Broker.__call__ means of creating Headers.
+    for h in (db[uid], list(db())[0]):
+        for doc in _get_docs(h):
+            assert not isinstance(doc, DeprecatedDoct)
+            assert isinstance(doc, doct.Document)
+
+
+@py3
+def test_prepare_hook_deep_copy(db, RE):
+    # configure to return plain dicts
+    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+
+    for h in (db[uid], list(db())[0]):
+        for doc in _get_docs(h):
+            assert not isinstance(doc, DeprecatedDoct)
+            assert not isinstance(doc, doct.Document)
+
+
+@py3
+def test_prepare_hook_raw(db, RE):
+    # configure to return plain dicts
+    db.prepare_hook = lambda name, doc: doc
+
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+
+    for h in (db[uid], list(db())[0]):
+        for doc in _get_docs(h):
+            assert not isinstance(doc, DeprecatedDoct)
+            assert not isinstance(doc, doct.Document)
+            assert isinstance(doc, dict)
+
+
+def test_deprecated_doct():
+    ev = DeprecatedDoct('stuff',
+            {'data': {'det': 1.0},
+            'descriptor': '120324df-5d7b-4764-94ec-7031cdcbd6e6',
+            'filled': {},
+            'seq_num': 1,
+            'time': 1502356802.8381739,
+            'timestamps': {'det': 1502356802.701149},
+            'uid': 'f295e8a7-b688-4c22-9f43-0ce6fdd56dbd'})
+
+    with pytest.warns(UserWarning):
+        ev.data
+
+    with pytest.warns(None) as record:
+        ev['data']
+        ev.values()
+        with pytest.raises(AttributeError):
+            ev.nonexistent
+    assert not record  # i.e. assert no warning
