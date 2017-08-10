@@ -56,7 +56,7 @@ def make_file_name(datum_path, resource_uid,
     return final_path, '{}.h5'.format(r_uid)
 
 
-def bulk_register_datum_table(datum_col, resource_col,
+def bulk_register_datum_table(datum_col,
                               resource_uid, dkwargs_table,
                               validate):
     if validate:
@@ -124,7 +124,7 @@ def resource_given_datum_id(col, datum_id, datum_cache, logger):
 
 def bulk_insert_datum(col, resource, datum_ids,
                       datum_kwarg_list):
-    d_uids = bulk_register_datum_table(col, None,
+    d_uids = bulk_register_datum_table(col,
                                        doc_or_uid_to_uid(resource),
                                        pd.DataFrame(datum_kwarg_list),
                                        False)
@@ -147,7 +147,7 @@ def insert_datum(datum_col, resource, datum_id, datum_kwargs,
 
     else:
         df = pd.DataFrame([datum_kwargs])
-        d_uid, = bulk_register_datum_table(datum_col, resource_col,
+        d_uid, = bulk_register_datum_table(datum_col,
                                            resource, df, False)
     return dict(resource=resource,
                 datum_id=str(d_uid),

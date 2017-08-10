@@ -436,6 +436,9 @@ class RegistryTemplate(BaseRegistryRO):
                           path_semantics='posix'):
         '''Register a Resource with this Registry.
 
+        Parameters
+        ----------
+
          resource_path : str or None
              Url to the physical location of this resource
 
@@ -446,17 +449,20 @@ class RegistryTemplate(BaseRegistryRO):
          root : str, optional
              The 'root' part of the resource path.
 
-
+        Returns
+        -------
+        uid : str
+            The uid of the created resource.
         '''
         if root is None:
             root = ''
 
         col = self._resource_col
 
-        return self._api.insert_resource(col, spec, resource_path,
-                                         resource_kwargs,
+        return self._api.insert_resource(col, spec, rpath,
+                                         rkwargs,
                                          self.known_spec,
-                                         root=root)
+                                         root=root)['uid']
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
         '''Register a datum with the Registry.
@@ -515,6 +521,8 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
+        if validate:
+            raise RuntimeError('validate not implemented yet')
         col = self._datum_col
 
         return self._api.register_datum(col, resource_uid,
@@ -547,8 +555,10 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
+        if validate:
+            raise RuntimeError('validate not implemented yet')
         return self._api.bulk_register_datum_table(
-            self._datum_col, self._resource_col,
+            self._datum_col,
             resource_uid, dkwargs_table,
             validate)
 

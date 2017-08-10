@@ -5,7 +5,7 @@ import six
 from jsonschema import validate as js_validate
 import uuid
 import time as ttime
-
+from ..utils import sanitize_np, apply_to_dict_recursively
 
 class DatumNotFound(Exception):
     pass
@@ -89,9 +89,24 @@ def bulk_insert_datum(col, resource, datum_ids,
             datum = dict(resource=resource_id,
                          datum_id=str(d_id),
                          datum_kwargs=dict(d_kwargs))
+            apply_to_dict_recursively(datum, sanitize_np)
             yield datum
 
     col.insert(datum_factory())
+
+
+def bulk_register_datum_table(datum_col,
+                              resource_uid,
+                              dkwargs_table,
+                              validate):
+    if validate:
+        raise
+
+    d_ids = [str(uuid.uuid4()) for j in range(len(dkwargs_table))]
+    bulk_insert_datum(datum_col, resource_uid, d_ids, [
+        dict(r) for _, r in dkwargs_table.iterrows()])
+    return d_ids
+
 
 
 def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
