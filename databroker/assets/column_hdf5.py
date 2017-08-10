@@ -71,7 +71,7 @@ def bulk_register_datum_table(datum_col, resource_col,
 
     with h5py.File(os.path.join(path, fname), 'x') as fout:
         for k, v in itertools.chain(
-                dkwargs_table.items(),
+                dkwargs_table.iteritems(),
                 (('datum_id', np.array([d.encode('utf-8') for d in d_ids])),)):
             fout.create_dataset(k, (len(v),),
                                 dtype=v.dtype,
@@ -175,7 +175,7 @@ class RegistryRO(BaseRegistryRO):
     REQ_CONFIG = ('dbpath',)
 
     def __init__(self, config):
-        super(Registry, self).__init__(config)
+        super(RegistryRO, self).__init__(config)
         makedirs(self.config['dbpath'], exist_ok=True)
         # we are going to be caching dataframes so be
         # smaller!
