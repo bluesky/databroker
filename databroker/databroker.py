@@ -28,6 +28,7 @@ def deprecate(f):
         warn("This function {} is deprecated. Use a method on Broker instead."
             "".format(name))
         return f(*args, **kwargs)
+    return inner
 
 
 try:

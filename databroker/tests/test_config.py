@@ -6,16 +6,22 @@ import imp
 import os
 import pytest
 import six
+import sys
 import yaml
 
 if six.PY2:
     FileNotFoundError = IOError
 
+if sys.version_info >= (3, 0):
+    from bluesky.examples import det
+    from bluesky.plans import count
+
+py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
 
 EXAMPLE = {
     'metadatastore': {
         'module': 'databroker.headersource.mongo',
-        'class': 'MDSRO',
+        'class': 'MDS',
         'config': {
             'host': 'localhost',
             'port': 27017,
@@ -24,7 +30,7 @@ EXAMPLE = {
     },
     'assets': {
         'module': 'databroker.assets.mongo',
-        'class': 'RegistryRO',
+        'class': 'Registry',
         'config': {
             'host': 'localhost',
             'port': 27017,
@@ -60,11 +66,9 @@ def test_lookup_config():
     with pytest.raises(FileNotFoundError):
         lookup_config('__does_not_exist')
 
-
 def test_legacy_config():
     name = databroker.databroker.SPECIAL_NAME
     assert 'test' in name
-    # assert not hasattr(databroker.databroker, 'DataBroker')
 
     path = os.path.join(os.path.expanduser('~'), '.config', 'databroker',
                         name + '.yml')
@@ -105,6 +109,31 @@ def test_legacy_config():
     # about the legacy config being broken.
     with pytest.warns(UserWarning):
         imp.reload(databroker.databroker)
+
+    # Clean up
+    os.remove(path)
+
+
+@py3
+def test_legacy_config_warnings(RE):
+    name = databroker.databroker.SPECIAL_NAME
+    assert 'test' in name
+    path = os.path.join(os.path.expanduser('~'), '.config', 'databroker',
+                        name + '.yml')
+    ensure_path_exists(os.path.dirname(path))
+    with open(path, 'w') as f:
+        yaml.dump(EXAMPLE, f)
+
+    imp.reload(databroker.databroker)
+    imp.reload(databroker)
+    from databroker import db, DataBroker, get_table, get_events
+
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+    with pytest.warns(UserWarning):
+        assert len(get_table(db[uid]))
+    with pytest.warns(UserWarning):
+        assert list(get_events(db[uid]))
 
     # Clean up
     os.remove(path)
