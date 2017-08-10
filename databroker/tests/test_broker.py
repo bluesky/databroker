@@ -860,9 +860,9 @@ def test_deprecated_doct():
 
 
 @py3
-def test_ingest_array_data(db, RE):
+def test_ingest_array_data(db_empty, RE):
+    db = db_empty
     RE.subscribe('all', db.insert)
-
     # These will blow up if the event source backing db cannot ingest numpy
     # arrays. (For example, the pymongo-backed db has to convert them to plain
     # lists.)

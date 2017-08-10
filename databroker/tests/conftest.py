@@ -38,6 +38,9 @@ def db_empty(request):
                  'mongo': build_pymongo_backed_broker,
                  'hdf5': build_hdf5_backed_broker,
                  'client': build_client_backend_broker}
+    if ('array_data' in request.function.__name__ and
+            request.param == 'sqlite'):
+        pytest.xfail('can not put lists into sqlite columns')
 
     return param_map[request.param](request)
 
@@ -121,5 +124,5 @@ def md_server_url(request):
         else:
             break
     print("Server is up!")
-    
+
     return base_url
