@@ -110,14 +110,16 @@ def build_pymongo_backed_broker(request):
 
 
 def start_md_server(testing_config):
-    proc = Popen(["start_md_server", "--mongo-host",
-                  testing_config["mongohost"],
-                  "--mongo-port",
-                  str(testing_config['mongoport']),
-                  "--database", testing_config['database'],
-                  "--timezone", testing_config['tzone'],
-                  "--service-port",
-                  str(testing_config['serviceport'])])
+    cmd = ["start_md_server", "--mongo-host",
+           testing_config["mongohost"],
+           "--mongo-port",
+           str(testing_config['mongoport']),
+           "--database", testing_config['database'],
+           "--timezone", testing_config['tzone'],
+           "--service-port",
+           str(testing_config['serviceport'])]
+    print(' '.join(cmd))
+    proc = Popen(cmd)
     print('Started the server with configuration..:{}'.format(testing_config))
     return proc
 
