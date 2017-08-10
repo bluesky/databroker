@@ -17,6 +17,7 @@ else:
     def ensure_path_exists(path, exist_ok=True):
         return os.makedirs(path, exist_ok=True)
 
+
 def sanitize_np(val):
     "Convert any numpy objects into built-in Python types."
     if isinstance(val, (np.generic, np.ndarray)):
