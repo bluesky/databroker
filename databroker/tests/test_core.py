@@ -1,9 +1,12 @@
 from __future__ import absolute_import, division, print_function
+import copy
 
 from databroker.core import Header
 
 
 def test_header_dict_conformance(db):
+    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+
     # TODO update this if / when we add conformance testing to
     # validate attrs in Header
     target = {'start': {'uid': 'start'},
