@@ -262,16 +262,16 @@ def wrap_in_deprecated_doct(name, doc):
 
 
 class BrokerES(object):
-    def __init__(self, hs, *event_sources):
-        """
-        Unified interface to data sources
+    """
+    Unified interface to data sources
 
-        Parameters
-        ----------
-        hs : HeaderSource
-        *event_sources :
-            zero, one or more EventSource objects
-        """
+    Parameters
+    ----------
+    hs : HeaderSource
+    *event_sources :
+        zero, one or more EventSource objects
+    """
+    def __init__(self, hs, *event_sources):
         self.hs = hs
         self.event_sources = event_sources
         # Once we drop Python 2, we can accept initial filter and aliases as
@@ -932,18 +932,18 @@ class BrokerES(object):
 
 
 class Broker(BrokerES):
+    """
+    Unified interface to data sources
+
+    Eventually this API will change to
+    ``__init__(self, hs, **event_sources)``
+
+    Parameters
+    ----------
+    mds : metadatastore or metadataclient
+    fs : filestore
+    """
     def __init__(self, mds, fs=None, plugins=None, filters=None):
-        """
-        Unified interface to data sources
-
-        Eventually this API will change to
-        ``__init__(self, hs, **event_sources)``
-
-        Parameters
-        ----------
-        mds : metadatastore or metadataclient
-        fs : filestore
-        """
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
@@ -966,6 +966,25 @@ class Broker(BrokerES):
     @classmethod
     def named(cls, name):
         return cls.from_config(lookup_config(name))
+
+
+def _munge_time(t, timezone):
+    """Close your eyes and trust @arkilic
+
+    Parameters
+    ----------
+    t : float
+        POSIX (seconds since 1970)
+    timezone : pytz object
+        e.g. ``pytz.timezone('US/Eastern')``
+
+    Return
+    ------
+    time
+        as ISO-8601 format
+    """
+    t = datetime.fromtimestamp(t)
+    return timezone.localize(t).replace(microsecond=0).isoformat()
 
 
 def _sanitize(doc):
