@@ -1,4 +1,5 @@
 import pytest
+
 from ..utils import create_test_database
 
 
@@ -33,13 +34,13 @@ def sqlite_fs_factory():
 def hdf5_fs_factory():
     from databroker.assets import column_hdf5 as chdf5
     import tempfile
-    import os
+    import shutil
 
     tp = tempfile.mkdtemp()
     fs = chdf5.RegistryMoving({'dbpath': tp})
 
     def cleanup():
-        os.remove(tp)
+        shutil.rmtree(tp)
 
     return fs, cleanup
 
