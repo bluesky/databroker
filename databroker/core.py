@@ -264,16 +264,14 @@ class Header(object):
         for payload in gen:
             yield payload
 
-    def events(self, stream_name=ALL, fill=False, **kwargs):
+    def events(self, stream_name='primary', fill=False, **kwargs):
         """
         Generator of like :meth:`stream` but with only the Event documents.
 
         Parameters
         ----------
-        stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). This is the default.
+        stream_name : string, optional
+            Get data from a single "event stream." Default is 'primary'
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.
@@ -290,13 +288,13 @@ class Header(object):
         List the Events documents from a run, loading them all into memory at
         once.
 
-        >>> list(h.events())
+        >>> events = list(h.events())
         """
         for name, doc in self.stream(stream_name=stream_name,
                                      fill=fill,
                                      **kwargs):
             if name == 'event':
-                yield name, doc
+                yield doc
 
     def table(self, stream_name='primary', fill=False, fields=None,
               timezone=None, convert_times=True, localize_times=True,
@@ -306,8 +304,6 @@ class Header(object):
 
         Parameters
         ----------
-        headers : Header or iterable of Headers
-            The headers to fetch the events for
         stream_name : string or ``ALL``, optional
             Get data from a single "event stream." To obtain one comprehensive
             table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
