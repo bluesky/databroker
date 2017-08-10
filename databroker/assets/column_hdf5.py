@@ -93,7 +93,7 @@ def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
     except:
         path, fname = make_file_name(col, r_uid)
         with h5py.File(os.path.join(path, fname), 'r') as fin:
-            df = pd.DataFrame({k: fin[k] for k in fin})
+            df = pd.DataFrame({k: fin[k][:] for k in fin})
             df['datum_id'] = df['datum_id'].str.decode('utf-8')
             df = df.set_index('datum_id')
         datum_cache[r_uid] = df
@@ -107,7 +107,7 @@ def get_datum_by_res_gen(datum_col, resource_uid):
     if not fpath.is_file():
         return
     with h5py.File(str(fpath), 'r') as fin:
-        df = pd.DataFrame({k: fin[k] for k in fin})
+        df = pd.DataFrame({k: fin[k][:] for k in fin})
         df['datum_id'] = df['datum_id'].str.decode('utf-8')
         df = df.set_index('datum_id')
 
