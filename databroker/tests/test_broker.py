@@ -835,7 +835,6 @@ def test_prepare_hook_raw(db, RE):
             assert not isinstance(doc, DeprecatedDoct)
             assert not isinstance(doc, doct.Document)
             assert isinstance(doc, dict)
-            assert isinstance(doc, dict)
 
 
 def test_deprecated_doct():

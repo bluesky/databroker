@@ -67,7 +67,7 @@ class Header(object):
 
         d = {'start': db.prepare_hook('start', run_start)}
         if run_stop is not None:
-            d['stop'] = db.prepare_hook('stop', run_stop)
+            d['stop'] = db.prepare_hook('stop', run_stop or {})
         h = cls(db, **d)
         return h
 
