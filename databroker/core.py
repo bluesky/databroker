@@ -180,8 +180,11 @@ class Header(object):
         --------
         :meth:`Header.fields`
         """
-        return set(d['object_keys'] for d in self.descriptors
-                   if stream_name is ALL or stream_name == d['name'])
+        result = set()
+        for d in self.descriptors:
+            if stream_name is ALL or stream_name == d.get('name', 'primary'):
+                result.update(d['object_keys'])
+        return result
 
     def config_data(self, device_name):
         """
