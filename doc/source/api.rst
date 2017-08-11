@@ -192,9 +192,10 @@ for convenience.
    :toctree: _as_gen
    :nosignatures:
 
+   Header.table
+   Header.data
    Header.documents
    Header.events
-   Header.table
 
 All of the above accept an argument called ``stream_name``, which distinguishes
 concurrently-collected stream of data. (Typical names include 'primary' and

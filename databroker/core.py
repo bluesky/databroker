@@ -375,6 +375,29 @@ class Header(object):
                                  localize_times=localize_times,
                                  **kwargs)
 
+    def data(self, field, stream_name='primary', fill=True):
+        """
+        Extract data for one field. This is convenient for loading image data.
+
+        Parameters
+        ----------
+        field : string
+            such as 'image' or 'intensity'
+        stream_name : string, optional
+            Get data from a single "event stream." Default is 'primary'
+        fill : bool, optional
+            Whether externally-stored data should be filled in. True by
+            default.
+
+        Yields
+        ------
+        data
+        """
+        for event in self.events(stream_name=stream_name,
+                                 fields=[field],
+                                 fill=fill):
+            yield event['data'][field]
+
 
 def register_builtin_handlers(fs):
     "Register all the handlers built in to filestore."
