@@ -65,6 +65,7 @@ def fs(request):
     '''
     return _use_factory(request)
 
+registry = fs
 
 @pytest.fixture(scope='function', params=[mongo_fs_factory])
 def fs_mongo(request):
