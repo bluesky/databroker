@@ -621,7 +621,7 @@ def test_export(broker_factory, RE):
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
     detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                                fs=db1.fs, save_path=dir1)
+                                reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
@@ -644,8 +644,8 @@ def test_export_noroot(broker_factory, RE):
         def stage(self):
             self._file_stem = short_uid()
             self._path_stem = os.path.join(self.save_path, self._file_stem)
-            self._resource_id = self.fs.insert_resource(
-                self.filestore_spec,
+            self._resource_id = self.reg.insert_resource(
+                self._spec,
                 os.path.join(self.save_path, self._file_stem),
                 {})
 
@@ -654,7 +654,7 @@ def test_export_noroot(broker_factory, RE):
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
 
     detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
-                        fs=db1.fs, save_path=dir1, save_ext='npy')
+                        reg=db1.fs, save_path=dir1, save_ext='npy')
 
     RE.subscribe('all', db1.mds.insert)
     uid, = RE(count([detfs], num=3))
@@ -687,7 +687,7 @@ def test_export_size_smoke(broker_factory, RE):
 
     dir1 = tempfile.mkdtemp()
     detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                                fs=db1.fs, save_path=dir1)
+                                reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
     db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
