@@ -915,6 +915,7 @@ def test_ingest_array_metadata(db, RE):
     RE(count([]), mask=np.ones((3, 3, 3)))
 
 
+@py3
 def test_deprecated_stream_method(db, RE):
     RE.subscribe(db.insert)
     uid, = RE(count([det]))
