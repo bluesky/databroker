@@ -5,7 +5,8 @@ import six
 from jsonschema import validate as js_validate
 import uuid
 import time as ttime
-
+import pandas as pd
+from ..utils import sanitize_np, apply_to_dict_recursively
 
 class DatumNotFound(Exception):
     pass
@@ -89,27 +90,49 @@ def bulk_insert_datum(col, resource, datum_ids,
             datum = dict(resource=resource_id,
                          datum_id=str(d_id),
                          datum_kwargs=dict(d_kwargs))
+            apply_to_dict_recursively(datum, sanitize_np)
             yield datum
 
     col.insert(datum_factory())
+
+
+def bulk_register_datum_table(datum_col,
+                              resource_uid,
+                              dkwargs_table,
+                              validate):
+    if validate:
+        raise
+
+    d_ids = [str(uuid.uuid4()) for j in range(len(dkwargs_table))]
+    dkwargs_table = pd.DataFrame(dkwargs_table)
+    bulk_insert_datum(datum_col, resource_uid, d_ids, [
+        dict(r) for _, r in dkwargs_table.iterrows()])
+    return d_ids
+
+
+def register_datum(col, resource_uid, datum_kwargs):
+    datum_uid = str(uuid.uuid4())
+    datum = insert_datum(col, resource_uid, datum_uid, datum_kwargs, {}, None)
+    return datum['datum_id']
 
 
 def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
                  resource_col):
     try:
         resource['spec']
+        spec = resource['spec']
+
+        if spec in known_spec:
+            js_validate(datum_kwargs, known_spec[spec]['datum'])
     except (AttributeError, TypeError):
-        resource = resource_col.find_one({'uid': resource})
+        pass
 
-    spec = resource['spec']
+    resource_uid = doc_or_uid_to_uid(resource)
 
-    if spec in known_spec:
-        js_validate(datum_kwargs, known_spec[spec]['datum'])
-
-    datum = dict(resource=resource['uid'],
+    datum = dict(resource=resource_uid,
                  datum_id=str(datum_id),
                  datum_kwargs=dict(datum_kwargs))
-
+    apply_to_dict_recursively(datum, sanitize_np)
     col.insert_one(datum)
     # do not leak mongo objectID
     datum.pop('_id', None)

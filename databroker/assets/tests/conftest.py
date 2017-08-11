@@ -1,4 +1,5 @@
 import pytest
+
 from ..utils import create_test_database
 
 
@@ -22,12 +23,26 @@ def sqlite_fs_factory():
     import tempfile
     import os
     tf = tempfile.NamedTemporaryFile()
-    fs = sqlfs.RegistryMoving({'dbpath': tf.name, 'version': 1})
+    fs = sqlfs.RegistryMoving({'dbpath': tf.name})
 
     def delete_dm():
         os.remove(tf.name)
 
     return fs, delete_dm
+
+
+def hdf5_fs_factory():
+    from databroker.assets import column_hdf5 as chdf5
+    import tempfile
+    import shutil
+
+    tp = tempfile.mkdtemp()
+    fs = chdf5.RegistryMoving({'dbpath': tp})
+
+    def cleanup():
+        shutil.rmtree(tp)
+
+    return fs, cleanup
 
 
 def _use_factory(request):
@@ -40,14 +55,18 @@ def _use_factory(request):
     return fs
 
 
-@pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory],
-                ids=['mongo', 'sqlite'])
+@pytest.fixture(scope='function', params=[mongo_fs_factory, sqlite_fs_factory,
+                                          hdf5_fs_factory],
+                ids=['mongo', 'sqlite', 'column_hdf5'])
 def fs(request):
     '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
     return _use_factory(request)
+
+
+registry = fs
 
 
 @pytest.fixture(scope='function', params=[mongo_fs_factory])

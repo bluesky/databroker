@@ -9,6 +9,7 @@ import logging
 from requests import HTTPError
 from .mongo_core import (NoRunStart, NoEventDescriptors, NoRunStop,
                          BAD_KEYS_FMT)
+from ..utils import sanitize_np, apply_to_dict_recursively
 
 logger = logging.getLogger(__name__)
 
@@ -525,6 +526,7 @@ class MDS(MDSRO):
 
     def datafactory(self, data, signature):
         """Pack data to be posted so mdservice can unpack"""
+        apply_to_dict_recursively(data, sanitize_np)
         return dict(data=data, signature=signature)
 
     def _post(self, url, data):

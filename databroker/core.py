@@ -106,9 +106,9 @@ class Header(object):
 
     def __iter__(self):
         return self.keys()
-    
-    # ## convenience methods and properties, encapsulating common one-liners ## #
-        
+
+    # ## convenience methods and properties, encapsulating one-liners ## #
+
     @property
     def descriptors(self):
         if 'desc' not in self._cache:

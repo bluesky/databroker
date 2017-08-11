@@ -6,6 +6,7 @@ import warnings
 import logging
 import numpy as np
 from ..core import format_time as _format_time
+from ..utils import apply_to_dict_recursively, sanitize_np
 
 logger = logging.getLogger(__name__)
 
@@ -513,6 +514,7 @@ def insert_run_start(run_start_col, run_start_cache,
 
     col = run_start_col
     run_start = dict(time=time, uid=uid, **kwargs)
+    apply_to_dict_recursively(run_start, sanitize_np)
 
     col.insert_one(run_start)
 
@@ -576,6 +578,7 @@ def insert_run_stop(run_stop_col, run_stop_cache,
     col = run_stop_col
     run_stop = dict(run_start=run_start_uid, time=time, uid=uid,
                     exit_status=exit_status, **kwargs)
+    apply_to_dict_recursively(run_stop, sanitize_np)
     if reason is not None and reason != '':
         run_stop['reason'] = reason
 
@@ -635,6 +638,7 @@ def insert_descriptor(descriptor_col,
 
     descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
                       time=time, uid=uid, **kwargs)
+    apply_to_dict_recursively(descriptor, sanitize_np)
     # TODO validation
     col.insert_one(descriptor)
 
@@ -687,10 +691,13 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     descriptor_uid = doc_or_uid_to_uid(descriptor)
 
     col = event_col
-
+    data = dict(data)
+    apply_to_dict_recursively(data, sanitize_np)
+    timestamps = dict(timestamps)
+    apply_to_dict_recursively(timestamps, sanitize_np)
     event = dict(descriptor=descriptor_uid, uid=uid,
                  data=data, timestamps=timestamps, time=time,
-                 seq_num=seq_num)
+                 seq_num=int(seq_num))
 
     col.insert_one(event)
 
@@ -726,7 +733,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
     ret : dict
         dictionary of details about the insertion
     """
-    descriptor_uid = doc_or_uid_to_uid(descriptor)
+    descriptor_uid = str(doc_or_uid_to_uid(descriptor))
 
     def event_factory():
         for ev in events:
@@ -736,11 +743,15 @@ def bulk_insert_events(event_col, descriptor, events, validate):
                     raise ValueError(
                         BAD_KEYS_FMT.format(ev['data'].keys(),
                                             ev['timestamps'].keys()))
-
-            ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=ev['data'], timestamps=ev['timestamps'],
+            data = dict(ev['data'])
+            apply_to_dict_recursively(data, sanitize_np)
+            ts = dict(ev['timestamps'])
+            apply_to_dict_recursively(ts, sanitize_np)
+            ev_out = dict(descriptor=descriptor_uid,
+                          uid=str(ev['uid']),
+                          data=data, timestamps=ts,
                           time=ev['time'],
-                          seq_num=ev['seq_num'])
+                          seq_num=int(ev['seq_num']))
             yield ev_out
 
     return event_col.insert(event_factory())

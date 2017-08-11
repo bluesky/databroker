@@ -118,14 +118,6 @@ def test_sneaky_write_fail(fs):
         test_w.add_data(5)
 
 
-def test_give_uid(fs):
-    test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')
-    uid = str(uuid.uuid4())
-    with fs_write.NpyWriter(test_path, fs=fs) as fout:
-        datum_id = fout.add_data([1, 2, 3], uid)
-    assert uid == datum_id
-
-
 def test_custom(fs):
     fsa = fs
     test_path = os.path.join(BASE_PATH, str(uuid.uuid4()) + '.npy')

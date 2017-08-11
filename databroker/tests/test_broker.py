@@ -70,7 +70,7 @@ def test_uid_list_multiple_headers(db, RE):
 @py3
 def test_no_descriptors(db, RE):
     RE.subscribe('all', db.insert)
-    uid,  = RE(count([]))
+    uid, = RE(count([]))
     header = db[uid]
     assert [] == header.descriptors
 
@@ -783,7 +783,7 @@ def _get_docs(h):
 def test_prepare_hook_default(db, RE):
     RE.subscribe(db.insert)
     uid, = RE(count([det]))
-    
+
     # check default -- returning a subclass of doct.Document that warns
     # when you use getattr for getitem
     assert db.prepare_hook == wrap_in_deprecated_doct
@@ -792,6 +792,7 @@ def test_prepare_hook_default(db, RE):
     for doc in _get_docs(h):
         assert isinstance(doc, DeprecatedDoct)
         assert isinstance(doc, doct.Document)
+
 
 @py3
 def test_prepare_hook_old_style(db, RE):
@@ -838,14 +839,14 @@ def test_prepare_hook_raw(db, RE):
 
 
 def test_deprecated_doct():
-    ev = DeprecatedDoct('stuff',
-            {'data': {'det': 1.0},
-            'descriptor': '120324df-5d7b-4764-94ec-7031cdcbd6e6',
-            'filled': {},
-            'seq_num': 1,
-            'time': 1502356802.8381739,
-            'timestamps': {'det': 1502356802.701149},
-            'uid': 'f295e8a7-b688-4c22-9f43-0ce6fdd56dbd'})
+    ev = DeprecatedDoct('stuff', {
+        'data': {'det': 1.0},
+        'descriptor': '120324df-5d7b-4764-94ec-7031cdcbd6e6',
+        'filled': {},
+        'seq_num': 1,
+        'time': 1502356802.8381739,
+        'timestamps': {'det': 1502356802.701149},
+        'uid': 'f295e8a7-b688-4c22-9f43-0ce6fdd56dbd'})
 
     with pytest.warns(UserWarning):
         ev.data
@@ -856,3 +857,59 @@ def test_deprecated_doct():
         with pytest.raises(AttributeError):
             ev.nonexistent
     assert not record  # i.e. assert no warning
+
+
+@py3
+def test_ingest_array_data(db_empty, RE):
+    db = db_empty
+    RE.subscribe('all', db.insert)
+    # These will blow up if the event source backing db cannot ingest numpy
+    # arrays. (For example, the pymongo-backed db has to convert them to plain
+    # lists.)
+
+    class Detector:
+        def __init__(self, name, array):
+            self.name = name
+            self.parent = None
+            self.array = array
+
+        def read(self):
+            return {'x': {'value': self.array, 'timestamp': ttime.time()}}
+
+        def describe(self):
+            return {'x': {'shape': self.array.shape,
+                          'dtype': 'array',
+                          'source': 'test'}}
+
+        def describe_configuration(self):
+            return {}
+
+        def read_configuration(self):
+            return {}
+
+    # 1D array in event['data']
+    det = Detector('det', np.array([1, 2, 3]))
+    RE(count([det]))
+
+    # 3D array in event['data']
+    det = Detector('det', np.ones((3, 3, 3)))
+    RE(count([det]))
+
+
+@py3
+def test_ingest_array_metadata(db, RE):
+    RE.subscribe('all', db.insert)
+
+    # These will blow up if the header source backing db cannot ingest numpy
+    # arrays. (For example, the pymongo-backed db has to convert them to plain
+    # lists.)
+
+    # 1D array in start document.
+    RE(count([]), mask=np.array([1, 2, 3]))
+
+    # 1D array in nested keys in start document.
+    RE(count([]), nested=dict(mask=np.array([1, 2, 3])))
+    RE(count([]), deeply=dict(nested=dict(mask=np.array([1, 2, 3]))))
+
+    # 3D array in start document.
+    RE(count([]), mask=np.ones((3, 3, 3)))

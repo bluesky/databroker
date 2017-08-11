@@ -62,6 +62,10 @@ class NpyWriter(HandlerBase):
             The uid to be used for this entry,
             if not given use uuid1 to generate one
 
+            .. warning ::
+
+               This may only be taken as a suggestion.
+
         resource_kwargs : None, optional
             Currently raises if not 'falsy' and is ignored.
 
