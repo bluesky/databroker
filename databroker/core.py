@@ -282,7 +282,7 @@ class Header(object):
         ----------
         stream_name : string, optional
             Get data from a single "event stream." Default is 'primary'
-        fill : bool, optional
+        fill : bool or iterable of strings, optional
             Whether externally-stored data should be filled in. False by
             default.
 
@@ -304,11 +304,20 @@ class Header(object):
 
         >>> events = list(h.events())
         """
-        for name, doc in self.documents(stream_name=stream_name,
-                                        fill=fill,
-                                        **kwargs):
-            if name == 'event':
-                yield doc
+        def inner():
+            for name, doc in self.documents(stream_name=stream_name,
+                                            **kwargs):
+                if name == 'event':
+                    yield doc
+        if not fill:
+            for ev in inner():
+                yield ev
+
+        else:
+            ev_gen = self.db.fill_events(
+                inner(), self.desccriptors, fields=fill, inplace=True)
+            for ev in ev_gen:
+                yield ev
 
     def table(self, stream_name='primary', fill=False, fields=None,
               timezone=None, convert_times=True, localize_times=True,

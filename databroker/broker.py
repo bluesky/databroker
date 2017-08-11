@@ -12,6 +12,8 @@ import os
 import yaml
 import glob
 import tempfile
+import copy
+from collections import defaultdict
 
 
 from .core import (Header,
@@ -239,8 +241,7 @@ def lookup_config(name):
     else:
         raise FileNotFoundError("No config file named {!r} could be found in "
                                 "the following locations:\n{}"
-                                "".format(name,'\n'.join(tried)))
-
+                                "".format(name, '\n'.join(tried)))
 
 
 def load_component(config):
@@ -359,7 +360,11 @@ class BrokerES(object):
         self.filters = []
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
+        self.registry_for_insert = self.event_sources[0]
         self.prepare_hook = wrap_in_deprecated_doct
+
+    def add_event_source(self, es):
+        self.event_sources.append(es)
 
     def stream_names_given_header(self, header):
         return [n for es in self.event_sources
@@ -1065,6 +1070,50 @@ class BrokerES(object):
                     total_size += os.path.getsize(file)
 
         return total_size * 1e-9
+
+    def fill_events(self, events_iterable, descriptors,
+                    fields=True, inplace=False):
+        """Fill a sequence of events
+
+        """
+        if fields is True:
+            fields = None
+        elif fields is False:
+            fields = {}
+        elif fields:
+            fields = set(fields)
+        registry_map = {}
+        fill_map = defaultdict(list)
+        for d in descriptors:
+            fill_keys = set()
+            desc_id = d['uid']
+            for k, v in d['data_keys']:
+                ext = v.get('external', None)
+                if ext:
+                    _, _, reg_name = ext.partition(':')
+                    registry_map[(desc_id, k)] = self.assets[reg_name]
+                    fill_keys.add(k)
+            if fields is not None:
+                fill_keys &= fields
+            fill_map[desc_id] = fill_keys
+
+        for ev in events_iterable:
+            if not inplace:
+                ev = _sanitize(ev)
+                ev = copy.deepcopy(ev)
+                ev = self.prepare_hook('event', ev)
+            data = ev['data']
+
+            desc_id = ev['descriptor']
+            for k in fill_map:
+                data[k] = registry_map[(desc_id, k)].retrieve(data[k])
+
+            yield ev
+
+    def fill_table(self, evt_tbl, descriptor, fields=None, inplace=False):
+        """Fill a table
+
+        """
 
 
 class Broker(BrokerES):
