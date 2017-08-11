@@ -174,6 +174,24 @@ def test_insert_run_start(mds_all):
     check_for_id(run_start_mds)
 
 
+def test_insert_double_run_start(mds_all):
+    mds = mds_all
+
+    time = ttime.time()
+    beamline_id = 'sample_beamline'
+    scan_id = 42
+    custom = {'foo': 'bar', 'baz': 42,
+              'aardvark': ['ants', 3.14]}
+    run_start_uid = mds.insert_run_start(
+        time, beamline_id=beamline_id,
+        scan_id=scan_id, uid=str(uuid.uuid4()), **custom)
+    with pytest.raises(ValueError):
+        mds.insert_run_start(time=time.time(),
+                             uid=run_start_uid,
+                             beamline_id=beamline_id,
+                             scan_id=scan_id)
+
+
 def test_run_stop_insertion(mds_all):
     """Test, uh, the insertion of run stop documents
     """
