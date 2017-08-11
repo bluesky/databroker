@@ -10,6 +10,8 @@ import pandas as pd
 import sys
 import os
 import yaml
+import glob
+import tempfile
 
 
 from .core import (Header,
@@ -148,6 +150,14 @@ def _(key, db):
 class Results(object):
     """
     Iterable object encapsulating a results set of Headers
+
+    Parameters
+    ----------
+    res : iterable
+        Iterable of ``(start_doc, stop_doc)`` pairs
+    db : :class:`Broker`
+    data_key : string or None
+        Special query parameter that filters results
     """
     def __init__(self, res, db, data_key):
         self._db = db
@@ -187,14 +197,33 @@ if six.PY2:
     FileNotFoundError = IOError
 
 
+def list_configs():
+    """
+    List the names of the available configuration files.
+
+    Returns
+    -------
+    names : list
+    """
+    names = []
+    for path in CONFIG_SEARCH_PATH:
+        files = glob.glob(os.path.join(path, '*.yml'))
+        names.extend([os.path.basename(f)[:-4] for f in files])
+    return sorted(names)
+
+
 def lookup_config(name):
     """
     Search for a databroker configuration file with a given name.
 
-    For exmaple, the name 'dba' will cause the function to search for:
+    For exmaple, the name 'example' will cause the function to search for:
 
-    * ~/.config/databroker/dba.yml
-    * ~/etc/databroker/dba.yml
+    * ``~/.config/databroker/example.yml``
+    * ``{python}/../etc/databroker/example.yml``
+    * ``/etc/databroker/example.yml``
+
+    where ``{python}`` is the location of the current Python binary, as
+    reported by ``sys.executable``. It will use the first match it finds.
 
     Parameters
     ----------
@@ -229,6 +258,43 @@ def load_component(config):
     return cls(config)
 
 
+def temp_config():
+    """
+    Generate Broker configuration backed by temporary, disposable databases.
+
+    This is suitable for testing and experimentation, but it is not recommended
+    for large or important data.
+
+    Returns
+    -------
+    config : dict
+
+    Example
+    -------
+    This is the fastest way to get up and running with a Broker.
+
+    >>> c = temp_config()
+    >>> db = Broker.from_config(c)
+    """
+    tempdir = tempfile.mkdtemp()
+    config = {
+        'metadatastore': {
+            'module': 'databroker.headersource.sqlite',
+            'class': 'MDS',
+            'config': {
+                 'directory': tempdir,
+                'timezone': 'US/Eastern'}
+        },
+        'assets': {
+            'module': 'databroker.assets.sqlite',
+            'class': 'Registry',
+            'config': {
+                'dbpath': os.path.join(tempdir, 'assets.sqlite')}
+        }
+    }
+    return config
+
+
 DOCT_NAMES = {'resource': 'Resource',
               'datum': 'Datum',
               'descriptor': 'Event Descriptor',
@@ -238,6 +304,16 @@ DOCT_NAMES = {'resource': 'Resource',
 
 
 def wrap_in_doct(name, doc):
+    """
+    Put document contents into a doct.Document object.
+
+    A ``doct.Document`` is a subclass of dict that:
+
+    * is immutable
+    * provides human-readable :meth:`__repr__` and :meth:`__str__`
+    * supports dot access (:meth:`__getattr__`) as a synonym for item access
+      (:meth:`__getitem__`) whenever possible
+    """
     return doct.Document(DOCT_NAMES[name], doc)
 
 
@@ -245,6 +321,7 @@ _STANDARD_DICT_ATTRS = dir(dict)
 
 
 class DeprecatedDoct(doct.Document):
+    "Subclass of doct.Document that warns that dot access may be removed."
     def __getattribute__(self, key):
         # Get the result first and let any errors be raised.
         res = super(DeprecatedDoct, self).__getattribute__(key)
@@ -258,20 +335,28 @@ class DeprecatedDoct(doct.Document):
 
 
 def wrap_in_deprecated_doct(name, doc):
+    """
+    Put document contents into a DeprecatedDoct object.
+
+    See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
+    and :class:`doct.Document` is a warning that dot access
+    (:meth:`__getattr__` as a synonym for :meth:`__getitem__`) may be removed
+    in the future.
+    """
     return DeprecatedDoct(DOCT_NAMES[name], doc)
 
 
 class BrokerES(object):
-    def __init__(self, hs, *event_sources):
-        """
-        Unified interface to data sources
+    """
+    Unified interface to data sources
 
-        Parameters
-        ----------
-        hs : HeaderSource
-        *event_sources :
-            zero, one or more EventSource objects
-        """
+    Parameters
+    ----------
+    hs : HeaderSource
+    *event_sources :
+        zero, one or more EventSource objects
+    """
+    def __init__(self, hs, *event_sources):
         self.hs = hs
         self.event_sources = event_sources
         # Once we drop Python 2, we can accept initial filter and aliases as
@@ -286,6 +371,16 @@ class BrokerES(object):
                 for n in es.stream_names_given_header(header)]
 
     def insert(self, name, doc):
+        """
+        Insert a new document.
+
+        Parameters
+        ----------
+        name : {'start', 'descriptor', 'event', 'stop'}
+            Document type
+        doc : dict
+            Document
+        """
         if name in {'start', 'stop'}:
             return self.hs.insert(name, doc)
         else:
@@ -324,17 +419,18 @@ class BrokerES(object):
         Filter queries are combined with every given query using '$and',
         acting as a filter to restrict the results.
 
-        ``Broker.add_filter(**kwargs)`` is just a convenient way to spell
-        ``Broker.filters.append(dict(**kwargs))``.
+        ``db.add_filter(**kwargs)`` is just a convenient way to spell
+        ``db.filters.append(dict(**kwargs))``.
 
         Example
         -------
         Filter all searches to restrict runs to a specific 'user'.
+
         >>> db.add_filter(user='Dan')
 
         See Also
         --------
-        `Broker.add_filter`
+        :meth:`Broker.clear_filters`
 
         """
         self.filters.append(dict(**kwargs))
@@ -351,12 +447,42 @@ class BrokerES(object):
 
         See Also
         --------
-        `Broker.add_filter`
+        :meth:`Broker.add_filter`
         """
         self.filters.clear()
 
     def __getitem__(self, key):
-        """Do-What-I-Mean slicing"""
+        """
+        Search runs based on recently, unique id, or counting number scan_id.
+
+        This function returns a :class:`Header` object (or a list of them, if
+        the input is a list or slice). Each Header encapsulates the metadata
+        for a run -- start time, instruments used, and so on, and provides
+        methods for loading the data.
+
+        Examples
+        --------
+        Get the most recent run.
+
+        >>> header = db[-1]
+
+        Get the fifth most recent run.
+
+        >>> header = db[-5]
+
+        Get a list of all five most recent runs, using Python slicing syntax.
+
+        >>> headers = db[-5:]
+
+        Get a run whose unique ID ("RunStart uid") begins with 'x39do5'.
+
+        >>> header = db['x39do5']
+
+        Get a run whose integer scan_id is 42. Note that this might not be
+        unique.  In the event of duplicates, the most recent match is returned.
+
+        >>> header = db[42]
+        """
         ret = [Header(start=self.prepare_hook('start', start),
                       stop=self.prepare_hook('stop', stop),
                       db=self)
@@ -418,53 +544,67 @@ class BrokerES(object):
         self.aliases[key] = func
 
     def __call__(self, text_search=None, **kwargs):
-        """Given search criteria, find Headers describing runs.
+        """Search runs based on metadata.
 
-        This function returns a list of dictionary-like objects encapsulating
-        the metadata for a run -- start time, instruments used, and so on.
-        In addition to the Parameters below, advanced users can specifiy
-        arbitrary queries that are passed through to mongodb.
+        This function returns an iterable of :class:`Header` objects. Each
+        Header encapsulates the metadata for a run -- start time, instruments
+        used, and so on, and provides methods for loading the data. In
+        addition to the Parameters below, advanced users can specifiy arbitrary
+        queries using the MongoDB query syntax.
+
+		The ``start_time`` and ``stop_time`` parameters accepts the following
+		representations of time:
+
+        * timestamps like ``time.time()`` and ``datetime.datetime.now()``
+        * ``'2015'``
+        * ``'2015-01'``
+        * ``'2015-01-30'``
+        * ``'2015-03-30 03:00:00'``
 
         Parameters
         ----------
         text_search : str, optional
             search full text of RunStart documents
-        start_time : time-like, optional
-            Include Headers for runs started after this time. Valid
-            "time-like" representations are:
-                - float timestamps (seconds since 1970), such as time.time()
-                - '2015'
-                - '2015-01'
-                - '2015-01-30'
-                - '2015-03-30 03:00:00'
-                - Python datetime objects, such as datetime.now()
-        stop_time: time-like, optional
-            Include Headers for runs started before this time. See
-            `start_time` above for examples.
-        beamline_id : str, optional
-            String identifier for a specific beamline
-        project : str, optional
-            Project name
-        owner : str, optional
-            The username of the logged-in user when the scan was performed
-        scan_id : int, optional
-            Integer scan identifier
-        uid : str, optional
-            Globally unique id string provided to metadatastore
+        start_time : str, optional
+            Restrict results to runs that started after this time.
+        stop_time : str, optional
+            Restrict results to runs that started before this time.
         data_key : str, optional
-            The alias (e.g., 'motor1') or PV identifier of data source
+            Restrict results to runs that contained this data_key (a.k.a field)
+            such as 'intensity' or 'temperature'.
+        **kwargs
+            query parameters
 
         Returns
         -------
-        data : Results instance
+        data : :class:`Results`
             Iterable object encapsulating a results set of Headers
 
         Examples
         --------
-        >>> DataBroker('keyword')  # full text search
-        >>> DataBroker(start_time='2015-03-05', stop_time='2015-03-10')
-        >>> DataBroker(data_key='motor1')
-        >>> DataBroker(data_key='motor1', start_time='2015-03-05')
+        Search by plan name.
+
+        >>> db(plan_name='scan')
+
+        Search for runs involving a motor with the name 'eta'.
+
+        >>> db(motor='eta')
+
+        Search for runs operated by a given user---assuming this metadata was
+        recorded in the first place!
+
+        >>> db(operator='Dan')
+
+        Search by time range. (These keywords have a special meaning.)
+
+        >>> db(start_time='2015-03-05', stop_time='2015-03-10')
+
+        Perform text search on all values in the Run Start document.
+
+        >>> db('keyword')
+
+        Note that partial words are not matched, but partial phrases are. For
+        example, 'good' will match to 'good sample' but 'goo' will not.
         """
         data_key = kwargs.pop('data_key', None)
 
@@ -510,7 +650,7 @@ class BrokerES(object):
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
                    handler_registry=None, handler_overrides=None):
         """
-        Get Events from given run(s).
+        Get Event documents from one or more runs.
 
         Parameters
         ----------
@@ -564,7 +704,7 @@ class BrokerES(object):
     def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
                       handler_registry=None, handler_overrides=None):
         """
-        Get Events from given run(s).
+        Get all documents from one or more runs.
 
         Parameters
         ----------
@@ -619,7 +759,7 @@ class BrokerES(object):
                   convert_times=True, timezone=None, handler_registry=None,
                   handler_overrides=None, localize_times=True):
         """
-        Make a table (pandas.DataFrame) from given run(s).
+        Load the data from one or more runs as a table (``pandas.DataFrame``).
 
         Parameters
         ----------
@@ -692,7 +832,7 @@ class BrokerES(object):
     def get_images(self, headers, name, handler_registry=None,
                    handler_override=None):
         """
-        Load images from a detector for given Header(s).
+        Load image data from one or more runs into a lazy array-like object.
 
         Parameters
         ----------
@@ -731,8 +871,7 @@ class BrokerES(object):
         Returns
         -------
         ret : set
-            set of resource uids which are refereneced by this
-            header.
+            set of resource uids which are refereneced by this Header.
         '''
         external_keys = set()
         for d in header['descriptors']:
@@ -785,7 +924,7 @@ class BrokerES(object):
 
         See Also
         --------
-        process
+        :meth:`Broker.process`
         """
         for payload in self.get_documents(headers, fields=fields, fill=fill):
             yield payload
@@ -794,7 +933,7 @@ class BrokerES(object):
 
     def process(self, headers, func, fields=None, fill=False):
         """
-        Get all Documents from given run to a callback.
+        Pass all the documents from one or more runs into a callback.
 
         Parameters
         ----------
@@ -824,7 +963,7 @@ class BrokerES(object):
 
         See Also
         --------
-        restream
+        :meth:`Broker.restream`
         """
         for name, doc in self.get_documents(headers, fields=fields, fill=fill):
             func(name, doc)
@@ -902,7 +1041,7 @@ class BrokerES(object):
 
         Parameters:
         -----------
-        headers : databroker.header
+        headers : :class:databroker.Header:
             one or more headers that are going to be exported
 
         Returns
@@ -932,18 +1071,18 @@ class BrokerES(object):
 
 
 class Broker(BrokerES):
+    """
+    Unified interface to data sources
+
+    Eventually this API will change to
+    ``__init__(self, hs, **event_sources)``
+
+    Parameters
+    ----------
+    mds : metadatastore or metadataclient
+    fs : filestore
+    """
     def __init__(self, mds, fs=None, plugins=None, filters=None):
-        """
-        Unified interface to data sources
-
-        Eventually this API will change to
-        ``__init__(self, hs, **event_sources)``
-
-        Parameters
-        ----------
-        mds : metadatastore or metadataclient
-        fs : filestore
-        """
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
@@ -959,13 +1098,86 @@ class Broker(BrokerES):
 
     @classmethod
     def from_config(cls, config):
+        """
+        Create a new Broker instance using a dictionary of configuration.
+
+        Parameters
+        ----------
+        config : dict
+
+        Returns
+        -------
+        db : Broker
+
+        Example
+        -------
+        Create a Broker backed by sqlite databases. (This is configuration is
+        not recommended for large or important deployments. See the
+        configuration documentation for more.)
+
+        >>> config = {
+        ...     'metadatastore': {
+        ...         'module': 'databroker.headersource.sqlite',
+        ...         'class': 'MDS',
+        ...         'config': {
+        ...             'directory': 'some_directory',
+        ...             'timezone': 'US/Eastern'}
+        ...     },
+        ...     'assets': {
+        ...         'module': 'databroker.assets.sqlite',
+        ...         'class': 'Registry',
+        ...         'config': {
+        ...             'dbpath': assets_dir + '/database.sql'}
+        ...     }
+        ... }
+        >>> Broker.from_config(config)
+        """
         mds = load_component(config['metadatastore'])
         assets = load_component(config['assets'])
         return cls(mds, assets)
 
     @classmethod
     def named(cls, name):
+        """
+        Create a new Broker instance using a configuration file with this name.
+
+        Configuration file search path:
+
+        * ``~/.config/databroker/{name}.yml``
+        * ``{python}/../etc/databroker/{name}.yml``
+        * ``/etc/databroker/{name}.yml``
+
+        where ``{python}`` is the location of the current Python binary, as
+        reported by ``sys.executable``. It will use the first match it finds.
+
+        Parameters
+        ----------
+        name : string
+
+        Returns
+        -------
+        db : Broker
+        """
         return cls.from_config(lookup_config(name))
+
+
+def _munge_time(t, timezone):
+    """Close your eyes and trust @arkilic
+
+    Parameters
+    ----------
+    t : float
+        POSIX (seconds since 1970)
+    timezone : pytz object
+        e.g. ``pytz.timezone('US/Eastern')``
+
+    Return
+    ------
+    time
+        as ISO-8601 format
+    """
+    t = datetime.fromtimestamp(t)
+    return timezone.localize(t).replace(microsecond=0).isoformat()
 
 
 def _sanitize(doc):

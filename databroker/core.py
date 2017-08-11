@@ -7,6 +7,7 @@ import pytz
 from pims import FramesSequence, Frame
 import logging
 import attr
+from warnings import warn
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -146,7 +147,7 @@ class Header(object):
 
         See Also
         --------
-        :meth:devices
+        :meth:`Header.devices`
         """
         fields = set()
         for es in self.db.event_sources:
@@ -177,10 +178,13 @@ class Header(object):
 
         See Also
         --------
-        :meth:fields
+        :meth:`Header.fields`
         """
-        return set(d['object_keys'] for d in self.descriptors
-                   if stream_name is ALL or stream_name == d['name'])
+        result = set()
+        for d in self.descriptors:
+            if stream_name is ALL or stream_name == d.get('name', 'primary'):
+                result.update(d['object_keys'])
+        return result
 
     def config_data(self, device_name):
         """
@@ -219,9 +223,13 @@ class Header(object):
 
         >>> h.config_data('eiger')
         {'primary': [{'exposure_time': 1.0}]}
+
+        Assign the exposure time to a variable.
+
         >>> exp_time = h.config_data('eiger')['primary'][0]['exposure_time']
 
-        Backing up a step, to get the list of eligible device names:
+        How did we know that ``'eiger'`` was a valid argument? We can query for
+        the complete list of device names:
 
         >>> h.device_names()
         {'eiger', 'cs700'}
@@ -233,30 +241,31 @@ class Header(object):
                 result[d['name']].append(config['data'])
         return dict(result)  # strip off defaultdict behavior
 
-    def stream(self, stream_name=ALL, fill=False, **kwargs):
+    def documents(self, stream_name=ALL, fill=False, **kwargs):
         """
-        The most raw access to the data. A generator of documents.
+        Load all documents from the run.
+
+        This is a generator the yields ``(name, doc)``.
 
         Parameters
         ----------
         stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). This is the default.
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.
 
         Yields
         ------
-        name, doc : (string, Doct)
+        name, doc : (string, dict)
 
         Example
         -------
         Loop through the documents from a run.
 
         >>> h = db[-1]
-        >>> for name, doc in h.stream():
+        >>> for name, doc in h.documents():
         ...     # do something
         """
         gen = self.db.get_documents(self, stream_name=stream_name,
@@ -264,9 +273,17 @@ class Header(object):
         for payload in gen:
             yield payload
 
+    def stream(self, *args, **kwargs):
+        warn("The 'stream' method been renamed to 'documents'. The old name "
+             "will be removed in the future.")
+        for payload in self.documents(*args, **kwargs):
+            yield payload
+
     def events(self, stream_name='primary', fill=False, **kwargs):
         """
-        Generator of like :meth:`stream` but with only the Event documents.
+        Load all Event documents from one event stream.
+
+        This is a generator the yields Event documents.
 
         Parameters
         ----------
@@ -275,6 +292,10 @@ class Header(object):
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.
+
+        Yields
+        ------
+        doc : dict
 
         Examples
         --------
@@ -290,9 +311,9 @@ class Header(object):
 
         >>> events = list(h.events())
         """
-        for name, doc in self.stream(stream_name=stream_name,
-                                     fill=fill,
-                                     **kwargs):
+        for name, doc in self.documents(stream_name=stream_name,
+                                        fill=fill,
+                                        **kwargs):
             if name == 'event':
                 yield doc
 
@@ -300,16 +321,12 @@ class Header(object):
               timezone=None, convert_times=True, localize_times=True,
               **kwargs):
         '''
-        Make a table (pandas.DataFrame) from given run(s).
+        Load the data from one event stream as a table (``pandas.DataFrame``).
 
         Parameters
         ----------
         stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). The default name is
-            'primary', but if no event stream with that name is found, the
-            default reverts to ``ALL`` (for backward-compatibility).
+            Get data from a single "event stream." Default is 'primary'
         fill : bool, optional
             Whether externally-stored data should be filled in. False by
             default.

@@ -1,0 +1,129 @@
+v0.9.0
+------
+
+Overview
+++++++++
+
+This is a major update to databroker.
+
+* The packages metadatastore, filestore, portable-mds, portable-fs,
+  metadataservice, and metadataclient have all been merged into databroker
+  itself. The individual packages have been deprecated; all future development
+  will occur in databroker.
+* In response to feedback, new convenience functions and methods have been
+  added.
+* The configuration management has been completely overhauled.
+
+Enhancements
+++++++++++++
+
+See the new :doc:`tutorial` and the :doc:`api`.
+
+API Changes
+++++++++++++
+
+* The following usages are deprecated and will stop being supported in a future
+  release:
+
+  .. code-block:: python
+
+     # THIS USAGE IS DEPRECATED
+
+     from databroker import db
+     # or, equivalently:
+     from databroker import DataBroker
+
+  Instead, do:
+
+  .. code-block:: python
+
+     from databroker import Broker
+     db = Broker('example')
+
+  where ``example`` is the name of some configuration. This new approach makes
+  it possible to connect to multiple Brokers in the same process.
+
+  .. code-block:: python
+
+     db1 = Broker('laptop')
+     db2 = Broker('beamline')
+
+  This is useful for transferring data, among other things.
+
+  Likewise, the top-level functions for fetching data are deprecated and will
+  be removed in a future release:
+
+  .. code-block:: python
+
+     # THIS USAGE IS DEPRECATED
+
+     from databroker import db, get_table, get_events, get_images
+
+     h = db[-1]
+     get_table(h) 
+
+  See the new :doc:`tutorial` for the recommended usage. The short version is:
+
+  .. code-block:: python
+
+     from databroker import Broker
+     db = Broker.named('example')
+
+     h = db[-1]
+     h.table()
+
+* Databroker uses a custom dictionary subclass that supports dot access like
+  ``event.data`` as a synonym for item lookup like ``event['data']``. Employing
+  a custom dictionary subclass has downsides, including performance and
+  complexity. We are *considering* defaulting to plain dictionaries in a future
+  release, which would break any user code that relies on dot access. To
+  prepare for this possible change, the usage ``event.data`` now produces a
+  warning advising users to switch to ``event['data']``. More detail is
+  available in the section :ref:`controlling_return_type`.
+* DataBroker used to rely indirectly on configuration files located at:
+
+    * ``/etc/metadatastore.yml`` or ``~/.config/metadatastore/connection.yml``
+    * ``/etc/filestore.yml`` or ``~/.config/filestore/connection.yml``
+  
+  These configuration files are now **completely ignored**. Users must adopt
+  the :doc:`new configuration system <configuration>`.
+* The method :meth:`Header.events` defaults to returning only events from the
+  'primary' stream, not all events.
+* The method :meth:`Header.stream` has been renamed :meth:`Header.documents`.
+  The old name issues a warning in this release; it will be removed in a future
+  one.
+* Documents refer to other documents by a uid. In past versions of databroker
+  they were dereferenced. That is:
+
+  .. code-block:: python
+
+     # Assume run_start, run_stop, descriptor, and event are documents.
+
+     # True for databroker version < 0.9.0:
+     event['descriptor'] == descriptor
+     descriptor['run_start'] == run_start
+     run_stop['run_start'] == run_start
+
+     # True for databroker version 0.9.0:
+     event['descriptor'] == descriptor['uid']
+     descriptor['run_start'] == run_start['uid']
+     run_stop['run_start'] == run_start['uid']
+
+The following API changes affect the libraries that have been merged into
+databroker in this release (metadatastore, filestore, portable-mds,
+portable-fs, metadataclient, metadataservice). **These changes are internal to
+databroker and will only affect advanced users.**
+
+* All ``FileStore`` classes have been renamed to ``Registry``. 
+* The method ``change_root``, which is implemented on various ``Registry``
+  classes, has been renamed to ``move_files``.
+* The method ``get_datum`` on ``Registry`` classes is fully removed. Use
+  ``retrieve`` instead.
+* The ``version`` keyword argument has been removed from all ``Registry``
+  classes and ``MDS`` classes. It is now part of the ``config`` dictionary.
+* A script for launching the "metadataservice" server has been moved to a CLI
+  named ``start_md_server``.
+* The "writers" formerly in filestore now require a ``Registry`` as an
+  argument.
+* The modules ``filestore.commands`` and ``filestore.api`` have been removed.
+  Same for ``metadatastore.commands`` and ``metadatastore.api``.
