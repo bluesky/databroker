@@ -5,6 +5,7 @@ import six
 from jsonschema import validate as js_validate
 import uuid
 import time as ttime
+import pandas as pd
 from ..utils import sanitize_np, apply_to_dict_recursively
 
 class DatumNotFound(Exception):
@@ -103,6 +104,7 @@ def bulk_register_datum_table(datum_col,
         raise
 
     d_ids = [str(uuid.uuid4()) for j in range(len(dkwargs_table))]
+    dkwargs_table = pd.DataFrame(dkwargs_table)
     bulk_insert_datum(datum_col, resource_uid, d_ids, [
         dict(r) for _, r in dkwargs_table.iterrows()])
     return d_ids

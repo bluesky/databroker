@@ -1,5 +1,8 @@
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+import six
 import h5py
-import uuid
 import os
 import pandas as pd
 import sqlite3
@@ -62,24 +65,26 @@ def bulk_register_datum_table(datum_col,
     if validate:
         raise
 
-    d_ids = [j for j in range(len(dkwargs_table))]
-    datum_ids = ['{}/{}'.format(resource_uid, d)
-                 for d in d_ids]
-
     path, fname = make_file_name(datum_col, resource_uid)
     makedirs(path, exist_ok=True)
-
+    num_datums = 1
     with h5py.File(os.path.join(path, fname), 'x') as fout:
-        for k, v in itertools.chain(
-                dkwargs_table.iteritems(),
-                (('datum_id', np.array(d_ids)),)):
+
+        for k, v in six.iteritems(dkwargs_table):
+            num_datums = len(v)
             fout.create_dataset(k, (len(v),),
                                 dtype=v.dtype,
                                 data=v,
                                 maxshape=(None, ),
                                 chunks=True)
+        d_ids = np.arange(num_datums)
+        fout.create_dataset('datum_id', (num_datums,),
+                            dtype=d_ids.dtype,
+                            data=d_ids,
+                            maxshape=(None, ),
+                            chunks=True)
 
-    return datum_ids
+    return ['{}/{}'.format(resource_uid, d) for d in d_ids]
 
 
 def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
