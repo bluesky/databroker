@@ -525,8 +525,8 @@ class RegistryTemplate(BaseRegistryRO):
             raise RuntimeError('validate not implemented yet')
         col = self._datum_col
 
-        return self._api.register_datum(col, resource_uid,
-                                        dkwargs_list)
+        return self._api.bulk_register_datum_list(col, resource_uid,
+                                                  dkwargs_list)
 
     def bulk_register_datum_table(self, resource_uid, dkwargs_table,
                                   validate=False):
@@ -614,7 +614,6 @@ class RegistryTemplate(BaseRegistryRO):
 
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
-
 
     # ## Hi-level API: updates
     def shift_root(self, resource_or_uid, shift):
