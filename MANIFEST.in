@@ -1,2 +1,3 @@
 include versioneer.py
 include databroker/_version.py
+include databroker/assets/schemas/*.json
