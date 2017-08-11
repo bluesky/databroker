@@ -59,17 +59,19 @@ def _use_factory(request):
                                           hdf5_fs_factory],
                 ids=['mongo', 'sqlite', 'column_hdf5'])
 def fs(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
     return _use_factory(request)
 
+
 registry = fs
+
 
 @pytest.fixture(scope='function', params=[mongo_fs_factory])
 def fs_mongo(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
@@ -82,7 +84,7 @@ fs_v1 = fs
 @pytest.fixture(scope='class', params=[mongo_fs_factory, sqlite_fs_factory],
                 ids=['mongo', 'sqlite'])
 def fs_cls(request):
-    '''Provide a function level scoped FileStore instance talking to
+    '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with v1.
 
     '''
