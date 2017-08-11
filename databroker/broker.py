@@ -208,8 +208,8 @@ def list_configs():
     names = []
     for path in CONFIG_SEARCH_PATH:
         files = glob.glob(os.path.join(path, '*.yml'))
-        names.extend(map(os.path.basename, files))
-    return names
+        names.extend([os.path.basename(f)[:-4] for f in files])
+    return sorted(names)
 
 
 def lookup_config(name):
