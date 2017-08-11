@@ -1,5 +1,6 @@
-from databroker import lookup_config, Broker
+from databroker import lookup_config, Broker, temp_config
 from databroker.broker import load_component
+
 import databroker.databroker
 from databroker.utils import ensure_path_exists
 import imp
@@ -7,6 +8,7 @@ import os
 import pytest
 import six
 import sys
+import uuid
 import yaml
 
 if six.PY2:
@@ -137,3 +139,12 @@ def test_legacy_config_warnings(RE):
 
     # Clean up
     os.remove(path)
+
+
+def test_temp_config():
+    c = temp_config()
+    db = Broker.from_config(c)
+    uid = str(uuid.uuid4())
+    db.insert('start', {'uid': uid, 'time': 0})
+    db.insert('stop', {'uid': str(uuid.uuid4()), 'time': 1, 'run_start': uid})
+    db[-1]

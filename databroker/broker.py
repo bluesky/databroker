@@ -11,6 +11,7 @@ import sys
 import os
 import yaml
 import glob
+import tempfile
 
 
 from .core import (Header,
@@ -215,10 +216,14 @@ def lookup_config(name):
     """
     Search for a databroker configuration file with a given name.
 
-    For exmaple, the name 'dba' will cause the function to search for:
+    For exmaple, the name 'example' will cause the function to search for:
 
-    * ~/.config/databroker/dba.yml
-    * ~/etc/databroker/dba.yml
+    * ``~/.config/databroker/example.yml``
+    * ``{python}/../etc/databroker/example.yml``
+    * ``/etc/databroker/example.yml``
+
+    where ``{python}`` is the location of the current Python binary, as
+    reported by ``sys.executable``. It will use the first match it finds.
 
     Parameters
     ----------
@@ -251,6 +256,43 @@ def load_component(config):
     mod = import_module(modname)
     cls = getattr(mod, clsname)
     return cls(config)
+
+
+def temp_config():
+    """
+    Generate Broker configuration backed by temporary, disposable databases.
+
+    This is suitable for testing and experimentation, but it is not recommended
+    for large or important data.
+
+    Returns
+    -------
+    config : dict
+
+    Example
+    -------
+    This is the fastest way to get up and running with a Broker.
+
+    >>> c = temp_config()
+    >>> db = Broker.from_config(c)
+    """
+    tempdir = tempfile.mkdtemp()
+    config = {
+        'metadatastore': {
+            'module': 'databroker.headersource.sqlite',
+            'class': 'MDS',
+            'config': {
+                 'directory': tempdir,
+                'timezone': 'US/Eastern'}
+        },
+        'assets': {
+            'module': 'databroker.assets.sqlite',
+            'class': 'Registry',
+            'config': {
+                'dbpath': os.path.join(tempdir, 'assets.sqlite')}
+        }
+    }
+    return config
 
 
 DOCT_NAMES = {'resource': 'Resource',
@@ -1067,11 +1109,14 @@ class Broker(BrokerES):
         """
         Create a new Broker instance using a configuration file with this name.
 
-        Configuration file serach path:
+        Configuration file search path:
 
-        * ``/etc/databroker/{name}.yml``
-        * ``{python}/../etc/databroker/{name}.yml``
         * ``~/.config/databroker/{name}.yml``
+        * ``{python}/../etc/databroker/{name}.yml``
+        * ``/etc/databroker/{name}.yml``
+
+        where ``{python}`` is the location of the current Python binary, as
+        reported by ``sys.executable``. It will use the first match it finds.
 
         Parameters
         ----------
