@@ -24,7 +24,11 @@ class HeaderSourceShim(object):
         else:
             # Include empty {} here so that '$and' gets at least one query.
             _format_time(kwargs, self.mds.config['timezone'])
-            query = {'$and': [{}] + [kwargs] + filters}
+            formatted_filters = []
+            for v in filters:
+                _formatted_time(v, self.mds.config['timezone'])
+                formatted_filters.append(v)
+            query = {'$and': [{}] + [kwargs] + formatted_filters}
 
         starts = self.mds.find_run_starts(**query)
         return ((s, safe_get_stop(self, s)) for s in starts)
