@@ -15,7 +15,7 @@ if six.PY2:
 else:
     # technically, this won't work with py3.1, but no one uses that
     def ensure_path_exists(path, exist_ok=True):
-        return os.makedirs(path, exist_ok=True)
+        return os.makedirs(path, exist_ok=exist_ok)
 
 
 def sanitize_np(val):
