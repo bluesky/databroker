@@ -926,3 +926,14 @@ def test_deprecated_stream_method(db, RE):
     with pytest.warns(UserWarning):
         actual = list(h.stream())
     assert actual == expected
+
+
+@py3
+def test_data_method(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    actual = list(h.data('det'))
+    expected = [1, 1, 1, 1, 1]
+    assert actual == expected

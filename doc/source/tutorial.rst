@@ -92,9 +92,24 @@ or export to a file.
 
     t.to_csv('data.csv')
 
-The :class:`Header.table` method is just one way to load the data. Other
-methods provide more raw access, in a streaming fashion. See the :doc:`api` for
-more.
+Load Data Lazily (Good for Image Data)
+======================================
+
+The :class:`Header.table` method is just one way to load the data. Another is
+`Header.data`, which loads data for one specific field (i.e., one column of the
+table) in a "lazy", streaming fashion.
+
+.. ipython:: python
+
+    data = header.data('det')
+    data  # This a 'generator' that will load data when we loop through it.
+    for point in data:
+        # 'Process' the data one point at a time.
+        # Here we'll just print it.
+        print(point)
+
+The :class:`Header.data` method is suitable for loading image data. See
+the :doc:`api` for more methods.
 
 Explore Metadata
 ================
