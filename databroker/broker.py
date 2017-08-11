@@ -262,6 +262,16 @@ DOCT_NAMES = {'resource': 'Resource',
 
 
 def wrap_in_doct(name, doc):
+    """
+    Put document contents into a doct.Document object.
+
+    A ``doct.Document`` is a subclass of dict that:
+
+    * is immutable
+    * provides human-readable :meth:`__repr__` and :meth:`__str__`
+    * supports dot access (:meth:`__getattr__`) as a synonym for item access
+      (:meth:`__getitem__`) whenever possible
+    """
     return doct.Document(DOCT_NAMES[name], doc)
 
 
@@ -283,6 +293,14 @@ class DeprecatedDoct(doct.Document):
 
 
 def wrap_in_deprecated_doct(name, doc):
+    """
+    Put document contents into a DeprecatedDoct object.
+
+    See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
+    and :class:`doct.Document` is a warning that dot access
+    (:meth:`__getattr__` as a synonym for :meth:`__getitem__`) may be removed
+    in the future.
+    """
     return DeprecatedDoct(DOCT_NAMES[name], doc)
 
 
@@ -402,7 +420,7 @@ class BrokerES(object):
 
         Examples
         --------
-        Get most recent run.
+        Get the most recent run.
 
         >>> header = db[-1]
 
@@ -414,7 +432,7 @@ class BrokerES(object):
 
         >>> headers = db[-5:]
 
-        Get a run whose unique ID ("RunStart uid") beings with 'x39do5'.
+        Get a run whose unique ID ("RunStart uid") begins with 'x39do5'.
 
         >>> header = db['x39do5']
 

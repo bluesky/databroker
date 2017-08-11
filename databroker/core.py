@@ -243,7 +243,9 @@ class Header(object):
 
     def documents(self, stream_name=ALL, fill=False, **kwargs):
         """
-        The most raw access to the data. A generator of documents.
+        Load all documents from the run.
+
+        This is a generator the yields ``(name, doc)``.
 
         Parameters
         ----------
@@ -279,7 +281,9 @@ class Header(object):
 
     def events(self, stream_name='primary', fill=False, **kwargs):
         """
-        Generator of like :meth:`stream` but with only the Event documents.
+        Load all Event documents from one event stream.
+
+        This is a generator the yields Event documents.
 
         Parameters
         ----------
@@ -317,7 +321,7 @@ class Header(object):
               timezone=None, convert_times=True, localize_times=True,
               **kwargs):
         '''
-        Make a table (pandas.DataFrame) from given run(s).
+        Load the data from one event stream as a table (``pandas.DataFrame``).
 
         Parameters
         ----------

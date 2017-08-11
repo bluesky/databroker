@@ -15,9 +15,7 @@ Index
 .. toctree::
     :maxdepth: 1
 
-    configuration
-    headers
+    tutorial
     api
-    searching
-    fetching
+    configuration
     whats_new
