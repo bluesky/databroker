@@ -10,6 +10,7 @@ import pandas as pd
 import sys
 import os
 import yaml
+import glob
 
 
 from .core import (Header,
@@ -193,6 +194,21 @@ CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 if six.PY2:
     FileNotFoundError = IOError
+
+
+def list_configs():
+    """
+    List the names of the available configuration files.
+
+    Returns
+    -------
+    names : list
+    """
+    names = []
+    for path in CONFIG_SEARCH_PATH:
+        files = glob.glob(os.path.join(path, '*.yml'))
+        names.extend(map(os.path.basename, files))
+    return names
 
 
 def lookup_config(name):

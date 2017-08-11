@@ -13,7 +13,7 @@ except AttributeError:
                       "and install 'attrs' which provides the correct module.")
 
 
-from .broker import Broker, lookup_config
+from .broker import Broker, lookup_config, list_configs
 from .core import Header, ALL
 
 # set version string using versioneer
