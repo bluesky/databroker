@@ -21,12 +21,6 @@ from .core import (Header,
 from .eventsource import EventSourceShim, check_fields_exist
 from .headersource import HeaderSourceShim, safe_get_stop
 
-# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
-try:
-    from cytoolz.dicttoolz import merge
-except ImportError:
-    from toolz.dicttoolz import merge
-
 
 try:
     from functools import singledispatch

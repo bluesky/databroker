@@ -9,13 +9,6 @@ import logging
 import attr
 from warnings import warn
 
-# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
-try:
-    from cytoolz.dicttoolz import merge
-except ImportError:
-    from toolz.dicttoolz import merge
-
-
 logger = logging.getLogger(__name__)
 
 
