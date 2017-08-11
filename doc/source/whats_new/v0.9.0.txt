@@ -22,14 +22,6 @@ See the new :doc:`tutorial` and the :doc:`api`.
 API Changes
 ++++++++++++
 
-* DataBroker used to rely indirectly on configuration files located at:
-
-    * ``/etc/metadatastore.yml`` or ``~/.config/metadatastore/connection.yml``
-    * ``/etc/filestore.yml`` or ``~/.config/filestore/connection.yml``
-  
-  These configuration files are now **completely ignored**. Users must adopt
-  the :doc:`new configuration system <configuration>`.
-
 * The following usages are deprecated and will stop being supported in a future
   release:
 
@@ -68,20 +60,38 @@ API Changes
      from databroker import db, get_table, get_events, get_images
 
      h = db[-1]
-     db.get_table(h) 
+     get_table(h) 
 
-   See the new :doc:`tutorial` for the recommended usage. The short version is:
+  See the new :doc:`tutorial` for the recommended usage. The short version is:
 
-   .. code-block:: python
+  .. code-block:: python
 
-      from databroker import Broker
-      db = Broker.named('example')
+     from databroker import Broker
+     db = Broker.named('example')
 
-      h = db[-1]
-      h.table()
+     h = db[-1]
+     h.table()
 
+* Databroker uses a custom dictionary subclass that supports dot access like
+  ``event.data`` as a synonym for item lookup like ``event['data']``. Employing
+  a custom dictionary subclass has downsides, including performance and
+  complexity. We are *considering* defaulting to plain dictionaries in a future
+  release, which would break any user code that relies on dot access. To
+  prepare for this possible change, the usage ``event.data`` now produces a
+  warning advising users to switch to ``event['data']``. More detail is
+  available in the section :ref:`controlling_return_type`.
+* DataBroker used to rely indirectly on configuration files located at:
+
+    * ``/etc/metadatastore.yml`` or ``~/.config/metadatastore/connection.yml``
+    * ``/etc/filestore.yml`` or ``~/.config/filestore/connection.yml``
+  
+  These configuration files are now **completely ignored**. Users must adopt
+  the :doc:`new configuration system <configuration>`.
 * The method :meth:`Header.events` defaults to returning only events from the
   'primary' stream, not all events.
+* The method :meth:`Header.stream` has been renamed :meth:`Header.documents`.
+  The old name issues a warning in this release; it will be removed in a future
+  one.
 * Documents refer to other documents by a uid. In past versions of databroker
   they were dereferenced. That is:
 
@@ -101,10 +111,9 @@ API Changes
 
 The following API changes affect the libraries that have been merged into
 databroker in this release (metadatastore, filestore, portable-mds,
-portable-fs, metadataclient, metadataservice). These changes are internal to
-databroker and will only affect advanced users.
+portable-fs, metadataclient, metadataservice). **These changes are internal to
+databroker and will only affect advanced users.**
 
-* The method :meth:`Header.stream` has been renamed :meth:`
 * All ``FileStore`` classes have been renamed to ``Registry``. 
 * The method ``change_root``, which is implemented on various ``Registry``
   classes, has been renamed to ``move_files``.
@@ -116,3 +125,5 @@ databroker and will only affect advanced users.
   named ``start_md_server``.
 * The "writers" formerly in filestore now require a ``Registry`` as an
   argument.
+* The modules ``filestore.commands`` and ``filestore.api`` have been removed.
+  Same for ``metadatastore.commands`` and ``metadatastore.api``.

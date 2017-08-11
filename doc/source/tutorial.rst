@@ -1,3 +1,6 @@
+.. currentmodule:: databroker
+
+
 ********
 Tutorial
 ********
@@ -12,29 +15,12 @@ concurrent "streams" of data in an organized way.
 
     import os
     import yaml
-    import uuid
-    mds_dir = '/tmp/' + str(uuid.uuid4())
-    assets_dir = '/tmp/' + str(uuid.uuid4())
-    EXAMPLE = {
-        'metadatastore': {
-            'module': 'databroker.headersource.sqlite',
-            'class': 'MDS',
-            'config': {
-                'directory': mds_dir,
-                'timezone': 'US/Eastern'}
-        },
-        'assets': {
-            'module': 'databroker.assets.sqlite',
-            'class': 'Registry',
-            'config': {
-                'dbpath': assets_dir + '/database.sql',
-                'timezone': 'US/Eastern'}
-        }
-    }
+    from databroker import temp_config
+    config = temp_config()
     os.makedirs('~/.config/databroker', exist_ok=True)
     path = os.path.expanduser('~/.config/databroker/example.yml')
     with open(path, 'w') as f:
-        yaml.dump(EXAMPLE, f)
+        yaml.dump(config, f)
     from databroker import Broker
     db = Broker.named('example')
     from bluesky import RunEngine
@@ -47,6 +33,9 @@ concurrent "streams" of data in an organized way.
 
 Basic Walkthrough
 -----------------
+
+Get a Broker
+============
 
 List the names of available configurations.
 
@@ -66,20 +55,57 @@ Make a databroker using one of the configurations.
     from databroker import Broker
     db = Broker.named('example')
 
+Load Data as a Table
+====================
+
 Load the most recently saved run.
 
 .. ipython:: python
 
     header = db[-1] 
 
-The result, ``header``, encapulates the metadata from this run. Everything
-recorded at the start of the run is in ``header.start``.
+The result, a :class:`Header`, encapsulates the metadata from this run. Loading
+the data itself can be a longer process, so it's a separate step. For scalar
+data, the most convenient method is:
+
+.. ipython:: python
+
+    header.table()
+
+This object is DataFrame, a spreadsheet-like object provided by the library
+`pandas <https://pandas.pydata.org/pandas-docs/stable/>`_.
+
+Do Analysis or Export
+=====================
+
+DataFrames can be used to perform fast computations on labeled data, such as
+
+.. ipython:: python
+
+    t = header.table()
+    t.mean()
+    t['det'] / t['motor']
+
+or export to a file.
+
+.. ipython:: python
+
+    t.to_csv('data.csv')
+
+The :class:`Header.table` method is just one way to load the data. Other
+methods provide more raw access, in a streaming fashion. See the :doc:`api` for
+more.
+
+Explore Metadata
+================
+
+Everything recorded at the start of the run is in ``header.start``.
 
 .. ipython:: python
 
     header.start
 
-Information only knowlable at the end, like the exit status (success, abort,
+Information only knowable at the end, like the exit status (success, abort,
 fail) is stored in ``header.stop``.
 
 .. ipython:: python
@@ -96,40 +122,14 @@ fields that they reported:
     header.devices()
     header.fields()
 
-Loading the data itself can be a longer process, so it's a separate step. For
-scalar data that fits into memory, the most convenient method is:
+To extract configuration data recorded by a device:
 
 .. ipython:: python
 
-    header.table()
+    header.config_data('motor')
 
-This object is DataFrame, an spread-like object provided by the library
-`pandas <https://pandas.pydata.org/pandas-docs/stable/>`_. DataFrames can be
-used to perform fast computations on labeled data, such as
+(A realistic example might report, for example, exposure_time or zero point.)
 
-.. ipython:: python
-
-    t = header.table()
-    t.mean()
-    t['det'] / t['motor']
-
-or export to a file.
-
-.. ipython:: python
-
-    t.to_csv('data.csv')
-
-Other methods provide more raw access to the data, in a streaming fashion.
-
-.. ipython:: python
-
-    events = header.events()
-    next(events)  # loads just the first data point
-    next(events)  # loads the second one
-    for event in header.events():
-        print(event['data']['motor'])
-
-See the :doc:`api` for more.
 
 Searching
 ---------
@@ -156,12 +156,12 @@ recently, unique ID, or counting number scan_id. Examples:
     header = db[42]
 
 Calling a Broker like a function (with parentheses) access richer search.
-Common serach parameters include ``plan_name``, ``motor``, and ``detectors``.
-Any user-provided metadata can be used in a serach. Examples:
+Common search parameters include ``plan_name``, ``motor``, and ``detectors``.
+Any user-provided metadata can be used in a search. Examples:
 
 .. code-block:: python
 
-    # Serach by plan name.
+    # Search by plan name.
     headers = db(plan_name='scan')
 
     # Search for runs involving a motor with the name 'eta'.

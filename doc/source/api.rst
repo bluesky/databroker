@@ -12,6 +12,12 @@ convenient methods for exploring that metadata and loading the full data.
 The Broker object
 -----------------
 
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Broker
+
 Making a Broker
 ===============
 
@@ -37,6 +43,30 @@ Searching
 
 Loading Data
 ============
+
+These methods are an older way to access data, like this:
+
+.. code-block:: python
+
+   header = db[-1]
+   db.get_table(header)
+
+The newer :class:`Header` methods, :ref:`documented later on this page
+<header_api>` are more convenient.
+
+.. code-block:: python
+
+   header = db[-1]
+   header.table()
+
+(Notice that we only had to type ``db`` once.) However, these are still useful
+to loading data from *multiple* headers at once, which the new methods cannot
+do:
+
+.. code-block:: python
+
+   headers = db[-10:]  # the ten most recent runs
+   db.get_table(headers)
 
 .. autosummary::
    :toctree: _as_gen
@@ -85,6 +115,9 @@ Export Data to Another Broker
    Broker.export_size
    Broker.get_resource_uids
 
+
+.. _controlling_return_type:
+
 Advanced: Controlling the Return Type
 =====================================
 
@@ -116,8 +149,16 @@ plain dictionaries for simplicity and improved performance.
 
 .. currentmodule:: databroker
 
+.. _header_api:
+
 The Header object
 -----------------
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Header
 
 Metadata
 ========
@@ -160,7 +201,7 @@ concurrently-collected stream of data. (Typical names include 'primary' and
 'baseline'.) A list of all a header's stream names is accessible via the
 attribute :class:`Header.stream_names`, a list.
 
-To requrest data from *all* event streams at once, use the special constant
+To request data from *all* event streams at once, use the special constant
 :data:`databroker.ALL`.
 
 .. _configuration_utilities:
@@ -174,6 +215,7 @@ Configuration Utilities
 
    list_configs
    lookup_config
+   temp_config
 
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.

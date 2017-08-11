@@ -458,7 +458,7 @@ class BrokerES(object):
         This function returns a :class:`Header` object (or a list of them, if
         the input is a list or slice). Each Header encapsulates the metadata
         for a run -- start time, instruments used, and so on, and provides
-        methods for loading the data. In
+        methods for loading the data.
 
         Examples
         --------
@@ -552,6 +552,15 @@ class BrokerES(object):
         addition to the Parameters below, advanced users can specifiy arbitrary
         queries using the MongoDB query syntax.
 
+		The ``start_time`` and ``stop_time`` parameters accepts the following
+		representations of time:
+
+        * timestamps like ``time.time()`` and ``datetime.datetime.now()``
+        * ``'2015'``
+        * ``'2015-01'``
+        * ``'2015-01-30'``
+        * ``'2015-03-30 03:00:00'``
+
         Parameters
         ----------
         text_search : str, optional
@@ -573,7 +582,7 @@ class BrokerES(object):
 
         Examples
         --------
-        Serach by plan name.
+        Search by plan name.
 
         >>> db(plan_name='scan')
 
@@ -1099,6 +1108,29 @@ class Broker(BrokerES):
         Returns
         -------
         db : Broker
+
+        Example
+        -------
+        Create a Broker backed by sqlite databases. (This is configuration is
+        not recommended for large or important deployments. See the
+        configuration documentation for more.)
+
+        >>> config = {
+        ...     'metadatastore': {
+        ...         'module': 'databroker.headersource.sqlite',
+        ...         'class': 'MDS',
+        ...         'config': {
+        ...             'directory': 'some_directory',
+        ...             'timezone': 'US/Eastern'}
+        ...     },
+        ...     'assets': {
+        ...         'module': 'databroker.assets.sqlite',
+        ...         'class': 'Registry',
+        ...         'config': {
+        ...             'dbpath': assets_dir + '/database.sql'}
+        ...     }
+        ... }
+        >>> Broker.from_config(config)
         """
         mds = load_component(config['metadatastore'])
         assets = load_component(config['assets'])
