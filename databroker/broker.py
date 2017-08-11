@@ -269,8 +269,8 @@ def temp_config():
     -------
     config : dict
 
-    Example
-    -------
+    Examples
+    --------
     This is the fastest way to get up and running with a Broker.
 
     >>> c = temp_config()
@@ -422,8 +422,8 @@ class BrokerES(object):
         ``db.add_filter(**kwargs)`` is just a convenient way to spell
         ``db.filters.append(dict(**kwargs))``.
 
-        Example
-        -------
+        Examples
+        --------
         Filter all searches to restrict runs to a specific 'user'.
 
         >>> db.add_filter(user='Dan')
@@ -846,8 +846,8 @@ class BrokerES(object):
             overrides registered handlers
 
 
-        Example
-        -------
+        Examples
+        --------
         >>> header = DataBroker[-1]
         >>> images = Images(header, 'my_detector_lightfield')
         >>> for image in images:
@@ -908,8 +908,8 @@ class BrokerES(object):
             string name of the Document type and the Document itself.
             Example: ('start', {'time': ..., ...})
 
-        Example
-        -------
+        Examples
+        --------
         >>> def f(name, doc):
         ...     # do something
         ...
@@ -948,8 +948,8 @@ class BrokerES(object):
             Whether externally-stored data should be filled in. Defaults to
             False.
 
-        Example
-        -------
+        Examples
+        --------
         >>> def f(name, doc):
         ...     # do something
         ...
@@ -1109,8 +1109,8 @@ class Broker(BrokerES):
         -------
         db : Broker
 
-        Example
-        -------
+        Examples
+        --------
         Create a Broker backed by sqlite databases. (This is configuration is
         not recommended for large or important deployments. See the
         configuration documentation for more.)
@@ -1130,6 +1130,8 @@ class Broker(BrokerES):
         ...             'dbpath': assets_dir + '/database.sql'}
         ...     }
         ... }
+        ...
+
         >>> Broker.from_config(config)
         """
         mds = load_component(config['metadatastore'])

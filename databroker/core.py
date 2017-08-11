@@ -260,8 +260,8 @@ class Header(object):
         ------
         name, doc : (string, dict)
 
-        Example
-        -------
+        Examples
+        --------
         Loop through the documents from a run.
 
         >>> h = db[-1]
@@ -430,8 +430,9 @@ def get_images(db, headers, name, handler_registry=None,
         overrides registered handlers
 
 
-    Example
-    -------
+    Examples
+    --------
+
     >>> header = DataBroker[-1]
     >>> images = Images(header, 'my_detector_lightfield')
     >>> for image in images:
