@@ -108,23 +108,29 @@ def bulk_register_datum_table(datum_col,
     return d_ids
 
 
+def register_datum(col, resource_uid, datum_kwargs):
+    datum_uid = str(uuid.uuid4())
+    datum = insert_datum(col, resource_uid, datum_uid, datum_kwargs, {}, None)
+    return datum['datum_id']
+
 
 def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
                  resource_col):
     try:
         resource['spec']
+        spec = resource['spec']
+
+        if spec in known_spec:
+            js_validate(datum_kwargs, known_spec[spec]['datum'])
     except (AttributeError, TypeError):
-        resource = resource_col.find_one({'uid': resource})
+        pass
 
-    spec = resource['spec']
+    resource_uid = doc_or_uid_to_uid(resource)
 
-    if spec in known_spec:
-        js_validate(datum_kwargs, known_spec[spec]['datum'])
-
-    datum = dict(resource=resource['uid'],
+    datum = dict(resource=resource_uid,
                  datum_id=str(datum_id),
                  datum_kwargs=dict(datum_kwargs))
-
+    apply_to_dict_recursively(datum, sanitize_np)
     col.insert_one(datum)
     # do not leak mongo objectID
     datum.pop('_id', None)

@@ -8,7 +8,7 @@ from collections import deque
 from .core import (DatumNotFound, _get_datum_from_datum_id, retrieve,
                    resource_given_datum_id, insert_datum, insert_resource,
                    update_resource, get_datum_by_res_gen, get_file_list,
-                   bulk_register_datum_table)
+                   bulk_register_datum_table, register_datum)
 
 
 DuplicateKeyError = pymongo.errors.DuplicateKeyError
