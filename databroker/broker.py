@@ -356,9 +356,10 @@ class BrokerES(object):
     *event_sources :
         zero, one or more EventSource objects
     """
-    def __init__(self, hs, *event_sources):
+    def __init__(self, hs, event_sources, assets):
         self.hs = hs
         self.event_sources = event_sources
+        self.assets = assets
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
         self.filters = []
@@ -1095,7 +1096,8 @@ class Broker(BrokerES):
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
-                                     EventSourceShim(mds, fs))
+                                     [EventSourceShim(mds, fs)],
+                                     {'': fs})
         self.filters = filters
 
     @classmethod

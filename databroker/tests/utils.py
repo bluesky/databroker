@@ -11,7 +11,6 @@ import tzlocal
 from databroker import Broker
 from databroker.broker import HeaderSourceShim, BrokerES
 from databroker.eventsource import EventSourceShim
-import time as ttime
 from subprocess import Popen
 
 
@@ -44,7 +43,8 @@ def build_sqlite_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return BrokerES(HeaderSourceShim(mds),
-                    EventSourceShim(mds, fs))
+                    [EventSourceShim(mds, fs)],
+                    {'': fs})
 
 
 def build_hdf5_backed_broker(request):
@@ -75,7 +75,8 @@ def build_hdf5_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return BrokerES(HeaderSourceShim(mds),
-                    EventSourceShim(mds, fs))
+                    [EventSourceShim(mds, fs)],
+                    {'': fs})
 
 
 def build_pymongo_backed_broker(request):
