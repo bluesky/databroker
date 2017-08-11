@@ -39,7 +39,7 @@ def test_empty_fixture(db):
 
 @py3
 def test_uid_roundtrip(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     assert h['start']['uid'] == uid
@@ -50,7 +50,7 @@ def test_no_descriptor_name(db, RE):
     def local_insert(name, doc):
         doc.pop('name', None)
         return db.insert(name, doc)
-    RE.subscribe('all', local_insert)
+    RE.subscribe(local_insert)
     uid, = RE(count([det]))
     h = db[uid]
     db.get_fields(h, name='primary')
@@ -61,7 +61,7 @@ def test_no_descriptor_name(db, RE):
 
 @py3
 def test_uid_list_multiple_headers(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uids = RE(pchain(count([det]), count([det])))
     headers = db[uids]
     assert uids == [h['start']['uid'] for h in headers]
@@ -69,7 +69,7 @@ def test_uid_list_multiple_headers(db, RE):
 
 @py3
 def test_no_descriptors(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([]))
     header = db[uid]
     assert [] == header.descriptors
@@ -77,13 +77,13 @@ def test_no_descriptors(db, RE):
 
 @py3
 def test_get_events(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     assert len(list(db.get_events(h))) == 1
     assert len(list(h.documents())) == 1 + 3
 
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h))) == 7
@@ -92,7 +92,7 @@ def test_get_events(db, RE):
 
 @py3
 def test_get_events_multiple_headers(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     headers = db[RE(pchain(count([det]), count([det])))]
     assert len(list(db.get_events(headers))) == 2
 
@@ -101,7 +101,7 @@ def test_get_events_multiple_headers(db, RE):
 def test_filtering_stream_name(db, RE):
 
     # one event stream
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det], num=7), bc=1)
     h = db[uid]
     assert len(list(h.descriptors)) == 1
@@ -146,7 +146,7 @@ def test_filtering_stream_name(db, RE):
 
 @py3
 def test_get_events_filtering_field(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
@@ -164,7 +164,7 @@ def test_get_events_filtering_field(db, RE):
 
 @py3
 def test_deprecated_api(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h, = db.find_headers(uid=uid)
     assert list(db.fetch_events(h))
@@ -173,7 +173,7 @@ def test_deprecated_api(db, RE):
 @py3
 def test_indexing(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uids = []
     for i in range(10):
         uids.extend(RE(count([det])))
@@ -197,7 +197,7 @@ def test_indexing(db_empty, RE):
 @py3
 def test_full_text_search(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     uid, = RE(count([det]), foo='some words')
     RE(count([det]))
@@ -218,7 +218,7 @@ def test_full_text_search(db_empty, RE):
 @py3
 def test_table_alignment(db, RE):
     # test time shift issue GH9
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     table = db.get_table(db[uid])
     assert table.notnull().all().all()
@@ -226,7 +226,7 @@ def test_table_alignment(db, RE):
 
 @py3
 def test_scan_id_lookup(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     RE.md.clear()
     uid1, = RE(count([det]), marked=True)  # scan_id=1
@@ -244,7 +244,7 @@ def test_scan_id_lookup(db, RE):
 
 @py3
 def test_partial_uid_lookup(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     # Create enough runs that there are two that begin with the same char.
     for _ in range(50):
@@ -259,7 +259,7 @@ def test_partial_uid_lookup(db, RE):
 @py3
 def test_find_by_float_time(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     before, = RE(count([det]))
     ttime.sleep(0.25)
@@ -278,7 +278,7 @@ def test_find_by_float_time(db_empty, RE):
 @py3
 def test_find_by_string_time(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     uid, = RE(count([det]))
     today = date.today()
@@ -295,7 +295,7 @@ def test_find_by_string_time(db_empty, RE):
 @py3
 def test_data_key(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     RE(count([det1]))
     RE(count([det1, det2]))
     result1 = list(db(data_key='det1'))
@@ -306,7 +306,7 @@ def test_data_key(db_empty, RE):
 
 @py3
 def test_search_for_smoke(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     for _ in range(5):
         RE(count([det]))
     # smoketest the search with a set
@@ -330,7 +330,7 @@ def test_search_for_smoke(db, RE):
 
 @py3
 def test_alias(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     uid, = RE(count([det]))
     RE(count([det]))
@@ -357,7 +357,7 @@ def test_alias(db, RE):
 @py3
 def test_filters(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     RE(count([det]), user='Ken')
     dan_uid, = RE(count([det]), user='Dan', purpose='calibration')
     ken_calib_uid, = RE(count([det]), user='Ken', purpose='calibration')
@@ -396,7 +396,7 @@ def test_filters(db_empty, RE):
          'no uuid']
     )
 def test_raise_conditions(key, db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     for _ in range(5):
         RE(count([det]))
 
@@ -411,7 +411,7 @@ def test_stream(db, RE):
 
 
 def _stream(method_name, db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid = RE(count([det]), owner='Dan')
     s = getattr(db, method_name)(db[uid])
     name, doc = next(s)
@@ -433,7 +433,7 @@ def _stream(method_name, db, RE):
 
 @py3
 def test_process(db, RE):
-    uid = RE.subscribe('all', db.insert)
+    uid = RE.subscribe(db.insert)
     uid = RE(count([det]))
     c = itertools.count()
     def f(name, doc):
@@ -445,7 +445,7 @@ def test_process(db, RE):
 
 @py3
 def test_get_fields(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det1, det2]))
     actual = db.get_fields(db[uid])
     expected = set(['det1', 'det2'])
@@ -459,7 +459,7 @@ def test_get_fields(db, RE):
 @py3
 def test_configuration(db, RE):
     det_with_conf = Reader('det_with_conf', {'a': lambda: 1, 'b': lambda: 2})
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det_with_conf]), c=3)
     h = db[uid]
 
@@ -502,7 +502,7 @@ def test_handler_options(db, RE):
     db.fs.insert_datum(res2, datum_id2, {'y': 2})
 
     # Generate a normal run.
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     rs_uid, = RE(count([det]))
 
     # Side band an extra descriptor and event into this run.
@@ -606,7 +606,7 @@ def test_handler_options(db, RE):
 def test_export(broker_factory, RE):
     db1 = broker_factory()
     db2 = broker_factory()
-    RE.subscribe('all', db1.mds.insert)
+    RE.subscribe(db1.mds.insert)
 
     # test mds only
     uid, = RE(count([det]))
@@ -656,7 +656,7 @@ def test_export_noroot(broker_factory, RE):
     detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
                         reg=db1.fs, save_path=dir1, save_ext='npy')
 
-    RE.subscribe('all', db1.mds.insert)
+    RE.subscribe(db1.mds.insert)
     uid, = RE(count([detfs], num=3))
 
     db2 = broker_factory()
@@ -679,7 +679,7 @@ def test_export_noroot(broker_factory, RE):
 def test_export_size_smoke(broker_factory, RE):
 
     db1 = broker_factory()
-    RE.subscribe('all', db1.mds.insert)
+    RE.subscribe(db1.mds.insert)
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
@@ -697,7 +697,7 @@ def test_export_size_smoke(broker_factory, RE):
 
 @py3
 def test_results_multiple_iters(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     RE(count([det]))
     RE(count([det]))
     res = db()
@@ -710,7 +710,7 @@ def test_results_multiple_iters(db, RE):
 @py3
 def test_dict_header(db, RE):
     # Ensure that we aren't relying on h being a doct as opposed to a dict.
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     expected = list(db.get_events(h))
@@ -721,7 +721,7 @@ def test_dict_header(db, RE):
 @py3
 def test_config_data(db, RE):
     # simple case: one Event Descriptor, one stream
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     det = Reader('det', {'x': lambda: 1}, conf={'y': 2, 'z': 3})
     uid, = RE(count([det]))
     h = db[uid]
@@ -760,7 +760,7 @@ def test_config_data(db, RE):
 
 @py3
 def test_events(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     events = list(h.events())
@@ -862,7 +862,7 @@ def test_deprecated_doct():
 @py3
 def test_ingest_array_data(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     # These will blow up if the event source backing db cannot ingest numpy
     # arrays. (For example, the pymongo-backed db has to convert them to plain
     # lists.)
@@ -898,7 +898,7 @@ def test_ingest_array_data(db_empty, RE):
 
 @py3
 def test_ingest_array_metadata(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     # These will blow up if the header source backing db cannot ingest numpy
     # arrays. (For example, the pymongo-backed db has to convert them to plain
