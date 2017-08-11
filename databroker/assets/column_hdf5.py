@@ -62,7 +62,7 @@ def bulk_register_datum_table(datum_col,
     if validate:
         raise
 
-    d_ids = [str(uuid.uuid4()) for j in range(len(dkwargs_table))]
+    d_ids = [j for j in range(len(dkwargs_table))]
     datum_ids = ['{}/{}'.format(resource_uid, d)
                  for d in d_ids]
 
@@ -72,7 +72,7 @@ def bulk_register_datum_table(datum_col,
     with h5py.File(os.path.join(path, fname), 'x') as fout:
         for k, v in itertools.chain(
                 dkwargs_table.iteritems(),
-                (('datum_id', np.array([d.encode('utf-8') for d in d_ids])),)):
+                (('datum_id', np.array(d_ids)),)):
             fout.create_dataset(k, (len(v),),
                                 dtype=v.dtype,
                                 data=v,
@@ -86,7 +86,7 @@ def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
     if '/' not in datum_id:
         raise DatumNotFound
     r_uid, _, d_uid = datum_id.partition('/')
-
+    d_uid = int(d_uid)
     handler = get_spec_handler(r_uid)
     try:
         df = datum_cache[r_uid]
@@ -94,7 +94,6 @@ def retrieve(col, datum_id, datum_cache, get_spec_handler, logger):
         path, fname = make_file_name(col, r_uid)
         with h5py.File(os.path.join(path, fname), 'r') as fin:
             df = pd.DataFrame({k: fin[k][:] for k in fin})
-            df['datum_id'] = df['datum_id'].str.decode('utf-8')
             df = df.set_index('datum_id')
         datum_cache[r_uid] = df
 
@@ -108,7 +107,6 @@ def get_datum_by_res_gen(datum_col, resource_uid):
         return
     with h5py.File(str(fpath), 'r') as fin:
         df = pd.DataFrame({k: fin[k][:] for k in fin})
-        df['datum_id'] = df['datum_id'].str.decode('utf-8')
         df = df.set_index('datum_id')
 
     for i, r in df.iterrows():
@@ -132,16 +130,24 @@ def bulk_insert_datum(col, resource, datum_ids,
     return d_uids
 
 
+def register_datum(datum_col, resource_uid, datum_kwargs):
+    datum = insert_datum(datum_col, resource_uid, None,
+                         datum_kwargs, {}, None)
+
+    return datum['datum_id']
+
+
 def insert_datum(datum_col, resource, datum_id, datum_kwargs,
                  known_spec, resource_col):
     resource = doc_or_uid_to_uid(resource)
     path, fname = make_file_name(datum_col, resource)
     p = Path(path) / Path(fname)
     if p.is_file():
-        d_id = str(uuid.uuid4())
-        d_uid = '{resource}/{d_id}'.format(resource=resource, d_id=d_id)
         with h5py.File(str(p), 'a') as fout:
-            append(fout['datum_id'], [d_id.encode('utf-8')])
+            cur_max = fout['datum_id'][-1]
+            d_id = cur_max + 1
+            d_uid = '{resource}/{d_id}'.format(resource=resource, d_id=d_id)
+            append(fout['datum_id'], [d_id])
             for k, v in datum_kwargs.items():
                 append(fout[k], [v])
 
@@ -166,7 +172,8 @@ api = SimpleNamespace(
     resource_given_datum_id=resource_given_datum_id,
     get_datum_by_res_gen=get_datum_by_res_gen,
     get_file_list=get_file_list,
-    bulk_insert_datum=bulk_insert_datum)
+    bulk_insert_datum=bulk_insert_datum,
+    register_datum=register_datum)
 
 
 class RegistryRO(BaseRegistryRO):
