@@ -115,9 +115,6 @@ class EventSourceShim(object):
 
             yield 'descriptor', d
             ev_gen = self.mds.get_events_generator(d)
-            if fill:
-                ev_gen = self.fill_event_stream(
-                    ev_gen, d, inplace=True, **kwargs)
             for ev in ev_gen:
                 event_data = ev['data']  # cache for perf
                 event_timestamps = ev['timestamps']

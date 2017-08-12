@@ -315,7 +315,7 @@ class Header(object):
 
         else:
             ev_gen = self.db.fill_events(
-                inner(), self.desccriptors, fields=fill, inplace=True)
+                inner(), self.descriptors, fields=fill, inplace=True)
             for ev in ev_gen:
                 yield ev
 

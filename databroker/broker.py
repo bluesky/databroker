@@ -690,15 +690,23 @@ class BrokerES(object):
         check_fields_exist(fields if fields else [], headers)
 
         for h in headers:
+            if not isinstance(h, Header):
+                h = self[h['start']['uid']]
+
+            descs = h.descriptors
             for es in self.event_sources:
                 gen = es.docs_given_header(
                         header=h, stream_name=stream_name,
-                        fill=fill,
-                        fields=fields,
-                        handler_registry=handler_registry,
-                        handler_overrides=handler_overrides)
-                for nm, ev in gen:
-                    if nm == 'event':
+                        fill=False,
+                        fields=fields)
+                gen = (ev for nm, ev in gen if nm == 'event')
+                # dirty hack!
+                es = self.assets['']
+                with es.handler_context(handler_registry):
+                    if fill:
+                        gen = self.fill_events(gen, descs,
+                                               fields=fill, inplace=True)
+                    for ev in gen:
                         yield self.prepare_hook('event', ev)
 
     def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
@@ -1079,7 +1087,10 @@ class BrokerES(object):
         if fields is True:
             fields = None
         elif fields is False:
-            fields = {}
+            # if no fields, we got nothing to do!
+            for ev in events_iterable:
+                yield ev
+            return
         elif fields:
             fields = set(fields)
         registry_map = {}
@@ -1087,10 +1098,12 @@ class BrokerES(object):
         for d in descriptors:
             fill_keys = set()
             desc_id = d['uid']
-            for k, v in d['data_keys']:
+            for k, v in d['data_keys'].items():
                 ext = v.get('external', None)
                 if ext:
-                    _, _, reg_name = ext.partition(':')
+                    # TODO sort this out!
+                    # _, _, reg_name = ext.partition(':')
+                    reg_name = ''
                     registry_map[(desc_id, k)] = self.assets[reg_name]
                     fill_keys.add(k)
             if fields is not None:
@@ -1103,10 +1116,14 @@ class BrokerES(object):
                 ev = copy.deepcopy(ev)
                 ev = self.prepare_hook('event', ev)
             data = ev['data']
-
+            filled = ev['filled']
             desc_id = ev['descriptor']
-            for k in fill_map:
-                data[k] = registry_map[(desc_id, k)].retrieve(data[k])
+            for k, v in fill_map.items():
+                for dk in v:
+                    d_id = data[dk]
+                    data[dk] = (registry_map[(desc_id, dk)]
+                                .retrieve(d_id))
+                    filled[dk] = d_id
 
             yield ev
 
