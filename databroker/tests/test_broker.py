@@ -11,13 +11,14 @@ import uuid
 from datetime import datetime, date, timedelta
 import itertools
 from databroker.broker import (wrap_in_doct, wrap_in_deprecated_doct,
-                               DeprecatedDoct)
+                               DeprecatedDoct, _munge_time)
 import doct
 import copy
 
 import pytest
 import six
 import numpy as np
+import pytz
 
 if sys.version_info >= (3, 0):
     from bluesky.examples import (det, det1, det2, Reader, ReaderWithRegistry,
@@ -937,3 +938,7 @@ def test_data_method(db, RE):
     actual = list(h.data('det'))
     expected = [1, 1, 1, 1, 1]
     assert actual == expected
+
+
+def test_munge_time():
+    assert '1969' in _munge_time(0, pytz.timezone('US/Eastern'))
