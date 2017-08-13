@@ -75,13 +75,13 @@ class BaseRegistryRO(object):
     KNOWN_SPEC = dict()
     for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
-        base_name = 'assets/schemas/'
+        base_name = 'schemas/'
         resource_name = '{}{}_resource.json'.format(base_name, spec_name)
         datum_name = '{}{}_datum.json'.format(base_name, spec_name)
-        with open(resource_filename('databroker',
+        with open(resource_filename('databroker.assets',
                                     resource_name), 'r') as fin:
             tmp_dict['resource'] = json.load(fin)
-        with open(resource_filename('databroker',
+        with open(resource_filename('databroker.assets',
                                     datum_name), 'r') as fin:
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict

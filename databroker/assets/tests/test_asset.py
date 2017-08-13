@@ -54,3 +54,7 @@ def test_single_datum_register(lh_registry, dd):
     d_ids = [registry.register_datum(r, dict(row))
              for i, row in dd.iterrows()]
     _verify_datums(d_ids, dd, registry)
+
+
+def test_pkg_resources():
+    from databroker.assets.base_registry import BaseRegistryRO
