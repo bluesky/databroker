@@ -272,7 +272,7 @@ class Header(object):
         for payload in self.documents(*args, **kwargs):
             yield payload
 
-    def events(self, stream_name='primary', fill=False, **kwargs):
+    def events(self, stream_name='primary', fields=None, fill=False):
         """
         Load all Event documents from one event stream.
 
@@ -304,13 +304,8 @@ class Header(object):
 
         >>> events = list(h.events())
         """
-        ev_gen = (doc for name, doc
-                  in self.documents(stream_name=stream_name, **kwargs)
-                  if name == 'event')
-        ev_gen = self.db.fill_events(ev_gen,
-                                     self.descriptors,
-                                     fields=fill,
-                                     inplace=True)
+        ev_gen = self.db.get_events([self], stream_name=stream_name,
+                                    fields=fields, fill=fill)
         for ev in ev_gen:
             yield ev
 
