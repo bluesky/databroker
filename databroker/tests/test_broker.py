@@ -578,8 +578,9 @@ def test_handler_options(db, RE):
     assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
-    db.fill_event(ev)  # , inplace=True)
-    assert ev['filled']['image']
+    datum = ev['data']['image']
+    ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
+    assert ev['filled']['image'] == datum
     assert not ev2['filled']['image']
     ev2_filled = db.fill_event(ev2, inplace=False)
     assert ev2_filled['filled']['image'] == ev2['data']['image']
