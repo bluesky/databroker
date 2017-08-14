@@ -231,30 +231,6 @@ class EventSourceShim(object):
             # edge case: no data
             return pd.DataFrame()
 
-    def fill_table(self, tab, descriptor, inplace=False,
-                   handler_registry=None, handler_overrides=None):
-        external_map = _external_keys(descriptor)
-        if handler_overrides is None:
-            handler_overrides = {}
-        mock_registries = {data_key: defaultdict(lambda: handler)
-                           for data_key, handler in
-                           handler_overrides.items()}
-        if not inplace:
-            tab = tab.copy()
-        for field in tab.columns:
-            if external_map.get(field) is not None:
-                logger.debug('filling data for %s', field)
-                # TODO someday we will have bulk get_datum in FS
-                if handler_overrides:
-                    hr = mock_registries.get(field, handler_registry)
-                else:
-                    hr = handler_registry
-                with self.fs.handler_context(hr) as _fs:
-                    values = [_fs.retrieve(value)
-                              for value in tab[field]]
-                tab[field] = values
-        return tab
-
 
 def _extract_extra_data(start, stop, d, fields, comp_re,
                         no_fields_filter):

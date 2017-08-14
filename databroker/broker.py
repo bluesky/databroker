@@ -1174,10 +1174,41 @@ class BrokerES(object):
 
             yield ev
 
-    def fill_table(self, evt_tbl, descriptor, fields=None, inplace=False):
+    def fill_table(self, table, descriptor, fields=None, inplace=False):
         """Fill a table
 
         """
+        if fields is True:
+            fields = None
+        elif fields is False:
+            # if no fields, we got nothing to do!
+            # just return the events as-is
+            return table
+        elif fields:
+            fields = set(fields)
+        # TODO unify this code with the code above.
+        fill_keys = set()
+        registry_map = {}
+        for k, v in six.iteritems(descriptor['data_keys']):
+            ext = v.get('external', None)
+            if ext:
+                # TODO sort this out!
+                # _, _, reg_name = ext.partition(':')
+                reg_name = ''
+                registry_map[k] = self.assets[reg_name]
+                fill_keys.add(k)
+        if fields is not None:
+            fill_keys &= fields
+
+        if not inplace:
+            table = table.copy()
+
+        for k in fill_keys:
+            reg = registry_map[k]
+            # TODO someday we will have bulk retrieve on assets.Registry
+            table[k] = [reg.retrieve(value) for value in table[k]]
+
+        return table
 
 
 class Broker(BrokerES):
