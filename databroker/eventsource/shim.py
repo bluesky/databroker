@@ -54,6 +54,9 @@ class EventSourceShim(object):
         except self.NoEventDescriptors:
             return []
 
+    def descriptor_given_uid(self, desc_uid):
+        return self.mds.descriptor_given_uid(desc_uid)
+
     def docs_given_header(self, header, stream_name=ALL,
                           fill=False, fields=None,
                           **kwargs):
