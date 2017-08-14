@@ -21,7 +21,7 @@ import numpy as np
 
 if sys.version_info >= (3, 0):
     from bluesky.examples import (det, det1, det2, Reader, ReaderWithRegistry,
-                                  ReaderWithFSHandler)
+                                  ReaderWithRegistryHandler)
     from bluesky.plans import (count, pchain, monitor_during_wrapper,
                                configure, trigger_and_read, run_decorator,
                                baseline_wrapper)
@@ -634,8 +634,8 @@ def test_export(broker_factory, RE):
                                 reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
-    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    db2.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
     assert os.path.dirname(from_path) == dir1
@@ -661,7 +661,7 @@ def test_export_noroot(broker_factory, RE):
 
     dir1 = tempfile.mkdtemp()
     db1 = broker_factory()
-    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
 
     detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
                         reg=db1.fs, save_path=dir1, save_ext='npy')
@@ -670,7 +670,7 @@ def test_export_noroot(broker_factory, RE):
     uid, = RE(count([detfs], num=3))
 
     db2 = broker_factory()
-    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db2.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
 
     dir2 = tempfile.mkdtemp()
     file_pairs = db1.export(db1[uid], db2, new_root=dir2)
@@ -700,7 +700,7 @@ def test_export_size_smoke(broker_factory, RE):
                                 reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
     size = db1.export_size(db1[uid])
     assert size > 0.
 
