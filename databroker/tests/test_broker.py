@@ -979,3 +979,71 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     assert isinstance(doc['stuff'], np.ndarray)
     db.insert('stop', doc)
     assert isinstance(doc['stuff'], np.ndarray)
+
+
+def test_extraneous_filled_stripped_on_insert(db, RE):
+
+    # TODO It would be better if this errored, but at the moment
+    # this would required looking up the event descriptor.
+
+    # Hack the Event so it does not match its Event Descriptor.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': False}
+            assert 'filled' in doc
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {}
+    for ev in h.events():
+        assert not ev['filled']
+
+
+@py3
+def test_filled_false_stripped_on_insert(db, RE):
+    # Hack the Event and the Descriptor consistently.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': False}
+            doc['data']['det'] = 'DATUM_ID_PLACEHOLDER'
+            assert 'filled' in doc
+        elif name == 'descriptor':
+            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {'det': False}
+    for ev in h.events():
+        assert 'det' in ev['filled']
+        assert not ev['filled']['det']
+        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+
+
+def test_filled_true_rotated_on_insert(db, RE):
+    # Hack the Event and the Descriptor consistently.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': 'DATUM_ID_PLACEHOLDER'}
+            assert 'filled' in doc
+        elif name == 'descriptor':
+            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {'det': False}
+    for ev in h.events():
+        assert 'det' in ev['filled']
+        assert not ev['filled']['det']
+        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
