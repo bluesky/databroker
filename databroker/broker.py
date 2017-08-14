@@ -1130,13 +1130,27 @@ class BrokerES(object):
             Event documents with filled data.
 
         """
+        # create the processing generator
+        proc_gen = self._fill_events_coro(descriptors,
+                                          fields=fields, inplace=inplace)
+        # and prime it
+        proc_gen.send(None)
+
+        try:
+            for ev in events:
+                yield proc_gen.send(ev)
+        finally:
+            proc_gen.close()
+
+    def _fill_events_coro(self, descriptors, fields=True, inplace=False):
         if fields is True:
             fields = None
         elif fields is False:
             # if no fields, we got nothing to do!
-            # just return the events as-is
-            for ev in events:
-                yield ev
+            # just yield back as-is
+            ev = yield
+            while True:
+                ev = yield ev
             return
         elif fields:
             fields = set(fields)
@@ -1156,8 +1170,9 @@ class BrokerES(object):
             if fields is not None:
                 fill_keys &= fields
             fill_map[desc_id] = fill_keys
+        ev = yield
 
-        for ev in events:
+        while True:
             if not inplace:
                 ev = _sanitize(ev)
                 ev = copy.deepcopy(ev)
@@ -1172,7 +1187,7 @@ class BrokerES(object):
                                 .retrieve(d_id))
                     filled[dk] = d_id
 
-            yield ev
+            ev = yield ev
 
     def fill_table(self, table, descriptor, fields=None, inplace=False):
         """Fill a table
