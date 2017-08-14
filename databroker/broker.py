@@ -652,7 +652,10 @@ class BrokerES(object):
             else:
                 descs.append(d)
 
-        ev_out, = self.fill_events([event], descs, inplace=inplace)
+        # dirty hack!
+        reg = self.assets['']
+        with reg.handler_context(handler_registry):
+            ev_out, = self.fill_events([event], descs, inplace=inplace)
         return ev_out
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
