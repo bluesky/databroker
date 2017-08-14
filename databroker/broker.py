@@ -705,7 +705,6 @@ class BrokerES(object):
             for es in self.event_sources:
                 gen = es.docs_given_header(
                         header=h, stream_name=stream_name,
-                        fill=False,
                         fields=fields)
                 gen = (ev for nm, ev in gen if nm == 'event')
                 # dirty hack!
@@ -718,7 +717,7 @@ class BrokerES(object):
                         yield self.prepare_hook('event', ev)
 
     def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
-                      handler_registry=None, handler_overrides=None):
+                      handler_registry=None):
         """
         Get all documents from one or more runs.
 
@@ -763,10 +762,7 @@ class BrokerES(object):
             for es in self.event_sources:
                 gen = es.docs_given_header(
                         header=h, stream_name=stream_name,
-                        fill=fill,
-                        fields=fields,
-                        handler_registry=handler_registry,
-                        handler_overrides=handler_overrides)
+                        fields=fields)
                 for name, doc in gen:
                     yield name, self.prepare_hook(name, doc)
 
@@ -832,11 +828,8 @@ class BrokerES(object):
         dfs = [es.table_given_header(header=h,
                                      fields=fields,
                                      stream_name=stream_name,
-                                     fill=fill,
                                      convert_times=convert_times,
                                      timezone=timezone,
-                                     handler_registry=handler_registry,
-                                     handler_overrides=handler_overrides,
                                      localize_times=localize_times)
                for h in headers for es in self.event_sources]
         if dfs:
