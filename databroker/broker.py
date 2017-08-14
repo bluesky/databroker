@@ -824,10 +824,12 @@ class BrokerES(object):
                                      localize_times=localize_times)
                for h in headers for es in self.event_sources]
         if dfs:
-            return pd.concat(dfs)
+            df = pd.concat(dfs)
         else:
             # edge case: no data
-            return pd.DataFrame()
+            df = pd.DataFrame()
+        df.index.name = 'seq_num'
+        return df
 
     def get_images(self, headers, name, handler_registry=None,
                    handler_override=None):
