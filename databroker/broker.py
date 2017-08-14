@@ -184,7 +184,7 @@ class Results(object):
 
 _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
 _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
-                         'etc', 'databroker')
+                          'etc', 'databroker')
 _system_etc = os.path.join('etc', 'databroker')
 CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
@@ -277,7 +277,7 @@ def temp_config():
             'module': 'databroker.headersource.sqlite',
             'class': 'MDS',
             'config': {
-                 'directory': tempdir,
+                'directory': tempdir,
                 'timezone': 'US/Eastern'}
         },
         'assets': {
@@ -537,7 +537,8 @@ class BrokerES(object):
         Get headers from the last 24 hours.
         >>> import time
         >>> db.dynamic_alias('today',
-                             lambda: {'start_time': start_time=time.time()- 24*60*60})
+                             lambda: {'start_time':
+                                      start_time=time.time()- 24*60*60})
         """
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
@@ -552,8 +553,8 @@ class BrokerES(object):
         addition to the Parameters below, advanced users can specifiy arbitrary
         queries using the MongoDB query syntax.
 
-		The ``start_time`` and ``stop_time`` parameters accepts the following
-		representations of time:
+        The ``start_time`` and ``stop_time`` parameters accepts the following
+        representations of time:
 
         * timestamps like ``time.time()`` and ``datetime.datetime.now()``
         * ``'2015'``
@@ -616,7 +617,8 @@ class BrokerES(object):
 
     def find_headers(self, **kwargs):
         "This function is deprecated."
-        warnings.warn("Use .__call__() instead of .find_headers()", stacklevel=2)
+        warnings.warn("Use .__call__() instead of .find_headers()",
+                      stacklevel=2)
         return self(**kwargs)
 
     def fetch_events(self, headers, fill=True):
