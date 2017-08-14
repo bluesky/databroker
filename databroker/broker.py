@@ -814,19 +814,39 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        dfs = [es.table_given_header(header=h,
-                                     fields=fields,
-                                     stream_name=stream_name,
-                                     convert_times=convert_times,
-                                     timezone=timezone,
-                                     localize_times=localize_times)
-               for h in headers for es in self.event_sources]
+        dfs = []
+        # dirty hack!
+        reg = self.assets['']
+        with reg.handler_context(handler_registry):
+            for h in headers:
+                if not isinstance(h, Header):
+                    h = self[h['start']['uid']]
+
+                # get the first descriptor for this event stream
+                desc = next((d for d in h.descriptors
+                             if d.name == stream_name),
+                            None)
+                if desc is None:
+                    continue
+                for es in self.event_sources:
+                    table = es.table_given_header(
+                        header=h,
+                        fields=fields,
+                        stream_name=stream_name,
+                        convert_times=convert_times,
+                        timezone=timezone,
+                        localize_times=localize_times)
+                    if len(table):
+                        table = self.fill_table(table, desc, inplace=True)
+                        dfs.append(table)
+
         if dfs:
             df = pd.concat(dfs)
         else:
             # edge case: no data
             df = pd.DataFrame()
         df.index.name = 'seq_num'
+
         return df
 
     def get_images(self, headers, name, handler_registry=None):
