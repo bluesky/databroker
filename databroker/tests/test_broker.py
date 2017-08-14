@@ -442,6 +442,35 @@ def _stream(method_name, db, RE):
 
 
 @py3
+def test_stream_copy(db, RE):
+    _stream_copy('restream', db, RE)
+    _stream_copy('stream', db, RE)  # old name
+
+
+def _stream_copy(method_name, db, RE):
+    RE.subscribe('all', db.insert)
+    uid = RE(count([det]), owner='Dan')
+    s = getattr(db, method_name)(db[uid], fill=True)
+    name, doc = next(s)
+    assert name == 'start'
+    assert 'owner' in doc
+    name, doc = next(s)
+    assert name == 'descriptor'
+    assert 'data_keys' in doc
+    doc['data_keys'] = None
+    last_item  = 'event', {'data'}  # fake Event to prime loop
+    for item in s:
+        name, doc = last_item
+        assert name == 'event'
+        assert 'data' in doc  # Event
+        last_item = item
+    name, doc = last_item
+    assert name == 'stop'
+    assert 'exit_status' in doc # Stop
+
+
+
+@py3
 def test_process(db, RE):
     uid = RE.subscribe(db.insert)
     uid = RE(count([det]))
