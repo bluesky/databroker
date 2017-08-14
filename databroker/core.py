@@ -304,20 +304,15 @@ class Header(object):
 
         >>> events = list(h.events())
         """
-        def inner():
-            for name, doc in self.documents(stream_name=stream_name,
-                                            **kwargs):
-                if name == 'event':
-                    yield doc
-        if not fill:
-            for ev in inner():
-                yield ev
-
-        else:
-            ev_gen = self.db.fill_events(
-                inner(), self.descriptors, fields=fill, inplace=True)
-            for ev in ev_gen:
-                yield ev
+        ev_gen = (doc for name, doc
+                  in self.documents(stream_name=stream_name, **kwargs)
+                  if name == 'event')
+        ev_gen = self.db.fill_events(ev_gen,
+                                     self.descriptors,
+                                     fields=fill,
+                                     inplace=True)
+        for ev in ev_gen:
+            yield ev
 
     def table(self, stream_name='primary', fill=False, fields=None,
               timezone=None, convert_times=True, localize_times=True,
