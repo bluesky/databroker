@@ -13,6 +13,7 @@ and any related discussion.
 .. include:: whats_new/v0.6.1.txt
 .. include:: whats_new/v0.6.0.txt
 .. include:: whats_new/v0.5.0.txt
+.. include:: whats_new/v0.4.2.txt
 .. include:: whats_new/v0.2.2.txt
 .. include:: whats_new/v0.2.1.txt
 .. include:: whats_new/v0.2.0.txt
