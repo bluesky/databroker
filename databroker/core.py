@@ -487,7 +487,7 @@ class Images(FramesSequence):
                 # do something
         """
         warn("Images and get_images are deprecated. Use Header.data({}) "
-             "instead.".format(name))
+             "instead.".format(name), stacklevel=3)
         from .broker import Broker
         self.fs = fs
         db = Broker(mds, fs)

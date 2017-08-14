@@ -843,6 +843,8 @@ class BrokerES(object):
 
     def get_images(self, headers, name, handler_registry=None):
         """
+        This method is deprecated. Use Broker.get_documents instead.
+
         Load image data from one or more runs into a lazy array-like object.
 
         Parameters
@@ -861,6 +863,7 @@ class BrokerES(object):
         >>> for image in images:
                 # do something
         """
+
         # TODO sort out how to broadcast this
         return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
                       headers=headers,
