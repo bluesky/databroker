@@ -658,7 +658,7 @@ class BrokerES(object):
         return ev_out
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
-                   handler_registry=None, handler_overrides=None):
+                   handler_registry=None):
         """
         Get Event documents from one or more runs.
 
