@@ -145,6 +145,16 @@ def test_filtering_stream_name(db, RE):
 
 
 @py3
+def test_table_index_name(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    name = h.table().index.name
+    assert name == 'seq_num'
+
+
+@py3
 def test_get_events_filtering_field(db, RE):
     RE.subscribe(db.insert)
     uid, = RE(count([det], num=7))
