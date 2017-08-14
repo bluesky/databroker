@@ -621,12 +621,6 @@ class BrokerES(object):
 
         return Results(res, self, data_key)
 
-    def find_headers(self, **kwargs):
-        "This function is deprecated."
-        warnings.warn("Use .__call__() instead of .find_headers()",
-                      stacklevel=2)
-        return self(**kwargs)
-
     def fill_event(self, event, inplace=True,
                    handler_registry=None):
         """
