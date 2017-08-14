@@ -627,7 +627,7 @@ class BrokerES(object):
         return self.get_events(headers, fill=fill)
 
     def fill_event(self, event, inplace=True,
-                   handler_registry=None, handler_overrides=None):
+                   handler_registry=None):
         """
         Populate events with externally stored data.
 
@@ -639,8 +639,6 @@ class BrokerES(object):
             dictionary.  Defaults to `True`.
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
         """
         # TODO sort out how to (quickly) map events back to the
         # correct event Source
@@ -677,8 +675,6 @@ class BrokerES(object):
             together.
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
 
         Yields
         ------
@@ -738,8 +734,6 @@ class BrokerES(object):
             together.
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
 
         Yields
         ------
@@ -759,19 +753,31 @@ class BrokerES(object):
             headers = [headers]
 
         check_fields_exist(fields if fields else [], headers)
+        # dirty hack!
+        reg = self.assets['']
+        with reg.handler_context(handler_registry):
+            for h in headers:
+                if not isinstance(h, Header):
+                    h = self[h['start']['uid']]
 
-        for h in headers:
-            for es in self.event_sources:
-                gen = es.docs_given_header(
-                        header=h, stream_name=stream_name,
-                        fields=fields)
-                for name, doc in gen:
-                    yield name, self.prepare_hook(name, doc)
+                proc_gen = self._fill_events_coro(h.descriptors,
+                                                  fields=fill,
+                                                  inplace=True)
+                proc_gen.send(None)
+                for es in self.event_sources:
+                    gen = es.docs_given_header(
+                            header=h, stream_name=stream_name,
+                            fields=fields)
+                    for name, doc in gen:
+                        if name == 'event':
+                            doc = proc_gen.send(doc)
+                        yield name, self.prepare_hook(name, doc)
+                proc_gen.close()
 
     def get_table(self, headers, fields=None, stream_name='primary',
                   fill=False,
                   convert_times=True, timezone=None, handler_registry=None,
-                  handler_overrides=None, localize_times=True):
+                  localize_times=True):
         """
         Load the data from one or more runs as a table (``pandas.DataFrame``).
 
@@ -798,8 +804,6 @@ class BrokerES(object):
             `self.mds.config['timezone']`
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime
@@ -842,8 +846,7 @@ class BrokerES(object):
         df.index.name = 'seq_num'
         return df
 
-    def get_images(self, headers, name, handler_registry=None,
-                   handler_override=None):
+    def get_images(self, headers, name, handler_registry=None):
         """
         Load image data from one or more runs into a lazy array-like object.
 
@@ -855,9 +858,6 @@ class BrokerES(object):
             field name (data key) of a detector
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
-        handler_override : callable class, optional
-            overrides registered handlers
-
 
         Examples
         --------
@@ -869,8 +869,7 @@ class BrokerES(object):
         # TODO sort out how to broadcast this
         return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
                       headers=headers,
-                      name=name, handler_registry=handler_registry,
-                      handler_override=handler_override)
+                      name=name, handler_registry=handler_registry)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids
