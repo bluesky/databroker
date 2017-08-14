@@ -177,7 +177,7 @@ def test_deprecated_api(db, RE):
     RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h, = db.find_headers(uid=uid)
-    assert list(db.fetch_events(h))
+    assert list(db.get_events(h))
 
 
 @py3
