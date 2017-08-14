@@ -72,6 +72,11 @@ API Changes
      h = db[-1]
      h.table()
 
+* The method :class:`Broker.get_images` and the class ``Images`` are deprecated
+  and may be removed in a future release.
+  See `issue <https://github.com/NSLS-II/databroker/issues/232>`_ for the
+  motivating discussion. Use the new method :meth:`Header.data`, as illustrated
+  in the :doc:`tutorial`.
 * Databroker uses a custom dictionary subclass that supports dot access like
   ``event.data`` as a synonym for item lookup like ``event['data']``. Employing
   a custom dictionary subclass has downsides, including performance and
