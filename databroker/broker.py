@@ -709,8 +709,8 @@ class BrokerES(object):
                         fields=fields)
                 gen = (ev for nm, ev in gen if nm == 'event')
                 # dirty hack!
-                es = self.assets['']
-                with es.handler_context(handler_registry):
+                reg = self.assets['']
+                with reg.handler_context(handler_registry):
                     if fill:
                         gen = self.fill_events(gen, descs,
                                                fields=fill, inplace=True)
@@ -1087,16 +1087,62 @@ class BrokerES(object):
 
         return total_size * 1e-9
 
-    def fill_events(self, events_iterable, descriptors,
-                    fields=True, inplace=False):
+    def fill_events(self, events, descriptors, fields=True, inplace=False):
         """Fill a sequence of events
+
+        This method will be used both inside of other `DataBroker`
+        methods and in user code.  If being used with *inplace=True* then
+        we do not call `~DataBroker.prepare_hook` on the way out as either
+
+          - we are inside another `DataBroker` method which will call
+            it on the way out
+
+          - being called from outside and then we assume the only way
+            the user got an event was through another `DataBroker`
+            method, thus `~DataBroker.prepare_hook` has already been called
+            and we do not want to call it again.
+
+        If *inplace=False* we are being called from user code and
+        should receive as input the result of
+        `~DataBroker.prepare_hook`.  We sanitize, copy, and then re-apply
+        `~DataBroker.prepare_hook` to not change the type of the Event.
+
+        If a field is filled, then the *filled* dict on the event is updated
+        to hold the datum id and the *data* dict is update to hold the data.
+
+        Parameters
+        ----------
+        events : Iterable[Event]
+            An iterable of Event documents.
+
+        descriptors : Iterable[EventDescriptor]
+            An iterable of EventDescriptor documents.  This must
+            contain the descriptor associated with each every event
+            you want to fill and may contain descriptors which are not
+            used by any of the events.
+
+        fields : bool or Iterable[str], optional
+            Which fields to fill.  If `True` or `None`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+        inplace : bool, optional
+            If the input Events should be mutated inplace
+
+        Yields
+        ------
+        ev : Event
+            Event documents with filled data.
 
         """
         if fields is True:
             fields = None
         elif fields is False:
             # if no fields, we got nothing to do!
-            for ev in events_iterable:
+            # just return the events as-is
+            for ev in events:
                 yield ev
             return
         elif fields:
@@ -1106,7 +1152,7 @@ class BrokerES(object):
         for d in descriptors:
             fill_keys = set()
             desc_id = d['uid']
-            for k, v in d['data_keys'].items():
+            for k, v in six.iteritems(d['data_keys']):
                 ext = v.get('external', None)
                 if ext:
                     # TODO sort this out!
@@ -1118,7 +1164,7 @@ class BrokerES(object):
                 fill_keys &= fields
             fill_map[desc_id] = fill_keys
 
-        for ev in events_iterable:
+        for ev in events:
             if not inplace:
                 ev = _sanitize(ev)
                 ev = copy.deepcopy(ev)
@@ -1126,7 +1172,7 @@ class BrokerES(object):
             data = ev['data']
             filled = ev['filled']
             desc_id = ev['descriptor']
-            for k, v in fill_map.items():
+            for k, v in six.iteritems(fill_map):
                 for dk in v:
                     d_id = data[dk]
                     data[dk] = (registry_map[(desc_id, dk)]
