@@ -689,33 +689,13 @@ class BrokerES(object):
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
-        try:
-            headers.items()
-        except AttributeError:
-            pass
-        else:
-            headers = [headers]
-
-        check_fields_exist(fields if fields else [], headers)
-
-        for h in headers:
-            if not isinstance(h, Header):
-                h = self[h['start']['uid']]
-
-            descs = h.descriptors
-            for es in self.event_sources:
-                gen = es.docs_given_header(
-                        header=h, stream_name=stream_name,
-                        fields=fields)
-                gen = (ev for nm, ev in gen if nm == 'event')
-                # dirty hack!
-                reg = self.assets['']
-                with reg.handler_context(handler_registry):
-                    if fill:
-                        gen = self.fill_events(gen, descs,
-                                               fields=fill, inplace=True)
-                    for ev in gen:
-                        yield self.prepare_hook('event', ev)
+        for name, doc in self.get_documents(headers,
+                                            fields=fields,
+                                            stream_name=stream_name,
+                                            fill=fill,
+                                            handler_registry=handler_registry):
+            if name == 'event':
+                yield doc
 
     def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
                       handler_registry=None):
