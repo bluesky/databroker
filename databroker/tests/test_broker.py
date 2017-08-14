@@ -173,14 +173,6 @@ def test_get_events_filtering_field(db, RE):
 
 
 @py3
-def test_deprecated_api(db, RE):
-    RE.subscribe(db.insert)
-    uid, = RE(count([det]))
-    h, = db(uid=uid)
-    assert list(db.get_events(h))
-
-
-@py3
 def test_indexing(db_empty, RE):
     db = db_empty
     RE.subscribe(db.insert)
