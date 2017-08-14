@@ -234,7 +234,7 @@ class Header(object):
                 result[d['name']].append(config['data'])
         return dict(result)  # strip off defaultdict behavior
 
-    def documents(self, stream_name=ALL, fill=False, **kwargs):
+    def documents(self, stream_name=ALL, fields=None, fill=False):
         """
         Load all documents from the run.
 
@@ -261,8 +261,9 @@ class Header(object):
         >>> for name, doc in h.documents():
         ...     # do something
         """
-        gen = self.db.get_documents(self, stream_name=stream_name,
-                                    fill=fill, **kwargs)
+        gen = self.db.get_documents(self, fields=fields,
+                                    stream_name=stream_name,
+                                    fill=fill)
         for payload in gen:
             yield payload
 
@@ -280,11 +281,24 @@ class Header(object):
 
         Parameters
         ----------
-        stream_name : string, optional
-            Get data from a single "event stream." Default is 'primary'
-        fill : bool or iterable of strings, optional
-            Whether externally-stored data should be filled in. False by
-            default.
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
+            whitelist of field names of interest; if None, all are returned
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
 
         Yields
         ------
@@ -309,31 +323,58 @@ class Header(object):
         for ev in ev_gen:
             yield ev
 
-    def table(self, stream_name='primary', fill=False, fields=None,
-              timezone=None, convert_times=True, localize_times=True,
-              **kwargs):
+    def table(self, stream_name='primary', fields=None, fill=False,
+              timezone=None, convert_times=True, localize_times=True):
         '''
         Load the data from one event stream as a table (``pandas.DataFrame``).
 
         Parameters
         ----------
-        stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." Default is 'primary'
-        fill : bool, optional
-            Whether externally-stored data should be filled in. False by
-            default.
-        fields : list, optional
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        timezone : str, optional
-            e.g., 'US/Eastern'; if None, use metadatastore configuration in
-            `self.mds.config['timezone']`
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default.
+
+        timezone : str, optional
+            e.g., 'US/Eastern'; if None, use metadatastore configuration in
+            `self.mds.config['timezone']`
+
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime
             zone (as configure in mds).
+
+            This is problematic for several reasons:
+
+              - apparent gaps or duplicate times around DST transitions
+              - incompatibility with every other time stamp (which is in UTC)
+
+            however, this makes the dataframe repr look nicer
+
+            This implies convert_times.
+
+            Defaults to True to preserve back-compatibility.
 
         Returns
         -------
@@ -364,8 +405,7 @@ class Header(object):
                                  stream_name=stream_name, fill=fill,
                                  timezone=timezone,
                                  convert_times=convert_times,
-                                 localize_times=localize_times,
-                                 **kwargs)
+                                 localize_times=localize_times)
 
     def data(self, field, stream_name='primary', fill=True):
         """
@@ -375,16 +415,19 @@ class Header(object):
         ----------
         field : string
             such as 'image' or 'intensity'
+
         stream_name : string, optional
             Get data from a single "event stream." Default is 'primary'
+
         fill : bool, optional
-            Whether externally-stored data should be filled in. True by
-            default.
+             If the data should be filled.
 
         Yields
         ------
         data
         """
+        if fill:
+            fill = {field}
         for event in self.events(stream_name=stream_name,
                                  fields=[field],
                                  fill=fill):
@@ -494,7 +537,7 @@ class Images(FramesSequence):
         events = db.get_events(headers, [name], fill=False)
 
         self._datum_ids = [event.data[name] for event in events
-                            if name in event.data]
+                           if name in event.data]
         self._len = len(self._datum_ids)
         first_uid = self._datum_ids[0]
         if handler_override is None:

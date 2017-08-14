@@ -621,8 +621,7 @@ class BrokerES(object):
 
         return Results(res, self, data_key)
 
-    def fill_event(self, event, inplace=True,
-                   handler_registry=None):
+    def fill_event(self, event, inplace=True, handler_registry=None):
         """
         Populate events with externally stored data.
 
@@ -652,7 +651,8 @@ class BrokerES(object):
             ev_out, = self.fill_events([event], descs, inplace=inplace)
         return ev_out
 
-    def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
+    def get_events(self,
+                   headers, stream_name='primary', fields=None, fill=False,
                    handler_registry=None):
         """
         Get Event documents from one or more runs.
@@ -661,15 +661,26 @@ class BrokerES(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
+
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
-        stream_name : string, optional
-            Get events from only one "event stream" with this name. Default
-            value is special sentinel class, ``ALL``, which gets all streams
-            together.
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
 
@@ -691,7 +702,8 @@ class BrokerES(object):
             if name == 'event':
                 yield doc
 
-    def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
+    def get_documents(self,
+                      headers, stream_name=ALL, fields=None, fill=False,
                       handler_registry=None):
         """
         Get all documents from one or more runs.
@@ -700,22 +712,36 @@ class BrokerES(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
+
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is `ALL` which yields documents for all streams.
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
-        stream_name : string, optional
-            Get events from only one "event stream" with this name. Default
-            value is special sentinel class, ``ALL``, which gets all streams
-            together.
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
         handler_registry : dict, optional
             mapping filestore specs (strings) to handlers (callable classes)
 
         Yields
         ------
-        event : Event
-            The event, optionally with non-scalar data filled in
+        name : str
+            The name of the kind of document
+
+        doc : dict
+            The payload, may be RunStart, RunStop, EventDescriptor, or Event.
 
         Raises
         ------
@@ -735,7 +761,7 @@ class BrokerES(object):
             for h in headers:
                 if not isinstance(h, Header):
                     h = self[h['start']['uid']]
-
+                # TODO filter fill by fields
                 proc_gen = self._fill_events_coro(h.descriptors,
                                                   fields=fill,
                                                   inplace=True)
@@ -750,10 +776,10 @@ class BrokerES(object):
                         yield name, self.prepare_hook(name, doc)
                 proc_gen.close()
 
-    def get_table(self, headers, fields=None, stream_name='primary',
-                  fill=False,
-                  convert_times=True, timezone=None, handler_registry=None,
-                  localize_times=True):
+    def get_table(self,
+                  headers, stream_name='primary', fields=None, fill=False,
+                  handler_registry=None,
+                  convert_times=True, timezone=None, localize_times=True):
         """
         Load the data from one or more runs as a table (``pandas.DataFrame``).
 
@@ -761,25 +787,37 @@ class BrokerES(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
+
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        stream_name : string, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). The default name is
-            'primary', but if no event stream with that name is found, the
-            default reverts to ``ALL`` (for backward-compatibility).
-        fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default.
+
         timezone : str, optional
             e.g., 'US/Eastern'; if None, use metadatastore configuration in
             `self.mds.config['timezone']`
-        handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
+
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime
@@ -1114,11 +1152,13 @@ class BrokerES(object):
             used by any of the events.
 
         fields : bool or Iterable[str], optional
-            Which fields to fill.  If `True` or `None`, fill all
+            Which fields to fill.  If `True`  fill all
             possible fields.
 
             Each event will have the data filled for the intersection
             of it's external keys and the fields requested filled.
+
+            Default is True
 
         inplace : bool, optional
             If the input Events should be mutated inplace
