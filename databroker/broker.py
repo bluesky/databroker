@@ -391,8 +391,14 @@ class BrokerES(object):
         return self.hs.mds
 
     @property
+    def reg(self):
+        return self.assets['']
+
+    @property
     def fs(self):
-        return self.event_source_for_insert.fs
+        warnings.warn("fs is deprecated, use `db.reg` instead",
+                      stacklevel=2)
+        return self.reg
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -653,8 +659,7 @@ class BrokerES(object):
                 descs.append(d)
 
         # dirty hack!
-        reg = self.assets['']
-        with reg.handler_context(handler_registry):
+        with self.reg.handler_context(handler_registry):
             ev_out, = self.fill_events([event], descs, inplace=inplace)
         return ev_out
 
@@ -737,8 +742,7 @@ class BrokerES(object):
 
         check_fields_exist(fields if fields else [], headers)
         # dirty hack!
-        reg = self.assets['']
-        with reg.handler_context(handler_registry):
+        with self.reg.handler_context(handler_registry):
             for h in headers:
                 if not isinstance(h, Header):
                     h = self[h['start']['uid']]
@@ -816,8 +820,7 @@ class BrokerES(object):
 
         dfs = []
         # dirty hack!
-        reg = self.assets['']
-        with reg.handler_context(handler_registry):
+        with self.reg.handler_context(handler_registry):
             for h in headers:
                 if not isinstance(h, Header):
                     h = self[h['start']['uid']]
