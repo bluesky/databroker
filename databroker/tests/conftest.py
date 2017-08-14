@@ -94,9 +94,11 @@ def mds_portable(request):
 
 @pytest.fixture(scope='module')
 def md_server_url(request):
+    from random import randint
+    port = randint(9000, 60000)
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),
-                          serviceport=9009, tzone='US/Eastern')
+                          serviceport=port, tzone='US/Eastern')
 
     proc = start_md_server(testing_config)
 
