@@ -439,6 +439,8 @@ def get_fields(header, name=None):
 def get_images(db, headers, name, handler_registry=None,
                handler_override=None):
     """
+    This method is deprecated. Use Header.data instead.
+
     Load images from a detector for given Header(s).
 
     Parameters
@@ -469,6 +471,8 @@ class Images(FramesSequence):
     def __init__(self, mds, fs, es, headers, name, handler_registry=None,
                  handler_override=None):
         """
+        This class is deprecated.
+
         Load images from a detector for given Header(s).
 
         Parameters
@@ -490,6 +494,8 @@ class Images(FramesSequence):
         >>> for image in images:
                 # do something
         """
+        warn("Images and get_images are deprecated. Use Header.data({}) "
+             "instead.".format(name))
         from .broker import Broker
         self.fs = fs
         db = Broker(mds, fs)
