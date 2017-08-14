@@ -50,7 +50,7 @@ install:
       pip install https://github.com/NSLS-II/bluesky/zipball/master#egg=bluesky
     fi;
   - 'pip install https://github.com/NSLS-II/event-model/zipball/master#egg=event_model'
-  - pip install -ve .
+  - pip install .
 
 script:
   - source activate testenv
