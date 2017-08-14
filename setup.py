@@ -24,7 +24,7 @@ setup(
     packages=find_packages(),
     description='Unification of NSLS-II data sources',
     long_description=long_description,
-    package_data={'databroker/assets': ['schemas/*.json']},
+    package_data={'databroker.assets': ['schemas/*.json']},
     # The project's main homepage.
     url='https://github.com/NSLS-II/databroker',
     scripts=['scripts/fs_rename', 'scripts/start_md_server'],
