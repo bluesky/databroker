@@ -740,10 +740,6 @@ class MDS(MDSRO):
         ret : dict
             dictionary of details about the insertion
         """
-        events = list(events) # if iterator, make json serializable
-        for e in events:
-            for k, v in e['data'].items():
-                e['data'][k] = _sanitize_np(v)
         def event_factory():
             for ev in events:
                 # check keys, this could be expensive
