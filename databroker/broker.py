@@ -642,10 +642,18 @@ class BrokerES(object):
         """
         # TODO sort out how to (quickly) map events back to the
         # correct event Source
-        return self.event_sources[0].fill_event(
-            event, inplace=inplace,
-            handler_registry=handler_registry,
-            handler_overrides=handler_overrides)
+        desc_id = event['descriptor']
+        descs = []
+        for es in self.event_sources:
+            try:
+                d = es.descriptor_given_uid(desc_id)
+            except es.NoEventDescriptors:
+                pass
+            else:
+                descs.append(d)
+
+        ev_out, = self.fill_events([event], descs, inplace=inplace)
+        return ev_out
 
     def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
                    handler_registry=None, handler_overrides=None):
