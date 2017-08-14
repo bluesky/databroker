@@ -1090,22 +1090,22 @@ class BrokerES(object):
     def fill_events(self, events, descriptors, fields=True, inplace=False):
         """Fill a sequence of events
 
-        This method will be used both inside of other `DataBroker`
+        This method will be used both inside of other `Broker`
         methods and in user code.  If being used with *inplace=True* then
-        we do not call `~DataBroker.prepare_hook` on the way out as either
+        we do not call `~Broker.prepare_hook` on the way out as either
 
-          - we are inside another `DataBroker` method which will call
+          - we are inside another `Broker` method which will call
             it on the way out
 
           - being called from outside and then we assume the only way
-            the user got an event was through another `DataBroker`
-            method, thus `~DataBroker.prepare_hook` has already been called
+            the user got an event was through another `Broker`
+            method, thus `~Broker.prepare_hook` has already been called
             and we do not want to call it again.
 
         If *inplace=False* we are being called from user code and
         should receive as input the result of
-        `~DataBroker.prepare_hook`.  We sanitize, copy, and then re-apply
-        `~DataBroker.prepare_hook` to not change the type of the Event.
+        `~Broker.prepare_hook`.  We sanitize, copy, and then re-apply
+        `~Broker.prepare_hook` to not change the type of the Event.
 
         If a field is filled, then the *filled* dict on the event is updated
         to hold the datum id and the *data* dict is update to hold the data.
