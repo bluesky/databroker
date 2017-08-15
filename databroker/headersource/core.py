@@ -758,7 +758,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
             ts = dict(ev['timestamps'])
             apply_to_dict_recursively(ts, sanitize_np)
             # Replace any filled data with the datum_id stashed in 'filled'.
-            for k, v in six.iteritems(event.get('filled', {})):
+            for k, v in six.iteritems(ev.get('filled', {})):
                 if v:
                     data[k] = v
             ev_out = dict(descriptor=descriptor_uid,

@@ -98,7 +98,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
         for ev in events:
             data = dict(ev['data'])
             # Replace any filled data with the datum_id stashed in 'filled'.
-            for k, v in six.iteritems(event.get('filled', {})):
+            for k, v in six.iteritems(ev.get('filled', {})):
                 if v:
                     data[k] = v
             # check keys, this could be expensive
