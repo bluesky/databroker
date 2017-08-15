@@ -947,3 +947,34 @@ def test_auto_register():
     db_manual = Broker.from_config(temp_config(), auto_register=False)
     assert db_auto.reg.handler_reg
     assert not db_manual.reg.handler_reg
+
+
+def test_sanitize_does_not_modify_in_place(db):
+    doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
+    assert isinstance(doc['stuff'], np.ndarray)
+    db.insert('start', doc)
+    assert isinstance(doc['stuff'], np.ndarray)
+
+    doc = {'uid': '1', 'time': 0, 'run_start': '0',
+           'data_keys': {'det': {'dtype': 'array',
+                                 'shape': (3, 3),
+                                 'source': ''}},
+           'object_keys': {'det': ['det']},
+           'configuration': {'det': {'thing': np.ones((3, 3))}}}
+    assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
+    db.insert('descriptor', doc)
+    assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
+
+    doc = {'uid': '2', 'time': 0, 'descriptor': '1',
+           'data': {'det': np.ones((3, 3))},
+           'timestamps': {'det': 0}}
+    assert isinstance(doc['data']['det'], np.ndarray)
+    db.insert('event', doc)
+    assert isinstance(doc['data']['det'], np.ndarray)
+
+
+    doc = {'uid': '3', 'time': 0, 'run_start': '0', 'exit_status': 'success',
+           'stuff': np.ones((3, 3))}
+    assert isinstance(doc['stuff'], np.ndarray)
+    db.insert('stop', doc)
+    assert isinstance(doc['stuff'], np.ndarray)
