@@ -19,8 +19,55 @@ Enhancements
 
 See the new :doc:`tutorial` and the :doc:`api`.
 
-API Changes
+User-facing API Changes
++++++++++++++++++++++++
+
+The following changes may break old user code.
+
+* DataBroker used to rely indirectly on configuration files located at:
+
+    * ``/etc/metadatastore.yml`` or ``~/.config/metadatastore/connection.yml``
+    * ``/etc/filestore.yml`` or ``~/.config/filestore/connection.yml``
+
+  These configuration files are now **completely ignored**. Users must adopt
+  the :doc:`new configuration system <configuration>`.
+* The order of parameters to these methods has been rearranged to be mutally
+  consistent.
+
+  * :meth:`Broker.get_events`
+  * :meth:`Broker.get_table`
+  * :meth:`Broker.get_documents`
+  * :meth:`Header.table`
+  * :meth:`Header.documents`
+
+  We judge that the short-term pain of updating some user code now is less
+  than the long-term pain of asking everyone to keep mental track of random,
+  inconsistent parameter orderings forever.
+* The method :meth:`Header.events` defaults to returning only events from the
+  'primary' stream, not all events.
+* Documents refer to other documents by a uid. In past versions of databroker
+  they were dereferenced. That is:
+
+  .. code-block:: python
+
+     # Assume run_start, run_stop, descriptor, and event are documents.
+
+     # True for databroker version < 0.9.0:
+     event['descriptor'] == descriptor
+     descriptor['run_start'] == run_start
+     run_stop['run_start'] == run_start
+
+     # True for databroker version 0.9.0:
+     event['descriptor'] == descriptor['uid']
+     descriptor['run_start'] == run_start['uid']
+     run_stop['run_start'] == run_start['uid']
+
+Deprecations
 ++++++++++++
+
+The following changes to *recommended* usage may produce warnings in user code,
+but it will not break user code in this release. It may break user code in a
+future release, so the warnings should be heeded during this cycle if possible.
 
 * The following usages are deprecated and will stop being supported in a future
   release:
@@ -85,34 +132,12 @@ API Changes
   prepare for this possible change, the usage ``event.data`` now produces a
   warning advising users to switch to ``event['data']``. More detail is
   available in the section :ref:`controlling_return_type`.
-* DataBroker used to rely indirectly on configuration files located at:
-
-    * ``/etc/metadatastore.yml`` or ``~/.config/metadatastore/connection.yml``
-    * ``/etc/filestore.yml`` or ``~/.config/filestore/connection.yml``
-  
-  These configuration files are now **completely ignored**. Users must adopt
-  the :doc:`new configuration system <configuration>`.
-* The method :meth:`Header.events` defaults to returning only events from the
-  'primary' stream, not all events.
 * The method :meth:`Header.stream` has been renamed :meth:`Header.documents`.
   The old name issues a warning in this release; it will be removed in a future
   one.
-* Documents refer to other documents by a uid. In past versions of databroker
-  they were dereferenced. That is:
 
-  .. code-block:: python
-
-     # Assume run_start, run_stop, descriptor, and event are documents.
-
-     # True for databroker version < 0.9.0:
-     event['descriptor'] == descriptor
-     descriptor['run_start'] == run_start
-     run_stop['run_start'] == run_start
-
-     # True for databroker version 0.9.0:
-     event['descriptor'] == descriptor['uid']
-     descriptor['run_start'] == run_start['uid']
-     run_stop['run_start'] == run_start['uid']
+Internal API Changes
+++++++++++++++++++++
 
 The following API changes affect the libraries that have been merged into
 databroker in this release (metadatastore, filestore, portable-mds,
