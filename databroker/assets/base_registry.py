@@ -689,15 +689,28 @@ class RegistryTemplate(BaseRegistryRO):
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
 
-    def correct_root(self, resource, new_root, verify):
-        '''Change the root of a resource
+    def correct_root(self, resource_or_uid, new_root, verify):
+        """Change the root of a resource
 
-        This is for the case where externally we know that
-        '''
+        This is for the case where externally we know that the files were moved
+        but the registry records were not updated during the move. Eg data
+        was transferred to another computer via ``rsync`` or ``scp``.
+
+        Parameters
+        ---------
+        resource_or_uid : Document or str
+            The resource to change the root
+        new_root: str
+            The new root
+        verify: str
+            Not implemented
+
+        """
 
         if verify:
             raise NotImplementedError('verify is not implemented yet')
 
+        resource = self.resource_given_uid(resource_or_uid)
         # update the dataregistry_template
         new_resource = dict(resource)
         new_resource['root'] = new_root
