@@ -535,7 +535,7 @@ def test_handler_options(db, RE):
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        list(db.get_images(h, 'image'))
+        list(db.get_images(h, 'image', stream_name='injected'))
 
     class ImageHandler(object):
         RESULT = np.zeros((5, 5))
@@ -568,7 +568,8 @@ def test_handler_options(db, RE):
                             stream_name='injected', fields=['image'],
                             fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
-    assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
+    ims = db.get_images(h, 'image', stream_name='injected')[0]
+    assert ims.shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 
     ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])

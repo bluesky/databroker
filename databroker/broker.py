@@ -883,7 +883,9 @@ class BrokerES(object):
 
         return df
 
-    def get_images(self, headers, name, handler_registry=None):
+    def get_images(self, headers, name,
+                   stream_name='primary',
+                   handler_registry=None,):
         """
         This method is deprecated. Use Broker.get_documents instead.
 
@@ -908,7 +910,8 @@ class BrokerES(object):
         # TODO sort out how to broadcast this
         return Images(mds=self.mds, reg=self.reg, es=self.event_sources[0],
                       headers=headers,
-                      name=name, handler_registry=handler_registry)
+                      name=name, stream_name=stream_name,
+                      handler_registry=handler_registry)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids

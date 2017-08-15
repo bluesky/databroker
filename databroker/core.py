@@ -472,7 +472,7 @@ def get_fields(header, name=None):
 
 
 def get_images(db, headers, name, handler_registry=None,
-               handler_override=None):
+               handler_override=None, stream_name='primary'):
     """
     This method is deprecated. Use Header.data instead.
 
@@ -498,12 +498,12 @@ def get_images(db, headers, name, handler_registry=None,
             # do something
     """
     return Images(db.mds, db.es, db.reg, headers, name, handler_registry,
-                  handler_override)
+                  handler_override, stream_name='primary')
 
 
 class Images(FramesSequence):
     def __init__(self, mds, reg, es, headers, name, handler_registry=None,
-                 handler_override=None):
+                 handler_override=None, stream_name='primary'):
         """
         This class is deprecated.
 
@@ -533,7 +533,9 @@ class Images(FramesSequence):
         from .broker import Broker
         self.reg = reg
         db = Broker(mds, reg)
-        events = db.get_events(headers, [name], fill=False)
+        events = db.get_events(headers,
+                               stream_name=stream_name,
+                               fields=[name], fill=False)
 
         self._datum_ids = [event.data[name] for event in events
                            if name in event.data]
