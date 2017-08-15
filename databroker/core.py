@@ -497,12 +497,12 @@ def get_images(db, headers, name, handler_registry=None,
     >>> for image in images:
             # do something
     """
-    return Images(db.mds, db.es, db.fs, headers, name, handler_registry,
+    return Images(db.mds, db.es, db.reg, headers, name, handler_registry,
                   handler_override)
 
 
 class Images(FramesSequence):
-    def __init__(self, mds, fs, es, headers, name, handler_registry=None,
+    def __init__(self, mds, reg, es, headers, name, handler_registry=None,
                  handler_override=None):
         """
         This class is deprecated.
@@ -511,7 +511,7 @@ class Images(FramesSequence):
 
         Parameters
         ----------
-        fs : RegistryRO
+        reg : RegistryRO
         headers : Header or list of Headers
         es : EventStoreRO
         name : str
@@ -531,8 +531,8 @@ class Images(FramesSequence):
         warn("Images and get_images are deprecated. Use Header.data({}) "
              "instead.".format(name), stacklevel=3)
         from .broker import Broker
-        self.fs = fs
-        db = Broker(mds, fs)
+        self.reg = reg
+        db = Broker(mds, reg)
         events = db.get_events(headers, [name], fill=False)
 
         self._datum_ids = [event.data[name] for event in events
@@ -544,8 +544,8 @@ class Images(FramesSequence):
         else:
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
-        with self.fs.handler_context(self.handler_registry) as fs:
-            example_frame = fs.retrieve(first_uid)
+        with self.reg.handler_context(self.handler_registry) as reg:
+            example_frame = reg.retrieve(first_uid)
         # Try to duck-type as a numpy array, but fall back as a general
         # Python object.
         try:
@@ -556,6 +556,12 @@ class Images(FramesSequence):
             self._shape = example_frame.shape
         except AttributeError:
             self._shape = None  # as in, unknown
+
+    @property
+    def fs(self):
+        warnings.warn("fs is deprecated, use reg instead",
+                      stacklevel=2)
+        return self.reg
 
     @property
     def pixel_type(self):
@@ -569,8 +575,8 @@ class Images(FramesSequence):
         return self._len
 
     def get_frame(self, i):
-        with self.fs.handler_context(self.handler_registry) as fs:
-            img = fs.retrieve(self._datum_ids[i])
+        with self.reg.handler_context(self.handler_registry) as reg:
+            img = reg.retrieve(self._datum_ids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
         else:

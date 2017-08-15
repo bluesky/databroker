@@ -906,7 +906,7 @@ class BrokerES(object):
         """
 
         # TODO sort out how to broadcast this
-        return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
+        return Images(mds=self.mds, reg=self.reg, es=self.event_sources[0],
                       headers=headers,
                       name=name, handler_registry=handler_registry)
 
@@ -935,7 +935,7 @@ class BrokerES(object):
         for ev in ev_gen:
             for k, v in six.iteritems(ev['data']):
                 if k in external_keys:
-                    res = self.fs.resource_given_datum_id(v)
+                    res = self.reg.resource_given_datum_id(v)
                     resources.add(res['uid'])
         return resources
 
@@ -1030,9 +1030,8 @@ class BrokerES(object):
         headers : databroker.header
             one or more headers that are going to be exported
         db : databroker.Broker
-            an instance of databroker.Broker class, which has
-            assets (fs) and metadatastore (mds) attributes
-            that will be the target to export info
+            an instance of databroker.Broker class that will be the target to
+            export info
         new_root : str
             optional. root directory of files that are going to
             be exported
@@ -1068,20 +1067,21 @@ class BrokerES(object):
                     event.pop('filled', None)
                     db.mds.insert_event(**_sanitize(event))
             db.mds.insert_run_stop(**_sanitize(header['stop']))
-            # insert fs
+            # insert assets
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
-                fps = self.fs.copy_files(uid, new_root=new_root, **copy_kwargs)
+                fps = self.reg.copy_files(uid, new_root=new_root,
+                                          **copy_kwargs)
                 file_pairs.extend(fps)
-                res = self.fs.resource_given_uid(uid)
-                new_res = db.fs.insert_resource(res['spec'],
-                                                res['resource_path'],
-                                                res['resource_kwargs'],
-                                                root=new_root)
+                res = self.reg.resource_given_uid(uid)
+                new_res = db.reg.insert_resource(res['spec'],
+                                                 res['resource_path'],
+                                                 res['resource_kwargs'],
+                                                 root=new_root)
                 # Note that new_res has a different resource id than res.
-                datums = self.fs.datum_gen_given_resource(uid)
+                datums = self.reg.datum_gen_given_resource(uid)
                 for datum in datums:
-                    db.fs.insert_datum(new_res,
+                    db.reg.insert_datum(new_res,
                                        datum['datum_id'],
                                        datum['datum_kwargs'])
         return file_pairs
@@ -1108,13 +1108,13 @@ class BrokerES(object):
             headers = [headers]
         total_size = 0
         for header in headers:
-            # get files from fs
+            # get files from assets
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
-                datum_gen = self.fs.datum_gen_given_resource(uid)
+                datum_gen = self.reg.datum_gen_given_resource(uid)
                 datum_kwarg_gen = (datum['datum_kwargs'] for datum in
                                    datum_gen)
-                files = self.fs.get_file_list(uid, datum_kwarg_gen)
+                files = self.reg.get_file_list(uid, datum_kwarg_gen)
                 for file in files:
                     total_size += os.path.getsize(file)
 
@@ -1279,7 +1279,7 @@ class Broker(BrokerES):
     ----------
     mds : object
         implementing the 'metadatastore interface'
-    fs : object
+    reg : object
         implementing the 'assets interface'
     auto_register : boolean, optional
         By default, automatically register built-in asset handlers (classes
@@ -1287,7 +1287,7 @@ class Broker(BrokerES):
         to do all registration manually.
 
     """
-    def __init__(self, mds, fs=None, plugins=None, filters=None,
+    def __init__(self, mds, reg=None, plugins=None, filters=None,
                  auto_register=True):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
@@ -1299,8 +1299,8 @@ class Broker(BrokerES):
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
-                                     [EventSourceShim(mds, fs)],
-                                     {'': fs})
+                                     [EventSourceShim(mds, reg)],
+                                     {'': reg})
         self.filters = filters
         if auto_register:
             register_builtin_handlers(self.reg)
