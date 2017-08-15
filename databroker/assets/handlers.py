@@ -6,53 +6,12 @@ import logging
 import numpy as np
 import os.path
 
+import dask.array as da
+
 from .handlers_base import HandlerBase
 from .readers.spe import PrincetonSPEFile
-from pims import FramesSequence, Frame
 
 logger = logging.getLogger(__name__)
-
-
-# The ImageCube class is used for a per event representation of
-# a dataset
-
-class ImageStack(FramesSequence):
-    "One of these represents the data from an event: (num_images x w x h)"
-    def __init__(self, dataset, start, stop):
-        # `start` and `stop` are the limits of this cube
-        # i indexes within the cube
-        self._start = start
-        self._stop = stop
-        self._dataset = dataset
-
-        # Old PIMS has no dtype, shape. Try adding it.
-        try:
-            self.dtype = self.pixel_type
-        except AttributeError:
-            pass
-        try:
-            self.shape = self.frame_shape
-        except AttributeError:
-            pass
-
-    def get_frame(self, i):
-        return Frame(self._dataset[self._start + i], frame_no=i)
-
-    def __len__(self):
-        return self._stop - self._start
-
-    @property
-    def pixel_type(self):
-        return self._dataset.dtype
-
-    @property
-    def frame_shape(self):
-        return self._dataset.shape[1:]
-
-
-class IntegrityError(Exception):
-    pass
-
 
 class AreaDetectorSPEHandler(HandlerBase):
     specs = {'AD_SPE'} | HandlerBase.specs
@@ -157,13 +116,16 @@ class HDF5DatasetSliceHandler(HandlerBase):
     def __call__(self, point_number):
         # Don't read out the dataset until it is requested for the first time.
         if not self._dataset:
-            self._dataset = self._file[self._key]
+            _dataset = self._file[self._key]
+            logger.debug("Dataset shape = {}".format(_dataset.shape))
+            chunks = (1, _dataset.shape[-2], _dataset.shape[-1])
+            self._dataset = da.from_array(_dataset, chunks=chunks)
 
         if point_number not in self._data_objects:
             start = point_number * self._fpp
             stop = (point_number + 1) * self._fpp
-            self._data_objects[point_number] = ImageStack(self._dataset,
-                                                          start, stop)
+            self._data_objects[point_number] = self._dataset[start:stop]
+
         return self._data_objects[point_number]
 
     def open(self):
