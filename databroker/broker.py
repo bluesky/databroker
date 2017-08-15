@@ -624,6 +624,8 @@ class BrokerES(object):
 
     def fill_event(self, event, inplace=True, handler_registry=None):
         """
+        Deprecated, use `fill_events` instead.
+
         Populate events with externally stored data.
 
         Parameters
@@ -635,6 +637,8 @@ class BrokerES(object):
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
         """
+        warnings.warn("fill_event is deprecated, use fill_events instead",
+                      stacklevel=2)
         # TODO sort out how to (quickly) map events back to the
         # correct event Source
         desc_id = event['descriptor']
