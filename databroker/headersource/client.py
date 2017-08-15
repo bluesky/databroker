@@ -1,4 +1,5 @@
 from __future__ import (absolute_import, unicode_literals, generators)
+import copy
 import requests
 from functools import wraps
 import json
@@ -12,15 +13,6 @@ from .mongo_core import (NoRunStart, NoEventDescriptors, NoRunStop,
 from ..utils import sanitize_np, apply_to_dict_recursively
 
 logger = logging.getLogger(__name__)
-
-
-def _sanitize_np(val):
-    "Convert any numpy objects into built-in Python types."
-    if isinstance(val, (np.generic, np.ndarray)):
-        if np.isscalar(val):
-            return val.item()
-        return val.tolist()
-    return val
 
 
 class MDSRO(object):
@@ -526,7 +518,11 @@ class MDS(MDSRO):
 
     def datafactory(self, data, signature):
         """Pack data to be posted so mdservice can unpack"""
-        apply_to_dict_recursively(data, sanitize_np)
+        if 'event' not in signature:
+            # Events are sanitized with more care for perf, but other documents
+            # need to be sanitized here.
+            data = copy.deepcopy(data)
+            apply_to_dict_recursively(data, sanitize_np)
         return dict(data=data, signature=signature)
 
     def _post(self, url, data):
@@ -700,11 +696,16 @@ class MDS(MDSRO):
         uid : str
             Globally unique id string provided to metadatastore
         """
-        for k, v in data.items():
-            data[k] = _sanitize_np(v)
         if validate:
-            raise NotImplementedError('Insert event validation not written yet')
+            if data.keys() != timestamps.keys():
+                raise ValueError(
+                    BAD_KEYS_FMT.format(data.keys(),
+                                        timestamps.keys()))
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
+        data = copy.deepcopy(data)
+        apply_to_dict_recursively(data, sanitize_np)
+        timestamps = copy.deepcopy(timestamps)
+        apply_to_dict_recursively(timestamps, sanitize_np)
         event = dict(descriptor=descriptor_uid, time=time, seq_num=seq_num, data=data,
                      timestamps=timestamps, uid=uid)
         data = self.datafactory(data=event, signature='insert_event')
@@ -729,9 +730,6 @@ class MDS(MDSRO):
             dictionary of details about the insertion
         """
         events = list(events) # if iterator, make json serializable
-        for e in events:
-            for k, v in e['data'].items():
-                e['data'][k] = _sanitize_np(v)
         def event_factory():
             for ev in events:
                 # check keys, this could be expensive
@@ -741,8 +739,12 @@ class MDS(MDSRO):
                             BAD_KEYS_FMT.format(ev['data'].keys(),
                                                 ev['timestamps'].keys()))
                 descriptor_uid = self.doc_or_uid_to_uid(descriptor)
+                data = copy.deepcopy(data)
+                apply_to_dict_recursively(data, sanitize_np)
+                timestamps = copy.deepcopy(timestamps)
+                apply_to_dict_recursively(timestamps, sanitize_np)
                 ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                            data=ev['data'], timestamps=ev['timestamps'],
+                            data=data, timestamps=timestamps,
                             time=ev['time'],
                             seq_num=ev['seq_num'])
                 yield ev_out

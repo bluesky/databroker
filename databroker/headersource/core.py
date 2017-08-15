@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import copy
 import six
 import warnings
 import logging
@@ -513,7 +514,7 @@ def insert_run_start(run_start_col, run_start_cache,
         kwargs.update(custom)
 
     col = run_start_col
-    run_start = dict(time=time, uid=uid, **kwargs)
+    run_start = dict(time=time, uid=uid, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(run_start, sanitize_np)
 
     col.insert_one(run_start)
@@ -577,7 +578,7 @@ def insert_run_stop(run_stop_col, run_stop_cache,
 
     col = run_stop_col
     run_stop = dict(run_start=run_start_uid, time=time, uid=uid,
-                    exit_status=exit_status, **kwargs)
+                    exit_status=exit_status, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(run_stop, sanitize_np)
     if reason is not None and reason != '':
         run_stop['reason'] = reason
@@ -637,7 +638,7 @@ def insert_descriptor(descriptor_col,
     col = descriptor_col
 
     descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
-                      time=time, uid=uid, **kwargs)
+                      time=time, uid=uid, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(descriptor, sanitize_np)
     # TODO validation
     col.insert_one(descriptor)
@@ -691,9 +692,9 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     descriptor_uid = doc_or_uid_to_uid(descriptor)
 
     col = event_col
-    data = dict(data)
+    data = copy.deepcopy(data)
     apply_to_dict_recursively(data, sanitize_np)
-    timestamps = dict(timestamps)
+    timestamps = copy.deepcopy(timestamps)
     apply_to_dict_recursively(timestamps, sanitize_np)
     event = dict(descriptor=descriptor_uid, uid=uid,
                  data=data, timestamps=timestamps, time=time,

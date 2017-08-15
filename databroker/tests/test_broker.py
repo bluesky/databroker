@@ -949,7 +949,8 @@ def test_auto_register():
     assert not db_manual.reg.handler_reg
 
 
-def test_sanitize_does_not_modify_in_place(db):
+def test_sanitize_does_not_modify_array_data_in_place(db_empty):
+    db = db_empty
     doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
     assert isinstance(doc['stuff'], np.ndarray)
     db.insert('start', doc)
@@ -965,7 +966,7 @@ def test_sanitize_does_not_modify_in_place(db):
     db.insert('descriptor', doc)
     assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
 
-    doc = {'uid': '2', 'time': 0, 'descriptor': '1',
+    doc = {'uid': '2', 'time': 0, 'descriptor': '1', 'seq_num': 1,
            'data': {'det': np.ones((3, 3))},
            'timestamps': {'det': 0}}
     assert isinstance(doc['data']['det'], np.ndarray)
