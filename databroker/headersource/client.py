@@ -749,15 +749,14 @@ class MDS(MDSRO):
                         raise ValueError(
                             BAD_KEYS_FMT.format(ev['data'].keys(),
                                                 ev['timestamps'].keys()))
-                data = dict(data)
+                data = dict(ev['data'])
                 # Replace any filled data with the datum_id stashed in 'filled'.
                 for k, v in six.iteritems(ev.get('filled', {})):
                     if v:
                         data[k] = v
                 descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-                data = dict(data)
                 apply_to_dict_recursively(data, sanitize_np)
-                timestamps = dict(timestamps)
+                timestamps = dict(ev['timestamps'])
                 apply_to_dict_recursively(timestamps, sanitize_np)
                 ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
                               data=data, timestamps=timestamps,
