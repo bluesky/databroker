@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, date, timedelta
 import itertools
 from databroker.broker import (wrap_in_doct, wrap_in_deprecated_doct,
-                               DeprecatedDoct)
+                               DeprecatedDoct, Broker, temp_config)
 import doct
 import copy
 
@@ -940,3 +940,10 @@ def test_data_method(db, RE):
     actual = list(h.data('det'))
     expected = [1, 1, 1, 1, 1]
     assert actual == expected
+
+
+def test_auto_register():
+    db_auto = Broker.from_config(temp_config())
+    db_manual = Broker.from_config(temp_config(), auto_register=False)
+    assert db_auto.reg.handler_reg
+    assert not db_manual.reg.handler_reg
