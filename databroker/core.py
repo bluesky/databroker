@@ -401,11 +401,11 @@ class Header(object):
 
 def register_builtin_handlers(fs):
     "Register all the handlers built in to filestore."
-    from filestore import handlers, HandlerBase
+    from .assets import handlers
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
     for cls in vars(handlers).values():
-        if isinstance(cls, type) and issubclass(cls, HandlerBase):
+        if isinstance(cls, type) and issubclass(cls, handlers.HandlerBase):
             logger.debug("Found Handler %r for specs %r", cls, cls.specs)
             for spec in cls.specs:
                 logger.debug("Registering Handler %r for spec %r", cls, spec)
