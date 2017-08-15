@@ -14,6 +14,17 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 with open(path.join(here, 'requirements.txt')) as f:
     requirements = f.read().split()
 
+# Remove the 'optional' requirements
+requirements.remove('pymongo')
+requirements.remove('h5py')
+
+extras_require = {
+    'mongo': ['pymongo'],
+    'hdf5': ['h5py']
+}
+
+extras_require['all'] = sorted(set(sum(extras_require.values(), [])))
+
 setup(
     name='databroker',
     version=versioneer.get_version(),
@@ -31,6 +42,7 @@ setup(
     license='BSD (3-clause)',
 
     install_requires=requirements,
+    extras_require=extras_require,
 
     classifiers=[
         'License :: OSI Approved :: BSD License',
