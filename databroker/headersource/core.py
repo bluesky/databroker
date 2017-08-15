@@ -692,9 +692,9 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     descriptor_uid = doc_or_uid_to_uid(descriptor)
 
     col = event_col
-    data = copy.deepcopy(data)
+    data = dict(data)
     apply_to_dict_recursively(data, sanitize_np)
-    timestamps = copy.deepcopy(timestamps)
+    timestamps = dict(timestamps)
     apply_to_dict_recursively(timestamps, sanitize_np)
     event = dict(descriptor=descriptor_uid, uid=uid,
                  data=data, timestamps=timestamps, time=time,

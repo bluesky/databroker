@@ -702,9 +702,9 @@ class MDS(MDSRO):
                     BAD_KEYS_FMT.format(data.keys(),
                                         timestamps.keys()))
         descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-        data = copy.deepcopy(data)
+        data = dict(data)
         apply_to_dict_recursively(data, sanitize_np)
-        timestamps = copy.deepcopy(timestamps)
+        timestamps = dict(timestamps)
         apply_to_dict_recursively(timestamps, sanitize_np)
         event = dict(descriptor=descriptor_uid, time=time, seq_num=seq_num, data=data,
                      timestamps=timestamps, uid=uid)
@@ -739,9 +739,9 @@ class MDS(MDSRO):
                             BAD_KEYS_FMT.format(ev['data'].keys(),
                                                 ev['timestamps'].keys()))
                 descriptor_uid = self.doc_or_uid_to_uid(descriptor)
-                data = copy.deepcopy(data)
+                data = dict(data)
                 apply_to_dict_recursively(data, sanitize_np)
-                timestamps = copy.deepcopy(timestamps)
+                timestamps = dict(timestamps)
                 apply_to_dict_recursively(timestamps, sanitize_np)
                 ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
                             data=data, timestamps=timestamps,
