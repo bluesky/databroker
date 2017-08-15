@@ -96,15 +96,20 @@ def bulk_insert_events(event_col, descriptor, events, validate):
 
     def event_factory():
         for ev in events:
+            data = dict(ev['data'])
+            # Replace any filled data with the datum_id stashed in 'filled'.
+            for k, v in six.iteritems(ev.get('filled', {})):
+                if v:
+                    data[k] = v
             # check keys, this could be expensive
             if validate:
-                if ev['data'].keys() != ev['timestamps'].keys():
+                if data.keys() != ev['timestamps'].keys():
                     raise ValueError(
                         BAD_KEYS_FMT.format(ev['data'].keys(),
                                             ev['timestamps'].keys()))
 
             ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=ev['data'], timestamps=ev['timestamps'],
+                          data=data, timestamps=ev['timestamps'],
                           time=ev['time'],
                           seq_num=ev['seq_num'])
             yield ev_out

@@ -30,7 +30,7 @@ def install_sentinels(config, version):
 
 def create_test_database(host, port=None, version=1,
                          db_template='FS_test_db_{uid}'):
-    '''Create and initialize a filestore database for testing
+    '''Create and initialize an asset database for testing
 
     Parameters
     ----------

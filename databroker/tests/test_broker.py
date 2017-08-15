@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, date, timedelta
 import itertools
 from databroker.broker import (wrap_in_doct, wrap_in_deprecated_doct,
-                               DeprecatedDoct)
+                               DeprecatedDoct, Broker, temp_config)
 import doct
 import copy
 
@@ -170,14 +170,6 @@ def test_get_events_filtering_field(db, RE):
 
     assert len(list(db.get_events(headers, fields=['det1']))) == 7
     assert len(list(db.get_events(headers, fields=['det2']))) == 3
-
-
-@py3
-def test_deprecated_api(db, RE):
-    RE.subscribe(db.insert)
-    uid, = RE(count([det]))
-    h, = db.find_headers(uid=uid)
-    assert list(db.fetch_events(h))
 
 
 @py3
@@ -475,7 +467,7 @@ def test_configuration(db, RE):
 
     # check that config is not included by default
     ev = next(db.get_events(h))
-    assert set(ev['data'].keys()) == set(['a','b'])
+    assert set(ev['data'].keys()) == set(['a', 'b'])
 
     # find config in descriptor['configuration']
     ev = next(db.get_events(h, fields=['a', 'b']))
@@ -532,17 +524,18 @@ def test_handler_options(db, RE):
     h = db[rs_uid]
 
     # Get unfilled event.
-    ev, ev2 = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
     assert ev['data']['image'] == datum_id
     assert not ev['filled']['image']
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        ev, ev2 = db.get_events(h, fields=['image'], fill=True)
+        ev, ev2 = db.get_events(h, stream_name='injected',
+                                fields=['image'], fill=True)
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        list(db.get_images(h, 'image'))
+        list(db.get_images(h, 'image', stream_name='injected'))
 
     class ImageHandler(object):
         RESULT = np.zeros((5, 5))
@@ -561,7 +554,9 @@ def test_handler_options(db, RE):
             return 'dummy'
 
     # Use a one-off handler registry.
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
+    ev, ev2 = db.get_events(h,
+                            stream_name='injected', fields=['image'],
+                            fill=True,
                             handler_registry={'foo': ImageHandler})
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
@@ -569,47 +564,51 @@ def test_handler_options(db, RE):
     # Statefully register the handler.
     db.fs.register_handler('foo', ImageHandler)
 
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True)
+    ev, ev2 = db.get_events(h,
+                            stream_name='injected', fields=['image'],
+                            fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
-    assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
+    ims = db.get_images(h, 'image', stream_name='injected')[0]
+    assert ims.shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 
-    ev, ev2 = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
     assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
-    db.fill_event(ev)  # , inplace=True)
-    assert ev['filled']['image']
+    datum = ev['data']['image']
+    ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
+    assert ev['filled']['image'] == datum
     assert not ev2['filled']['image']
-    ev2 = db.fill_event(ev2, inplace=False)
-    assert ev2['filled']['image']
+    ev2_filled = db.fill_event(ev2, inplace=False)
+    assert ev2_filled['filled']['image'] == ev2['data']['image']
 
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
-                            handler_overrides={'image': DummyHandler})
-    assert ev['data']['image'] == 'dummy'
-    assert ev['filled']['image']
+    # ev, ev2 = db.get_events(h, fields=['image'], fill=True,
+    #                         handler_overrides={'image': DummyHandler})
+    # assert ev['data']['image'] == 'dummy'
+    # assert ev['filled']['image']
 
-    res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-                       handler_registry={'foo': DummyHandler})
-    assert res['image'].iloc[0] == 'dummy'
-    assert ev['filled']['image']
+    # res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
+    #                    handler_registry={'foo': DummyHandler})
+    # assert res['image'].iloc[0] == 'dummy'
+    # assert ev['filled']['image']
 
-    res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-                       handler_overrides={'image': DummyHandler})
-    assert res['image'].iloc[0] == 'dummy'
-    assert ev['filled']['image']
+    # res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
+    #                    handler_overrides={'image': DummyHandler})
+    # assert res['image'].iloc[0] == 'dummy'
+    # assert ev['filled']['image']
 
-    # Register the DummyHandler statefully so we can test overriding with
-    # ImageHandler for the get_images method below.
-    db.fs.register_handler('foo', DummyHandler, overwrite=True)
+    # # Register the DummyHandler statefully so we can test overriding with
+    # # ImageHandler for the get_images method below.
+    # db.fs.register_handler('foo', DummyHandler, overwrite=True)
 
-    res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
-    assert res[0].shape == ImageHandler.RESULT.shape
+    # res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
+    # assert res[0].shape == ImageHandler.RESULT.shape
 
-    res = db.get_images(h, 'image', handler_override=ImageHandler)
-    assert res[0].shape == ImageHandler.RESULT.shape
+    # res = db.get_images(h, 'image', handler_override=ImageHandler)
+    # assert res[0].shape == ImageHandler.RESULT.shape
 
 
 @py3
@@ -626,7 +625,7 @@ def test_export(broker_factory, RE):
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+        raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
@@ -693,11 +692,11 @@ def test_export_size_smoke(broker_factory, RE):
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+        raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                                reg=db1.fs, save_path=dir1)
+                               reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
     db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
@@ -947,3 +946,112 @@ def test_data_method(db, RE):
     actual = list(h.data('det'))
     expected = [1, 1, 1, 1, 1]
     assert actual == expected
+
+
+def test_auto_register():
+    db_auto = Broker.from_config(temp_config())
+    db_manual = Broker.from_config(temp_config(), auto_register=False)
+    assert db_auto.reg.handler_reg
+    assert not db_manual.reg.handler_reg
+
+
+def test_sanitize_does_not_modify_array_data_in_place(db_empty):
+    db = db_empty
+    doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
+    assert isinstance(doc['stuff'], np.ndarray)
+    db.insert('start', doc)
+    assert isinstance(doc['stuff'], np.ndarray)
+
+    doc = {'uid': '1', 'time': 0, 'run_start': '0',
+           'data_keys': {'det': {'dtype': 'array',
+                                 'shape': (3, 3),
+                                 'source': ''}},
+           'object_keys': {'det': ['det']},
+           'configuration': {'det': {'thing': np.ones((3, 3))}}}
+    assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
+    db.insert('descriptor', doc)
+    assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
+
+    doc = {'uid': '2', 'time': 0, 'descriptor': '1', 'seq_num': 1,
+           'data': {'det': np.ones((3, 3))},
+           'timestamps': {'det': 0}}
+    assert isinstance(doc['data']['det'], np.ndarray)
+    db.insert('event', doc)
+    assert isinstance(doc['data']['det'], np.ndarray)
+
+
+    doc = {'uid': '3', 'time': 0, 'run_start': '0', 'exit_status': 'success',
+           'stuff': np.ones((3, 3))}
+    assert isinstance(doc['stuff'], np.ndarray)
+    db.insert('stop', doc)
+    assert isinstance(doc['stuff'], np.ndarray)
+
+
+@py3
+def test_extraneous_filled_stripped_on_insert(db, RE):
+
+    # TODO It would be better if this errored, but at the moment
+    # this would required looking up the event descriptor.
+
+    # Hack the Event so it does not match its Event Descriptor.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': False}
+            assert 'filled' in doc
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {}
+    for ev in h.events():
+        assert not ev['filled']
+
+
+@py3
+def test_filled_false_stripped_on_insert(db, RE):
+    # Hack the Event and the Descriptor consistently.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': False}
+            doc['data']['det'] = 'DATUM_ID_PLACEHOLDER'
+            assert 'filled' in doc
+        elif name == 'descriptor':
+            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {'det': False}
+    for ev in h.events():
+        assert 'det' in ev['filled']
+        assert not ev['filled']['det']
+        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+
+
+@py3
+def test_filled_true_rotated_on_insert(db, RE):
+    # Hack the Event and the Descriptor consistently.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': 'DATUM_ID_PLACEHOLDER'}
+            assert 'filled' in doc
+        elif name == 'descriptor':
+            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {'det': False}
+    for ev in h.events():
+        assert 'det' in ev['filled']
+        assert not ev['filled']['det']
+        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'

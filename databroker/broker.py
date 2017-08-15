@@ -12,20 +12,17 @@ import os
 import yaml
 import glob
 import tempfile
+import copy
+from collections import defaultdict
 
 
 from .core import (Header,
                    get_fields,  # for convenience
                    Images,
-                   ALL, format_time)
+                   ALL, format_time,
+                   register_builtin_handlers)
 from .eventsource import EventSourceShim, check_fields_exist
 from .headersource import HeaderSourceShim, safe_get_stop
-
-# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
-try:
-    from cytoolz.dicttoolz import merge
-except ImportError:
-    from toolz.dicttoolz import merge
 
 
 try:
@@ -188,7 +185,7 @@ class Results(object):
 
 _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
 _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
-                         'etc', 'databroker')
+                          'etc', 'databroker')
 _system_etc = os.path.join('etc', 'databroker')
 CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
@@ -245,8 +242,7 @@ def lookup_config(name):
     else:
         raise FileNotFoundError("No config file named {!r} could be found in "
                                 "the following locations:\n{}"
-                                "".format(name,'\n'.join(tried)))
-
+                                "".format(name, '\n'.join(tried)))
 
 
 def load_component(config):
@@ -282,7 +278,7 @@ def temp_config():
             'module': 'databroker.headersource.sqlite',
             'class': 'MDS',
             'config': {
-                 'directory': tempdir,
+                'directory': tempdir,
                 'timezone': 'US/Eastern'}
         },
         'assets': {
@@ -356,15 +352,20 @@ class BrokerES(object):
     *event_sources :
         zero, one or more EventSource objects
     """
-    def __init__(self, hs, *event_sources):
+    def __init__(self, hs, event_sources, assets):
         self.hs = hs
         self.event_sources = event_sources
+        self.assets = assets
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
         self.filters = []
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
+        self.registry_for_insert = self.event_sources[0]
         self.prepare_hook = wrap_in_deprecated_doct
+
+    def add_event_source(self, es):
+        self.event_sources.append(es)
 
     def stream_names_given_header(self, header):
         return [n for es in self.event_sources
@@ -391,8 +392,14 @@ class BrokerES(object):
         return self.hs.mds
 
     @property
+    def reg(self):
+        return self.assets['']
+
+    @property
     def fs(self):
-        return self.event_source_for_insert.fs
+        warnings.warn("fs is deprecated, use `db.reg` instead",
+                      stacklevel=2)
+        return self.reg
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
@@ -537,7 +544,8 @@ class BrokerES(object):
         Get headers from the last 24 hours.
         >>> import time
         >>> db.dynamic_alias('today',
-                             lambda: {'start_time': start_time=time.time()- 24*60*60})
+                             lambda: {'start_time':
+                                      start_time=time.time()- 24*60*60})
         """
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
@@ -552,8 +560,8 @@ class BrokerES(object):
         addition to the Parameters below, advanced users can specifiy arbitrary
         queries using the MongoDB query syntax.
 
-		The ``start_time`` and ``stop_time`` parameters accepts the following
-		representations of time:
+        The ``start_time`` and ``stop_time`` parameters accepts the following
+        representations of time:
 
         * timestamps like ``time.time()`` and ``datetime.datetime.now()``
         * ``'2015'``
@@ -614,18 +622,7 @@ class BrokerES(object):
 
         return Results(res, self, data_key)
 
-    def find_headers(self, **kwargs):
-        "This function is deprecated."
-        warnings.warn("Use .__call__() instead of .find_headers()", stacklevel=2)
-        return self(**kwargs)
-
-    def fetch_events(self, headers, fill=True):
-        "This function is deprecated."
-        warnings.warn("Use .get_events() instead.", stacklevel=2)
-        return self.get_events(headers, fill=fill)
-
-    def fill_event(self, event, inplace=True,
-                   handler_registry=None, handler_overrides=None):
+    def fill_event(self, event, inplace=True, handler_registry=None):
         """
         Populate events with externally stored data.
 
@@ -637,18 +634,27 @@ class BrokerES(object):
             dictionary.  Defaults to `True`.
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
         """
         # TODO sort out how to (quickly) map events back to the
         # correct event Source
-        return self.event_sources[0].fill_event(
-            event, inplace=inplace,
-            handler_registry=handler_registry,
-            handler_overrides=handler_overrides)
+        desc_id = event['descriptor']
+        descs = []
+        for es in self.event_sources:
+            try:
+                d = es.descriptor_given_uid(desc_id)
+            except es.NoEventDescriptors:
+                pass
+            else:
+                descs.append(d)
 
-    def get_events(self, headers, fields=None, stream_name=ALL, fill=False,
-                   handler_registry=None, handler_overrides=None):
+        # dirty hack!
+        with self.reg.handler_context(handler_registry):
+            ev_out, = self.fill_events([event], descs, inplace=inplace)
+        return ev_out
+
+    def get_events(self,
+                   headers, stream_name='primary', fields=None, fill=False,
+                   handler_registry=None):
         """
         Get Event documents from one or more runs.
 
@@ -656,19 +662,28 @@ class BrokerES(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
+
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
-        stream_name : string, optional
-            Get events from only one "event stream" with this name. Default
-            value is special sentinel class, ``ALL``, which gets all streams
-            together.
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
         handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
+            mapping asset specs (strings) to handlers (callable classes)
 
         Yields
         ------
@@ -680,29 +695,17 @@ class BrokerES(object):
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
-        try:
-            headers.items()
-        except AttributeError:
-            pass
-        else:
-            headers = [headers]
+        for name, doc in self.get_documents(headers,
+                                            fields=fields,
+                                            stream_name=stream_name,
+                                            fill=fill,
+                                            handler_registry=handler_registry):
+            if name == 'event':
+                yield doc
 
-        check_fields_exist(fields if fields else [], headers)
-
-        for h in headers:
-            for es in self.event_sources:
-                gen = es.docs_given_header(
-                        header=h, stream_name=stream_name,
-                        fill=fill,
-                        fields=fields,
-                        handler_registry=handler_registry,
-                        handler_overrides=handler_overrides)
-                for nm, ev in gen:
-                    if nm == 'event':
-                        yield self.prepare_hook('event', ev)
-
-    def get_documents(self, headers, fields=None, stream_name=ALL, fill=False,
-                      handler_registry=None, handler_overrides=None):
+    def get_documents(self,
+                      headers, stream_name=ALL, fields=None, fill=False,
+                      handler_registry=None):
         """
         Get all documents from one or more runs.
 
@@ -710,24 +713,36 @@ class BrokerES(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
+
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is `ALL` which yields documents for all streams.
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
-        stream_name : string, optional
-            Get events from only one "event stream" with this name. Default
-            value is special sentinel class, ``ALL``, which gets all streams
-            together.
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
         handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
+            mapping asset pecs (strings) to handlers (callable classes)
 
         Yields
         ------
-        event : Event
-            The event, optionally with non-scalar data filled in
+        name : str
+            The name of the kind of document
+
+        doc : dict
+            The payload, may be RunStart, RunStop, EventDescriptor, or Event.
 
         Raises
         ------
@@ -742,22 +757,30 @@ class BrokerES(object):
             headers = [headers]
 
         check_fields_exist(fields if fields else [], headers)
-
-        for h in headers:
-            for es in self.event_sources:
-                gen = es.docs_given_header(
+        # dirty hack!
+        with self.reg.handler_context(handler_registry):
+            for h in headers:
+                if not isinstance(h, Header):
+                    h = self[h['start']['uid']]
+                # TODO filter fill by fields
+                proc_gen = self._fill_events_coro(h.descriptors,
+                                                  fields=fill,
+                                                  inplace=True)
+                proc_gen.send(None)
+                for es in self.event_sources:
+                    gen = es.docs_given_header(
                         header=h, stream_name=stream_name,
-                        fill=fill,
-                        fields=fields,
-                        handler_registry=handler_registry,
-                        handler_overrides=handler_overrides)
-                for name, doc in gen:
-                    yield name, self.prepare_hook(name, doc)
+                        fields=fields)
+                    for name, doc in gen:
+                        if name == 'event':
+                            doc = proc_gen.send(doc)
+                        yield name, self.prepare_hook(name, doc)
+                proc_gen.close()
 
-    def get_table(self, headers, fields=None, stream_name='primary',
-                  fill=False,
-                  convert_times=True, timezone=None, handler_registry=None,
-                  handler_overrides=None, localize_times=True):
+    def get_table(self,
+                  headers, stream_name='primary', fields=None, fill=False,
+                  handler_registry=None,
+                  convert_times=True, timezone=None, localize_times=True):
         """
         Load the data from one or more runs as a table (``pandas.DataFrame``).
 
@@ -765,27 +788,40 @@ class BrokerES(object):
         ----------
         headers : Header or iterable of Headers
             The headers to fetch the events for
-        fields : list, optional
+
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        stream_name : string, optional
-            Get data from a single "event stream." To obtain one comprehensive
-            table with all streams, use ``stream_name=ALL`` (where ``ALL`` is a
-            sentinel class defined in this module). The default name is
-            'primary', but if no event stream with that name is found, the
-            default reverts to ``ALL`` (for backward-compatibility).
-        fill : bool, optional
-            Whether externally-stored data should be filled in.
-            Defaults to True
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default.
+
         timezone : str, optional
             e.g., 'US/Eastern'; if None, use metadatastore configuration in
             `self.mds.config['timezone']`
+
         handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
+            mapping asset specs (strings) to handlers (callable classes)
+
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime
@@ -813,40 +849,55 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        dfs = [es.table_given_header(header=h,
-                                     fields=fields,
-                                     stream_name=stream_name,
-                                     fill=fill,
-                                     convert_times=convert_times,
-                                     timezone=timezone,
-                                     handler_registry=handler_registry,
-                                     handler_overrides=handler_overrides,
-                                     localize_times=localize_times)
-               for h in headers for es in self.event_sources]
+        dfs = []
+        # dirty hack!
+        with self.reg.handler_context(handler_registry):
+            for h in headers:
+                if not isinstance(h, Header):
+                    h = self[h['start']['uid']]
+
+                # get the first descriptor for this event stream
+                desc = next((d for d in h.descriptors
+                             if d.name == stream_name),
+                            None)
+                if desc is None:
+                    continue
+                for es in self.event_sources:
+                    table = es.table_given_header(
+                        header=h,
+                        fields=fields,
+                        stream_name=stream_name,
+                        convert_times=convert_times,
+                        timezone=timezone,
+                        localize_times=localize_times)
+                    if len(table):
+                        table = self.fill_table(table, desc, inplace=True)
+                        dfs.append(table)
+
         if dfs:
             df = pd.concat(dfs)
         else:
             # edge case: no data
             df = pd.DataFrame()
         df.index.name = 'seq_num'
+
         return df
 
-    def get_images(self, headers, name, handler_registry=None,
-                   handler_override=None):
+    def get_images(self, headers, name,
+                   stream_name='primary',
+                   handler_registry=None,):
         """
+        This method is deprecated. Use Broker.get_documents instead.
+
         Load image data from one or more runs into a lazy array-like object.
 
         Parameters
         ----------
-        fs: RegistryRO
         headers : Header or list of Headers
         name : string
             field name (data key) of a detector
         handler_registry : dict, optional
             mapping spec names (strings) to handlers (callable classes)
-        handler_override : callable class, optional
-            overrides registered handlers
-
 
         Examples
         --------
@@ -855,11 +906,12 @@ class BrokerES(object):
         >>> for image in images:
                 # do something
         """
+
         # TODO sort out how to broadcast this
-        return Images(mds=self.mds, fs=self.fs, es=self.event_sources[0],
+        return Images(mds=self.mds, reg=self.reg, es=self.event_sources[0],
                       headers=headers,
-                      name=name, handler_registry=handler_registry,
-                      handler_override=handler_override)
+                      name=name, stream_name=stream_name,
+                      handler_registry=handler_registry)
 
     def get_resource_uids(self, header):
         '''Given a Header, give back a list of resource uids
@@ -886,7 +938,7 @@ class BrokerES(object):
         for ev in ev_gen:
             for k, v in six.iteritems(ev['data']):
                 if k in external_keys:
-                    res = self.fs.resource_given_datum_id(v)
+                    res = self.reg.resource_given_datum_id(v)
                     resources.add(res['uid'])
         return resources
 
@@ -981,9 +1033,8 @@ class BrokerES(object):
         headers : databroker.header
             one or more headers that are going to be exported
         db : databroker.Broker
-            an instance of databroker.Broker class, which has
-            filestore (fs) and metadatastore (mds) attributes
-            that will be the target to export info
+            an instance of databroker.Broker class that will be the target to
+            export info
         new_root : str
             optional. root directory of files that are going to
             be exported
@@ -1019,20 +1070,21 @@ class BrokerES(object):
                     event.pop('filled', None)
                     db.mds.insert_event(**_sanitize(event))
             db.mds.insert_run_stop(**_sanitize(header['stop']))
-            # insert fs
+            # insert assets
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
-                fps = self.fs.copy_files(uid, new_root=new_root, **copy_kwargs)
+                fps = self.reg.copy_files(uid, new_root=new_root,
+                                          **copy_kwargs)
                 file_pairs.extend(fps)
-                res = self.fs.resource_given_uid(uid)
-                new_res = db.fs.insert_resource(res['spec'],
-                                                res['resource_path'],
-                                                res['resource_kwargs'],
-                                                root=new_root)
+                res = self.reg.resource_given_uid(uid)
+                new_res = db.reg.insert_resource(res['spec'],
+                                                 res['resource_path'],
+                                                 res['resource_kwargs'],
+                                                 root=new_root)
                 # Note that new_res has a different resource id than res.
-                datums = self.fs.datum_gen_given_resource(uid)
+                datums = self.reg.datum_gen_given_resource(uid)
                 for datum in datums:
-                    db.fs.insert_datum(new_res,
+                    db.reg.insert_datum(new_res,
                                        datum['datum_id'],
                                        datum['datum_kwargs'])
         return file_pairs
@@ -1059,17 +1111,164 @@ class BrokerES(object):
             headers = [headers]
         total_size = 0
         for header in headers:
-            # get files from fs
+            # get files from assets
             res_uids = self.get_resource_uids(header)
             for uid in res_uids:
-                datum_gen = self.fs.datum_gen_given_resource(uid)
+                datum_gen = self.reg.datum_gen_given_resource(uid)
                 datum_kwarg_gen = (datum['datum_kwargs'] for datum in
                                    datum_gen)
-                files = self.fs.get_file_list(uid, datum_kwarg_gen)
+                files = self.reg.get_file_list(uid, datum_kwarg_gen)
                 for file in files:
                     total_size += os.path.getsize(file)
 
         return total_size * 1e-9
+
+    def fill_events(self, events, descriptors, fields=True, inplace=False):
+        """Fill a sequence of events
+
+        This method will be used both inside of other `Broker`
+        methods and in user code.  If being used with *inplace=True* then
+        we do not call `~Broker.prepare_hook` on the way out as either
+
+          - we are inside another `Broker` method which will call
+            it on the way out
+
+          - being called from outside and then we assume the only way
+            the user got an event was through another `Broker`
+            method, thus `~Broker.prepare_hook` has already been called
+            and we do not want to call it again.
+
+        If *inplace=False* we are being called from user code and
+        should receive as input the result of
+        `~Broker.prepare_hook`.  We sanitize, copy, and then re-apply
+        `~Broker.prepare_hook` to not change the type of the Event.
+
+        If a field is filled, then the *filled* dict on the event is updated
+        to hold the datum id and the *data* dict is update to hold the data.
+
+        Parameters
+        ----------
+        events : Iterable[Event]
+            An iterable of Event documents.
+
+        descriptors : Iterable[EventDescriptor]
+            An iterable of EventDescriptor documents.  This must
+            contain the descriptor associated with each every event
+            you want to fill and may contain descriptors which are not
+            used by any of the events.
+
+        fields : bool or Iterable[str], optional
+            Which fields to fill.  If `True`  fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is True
+
+        inplace : bool, optional
+            If the input Events should be mutated inplace
+
+        Yields
+        ------
+        ev : Event
+            Event documents with filled data.
+
+        """
+        # create the processing generator
+        proc_gen = self._fill_events_coro(descriptors,
+                                          fields=fields, inplace=inplace)
+        # and prime it
+        proc_gen.send(None)
+
+        try:
+            for ev in events:
+                yield proc_gen.send(ev)
+        finally:
+            proc_gen.close()
+
+    def _fill_events_coro(self, descriptors, fields=True, inplace=False):
+        if fields is True:
+            fields = None
+        elif fields is False:
+            # if no fields, we got nothing to do!
+            # just yield back as-is
+            ev = yield
+            while True:
+                ev = yield ev
+            return
+        elif fields:
+            fields = set(fields)
+        registry_map = {}
+        fill_map = defaultdict(list)
+        for d in descriptors:
+            fill_keys = set()
+            desc_id = d['uid']
+            for k, v in six.iteritems(d['data_keys']):
+                ext = v.get('external', None)
+                if ext:
+                    # TODO sort this out!
+                    # _, _, reg_name = ext.partition(':')
+                    reg_name = ''
+                    registry_map[(desc_id, k)] = self.assets[reg_name]
+                    fill_keys.add(k)
+            if fields is not None:
+                fill_keys &= fields
+            fill_map[desc_id] = fill_keys
+        ev = yield
+
+        while True:
+            if not inplace:
+                ev = _sanitize(ev)
+                ev = copy.deepcopy(ev)
+                ev = self.prepare_hook('event', ev)
+            data = ev['data']
+            filled = ev['filled']
+            desc_id = ev['descriptor']
+            for k, v in six.iteritems(fill_map):
+                for dk in v:
+                    d_id = data[dk]
+                    data[dk] = (registry_map[(desc_id, dk)]
+                                .retrieve(d_id))
+                    filled[dk] = d_id
+
+            ev = yield ev
+
+    def fill_table(self, table, descriptor, fields=None, inplace=False):
+        """Fill a table
+
+        """
+        if fields is True:
+            fields = None
+        elif fields is False:
+            # if no fields, we got nothing to do!
+            # just return the events as-is
+            return table
+        elif fields:
+            fields = set(fields)
+        # TODO unify this code with the code above.
+        fill_keys = set()
+        registry_map = {}
+        for k, v in six.iteritems(descriptor['data_keys']):
+            ext = v.get('external', None)
+            if ext:
+                # TODO sort this out!
+                # _, _, reg_name = ext.partition(':')
+                reg_name = ''
+                registry_map[k] = self.assets[reg_name]
+                fill_keys.add(k)
+        if fields is not None:
+            fill_keys &= fields
+
+        if not inplace:
+            table = table.copy()
+
+        for k in fill_keys:
+            reg = registry_map[k]
+            # TODO someday we will have bulk retrieve on assets.Registry
+            table[k] = [reg.retrieve(value) for value in table[k]]
+
+        return table
 
 
 class Broker(BrokerES):
@@ -1081,10 +1280,18 @@ class Broker(BrokerES):
 
     Parameters
     ----------
-    mds : metadatastore or metadataclient
-    fs : filestore
+    mds : object
+        implementing the 'metadatastore interface'
+    reg : object
+        implementing the 'assets interface'
+    auto_register : boolean, optional
+        By default, automatically register built-in asset handlers (classes
+        that handle I/O for externally stored data). Set this to ``False``
+        to do all registration manually.
+
     """
-    def __init__(self, mds, fs=None, plugins=None, filters=None):
+    def __init__(self, mds, reg=None, plugins=None, filters=None,
+                 auto_register=True):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
@@ -1095,17 +1302,24 @@ class Broker(BrokerES):
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
-                                     EventSourceShim(mds, fs))
+                                     [EventSourceShim(mds, reg)],
+                                     {'': reg})
         self.filters = filters
+        if auto_register:
+            register_builtin_handlers(self.reg)
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, auto_register=True):
         """
         Create a new Broker instance using a dictionary of configuration.
 
         Parameters
         ----------
         config : dict
+        auto_register : boolean, optional
+            By default, automatically register built-in asset handlers (classes
+            that handle I/O for externally stored data). Set this to ``False``
+            to do all registration manually.
 
         Returns
         -------
@@ -1138,10 +1352,10 @@ class Broker(BrokerES):
         """
         mds = load_component(config['metadatastore'])
         assets = load_component(config['assets'])
-        return cls(mds, assets)
+        return cls(mds, assets, auto_register=auto_register)
 
     @classmethod
-    def named(cls, name):
+    def named(cls, name, auto_register=True):
         """
         Create a new Broker instance using a configuration file with this name.
 
@@ -1157,12 +1371,17 @@ class Broker(BrokerES):
         Parameters
         ----------
         name : string
+        auto_register : boolean, optional
+            By default, automatically register built-in asset handlers (classes
+            that handle I/O for externally stored data). Set this to ``False``
+            to do all registration manually.
 
         Returns
         -------
         db : Broker
         """
-        return cls.from_config(lookup_config(name))
+        db = cls.from_config(lookup_config(name), auto_register=auto_register)
+        return db
 
 
 def _sanitize(doc):

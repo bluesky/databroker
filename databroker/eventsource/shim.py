@@ -54,9 +54,10 @@ class EventSourceShim(object):
         except self.NoEventDescriptors:
             return []
 
-    def docs_given_header(self, header, stream_name=ALL,
-                          fill=False, fields=None,
-                          **kwargs):
+    def descriptor_given_uid(self, desc_uid):
+        return self.mds.descriptor_given_uid(desc_uid)
+
+    def docs_given_header(self, header, stream_name=ALL, fields=None):
         """Get documents for given Header.
 
         Parameters
@@ -67,16 +68,9 @@ class EventSourceShim(object):
             Get events from only one "event stream" with this
             name. Default value is special sentinel class, `ALL`,
             which gets all streams together.
-        fill : bool, optional
-            Whether externally-stored data should be
-            filled in. Defaults to False.
         fields : list, optional
             whitelist of field names of interest or regular expression;
             if None, all are returned
-        handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
         Yields
         ------
         str : name
@@ -115,9 +109,6 @@ class EventSourceShim(object):
 
             yield 'descriptor', d
             ev_gen = self.mds.get_events_generator(d)
-            if fill:
-                ev_gen = self.fill_event_stream(
-                    ev_gen, d, inplace=True, **kwargs)
             for ev in ev_gen:
                 event_data = ev['data']  # cache for perf
                 event_timestamps = ev['timestamps']
@@ -136,9 +127,7 @@ class EventSourceShim(object):
         yield 'stop', header['stop']
 
     def table_given_header(self, header, stream_name,
-                           fields=None,
-                           fill=False, convert_times=True, timezone=None,
-                           handler_registry=None, handler_overrides=None,
+                           fields=None, convert_times=True, timezone=None,
                            localize_times=True):
         """Make a table (pandas.DataFrame) from given header.
 
@@ -154,19 +143,12 @@ class EventSourceShim(object):
             class defined in this module). The default name is
             'primary', but if no event stream with that name is found,
             the default reverts to `ALL` (for backward-compatibility).
-        fill : bool, optional
-            Whether externally-stored data should be
-            filled in. Defaults to False.
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default, returns naive
             datetime64 objects in UTC
         timezone : str, optional
             e.g., 'US/Eastern'
-        handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
-        handler_overrides : dict, optional
-            mapping data keys (strings) to handlers (callable classes)
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime
@@ -236,10 +218,6 @@ class EventSourceShim(object):
             if list(df.columns) == ['time']:
                 # no content
                 continue
-            if fill:
-                df = self.fill_table(df, d, inplace=True,
-                                     handler_registry=handler_registry,
-                                     handler_overrides=handler_overrides)
 
             for field, v in all_extra_data.items():
                 df[field] = v
@@ -263,7 +241,7 @@ class EventSourceShim(object):
             whitelist of field names of interest or regular expression;
             if None, all are returned
         handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
+            mapping asset specs (strings) to handlers (callable classes)
         handler_overrides : dict, optional
             mapping data keys (strings) to handlers (callable classes)
         """

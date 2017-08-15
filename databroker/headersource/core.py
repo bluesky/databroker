@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import copy
 import six
 import warnings
 import logging
@@ -513,7 +514,7 @@ def insert_run_start(run_start_col, run_start_cache,
         kwargs.update(custom)
 
     col = run_start_col
-    run_start = dict(time=time, uid=uid, **kwargs)
+    run_start = dict(time=time, uid=uid, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(run_start, sanitize_np)
 
     col.insert_one(run_start)
@@ -577,7 +578,7 @@ def insert_run_stop(run_stop_col, run_stop_cache,
 
     col = run_stop_col
     run_stop = dict(run_start=run_start_uid, time=time, uid=uid,
-                    exit_status=exit_status, **kwargs)
+                    exit_status=exit_status, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(run_stop, sanitize_np)
     if reason is not None and reason != '':
         run_stop['reason'] = reason
@@ -637,7 +638,7 @@ def insert_descriptor(descriptor_col,
     col = descriptor_col
 
     descriptor = dict(run_start=run_start_uid, data_keys=data_keys,
-                      time=time, uid=uid, **kwargs)
+                      time=time, uid=uid, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(descriptor, sanitize_np)
     # TODO validation
     col.insert_one(descriptor)
@@ -654,7 +655,7 @@ insert_event_descriptor = insert_descriptor
 
 
 def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
-                 validate):
+                 validate, filled):
     """Create an event in metadatastore database backend
 
     .. warning
@@ -683,6 +684,11 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
         same keys as `data` above
     uid : str
         Globally unique id string provided to metadatastore
+    validate : boolean
+        Check that data and timestamps have the same keys.
+    filled : dict
+        Dictionary of `False` or datum_ids. Keys are a subset of the keys in
+        `data` and `timestamps` above.
     """
     if validate:
         raise NotImplementedError("insert event validation not written yet")
@@ -695,6 +701,10 @@ def insert_event(event_col, descriptor, time, seq_num, data, timestamps, uid,
     apply_to_dict_recursively(data, sanitize_np)
     timestamps = dict(timestamps)
     apply_to_dict_recursively(timestamps, sanitize_np)
+    # Replace any filled data with the datum_id stashed in 'filled'.
+    for k, v in six.iteritems(filled):
+        if v:
+            data[k] = v
     event = dict(descriptor=descriptor_uid, uid=uid,
                  data=data, timestamps=timestamps, time=time,
                  seq_num=int(seq_num))
@@ -744,9 +754,17 @@ def bulk_insert_events(event_col, descriptor, events, validate):
                         BAD_KEYS_FMT.format(ev['data'].keys(),
                                             ev['timestamps'].keys()))
             data = dict(ev['data'])
+            # Replace any filled data with the datum_id stashed in 'filled'.
+            for k, v in six.iteritems(ev.get('filled', {})):
+                if v:
+                    data[k] = v
             apply_to_dict_recursively(data, sanitize_np)
             ts = dict(ev['timestamps'])
             apply_to_dict_recursively(ts, sanitize_np)
+            # Replace any filled data with the datum_id stashed in 'filled'.
+            for k, v in six.iteritems(ev.get('filled', {})):
+                if v:
+                    data[k] = v
             ev_out = dict(descriptor=descriptor_uid,
                           uid=str(ev['uid']),
                           data=data, timestamps=ts,

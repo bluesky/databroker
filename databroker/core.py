@@ -9,13 +9,6 @@ import logging
 import attr
 from warnings import warn
 
-# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
-try:
-    from cytoolz.dicttoolz import merge
-except ImportError:
-    from toolz.dicttoolz import merge
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -241,7 +234,7 @@ class Header(object):
                 result[d['name']].append(config['data'])
         return dict(result)  # strip off defaultdict behavior
 
-    def documents(self, stream_name=ALL, fill=False, **kwargs):
+    def documents(self, stream_name=ALL, fields=None, fill=False):
         """
         Load all documents from the run.
 
@@ -268,8 +261,9 @@ class Header(object):
         >>> for name, doc in h.documents():
         ...     # do something
         """
-        gen = self.db.get_documents(self, stream_name=stream_name,
-                                    fill=fill, **kwargs)
+        gen = self.db.get_documents(self, fields=fields,
+                                    stream_name=stream_name,
+                                    fill=fill)
         for payload in gen:
             yield payload
 
@@ -279,7 +273,7 @@ class Header(object):
         for payload in self.documents(*args, **kwargs):
             yield payload
 
-    def events(self, stream_name='primary', fill=False, **kwargs):
+    def events(self, stream_name='primary', fields=None, fill=False):
         """
         Load all Event documents from one event stream.
 
@@ -287,11 +281,24 @@ class Header(object):
 
         Parameters
         ----------
-        stream_name : string, optional
-            Get data from a single "event stream." Default is 'primary'
-        fill : bool, optional
-            Whether externally-stored data should be filled in. False by
-            default.
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
+            whitelist of field names of interest; if None, all are returned
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
 
         Yields
         ------
@@ -311,37 +318,63 @@ class Header(object):
 
         >>> events = list(h.events())
         """
-        for name, doc in self.documents(stream_name=stream_name,
-                                        fill=fill,
-                                        **kwargs):
-            if name == 'event':
-                yield doc
+        ev_gen = self.db.get_events([self], stream_name=stream_name,
+                                    fields=fields, fill=fill)
+        for ev in ev_gen:
+            yield ev
 
-    def table(self, stream_name='primary', fill=False, fields=None,
-              timezone=None, convert_times=True, localize_times=True,
-              **kwargs):
+    def table(self, stream_name='primary', fields=None, fill=False,
+              timezone=None, convert_times=True, localize_times=True):
         '''
         Load the data from one event stream as a table (``pandas.DataFrame``).
 
         Parameters
         ----------
-        stream_name : string or ``ALL``, optional
-            Get data from a single "event stream." Default is 'primary'
-        fill : bool, optional
-            Whether externally-stored data should be filled in. False by
-            default.
-        fields : list, optional
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
             whitelist of field names of interest; if None, all are returned
-        timezone : str, optional
-            e.g., 'US/Eastern'; if None, use metadatastore configuration in
-            `self.mds.config['timezone']`
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
+        handler_registry : dict, optional
+            mapping filestore specs (strings) to handlers (callable classes)
+
         convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default.
+
+        timezone : str, optional
+            e.g., 'US/Eastern'; if None, use metadatastore configuration in
+            `self.mds.config['timezone']`
+
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime
             zone (as configure in mds).
+
+            This is problematic for several reasons:
+
+              - apparent gaps or duplicate times around DST transitions
+              - incompatibility with every other time stamp (which is in UTC)
+
+            however, this makes the dataframe repr look nicer
+
+            This implies convert_times.
+
+            Defaults to True to preserve back-compatibility.
 
         Returns
         -------
@@ -372,8 +405,7 @@ class Header(object):
                                  stream_name=stream_name, fill=fill,
                                  timezone=timezone,
                                  convert_times=convert_times,
-                                 localize_times=localize_times,
-                                 **kwargs)
+                                 localize_times=localize_times)
 
     def data(self, field, stream_name='primary', fill=True):
         """
@@ -383,24 +415,27 @@ class Header(object):
         ----------
         field : string
             such as 'image' or 'intensity'
+
         stream_name : string, optional
             Get data from a single "event stream." Default is 'primary'
+
         fill : bool, optional
-            Whether externally-stored data should be filled in. True by
-            default.
+             If the data should be filled.
 
         Yields
         ------
         data
         """
+        if fill:
+            fill = {field}
         for event in self.events(stream_name=stream_name,
                                  fields=[field],
                                  fill=fill):
             yield event['data'][field]
 
 
-def register_builtin_handlers(fs):
-    "Register all the handlers built in to filestore."
+def register_builtin_handlers(reg):
+    "Register all the handlers built in to databroker."
     from .assets import handlers
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
@@ -409,7 +444,7 @@ def register_builtin_handlers(fs):
             logger.debug("Found Handler %r for specs %r", cls, cls.specs)
             for spec in cls.specs:
                 logger.debug("Registering Handler %r for spec %r", cls, spec)
-                fs.register_handler(spec, cls)
+                reg.register_handler(spec, cls)
 
 
 def get_fields(header, name=None):
@@ -437,7 +472,7 @@ def get_fields(header, name=None):
 
 
 def get_images(db, headers, name, handler_registry=None,
-               handler_override=None):
+               handler_override=None, stream_name='primary'):
     """
     This method is deprecated. Use Header.data instead.
 
@@ -445,7 +480,6 @@ def get_images(db, headers, name, handler_registry=None,
 
     Parameters
     ----------
-    fs: RegistryRO
     headers : Header or list of Headers
     name : string
         field name (data key) of a detector
@@ -463,13 +497,13 @@ def get_images(db, headers, name, handler_registry=None,
     >>> for image in images:
             # do something
     """
-    return Images(db.mds, db.es, db.fs, headers, name, handler_registry,
-                  handler_override)
+    return Images(db.mds, db.es, db.reg, headers, name, handler_registry,
+                  handler_override, stream_name='primary')
 
 
 class Images(FramesSequence):
-    def __init__(self, mds, fs, es, headers, name, handler_registry=None,
-                 handler_override=None):
+    def __init__(self, mds, reg, es, headers, name, handler_registry=None,
+                 handler_override=None, stream_name='primary'):
         """
         This class is deprecated.
 
@@ -477,7 +511,7 @@ class Images(FramesSequence):
 
         Parameters
         ----------
-        fs : RegistryRO
+        reg : RegistryRO
         headers : Header or list of Headers
         es : EventStoreRO
         name : str
@@ -495,14 +529,16 @@ class Images(FramesSequence):
                 # do something
         """
         warn("Images and get_images are deprecated. Use Header.data({}) "
-             "instead.".format(name))
+             "instead.".format(name), stacklevel=3)
         from .broker import Broker
-        self.fs = fs
-        db = Broker(mds, fs)
-        events = db.get_events(headers, [name], fill=False)
+        self.reg = reg
+        db = Broker(mds, reg)
+        events = db.get_events(headers,
+                               stream_name=stream_name,
+                               fields=[name], fill=False)
 
         self._datum_ids = [event.data[name] for event in events
-                            if name in event.data]
+                           if name in event.data]
         self._len = len(self._datum_ids)
         first_uid = self._datum_ids[0]
         if handler_override is None:
@@ -510,8 +546,8 @@ class Images(FramesSequence):
         else:
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
-        with self.fs.handler_context(self.handler_registry) as fs:
-            example_frame = fs.retrieve(first_uid)
+        with self.reg.handler_context(self.handler_registry) as reg:
+            example_frame = reg.retrieve(first_uid)
         # Try to duck-type as a numpy array, but fall back as a general
         # Python object.
         try:
@@ -522,6 +558,12 @@ class Images(FramesSequence):
             self._shape = example_frame.shape
         except AttributeError:
             self._shape = None  # as in, unknown
+
+    @property
+    def fs(self):
+        warnings.warn("fs is deprecated, use reg instead",
+                      stacklevel=2)
+        return self.reg
 
     @property
     def pixel_type(self):
@@ -535,8 +577,8 @@ class Images(FramesSequence):
         return self._len
 
     def get_frame(self, i):
-        with self.fs.handler_context(self.handler_registry) as fs:
-            img = fs.retrieve(self._datum_ids[i])
+        with self.reg.handler_context(self.handler_registry) as reg:
+            img = reg.retrieve(self._datum_ids[i])
         if hasattr(img, '__array__'):
             return Frame(img, frame_no=i)
         else:
