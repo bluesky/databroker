@@ -467,7 +467,7 @@ def test_configuration(db, RE):
 
     # check that config is not included by default
     ev = next(db.get_events(h))
-    assert set(ev['data'].keys()) == set(['a','b'])
+    assert set(ev['data'].keys()) == set(['a', 'b'])
 
     # find config in descriptor['configuration']
     ev = next(db.get_events(h, fields=['a', 'b']))

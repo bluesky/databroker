@@ -769,8 +769,8 @@ class BrokerES(object):
                 proc_gen.send(None)
                 for es in self.event_sources:
                     gen = es.docs_given_header(
-                            header=h, stream_name=stream_name,
-                            fields=fields)
+                        header=h, stream_name=stream_name,
+                        fields=fields)
                     for name, doc in gen:
                         if name == 'event':
                             doc = proc_gen.send(doc)
