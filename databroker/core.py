@@ -480,7 +480,6 @@ def get_images(db, headers, name, handler_registry=None,
 
     Parameters
     ----------
-    fs: RegistryRO
     headers : Header or list of Headers
     name : string
         field name (data key) of a detector
