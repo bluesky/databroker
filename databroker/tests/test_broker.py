@@ -389,6 +389,11 @@ def test_filters(db_empty, RE):
 
     assert header['start']['uid'] == ken_calib_uid
 
+    db.clear_filters()
+    db.add_filter(start_time='2017')
+    db.add_filter(start_time='2017')
+    assert len(list(db.filters)) == 1
+
 
 @py3
 @pytest.mark.parametrize(

@@ -433,7 +433,9 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        self.filters.append(dict(**kwargs))
+        d = dict(**kwargs)
+        if d not in self.filters:
+            self.filters.append(d)
 
     def clear_filters(self, **kwargs):
         """
