@@ -699,11 +699,14 @@ class RegistryTemplate(BaseRegistryRO):
         Parameters
         ---------
         resource_or_uid : Document or str
-            The resource to change the root
-        new_root: str
-            The new root
-        verify: False, optional
-            If True not implemented
+            The resource to move the root of
+
+        new_root : str
+            The new 'root' to change the Registry element to
+
+        verify : bool, optional (False)
+            Verify that the move happened correctly.  This currently
+            is not implemented and will raise if ``verify == True``.
 
         """
 
