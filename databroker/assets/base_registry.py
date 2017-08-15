@@ -689,7 +689,7 @@ class RegistryTemplate(BaseRegistryRO):
                                          cmd_kwargs=dict(shift=shift),
                                          cmd='shift_root')
 
-    def correct_root(self, resource_or_uid, new_root, verify):
+    def correct_root(self, resource_or_uid, new_root, verify=False):
         """Change the root of a resource
 
         This is for the case where externally we know that the files were moved
@@ -702,8 +702,8 @@ class RegistryTemplate(BaseRegistryRO):
             The resource to change the root
         new_root: str
             The new root
-        verify: str
-            Not implemented
+        verify: False, optional
+            If True not implemented
 
         """
 
