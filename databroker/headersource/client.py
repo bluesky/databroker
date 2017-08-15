@@ -673,7 +673,7 @@ class MDS(MDSRO):
         return uid
 
     def insert_event(self, descriptor, time, seq_num, data, timestamps,
-                     uid, validate=False):
+                     uid, validate=False, filled=None):
         """Create an event in metadatastore database backend
 
         .. warning
@@ -699,7 +699,19 @@ class MDS(MDSRO):
             same keys as `data` above
         uid : str
             Globally unique id string provided to metadatastore
+        validate : boolean
+            Check that data and timestamps have the same keys.
+        filled : dict
+            Dictionary of `False` or datum_ids. Keys are a subset of the keys
+            in `data` and `timestamps` above.
         """
+        data = dict(data)
+        # Replace any filled data with the datum_id stashed in 'filled'.
+        if filled is None:
+            filled = {}
+        for k, v in six.iteritems(filled):
+            if v:
+                data[k] = v
         for k, v in data.items():
             data[k] = _sanitize_np(v)
         if validate:
@@ -728,10 +740,6 @@ class MDS(MDSRO):
         ret : dict
             dictionary of details about the insertion
         """
-        events = list(events) # if iterator, make json serializable
-        for e in events:
-            for k, v in e['data'].items():
-                e['data'][k] = _sanitize_np(v)
         def event_factory():
             for ev in events:
                 # check keys, this could be expensive
@@ -740,11 +748,16 @@ class MDS(MDSRO):
                         raise ValueError(
                             BAD_KEYS_FMT.format(ev['data'].keys(),
                                                 ev['timestamps'].keys()))
+                data = dict(data)
+                # Replace any filled data with the datum_id stashed in 'filled'.
+                for k, v in six.iteritems(event.get('filled', {})):
+                    if v:
+                        data[k] = v
                 descriptor_uid = self.doc_or_uid_to_uid(descriptor)
                 ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                            data=ev['data'], timestamps=ev['timestamps'],
-                            time=ev['time'],
-                            seq_num=ev['seq_num'])
+                              data=data, timestamps=ev['timestamps'],
+                              time=ev['time'],
+                              seq_num=ev['seq_num'])
                 yield ev_out
         d = list(event_factory())
         payload = self.datafactory(data=dict(descriptor=descriptor, events=events,

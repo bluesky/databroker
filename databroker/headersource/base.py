@@ -485,7 +485,7 @@ class MDSTemplate(MDSROTemplate):
                                            **kwargs)
 
     def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
-                     validate=False):
+                     validate=False, filled=None):
         """Create an event in metadatastore database backend
 
         .. warning
@@ -511,7 +511,14 @@ class MDSTemplate(MDSROTemplate):
             same keys as `data` above
         uid : str
             Globally unique id string provided to metadatastore
+        validate : boolean
+            Check that data and timestamps have the same keys.
+        filled : dict or None
+            Dictionary of `False` or datum_ids. Keys are a subset of the keys
+            in `data` and `timestamps` above.
         """
+        if filled is None:
+            filled = {}
         for k, v in data.items():
             data[k] = sanitize_np(v)
 
@@ -521,6 +528,7 @@ class MDSTemplate(MDSROTemplate):
                                       data=data,
                                       timestamps=timestamps,
                                       uid=uid,
+                                      filled=filled,
                                       validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
