@@ -987,6 +987,7 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     assert isinstance(doc['stuff'], np.ndarray)
 
 
+@py3
 def test_extraneous_filled_stripped_on_insert(db, RE):
 
     # TODO It would be better if this errored, but at the moment
@@ -1033,6 +1034,7 @@ def test_filled_false_stripped_on_insert(db, RE):
         assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
 
 
+@py3
 def test_filled_true_rotated_on_insert(db, RE):
     # Hack the Event and the Descriptor consistently.
     def insert(name, doc):
