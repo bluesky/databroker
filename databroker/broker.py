@@ -682,7 +682,7 @@ class BrokerES(object):
             Default is False
 
         handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
+            mapping asset specs (strings) to handlers (callable classes)
 
         Yields
         ------
@@ -733,7 +733,7 @@ class BrokerES(object):
             Default is False
 
         handler_registry : dict, optional
-            mapping filestore specs (strings) to handlers (callable classes)
+            mapping asset pecs (strings) to handlers (callable classes)
 
         Yields
         ------
@@ -817,6 +817,9 @@ class BrokerES(object):
         timezone : str, optional
             e.g., 'US/Eastern'; if None, use metadatastore configuration in
             `self.mds.config['timezone']`
+
+        handler_registry : dict, optional
+            mapping asset specs (strings) to handlers (callable classes)
 
         localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
@@ -1028,7 +1031,7 @@ class BrokerES(object):
             one or more headers that are going to be exported
         db : databroker.Broker
             an instance of databroker.Broker class, which has
-            filestore (fs) and metadatastore (mds) attributes
+            assets (fs) and metadatastore (mds) attributes
             that will be the target to export info
         new_root : str
             optional. root directory of files that are going to
@@ -1274,8 +1277,10 @@ class Broker(BrokerES):
 
     Parameters
     ----------
-    mds : metadatastore or metadataclient
-    fs : filestore
+    mds : object
+        implementing the 'metadatastore interface'
+    fs : object
+        implementing the 'assets interface'
     """
     def __init__(self, mds, fs=None, plugins=None, filters=None):
         if plugins is not None:

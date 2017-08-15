@@ -619,7 +619,7 @@ def test_export(broker_factory, RE):
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+        raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
@@ -686,7 +686,7 @@ def test_export_size_smoke(broker_factory, RE):
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+        raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},

@@ -434,8 +434,8 @@ class Header(object):
             yield event['data'][field]
 
 
-def register_builtin_handlers(fs):
-    "Register all the handlers built in to filestore."
+def register_builtin_handlers(reg):
+    "Register all the handlers built in to databroker."
     from .assets import handlers
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
@@ -444,7 +444,7 @@ def register_builtin_handlers(fs):
             logger.debug("Found Handler %r for specs %r", cls, cls.specs)
             for spec in cls.specs:
                 logger.debug("Registering Handler %r for spec %r", cls, spec)
-                fs.register_handler(spec, cls)
+                reg.register_handler(spec, cls)
 
 
 def get_fields(header, name=None):

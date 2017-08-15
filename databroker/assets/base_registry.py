@@ -332,7 +332,7 @@ class BaseRegistryRO(object):
         process running this method must have read/write access to both the
         source and destination file systems.
 
-        This method does *not* update the filestore dataregistry_template.
+        This method does *not* update the assets dataregistry_template.
 
         Internally the resource level directory information is stored
         as two parts: the root and the resource_path.  The 'root' is
