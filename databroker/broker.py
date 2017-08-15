@@ -434,8 +434,11 @@ class BrokerES(object):
 
         """
         d = dict(**kwargs)
-        if d not in self.filters:
-            self.filters.append(d)
+        for val in self.filters:
+            for k,v in val.items():
+                if k in d.keys():
+                    raise ValueError('Filter key already exists.')
+        self.filters.append(d)
 
     def clear_filters(self, **kwargs):
         """
