@@ -19,7 +19,8 @@ from collections import defaultdict
 from .core import (Header,
                    get_fields,  # for convenience
                    Images,
-                   ALL, format_time)
+                   ALL, format_time,
+                   register_builtin_handlers)
 from .eventsource import EventSourceShim, check_fields_exist
 from .headersource import HeaderSourceShim, safe_get_stop
 
@@ -1281,8 +1282,14 @@ class Broker(BrokerES):
         implementing the 'metadatastore interface'
     fs : object
         implementing the 'assets interface'
+    auto_register : boolean, optional
+        By default, automatically register built-in asset handlers (classes
+        that handle I/O for externally stored data). Set this to ``False``
+        to do all registration manually.
+
     """
-    def __init__(self, mds, fs=None, plugins=None, filters=None):
+    def __init__(self, mds, fs=None, plugins=None, filters=None,
+                 auto_register=True):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
@@ -1296,15 +1303,21 @@ class Broker(BrokerES):
                                      [EventSourceShim(mds, fs)],
                                      {'': fs})
         self.filters = filters
+        if auto_register:
+            register_builtin_handlers(self.reg)
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, auto_register=True):
         """
         Create a new Broker instance using a dictionary of configuration.
 
         Parameters
         ----------
         config : dict
+        auto_register : boolean, optional
+            By default, automatically register built-in asset handlers (classes
+            that handle I/O for externally stored data). Set this to ``False``
+            to do all registration manually.
 
         Returns
         -------
@@ -1337,10 +1350,10 @@ class Broker(BrokerES):
         """
         mds = load_component(config['metadatastore'])
         assets = load_component(config['assets'])
-        return cls(mds, assets)
+        return cls(mds, assets, auto_register=auto_register)
 
     @classmethod
-    def named(cls, name):
+    def named(cls, name, auto_register=True):
         """
         Create a new Broker instance using a configuration file with this name.
 
@@ -1356,12 +1369,17 @@ class Broker(BrokerES):
         Parameters
         ----------
         name : string
+        auto_register : boolean, optional
+            By default, automatically register built-in asset handlers (classes
+            that handle I/O for externally stored data). Set this to ``False``
+            to do all registration manually.
 
         Returns
         -------
         db : Broker
         """
-        return cls.from_config(lookup_config(name))
+        db = cls.from_config(lookup_config(name), auto_register=auto_register)
+        return db
 
 
 def _sanitize(doc):
