@@ -524,13 +524,14 @@ def test_handler_options(db, RE):
     h = db[rs_uid]
 
     # Get unfilled event.
-    ev, ev2 = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
     assert ev['data']['image'] == datum_id
     assert not ev['filled']['image']
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        ev, ev2 = db.get_events(h, fields=['image'], fill=True)
+        ev, ev2 = db.get_events(h, stream_name='injected',
+                                fields=['image'], fill=True)
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
@@ -553,7 +554,9 @@ def test_handler_options(db, RE):
             return 'dummy'
 
     # Use a one-off handler registry.
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
+    ev, ev2 = db.get_events(h,
+                            stream_name='injected', fields=['image'],
+                            fill=True,
                             handler_registry={'foo': ImageHandler})
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
@@ -561,12 +564,14 @@ def test_handler_options(db, RE):
     # Statefully register the handler.
     db.fs.register_handler('foo', ImageHandler)
 
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True)
+    ev, ev2 = db.get_events(h,
+                            stream_name='injected', fields=['image'],
+                            fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 
-    ev, ev2 = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
     assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
