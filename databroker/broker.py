@@ -440,7 +440,12 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        self.filters.append(dict(**kwargs))
+        d = dict(**kwargs)
+        for val in self.filters:
+            for k,v in val.items():
+                if k in d.keys():
+                    raise ValueError('Filter key already exists.')
+        self.filters.append(d)
 
     def clear_filters(self, **kwargs):
         """
