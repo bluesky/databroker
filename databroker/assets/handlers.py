@@ -118,8 +118,9 @@ class HDF5DatasetSliceHandler(HandlerBase):
         if not self._dataset:
             _dataset = self._file[self._key]
             logger.debug("Dataset shape = {}".format(_dataset.shape))
-            chunks = (1, _dataset.shape[-2], _dataset.shape[-1])
-            self._dataset = da.from_array(_dataset, chunks=chunks)
+            logger.debug("Dataset chunks = {}".format(_dataset.chunks))
+            self._dataset = da.from_array(_dataset,
+                                          chunks=_dataset.chunks)
 
         if point_number not in self._data_objects:
             start = point_number * self._fpp
