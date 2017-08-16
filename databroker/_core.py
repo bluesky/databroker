@@ -2029,7 +2029,7 @@ class Broker(BrokerES):
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
         if filters is None:
-            filters = []
+            filters = {}
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
