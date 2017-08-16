@@ -21,6 +21,10 @@ import tempfile
 import copy
 from .eventsource import EventSourceShim, check_fields_exist
 from .headersource import HeaderSourceShim, safe_get_stop
+import humanize
+import jinja2
+import time
+
 from .utils import ALL, normalize_human_friendly_time
 
 
@@ -93,6 +97,12 @@ class Header(object):
             d['stop'] = db.prepare_hook('stop', run_stop or {})
         h = cls(db, **d)
         return h
+
+    def _repr_html_(self):
+        env = jinja2.Environment()
+        env.filters['human_time'] = _pretty_print_time
+        template = env.from_string(_HTML_TEMPLATE)
+        return template.render(document=self)
 
     ### dict-like methods ###
 
@@ -2149,3 +2159,42 @@ def _sanitize(doc):
     d = dict(doc)
     d.pop('_name', None)
     return d
+
+# fill in the placeholder we left in the previous docstring
+_normalize_human_friendly_time.__doc__ = (
+    _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
+)
+
+
+_HTML_TEMPLATE = """
+<table>
+{% for key, value in document | dictsort recursive %}
+  <tr>
+    <th> {{ key }} </th>
+    <td>
+      {% if value.items %}
+        <table>
+          {{ loop(value | dictsort) }}
+        </table>
+      {% elif value is iterable and value is not string %}
+        {{ value }}
+      {% else %}
+        {% if key == 'time' %}
+          {{ value | human_time }}
+        {% else %}
+          {{ value }}
+        {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+</table>
+"""
+
+
+def _pretty_print_time(timestamp):
+    # timestamp needs to be a float or fromtimestamp() will barf
+    timestamp = float(timestamp)
+    dt = datetime.fromtimestamp(timestamp).isoformat()
+    ago = humanize.naturaltime(time.time() - timestamp)
+    return '{ago} ({date})'.format(ago=ago, date=dt)
