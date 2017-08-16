@@ -2178,9 +2178,10 @@ _HTML_TEMPLATE = """
         </table>
       {% elif value is iterable and value is not string %}
         <table>
-          {% for stuff in value %}
+          {% for stuff in value recursive %}
             {% if stuff.items %}
-              <tr><td>{{ stuff }}</td></tr>
+              <p>dict</p>
+              <tr><td><table>{{ loop(stuff | dictsort) }}</table></td></tr>
             {% else %}
               <tr><td>{{ stuff }}</td></tr>
             {% endif %}
