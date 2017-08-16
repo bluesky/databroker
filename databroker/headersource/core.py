@@ -6,8 +6,8 @@ import six
 import warnings
 import logging
 import numpy as np
-from ..core import format_time as _format_time
-from ..utils import apply_to_dict_recursively, sanitize_np
+from ..utils import (apply_to_dict_recursively, sanitize_np,
+                     format_time as _format_time)
 
 logger = logging.getLogger(__name__)
 

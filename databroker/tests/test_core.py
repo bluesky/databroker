@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import copy
 
-from databroker.core import Header
+from databroker import Header
 
 
 def test_header_dict_conformance(db):

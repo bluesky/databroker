@@ -6,7 +6,7 @@ import datetime
 
 import pytz
 import pytest
-from databroker.core import _normalize_human_friendly_time
+from databroker._core import normalize_human_friendly_time
 
 
 # ### Test metadatastore time formatting ######################################
@@ -77,12 +77,12 @@ def _make_time_params():
 
 
 @_make_time_params()
-def test_normalize_human_friendly_time(val, should_succeed, etype):
+def testnormalize_human_friendly_time(val, should_succeed, etype):
     if isinstance(val, tuple):
         (val, check_output) = val
 
     if should_succeed:
-        output = _normalize_human_friendly_time(val, 'US/Eastern')
+        output = normalize_human_friendly_time(val, 'US/Eastern')
         assert(isinstance(output, float))
         try:
             assert output == check_output
@@ -90,4 +90,4 @@ def test_normalize_human_friendly_time(val, should_succeed, etype):
             pass
     else:
         with pytest.raises(etype):
-            _normalize_human_friendly_time(val, 'US/Eastern')
+            normalize_human_friendly_time(val, 'US/Eastern')

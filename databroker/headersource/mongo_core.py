@@ -11,7 +11,7 @@ import pymongo
 
 import numpy as np
 
-from ..core import format_time as _format_time
+from ..utils import format_time as _format_time
 from .core import (doc_or_uid_to_uid,   # noqa
                    NoRunStart, NoRunStop, NoEventDescriptors,
                    _cache_run_start, _cache_run_stop, _cache_descriptor,

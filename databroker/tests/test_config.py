@@ -1,5 +1,5 @@
 from databroker import lookup_config, Broker, temp_config
-from databroker.broker import load_component
+from databroker._core import load_component
 
 import databroker.databroker
 from databroker.utils import ensure_path_exists

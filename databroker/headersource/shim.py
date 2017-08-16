@@ -2,7 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six  # noqa
 import logging
-from ..core import format_time as _format_time
+from ..utils import format_time as _format_time
 
 logger = logging.getLogger(__name__)
 

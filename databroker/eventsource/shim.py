@@ -6,7 +6,7 @@ import pandas as pd
 import logging
 import boltons.cacheutils
 import re
-from ..core import ALL
+from ..utils import ALL
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge

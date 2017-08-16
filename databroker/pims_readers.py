@@ -3,7 +3,7 @@
 # warning is in databroker.core.)
 
 from .databroker import DataBroker
-from .core import Images as _Images
+from ._core import Images as _Images
 
 
 def get_images(headers, name, handler_registry=None,
