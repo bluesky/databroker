@@ -1086,17 +1086,33 @@ class BrokerES(object):
         """
         Add query to the list of 'filter' queries.
 
-        Filter queries are combined with every given query using '$and',
-        acting as a filter to restrict the results.
+        Any query passed to ``db.add_filter()`` is stashed and "AND-ed" with
+        all future queries.
 
         ``db.add_filter(**kwargs)`` is just a convenient way to spell
         ``db.filters.append(dict(**kwargs))``.
 
         Examples
         --------
-        Filter all searches to restrict runs to a specific 'user'.
+        Filter all searches to restrict results to a specific user after a
+        March 2017.
 
         >>> db.add_filter(user='Dan')
+        >>> db.add_filter(start_time='2017-3')
+
+        The following query is equivalent to
+        ``db(user='Dan', plan_name='scan')``.
+
+        >>> db(plan_name='scan')
+
+        Review current filters.
+
+        >>> db.filters
+        [{'user': 'Dan'}, {'start_time': '2017-3'}]
+
+        Clear filters.
+
+        >>> db.clear_filters()
 
         See Also
         --------
@@ -1184,7 +1200,18 @@ class BrokerES(object):
 
         Examples
         --------
+        Define an alias that searches for headers with purpose='calibration'.
+
         >>> db.alias('cal', purpose='calibration')
+
+        Use it.
+
+        >>> headers = db.cal  # -> db(purpose='calibration')
+
+        Review defined aliases.
+
+        >>> db.aliases
+        {'cal': {'purpose': 'calibration'}}
         """
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
@@ -1204,11 +1231,26 @@ class BrokerES(object):
 
         Examples
         --------
-        Get headers from the last 24 hours.
+        Define an alias to get headers from the last 24 hours.
+
         >>> import time
         >>> db.dynamic_alias('today',
-                             lambda: {'start_time':
-                                      start_time=time.time()- 24*60*60})
+        ...                  lambda: {'start_time':
+        ...                           start_time=time.time()- 24*60*60})
+
+        Use it.
+
+        >>> headers = db.today
+
+        Define an alias to get headers with the 'user' field in metadata
+        matches the current logged-in user.
+
+        >>> import getpass
+        >>> db.dynamic_alias('mine', lambda: {'user': getpass.getuser()})
+
+        Use it
+
+        >>> headers = db.mine
         """
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
@@ -1276,6 +1318,23 @@ class BrokerES(object):
 
         Note that partial words are not matched, but partial phrases are. For
         example, 'good' will match to 'good sample' but 'goo' will not.
+
+        Richer logic that simple 'key=value' searches are supported by the
+        Mongo query syntax.
+
+        Match all headers that include metadata for the key 'sample',
+        regardless of what its value is.
+
+        >>> db(sample={'$exists': True})
+
+        Match all headers where the value of 'plan_name' is NOT
+        'relative_scan'.
+
+        >>> db(plan_name={'$ne': 'relative_scan'})
+
+        Read the
+        `MongoDB query documentation <http://docs.mongodb.org/manual/tutorial/query-documents/>`_
+        for more.
         """
         data_key = kwargs.pop('data_key', None)
 

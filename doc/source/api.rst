@@ -31,6 +31,8 @@ configuration or by providing the name of a configuration file on disk.
    Broker.from_config
    Broker.named
 
+Click the links the table above for details and examples.
+
 Searching
 =========
 
@@ -40,6 +42,10 @@ Searching
 
    Broker.__call__
    Broker.__getitem__
+
+For some :class:`Broker` instance named ``db``, ``db()`` invokes
+:meth:`Broker.__call__` and ``db[]`` invokes :meth:`Broker.__getitem__`.
+Again, click the links the table above for details and examples.
 
 Loading Data
 ============
@@ -78,7 +84,8 @@ do:
    Broker.get_images
    Broker.restream
    Broker.process
-   Broker.fill_event
+   Broker.fill_events
+   Broker.fill_table
 
 Saving Data
 ===========
@@ -102,7 +109,8 @@ Configuring Filters and Aliases
    Broker.dynamic_alias
 
 This current list of filters and aliases is accessible via the attributes
-:class:`Broker.filters` and :class:`Broker.aliases` respectively.
+:class:`Broker.filters` and :class:`Broker.aliases` respectively. Again, click
+the links in the table for examples.
 
 Export Data to Another Broker
 =============================
@@ -120,8 +128,6 @@ Export Data to Another Broker
 
 Advanced: Controlling the Return Type
 =====================================
-
-.. currentmodule:: databroker.broker
 
 The attribute :class:`Broker.prepare_hook` is a function with the signature
 ``f(name, doc)`` that is applied to every document on its way out.
@@ -147,8 +153,6 @@ plain dictionaries for simplicity and improved performance.
     wrap_in_deprecated_doct
     wrap_in_doct
 
-.. currentmodule:: databroker
-
 .. _header_api:
 
 The Header object
@@ -169,6 +173,16 @@ attributes corresponding to the underlying documents:
 * :class:`Header.start`
 * :class:`Header.stop`
 * :class:`Header.descriptors`
+
+Measurements are organized into "streams" of asynchronously collected data. The
+names of all the streams are listed in the attribute
+:attr:`Header.stream_names`.
+
+.. note::
+
+    It helps to understand how data and metadata are organized in our document
+    model. This is covered well in `this section of the bluesky documentation
+    <https://nsls-ii.github.io/bluesky/documents.html>`_.
 
 The information in these documents is a lot to navigate. Convenience methods
 make it easier to extract some key information:

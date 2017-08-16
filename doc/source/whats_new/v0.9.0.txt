@@ -137,6 +137,9 @@ future release, so the warnings should be heeded during this cycle if possible.
 * The method :meth:`Header.stream` has been renamed :meth:`Header.documents`.
   The old name issues a warning in this release; it will be removed in a future
   one.
+* The modules ``databroker.broker`` and ``databroker.core`` have been combined,
+  and all public members are importable from just ``databroker``. The old
+  modules will be maintains as shims to avoid breaking user code.
 
 Internal API Changes
 ++++++++++++++++++++
