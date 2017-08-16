@@ -1119,13 +1119,11 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        self.filters.append(dict(**kwargs))
         for k,v in kwargs.items():
              if k in self.filters:
-                 raise ValueError('Filter name of {} already exists.\n \n
-                                  Please remove the existing filter first. \n
-                                  For example, if you want to remove filter name of start_time, just type \n
-                                  del db.filters["start_time"] '.format(k))
+                 raise ValueError("Filter name of {} already exists."
+                                  "\n Please remove the existing filter first by typing: "
+                                  "\n del db.filters['{}'] ".format(k, k))
              else:
                  self.filters[k] = v
 
