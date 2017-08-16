@@ -10,8 +10,8 @@ import time as ttime
 import uuid
 from datetime import datetime, date, timedelta
 import itertools
-from databroker.broker import (wrap_in_doct, wrap_in_deprecated_doct,
-                               DeprecatedDoct, Broker, temp_config)
+from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
+                        DeprecatedDoct, Broker, temp_config)
 import doct
 import copy
 

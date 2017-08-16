@@ -8,8 +8,8 @@ import ujson
 
 import tzlocal
 
-from databroker import Broker
-from databroker.broker import HeaderSourceShim, BrokerES
+from databroker import Broker, BrokerES
+from databroker.headersource import  HeaderSourceShim
 from databroker.eventsource import EventSourceShim
 from subprocess import Popen
 
