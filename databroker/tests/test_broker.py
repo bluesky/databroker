@@ -387,8 +387,6 @@ def test_filters(db_empty, RE):
         db.add_filter(start_time='2017')
     with pytest.raises(ValueError):
         db.add_filter(start_time='2016', stop_time='2017')
-    assert len(db.filters) == 1
-
 
 @py3
 @pytest.mark.parametrize(
