@@ -2177,7 +2177,15 @@ _HTML_TEMPLATE = """
           {{ loop(value | dictsort) }}
         </table>
       {% elif value is iterable and value is not string %}
-        {{ value }}
+        <table>
+          {% for stuff in value %}
+            {% if stuff.items %}
+              <tr><td>{{ stuff }}</td></tr>
+            {% else %}
+              <tr><td>{{ stuff }}</td></tr>
+            {% endif %}
+          {% endfor %}
+        </table>
       {% else %}
         {% if key == 'time' %}
           {{ value | human_time }}
