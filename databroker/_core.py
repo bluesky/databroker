@@ -1021,7 +1021,7 @@ class BrokerES(object):
         self.assets = assets
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
-        self.filters = []
+        self.filters = {}
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
         self.registry_for_insert = self.event_sources[0]
@@ -1108,7 +1108,7 @@ class BrokerES(object):
         Review current filters.
 
         >>> db.filters
-        [{'user': 'Dan'}, {'start_time': '2017-3'}]
+        {{'user': 'Dan'}, {'start_time': '2017-3'}}
 
         Clear filters.
 
@@ -1120,6 +1120,15 @@ class BrokerES(object):
 
         """
         self.filters.append(dict(**kwargs))
+        for k,v in kwargs.items():
+             if k in self.filters:
+                 raise ValueError('Filter name of {} already exists.\n \n
+                                  Please remove the existing filter first. \n
+                                  For example, if you want to remove filter name of start_time, just type \n
+                                  del db.filters["start_time"] '.format(k))
+             else:
+                 self.filters[k] = v
+
 
     def clear_filters(self, **kwargs):
         """

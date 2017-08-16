@@ -366,13 +366,13 @@ def test_filters(db_empty, RE):
 
     assert len(list(db())) == 3
     db.add_filter(user='Dan')
-    assert len(list(db.filters)) == 1
+    assert len(db.filters) == 1
     assert len(list(db())) == 1
     header, = db()
     assert header['start']['uid'] == dan_uid
 
     db.clear_filters()
-    assert len(list(db.filters)) == 0
+    assert len(db.filters) == 0
 
     assert len(list(db(purpose='calibration'))) == 2
     db.add_filter(user='Ken')
@@ -380,6 +380,14 @@ def test_filters(db_empty, RE):
     header, = db(purpose='calibration')
 
     assert header['start']['uid'] == ken_calib_uid
+
+    db.clear_filters()
+    db.add_filter(start_time='2017')
+    with pytest.raises(ValueError):
+        db.add_filter(start_time='2017')
+    with pytest.raises(ValueError):
+        db.add_filter(start_time='2016', stop_time='2017')
+    assert len(db.filters) == 1
 
 
 @py3
