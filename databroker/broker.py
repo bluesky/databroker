@@ -361,7 +361,7 @@ class BrokerES(object):
         self.event_sources = event_sources
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
-        self.filters = []
+        self.filters = {}
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
         self.prepare_hook = wrap_in_deprecated_doct
@@ -433,12 +433,14 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        d = dict(**kwargs)
-        for val in self.filters:
-            for k,v in val.items():
-                if k in d.keys():
-                    raise ValueError('Filter key already exists.')
-        self.filters.append(d)
+        for k,v in kwargs.items():
+            if k in self.filters:
+                raise ValueError('Filter name of {} already exists.\n \n
+                                 Please remove the existing filter first. \n
+                                 For example, if you want to remove filter name of start_time, just type \n
+                                 del db.filters["start_time"] '.format(k))
+            else:
+                self.filters[k] = v
 
     def clear_filters(self, **kwargs):
         """
