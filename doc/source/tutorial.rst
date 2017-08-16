@@ -96,8 +96,8 @@ Load Data Lazily (Good for Image Data)
 ======================================
 
 The :class:`Header.table` method is just one way to load the data. Another is
-`Header.data`, which loads data for one specific field (i.e., one column of the
-table) in a "lazy", streaming fashion.
+:class:`Header.data`, which loads data for one specific field (i.e., one column
+of the table) in a "lazy", streaming fashion.
 
 .. ipython:: python
 
