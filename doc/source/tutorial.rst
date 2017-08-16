@@ -75,6 +75,22 @@ data, the most convenient method is:
 This object is DataFrame, a spreadsheet-like object provided by the library
 `pandas <https://pandas.pydata.org/pandas-docs/stable/>`_.
 
+.. note::
+
+    For Python novies we point out that ``header`` above is an arbitrary
+    variable name. It could have been:
+
+    .. code-block:: python
+
+        h = db[-1]
+        h.table()
+
+    or even in one line:
+
+    .. code-block:: python
+
+        db[-1].table()
+
 Do Analysis or Export
 =====================
 
