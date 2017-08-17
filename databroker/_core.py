@@ -565,8 +565,8 @@ class Images(FramesSequence):
                                stream_name=stream_name,
                                fields=[name], fill=False)
 
-        self._datum_ids = [event.data[name] for event in events
-                           if name in event.data]
+        self._datum_ids = [event['data'][name] for event in events
+                           if name in event['data']]
         self._len = len(self._datum_ids)
         first_uid = self._datum_ids[0]
         if handler_override is None:
@@ -1607,7 +1607,7 @@ class BrokerES(object):
 
                 # get the first descriptor for this event stream
                 desc = next((d for d in h.descriptors
-                             if d.name == stream_name),
+                             if d['name'] == stream_name),
                             None)
                 if desc is None:
                     continue
