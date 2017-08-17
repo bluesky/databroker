@@ -1108,7 +1108,7 @@ class BrokerES(object):
         Review current filters.
 
         >>> db.filters
-        {{'user': 'Dan'}, {'start_time': '2017-3'}}
+        {'user': 'Dan', 'start_time': '2017-3'}
 
         Clear filters.
 
