@@ -849,7 +849,7 @@ class Results(object):
 _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
 _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
                           'etc', 'databroker')
-_system_etc = os.path.join('etc', 'databroker')
+_system_etc = os.path.join('/', 'etc', 'databroker')
 CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 
