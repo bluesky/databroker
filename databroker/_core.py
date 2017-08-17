@@ -565,8 +565,8 @@ class Images(FramesSequence):
                                stream_name=stream_name,
                                fields=[name], fill=False)
 
-        self._datum_ids = [event.data[name] for event in events
-                           if name in event.data]
+        self._datum_ids = [event['data'][name] for event in events
+                           if name in event['data']]
         self._len = len(self._datum_ids)
         first_uid = self._datum_ids[0]
         if handler_override is None:
@@ -849,7 +849,7 @@ class Results(object):
 _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
 _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
                           'etc', 'databroker')
-_system_etc = os.path.join('etc', 'databroker')
+_system_etc = os.path.join('/', 'etc', 'databroker')
 CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 
@@ -1607,7 +1607,7 @@ class BrokerES(object):
 
                 # get the first descriptor for this event stream
                 desc = next((d for d in h.descriptors
-                             if d.name == stream_name),
+                             if d['name'] == stream_name),
                             None)
                 if desc is None:
                     continue
@@ -1813,10 +1813,6 @@ class BrokerES(object):
             for descriptor in header['descriptors']:
                 db.mds.insert_descriptor(**_sanitize(descriptor))
                 for event in events:
-                    event = event.to_name_dict_pair()[1]
-                    # 'filled' is obtained from the descriptor, not stored
-                    # in each event.
-                    event.pop('filled', None)
                     db.mds.insert_event(**_sanitize(event))
             db.mds.insert_run_stop(**_sanitize(header['stop']))
             # insert assets
