@@ -3,13 +3,11 @@ import shutil
 import tempfile
 import uuid
 import time
-import requests.exceptions
-import ujson
 
 import tzlocal
 
 from databroker import Broker, BrokerES
-from databroker.headersource import  HeaderSourceShim
+from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
 from subprocess import Popen
 
@@ -138,7 +136,10 @@ def build_client_backend_broker(request):
     from ..headersource.client import MDS
     from ..assets.utils import create_test_database
     from ..assets.mongo import Registry
+    import requests.exceptions
     from random import randint
+    import ujson
+
     port = randint(9000, 60000)
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),
