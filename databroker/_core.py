@@ -864,12 +864,33 @@ def list_configs():
     Returns
     -------
     names : list
+
+    See Also
+    --------
+    :func:`describe_configs`
     """
     names = []
     for path in CONFIG_SEARCH_PATH:
         files = glob.glob(os.path.join(path, '*.yml'))
         names.extend([os.path.basename(f)[:-4] for f in files])
     return sorted(names)
+
+
+def describe_configs():
+    """
+    Get the names and descriptions of available configuration files.
+
+    Returns
+    -------
+    configs : dict
+        map names to descriptions (if available)
+
+    See Also
+    --------
+    :func:`list_configs`
+    """
+    return {name: lookup_config(name).get('description')
+            for name in list_configs()}
 
 
 def lookup_config(name):
@@ -937,6 +958,7 @@ def temp_config():
     """
     tempdir = tempfile.mkdtemp()
     config = {
+        'description': 'temporary',
         'metadatastore': {
             'module': 'databroker.headersource.sqlite',
             'class': 'MDS',
@@ -2058,6 +2080,7 @@ class Broker(BrokerES):
         configuration documentation for more.)
 
         >>> config = {
+        ...     'description': 'lightweight personal database',
         ...     'metadatastore': {
         ...         'module': 'databroker.headersource.sqlite',
         ...         'class': 'MDS',

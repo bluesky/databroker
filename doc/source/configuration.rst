@@ -29,6 +29,7 @@ This can be used immediately with no extra setup or installation.
 
 .. code-block:: yaml
 
+    description: 'lightweight personal database'
     metadatastore:
         module: 'databroker.headersource.sqlite'
         class: 'MDS'
@@ -46,6 +47,7 @@ This requires more work to set up.
 
 .. code-block:: yaml
 
+    description: 'heavyweight shared database'
     metadatastore:
         module: 'databroker.headersource.mongo'
         class: 'MDS'
