@@ -1813,10 +1813,6 @@ class BrokerES(object):
             for descriptor in header['descriptors']:
                 db.mds.insert_descriptor(**_sanitize(descriptor))
                 for event in events:
-                    event = event.to_name_dict_pair()[1]
-                    # 'filled' is obtained from the descriptor, not stored
-                    # in each event.
-                    event.pop('filled', None)
                     db.mds.insert_event(**_sanitize(event))
             db.mds.insert_run_stop(**_sanitize(header['stop']))
             # insert assets
