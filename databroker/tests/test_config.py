@@ -1,6 +1,5 @@
 from databroker import (lookup_config, Broker, temp_config, list_configs,
                         describe_configs)
-from databroker._core import load_component
 
 import databroker.databroker
 from databroker.utils import ensure_path_exists
@@ -41,16 +40,6 @@ EXAMPLE = {
             'database': 'assets_database_placeholder'}
     }
 }
-
-
-def test_load_component():
-    for name, config in EXAMPLE.items():
-        if name == 'description':
-            continue
-        component = load_component(config)
-        assert component.config == config['config']
-        assert component.__class__.__name__ == config['class']
-        assert component.__module__  == config['module']
 
 
 def test_from_config():
