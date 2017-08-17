@@ -1,5 +1,5 @@
-from databroker import lookup_config, Broker, temp_config
-from databroker._core import load_component
+from databroker import (lookup_config, Broker, temp_config, list_configs,
+                        describe_configs)
 
 import databroker.databroker
 from databroker.utils import ensure_path_exists
@@ -21,6 +21,7 @@ if sys.version_info >= (3, 0):
 py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
 
 EXAMPLE = {
+    'description': 'DESCRIPTION_PLACEHOLDER',
     'metadatastore': {
         'module': 'databroker.headersource.mongo',
         'class': 'MDS',
@@ -41,14 +42,6 @@ EXAMPLE = {
 }
 
 
-def test_load_component():
-    for config in EXAMPLE.values():
-        component = load_component(config)
-        assert component.config == config['config']
-        assert component.__class__.__name__ == config['class']
-        assert component.__module__  == config['module']
-
-
 def test_from_config():
     Broker.from_config(EXAMPLE)
 
@@ -62,6 +55,9 @@ def test_lookup_config():
         yaml.dump(EXAMPLE, f)
     actual = lookup_config(name) 
     broker = Broker.named(name)  # smoke test
+    assert name in list_configs()
+    assert name in describe_configs()
+    assert describe_configs()[name] == 'DESCRIPTION_PLACEHOLDER'
     os.remove(path)
     assert actual == EXAMPLE
 

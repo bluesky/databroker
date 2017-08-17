@@ -864,12 +864,33 @@ def list_configs():
     Returns
     -------
     names : list
+
+    See Also
+    --------
+    :func:`describe_configs`
     """
     names = []
     for path in CONFIG_SEARCH_PATH:
         files = glob.glob(os.path.join(path, '*.yml'))
         names.extend([os.path.basename(f)[:-4] for f in files])
     return sorted(names)
+
+
+def describe_configs():
+    """
+    Get the names and descriptions of available configuration files.
+
+    Returns
+    -------
+    configs : dict
+        map names to descriptions (if available)
+
+    See Also
+    --------
+    :func:`list_configs`
+    """
+    return {name: lookup_config(name).get('description')
+            for name in list_configs()}
 
 
 def lookup_config(name):
@@ -908,13 +929,14 @@ def lookup_config(name):
                                 "".format(name, '\n'.join(tried)))
 
 
-def load_component(config):
+def load_cls(config):
+    # This is for loading a class from a configuration dict that provides
+    # a module name and class name.
     modname = config['module']
     clsname = config['class']
-    config = config['config']
     mod = import_module(modname)
     cls = getattr(mod, clsname)
-    return cls(config)
+    return cls
 
 
 def temp_config():
@@ -937,6 +959,7 @@ def temp_config():
     """
     tempdir = tempfile.mkdtemp()
     config = {
+        'description': 'temporary',
         'metadatastore': {
             'module': 'databroker.headersource.sqlite',
             'class': 'MDS',
@@ -2058,6 +2081,7 @@ class Broker(BrokerES):
         configuration documentation for more.)
 
         >>> config = {
+        ...     'description': 'lightweight personal database',
         ...     'metadatastore': {
         ...         'module': 'databroker.headersource.sqlite',
         ...         'class': 'MDS',
@@ -2076,9 +2100,19 @@ class Broker(BrokerES):
 
         >>> Broker.from_config(config)
         """
-        mds = load_component(config['metadatastore'])
-        assets = load_component(config['assets'])
-        return cls(mds, assets, auto_register=auto_register)
+        # Import component classes.
+        mds_cls = load_cls(config['metadatastore'])
+        assets_cls = load_cls(config['assets'])
+        # Instantiate component classes.
+        mds = mds_cls(config['metadatastore']['config'])
+        assets = assets_cls(config['assets']['config'])
+        # Instantiate Broker.
+        db = cls(mds, assets, auto_register=auto_register)
+        # Register handlers included in the config, if any.
+        for spec, handler in config.get('handlers', {}).items():
+            cls = load_cls(handler)
+            db.assets.reg.register_handler(spec, cls)
+        return db
 
     @classmethod
     def named(cls, name, auto_register=True):
