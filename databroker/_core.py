@@ -1090,7 +1090,7 @@ class BrokerES(object):
         all future queries.
 
         ``db.add_filter(**kwargs)`` is just a convenient way to spell
-        ``db.filters.append(dict(**kwargs))``.
+        ``db.filters.update(**kwargs)``.
 
         Examples
         --------
