@@ -4,15 +4,6 @@ from . import core
 import numpy as np
 
 
-def sanitize_np(val):
-    "Convert any numpy objects into built-in Python types."
-    if isinstance(val, (np.generic, np.ndarray)):
-        if np.isscalar(val):
-            return val.item()
-        return val.tolist()
-    return val
-
-
 class MDSROTemplate(object):
     _API_MAP = {1: core}
 
@@ -485,7 +476,7 @@ class MDSTemplate(MDSROTemplate):
                                            **kwargs)
 
     def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
-                     validate=False):
+                     validate=False, filled=None):
         """Create an event in metadatastore database backend
 
         .. warning
@@ -511,23 +502,24 @@ class MDSTemplate(MDSROTemplate):
             same keys as `data` above
         uid : str
             Globally unique id string provided to metadatastore
+        validate : boolean
+            Check that data and timestamps have the same keys.
+        filled : dict or None
+            Dictionary of `False` or datum_ids. Keys are a subset of the keys
+            in `data` and `timestamps` above.
         """
-        for k, v in data.items():
-            data[k] = sanitize_np(v)
-
+        if filled is None:
+            filled = {}
         return self._api.insert_event(self._event_col,
                                       descriptor=descriptor,
                                       time=time, seq_num=seq_num,
                                       data=data,
                                       timestamps=timestamps,
                                       uid=uid,
+                                      filled=filled,
                                       validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
-        for e in events:
-            for k, v in e['data'].items():
-                e['data'][k] = sanitize_np(v)
-
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,

@@ -3,15 +3,12 @@ import shutil
 import tempfile
 import uuid
 import time
-import requests.exceptions
-import ujson
 
 import tzlocal
 
-from databroker import Broker
-from databroker.broker import HeaderSourceShim, BrokerES
+from databroker import Broker, BrokerES
+from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-import time as ttime
 from subprocess import Popen
 
 
@@ -44,7 +41,8 @@ def build_sqlite_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return BrokerES(HeaderSourceShim(mds),
-                    EventSourceShim(mds, fs))
+                    [EventSourceShim(mds, fs)],
+                    {'': fs})
 
 
 def build_hdf5_backed_broker(request):
@@ -75,7 +73,8 @@ def build_hdf5_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return BrokerES(HeaderSourceShim(mds),
-                    EventSourceShim(mds, fs))
+                    [EventSourceShim(mds, fs)],
+                    {'': fs})
 
 
 def build_pymongo_backed_broker(request):
@@ -137,7 +136,10 @@ def build_client_backend_broker(request):
     from ..headersource.client import MDS
     from ..assets.utils import create_test_database
     from ..assets.mongo import Registry
+    import requests.exceptions
     from random import randint
+    import ujson
+
     port = randint(9000, 60000)
     testing_config = dict(mongohost='localhost', mongoport=27017,
                           database='mds_test'+str(uuid.uuid4()),

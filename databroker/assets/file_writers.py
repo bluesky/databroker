@@ -72,7 +72,7 @@ class NpyWriter(HandlerBase):
         Returns
         -------
         uid : str
-            The uid used to register this data with filestore, can
+            The uid used to register this data with an asset registry, can
             be used to retrieve it
         """
         if not self._writable:

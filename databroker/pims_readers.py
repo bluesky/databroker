@@ -1,10 +1,16 @@
+# This module is deprecated and will be removed in a future release.
+# The function and class in it warn when used. (The code that produes the
+# warning is in databroker.core.)
+
 from .databroker import DataBroker
-from .core import Images as _Images
+from ._core import Images as _Images
 
 
 def get_images(headers, name, handler_registry=None,
                handler_override=None):
     """
+    This function is deprecated. Use Header.data instead.
+
     Load images from a detector for given Header(s).
 
     Parameters
@@ -34,6 +40,8 @@ def get_images(headers, name, handler_registry=None,
 
 def Images(headers, name, handler_registry=None, handler_override=None):
     """
+    This class is deprecated.
+
     Load images from a detector for given Header(s).
 
     Parameters

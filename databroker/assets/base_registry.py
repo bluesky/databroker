@@ -75,13 +75,13 @@ class BaseRegistryRO(object):
     KNOWN_SPEC = dict()
     for spec_name in ['AD_HDF5', 'AD_SPE']:
         tmp_dict = {}
-        base_name = 'assets/json/'
+        base_name = 'schemas/'
         resource_name = '{}{}_resource.json'.format(base_name, spec_name)
         datum_name = '{}{}_datum.json'.format(base_name, spec_name)
-        with open(resource_filename('databroker',
+        with open(resource_filename('databroker.assets',
                                     resource_name), 'r') as fin:
             tmp_dict['resource'] = json.load(fin)
-        with open(resource_filename('databroker',
+        with open(resource_filename('databroker.assets',
                                     datum_name), 'r') as fin:
             tmp_dict['datum'] = json.load(fin)
         KNOWN_SPEC[spec_name] = tmp_dict
@@ -332,7 +332,7 @@ class BaseRegistryRO(object):
         process running this method must have read/write access to both the
         source and destination file systems.
 
-        This method does *not* update the filestore dataregistry_template.
+        This method does *not* update the assets dataregistry_template.
 
         Internally the resource level directory information is stored
         as two parts: the root and the resource_path.  The 'root' is

@@ -10,8 +10,8 @@ import time as ttime
 import uuid
 from datetime import datetime, date, timedelta
 import itertools
-from databroker.broker import (wrap_in_doct, wrap_in_deprecated_doct,
-                               DeprecatedDoct)
+from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
+                        DeprecatedDoct, Broker, temp_config)
 import doct
 import copy
 
@@ -21,7 +21,7 @@ import numpy as np
 
 if sys.version_info >= (3, 0):
     from bluesky.examples import (det, det1, det2, Reader, ReaderWithRegistry,
-                                  ReaderWithFSHandler)
+                                  ReaderWithRegistryHandler)
     from bluesky.plans import (count, pchain, monitor_during_wrapper,
                                configure, trigger_and_read, run_decorator,
                                baseline_wrapper)
@@ -39,7 +39,7 @@ def test_empty_fixture(db):
 
 @py3
 def test_uid_roundtrip(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     assert h['start']['uid'] == uid
@@ -50,7 +50,7 @@ def test_no_descriptor_name(db, RE):
     def local_insert(name, doc):
         doc.pop('name', None)
         return db.insert(name, doc)
-    RE.subscribe('all', local_insert)
+    RE.subscribe(local_insert)
     uid, = RE(count([det]))
     h = db[uid]
     db.get_fields(h, name='primary')
@@ -61,7 +61,7 @@ def test_no_descriptor_name(db, RE):
 
 @py3
 def test_uid_list_multiple_headers(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uids = RE(pchain(count([det]), count([det])))
     headers = db[uids]
     assert uids == [h['start']['uid'] for h in headers]
@@ -69,7 +69,7 @@ def test_uid_list_multiple_headers(db, RE):
 
 @py3
 def test_no_descriptors(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([]))
     header = db[uid]
     assert [] == header.descriptors
@@ -77,22 +77,22 @@ def test_no_descriptors(db, RE):
 
 @py3
 def test_get_events(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     assert len(list(db.get_events(h))) == 1
-    assert len(list(h.stream())) == 1 + 3
+    assert len(list(h.documents())) == 1 + 3
 
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h))) == 7
-    assert len(list(h.stream())) == 7 + 3
+    assert len(list(h.documents())) == 7 + 3
 
 
 @py3
 def test_get_events_multiple_headers(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     headers = db[RE(pchain(count([det]), count([det])))]
     assert len(list(db.get_events(headers))) == 2
 
@@ -101,7 +101,7 @@ def test_get_events_multiple_headers(db, RE):
 def test_filtering_stream_name(db, RE):
 
     # one event stream
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det], num=7), bc=1)
     h = db[uid]
     assert len(list(h.descriptors)) == 1
@@ -111,9 +111,9 @@ def test_filtering_stream_name(db, RE):
     assert len(list(db.get_events(h, stream_name='primary',
                                   fields=['det']))) == 7
     assert len(db.get_table(h, stream_name='primary', fields=['det'])) == 7
-    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(list(h.documents(stream_name='primary'))) == 7 + 3
     assert len(h.table(stream_name='primary')) == 7
-    assert len(list(h.stream(stream_name='primary', fields=['det']))) == 7 + 3
+    assert len(list(h.documents(stream_name='primary', fields=['det']))) == 7 + 3
     assert len(h.table(stream_name='primary', fields=['det'])) == 7
     assert len(db.get_table(h, stream_name='primary',
                             fields=['det', 'bc'])) == 7
@@ -126,7 +126,7 @@ def test_filtering_stream_name(db, RE):
     assert len(list(h.descriptors)) == 2
     assert set(h.stream_names) == set(['primary', 'd_monitor'])
     assert len(list(db.get_events(h, stream_name='primary'))) == 7
-    assert len(list(h.stream(stream_name='primary'))) == 7 + 3
+    assert len(list(h.documents(stream_name='primary'))) == 7 + 3
 
     assert len(db.get_table(h, stream_name='primary')) == 7
 
@@ -137,20 +137,30 @@ def test_filtering_stream_name(db, RE):
     # TODO sort out why the monitor does not fire during the test
     # assert len(list(db.get_events(h))) == 8  # ALL streams by default
 
-    # assert len(list(h.stream())) == 8 + 3  # ALL streams by default
+    # assert len(list(h.documents())) == 8 + 3  # ALL streams by default
     # assert len(list(db.get_table(h, stream_name='d_monitor'))) == 1
     # assert len(list(h.table(stream_name='d_monitor'))) == 1
-    # assert len(list(h.stream(stream_name='d_monitor'))) == 1 + 3
+    # assert len(list(h.documents(stream_name='d_monitor'))) == 1 + 3
     # assert len(list(db.get_events(h, stream_name='d_monitor'))) == 1
 
 
 @py3
+def test_table_index_name(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    name = h.table().index.name
+    assert name == 'seq_num'
+
+
+@py3
 def test_get_events_filtering_field(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det], num=7))
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
-    assert len(list(h.stream(fields=['det']))) == 7 + 3
+    assert len(list(h.documents(fields=['det']))) == 7 + 3
 
     with pytest.raises(ValueError):
         list(db.get_events(h, fields=['not_a_field']))
@@ -163,17 +173,9 @@ def test_get_events_filtering_field(db, RE):
 
 
 @py3
-def test_deprecated_api(db, RE):
-    RE.subscribe('all', db.insert)
-    uid, = RE(count([det]))
-    h, = db.find_headers(uid=uid)
-    assert list(db.fetch_events(h))
-
-
-@py3
 def test_indexing(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uids = []
     for i in range(10):
         uids.extend(RE(count([det])))
@@ -197,7 +199,7 @@ def test_indexing(db_empty, RE):
 @py3
 def test_full_text_search(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     uid, = RE(count([det]), foo='some words')
     RE(count([det]))
@@ -218,7 +220,7 @@ def test_full_text_search(db_empty, RE):
 @py3
 def test_table_alignment(db, RE):
     # test time shift issue GH9
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     table = db.get_table(db[uid])
     assert table.notnull().all().all()
@@ -226,7 +228,7 @@ def test_table_alignment(db, RE):
 
 @py3
 def test_scan_id_lookup(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     RE.md.clear()
     uid1, = RE(count([det]), marked=True)  # scan_id=1
@@ -244,7 +246,7 @@ def test_scan_id_lookup(db, RE):
 
 @py3
 def test_partial_uid_lookup(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     # Create enough runs that there are two that begin with the same char.
     for _ in range(50):
@@ -259,7 +261,7 @@ def test_partial_uid_lookup(db, RE):
 @py3
 def test_find_by_float_time(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     before, = RE(count([det]))
     ttime.sleep(0.25)
@@ -278,7 +280,7 @@ def test_find_by_float_time(db_empty, RE):
 @py3
 def test_find_by_string_time(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     uid, = RE(count([det]))
     today = date.today()
@@ -295,7 +297,7 @@ def test_find_by_string_time(db_empty, RE):
 @py3
 def test_data_key(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     RE(count([det1]))
     RE(count([det1, det2]))
     result1 = list(db(data_key='det1'))
@@ -306,7 +308,7 @@ def test_data_key(db_empty, RE):
 
 @py3
 def test_search_for_smoke(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     for _ in range(5):
         RE(count([det]))
     # smoketest the search with a set
@@ -330,7 +332,7 @@ def test_search_for_smoke(db, RE):
 
 @py3
 def test_alias(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     uid, = RE(count([det]))
     RE(count([det]))
@@ -357,20 +359,20 @@ def test_alias(db, RE):
 @py3
 def test_filters(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     RE(count([det]), user='Ken')
     dan_uid, = RE(count([det]), user='Dan', purpose='calibration')
     ken_calib_uid, = RE(count([det]), user='Ken', purpose='calibration')
 
     assert len(list(db())) == 3
     db.add_filter(user='Dan')
-    assert len(list(db.filters)) == 1
+    assert len(db.filters) == 1
     assert len(list(db())) == 1
     header, = db()
     assert header['start']['uid'] == dan_uid
 
     db.clear_filters()
-    assert len(list(db.filters)) == 0
+    assert len(db.filters) == 0
 
     assert len(list(db(purpose='calibration'))) == 2
     db.add_filter(user='Ken')
@@ -379,6 +381,13 @@ def test_filters(db_empty, RE):
 
     assert header['start']['uid'] == ken_calib_uid
 
+    db.clear_filters()
+    db.add_filter(start_time='2017')
+    db.add_filter(start_time='2017')
+    assert len(db.filters) == 1
+    db.add_filter(start_time='2016', stop_time='2017')
+    assert len(db.filters) == 2
+    assert db.filters['start_time'] == '2016'
 
 @py3
 @pytest.mark.parametrize(
@@ -396,7 +405,7 @@ def test_filters(db_empty, RE):
          'no uuid']
     )
 def test_raise_conditions(key, db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     for _ in range(5):
         RE(count([det]))
 
@@ -411,7 +420,7 @@ def test_stream(db, RE):
 
 
 def _stream(method_name, db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid = RE(count([det]), owner='Dan')
     s = getattr(db, method_name)(db[uid])
     name, doc = next(s)
@@ -433,7 +442,7 @@ def _stream(method_name, db, RE):
 
 @py3
 def test_process(db, RE):
-    uid = RE.subscribe('all', db.insert)
+    uid = RE.subscribe(db.insert)
     uid = RE(count([det]))
     c = itertools.count()
     def f(name, doc):
@@ -445,7 +454,7 @@ def test_process(db, RE):
 
 @py3
 def test_get_fields(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det1, det2]))
     actual = db.get_fields(db[uid])
     expected = set(['det1', 'det2'])
@@ -459,13 +468,13 @@ def test_get_fields(db, RE):
 @py3
 def test_configuration(db, RE):
     det_with_conf = Reader('det_with_conf', {'a': lambda: 1, 'b': lambda: 2})
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det_with_conf]), c=3)
     h = db[uid]
 
     # check that config is not included by default
     ev = next(db.get_events(h))
-    assert set(ev['data'].keys()) == set(['a','b'])
+    assert set(ev['data'].keys()) == set(['a', 'b'])
 
     # find config in descriptor['configuration']
     ev = next(db.get_events(h, fields=['a', 'b']))
@@ -502,7 +511,7 @@ def test_handler_options(db, RE):
     db.fs.insert_datum(res2, datum_id2, {'y': 2})
 
     # Generate a normal run.
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     rs_uid, = RE(count([det]))
 
     # Side band an extra descriptor and event into this run.
@@ -522,17 +531,18 @@ def test_handler_options(db, RE):
     h = db[rs_uid]
 
     # Get unfilled event.
-    ev, ev2 = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
     assert ev['data']['image'] == datum_id
     assert not ev['filled']['image']
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        ev, ev2 = db.get_events(h, fields=['image'], fill=True)
+        ev, ev2 = db.get_events(h, stream_name='injected',
+                                fields=['image'], fill=True)
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        list(db.get_images(h, 'image'))
+        list(db.get_images(h, 'image', stream_name='injected'))
 
     class ImageHandler(object):
         RESULT = np.zeros((5, 5))
@@ -551,7 +561,9 @@ def test_handler_options(db, RE):
             return 'dummy'
 
     # Use a one-off handler registry.
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
+    ev, ev2 = db.get_events(h,
+                            stream_name='injected', fields=['image'],
+                            fill=True,
                             handler_registry={'foo': ImageHandler})
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
@@ -559,54 +571,58 @@ def test_handler_options(db, RE):
     # Statefully register the handler.
     db.fs.register_handler('foo', ImageHandler)
 
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True)
+    ev, ev2 = db.get_events(h,
+                            stream_name='injected', fields=['image'],
+                            fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
-    assert db.get_images(h, 'image')[0].shape == ImageHandler.RESULT.shape
+    ims = db.get_images(h, 'image', stream_name='injected')[0]
+    assert ims.shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 
-    ev, ev2 = db.get_events(h, fields=['image'])
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
     assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
-    db.fill_event(ev)  # , inplace=True)
-    assert ev['filled']['image']
+    datum = ev['data']['image']
+    ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
+    assert ev['filled']['image'] == datum
     assert not ev2['filled']['image']
-    ev2 = db.fill_event(ev2, inplace=False)
-    assert ev2['filled']['image']
+    ev2_filled = db.fill_event(ev2, inplace=False)
+    assert ev2_filled['filled']['image'] == ev2['data']['image']
 
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
-    ev, ev2 = db.get_events(h, fields=['image'], fill=True,
-                            handler_overrides={'image': DummyHandler})
-    assert ev['data']['image'] == 'dummy'
-    assert ev['filled']['image']
+    # ev, ev2 = db.get_events(h, fields=['image'], fill=True,
+    #                         handler_overrides={'image': DummyHandler})
+    # assert ev['data']['image'] == 'dummy'
+    # assert ev['filled']['image']
 
-    res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-                       handler_registry={'foo': DummyHandler})
-    assert res['image'].iloc[0] == 'dummy'
-    assert ev['filled']['image']
+    # res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
+    #                    handler_registry={'foo': DummyHandler})
+    # assert res['image'].iloc[0] == 'dummy'
+    # assert ev['filled']['image']
 
-    res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-                       handler_overrides={'image': DummyHandler})
-    assert res['image'].iloc[0] == 'dummy'
-    assert ev['filled']['image']
+    # res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
+    #                    handler_overrides={'image': DummyHandler})
+    # assert res['image'].iloc[0] == 'dummy'
+    # assert ev['filled']['image']
 
-    # Register the DummyHandler statefully so we can test overriding with
-    # ImageHandler for the get_images method below.
-    db.fs.register_handler('foo', DummyHandler, overwrite=True)
+    # # Register the DummyHandler statefully so we can test overriding with
+    # # ImageHandler for the get_images method below.
+    # db.fs.register_handler('foo', DummyHandler, overwrite=True)
 
-    res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
-    assert res[0].shape == ImageHandler.RESULT.shape
+    # res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
+    # assert res[0].shape == ImageHandler.RESULT.shape
 
-    res = db.get_images(h, 'image', handler_override=ImageHandler)
-    assert res[0].shape == ImageHandler.RESULT.shape
+    # res = db.get_images(h, 'image', handler_override=ImageHandler)
+    # assert res[0].shape == ImageHandler.RESULT.shape
 
 
 @py3
 def test_export(broker_factory, RE):
     db1 = broker_factory()
     db2 = broker_factory()
-    RE.subscribe('all', db1.mds.insert)
+    RE.subscribe(db1.mds.insert)
 
     # test mds only
     uid, = RE(count([det]))
@@ -616,16 +632,16 @@ def test_export(broker_factory, RE):
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+        raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
     detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                                fs=db1.fs, save_path=dir1)
+                                reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
-    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    db2.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
     assert os.path.dirname(from_path) == dir1
@@ -644,23 +660,23 @@ def test_export_noroot(broker_factory, RE):
         def stage(self):
             self._file_stem = short_uid()
             self._path_stem = os.path.join(self.save_path, self._file_stem)
-            self._resource_id = self.fs.insert_resource(
-                self.filestore_spec,
+            self._resource_id = self.reg.insert_resource(
+                self._spec,
                 os.path.join(self.save_path, self._file_stem),
                 {})
 
     dir1 = tempfile.mkdtemp()
     db1 = broker_factory()
-    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
 
     detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
-                        fs=db1.fs, save_path=dir1, save_ext='npy')
+                        reg=db1.fs, save_path=dir1, save_ext='npy')
 
-    RE.subscribe('all', db1.mds.insert)
+    RE.subscribe(db1.mds.insert)
     uid, = RE(count([detfs], num=3))
 
     db2 = broker_factory()
-    db2.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db2.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
 
     dir2 = tempfile.mkdtemp()
     file_pairs = db1.export(db1[uid], db2, new_root=dir2)
@@ -679,25 +695,25 @@ def test_export_noroot(broker_factory, RE):
 def test_export_size_smoke(broker_factory, RE):
 
     db1 = broker_factory()
-    RE.subscribe('all', db1.mds.insert)
+    RE.subscribe(db1.mds.insert)
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
-        raise pytest.skip("This filestore does not implement copy_files.")
+        raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                                fs=db1.fs, save_path=dir1)
+                               reg=db1.fs, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    db1.fs.register_handler('RWFS_NPY', ReaderWithFSHandler)
+    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
     size = db1.export_size(db1[uid])
     assert size > 0.
 
 
 @py3
 def test_results_multiple_iters(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     RE(count([det]))
     RE(count([det]))
     res = db()
@@ -710,7 +726,7 @@ def test_results_multiple_iters(db, RE):
 @py3
 def test_dict_header(db, RE):
     # Ensure that we aren't relying on h being a doct as opposed to a dict.
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     expected = list(db.get_events(h))
@@ -721,7 +737,7 @@ def test_dict_header(db, RE):
 @py3
 def test_config_data(db, RE):
     # simple case: one Event Descriptor, one stream
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     det = Reader('det', {'x': lambda: 1}, conf={'y': 2, 'z': 3})
     uid, = RE(count([det]))
     h = db[uid]
@@ -760,7 +776,7 @@ def test_config_data(db, RE):
 
 @py3
 def test_events(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     uid, = RE(count([det]))
     h = db[uid]
     events = list(h.events())
@@ -771,7 +787,7 @@ def _get_docs(h):
     # Access documents in all the public ways.
     docs = []
     docs.extend(h.descriptors)
-    docs.extend([pair[1] for pair in h.stream()])
+    docs.extend([pair[1] for pair in h.documents()])
     docs.extend(list(h.events()))
     docs.extend(list(h.db.get_events(h)))
     docs.append(h.stop)
@@ -862,7 +878,7 @@ def test_deprecated_doct():
 @py3
 def test_ingest_array_data(db_empty, RE):
     db = db_empty
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
     # These will blow up if the event source backing db cannot ingest numpy
     # arrays. (For example, the pymongo-backed db has to convert them to plain
     # lists.)
@@ -898,7 +914,7 @@ def test_ingest_array_data(db_empty, RE):
 
 @py3
 def test_ingest_array_metadata(db, RE):
-    RE.subscribe('all', db.insert)
+    RE.subscribe(db.insert)
 
     # These will blow up if the header source backing db cannot ingest numpy
     # arrays. (For example, the pymongo-backed db has to convert them to plain
@@ -913,3 +929,146 @@ def test_ingest_array_metadata(db, RE):
 
     # 3D array in start document.
     RE(count([]), mask=np.ones((3, 3, 3)))
+
+
+@py3
+def test_deprecated_stream_method(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # h.stream() is the same as h.documents() but it warns
+    expected = list(h.documents())
+    with pytest.warns(UserWarning):
+        actual = list(h.stream())
+    assert actual == expected
+
+
+@py3
+def test_data_method(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    actual = list(h.data('det'))
+    expected = [1, 1, 1, 1, 1]
+    assert actual == expected
+
+
+def test_auto_register():
+    db_auto = Broker.from_config(temp_config())
+    db_manual = Broker.from_config(temp_config(), auto_register=False)
+    assert db_auto.reg.handler_reg
+    assert not db_manual.reg.handler_reg
+
+
+def test_sanitize_does_not_modify_array_data_in_place(db_empty):
+    db = db_empty
+    doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
+    assert isinstance(doc['stuff'], np.ndarray)
+    db.insert('start', doc)
+    assert isinstance(doc['stuff'], np.ndarray)
+
+    doc = {'uid': '1', 'time': 0, 'run_start': '0',
+           'data_keys': {'det': {'dtype': 'array',
+                                 'shape': (3, 3),
+                                 'source': ''}},
+           'object_keys': {'det': ['det']},
+           'configuration': {'det': {'thing': np.ones((3, 3))}}}
+    assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
+    db.insert('descriptor', doc)
+    assert isinstance(doc['configuration']['det']['thing'], np.ndarray)
+
+    doc = {'uid': '2', 'time': 0, 'descriptor': '1', 'seq_num': 1,
+           'data': {'det': np.ones((3, 3))},
+           'timestamps': {'det': 0}}
+    assert isinstance(doc['data']['det'], np.ndarray)
+    db.insert('event', doc)
+    assert isinstance(doc['data']['det'], np.ndarray)
+
+
+    doc = {'uid': '3', 'time': 0, 'run_start': '0', 'exit_status': 'success',
+           'stuff': np.ones((3, 3))}
+    assert isinstance(doc['stuff'], np.ndarray)
+    db.insert('stop', doc)
+    assert isinstance(doc['stuff'], np.ndarray)
+
+
+@py3
+def test_extraneous_filled_stripped_on_insert(db, RE):
+
+    # TODO It would be better if this errored, but at the moment
+    # this would required looking up the event descriptor.
+
+    # Hack the Event so it does not match its Event Descriptor.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': False}
+            assert 'filled' in doc
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {}
+    for ev in h.events():
+        assert not ev['filled']
+
+
+@py3
+def test_filled_false_stripped_on_insert(db, RE):
+    # Hack the Event and the Descriptor consistently.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': False}
+            doc['data']['det'] = 'DATUM_ID_PLACEHOLDER'
+            assert 'filled' in doc
+        elif name == 'descriptor':
+            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {'det': False}
+    for ev in h.events():
+        assert 'det' in ev['filled']
+        assert not ev['filled']['det']
+        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+
+
+@py3
+def test_filled_true_rotated_on_insert(db, RE):
+    # Hack the Event and the Descriptor consistently.
+    def insert(name, doc):
+        if name == 'event':
+            doc['filled'] = {'det': 'DATUM_ID_PLACEHOLDER'}
+            assert 'filled' in doc
+        elif name == 'descriptor':
+            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
+        db.insert(name, doc)
+
+    RE.subscribe(insert)
+
+    uid, = RE(count([det]))
+    h = db[uid]
+
+    # expect event['filled'] == {'det': False}
+    for ev in h.events():
+        assert 'det' in ev['filled']
+        assert not ev['filled']['det']
+        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+
+
+@py3
+def test_repr_html(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    # smoke test
+    h._repr_html_()

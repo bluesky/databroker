@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import uuid
-from pymongo import MongoClient
 
 
 def install_sentinels(config, version):
@@ -14,6 +13,8 @@ def install_sentinels(config, version):
     version : int
         The version of the schema this db uses
     '''
+    from pymongo import MongoClient
+
     conn = MongoClient(config['host'],
                        config.get('port', None))
     db = conn.get_database(config['database'])
@@ -30,7 +31,7 @@ def install_sentinels(config, version):
 
 def create_test_database(host, port=None, version=1,
                          db_template='FS_test_db_{uid}'):
-    '''Create and initialize a filestore database for testing
+    '''Create and initialize an asset database for testing
 
     Parameters
     ----------

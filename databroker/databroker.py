@@ -6,8 +6,8 @@
 # This module look for a specially-named configuration file and generates a
 # special instance of Broker to avoid breaking old user code.
 
-from .broker import Broker, lookup_config
-from .core import get_fields  # unused, but here for API compat
+from ._core import Broker, lookup_config
+from ._core import get_fields  # unused, but here for API compat
 from functools import wraps
 import os
 import six
