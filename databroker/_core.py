@@ -2162,8 +2162,9 @@ def _sanitize(doc):
 
 
 _HTML_TEMPLATE = """
+{% macro rtable(doc) -%}
 <table>
-{%- for key, value in document | dictsort recursive -%}
+{%- for key, value in doc | dictsort recursive -%}
   <tr>
     <th> {{ key }} </th>
     <td>
@@ -2193,7 +2194,32 @@ _HTML_TEMPLATE = """
   </tr>
 {%- endfor -%}
 </table>
+{%- endmacro %}
+
+<table>
+  <tr>
+    <th> Start </th>
+    <td>{{ rtable(document.start) }}</td>
+  </tr
+  <tr>
+    <th> Stop </th>
+    <td>{{ rtable(document.stop) }}</td>
+  </tr>
+  <tr>
+    <th> Descriptors </th>
+    <td>
+      <table>
+         {%- for d in document.descriptors -%}
+         <tr>
+         <th> {{ d.name }} </th>
+         <td> {{ rtable(d) }} </td>
+         </tr>
+         {%- endfor -%}
+      </table>
+    </td>
+</table>
 """
+
 
 def _pretty_print_time(timestamp):
     # timestamp needs to be a float or fromtimestamp() will barf
