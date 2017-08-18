@@ -20,7 +20,7 @@ class HeaderSourceShim(object):
         if filters is None:
             filters = {}
         else:
-            [_format_time(v, self.mds.config['timezone']) for v in [filters]]
+            _format_time(filters, self.mds.config['timezone'])
         if text_search is not None:
             query = {'$and': [{'$text': {'$search': text_search}}] + [filters]}
         else:
