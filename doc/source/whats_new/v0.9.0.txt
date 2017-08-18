@@ -63,6 +63,8 @@ The following changes may break old user code.
      event['descriptor'] == descriptor['uid']
      descriptor['run_start'] == run_start['uid']
      run_stop['run_start'] == run_start['uid']
+* The type of db.filters changed from list to dict.
+
 
 Deprecations
 ++++++++++++

@@ -1119,14 +1119,7 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        for k,v in kwargs.items():
-             if k in self.filters:
-                 raise ValueError("Filter name of {} already exists."
-                                  "\n Please remove the existing filter first by typing: "
-                                  "\n del db.filters['{}'] ".format(k, k))
-             else:
-                 self.filters[k] = v
-
+        self.filters.update(**kwargs)
 
     def clear_filters(self, **kwargs):
         """
