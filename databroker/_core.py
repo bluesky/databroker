@@ -2165,41 +2165,39 @@ _normalize_human_friendly_time.__doc__ = (
     _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
 
-
 _HTML_TEMPLATE = """
 <table>
-{% for key, value in document | dictsort recursive %}
+{%- for key, value in document | dictsort recursive -%}
   <tr>
     <th> {{ key }} </th>
     <td>
-      {% if value.items %}
+      {%- if value.items -%}
         <table>
           {{ loop(value | dictsort) }}
         </table>
-      {% elif value is iterable and value is not string %}
+      {%- elif value is iterable and value is not string -%}
         <table>
-          {% for stuff in value recursive %}
-            {% if stuff.items %}
-              <p>dict</p>
-              <tr><td><table>{{ loop(stuff | dictsort) }}</table></td></tr>
-            {% else %}
+          {%- set outer_loop = loop -%}
+          {%- for stuff in value  -%}
+            {%- if stuff.items -%}
+               {{ outer_loop(stuff | dictsort) }}
+            {%- else -%}
               <tr><td>{{ stuff }}</td></tr>
-            {% endif %}
-          {% endfor %}
+            {%- endif -%}
+          {%- endfor -%}
         </table>
-      {% else %}
-        {% if key == 'time' %}
+      {%- else -%}
+        {%- if key == 'time' -%}
           {{ value | human_time }}
-        {% else %}
+        {%- else -%}
           {{ value }}
-        {% endif %}
-      {% endif %}
+        {%- endif -%}
+      {%- endif -%}
     </td>
   </tr>
-{% endfor %}
+{%- endfor -%}
 </table>
 """
-
 
 def _pretty_print_time(timestamp):
     # timestamp needs to be a float or fromtimestamp() will barf
