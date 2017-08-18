@@ -2211,7 +2211,7 @@ _HTML_TEMPLATE = """
       <table>
          {%- for d in document.descriptors -%}
          <tr>
-         <th> {{ d.name }} </th>
+         <th> {{ d[name] }} </th>
          <td> {{ rtable(d) }} </td>
          </tr>
          {%- endfor -%}
