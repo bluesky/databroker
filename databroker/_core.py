@@ -21,6 +21,10 @@ import tempfile
 import copy
 from .eventsource import EventSourceShim, check_fields_exist
 from .headersource import HeaderSourceShim, safe_get_stop
+import humanize
+import jinja2
+import time
+
 from .utils import ALL, normalize_human_friendly_time
 
 
@@ -93,6 +97,12 @@ class Header(object):
             d['stop'] = db.prepare_hook('stop', run_stop or {})
         h = cls(db, **d)
         return h
+
+    def _repr_html_(self):
+        env = jinja2.Environment()
+        env.filters['human_time'] = _pretty_print_time
+        template = env.from_string(_HTML_TEMPLATE)
+        return template.render(document=self)
 
     ### dict-like methods ###
 
@@ -2149,3 +2159,70 @@ def _sanitize(doc):
     d = dict(doc)
     d.pop('_name', None)
     return d
+
+
+_HTML_TEMPLATE = """
+{% macro rtable(doc, cap) -%}
+<table>
+<caption> {{ cap }} </caption>
+{%- for key, value in doc | dictsort recursive -%}
+  <tr>
+    <th> {{ key }} </th>
+    <td>
+      {%- if value.items -%}
+        <table>
+          {{ loop(value | dictsort) }}
+        </table>
+      {%- elif value is iterable and value is not string -%}
+        <table>
+          {%- set outer_loop = loop -%}
+          {%- for stuff in value  -%}
+            {%- if stuff.items -%}
+               {{ outer_loop(stuff | dictsort) }}
+            {%- else -%}
+              <tr><td>{{ stuff }}</td></tr>
+            {%- endif -%}
+          {%- endfor -%}
+        </table>
+      {%- else -%}
+        {%- if key == 'time' -%}
+          {{ value | human_time }}
+        {%- else -%}
+          {{ value }}
+        {%- endif -%}
+      {%- endif -%}
+    </td>
+  </tr>
+{%- endfor -%}
+</table>
+{%- endmacro %}
+
+<table>
+  <tr>
+    <td>{{ rtable(document.start, 'Start') }}</td>
+  </tr
+  <tr>
+    <td>{{ rtable(document.stop, 'Stop') }}</td>
+  </tr>
+  <tr>
+  <td>
+      <table>
+      <caption>Descriptors</caption>
+         {%- for d in document.descriptors -%}
+         <tr>
+         <td> {{ rtable(d, d['name']) }} </td>
+         </tr>
+         {%- endfor -%}
+      </table>
+    </td>
+</tr>
+</table>
+"""
+
+
+def _pretty_print_time(timestamp):
+    # timestamp needs to be a float or fromtimestamp() will barf
+    timestamp = float(timestamp)
+    dt = datetime.fromtimestamp(timestamp).isoformat()
+    ago = humanize.naturaltime(time.time() - timestamp)
+    return '{ago} ({date})'.format(ago=ago, date=dt)
