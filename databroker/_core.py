@@ -2160,10 +2160,6 @@ def _sanitize(doc):
     d.pop('_name', None)
     return d
 
-# fill in the placeholder we left in the previous docstring
-_normalize_human_friendly_time.__doc__ = (
-    _normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
-)
 
 _HTML_TEMPLATE = """
 <table>
