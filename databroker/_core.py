@@ -1048,7 +1048,7 @@ class BrokerES(object):
         self.assets = assets
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
-        self.filters = []
+        self.filters = {}
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
         self.registry_for_insert = self.event_sources[0]
@@ -1117,7 +1117,7 @@ class BrokerES(object):
         all future queries.
 
         ``db.add_filter(**kwargs)`` is just a convenient way to spell
-        ``db.filters.append(dict(**kwargs))``.
+        ``db.filters.update(**kwargs)``.
 
         Examples
         --------
@@ -1135,7 +1135,7 @@ class BrokerES(object):
         Review current filters.
 
         >>> db.filters
-        [{'user': 'Dan'}, {'start_time': '2017-3'}]
+        {'user': 'Dan', 'start_time': '2017-3'}
 
         Clear filters.
 
@@ -1146,7 +1146,7 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        self.filters.append(dict(**kwargs))
+        self.filters.update(**kwargs)
 
     def clear_filters(self, **kwargs):
         """
@@ -2045,7 +2045,7 @@ class Broker(BrokerES):
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
         if filters is None:
-            filters = []
+            filters = {}
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
