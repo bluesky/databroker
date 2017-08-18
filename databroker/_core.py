@@ -840,18 +840,22 @@ class Results(object):
                         yield header
                         break
 
-# Search order is:
-# ~/.config/databroker
-# <sys.executable directory>/../etc/databroker
-# /etc/databroker
+# Search order is (for unix):
+#   ~/.config/databroker
+#   <sys.executable directory>/../etc/databroker
+#   /etc/databroker
+# And for Windows we only look in:
+#   %APPDATA%/databroker
 
-
-_user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
-_local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
-                          'etc', 'databroker')
-_system_etc = os.path.join('/', 'etc', 'databroker')
-CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
-
+if os.name == 'nt':
+    _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
+    CONFIG_SEARCH_PATH = (_user_conf,)
+else:
+    _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
+    _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
+                              'etc', 'databroker')
+    _system_etc = os.path.join('/', 'etc', 'databroker')
+    CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 if six.PY2:
     FileNotFoundError = IOError
