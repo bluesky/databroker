@@ -15,12 +15,15 @@ with open(path.join(here, 'requirements.txt')) as f:
     requirements = f.read().split()
 
 # Remove the 'optional' requirements
-requirements.remove('pymongo')
-requirements.remove('h5py')
+optional = ('h5py', 'pymongo', 'requests', 'tornado', 'ujson')
+for package in optional:
+    requirements.remove(package)
 
 extras_require = {
     'mongo': ['pymongo'],
-    'hdf5': ['h5py']
+    'hdf5': ['h5py'],
+    'client': ['requests'],
+    'service': ['tornado', 'ujson'],
 }
 
 extras_require['all'] = sorted(set(sum(extras_require.values(), [])))
