@@ -102,8 +102,16 @@ class ArchiverEventSource(object):
                        'descriptor': desc_uids[pv]}
                 yield self.prepare_hook('event', doc)
 
-    def table_given_header(self, header, *args, **kwargs):
-        raise NotImplementedError()
+    def table_given_header(self, header, timezone, fields=None):
+        no_fields_filter = False
+        if fields is None:
+            no_fields_filter = True
+            fields = []
+        fields = set(fields)
+        descs = self.descriptors_given_header(header)
+        docs = list(self.docs_given_header(header=header,stream_name=ALL,
+                                    fill=False, fields=fields))
+        return pd.DataFrame.from_records(data=docs, index='seq_nums')
 
     def fill_event(self, *args, **kwrags):
         raise NotImplementedError()
