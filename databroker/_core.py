@@ -849,7 +849,7 @@ class Results(object):
 
 if os.name == 'nt':
     _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
-    CONFIG_SEARCH_PATH = (_user_conf)
+    CONFIG_SEARCH_PATH = (_user_conf,)
 else:
     _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
     _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
