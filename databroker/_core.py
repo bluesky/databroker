@@ -2162,8 +2162,9 @@ def _sanitize(doc):
 
 
 _HTML_TEMPLATE = """
-{% macro rtable(doc) -%}
+{% macro rtable(doc, cap) -%}
 <table>
+<caption> {{ cap }} </caption>
 {%- for key, value in doc | dictsort recursive -%}
   <tr>
     <th> {{ key }} </th>
@@ -2198,25 +2199,23 @@ _HTML_TEMPLATE = """
 
 <table>
   <tr>
-    <th> Start </th>
-    <td>{{ rtable(document.start) }}</td>
+    <td>{{ rtable(document.start, 'Start') }}</td>
   </tr
   <tr>
-    <th> Stop </th>
-    <td>{{ rtable(document.stop) }}</td>
+    <td>{{ rtable(document.stop, 'Stop') }}</td>
   </tr>
   <tr>
-    <th> Descriptors </th>
-    <td>
+  <td>
       <table>
+      <caption>Descriptors</caption>
          {%- for d in document.descriptors -%}
          <tr>
-         <th> {{ d[name] }} </th>
-         <td> {{ rtable(d) }} </td>
+         <td> {{ rtable(d, d['name']) }} </td>
          </tr>
          {%- endfor -%}
       </table>
     </td>
+</tr>
 </table>
 """
 
