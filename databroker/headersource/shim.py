@@ -20,11 +20,13 @@ class HeaderSourceShim(object):
         if filters is None:
             filters = {}
         else:
+            filters = dict(filters)
             _format_time(filters, self.mds.config['timezone'])
         if text_search is not None:
             query = {'$and': [{'$text': {'$search': text_search}}, filters]}
         else:
             # Include empty {} here so that '$and' gets at least one query.
+            kwargs = dict(kwargs)
             _format_time(kwargs, self.mds.config['timezone'])
             query = {'$and': [kwargs, filters]}
         starts = self.mds.find_run_starts(**query)

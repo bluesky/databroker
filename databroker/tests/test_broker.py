@@ -389,6 +389,9 @@ def test_filters(db_empty, RE):
     assert len(db.filters) == 2
     assert db.filters['start_time'] == '2016'
 
+    db()  # after search, time content keeps the same
+    assert db.filters['start_time'] == '2016'
+
 @py3
 @pytest.mark.parametrize(
     'key',
