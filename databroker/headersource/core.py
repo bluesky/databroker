@@ -516,12 +516,7 @@ def insert_run_start(run_start_col, run_start_cache,
     col = run_start_col
     run_start = dict(time=time, uid=uid, **copy.deepcopy(kwargs))
     apply_to_dict_recursively(run_start, sanitize_np)
-    try:
-        if run_start_given_uid(uid, run_start_col,
-                               run_start_cache):
-            raise ValueError('A RunStart with given uid exists %s', uid)
-    except NoRunStart:
-        pass
+
     col.insert_one(run_start)
 
     _cache_run_start(run_start, run_start_cache)
