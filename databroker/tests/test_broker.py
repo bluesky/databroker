@@ -1055,3 +1055,13 @@ def test_filled_true_rotated_on_insert(db, RE):
         assert 'det' in ev['filled']
         assert not ev['filled']['det']
         assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+
+
+@py3
+def test_repr_html(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    # smoke test
+    h._repr_html_()
