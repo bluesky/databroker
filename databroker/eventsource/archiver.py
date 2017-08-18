@@ -9,7 +9,6 @@ import uuid
 
 import requests
 
-from ..core import ALL
 
 
 class ArchiverEventSource(object):
@@ -74,8 +73,7 @@ class ArchiverEventSource(object):
             prepare = partial(self.prepare_hook, 'descriptor')
             return list(map(prepare, self._descriptors[run_start_uid]))
 
-    def docs_given_header(self, header, stream_name=ALL,
-                          fill=False, fields=None,
+    def docs_given_header(self, header,fill=False, fields=None,
                           **kwargs):
         desc_uids = {}
         for d in self.descriptors_given_header(header):
@@ -102,14 +100,15 @@ class ArchiverEventSource(object):
                        'descriptor': desc_uids[pv]}
                 yield self.prepare_hook('event', doc)
 
-    def table_given_header(self, header, timezone, fields=None):
+    def table_given_header(self, header, fields=None):
+        # TODO: Add timezone goodies
         no_fields_filter = False
         if fields is None:
             no_fields_filter = True
             fields = []
         fields = set(fields)
         descs = self.descriptors_given_header(header)
-        docs = list(self.docs_given_header(header=header,stream_name=ALL,
+        docs = list(self.docs_given_header(header=header,
                                     fill=False, fields=fields))
         return pd.DataFrame.from_records(data=docs, index='seq_nums')
 
