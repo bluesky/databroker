@@ -169,3 +169,5 @@ databroker and will only affect advanced users.**
   argument.
 * The modules ``filestore.commands`` and ``filestore.api`` have been removed.
   Same for ``metadatastore.commands`` and ``metadatastore.api``.
+* ``Registry.correct_root`` supports uids as args, verify is now optional and
+  defaults to False, arg ``resource` is now ``resource_or_uid``
