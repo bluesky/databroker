@@ -497,11 +497,11 @@ def test_handler_options(db, RE):
     event_uid2 = str(uuid.uuid4())
 
     # Side-band resource and datum documents.
-    res = db.fs.insert_resource('foo', '', {'x': 1})
-    db.fs.insert_datum(res, datum_id, {'y': 2})
+    res = db.reg.insert_resource('foo', '', {'x': 1})
+    db.reg.insert_datum(res, datum_id, {'y': 2})
 
-    res2 = db.fs.insert_resource('foo', '', {'x': 1})
-    db.fs.insert_datum(res2, datum_id2, {'y': 2})
+    res2 = db.reg.insert_resource('foo', '', {'x': 1})
+    db.reg.insert_datum(res2, datum_id2, {'y': 2})
 
     # Generate a normal run.
     RE.subscribe(db.insert)
@@ -562,7 +562,7 @@ def test_handler_options(db, RE):
     assert ev['filled']['image']
 
     # Statefully register the handler.
-    db.fs.register_handler('foo', ImageHandler)
+    db.reg.register_handler('foo', ImageHandler)
 
     ev, ev2 = db.get_events(h,
                             stream_name='injected', fields=['image'],
@@ -602,7 +602,7 @@ def test_handler_options(db, RE):
 
     # # Register the DummyHandler statefully so we can test overriding with
     # # ImageHandler for the get_images method below.
-    # db.fs.register_handler('foo', DummyHandler, overwrite=True)
+    # db.reg.register_handler('foo', DummyHandler, overwrite=True)
 
     # res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
     # assert res[0].shape == ImageHandler.RESULT.shape
