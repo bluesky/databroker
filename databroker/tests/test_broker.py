@@ -989,8 +989,18 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     db.insert('event', doc)
     assert isinstance(doc['data']['det'], np.ndarray)
 
+    docs = [{'uid': '3', 'time': 0, 'descriptor': '1', 'seq_num': 2,
+             'data': {'det': np.ones((3, 3))},
+             'timestamps': {'det': 0}},
+            {'uid': '4', 'time': 0, 'descriptor': '1', 'seq_num': 2,
+             'data': {'det': np.ones((3, 3))},
+             'timestamps': {'det': 0}}]
+    assert isinstance(doc['data']['det'], np.ndarray)
+    db.insert('bulk_events', {'1': docs})
+    assert isinstance(doc['data']['det'], np.ndarray)
 
-    doc = {'uid': '3', 'time': 0, 'run_start': '0', 'exit_status': 'success',
+
+    doc = {'uid': '5', 'time': 0, 'run_start': '0', 'exit_status': 'success',
            'stuff': np.ones((3, 3))}
     assert isinstance(doc['stuff'], np.ndarray)
     db.insert('stop', doc)
