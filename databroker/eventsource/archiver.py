@@ -1,3 +1,6 @@
+# This module is experimental. It is not documented or covered by automated
+# tests. It may change in a backward-incompatible way in a future release of
+# bluesky.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
