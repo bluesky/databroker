@@ -19,6 +19,7 @@ from .core import (doc_or_uid_to_uid,   # noqa
                    descriptor_given_uid, stop_by_start, descriptors_by_start,
                    get_events_table, insert_run_start, insert_run_stop,
                    insert_descriptor, insert_event, BAD_KEYS_FMT)
+from ..utils import sanitize_np, apply_to_dict_recursively
 
 logger = logging.getLogger(__name__)
 
@@ -101,15 +102,19 @@ def bulk_insert_events(event_col, descriptor, events, validate):
             for k, v in six.iteritems(ev.get('filled', {})):
                 if v:
                     data[k] = v
+            # Convert any numpy types to native Python types.
+            apply_to_dict_recursively(data, sanitize_np)
+            timestamps = dict(ev['timestamps'])
+            apply_to_dict_recursively(timestamps, sanitize_np)
             # check keys, this could be expensive
             if validate:
-                if data.keys() != ev['timestamps'].keys():
+                if data.keys() != timestamps.keys():
                     raise ValueError(
-                        BAD_KEYS_FMT.format(ev['data'].keys(),
-                                            ev['timestamps'].keys()))
+                        BAD_KEYS_FMT.format(data.keys(),
+                                            timestamps.keys()))
 
             ev_out = dict(descriptor=descriptor_uid, uid=ev['uid'],
-                          data=data, timestamps=ev['timestamps'],
+                          data=data, timestamps=timestamps,
                           time=ev['time'],
                           seq_num=ev['seq_num'])
             yield ev_out

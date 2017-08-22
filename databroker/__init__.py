@@ -14,7 +14,7 @@ except AttributeError:
 
 
 from ._core import (Broker, BrokerES, Header, ALL,
-                    lookup_config, list_configs, temp_config,
+                    lookup_config, list_configs, describe_configs, temp_config,
                     wrap_in_doct,
                     DeprecatedDoct, wrap_in_deprecated_doct)
 

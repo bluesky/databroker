@@ -366,13 +366,13 @@ def test_filters(db_empty, RE):
 
     assert len(list(db())) == 3
     db.add_filter(user='Dan')
-    assert len(list(db.filters)) == 1
+    assert len(db.filters) == 1
     assert len(list(db())) == 1
     header, = db()
     assert header['start']['uid'] == dan_uid
 
     db.clear_filters()
-    assert len(list(db.filters)) == 0
+    assert len(db.filters) == 0
 
     assert len(list(db(purpose='calibration'))) == 2
     db.add_filter(user='Ken')
@@ -381,6 +381,16 @@ def test_filters(db_empty, RE):
 
     assert header['start']['uid'] == ken_calib_uid
 
+    db.clear_filters()
+    db.add_filter(start_time='2017')
+    db.add_filter(start_time='2017')
+    assert len(db.filters) == 1
+    db.add_filter(start_time='2016', stop_time='2017')
+    assert len(db.filters) == 2
+    assert db.filters['start_time'] == '2016'
+
+    db()  # after search, time content keeps the same
+    assert db.filters['start_time'] == '2016'
 
 @py3
 @pytest.mark.parametrize(
@@ -979,8 +989,18 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     db.insert('event', doc)
     assert isinstance(doc['data']['det'], np.ndarray)
 
+    docs = [{'uid': '3', 'time': 0, 'descriptor': '1', 'seq_num': 2,
+             'data': {'det': np.ones((3, 3))},
+             'timestamps': {'det': 0}},
+            {'uid': '4', 'time': 0, 'descriptor': '1', 'seq_num': 2,
+             'data': {'det': np.ones((3, 3))},
+             'timestamps': {'det': 0}}]
+    assert isinstance(doc['data']['det'], np.ndarray)
+    db.insert('bulk_events', {'1': docs})
+    assert isinstance(doc['data']['det'], np.ndarray)
 
-    doc = {'uid': '3', 'time': 0, 'run_start': '0', 'exit_status': 'success',
+
+    doc = {'uid': '5', 'time': 0, 'run_start': '0', 'exit_status': 'success',
            'stuff': np.ones((3, 3))}
     assert isinstance(doc['stuff'], np.ndarray)
     db.insert('stop', doc)
@@ -1055,3 +1075,13 @@ def test_filled_true_rotated_on_insert(db, RE):
         assert 'det' in ev['filled']
         assert not ev['filled']['det']
         assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+
+
+@py3
+def test_repr_html(db, RE):
+    RE.subscribe(db.insert)
+    uid, = RE(count([det], 5))
+    h = db[uid]
+
+    # smoke test
+    h._repr_html_()

@@ -1,15 +1,17 @@
+# This module is experimental. It is not documented or covered by automated
+# tests. It may change in a backward-incompatible way in a future release of
+# bluesky.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import six
 
 from functools import partial
-import datetime
+from datetime import datetime
 import pytz
 import uuid
 
 import requests
-
-from ..core import ALL
+import pandas as pd
 
 
 class ArchiverEventSource(object):
@@ -59,8 +61,8 @@ class ArchiverEventSource(object):
                 data_keys = {name: {'source': pv,
                                     'dtype': 'number',
                                     'shape': []}}
-
-                _from = _munge_time(start_time, self.tz)
+                _from = _munge_time(start_time[0], self.tz)
+                # because start_time is a tuple^
                 _to = _munge_time(stop_time, self.tz)
                 params = {'pv': pv, 'from': _from, 'to': _to}
                 desc = {'time': header['start']['time'],
@@ -71,11 +73,11 @@ class ArchiverEventSource(object):
                         'external_url': self.url}
                 descs.append(desc)
             self._descriptors[run_start_uid] = descs
-            prepare = partial(self.prepare_hook, 'descriptor')
-            return list(map(prepare, self._descriptors[run_start_uid]))
+            return [ d for d in self._descriptors]
+            #prepare = partial(self.prepare_hook, 'descriptor')
+            #return list(map(prepare, self._descriptors[run_start_uid]))
 
-    def docs_given_header(self, header, stream_name=ALL,
-                          fill=False, fields=None,
+    def docs_given_header(self, header,fill=False, fields=None,
                           **kwargs):
         desc_uids = {}
         for d in self.descriptors_given_header(header):
@@ -100,10 +102,18 @@ class ArchiverEventSource(object):
                        'uid': 'ephemeral-' + str(uuid.uuid4()),
                        'seq_num': seq_num,
                        'descriptor': desc_uids[pv]}
-                yield self.prepare_hook('event', doc)
+                yield doc               
 
-    def table_given_header(self, header, *args, **kwargs):
-        raise NotImplementedError()
+    def table_given_header(self, header, fields=None):
+        # TODO: Add timezone goodies
+        no_fields_filter = False
+        if fields is None:
+            no_fields_filter = True
+            fields = []
+        fields = set(fields)
+        docs = list(self.docs_given_header(header=header,
+                                    fill=False, fields=fields))
+        return pd.DataFrame.from_records(data=docs, index='seq_num')
 
     def fill_event(self, *args, **kwrags):
         raise NotImplementedError()

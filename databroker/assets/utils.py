@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import uuid
-from pymongo import MongoClient
 
 
 def install_sentinels(config, version):
@@ -14,6 +13,8 @@ def install_sentinels(config, version):
     version : int
         The version of the schema this db uses
     '''
+    from pymongo import MongoClient
+
     conn = MongoClient(config['host'],
                        config.get('port', None))
     db = conn.get_database(config['database'])

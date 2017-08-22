@@ -21,6 +21,10 @@ import tempfile
 import copy
 from .eventsource import EventSourceShim, check_fields_exist
 from .headersource import HeaderSourceShim, safe_get_stop
+import humanize
+import jinja2
+import time
+
 from .utils import ALL, normalize_human_friendly_time
 
 
@@ -60,7 +64,8 @@ class Header(object):
     db = attr.ib(cmp=False, hash=False)
     start = attr.ib()
     stop = attr.ib(default=attr.Factory(dict))
-    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False)
+    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False,
+                     repr=False)
 
     @classmethod
     def from_run_start(cls, db, run_start):
@@ -93,6 +98,12 @@ class Header(object):
             d['stop'] = db.prepare_hook('stop', run_stop or {})
         h = cls(db, **d)
         return h
+
+    def _repr_html_(self):
+        env = jinja2.Environment()
+        env.filters['human_time'] = _pretty_print_time
+        template = env.from_string(_HTML_TEMPLATE)
+        return template.render(document=self)
 
     ### dict-like methods ###
 
@@ -565,8 +576,8 @@ class Images(FramesSequence):
                                stream_name=stream_name,
                                fields=[name], fill=False)
 
-        self._datum_ids = [event.data[name] for event in events
-                           if name in event.data]
+        self._datum_ids = [event['data'][name] for event in events
+                           if name in event['data']]
         self._len = len(self._datum_ids)
         first_uid = self._datum_ids[0]
         if handler_override is None:
@@ -840,18 +851,22 @@ class Results(object):
                         yield header
                         break
 
-# Search order is:
-# ~/.config/databroker
-# <sys.executable directory>/../etc/databroker
-# /etc/databroker
+# Search order is (for unix):
+#   ~/.config/databroker
+#   <sys.executable directory>/../etc/databroker
+#   /etc/databroker
+# And for Windows we only look in:
+#   %APPDATA%/databroker
 
-
-_user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
-_local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
-                          'etc', 'databroker')
-_system_etc = os.path.join('etc', 'databroker')
-CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
-
+if os.name == 'nt':
+    _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
+    CONFIG_SEARCH_PATH = (_user_conf,)
+else:
+    _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
+    _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
+                              'etc', 'databroker')
+    _system_etc = os.path.join('/', 'etc', 'databroker')
+    CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 if six.PY2:
     FileNotFoundError = IOError
@@ -864,12 +879,33 @@ def list_configs():
     Returns
     -------
     names : list
+
+    See Also
+    --------
+    :func:`describe_configs`
     """
     names = []
     for path in CONFIG_SEARCH_PATH:
         files = glob.glob(os.path.join(path, '*.yml'))
         names.extend([os.path.basename(f)[:-4] for f in files])
     return sorted(names)
+
+
+def describe_configs():
+    """
+    Get the names and descriptions of available configuration files.
+
+    Returns
+    -------
+    configs : dict
+        map names to descriptions (if available)
+
+    See Also
+    --------
+    :func:`list_configs`
+    """
+    return {name: lookup_config(name).get('description')
+            for name in list_configs()}
 
 
 def lookup_config(name):
@@ -908,13 +944,14 @@ def lookup_config(name):
                                 "".format(name, '\n'.join(tried)))
 
 
-def load_component(config):
+def load_cls(config):
+    # This is for loading a class from a configuration dict that provides
+    # a module name and class name.
     modname = config['module']
     clsname = config['class']
-    config = config['config']
     mod = import_module(modname)
     cls = getattr(mod, clsname)
-    return cls(config)
+    return cls
 
 
 def temp_config():
@@ -937,6 +974,7 @@ def temp_config():
     """
     tempdir = tempfile.mkdtemp()
     config = {
+        'description': 'temporary',
         'metadatastore': {
             'module': 'databroker.headersource.sqlite',
             'class': 'MDS',
@@ -1021,7 +1059,7 @@ class BrokerES(object):
         self.assets = assets
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
-        self.filters = []
+        self.filters = {}
         self.aliases = {}
         self.event_source_for_insert = self.event_sources[0]
         self.registry_for_insert = self.event_sources[0]
@@ -1090,7 +1128,7 @@ class BrokerES(object):
         all future queries.
 
         ``db.add_filter(**kwargs)`` is just a convenient way to spell
-        ``db.filters.append(dict(**kwargs))``.
+        ``db.filters.update(**kwargs)``.
 
         Examples
         --------
@@ -1108,7 +1146,7 @@ class BrokerES(object):
         Review current filters.
 
         >>> db.filters
-        [{'user': 'Dan'}, {'start_time': '2017-3'}]
+        {'user': 'Dan', 'start_time': '2017-3'}
 
         Clear filters.
 
@@ -1119,7 +1157,7 @@ class BrokerES(object):
         :meth:`Broker.clear_filters`
 
         """
-        self.filters.append(dict(**kwargs))
+        self.filters.update(**kwargs)
 
     def clear_filters(self, **kwargs):
         """
@@ -1584,7 +1622,7 @@ class BrokerES(object):
 
                 # get the first descriptor for this event stream
                 desc = next((d for d in h.descriptors
-                             if d.name == stream_name),
+                             if d['name'] == stream_name),
                             None)
                 if desc is None:
                     continue
@@ -1790,10 +1828,6 @@ class BrokerES(object):
             for descriptor in header['descriptors']:
                 db.mds.insert_descriptor(**_sanitize(descriptor))
                 for event in events:
-                    event = event.to_name_dict_pair()[1]
-                    # 'filled' is obtained from the descriptor, not stored
-                    # in each event.
-                    event.pop('filled', None)
                     db.mds.insert_event(**_sanitize(event))
             db.mds.insert_run_stop(**_sanitize(header['stop']))
             # insert assets
@@ -2022,7 +2056,7 @@ class Broker(BrokerES):
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
         if filters is None:
-            filters = []
+            filters = {}
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
@@ -2058,6 +2092,7 @@ class Broker(BrokerES):
         configuration documentation for more.)
 
         >>> config = {
+        ...     'description': 'lightweight personal database',
         ...     'metadatastore': {
         ...         'module': 'databroker.headersource.sqlite',
         ...         'class': 'MDS',
@@ -2076,9 +2111,19 @@ class Broker(BrokerES):
 
         >>> Broker.from_config(config)
         """
-        mds = load_component(config['metadatastore'])
-        assets = load_component(config['assets'])
-        return cls(mds, assets, auto_register=auto_register)
+        # Import component classes.
+        mds_cls = load_cls(config['metadatastore'])
+        assets_cls = load_cls(config['assets'])
+        # Instantiate component classes.
+        mds = mds_cls(config['metadatastore']['config'])
+        assets = assets_cls(config['assets']['config'])
+        # Instantiate Broker.
+        db = cls(mds, assets, auto_register=auto_register)
+        # Register handlers included in the config, if any.
+        for spec, handler in config.get('handlers', {}).items():
+            cls = load_cls(handler)
+            db.assets.reg.register_handler(spec, cls)
+        return db
 
     @classmethod
     def named(cls, name, auto_register=True):
@@ -2115,3 +2160,70 @@ def _sanitize(doc):
     d = dict(doc)
     d.pop('_name', None)
     return d
+
+
+_HTML_TEMPLATE = """
+{% macro rtable(doc, cap) -%}
+<table>
+<caption> {{ cap }} </caption>
+{%- for key, value in doc | dictsort recursive -%}
+  <tr>
+    <th> {{ key }} </th>
+    <td>
+      {%- if value.items -%}
+        <table>
+          {{ loop(value | dictsort) }}
+        </table>
+      {%- elif value is iterable and value is not string -%}
+        <table>
+          {%- set outer_loop = loop -%}
+          {%- for stuff in value  -%}
+            {%- if stuff.items -%}
+               {{ outer_loop(stuff | dictsort) }}
+            {%- else -%}
+              <tr><td>{{ stuff }}</td></tr>
+            {%- endif -%}
+          {%- endfor -%}
+        </table>
+      {%- else -%}
+        {%- if key == 'time' -%}
+          {{ value | human_time }}
+        {%- else -%}
+          {{ value }}
+        {%- endif -%}
+      {%- endif -%}
+    </td>
+  </tr>
+{%- endfor -%}
+</table>
+{%- endmacro %}
+
+<table>
+  <tr>
+    <td>{{ rtable(document.start, 'Start') }}</td>
+  </tr
+  <tr>
+    <td>{{ rtable(document.stop, 'Stop') }}</td>
+  </tr>
+  <tr>
+  <td>
+      <table>
+      <caption>Descriptors</caption>
+         {%- for d in document.descriptors -%}
+         <tr>
+         <td> {{ rtable(d, d['name']) }} </td>
+         </tr>
+         {%- endfor -%}
+      </table>
+    </td>
+</tr>
+</table>
+"""
+
+
+def _pretty_print_time(timestamp):
+    # timestamp needs to be a float or fromtimestamp() will barf
+    timestamp = float(timestamp)
+    dt = datetime.fromtimestamp(timestamp).isoformat()
+    ago = humanize.naturaltime(time.time() - timestamp)
+    return '{ago} ({date})'.format(ago=ago, date=dt)

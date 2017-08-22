@@ -45,6 +45,10 @@ The following changes may break old user code.
   We judge that the short-term pain of updating some user code now is less
   than the long-term pain of asking everyone to keep mental track of random,
   inconsistent parameter orderings forever.
+* The option ``handler_override``, which overrode handlers by field name,
+  has been removed from all methods and functions that formerly supported it.
+  Use the option ``handler_registry`` instead, which overrides handlers by
+  handler spec name---a less complex, less error-prone operation.
 * The method :meth:`Header.events` defaults to returning only events from the
   'primary' stream, not all events.
 * Documents refer to other documents by a uid. In past versions of databroker
@@ -63,6 +67,9 @@ The following changes may break old user code.
      event['descriptor'] == descriptor['uid']
      descriptor['run_start'] == run_start['uid']
      run_stop['run_start'] == run_start['uid']
+
+* The type of db.filters changed from list to dict.
+
 
 Deprecations
 ++++++++++++
@@ -162,3 +169,5 @@ databroker and will only affect advanced users.**
   argument.
 * The modules ``filestore.commands`` and ``filestore.api`` have been removed.
   Same for ``metadatastore.commands`` and ``metadatastore.api``.
+* ``Registry.correct_root`` supports uids as args, verify is now optional and
+  defaults to False, arg ``resource` is now ``resource_or_uid``

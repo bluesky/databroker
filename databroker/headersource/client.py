@@ -763,7 +763,9 @@ class MDS(MDSRO):
                               time=ev['time'],
                               seq_num=ev['seq_num'])
                 yield ev_out
-        d = list(event_factory())
-        payload = self.datafactory(data=dict(descriptor=descriptor, events=events,
-                                   validate=validate), signature='bulk_insert_events')
+        fixed_events = list(event_factory())
+        payload = self.datafactory(data=dict(descriptor=descriptor,
+                                             events=fixed_events,
+                                             validate=validate),
+                                   signature='bulk_insert_events')
         self._post(self._event_url, data=payload)
