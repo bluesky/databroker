@@ -60,7 +60,8 @@ class Header(object):
     db = attr.ib(cmp=False, hash=False)
     start = attr.ib()
     stop = attr.ib(default=attr.Factory(dict))
-    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False)
+    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False,
+                     repr=False)
 
     @classmethod
     def from_run_start(cls, db, run_start):
