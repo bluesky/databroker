@@ -1913,7 +1913,7 @@ class BrokerES(object):
 
         descriptors : Iterable[EventDescriptor]
             An iterable of EventDescriptor documents.  This must
-            contain the descriptor associated with each every event
+            contain the descriptor associated with each and every event
             you want to fill and may contain descriptors which are not
             used by any of the events.
 
