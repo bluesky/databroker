@@ -64,7 +64,7 @@ def test_uid_list_multiple_headers(db, RE):
     RE.subscribe(db.insert)
     uids = RE(pchain(count([det]), count([det])))
     headers = db[uids]
-    assert uids == [h['start']['uid'] for h in headers]
+    assert uids == tuple([h['start']['uid'] for h in headers])
 
 
 @py3
