@@ -1987,10 +1987,11 @@ class BrokerES(object):
             desc_id = ev['descriptor']
             for k, v in six.iteritems(fill_map):
                 for dk in v:
-                    d_id = data[dk]
-                    data[dk] = (registry_map[(desc_id, dk)]
-                                .retrieve(d_id))
-                    filled[dk] = d_id
+                    if not filled[dk]:
+                        d_id = data[dk]
+                        data[dk] = (registry_map[(desc_id, dk)]
+                                    .retrieve(d_id))
+                        filled[dk] = d_id
 
             ev = yield ev
 
