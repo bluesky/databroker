@@ -592,7 +592,10 @@ def test_handler_options(db, RE):
     assert not ev2['filled']['image']
     ev2_filled = db.fill_event(ev2, inplace=False)
     assert ev2_filled['filled']['image'] == ev2['data']['image']
-
+    ev_ret2 = db.fill_events([ev], h.descriptors, inplace=True)
+    ev_ret3 =  db.fill_events(ev_ret2, h.descriptors, inplace=True)
+    ev = next(ev_ret3)
+    assert ev['filled']['image'] == datum
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
     # ev, ev2 = db.get_events(h, fields=['image'], fill=True,
