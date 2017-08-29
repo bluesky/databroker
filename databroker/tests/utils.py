@@ -6,7 +6,7 @@ import time
 
 import tzlocal
 
-from databroker import Broker, BrokerES
+from databroker import Broker, BrokerES, temp_config
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
 from subprocess import Popen
@@ -14,35 +14,16 @@ from subprocess import Popen
 
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
-    from ..headersource.sqlite import MDS
-    from ..assets.sqlite import Registry
 
-    tempdirname = tempfile.mkdtemp()
-    mds = MDS({'directory': tempdirname,
-               'timezone': tzlocal.get_localzone().zone,
-               'version': 1})
-    filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
-                 'events.json']
-    for fn in filenames:
-        with open(os.path.join(tempdirname, fn), 'w') as f:
-            f.write('[]')
+    config = temp_config()
+    tempdir = config['metadatastore']['config']['directory']
 
-    def delete_mds():
-        shutil.rmtree(tempdirname)
+    def cleanup():
+        shutil.rmtree(tempdir)
 
-    request.addfinalizer(delete_mds)
+    request.addfinalizer(cleanup)
 
-    tf = tempfile.NamedTemporaryFile()
-    fs = Registry({'dbpath': tf.name})
-
-    def delete_fs():
-        os.remove(tf.name)
-
-    request.addfinalizer(delete_fs)
-
-    return BrokerES(HeaderSourceShim(mds),
-                    [EventSourceShim(mds, fs)],
-                    {'': fs})
+    return Broker.from_config(config)
 
 
 def build_hdf5_backed_broker(request):
