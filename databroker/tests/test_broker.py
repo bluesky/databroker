@@ -596,6 +596,19 @@ def test_handler_options(db, RE):
     ev_ret3 =  db.fill_events(ev_ret2, h.descriptors, inplace=True)
     ev = next(ev_ret3)
     assert ev['filled']['image'] == datum
+
+    # table with fill=False (default)
+    table = db.get_table(h, stream_name='injected', fields=['image'])
+    datum_id = table['image'].iloc[0]
+    assert isinstance(datum_id, str)
+
+    # table with fill=True
+    table = db.get_table(h, stream_name='injected', fields=['image'],
+                         fill=True)
+    img = table['image'].iloc[0]
+    assert not isinstance(img, str)
+    assert img.shape == ImageHandler.RESULT.shape
+
     # Override the stateful registry with a one-off handler.
     # This maps onto the *data key*, not the resource spec.
     # ev, ev2 = db.get_events(h, fields=['image'], fill=True,
