@@ -1635,7 +1635,8 @@ class BrokerES(object):
                         timezone=timezone,
                         localize_times=localize_times)
                     if len(table):
-                        table = self.fill_table(table, desc, inplace=True)
+                        if fill:
+                            table = self.fill_table(table, desc, inplace=True)
                         dfs.append(table)
 
         if dfs:
