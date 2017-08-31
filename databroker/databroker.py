@@ -6,16 +6,12 @@
 # This module look for a specially-named configuration file and generates a
 # special instance of Broker to avoid breaking old user code.
 
-from ._core import Broker, lookup_config
+from ._core import Broker, lookup_config, SPECIAL_NAME
 from ._core import get_fields  # unused, but here for API compat
 from functools import wraps
 import os
 import six
 from warnings import warn
-
-SPECIAL_NAME = '_legacy_config'
-if 'DATABROKER_TEST_MODE' in os.environ:
-    SPECIAL_NAME = '_test_legacy_config'
 
 if six.PY2:
     FileNotFoundError = IOError

@@ -49,6 +49,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+SPECIAL_NAME = '_legacy_config'
+if 'DATABROKER_TEST_MODE' in os.environ:
+    SPECIAL_NAME = '_test_legacy_config'
+
 
 class InvalidDocumentSequence(Exception):
     pass
@@ -884,10 +888,14 @@ def list_configs():
     --------
     :func:`describe_configs`
     """
-    names = []
+    names = set()
     for path in CONFIG_SEARCH_PATH:
         files = glob.glob(os.path.join(path, '*.yml'))
-        names.extend([os.path.basename(f)[:-4] for f in files])
+        names.update([os.path.basename(f)[:-4] for f in files])
+
+    # Do not include _legacy_config.
+    names.discard(SPECIAL_NAME)
+
     return sorted(names)
 
 
