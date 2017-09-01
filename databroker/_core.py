@@ -268,7 +268,7 @@ class Header(object):
         How did we know that ``'eiger'`` was a valid argument? We can query for
         the complete list of device names:
 
-        >>> h.device_names()
+        >>> h.devices()
         {'eiger', 'cs700'}
         """
         result = defaultdict(list)
