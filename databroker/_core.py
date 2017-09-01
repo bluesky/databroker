@@ -1528,7 +1528,6 @@ class BrokerES(object):
         else:
             headers = [headers]
 
-        check_fields_exist(fields if fields else [], headers)
         # dirty hack!
         with self.reg.handler_context(handler_registry):
             for h in headers:
