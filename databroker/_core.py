@@ -536,7 +536,7 @@ def get_images(db, headers, name, handler_registry=None,
     Examples
     --------
 
-    >>> header = DataBroker[-1]
+    >>> header = db[-1]
     >>> images = Images(header, 'my_detector_lightfield')
     >>> for image in images:
             # do something
@@ -567,7 +567,7 @@ class Images(FramesSequence):
 
         Example
         -------
-        >>> header = DataBroker[-1]
+        >>> header = db[-1]
         >>> images = Images(header, 'my_detector_lightfield')
         >>> for image in images:
                 # do something
@@ -1674,7 +1674,7 @@ class BrokerES(object):
 
         Examples
         --------
-        >>> header = DataBroker[-1]
+        >>> header = db[-1]
         >>> images = Images(header, 'my_detector_lightfield')
         >>> for image in images:
                 # do something
@@ -1740,7 +1740,7 @@ class BrokerES(object):
         >>> def f(name, doc):
         ...     # do something
         ...
-        >>> h = DataBroker[-1]  # most recent header
+        >>> h = db[-1]  # most recent header
         >>> for name, doc in restream(h):
         ...     f(name, doc)
 
@@ -1780,7 +1780,7 @@ class BrokerES(object):
         >>> def f(name, doc):
         ...     # do something
         ...
-        >>> h = DataBroker[-1]  # most recent header
+        >>> h = db[-1]  # most recent header
         >>> process(h, f)
 
         Note
