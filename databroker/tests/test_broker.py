@@ -162,9 +162,6 @@ def test_get_events_filtering_field(db, RE):
     assert len(list(db.get_events(h, fields=['det']))) == 7
     assert len(list(h.documents(fields=['det']))) == 7 + 3
 
-    with pytest.raises(ValueError):
-        list(db.get_events(h, fields=['not_a_field']))
-
     uids = RE(pchain(count([det1], num=7), count([det2], num=3)))
     headers = db[uids]
 
