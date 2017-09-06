@@ -1,0 +1,20 @@
+.. currentmodule:: databroker
+
+v0.9.1
+------
+
+This is release contains small but important bug fixes. It is recommended that
+all users upgrade from v0.9.0.
+
+Bug Fixes
++++++++++
+
+* Respect the ``fill`` kwargs in :meth:`Header.table` and
+  :meth:`Broker.get_table`. In v0.9.0, a regression was introduced that always
+  set it to ``True`` regardless of the user input.
+* Omit the special value ``'_legacy_config'`` from the results returned by
+  :func:`list_configs` because it should a (private) synonym for one of the
+  other values.
+* Make document retrieval lazy (as it was intended to be) by removing an
+  internal call to ``check_fields_exist``.
+* Do not attempt to fill external data that has already been filled.
