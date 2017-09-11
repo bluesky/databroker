@@ -2131,7 +2131,7 @@ class Broker(BrokerES):
         # Register handlers included in the config, if any.
         for spec, handler in config.get('handlers', {}).items():
             cls = load_cls(handler)
-            db.assets.reg.register_handler(spec, cls)
+            db.reg.register_handler(spec, cls)
         return db
 
     @classmethod
