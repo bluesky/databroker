@@ -64,6 +64,21 @@ This requires more work to set up.
             port: 27017
             database: 'some_example_database'
 
+Configuration files may optionally include a section specifying 'handlers',
+classes that load externally stored data.
+
+.. code-block:: yaml
+
+    handlers:
+        FOO:
+            module: 'databroker.assets.path_only_handlers',
+            class: 'RawHandler'
+
+In these examples, the classes used happen to be from the ``databroker``
+package itself, but classes from other packages can be used just as well, as
+long as they present the expected API. (This API is not yet documented outside
+of the source code.)
+
 .. warning::
 
     Future versions of databroker will provide better support for multiple
