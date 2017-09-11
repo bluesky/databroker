@@ -1995,7 +1995,7 @@ class BrokerES(object):
             desc_id = ev['descriptor']
             for k, v in six.iteritems(fill_map):
                 for dk in v:
-                    if not filled[dk]:
+                    if not filled.get(dk, True):
                         d_id = data[dk]
                         data[dk] = (registry_map[(desc_id, dk)]
                                     .retrieve(d_id))
