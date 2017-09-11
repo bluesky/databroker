@@ -71,7 +71,7 @@ classes that load externally stored data.
 
     handlers:
         FOO:
-            module: 'databroker.assets.path_only_handlers',
+            module: 'databroker.assets.path_only_handlers'
             class: 'RawHandler'
 
 In these examples, the classes used happen to be from the ``databroker``
