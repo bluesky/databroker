@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, date, timedelta
 import itertools
 from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
-                        DeprecatedDoct, Broker, temp_config)
+                        DeprecatedDoct, Broker, temp_config, ALL)
 import doct
 import copy
 
@@ -24,7 +24,7 @@ if sys.version_info >= (3, 0):
                                   ReaderWithRegistryHandler)
     from bluesky.plans import (count, pchain, monitor_during_wrapper,
                                configure, trigger_and_read, run_decorator,
-                               baseline_wrapper)
+                               baseline_wrapper, stage_wrapper)
 
 logger = logging.getLogger(__name__)
 
@@ -1089,6 +1089,29 @@ def test_filled_true_rotated_on_insert(db, RE):
         assert not ev['filled']['det']
         assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
 
+
+@py3
+def test_fill_and_multiple_streams(db, RE):
+    RE.subscribe(db.insert)
+
+    detfs1 = ReaderWithRegistry('detfs1', {'image1': lambda: np.ones((5, 5))},
+                                reg=db.fs, save_path=tempfile.mkdtemp())
+    detfs2 = ReaderWithRegistry('detfs2', {'image2': lambda: np.ones((5, 5))},
+                                reg=db.fs, save_path=tempfile.mkdtemp())
+
+    # In each event stream, put one 'fillable' (external-writing) detector and
+    # one simple detector.
+    primary_dets = [detfs1, det1]
+    baseline_dets = [detfs2, det2]
+
+    uid, = RE(stage_wrapper(baseline_wrapper(count(primary_dets),
+                                             baseline_dets),
+                            baseline_dets))
+
+    db.reg.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    h = db[uid]
+    list(h.documents(stream_name=ALL, fill=False))
+    list(h.documents(stream_name=ALL, fill=True))
 
 @py3
 def test_repr_html(db, RE):
