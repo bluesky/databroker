@@ -1027,15 +1027,22 @@ _STANDARD_DICT_ATTRS = dir(dict)
 
 class DeprecatedDoct(doct.Document):
     "Subclass of doct.Document that warns that dot access may be removed."
+    # We must use __getattribute__ here, not the gentle __getattr__, in order
+    # to successfully override doct.Document. doct.Document aggressively edits
+    # its own __dict__, a subclass's __getattr__ would never be called.
     def __getattribute__(self, key):
         # Get the result first and let any errors be raised.
         res = super(DeprecatedDoct, self).__getattribute__(key)
         # Now warn before returning it.
-        if key not in _STANDARD_DICT_ATTRS:
+        if not (key in _STANDARD_DICT_ATTRS or key.startswith('_')):
             # This is not a standard dict attribute.
             # Warn that dot access is deprecated.
-            warnings.warn("Dot access may be removed in a future version."
+            warnings.warn("Dot access may be removed in a future version. "
                           "Use [{0}] instead of .{0}".format(key))
+        if key == '_name':
+            warnings.warn("In a future version of databroker, plain dicts "
+                          "without a '_name' attribute may be returned. "
+                          "Do not rely on '_name'.")
         return res
 
 
