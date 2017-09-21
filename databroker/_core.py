@@ -483,12 +483,25 @@ def register_builtin_handlers(reg):
     from .assets import handlers
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
-    for cls in vars(handlers).values():
-        if isinstance(cls, type) and issubclass(cls, handlers.HandlerBase):
-            logger.debug("Found Handler %r for specs %r", cls, cls.specs)
-            for spec in cls.specs:
-                logger.debug("Registering Handler %r for spec %r", cls, spec)
-                reg.register_handler(spec, cls)
+
+    _register_builtin_handler(handlers.handlers.AreaDetectorSPEHandler)
+    _register_builtin_handler(handlers.handlers.AreaDetectorTiffHandler)
+    _register_builtin_handler(handlers.handlers.AreaDetectorHDF5Handler)
+    _register_builtin_handler(handlers.handlers.SingleTiffHandler)
+    _register_builtin_handler(handlers.handlers.PilatusCBFHandler)
+
+
+def _register_builtin_handler(reg, hdlr):
+    for spec in hdlr.specs:
+        logger.debug("Registering Handler %r for spec %r", cls, spec)
+        reg.register_handler(spec, hdlr)
+
+    #for cls in vars(handlers).values():
+    #    if isinstance(cls, type) and issubclass(cls, handlers.HandlerBase):
+    #        logger.debug("Found Handler %r for specs %r", cls, cls.specs)
+    #        for spec in cls.specs:
+    #            logger.debug("Registering Handler %r for spec %r", cls, spec)
+    #            reg.register_handler(spec, cls)
 
 
 def get_fields(header, name=None):
