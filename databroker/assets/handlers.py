@@ -203,7 +203,7 @@ class AreaDetectorHDF5DaskHandler(AreaDetectorHDF5Handler):
     frame_per_point : integer, optional
         number of frames to return as one datum, default 1
     """
-    specs = {'AD_HDF5_DASK'} | HDF5DatasetSliceHandler.specs
+    specs = {'AD_HDF5'} | HDF5DatasetSliceHandler.specs
 
     def _get_dataset(self):
         self._dataset = list()
