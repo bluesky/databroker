@@ -484,11 +484,11 @@ def register_builtin_handlers(reg):
     # TODO This will blow up if any non-leaves in the class heirarchy
     # have non-empty specs. Make this smart later.
 
-    _register_builtin_handler(handlers.AreaDetectorSPEHandler)
-    _register_builtin_handler(handlers.AreaDetectorTiffHandler)
-    _register_builtin_handler(handlers.AreaDetectorHDF5Handler)
-    _register_builtin_handler(handlers.SingleTiffHandler)
-    _register_builtin_handler(handlers.PilatusCBFHandler)
+    _register_builtin_handler(reg, handlers.AreaDetectorSPEHandler)
+    _register_builtin_handler(reg, handlers.AreaDetectorTiffHandler)
+    _register_builtin_handler(reg, handlers.AreaDetectorHDF5Handler)
+    _register_builtin_handler(reg, handlers.SingleTiffHandler)
+    _register_builtin_handler(reg, handlers.PilatusCBFHandler)
 
 
 def _register_builtin_handler(reg, hdlr):
