@@ -207,10 +207,8 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     specs = {'AD_HDF5'} | AreaDetectorHDF5Handler.specs
 
     def __init__(self, filename, frame_per_point=1):
-        hardcoded_key = ['/entry/data/data']
         super(AreaDetectorHDF5SWMRHandler, self).__init__(
-            filename=filename, key=hardcoded_key,
-            frame_per_point=frame_per_point, swmr=True)
+            filename=filename, frame_per_point=frame_per_point, swmr=True)
 
 
 class AreaDetectorHDF5DaskHandler(AreaDetectorHDF5Handler):
@@ -272,6 +270,31 @@ class AreaDetectorHDF5TimestampHandler(HDF5DatasetSliceHandler):
         rtn = self._dataset[0][start:stop].squeeze()
         rtn = rtn + (self._dataset[1][start:stop].squeeze() * 1.0e-9)
         return rtn
+
+
+class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
+    """ Handler to retrieve timestamps from Areadetector HDF5 File
+
+    In this spec, the timestamps of the images are read with SWMR
+    capabilities from the HDF5 file as written by the NDAttributes:
+
+    '/entry/instrument/NDAttributes/NDArrayEpicsTSSec' and
+    '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec'
+
+    A signle time is returned per data point as a float in seconds.
+
+    Parameters
+    ----------
+    filename : string
+        path to HDF5 file
+    frame_per_point : integer, optional
+        number of frames to return as one datum, default 1
+    """
+    specs = {'AD_HDF5_TS'} | HandlerBase.specs
+
+    def __init__(self, filename, frame_per_point=1):
+        super(AreaDetectorHDF5SWMRTimestampHandler, self).__init__(
+            filename=filename, frame_per_point=frame_per_point, swmr=True)
 
 
 class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
