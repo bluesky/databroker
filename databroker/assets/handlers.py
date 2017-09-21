@@ -186,6 +186,33 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
             frame_per_point=frame_per_point)
 
 
+class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
+    """
+    Handler for the 'AD_HDF5' spec used by Area Detectors
+    with extension for turning on SWMR use.
+
+    In this spec, the key (i.e., HDF5 dataset path) is always
+    '/entry/data/data'.
+
+    This handler returns a numpy array with the data from from
+    the HDF5 dataset.
+
+    Parameters
+    ----------
+    filename : string
+        path to HDF5 file
+    frame_per_point : integer, optional
+        number of frames to return as one datum, default 1
+    """
+    specs = {'AD_HDF5'} | AreaDetectorHDF5Handler.specs
+
+    def __init__(self, filename, frame_per_point=1):
+        hardcoded_key = ['/entry/data/data']
+        super(AreaDetectorHDF5SWMRHandler, self).__init__(
+            filename=filename, key=hardcoded_key,
+            frame_per_point=frame_per_point, swmr=True)
+
+
 class AreaDetectorHDF5DaskHandler(AreaDetectorHDF5Handler):
     """
     Handler for the 'AD_HDF5' spec used by Area Detectors.
