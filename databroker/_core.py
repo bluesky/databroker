@@ -493,7 +493,7 @@ def register_builtin_handlers(reg):
 
 def _register_builtin_handler(reg, hdlr):
     for spec in hdlr.specs:
-        logger.debug("Registering Handler %r for spec %r", cls, spec)
+        logger.debug("Registering Handler %r for spec %r", hdlr, spec)
         reg.register_handler(spec, hdlr)
 
     #for cls in vars(handlers).values():
