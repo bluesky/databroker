@@ -21,6 +21,7 @@ class IntegrityError(Exception):
 
 class AreaDetectorSPEHandler(HandlerBase):
     specs = {'AD_SPE'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, fpath, template, filename,
                  frame_per_point=1):
@@ -55,6 +56,7 @@ class AreaDetectorSPEHandler(HandlerBase):
 
 class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, fpath, template, filename, frame_per_point=1):
         self._path = os.path.join(fpath, '')
@@ -218,6 +220,7 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5'} | HDF5DatasetSliceHandler.specs
+    autoregister = True
 
     def __init__(self, filename, frame_per_point=1):
         hardcoded_key = ['/entry/data/data']
@@ -298,6 +301,7 @@ class AreaDetectorHDF5TimestampHandler(HDF5DatasetSliceHandler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5_TS'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, filename, frame_per_point=1):
         hardcoded_key = ['/entry/instrument/NDAttributes/NDArrayEpicsTSSec',
@@ -383,6 +387,7 @@ class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
     a MAPS XRF data product.
     """
     specs = {'MAPS_SPECTRUM'} | _HdfMapsHandlerBase.specs
+    autoregister = True
 
     def __call__(self, x, y):
         """
@@ -411,6 +416,7 @@ class HDFMapsEnergyHandler(_HdfMapsHandlerBase):
     a MAPS XRF data file.
     """
     specs = {'MAPS_PLANE'} | _HdfMapsHandlerBase.specs
+    autoregister = True
 
     def __call__(self, e_index):
         """
@@ -443,6 +449,7 @@ class NpyHandler(HandlerBase):
         memmap mode to use to open file
     """
     specs = {'npy'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
@@ -459,6 +466,7 @@ class NpyHandler(HandlerBase):
 
 class NpyFrameWise(HandlerBase):
     specs = {'npy_FRAMEWISE'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
@@ -476,6 +484,7 @@ class NpyFrameWise(HandlerBase):
 
 class SingleTiffHandler(HandlerBase):
     specs = {'SINGLE_TIFF'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, filename):
         self._name = filename
@@ -495,6 +504,7 @@ class DATHandler(HandlerBase):
         np.loadtxt
     '''
     specs = {'DAT'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, fpath, **kwargs):
         self._path = fpath
@@ -506,6 +516,7 @@ class DATHandler(HandlerBase):
 
 class PilatusCBFHandler(HandlerBase):
     specs = {'AD_CBF'} | HandlerBase.specs
+    autoregister = True
 
     def __init__(self, rpath, template, filename, frame_per_point=1,
                  initial_number=1):
@@ -545,6 +556,7 @@ XS3_XRF_DATA_KEY = 'entry/instrument/detector/data'
 class Xspress3HDF5Handler(HandlerBase):
     specs = {'XSP3'} | HandlerBase.specs
     HANDLER_NAME = 'XSP3'
+    autoregister = True
 
     def __init__(self, filename, key=XS3_XRF_DATA_KEY):
         import h5py
