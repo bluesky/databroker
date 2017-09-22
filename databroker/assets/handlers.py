@@ -209,8 +209,8 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
     In this spec, the key (i.e., HDF5 dataset path) is always
     '/entry/data/data'.
 
-    This handler returns a numpy array with the data from from
-    the HDF5 dataset.
+    This handler returns a pims ImageSequence with the data
+    from from the HDF5 dataset.
 
     Parameters
     ----------
@@ -227,6 +227,29 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
         super(AreaDetectorHDF5Handler, self).__init__(
             filename=filename, key=hardcoded_key,
             frame_per_point=frame_per_point)
+
+
+class AreaDetectorHDF5PyHandler(AreaDetectorHDF5Handler):
+    """
+    Handler for the 'AD_HDF5' spec used by Area Detectors.
+
+    In this spec, the key (i.e., HDF5 dataset path) is always
+    '/entry/data/data'.
+
+    This handler returns a h5py object with the data from from
+    the HDF5 dataset.
+
+    Parameters
+    ----------
+    filename : string
+        path to HDF5 file
+    frame_per_point : integer, optional
+        number of frames to return as one datum, default 1
+    """
+    autoregister = False
+
+    def _get_data_object(self, start, stop):
+        return self._dataset[0][start:stop]
 
 
 class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):

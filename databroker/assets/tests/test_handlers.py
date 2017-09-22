@@ -13,6 +13,7 @@ from ..handlers import AreaDetectorHDF5SWMRHandler
 from ..handlers import AreaDetectorHDF5DaskHandler
 from ..handlers import AreaDetectorHDF5TimestampHandler
 from ..handlers import AreaDetectorHDF5SWMRTimestampHandler
+from ..handlers import AreaDetectorHDF5PyHandler
 from ..handlers import AreaDetectorTiffHandler
 from ..handlers import DummyAreaDetectorHandler
 from ..handlers import HDFMapsSpectrumHandler as HDFM
@@ -40,6 +41,8 @@ def fs_with_handlers(request, fs_cls):
                         AreaDetectorHDF5SWMRTimestampHandler)
     fs.register_handler('AD_HDF5_DASK',
                         AreaDetectorHDF5DaskHandler)
+    fs.register_handler('AD_HDF5_PY',
+                        AreaDetectorHDF5PyHandler)
 
     def deregister_handlers():
         fs.deregister_handler('AD_HDF5')
@@ -47,6 +50,7 @@ def fs_with_handlers(request, fs_cls):
         fs.deregister_handler('AD_HDF5_TS')
         fs.deregister_handler('AD_HDF5_SWMR_TS')
         fs.deregister_handler('AD_HDF5_DASK')
+        fs.deregister_handler('AD_HDF5_PY')
 
     request.addfinalizer(deregister_handlers)
     request.cls.fs = fs
@@ -167,9 +171,14 @@ class Test_AD_hdf5_files(_with_file):
         assert hand._file is None
 
 
-class Test_ADD_hdf5_dask_files(_with_file):
+class Test_AD_hdf5_dask_files(_with_file):
     spec = 'AD_HDF5_DASK'
     handler = AreaDetectorHDF5DaskHandler
+
+
+class Test_AD_hdf5_py_files(_with_file):
+    spec = 'AD_HDF5_PY'
+    handler = AreaDetectorHDF5PyHandler
 
 
 # class Test_AD_hdf5_SWMR_files(Test_AD_hdf5_files):
