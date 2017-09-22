@@ -248,6 +248,7 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5'} | AreaDetectorHDF5Handler.specs
+    autoregister = False
 
     def __init__(self, filename, frame_per_point=1):
         super(AreaDetectorHDF5SWMRHandler, self).__init__(
@@ -272,6 +273,7 @@ class AreaDetectorHDF5DaskHandler(AreaDetectorHDF5Handler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5'} | HDF5DatasetSliceHandler.specs
+    autoregister = False
 
     def _get_dataset(self):
         self._dataset = list()
@@ -335,6 +337,7 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5_TS'} | HandlerBase.specs
+    autoregister = False
 
     def __init__(self, filename, frame_per_point=1):
         super(AreaDetectorHDF5SWMRTimestampHandler, self).__init__(

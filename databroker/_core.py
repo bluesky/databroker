@@ -489,8 +489,13 @@ def register_builtin_handlers(reg):
             logger.debug("Found Handler %r for specs %r", cls, cls.specs)
             if cls.autoregister:
                 for spec in cls.specs:
-                    logger.debug("Registering Handler %r for spec %r", cls, spec)
+                    logger.debug("Registering Handler %r for spec %r", cls,
+                                 spec)
                     reg.register_handler(spec, cls)
+            else:
+                logger.debug("NOT Registering Handler %r for specs %r", cls,
+                             cls.specs)
+
 
 
 def get_fields(header, name=None):
