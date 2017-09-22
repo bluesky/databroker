@@ -9,9 +9,15 @@ import os.path
 import dask.array as da
 
 from .handlers_base import HandlerBase
+from pims import FramesSequence, Frame
 from .readers.spe import PrincetonSPEFile
 
 logger = logging.getLogger(__name__)
+
+
+class IntegrityError(Exception):
+    pass
+
 
 class AreaDetectorSPEHandler(HandlerBase):
     specs = {'AD_SPE'} | HandlerBase.specs
@@ -88,6 +94,40 @@ class DummyAreaDetectorHandler(HandlerBase):
         return out_stack.squeeze()
 
 
+class ImageStack(FramesSequence):
+    "One of these represents the data from an event: (num_images x w x h)"
+    def __init__(self, dataset, start, stop):
+        # `start` and `stop` are the limits of this cube
+        # i indexes within the cube
+        self._start = start
+        self._stop = stop
+        self._dataset = dataset
+
+        # Old PIMS has no dtype, shape. Try adding it.
+        try:
+            self.dtype = self.pixel_type
+        except AttributeError:
+            pass
+        try:
+            self.shape = self.frame_shape
+        except AttributeError:
+            pass
+
+    def get_frame(self, i):
+        return Frame(self._dataset[self._start + i], frame_no=i)
+
+    def __len__(self):
+        return self._stop - self._start
+
+    @property
+    def pixel_type(self):
+        return self._dataset.dtype
+
+    @property
+    def frame_shape(self):
+        return self._dataset.shape[1:]
+
+
 class HDF5DatasetSliceHandler(HandlerBase):
     """
     Handler for data stored in one Dataset of an HDF5 file.
@@ -137,7 +177,7 @@ class HDF5DatasetSliceHandler(HandlerBase):
         return self._data_objects[point_number]
 
     def _get_data_object(self, start, stop):
-        return self._dataset[0][start:stop]
+        return ImageStack(self._dataset[0], start, stop)
 
     def _get_dataset(self):
         self._dataset = list()
