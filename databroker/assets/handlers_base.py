@@ -12,6 +12,7 @@ class HandlerBase(object):
     ``__enter__``, ``__exit__`` and ``close``
     """
     specs = set()
+    autoregister = False
 
     def __enter__(self):
         return self
