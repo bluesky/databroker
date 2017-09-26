@@ -19,3 +19,4 @@ toolz
 tornado
 tzlocal
 ujson
+dask
