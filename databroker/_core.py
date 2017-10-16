@@ -1038,7 +1038,7 @@ class DeprecatedDoct(doct.Document):
             # This is not a standard dict attribute.
             # Warn that dot access is deprecated.
             warnings.warn("Dot access may be removed in a future version. "
-                          "Use [{0}] instead of .{0}".format(key))
+                          "Use ['{0}'] instead of .{0}".format(key))
         if key == '_name':
             warnings.warn("In a future version of databroker, plain dicts "
                           "without a '_name' attribute may be returned. "
