@@ -882,10 +882,12 @@ def test_deprecated_doct():
 
     with pytest.warns(UserWarning):
         ev.data
+        ev._name
 
     with pytest.warns(None) as record:
         ev['data']
         ev.values()
+        ev._repr_html_()
         with pytest.raises(AttributeError):
             ev.nonexistent
     assert not record  # i.e. assert no warning
