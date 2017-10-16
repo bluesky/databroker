@@ -1,5 +1,6 @@
 attrs
 boltons
+dask
 doct
 h5py
 humanize
