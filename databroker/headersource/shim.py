@@ -62,4 +62,4 @@ def safe_get_stop(hs, s):
     try:
         return hs.stop_by_start(s)
     except hs.NoRunStop:
-        return None
+        return {}
