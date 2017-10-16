@@ -1,5 +1,6 @@
 attrs
 boltons
+dask
 doct
 h5py
 humanize
@@ -19,4 +20,3 @@ toolz
 tornado
 tzlocal
 ujson
-dask
