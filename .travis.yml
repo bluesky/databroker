@@ -1,13 +1,14 @@
 language: python
 sudo: false
+
 env:
   global:
-    BUILD_DOCS_BRANCH: master
-    DOCS_SUBDIR: doc/
-    TARGET_DEV_SUBDIR: databroker/
-    HTML_SUBDIR: build/html
-    DOCS_CONDA_DEPS: "matplotlib"
-    DOCS_PIP_DEPS: "tqdm"
+    - secure: "vJnQwcJw7t9fSS3A/u3JXjXVLErDKIPcAnwx4HaKhuPmXB8Mq5455jSJvK65DOl7Wh4q1WvHGiFdTJ7JtHOxyTCCAJQBElzhT4/6IjjgrqG5s5HIN/qyACimpeXLCdM0FslyCu4bpt0TTd/FReV0Oq3pHt1FiQkpBq07W0t1NvrSv4lymtadT6ZgVlVOFGOcbmUH6sdexBm4TSJnVJjFva8v11zaICFXCIm1PRAraj5ueBm13SpozQ6lZA0e2aOnMqgQg3cId3Hag1SzYmZeYZ8F0ZzCDOX4grbu0S5tUacz0RxieJpx3TTP3lLEXyJvkmFIwuV8aPquZZpVxtzksHnUwED4B0icSVJ1WGMw8hCQpxRHYf9W2wqlIzYb7p3eBhnbl0zrdf6+hMwRontI7HhBnqbEvWpBJArYcaYEMfw714i63bJiD7fZLZ+8Nz7pjwKxhD6dF2ZR37MPAkKeGt3Z/QfAZBZ++hW2mPxSMEMUjGX7FJsMCuryNzVDqKGk3vLc2k+OKU+DjnJyYZq+00defVfjJL0Hh4ZUnC0C97MwLgeHiC9jLcnhdqTg5U12muj4eQJ1roolNTgkjbyS8FLA2kmAVft04hgaqKg/FaAvlpxMAASwkaKO8C7Kz7TDQ8SwxpX0S1qpmd/gblbMHl0k1jfqnwoYRHxJ3jb8Whs="
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.cache/matplotlib
 
 services:
   - mongodb
@@ -21,58 +22,41 @@ addons:
     - mongodb-org
 
 matrix:
+  fast_finish: true
   include:
     - python: 2.7
-      env: BUILD_DOCS=false
+    - python: 3.4
     - python: 3.5
-      env: BUILD_DOCS=false
     - python: 3.6
-      env: BUILD_DOCS=true
-
-before_install:
-  - git clone https://github.com/nsls-ii/nsls2-ci ~/ci_scripts
-  - . ~/ci_scripts/install-miniconda.sh
-  - . ~/ci_scripts/init-filestore.sh
-  - . ~/ci_scripts/init-metadatastore.sh
+      env: BUILD_DOCS=1
+    - python: nightly
+  allow_failures:
+    - python: nightly
 
 install:
-  - export GIT_FULL_HASH=`git rev-parse HEAD`
-  - conda create -n testenv pytest cytoolz pandas ujson six jsonschema doct h5py tornado pymongo pytz numpy tifffile jinja2 coverage pyyaml tzlocal nose python=$TRAVIS_PYTHON_VERSION pims prettytable pip boltons requests -c lightsource2-tag -c conda-forge
-  - source activate testenv
-  - pip install mongoquery attrs tzlocal
-  - pip install coveralls codecov pytest-cov
-  - |
-    if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
+  - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch pathlib2;
+    else
+      pip install bluesky;
     fi;
-  - |
-    if [ $TRAVIS_PYTHON_VERSION != "2.7" ]; then
-      pip install https://github.com/NSLS-II/bluesky/zipball/master#egg=bluesky
-    fi;
-  - 'pip install https://github.com/NSLS-II/event-model/zipball/master#egg=event_model'
   - pip install .[all]
+  - pip install -r test-requirements.txt
+  - pip install codecov
 
 script:
-  - source activate testenv
-  # - nohup python /home/travis/metadataservice/startup.py --mongo-host localhost --mongo-port 27017 --service-port 7778 --database mdservicetest --timezone US/Eastern --auth --mongo-user tom --mongo-pwd jerry &
-  # - sleep 5
-  # - export PYTHONPATH=$PYTHONPATH:/home/travis/metadataclient
-  # - cat nohup.out
-
   - coverage run run_tests.py
+  - coverage report -m
+  - set -e
+  # Build docs.
   - |
-    if [ $BUILD_DOCS == true ]; then
-      source ~/ci_scripts/make-docs.sh
+    if [ $BUILD_DOCS ]; then
+      pip install -r docs-requirements.txt
+      pushd doc
+      make html
+      popd
+      # Publish docs.
+      doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master databroker
     fi
 
 after_success:
   - codecov
-  - |
-    if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == 'NSLS-II/databroker' && $BUILD_DOCS == true && $TRAVIS_BRANCH == 'master' ]]; then
-      echo "Adding encrypted deployment key for uploading docs"
-      openssl aes-256-cbc -K $encrypted_fc5d6c7ff840_key -iv $encrypted_fc5d6c7ff840_iv -in databroker-docs-deploy.enc -out databroker-docs-deploy -d
-      eval `ssh-agent -s`
-      chmod 600 databroker-docs-deploy
-      ssh-add databroker-docs-deploy
-      source ~/ci_scripts/push-docs.sh
-    fi
