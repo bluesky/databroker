@@ -142,6 +142,8 @@ class HDF5DatasetSliceHandler(HandlerBase):
         key of the single HDF5 Dataset used by this Handler
     frame_per_point : integer, optional
         number of frames to return as one datum, default 1
+     swmr : bool, optional
+        Open the hdf5 file in SWMR read mode. Only used when mode = 'r'.
     """
     def __init__(self, filename, key, frame_per_point=1, swmr=False):
         self._fpp = frame_per_point
