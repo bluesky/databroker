@@ -679,53 +679,53 @@ def test_export(broker_factory, RE, hw):
     assert os.path.dirname(from_path) == dir1
     assert os.path.dirname(to_path) == dir2
     assert db2[uid] == db1[uid]
-    image1, = db1.get_images(db1[uid], 'image')
-    image2, = db2.get_images(db2[uid], 'image')
+    image1, = db1.get_images(db1[uid], 'detfs')
+    image2, = db2.get_images(db2[uid], 'detfs')
 
 
 @py3
-def test_export_noroot(broker_factory, RE):
-    from bluesky.utils import short_uid
-    from bluesky.examples import GeneralReaderWithRegistry
+def test_export_noroot(broker_factory, RE, tmpdir, hw):
+    from ophyd import sim
 
-    class LocalWriter(GeneralReaderWithRegistry):
+    class BrokenSynRegistry(sim.SynSignalWithRegistry):
+
         def stage(self):
-            self._file_stem = short_uid()
-            self._path_stem = os.path.join(self.save_path, self._file_stem)
-            self._resource_id = self.reg.insert_resource(
-                self._spec,
-                os.path.join(self.save_path, self._file_stem),
-                {})
+            self._file_stem = self.save_path
+            self._path_stem = (os.path.join(self.save_path, self._file_stem)
+                               + os.path.sep)
+            self._resource_id = self.reg.register_resource(self._spec,
+                                                           '',
+                                                           self._path_stem,
+                                                           {})
 
-    dir1 = tempfile.mkdtemp()
+    dir1 = str(tmpdir.mkdir('a'))
+    dir2 = str(tmpdir.mkdir('b'))
     db1 = broker_factory()
-    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    db2 = broker_factory()
 
-    detfs = LocalWriter('detfs', {'image': lambda: np.ones((5, 5))},
-                        reg=db1.fs, save_path=dir1, save_ext='npy')
-
+    detfs = BrokenSynRegistry(name='detfs',
+                              func=lambda: np.ones((5, 5)),
+                              reg=db1.reg, save_path=dir1)
+    db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
+    db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     RE.subscribe(db1.mds.insert)
     uid, = RE(count([detfs], num=3))
 
-    db2 = broker_factory()
-    db2.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
-
-    dir2 = tempfile.mkdtemp()
     file_pairs = db1.export(db1[uid], db2, new_root=dir2)
     for from_path, to_path in file_pairs:
         assert os.path.dirname(from_path) == dir1
         assert os.path.dirname(to_path) == os.path.join(dir2, dir1[1:])
 
     assert db2[uid] == db1[uid]
-    image1s = db1.get_images(db1[uid], 'image')
-    image2s = db2.get_images(db2[uid], 'image')
+    image1s = db1.get_images(db1[uid], 'detfs')
+    image2s = db2.get_images(db2[uid], 'detfs')
     for im1, im2 in zip(image1s, image2s):
         assert np.array_equal(im1, im2)
 
 
 @py3
-def test_export_size_smoke(broker_factory, RE):
-
+def test_export_size_smoke(broker_factory, RE, tmpdir):
+    from ophyd import sim
     db1 = broker_factory()
     RE.subscribe(db1.mds.insert)
 
@@ -733,12 +733,14 @@ def test_export_size_smoke(broker_factory, RE):
     if not hasattr(db1.fs, 'copy_files'):
         raise pytest.skip("This Registry does not implement copy_files.")
 
-    dir1 = tempfile.mkdtemp()
-    detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                               reg=db1.fs, save_path=dir1)
+    detfs = sim.SynSignalWithRegistry(name='detfs',
+                                      func=lambda: np.ones((5, 5)),
+                                      reg=db1.reg,
+                                      save_path=tmpdir.mkdir('a'))
+
     uid, = RE(count([detfs]))
 
-    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     size = db1.export_size(db1[uid])
     assert size > 0.
 
