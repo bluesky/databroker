@@ -471,9 +471,9 @@ def test_configuration(db, RE):
     from ophyd import Device, sim, Component as C
 
     class SynWithConfig(Device):
-        a = C(sim.SynSignal)
-        b = C(sim.SynSignal)
-        d = C(sim.SynSignal)
+        a = C(sim.Signal, value=0)
+        b = C(sim.Signal, value=2)
+        d = C(sim.Signal, value=1)
 
     det = SynWithConfig(name='det')
     det.a.name = 'a'
@@ -650,6 +650,7 @@ def test_handler_options(db, RE, hw):
 
 @py3
 def test_export(broker_factory, RE, hw):
+    from ophyd import sim
     db1 = broker_factory()
     db2 = broker_factory()
     RE.subscribe(db1.mds.insert)
@@ -661,17 +662,18 @@ def test_export(broker_factory, RE, hw):
     assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
 
     # test file copying
-    if not hasattr(db1.fs, 'copy_files'):
+    if not hasattr(db1.reg, 'copy_files'):
         raise pytest.skip("This Registry does not implement copy_files.")
 
     dir1 = tempfile.mkdtemp()
     dir2 = tempfile.mkdtemp()
-    detfs = ReaderWithRegistry('detfs', {'image': lambda: np.ones((5, 5))},
-                                reg=db1.fs, save_path=dir1)
+    detfs = sim.SynSignalWithRegistry(name='detfs',
+                                      func=lambda: np.ones((5, 5)),
+                                      reg=db1.reg, save_path=dir1)
     uid, = RE(count([detfs]))
 
-    db1.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
-    db2.fs.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
+    db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
 
     (from_path, to_path), = db1.export(db1[uid], db2, new_root=dir2)
     assert os.path.dirname(from_path) == dir1
@@ -765,10 +767,23 @@ def test_dict_header(db, RE, hw):
 
 
 @py3
-def test_config_data(db, RE):
+def test_config_data(db, RE, hw):
     # simple case: one Event Descriptor, one stream
     RE.subscribe(db.insert)
-    det = Reader('det', {'x': lambda: 1}, conf={'y': 2, 'z': 3})
+    from ophyd import Device, sim, Component as C
+
+    class SynWithConfig(Device):
+        x = C(sim.Signal, value=0)
+        y = C(sim.Signal, value=2)
+        z = C(sim.Signal, value=3)
+
+    det = SynWithConfig(name='det')
+    det.x.name = 'x'
+    det.y.name = 'y'
+    det.z.name = 'z'
+    det.read_attrs = ['x']
+    det.configuration_attrs = ['y', 'z']
+
     uid, = RE(count([det]))
     h = db[uid]
     actual = h.config_data('det')
@@ -1084,7 +1099,7 @@ def test_filled_false_stripped_on_insert(db, RE, hw):
 
 
 @py3
-def test_filled_true_rotated_on_insert(db, RE):
+def test_filled_true_rotated_on_insert(db, RE, hw):
     # Hack the Event and the Descriptor consistently.
     def insert(name, doc):
         if name == 'event':
@@ -1107,27 +1122,32 @@ def test_filled_true_rotated_on_insert(db, RE):
 
 
 @py3
-def test_fill_and_multiple_streams(db, RE):
+def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
+    from ophyd import sim
     RE.subscribe(db.insert)
+    detfs1 = sim.SynSignalWithRegistry(name='detfs1',
+                                       func=lambda: np.ones((5, 5)),
+                                       reg=db.reg,
+                                       save_path=tmpdir.mkdir('a'))
+    detfs2 = sim.SynSignalWithRegistry(name='detfs2',
+                                       func=lambda: np.ones((5, 5)),
+                                       reg=db.reg,
+                                       save_path=tmpdir.mkdir('b'))
 
-    detfs1 = ReaderWithRegistry('detfs1', {'image1': lambda: np.ones((5, 5))},
-                                reg=db.fs, save_path=tempfile.mkdtemp())
-    detfs2 = ReaderWithRegistry('detfs2', {'image2': lambda: np.ones((5, 5))},
-                                reg=db.fs, save_path=tempfile.mkdtemp())
-
-    # In each event stream, put one 'fillable' (external-writing) detector and
-    # one simple detector.
-    primary_dets = [detfs1, det1]
-    baseline_dets = [detfs2, det2]
+    # In each event stream, put one 'fillable' (external-writing)
+    # detector and one simple detector.
+    primary_dets = [detfs1, hw.det1]
+    baseline_dets = [detfs2, hw.det2]
 
     uid, = RE(stage_wrapper(baseline_wrapper(count(primary_dets),
                                              baseline_dets),
                             baseline_dets))
 
-    db.reg.register_handler('RWFS_NPY', ReaderWithRegistryHandler)
+    db.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     h = db[uid]
     list(h.documents(stream_name=ALL, fill=False))
     list(h.documents(stream_name=ALL, fill=True))
+
 
 @py3
 def test_repr_html(db, RE, hw):
