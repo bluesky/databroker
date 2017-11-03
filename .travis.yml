@@ -36,8 +36,10 @@ matrix:
 install:
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch pathlib2;
+    elif [ $TRAVIS_PYTHON_VERSION = "3.4" ]; then
+      echo
     else
-      pip install bluesky;
+      pip install bluesky ophyd;
     fi;
   - pip install .[all]
   - pip install -r test-requirements.txt
