@@ -736,7 +736,7 @@ def test_export_size_smoke(broker_factory, RE, tmpdir):
     detfs = sim.SynSignalWithRegistry(name='detfs',
                                       func=lambda: np.ones((5, 5)),
                                       reg=db1.reg,
-                                      save_path=tmpdir.mkdir('a'))
+                                      save_path=str(tmpdir.mkdir('a')))
 
     uid, = RE(count([detfs]))
 
@@ -1130,11 +1130,11 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
     detfs1 = sim.SynSignalWithRegistry(name='detfs1',
                                        func=lambda: np.ones((5, 5)),
                                        reg=db.reg,
-                                       save_path=tmpdir.mkdir('a'))
+                                       save_path=str(tmpdir.mkdir('a')))
     detfs2 = sim.SynSignalWithRegistry(name='detfs2',
                                        func=lambda: np.ones((5, 5)),
                                        reg=db.reg,
-                                       save_path=tmpdir.mkdir('b'))
+                                       save_path=str(tmpdir.mkdir('b')))
 
     # In each event stream, put one 'fillable' (external-writing)
     # detector and one simple detector.
