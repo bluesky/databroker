@@ -18,8 +18,13 @@ import databroker.headersource.mongoquery as mqmds
 
 from ..headersource import sqlite as sqlmds
 
-if sys.version_info >= (3, 0):
-    from bluesky.tests.conftest import fresh_RE as RE
+if sys.version_info >= (3, 5):
+    from bluesky.tests.conftest import RE as RE
+
+    @pytest.fixture(scope='function')
+    def hw(request):
+        from ophyd.sim import hw
+        return hw()
 
 
 @pytest.fixture(params=['sqlite', 'mongo', 'hdf5', 'client'], scope='module')
@@ -119,7 +124,7 @@ def md_server_url(request):
         if time.time() - startup_time > TIMEOUT:
             raise Exception("Server startup timed out.")
         try:
-            r = requests.get(url, params=ujson.dumps(message))
+            requests.get(url, params=ujson.dumps(message))
         except requests.exceptions.ConnectionError:
             time.sleep(1)
             continue
