@@ -14,11 +14,7 @@ import yaml
 if six.PY2:
     FileNotFoundError = IOError
 
-if sys.version_info >= (3, 0):
-    from bluesky.examples import det
-    from bluesky.plans import count
-
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
+py3 = pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python 3")
 
 EXAMPLE = {
     'description': 'DESCRIPTION_PLACEHOLDER',
@@ -68,7 +64,7 @@ def test_lookup_config():
     ensure_path_exists(os.path.dirname(path))
     with open(path, 'w') as f:
         yaml.dump(EXAMPLE, f)
-    actual = lookup_config(name) 
+    actual = lookup_config(name)
     broker = Broker.named(name)  # smoke test
     assert name in list_configs()
     assert name in describe_configs()
@@ -78,6 +74,7 @@ def test_lookup_config():
 
     with pytest.raises(FileNotFoundError):
         lookup_config('__does_not_exist')
+
 
 def test_legacy_config():
     name = databroker.databroker.SPECIAL_NAME
@@ -128,7 +125,8 @@ def test_legacy_config():
 
 
 @py3
-def test_legacy_config_warnings(RE):
+def test_legacy_config_warnings(RE, hw):
+    import bluesky.plans as bp
     name = databroker.databroker.SPECIAL_NAME
     assert 'test' in name
     path = os.path.join(os.path.expanduser('~'), '.config', 'databroker',
@@ -142,7 +140,7 @@ def test_legacy_config_warnings(RE):
     from databroker import db, DataBroker, get_table, get_events
 
     RE.subscribe(db.insert)
-    uid, = RE(count([det]))
+    uid, = RE(bp.count([hw.det]))
     with pytest.warns(UserWarning):
         assert len(get_table(db[uid]))
     with pytest.warns(UserWarning):
