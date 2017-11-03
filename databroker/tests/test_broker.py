@@ -419,7 +419,7 @@ def test_raise_conditions(key, db, RE, hw):
 
 @pytest.mark.parametrize('method_name', ['restream', 'stream'])
 @py3
-def _stream(method_name, db, RE, hw):
+def test_stream(method_name, db, RE, hw):
     RE.subscribe(db.insert)
     uid = RE(count([hw.det]), owner='Dan')
     s = getattr(db, method_name)(db[uid])
