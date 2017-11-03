@@ -29,10 +29,10 @@ if sys.version_info >= (3, 0):
 
 logger = logging.getLogger(__name__)
 
-py3 = pytest.mark.skipif(sys.version_info < (3, 0), reason="requires python 3")
+py3 = pytest.mark.skipif(sys.version_info <= (3, 5),
+                         reason="ophyd requires python 3.5")
 
 
-@py3
 def test_empty_fixture(db):
     "Test that the db pytest fixture works."
     assert len(list(db())) == 0

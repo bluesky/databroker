@@ -18,7 +18,7 @@ import databroker.headersource.mongoquery as mqmds
 
 from ..headersource import sqlite as sqlmds
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (3, 5):
     from bluesky.tests.conftest import RE as RE
 
     @pytest.fixture(scope='function')
