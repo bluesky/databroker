@@ -37,7 +37,7 @@ install:
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
       pip install singledispatch pathlib2;
     elif [ $TRAVIS_PYTHON_VERSION = "3.4" ]; then
-      echo
+      echo;
     else
       pip install bluesky ophyd;
     fi;
