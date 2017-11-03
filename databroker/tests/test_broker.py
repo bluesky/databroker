@@ -18,7 +18,7 @@ import pytest
 import six
 import numpy as np
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (3, 5):
     from bluesky.plans import count
     from bluesky.plan_stubs import trigger_and_read, configure
     from bluesky.preprocessors import (monitor_during_wrapper,
