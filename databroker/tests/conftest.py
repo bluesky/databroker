@@ -19,7 +19,8 @@ import databroker.headersource.mongoquery as mqmds
 from ..headersource import sqlite as sqlmds
 
 if sys.version_info >= (3, 5):
-    from bluesky.tests.conftest import RE as RE
+    # this is a pytest.fixture
+    from bluesky.tests.conftest import RE
 
     @pytest.fixture(scope='function')
     def hw(request):
