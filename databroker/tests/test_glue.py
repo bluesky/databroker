@@ -1,12 +1,17 @@
-import matplotlib.pyplot as plt
-from ophyd.sim import SynAxis, SynGauss
-from bluesky import RunEngine
+import sys
+
+import pytest
+
 import bluesky.plans as bp
-from databroker import temp_config, Broker
 from databroker.glue import read_header
 from glue.qglue import parse_data
 
+py3 = pytest.mark.skipif(sys.version_info <= (3, 5),
+                         reason="ophyd requires python 3.5")
+
+@py3
 def test_glue(db, RE):
+    from ophyd.sim import SynAxis, SynGauss
     motor = SynAxis(name='motor')
     det = SynGauss('det', motor, 'motor', center=0, Imax=1,
                    noise='uniform', sigma=1, noise_multiplier=0.1)
