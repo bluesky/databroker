@@ -2,7 +2,6 @@ attrs
 boltons
 dask
 doct
-glueviz
 h5py
 humanize
 jinja2
