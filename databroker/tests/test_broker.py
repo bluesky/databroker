@@ -749,6 +749,12 @@ def test_dict_header(db, RE):
     actual = list(db.get_events(dict(h)))
     assert actual == expected
 
+    h['start']
+    h['stop']
+    h['descriptors']
+    with pytest.raises(KeyError):
+        h['events']
+
 
 @py3
 def test_config_data(db, RE):

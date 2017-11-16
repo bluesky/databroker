@@ -22,7 +22,7 @@ def deprecate(f):
     def inner(*args, **kwargs):
         name = getattr(f, '__name__', '')  # works on py3.5+
         warn("This function {} is deprecated. Use a method on Broker instead."
-            "".format(name))
+             "".format(name))
         return f(*args, **kwargs)
     return inner
 

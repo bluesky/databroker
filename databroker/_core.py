@@ -112,9 +112,9 @@ class Header(object):
     ### dict-like methods ###
 
     def __getitem__(self, k):
-        try:
+        if k in ('start', 'descriptors', 'stop'):
             return getattr(self, k)
-        except AttributeError as e:
+        else:
             raise KeyError(k)
 
     def get(self, *args, **kwargs):

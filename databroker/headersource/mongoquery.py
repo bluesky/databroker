@@ -16,7 +16,7 @@ class JSONCollection(object):
     def refresh(self):
         if os.path.isfile(self._fp):
             with open(self._fp, 'r') as f:
-                self._docs= json.load(f)
+                self._docs = json.load(f)
         else:
             self._docs = []
             with open(self._fp, 'w') as f:
