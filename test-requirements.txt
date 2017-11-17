@@ -1,5 +1,4 @@
 coverage
 glueviz
 matplotlib
-pyqt5
 pytest
