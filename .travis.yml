@@ -35,9 +35,9 @@ matrix:
 
 install:
   - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
-      pip install singledispatch pathlib2 pyqt4;
+      pip install singledispatch pathlib2;
     elif [ $TRAVIS_PYTHON_VERSION = "3.4" ]; then
-      pip install pyqt4;
+      echo;
     else
       pip install bluesky ophyd pyqt5;
     fi;
