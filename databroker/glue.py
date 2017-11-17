@@ -7,7 +7,7 @@ def read_header(header):
     out = []
     for stream in header.stream_names:
         result = Data(label="{stream}_{uid}".format(stream=stream, uid=header.start['uid']))
-        tbl = header.table(stream)
+        tbl = header.table(stream, fill=True)
         for col in tbl:
             result.add_component(Component(tbl[col].values), col)
         out.append(result)
