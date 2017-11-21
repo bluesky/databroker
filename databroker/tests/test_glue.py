@@ -19,4 +19,3 @@ def test_glue(db, RE):
 
     d = read_header(db[-1])
     g = parse_data(d[0], 'test')[0].to_dataframe()
-    
