@@ -1,0 +1,21 @@
+.. currentmodule:: databroker
+
+v0.9.4
+------
+
+This release contains bug fixes and experimental new features.
+
+Enhancements
+++++++++++++
+
+* Add experimental integration with glue.
+* The HDF5 handlers have been refactored, and a new HDF5 handler returning dask
+  objects has been added.
+
+Bug Fixes
++++++++++
+
+* Rendering the HTML repr (``_repr_html_``) of a Header produced an unnecesary
+  warning.
+* Headers without a stop document wrongly produced an error and could not be
+  created. This was a regression.
