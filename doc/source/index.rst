@@ -23,3 +23,18 @@ Index
     archiver
     whats_new
     DBEP/index
+
+.. toctree::
+   :hidden:
+   :caption: Bluesky Project
+
+   Bluesky Project <https://blueskyproject.io>
+
+.. toctree::
+   :hidden:
+   :caption: GitHub Links
+
+   Bluesky Project Repositories <https://github.com/bluesky/>
+   NSLS-II Repositories <https://github.com/NSLS-II/>
+   Wish List <https://github.com/NSLS-II/wishlist/issues>
+   Bug Reports <https://github.com/NSLS-II/Bug-Reports/issues>
