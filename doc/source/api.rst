@@ -95,7 +95,6 @@ the new methods cannot do:
    Broker.restream
    Broker.process
    Broker.fill_events
-   Broker.fill_event
    Broker.fill_table
 
 
@@ -297,8 +296,6 @@ See also the Broker methods :meth:`Broker.from_config` and
 Deprecated
 ----------
 
-These methods are maintained for back-compatibility but will likely be
-removed in the future.
 
 .. autosummary::
    :toctree: _as_gen
@@ -306,3 +303,4 @@ removed in the future.
 
    Broker.stream
    Header.stream
+   Broker.fill_event
