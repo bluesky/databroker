@@ -1748,8 +1748,8 @@ class BrokerES(object):
         >>> for name, doc in restream(h):
         ...     f(name, doc)
 
-        Note
-        ----
+        Notes
+        -----
         This output can be used as a drop-in replacement for the output of the
         bluesky Run Engine.
 
@@ -1787,8 +1787,8 @@ class BrokerES(object):
         >>> h = db[-1]  # most recent header
         >>> process(h, f)
 
-        Note
-        ----
+        Notes
+        -----
         This output can be used as a drop-in replacement for the output of the
         bluesky Run Engine.
 
@@ -1805,8 +1805,8 @@ class BrokerES(object):
         """
         Export a list of headers.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         headers : databroker.header
             one or more headers that are going to be exported
         db : databroker.Broker
@@ -1866,13 +1866,13 @@ class BrokerES(object):
         """
         Get the size of files associated with a list of headers.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         headers : :class:databroker.Header:
             one or more headers that are going to be exported
 
         Returns
-        ------
+        -------
         total_size : float
             total size of all the files associated with the ``headers`` in Gb
         """
