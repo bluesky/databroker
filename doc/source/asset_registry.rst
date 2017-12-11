@@ -1,45 +1,40 @@
-===========
- Filestore
-===========
+===============
+ Assetregistry
+===============
 
-.. toctree::
-   :maxdepth: 2
+.. warning
 
-   release_notes/index
-   public_api/index
-   known_spec
-   internal_api/index
-   FEP/index
+   This page is greatly out of date.  The philosophy of how the
+   Registries work is still correct, however the API is wrong.
 
 
-File Store is an interface to stored data. Here's how it works.
+Assert Registry is an interface to stored data. Here's how it works.
 
-#. You (or your hardware) save data wherever you want, whenever you want, in
-   whatever format makes sense for your application.
-#. At some point, you notify File Store about this data. You provide two pieces
-   of information.
+#. You (or your hardware) save data wherever you want, whenever you
+   want, in whatever format makes sense for your application.
+#. At some point, you notify Assert Registry about this data. You
+   provide two pieces of information.
 
    #. How to access and open the file (or, generically, "resource")
    #. How to retrieve a given piece of data in that file
 
-#. File Store gives you a token, a unique identifier, which you can use to
-   retrieve each piece of data.
+#. Assert Registry gives you a token, a unique identifier, which you
+   can use to retrieve each piece of data.
 
 This admittedly abstract way of doing things has some powerful advantages.
 
-* *Any* file format is supported, and retrieved data always comes back as a
-  simple numpy array.
-* It does not matter whether pieces of data are stored in one file or in many
-  separate files.
-* File Store does not get between the detector and the storage. It is
-  not in the business of storing data; you merely *tell it about the data*, and
-  you may do so before, during, or after the data is actually created or
-  stored.
+* *Any* file format is supported, and retrieved data always comes back
+  as a simple numpy array.
+* It does not matter whether pieces of data are stored in one file or
+  in many separate files.
+* Assert Registry does not get between the detector and the
+  storage. It is not in the business of storing data; you merely *tell
+  it about the data*, and you may do so before, during, or after the
+  data is actually created or stored.
 
 
-The following examples illustrate how this works in practice. For a detailed
-discussion of the format of File Store storage, see
-:ref:`filestore-format`.
+The following examples illustrate how this works in practice. For a
+detailed discussion of the format of Assert Registry storage.
 
 
 
@@ -63,9 +58,9 @@ For this example, suppose we want to retrieve individual lines of data.
 Write a Handler
 ---------------
 
-A Handler is a class with two required methods,
-an ``__init__`` that accesses a file and a ``__call__`` that returns nuggets of
-data from that file. In our case, since we want to access individual lines of
+A Handler is a class with two required methods, an ``__init__`` that
+accesses a file and a ``__call__`` that returns nuggets of data from
+that file. In our case, since we want to access individual lines of
 the file, ``__call__`` will return a line's worth of data.
 
 .. ipython:: python
@@ -96,7 +91,7 @@ which can be any string, and the arguments needed by
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
+   from assetregistry.api import insert_resource, insert_datum
    resource_id = insert_resource('csv', 'example.csv')
 
 Now, we create a record for each piece of data we'd like to retrieve. We
@@ -124,17 +119,17 @@ so.
 
 .. ipython:: python
 
-   from filestore.api import register_handler
+   from assetregistry.api import register_handler
    register_handler('csv', CSVLineHandler)
 
 Finally, we are ready to retrieve that data. All we need is the unique ID.
 
 .. ipython:: python
 
-   from filestore.api import retrieve
+   from assetregistry.api import retrieve
    retrieve('some_id2')
 
-File Store now knows to use the ``CSVLineHandler`` class, it knows to instantiate it
+Assert Registry now knows to use the ``CSVLineHandler`` class, it knows to instantiate it
 with ``example.csv``, and it knows to call it with the argument ``line_no=2``.
 
 .. ipython:: python
@@ -175,7 +170,7 @@ Make a Record of the Data
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
+   from assetregistry.api import insert_resource, insert_datum
    resource_id = insert_resource('hdf5-by-dataset', 'example.h5')
    insert_datum(resource_id, 'some_id10', {'key': 'A'})
    insert_datum(resource_id, 'some_id11', {'key': 'B'})
@@ -186,7 +181,7 @@ Retrieve the Data
 
 .. ipython:: python
 
-   from filestore.api import register_handler, retrieve
+   from assetregistry.api import register_handler, retrieve
    register_handler('hdf5-by-dataset', HDF5DatasetHandler)
    retrieve('some_id11')
 
@@ -235,7 +230,7 @@ in a dictionary.
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
+   from assetregistry.api import insert_resource, insert_datum
    resource_id = insert_resource('hdf5-slice-single-dataset', 'example.h5',
                                  dict(dataset_name='my-dataset-name'))
    insert_datum(resource_id, 'some_id20', {'frame_no': 0})
@@ -247,7 +242,7 @@ Retrieve the Data
 
 .. ipython:: python
 
-   from filestore.api import register_handler, retrieve
+   from assetregistry.api import register_handler, retrieve
    register_handler('hdf5-slice-single-dataset', HDF5DatasetSliceHandler)
    retrieve('some_id21')
 
@@ -259,9 +254,9 @@ Retrieve the Data
 Example 4: Retrieving the Moon Phase
 ====================================
 
-This example illustrates the general power of File Store, beyond reading
-simple files. Any "resource," include a web-based data source, can be
-accessed with a Handler.
+This example illustrates the general power of Assert Registry, beyond
+reading simple files. Any "resource," include a web-based data source,
+can be accessed with a Handler.
 
 Write a Handler
 ---------------
@@ -294,7 +289,7 @@ The data itself will only be obtained for the first time when it retrieved.
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
+   from assetregistry.api import insert_resource, insert_datum
    resource_id = insert_resource('moon', None)
 
 Let's register a piece of data giving today's moon phase.
@@ -311,6 +306,6 @@ Retrieve Data
 
 .. ipython:: python
 
-   from filestore.api import register_handler, retrieve
+   from assetregistry.api import register_handler, retrieve
    register_handler('moon', MoonPhaseHandler)
    retrieve('some_id31')
