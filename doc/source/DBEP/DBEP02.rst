@@ -33,7 +33,7 @@ An odd asymmetry in how databroker works is that the documents for
 *HeaderSource* and *EventSource* are emitted by the *RunEngine* and
 can be subscribed to by one or more consumers.  Each consumer is
 notionally independent, each receive all of the documents, and do not
-need to coordinate in any way (or even be aware of each others
+need to coordinate in any way (or even be aware of one another's
 existence). In contrast, the *Resource* and *Datum* documents are
 inserted directly into an *AssetRegistry* by the *ophyd* objects.
 This breaks the separation we have between the data collection process
@@ -41,7 +41,7 @@ This breaks the separation we have between the data collection process
 those documents and leads to several unfortunate situations:
 
  - *ohpyd* objects hold an instance of an *AssetRegisty*
- - we need to keep track of _which_ *AssertRegistry* things were
+ - we need to keep track of **which** *AssertRegistry* things were
    inserted into
  - consumers that want access to the asset documents need to also have
    a handle to the database that the objects are inserting into
@@ -67,23 +67,42 @@ proposed change is:
 
  1. *ophyd* objects would be responsible for generating the full *Resource*
     and *Datum* documents and providing them to the *RunEngine* to be
-    emitted (likely should provide some helpers).
+    emitted.  *ophyd* may provide some helpers to make generating compliant
+    documents easy.
 
     a. Similar to the current documents, a *Resource* must be emitted
-       before any *Datum* that refers to it per *Start* / *Stop* pair
-    b. an identical (including uid) *Resource* maybe emitted more than
-       once, the consumers will need to handle this.
-    c. an identical *Datum* document may be returned the *RunEngine*
-       more than once.  Do we want to allow the RE to emit them more
-       than once? **[QUESTION]**
+       before any *Datum* that refers to it.  A *Datum* can only refer
+       to a *Resource* that as been emitted after the most recent
+       *Start* and before the *Stop* for the most recent *Start*.
+
+    b. an identical (including uid) *Resource* and *Datum* maybe
+       emitted more than once, the consumers will need to handle this.
+
+    c. The *Datum* documents must be yielded only in the first
+       ``collect_asset_docs`` for which there UID is in ``read``.
+
+    d. The *Resource* documents must only be yielded in the first
+       ``collect_asset_docs`` which includes a *Datum* that refers to
+       it.
+
+
+    e. Calls to ``read`` and ``collect_asset_docs`` must be
+       idempotent.
+
+    Identical *Resource* and *Datum* documents are to support a single
+    *Resource* that may span many runs, such as background images, and
+    still ensure that with in the scope of a *Start* / *Stop* pair a
+    consumer will see all of the documents required.
+
+
 
  2. in ``save`` before the *Event* document is emitted the *RunEngine*
     will acquire and emit any *AssetRegistry* Documents.
 
     a. in ``save`` the *RunEngine* knows what objects in the bundle, call
-       ``get_asset_document_gen`` **[RENAME]** method ::
+       ``collect_asset_docs`` method ::
 
-            def gadg(self) -> Iterator[Tuple[str, Dict[str, Any]]]:
+            def collect_asset_docs(self) -> Iterator[Tuple[str, Dict[str, Any]]]:
                 ...
 
        which will yield the ``(name, doc)`` pairs for anything that
@@ -122,7 +141,7 @@ ophyd
 bluesky
 -------
 
- 1. implement above logic in ``RunEngine.save``
+ 1. implement above logic in ``RunEngine._save``
 
 Backward Compatibility
 ======================
