@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import copy
 import os
 import json
 from mongoquery import Query
@@ -26,7 +27,7 @@ class JSONCollection(object):
         match = Query(query).match
         result = filter(match, self._docs)
         if sort is None:
-            return result
+            return (copy.deepcopy(elem) for elem in result)
         elif len(sort) > 2:
             raise NotImplementedError("Only one sort key is supported.")
         else:
@@ -36,13 +37,13 @@ class JSONCollection(object):
             reverse = (ascending_or_descending == DESCENDING)
             sorted_result = sorted(result, key=lambda x: x[key], reverse=reverse)
             # Make it a generator so it is the same as the unsorted code path.
-            return (elem for elem in sorted_result)
+            return (copy.deepcopy(elem) for elem in sorted_result)
 
     def find_one(self, query):
         match = Query(query).match
         for doc in self._docs:
             if match(doc):
-                return doc
+                return copy.deepcopy(doc)
         return None
 
     def insert_one(self, doc, fk=None):

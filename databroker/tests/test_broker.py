@@ -1002,9 +1002,14 @@ def test_deprecated_stream_method(db, RE, hw):
 @py3
 def test_data_method(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], 5))
+    uid, = RE(count([hw.det, hw.det2], 5))
     h = db[uid]
 
+    actual = list(h.data('det'))
+    expected = [1, 1, 1, 1, 1]
+    assert actual == expected
+
+    # Check that this works twice. This once exposed a bug in caching logic.
     actual = list(h.data('det'))
     expected = [1, 1, 1, 1, 1]
     assert actual == expected
