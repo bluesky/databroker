@@ -18,4 +18,5 @@ Index
     tutorial
     api
     configuration
+    creating
     whats_new
