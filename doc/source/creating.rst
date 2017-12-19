@@ -10,7 +10,7 @@ Creation in MongoDB
 -------------------
 
 The creation of a database in MongoDB is simple. Simply create a configuration
-as described in :ref:`configuration`. The only requirement is that the MongoDB
+as described in :ref:`configuration_doc`. The only requirement is that the MongoDB
 instance is running on the machine specified. The database need not exist yet.
 The next step is to install a version sentinel. This is done as follows:
 
