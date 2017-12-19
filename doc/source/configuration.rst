@@ -2,12 +2,9 @@
 Configuration
 *************
 
-
 Configuration files make it easy to quickly set up :class:`Broker` instances
 with the expression ``Broker.named('example')`` where 'example' is the name of
 a configuration file.
-
-.. _configuration_doc:
 
 Search Path
 -----------

@@ -10,7 +10,7 @@ Creation in MongoDB
 -------------------
 
 The creation of a database in MongoDB is simple. Simply create a configuration
-as described in :ref:`configuration_doc`. The only requirement is that the MongoDB
+as described in :doc:`configuration`. The only requirement is that the MongoDB
 instance is running on the machine specified. The database need not exist yet.
 The next step is to install a version sentinel. This is done as follows:
 
@@ -24,6 +24,6 @@ The next step is to install a version sentinel. This is done as follows:
     databroker.assets.utils.install_sentinels(db_analysis.reg.config,
                                               version=1)
 
-where ``config_name`` is the name of your configuration and ``version=1`` refers
-to the version of filestore you are using (it is currently ``1`` as of this
-writing).
+where ``config_name`` is the name of your configuration and ``version=1``
+refers to the version of asset registry you are using (it is currently ``1`` as
+of this writing).
