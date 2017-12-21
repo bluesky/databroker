@@ -20,9 +20,6 @@ def get_images(headers, name, handler_registry=None):
         field name (data key) of a detector
     handler_registry : dict, optional
         mapping spec names (strings) to handlers (callable classes)
-    handler_override : callable class, optional
-        overrides registered handlers
-
 
     Example
     -------
@@ -32,8 +29,7 @@ def get_images(headers, name, handler_registry=None):
             # do something
     """
     res = DataBroker.get_images(headers=headers, name=name,
-                                handler_registry=handler_registry,
-                                handler_override=handler_override)
+                                handler_registry=handler_registry)
     return res
 
 
