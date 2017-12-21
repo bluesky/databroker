@@ -6,8 +6,7 @@ from .databroker import DataBroker
 from ._core import Images as _Images
 
 
-def get_images(headers, name, handler_registry=None,
-               handler_override=None):
+def get_images(headers, name, handler_registry=None):
     """
     This function is deprecated. Use Header.data instead.
 
