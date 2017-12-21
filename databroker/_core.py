@@ -2161,6 +2161,12 @@ class Broker(BrokerES):
         where ``{python}`` is the location of the current Python binary, as
         reported by ``sys.executable``. It will use the first match it finds.
 
+        Special Case: The name ``'temp'`` creates a new, temporary
+        configuration. Subsequent calls to ``Broker.named('temp')`` will
+        create separate configurations. Any data saved using this temporary
+        configuration will not be accessible once the ``Broker`` instance has
+        been deleted.
+
         Parameters
         ----------
         name : string
@@ -2173,7 +2179,11 @@ class Broker(BrokerES):
         -------
         db : Broker
         """
-        db = cls.from_config(lookup_config(name), auto_register=auto_register)
+        if name == 'temp':
+            config = temp_config()
+        else:
+            config = lookup_config(name)
+        db = cls.from_config(config, auto_register=auto_register)
         return db
 
 
