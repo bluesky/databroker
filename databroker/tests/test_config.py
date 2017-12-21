@@ -157,3 +157,14 @@ def test_temp_config():
     db.insert('start', {'uid': uid, 'time': 0})
     db.insert('stop', {'uid': str(uuid.uuid4()), 'time': 1, 'run_start': uid})
     db[-1]
+
+
+def test_named_temp():
+    db = Broker.named('temp')
+    uid = str(uuid.uuid4())
+    db.insert('start', {'uid': uid, 'time': 0})
+    db.insert('stop', {'uid': str(uuid.uuid4()), 'time': 1, 'run_start': uid})
+    db[-1]
+
+    db2 = Broker.named('temp')
+    assert db.mds.config != db2.mds.config
