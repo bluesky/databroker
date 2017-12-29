@@ -18,5 +18,6 @@ Index
     tutorial
     api
     configuration
+    assets
     creating
     whats_new

@@ -1,29 +1,20 @@
-===========
- Filestore
-===========
+******
+Assets
+******
 
-.. toctree::
-   :maxdepth: 2
-
-   release_notes/index
-   public_api/index
-   known_spec
-   internal_api/index
-   FEP/index
-
-
-File Store is an interface to stored data. Here's how it works.
+The databroker includes an "asset registry" for interfacing transparently to
+externally-stored data. Here's how it works.
 
 #. You (or your hardware) save data wherever you want, whenever you want, in
    whatever format makes sense for your application.
-#. At some point, you notify File Store about this data. You provide two pieces
-   of information.
+#. At some point, you notify the Registry about this data. You provide two
+   pieces of information.
 
    #. How to access and open the file (or, generically, "resource")
-   #. How to retrieve a given piece of data in that file
+   #. How to retrieve a given piece of data within that file
 
-#. File Store gives you a token, a unique identifier, which you can use to
-   retrieve each piece of data.
+#. In return, the Registry gives you a token ---  a unique identifier --- which
+   you can use to retrieve each piece of data.
 
 This admittedly abstract way of doing things has some powerful advantages.
 
@@ -31,22 +22,25 @@ This admittedly abstract way of doing things has some powerful advantages.
   simple numpy array.
 * It does not matter whether pieces of data are stored in one file or in many
   separate files.
-* File Store does not get between the detector and the storage. It is
+* The registry does not get between the detector and the storage. It is
   not in the business of storing data; you merely *tell it about the data*, and
   you may do so before, during, or after the data is actually created or
   stored.
 
-
-The following examples illustrate how this works in practice. For a detailed
-discussion of the format of File Store storage, see
-:ref:`filestore-format`.
-
-
+The following examples illustrate how this works in practice.
 
 Example 1: Retrieving Lines from a CSV File
 ===========================================
 
 Suppose my detector just saved a data file called ``example.csv``.
+
+.. ipython:: python
+   :suppress:
+
+   # Generate an example file.
+   import pandas as pd
+   df = pd.DataFrame({'x': [1, 2, 3, 4, 5], 'y': [1, 4, 9, 16, 25]})
+   df.to_csv('example.csv', index=False)
 
 .. ipython:: python
 
@@ -90,14 +84,21 @@ other resources are also possible. Handlers can access URLs, URIs, or
 even generate their results on the fly with no reference to external
 information (e.g., synthetic testing data).
 
-The arguments to ``insert_resource`` are a nickname for the handler,
-which can be any string, and the arguments needed by
-``__init__`` above to locate and open the file.
+The arguments to ``insert_resource`` are
+
+* A 'spec' labeling this data format so we know how to read it later --- we'll
+  use ``'csv'``
+* A filepath
+* A dictionary of any additional keyword argument needed by `__init__`` above
+  to locate and open the file. In our case, there are none, so we pass an empty
+  dictionary ``{}``.
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
-   resource_id = insert_resource('csv', 'example.csv')
+   from databroker import Broker
+   db = Broker.named('temp')  # builds an example db we can play with
+   resource_id = db.reg.insert_resource('csv', 'example.csv', {})
+   resource_id
 
 Now, we create a record for each piece of data we'd like to retrieve. We
 assign each one a unique ID, which we can use later to retrieve it.
@@ -109,33 +110,32 @@ case, ``__call__`` needs just one argument, ``line_no``.
 
 .. ipython:: python
 
-   insert_datum(resource_id, 'some_id1', {'line_no': 1})
-   insert_datum(resource_id, 'some_id2', {'line_no': 2})
-   insert_datum(resource_id, 'some_id3', {'line_no': 3})
-   insert_datum(resource_id, 'some_id4', {'line_no': 4})
-   insert_datum(resource_id, 'some_id5', {'line_no': 5})
+   db.reg.insert_datum(resource_id, 'some_id1', {'line_no': 1})
+   db.reg.insert_datum(resource_id, 'some_id2', {'line_no': 2})
+   db.reg.insert_datum(resource_id, 'some_id3', {'line_no': 3})
+   db.reg.insert_datum(resource_id, 'some_id4', {'line_no': 4})
+   db.reg.insert_datum(resource_id, 'some_id5', {'line_no': 5})
 
 The Payoff: Retrieving Data Is Dead Simple
 ------------------------------------------
 
 When we called ``insert_resource``, we recorded the nickname ``'csv'``. To read
-that data, we have to associate ``'csv'`` and our Handler, ``CSVLineHandler``, like
-so.
+that data, we have to associate ``'csv'`` and our Handler, ``CSVLineHandler``,
+like so.
 
 .. ipython:: python
 
-   from filestore.api import register_handler
-   register_handler('csv', CSVLineHandler)
+   db.reg.register_handler('csv', CSVLineHandler)
 
 Finally, we are ready to retrieve that data. All we need is the unique ID.
 
 .. ipython:: python
 
-   from filestore.api import retrieve
-   retrieve('some_id2')
+   db.reg.retrieve('some_id2')
 
-File Store now knows to use the ``CSVLineHandler`` class, it knows to instantiate it
-with ``example.csv``, and it knows to call it with the argument ``line_no=2``.
+The Registry now knows to use the ``CSVLineHandler`` class, it knows to
+instantiate it with ``example.csv``, and it knows to call it with the argument
+``line_no=2``.
 
 .. ipython:: python
    :suppress:
@@ -145,13 +145,15 @@ with ``example.csv``, and it knows to call it with the argument ``line_no=2``.
 Example 2: Retrieving Datasets from an HDF5 File
 ================================================
 
-Suppose 5x5 images are stored as Datasets in an HDF5 file.
-``'A'``, ``'B'``, ``'C'``.
+Suppose three 5x5 images are stored as Datasets in an one HDF5 file, named
+``'A'``, ``'B'``, ``'C'``. We will treat the file as a "resource" and each HDF5
+Dataset as a "datum".
 
 .. ipython:: python
    :suppress:
 
    import h5py
+   import numpy as np
    f = h5py.File('example.h5')
    for key in list('ABC'):
        f.create_dataset(key, data=np.random.randint(0, 10, (5, 5)))
@@ -175,20 +177,18 @@ Make a Record of the Data
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
-   resource_id = insert_resource('hdf5-by-dataset', 'example.h5')
-   insert_datum(resource_id, 'some_id10', {'key': 'A'})
-   insert_datum(resource_id, 'some_id11', {'key': 'B'})
-   insert_datum(resource_id, 'some_id12', {'key': 'C'})
+   resource_id = db.reg.insert_resource('hdf5-by-dataset', 'example.h5', {})
+   db.reg.insert_datum(resource_id, 'some_id10', {'key': 'A'})
+   db.reg.insert_datum(resource_id, 'some_id11', {'key': 'B'})
+   db.reg.insert_datum(resource_id, 'some_id12', {'key': 'C'})
 
 Retrieve the Data
 -----------------
 
 .. ipython:: python
 
-   from filestore.api import register_handler, retrieve
-   register_handler('hdf5-by-dataset', HDF5DatasetHandler)
-   retrieve('some_id11')
+   db.reg.register_handler('hdf5-by-dataset', HDF5DatasetHandler)
+   db.reg.retrieve('some_id11')
 
 .. ipython:: python
    :suppress:
@@ -199,12 +199,14 @@ Example 3: Retrieving Portions of Datasets from an HDF5 File
 ============================================================
 
 Suppose several 5x5 images are stored as a single Nx5x5 Dataset in an HDF5
-file. The Dataset is named ``'my-dataset-name``.
+file. The Dataset is named ``'my-dataset-name``. We will make the file a
+"resource" and each 5x5 frame a "datum".
 
 .. ipython:: python
    :suppress:
 
    import h5py
+   import numpy as np
    f = h5py.File('example.h5')
    f.create_dataset('my-dataset-name',
                     data=np.random.randint(0, 10, (5, 5, 3)))
@@ -235,21 +237,20 @@ in a dictionary.
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
-   resource_id = insert_resource('hdf5-slice-single-dataset', 'example.h5',
-                                 dict(dataset_name='my-dataset-name'))
-   insert_datum(resource_id, 'some_id20', {'frame_no': 0})
-   insert_datum(resource_id, 'some_id21', {'frame_no': 1})
-   insert_datum(resource_id, 'some_id22', {'frame_no': 2})
+   resource_id = db.reg.insert_resource('hdf5-slice-single-dataset',
+                                        'example.h5',
+                                        {'dataset_name': 'my-dataset-name'})
+   db.reg.insert_datum(resource_id, 'some_id20', {'frame_no': 0})
+   db.reg.insert_datum(resource_id, 'some_id21', {'frame_no': 1})
+   db.reg.insert_datum(resource_id, 'some_id22', {'frame_no': 2})
 
 Retrieve the Data
 -----------------
 
 .. ipython:: python
 
-   from filestore.api import register_handler, retrieve
-   register_handler('hdf5-slice-single-dataset', HDF5DatasetSliceHandler)
-   retrieve('some_id21')
+   db.reg.register_handler('hdf5-slice-single-dataset', HDF5DatasetSliceHandler)
+   db.reg.retrieve('some_id21')
 
 .. ipython:: python
    :suppress:
@@ -259,7 +260,7 @@ Retrieve the Data
 Example 4: Retrieving the Moon Phase
 ====================================
 
-This example illustrates the general power of File Store, beyond reading
+This example illustrates the general power of this design, beyond reading
 simple files. Any "resource," include a web-based data source, can be
 accessed with a Handler.
 
@@ -272,10 +273,11 @@ From this data it extracts the phase of the moon at a given time.
 
 .. ipython:: python
 
-   import requests
    import json
+   import os
+   import requests
    url = "https://api.forecast.io/forecast/{api_key}/{lat},{long},{time}"
-   api_key = "1378698e5711b504f22b32eb1a40d23a"
+   api_key = os.environ['FORECAST_IO_API_KEY']
    class MoonPhaseHandler(object):
        def __init__(self, _):
            "This handler does not require a filename."
@@ -294,8 +296,7 @@ The data itself will only be obtained for the first time when it retrieved.
 
 .. ipython:: python
 
-   from filestore.api import insert_resource, insert_datum
-   resource_id = insert_resource('moon', None)
+   resource_id = db.reg.insert_resource('moon', None, {})
 
 Let's register a piece of data giving today's moon phase.
 
@@ -303,7 +304,7 @@ Let's register a piece of data giving today's moon phase.
 
    import time
    now = time.time()
-   insert_datum(resource_id, 'some_id31', {'time': now})
+   db.reg.insert_datum(resource_id, 'some_id31', {'time': now})
 
 Retrieve Data
 -------------
@@ -311,6 +312,5 @@ Retrieve Data
 
 .. ipython:: python
 
-   from filestore.api import register_handler, retrieve
-   register_handler('moon', MoonPhaseHandler)
-   retrieve('some_id31')
+   db.reg.register_handler('moon', MoonPhaseHandler)
+   db.reg.retrieve('some_id31')
