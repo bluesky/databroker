@@ -74,6 +74,15 @@ classes that load externally stored data.
             module: 'databroker.assets.path_only_handlers'
             class: 'RawHandler'
 
+Optionally, you may set a root_map, which comes in handy when the handlers
+involves mounted files that have been moved to a different mount point in the
+file system.
+.. code-block:: yaml
+    root_map : ['old_root', 'new_root']
+
+where ``old_root`` is the old mount point and ``new_root`` is the new mount
+point.
+
 In these examples, the classes used happen to be from the ``databroker``
 package itself, but classes from other packages can be used just as well, as
 long as they present the expected API. (This API is not yet documented outside

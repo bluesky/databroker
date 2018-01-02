@@ -2145,6 +2145,15 @@ class Broker(BrokerES):
         for spec, handler in config.get('handlers', {}).items():
             cls = load_cls(handler)
             db.reg.register_handler(spec, cls)
+        # if 'root_map' in config, set the root_map
+        if 'root_map' in config:
+            root_map = config['root_map']
+            if isinstance(root_map, tuple) and (len(root_map) == 2):
+                root_map = {config[0] : config[1]}
+                db.reg.set_root_map(root_map)
+            else:
+                warnings.warn("root_map is not right type in config file"
+                              "Must be tuple of length 2 (see documentation)")
         return db
 
     @classmethod
