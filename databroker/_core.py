@@ -2148,10 +2148,12 @@ class Broker(BrokerES):
         # if 'root_map' in config, set the root_map
         if 'root_map' in config:
             root_map = config['root_map']
-            if isinstance(root_map, tuple) and (len(root_map) == 2):
-                root_map = {config[0] : config[1]}
-                db.reg.set_root_map(root_map)
-            else:
+            try:
+                if len(root_map) == 2:
+                    # change to dict
+                    root_map = {root_map[0] : root_map[1]}
+                    db.reg.set_root_map(root_map)
+            except TypeError:
                 warnings.warn("root_map is not right type in config file"
                               "Must be tuple of length 2 (see documentation)")
         return db

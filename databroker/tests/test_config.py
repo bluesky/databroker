@@ -59,7 +59,7 @@ def test_handler_registration():
 
 def test_root_map():
     db = Broker.from_config(EXAMPLE)
-    assert 'foot' in db.reg.root_map
+    assert 'foo' in db.reg.root_map
     assert db.reg.root_map['foo'] == 'bar'
 
 
