@@ -497,7 +497,6 @@ def register_builtin_handlers(reg):
                              cls.specs)
 
 
-
 def get_fields(header, name=None):
     """
     Return the set of all field names (a.k.a "data keys") in a header.
@@ -1867,8 +1866,8 @@ class BrokerES(object):
                 datums = self.reg.datum_gen_given_resource(uid)
                 for datum in datums:
                     db.reg.insert_datum(new_res,
-                                       datum['datum_id'],
-                                       datum['datum_kwargs'])
+                                        datum['datum_id'],
+                                        datum['datum_kwargs'])
         return file_pairs
 
     def export_size(self, headers):
@@ -2148,15 +2147,19 @@ class Broker(BrokerES):
         # if 'root_map' in config, set the root_map
         if 'root_map' in config:
             root_map = config['root_map']
-            try:
-                if len(root_map) == 2:
-                    # change to dict
-                    root_map = {root_map[0] : root_map[1]}
-                    db.reg.set_root_map(root_map)
-            except TypeError:
-                print("root_map is not right type in config file "
-                      "Must be tuple of length 2 (see documentation)")
-                raise
+            if not isinstance(root_map, dict):
+                print("root_map is not right type in config file. "
+                      "It must be tuple of length 2 (see documentation)")
+                raise TypeError
+            # TODO : Allow multiple mappings, need to update
+            # db.reg.set_root_map first
+            if len(root_map) != 1:
+                errormsg = "Received {} ".format(len(root_map))
+                errormsg += "root_map definitions. Only 1 is currently"
+                errormsg += " supported"
+                raise ValueError(errormsg)
+            for oldroot, newroot in root_map.items():
+                db.reg.set_root_map({oldroot: newroot})
         return db
 
     @classmethod

@@ -40,7 +40,8 @@ EXAMPLE = {
             'module': 'databroker.assets.path_only_handlers',
             'class': 'RawHandler'}
     },
-    'root_map' : ['foo', 'bar']
+    'root_map' : {'foo': 'bar',
+                  }
 }
 
 

@@ -78,10 +78,11 @@ Optionally, you may set a root_map, which comes in handy when the handlers
 involves mounted files that have been moved to a different mount point in the
 file system.
 .. code-block:: yaml
-    root_map : ['old_root', 'new_root']
+    root_map : {'old_root': 'new_root',
+                'old_root2' : 'new_root2',}
 
-where ``old_root`` is the old mount point and ``new_root`` is the new mount
-point.
+where ``old_root`` and ``old_root2`` are the old mount points and ``new_root``
+and ``new_root2`` their respective new mount points.
 
 In these examples, the classes used happen to be from the ``databroker``
 package itself, but classes from other packages can be used just as well, as
