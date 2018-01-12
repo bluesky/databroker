@@ -146,7 +146,7 @@ future release, so the warnings should be heeded during this cycle if possible.
   one.
 * The modules ``databroker.broker`` and ``databroker.core`` have been combined,
   and all public members are importable from just ``databroker``. The old
-  modules will be maintains as shims to avoid breaking user code.
+  modules will be maintained as shims to avoid breaking user code.
 
 Internal API Changes
 ++++++++++++++++++++
