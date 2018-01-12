@@ -14,10 +14,7 @@ from ..utils import ensure_path_exists
 from pkg_resources import resource_filename
 import json
 from .utils import _ChainMap
-
-
-class DuplicateHandler(RuntimeError):
-    pass
+from .handlers_base import DuplicateHandler
 
 
 logger = logging.getLogger(__name__)
@@ -189,7 +186,7 @@ class BaseRegistryRO(object):
         if (not overwrite) and (key in self.handler_reg):
             if self.handler_reg[key] is handler:
                 return
-            raise DuplicateHandler(
+            raise self.DuplicateHandler(
                 "You are trying to register a second handler "
                 "for spec {}, {}".format(key, self))
 
