@@ -2154,8 +2154,9 @@ class Broker(BrokerES):
                     root_map = {root_map[0] : root_map[1]}
                     db.reg.set_root_map(root_map)
             except TypeError:
-                warnings.warn("root_map is not right type in config file"
-                              "Must be tuple of length 2 (see documentation)")
+                print("root_map is not right type in config file "
+                      "Must be tuple of length 2 (see documentation)")
+                raise
         return db
 
     @classmethod
