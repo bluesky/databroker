@@ -579,7 +579,7 @@ class Images(FramesSequence):
         >>> for image in images:
                 # do something
         """
-        warn("Images and get_images are deprecated. Use Header.data({}) "
+        warn("Images and get_images are deprecated. Use Header.data('{}') "
              "instead.".format(name), stacklevel=3)
         self.reg = reg
         db = Broker(mds, reg)
