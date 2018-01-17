@@ -235,10 +235,10 @@ def test_temporary_root(fs_v1):
     assert path == os.path.join('baz', 'foo')
 
     # test two root maps work
-    res = fs.insert_resource('root-test', 'foo', {}, root='baz2')
+    res = fs.insert_resource('root-test', 'foo', {}, root='bar2')
     dm = fs.insert_datum(res, str(uuid.uuid4()), {})
     if fs.version == 1:
-        assert res['root'] == 'baz2'
+        assert res['root'] == 'bar2'
 
     with fs.handler_context({'root-test': local_handler}) as fs:
         print(fs._handler_cache)
