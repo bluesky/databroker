@@ -62,7 +62,7 @@ def test_root_map():
     db = Broker.from_config(EXAMPLE)
     assert 'foo' in db.reg.root_map
     assert db.reg.root_map['foo'] == 'bar'
-    assert db.reg.root_map['bar'] == 'foo'
+    assert db.reg.root_map['boo'] == 'far'
 
 
 def test_lookup_config():
