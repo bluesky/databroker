@@ -2148,18 +2148,10 @@ class Broker(BrokerES):
         if 'root_map' in config:
             root_map = config['root_map']
             if not isinstance(root_map, dict):
-                print("root_map is not right type in config file. "
-                      "It must be tuple of length 2 (see documentation)")
-                raise TypeError
-            # TODO : Allow multiple mappings, need to update
-            # db.reg.set_root_map first
-            if len(root_map) != 1:
-                errormsg = "Received {} ".format(len(root_map))
-                errormsg += "root_map definitions. Only 1 is currently"
-                errormsg += " supported"
-                raise ValueError(errormsg)
-            for oldroot, newroot in root_map.items():
-                db.reg.set_root_map({oldroot: newroot})
+                raise TypeError("root_map is not right type in config file. "
+                                "It must be a dict of mappings"
+                                " (see documentation)")
+            db.reg.set_root_map(root_map)
         return db
 
     @classmethod

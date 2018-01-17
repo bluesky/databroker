@@ -40,8 +40,8 @@ EXAMPLE = {
             'module': 'databroker.assets.path_only_handlers',
             'class': 'RawHandler'}
     },
-    'root_map' : {'foo': 'bar',
-                  }
+    'root_map' : {'foo' : 'bar',
+                  'boo' : 'far'}
 }
 
 
@@ -62,6 +62,7 @@ def test_root_map():
     db = Broker.from_config(EXAMPLE)
     assert 'foo' in db.reg.root_map
     assert db.reg.root_map['foo'] == 'bar'
+    assert db.reg.root_map['bar'] == 'foo'
 
 
 def test_lookup_config():
