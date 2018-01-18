@@ -1126,22 +1126,6 @@ class BrokerES(object):
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
-    def _format_time(self, val):
-        "close over the timezone config"
-        # modifies a query dict in place, remove keys 'since' and
-        # 'until' and adding $lte and/or $gte queries on 'time' key
-        format_time(val, self.hs.mds.config['timezone'])
-
-    @property
-    def filters(self):
-        return self._filters
-
-    @filters.setter
-    def filters(self, val):
-        for elem in val:
-            self._format_time(elem)
-        self._filters = val
-
     def add_filter(self, **kwargs):
         """
         Add query to the list of 'filter' queries.
