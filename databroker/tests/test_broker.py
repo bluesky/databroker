@@ -276,6 +276,11 @@ def test_find_by_float_time(db_empty, RE, hw):
     header, = db(since=t - 0.1, until=t + 0.2)
     assert header['start']['uid'] == during
 
+    # Test the old names
+    with pytest.warns(UserWarning):
+        header, = db(start_time=t - 0.1, stop_time=t + 0.2)
+    assert header['start']['uid'] == during
+
 
 @py3
 def test_find_by_string_time(db_empty, RE, hw):
@@ -389,9 +394,19 @@ def test_filters(db_empty, RE, hw):
     assert len(db.filters) == 2
     assert db.filters['since'] == '2016'
 
-    db()  # after search, time content keeps the same
+    list(db())  # after search, time content keeps the same
     assert db.filters['since'] == '2016'
 
+    # Check again using old names (start_time, stop_time)
+    db.clear_filters()
+    db.add_filter(start_time='2017')
+    db.add_filter(start_time='2017')
+    assert len(db.filters) == 1
+    db.add_filter(start_time='2016', stop_time='2017')
+    assert len(db.filters) == 2
+    assert db.filters['start_time'] == '2016'
+    with pytest.warns(UserWarning):
+        list(db())
 
 @py3
 @pytest.mark.parametrize(

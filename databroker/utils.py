@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pytz
 import six
+import warnings
 
 
 class ALL:
@@ -48,9 +49,20 @@ def format_time(search_dict, tz):
 
     ..warning: Does in-place mutation of the search_dict
     """
+    # The old names of 'since' and 'until' are 'start_time' and 'stop_time'.
+    if 'since' in search_dict and 'start_time' in search_dict:
+        raise ValueError("cannot use both 'since' and its deprecated name "
+                         "'start_time'")
+    if 'until' in search_dict and 'stop_time' in search_dict:
+        raise ValueError("cannot use both 'until' and its deprecated name "
+                         "'stop_time'")
+    if 'start_time' in search_dict or 'stop_time' in search_dict:
+        warnings.warn("The keyword 'start_time' and 'stop_time' have been "
+                      "renamed to 'since' and 'until'. The old names are "
+                      "deprecated.")
     time_dict = {}
-    since = search_dict.pop('since', None)
-    until = search_dict.pop('until', None)
+    since = search_dict.pop('since', search_dict.pop('start_time', None))
+    until = search_dict.pop('until', search_dict.pop('stop_time', None))
     if since:
         time_dict['$gte'] = normalize_human_friendly_time(since, tz)
     if until:
