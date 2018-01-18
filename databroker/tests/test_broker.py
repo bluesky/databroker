@@ -273,7 +273,7 @@ def test_find_by_float_time(db_empty, RE, hw):
     assert len(list(db())) == 3
 
     # We'll find the one by specifying a time window around its start time.
-    header, = db(start_time=t - 0.1, stop_time=t + 0.2)
+    header, = db(since=t - 0.1, until=t + 0.2)
     assert header['start']['uid'] == during
 
 
@@ -289,9 +289,9 @@ def test_find_by_string_time(db_empty, RE, hw):
     tomorrow_str = tomorrow.strftime('%Y-%m-%d')
     day_after_tom = date.today() + timedelta(days=2)
     day_after_tom_str = day_after_tom.strftime('%Y-%m-%d')
-    assert len(list(db(start_time=today_str, stop_time=tomorrow_str))) == 1
-    assert len(list(db(start_time=tomorrow_str,
-                       stop_time=day_after_tom_str))) == 0
+    assert len(list(db(since=today_str, until=tomorrow_str))) == 1
+    assert len(list(db(since=tomorrow_str,
+                       until=day_after_tom_str))) == 0
 
 
 @py3
@@ -382,15 +382,15 @@ def test_filters(db_empty, RE, hw):
     assert header['start']['uid'] == ken_calib_uid
 
     db.clear_filters()
-    db.add_filter(start_time='2017')
-    db.add_filter(start_time='2017')
+    db.add_filter(since='2017')
+    db.add_filter(since='2017')
     assert len(db.filters) == 1
-    db.add_filter(start_time='2016', stop_time='2017')
+    db.add_filter(since='2016', until='2017')
     assert len(db.filters) == 2
-    assert db.filters['start_time'] == '2016'
+    assert db.filters['since'] == '2016'
 
     db()  # after search, time content keeps the same
-    assert db.filters['start_time'] == '2016'
+    assert db.filters['since'] == '2016'
 
 
 @py3

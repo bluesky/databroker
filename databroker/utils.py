@@ -44,17 +44,17 @@ def apply_to_dict_recursively(d, f):
 def format_time(search_dict, tz):
     """Helper function to format the time arguments in a search dict
 
-    Expects 'start_time' and 'stop_time'
+    Expects 'since' and 'until'
 
     ..warning: Does in-place mutation of the search_dict
     """
     time_dict = {}
-    start_time = search_dict.pop('start_time', None)
-    stop_time = search_dict.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = normalize_human_friendly_time(start_time, tz)
-    if stop_time:
-        time_dict['$lte'] = normalize_human_friendly_time(stop_time, tz)
+    since = search_dict.pop('since', None)
+    until = search_dict.pop('until', None)
+    if since:
+        time_dict['$gte'] = normalize_human_friendly_time(since, tz)
+    if until:
+        time_dict['$lte'] = normalize_human_friendly_time(until, tz)
     if time_dict:
         search_dict['time'] = time_dict
 

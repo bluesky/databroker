@@ -133,7 +133,7 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
 
     Parameters
     ----------
-    start_time : time-like, optional
+    since : time-like, optional
         time-like representation of the earliest time that a RunStart
         was created. Valid options are:
            - timestamps --> time.time()
@@ -142,9 +142,9 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
            - '2015-01-30'
            - '2015-03-30 03:00:00'
            - datetime.datetime.now()
-    stop_time : time-like, optional
+    until : time-like, optional
         timestamp of the latest time that a RunStart was created. See
-        docs for `start_time` for examples.
+        docs for `since` for examples.
     beamline_id : str, optional
         String identifier for a specific beamline
     project : str, optional
@@ -163,11 +163,11 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     --------
     >>> find_run_starts(scan_id=123)
     >>> find_run_starts(owner='arkilic')
-    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time()})
-    >>> find_run_starts(start_time=1421176750.514707, stop_time=time.time())
+    >>> find_run_starts(since=1421176750.514707, until=time.time()})
+    >>> find_run_starts(since=1421176750.514707, until=time.time())
 
-    >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
-    ...                stop_time=time.time())
+    >>> find_run_starts(owner='arkilic', since=1421176750.514707,
+    ...                until=time.time())
 
     """
     # now try rest of formatting
@@ -187,7 +187,7 @@ def find_run_stops(stop_col, stop_cache, tz,
     ----------
     run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
-    start_time : time-like, optional
+    since : time-like, optional
         time-like representation of the earliest time that a RunStop
         was created. Valid options are:
            - timestamps --> time.time()
@@ -196,9 +196,9 @@ def find_run_stops(stop_col, stop_cache, tz,
            - '2015-01-30'
            - '2015-03-30 03:00:00'
            - datetime.datetime.now()
-    stop_time : time-like, optional
+    until : time-like, optional
         timestamp of the latest time that a RunStop was created. See
-        docs for `start_time` for examples.
+        docs for `since` for examples.
     exit_status : {'success', 'fail', 'abort'}, optional
         provides information regarding the run success.
     reason : str, optional
@@ -234,7 +234,7 @@ def find_descriptors(descriptor_col, descriptor_cache,
     ----------
     run_start : dict or str, optional
         The RunStart document or uid to get the corresponding run end for
-    start_time : time-like, optional
+    since : time-like, optional
         time-like representation of the earliest time that an EventDescriptor
         was created. Valid options are:
            - timestamps --> time.time()
@@ -243,9 +243,9 @@ def find_descriptors(descriptor_col, descriptor_cache,
            - '2015-01-30'
            - '2015-03-30 03:00:00'
            - datetime.datetime.now()
-    stop_time : time-like, optional
+    until : time-like, optional
         timestamp of the latest time that an EventDescriptor was created. See
-        docs for `start_time` for examples.
+        docs for `since` for examples.
     uid : str, optional
         Globally unique id string provided to metadatastore
 
@@ -276,7 +276,7 @@ def find_events(start_col, start_cache,
 
     Parameters
     -----------
-    start_time : time-like, optional
+    since : time-like, optional
         time-like representation of the earliest time that an Event
         was created. Valid options are:
            - timestamps --> time.time()
@@ -285,9 +285,9 @@ def find_events(start_col, start_cache,
            - '2015-01-30'
            - '2015-03-30 03:00:00'
            - datetime.datetime.now()
-    stop_time : time-like, optional
+    until : time-like, optional
         timestamp of the latest time that an Event was created. See
-        docs for `start_time` for examples.
+        docs for `since` for examples.
     descriptor : dict or str, optional
        Find events for a given EventDescriptor
     uid : str, optional
