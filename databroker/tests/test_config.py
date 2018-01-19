@@ -39,7 +39,9 @@ EXAMPLE = {
         'FOO': {
             'module': 'databroker.assets.path_only_handlers',
             'class': 'RawHandler'}
-    }
+    },
+    'root_map' : {'foo' : 'bar',
+                  'boo' : 'far'}
 }
 
 
@@ -55,6 +57,12 @@ def test_handler_registration():
     db = Broker.from_config(EXAMPLE, auto_register=False)
     assert 'AD_HDF5' not in db.reg.handler_reg  # builtin
     assert 'FOO' in db.reg.handler_reg  # specified by config
+
+def test_root_map():
+    db = Broker.from_config(EXAMPLE)
+    assert 'foo' in db.reg.root_map
+    assert db.reg.root_map['foo'] == 'bar'
+    assert db.reg.root_map['boo'] == 'far'
 
 
 def test_lookup_config():

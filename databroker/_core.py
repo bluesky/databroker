@@ -497,7 +497,6 @@ def register_builtin_handlers(reg):
                              cls.specs)
 
 
-
 def get_fields(header, name=None):
     """
     Return the set of all field names (a.k.a "data keys") in a header.
@@ -1867,8 +1866,8 @@ class BrokerES(object):
                 datums = self.reg.datum_gen_given_resource(uid)
                 for datum in datums:
                     db.reg.insert_datum(new_res,
-                                       datum['datum_id'],
-                                       datum['datum_kwargs'])
+                                        datum['datum_id'],
+                                        datum['datum_kwargs'])
         return file_pairs
 
     def export_size(self, headers):
@@ -2145,6 +2144,14 @@ class Broker(BrokerES):
         for spec, handler in config.get('handlers', {}).items():
             cls = load_cls(handler)
             db.reg.register_handler(spec, cls)
+        # if 'root_map' in config, set the root_map
+        if 'root_map' in config:
+            root_map = config['root_map']
+            if not isinstance(root_map, dict):
+                raise TypeError("root_map is not right type in config file. "
+                                "It must be a dict of mappings"
+                                " (see documentation)")
+            db.reg.set_root_map(root_map)
         return db
 
     @classmethod

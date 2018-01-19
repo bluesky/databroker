@@ -215,13 +215,14 @@ def test_get_resource(moving_files):
 def test_temporary_root(fs_v1):
     fs = fs_v1
     print(fs._db)
-    fs.set_root_map({'bar': 'baz'})
+    fs.set_root_map({'bar': 'baz', 'bar2' : 'baz2'})
     print(fs.root_map)
     print(fs._handler_cache)
     res = fs.insert_resource('root-test', 'foo', {}, root='bar')
     dm = fs.insert_datum(res, str(uuid.uuid4()), {})
     if fs.version == 1:
         assert res['root'] == 'bar'
+
 
     def local_handler(rpath):
         return lambda: rpath
@@ -232,3 +233,16 @@ def test_temporary_root(fs_v1):
         path = fs.retrieve(dm['datum_id'])
 
     assert path == os.path.join('baz', 'foo')
+
+    # test two root maps work
+    res = fs.insert_resource('root-test', 'foo', {}, root='bar2')
+    dm = fs.insert_datum(res, str(uuid.uuid4()), {})
+    if fs.version == 1:
+        assert res['root'] == 'bar2'
+
+    with fs.handler_context({'root-test': local_handler}) as fs:
+        print(fs._handler_cache)
+        assert not len(fs._handler_cache)
+        path = fs.retrieve(dm['datum_id'])
+
+    assert path == os.path.join('baz2', 'foo')
