@@ -4,13 +4,48 @@ import logging
 import numpy as np
 import os.path
 
-import dask.array as da
-
 from .handlers_base import HandlerBase
-from pims import FramesSequence, Frame
 from .readers.spe import PrincetonSPEFile
+from pims import FramesSequence, Frame
 
 logger = logging.getLogger(__name__)
+
+
+# The ImageCube class is used for a per event representation of
+# a dataset
+
+class ImageStack(FramesSequence):
+    "One of these represents the data from an event: (num_images x w x h)"
+    def __init__(self, dataset, start, stop):
+        # `start` and `stop` are the limits of this cube
+        # i indexes within the cube
+        self._start = start
+        self._stop = stop
+        self._dataset = dataset
+
+        # Old PIMS has no dtype, shape. Try adding it.
+        try:
+            self.dtype = self.pixel_type
+        except AttributeError:
+            pass
+        try:
+            self.shape = self.frame_shape
+        except AttributeError:
+            pass
+
+    def get_frame(self, i):
+        return Frame(self._dataset[self._start + i], frame_no=i)
+
+    def __len__(self):
+        return self._stop - self._start
+
+    @property
+    def pixel_type(self):
+        return self._dataset.dtype
+
+    @property
+    def frame_shape(self):
+        return self._dataset.shape[1:]
 
 
 class IntegrityError(Exception):
@@ -19,7 +54,6 @@ class IntegrityError(Exception):
 
 class AreaDetectorSPEHandler(HandlerBase):
     specs = {'AD_SPE'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, fpath, template, filename,
                  frame_per_point=1):
@@ -54,7 +88,6 @@ class AreaDetectorSPEHandler(HandlerBase):
 
 class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, fpath, template, filename, frame_per_point=1):
         self._path = os.path.join(fpath, '')
@@ -94,40 +127,6 @@ class DummyAreaDetectorHandler(HandlerBase):
         return out_stack.squeeze()
 
 
-class ImageStack(FramesSequence):
-    "One of these represents the data from an event: (num_images x w x h)"
-    def __init__(self, dataset, start, stop):
-        # `start` and `stop` are the limits of this cube
-        # i indexes within the cube
-        self._start = start
-        self._stop = stop
-        self._dataset = dataset
-
-        # Old PIMS has no dtype, shape. Try adding it.
-        try:
-            self.dtype = self.pixel_type
-        except AttributeError:
-            pass
-        try:
-            self.shape = self.frame_shape
-        except AttributeError:
-            pass
-
-    def get_frame(self, i):
-        return Frame(self._dataset[self._start + i], frame_no=i)
-
-    def __len__(self):
-        return self._stop - self._start
-
-    @property
-    def pixel_type(self):
-        return self._dataset.dtype
-
-    @property
-    def frame_shape(self):
-        return self._dataset.shape[1:]
-
-
 class HDF5DatasetSliceHandler(HandlerBase):
     """
     Handler for data stored in one Dataset of an HDF5 file.
@@ -144,20 +143,13 @@ class HDF5DatasetSliceHandler(HandlerBase):
         Open the hdf5 file in SWMR read mode. Only used when mode = 'r'.
         Default is False.
     """
-    def __init__(self, filename, key, frame_per_point=1, swmr=False):
+    def __init__(self, filename, key, frame_per_point=1):
         self._fpp = frame_per_point
         self._filename = filename
         self._key = key
         self._file = None
         self._dataset = None
-        self._data_objects = dict()
-        self._swmr = swmr
-
-        logger.debug("filename = {}".format(filename))
-        logger.debug("key = {}".format(key))
-        logger.debug("frame_per_point = {}".format(frame_per_point))
-        logger.debug("swmr = {}".format(swmr))
-
+        self._data_objects = {}
         self.open()
 
     def get_file_list(self, datum_kwarg_gen):
@@ -165,37 +157,22 @@ class HDF5DatasetSliceHandler(HandlerBase):
 
     def __call__(self, point_number):
         # Don't read out the dataset until it is requested for the first time.
-        if self._dataset is None:
-            self._get_dataset()
-
-        if self._swmr:
-            logger.debug("Refreshing dataset(s)")
-            [ds.refresh() for ds in self._dataset]
+        if not self._dataset:
+            self._dataset = self._file[self._key]
 
         if point_number not in self._data_objects:
             start = point_number * self._fpp
             stop = (point_number + 1) * self._fpp
-            self._data_objects[point_number] = self._get_data_object(start,
-                                                                     stop)
+            self._data_objects[point_number] = ImageStack(self._dataset,
+                                                          start, stop)
         return self._data_objects[point_number]
 
-    def _get_data_object(self, start, stop):
-        return ImageStack(self._dataset[0], start, stop)
-
-    def _get_dataset(self):
-        self._dataset = list()
-        for key in self._key:
-            _dataset = self._file[key]
-            self._dataset.append(self._file[key])
-
     def open(self):
+        import h5py
         if self._file:
             return
 
-        import h5py
-
-        self._file = h5py.File(self._filename, 'r', swmr=self._swmr)
-        logger.debug("file open mode = {}".format(self._file.mode))
+        self._file = h5py.File(self._filename, 'r')
 
     def close(self):
         super(HDF5DatasetSliceHandler, self).close()
@@ -210,9 +187,6 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
     In this spec, the key (i.e., HDF5 dataset path) is always
     '/entry/data/data'.
 
-    This handler returns a pims ImageSequence with the data
-    from from the HDF5 dataset.
-
     Parameters
     ----------
     filename : string
@@ -221,48 +195,20 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5'} | HDF5DatasetSliceHandler.specs
-    autoregister = True
 
     def __init__(self, filename, frame_per_point=1):
-        hardcoded_key = ['/entry/data/data']
+        hardcoded_key = '/entry/data/data'
         super(AreaDetectorHDF5Handler, self).__init__(
             filename=filename, key=hardcoded_key,
             frame_per_point=frame_per_point)
 
 
-class AreaDetectorHDF5PyHandler(AreaDetectorHDF5Handler):
-    """
-    Handler for the 'AD_HDF5' spec used by Area Detectors.
-
-    In this spec, the key (i.e., HDF5 dataset path) is always
-    '/entry/data/data'.
-
-    This handler returns a h5py object with the data from from
-    the HDF5 dataset.
-
-    Parameters
-    ----------
-    filename : string
-        path to HDF5 file
-    frame_per_point : integer, optional
-        number of frames to return as one datum, default 1
-    """
-    autoregister = False
-
-    def _get_data_object(self, start, stop):
-        return self._dataset[0][start:stop]
-
-
 class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     """
-    Handler for the 'AD_HDF5' spec used by Area Detectors
-    with extension for turning on SWMR use.
+    Handler for the 'AD_HDF5_SWMR' spec used by Area Detectors.
 
     In this spec, the key (i.e., HDF5 dataset path) is always
     '/entry/data/data'.
-
-    This handler returns a numpy array with the data from from
-    the HDF5 dataset.
 
     Parameters
     ----------
@@ -271,53 +217,28 @@ class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
     frame_per_point : integer, optional
         number of frames to return as one datum, default 1
     """
-    specs = {'AD_HDF5'} | AreaDetectorHDF5Handler.specs
-    autoregister = False
+    specs = {'AD_HDF5_SWMR'} | HDF5DatasetSliceHandler.specs
 
-    def __init__(self, filename, frame_per_point=1):
-        super(AreaDetectorHDF5SWMRHandler, self).__init__(
-            filename=filename, frame_per_point=frame_per_point, swmr=True)
+    def open(self):
+        import h5py
+        if self._file:
+            return
 
+        self._file = h5py.File(self._filename, 'r', swmr=True)
 
-class AreaDetectorHDF5DaskHandler(AreaDetectorHDF5Handler):
-    """
-    Handler for the 'AD_HDF5' spec used by Area Detectors.
+    def __call__(self, point_number):
+        if self._dataset is not None:
+            self._dataset.id.refresh()
+        rtn = super(AreaDetectorHDF5SWMRHandler, self).__call__(
+            point_number)
 
-    In this spec, the key (i.e., HDF5 dataset path) is always
-    '/entry/data/data'.
-
-    This handler returns a dask array which is formed by calling
-    `dask.da.from_array()` with the HDF5 dataset.
-
-    Parameters
-    ----------
-    filename : string
-        path to HDF5 file
-    frame_per_point : integer, optional
-        number of frames to return as one datum, default 1
-    """
-    specs = {'AD_HDF5'} | HDF5DatasetSliceHandler.specs
-    autoregister = False
-
-    def _get_dataset(self):
-        self._dataset = list()
-        for key in self._key:
-            _dataset = self._file[key]
-            self._dataset.append(da.from_array(self._file[key],
-                                               chunks=_dataset.chunks))
-            logger.debug("dask chunk size = {}".format(_dataset.chunks))
+        return rtn
 
 
-class AreaDetectorHDF5TimestampHandler(HDF5DatasetSliceHandler):
+class AreaDetectorHDF5TimestampHandler(HandlerBase):
     """ Handler to retrieve timestamps from Areadetector HDF5 File
 
-    In this spec, the timestamps of the images are read from the
-    HDF5 file as written by the NDAttributes:
-
-    '/entry/instrument/NDAttributes/NDArrayEpicsTSSec' and
-    '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec'
-
-    A signle time is returned per data point as a float in seconds.
+    In this spec, the timestamps of the images are read.
 
     Parameters
     ----------
@@ -327,31 +248,45 @@ class AreaDetectorHDF5TimestampHandler(HDF5DatasetSliceHandler):
         number of frames to return as one datum, default 1
     """
     specs = {'AD_HDF5_TS'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, filename, frame_per_point=1):
-        hardcoded_key = ['/entry/instrument/NDAttributes/NDArrayEpicsTSSec',
-                         '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec']
-        super(AreaDetectorHDF5TimestampHandler, self).__init__(
-            filename=filename, key=hardcoded_key,
-            frame_per_point=frame_per_point)
+        self._fpp = frame_per_point
+        self._filename = filename
+        self._key = ['/entry/instrument/NDAttributes/NDArrayEpicsTSSec',
+                     '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec']
+        self._file = None
+        self._dataset1 = None
+        self._dataset2 = None
+        self.open()
 
-    def _get_data_object(self, start, stop):
-        rtn = self._dataset[0][start:stop].squeeze()
-        rtn = rtn + (self._dataset[1][start:stop].squeeze() * 1.0e-9)
+    def __call__(self, point_number):
+        # Don't read out the dataset until it is requested for the first time.
+        if not self._dataset1:
+            self._dataset1 = self._file[self._key[0]]
+        if not self._dataset2:
+            self._dataset2 = self._file[self._key[1]]
+        start, stop = point_number * self._fpp, (point_number + 1) * self._fpp
+        rtn = self._dataset1[start:stop].squeeze()
+        rtn = rtn + (self._dataset2[start:stop].squeeze() * 1e-9)
         return rtn
+
+    def open(self):
+        import h5py
+        if self._file:
+            return
+        self._file = h5py.File(self._filename, 'r')
+
+    def close(self):
+        super(AreaDetectorHDF5TimestampHandler, self).close()
+        self._file.close()
+        self._file = None
 
 
 class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
     """ Handler to retrieve timestamps from Areadetector HDF5 File
 
-    In this spec, the timestamps of the images are read with SWMR
-    capabilities from the HDF5 file as written by the NDAttributes:
-
-    '/entry/instrument/NDAttributes/NDArrayEpicsTSSec' and
-    '/entry/instrument/NDAttributes/NDArrayEpicsTSnSec'
-
-    A signle time is returned per data point as a float in seconds.
+    In this spec, the timestamps of the images are read. Reading
+    is done using SWMR option to allow read during processing
 
     Parameters
     ----------
@@ -360,12 +295,20 @@ class AreaDetectorHDF5SWMRTimestampHandler(AreaDetectorHDF5TimestampHandler):
     frame_per_point : integer, optional
         number of frames to return as one datum, default 1
     """
-    specs = {'AD_HDF5_TS'} | HandlerBase.specs
-    autoregister = False
+    specs = {'AD_HDF5_SWMR_TS'} | HandlerBase.specs
 
-    def __init__(self, filename, frame_per_point=1):
-        super(AreaDetectorHDF5SWMRTimestampHandler, self).__init__(
-            filename=filename, frame_per_point=frame_per_point, swmr=True)
+    def open(self):
+        import h5py
+        if self._file:
+            return
+        self._file = h5py.File(self._filename, 'r', swmr=True)
+
+    def __call__(self, point_number):
+        if (self._dataset1 is not None) and (self._dataset2 is not None):
+            self._dataset.id.refresh()
+        rtn = super(AreaDetectorHDF5SWMRTimestampHandler, self).__call__(
+            point_number)
+        return rtn
 
 
 class _HdfMapsHandlerBase(HDF5DatasetSliceHandler):
@@ -414,7 +357,6 @@ class HDFMapsSpectrumHandler(_HdfMapsHandlerBase):
     a MAPS XRF data product.
     """
     specs = {'MAPS_SPECTRUM'} | _HdfMapsHandlerBase.specs
-    autoregister = True
 
     def __call__(self, x, y):
         """
@@ -443,7 +385,6 @@ class HDFMapsEnergyHandler(_HdfMapsHandlerBase):
     a MAPS XRF data file.
     """
     specs = {'MAPS_PLANE'} | _HdfMapsHandlerBase.specs
-    autoregister = True
 
     def __call__(self, e_index):
         """
@@ -476,7 +417,6 @@ class NpyHandler(HandlerBase):
         memmap mode to use to open file
     """
     specs = {'npy'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
@@ -493,7 +433,6 @@ class NpyHandler(HandlerBase):
 
 class NpyFrameWise(HandlerBase):
     specs = {'npy_FRAMEWISE'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, filename, mmap_mode=None):
         self._mmap_mode = mmap_mode
@@ -511,7 +450,6 @@ class NpyFrameWise(HandlerBase):
 
 class SingleTiffHandler(HandlerBase):
     specs = {'SINGLE_TIFF'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, filename):
         self._name = filename
@@ -531,7 +469,6 @@ class DATHandler(HandlerBase):
         np.loadtxt
     '''
     specs = {'DAT'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, fpath, **kwargs):
         self._path = fpath
@@ -543,7 +480,6 @@ class DATHandler(HandlerBase):
 
 class PilatusCBFHandler(HandlerBase):
     specs = {'AD_CBF'} | HandlerBase.specs
-    autoregister = True
 
     def __init__(self, rpath, template, filename, frame_per_point=1,
                  initial_number=1):
@@ -583,7 +519,6 @@ XS3_XRF_DATA_KEY = 'entry/instrument/detector/data'
 class Xspress3HDF5Handler(HandlerBase):
     specs = {'XSP3'} | HandlerBase.specs
     HANDLER_NAME = 'XSP3'
-    autoregister = True
 
     def __init__(self, filename, key=XS3_XRF_DATA_KEY):
         import h5py
