@@ -58,13 +58,9 @@ def test_from_config():
     reg_config = config['assets']
     root_map_config = config['root_map']
 
-    for key, val in mds_config.items():
-        assert mds_example[key] == val
-    for key, val in reg_config.items():
-        assert reg_example[key] == val
-    for key, val in root_map_config.items():
-        assert root_map_example[key] == val
-
+    assert mds_example == mds_config
+    assert reg_example == reg_config
+    assert root_map_example == root_map_config
 
 
 def test_handler_registration():
