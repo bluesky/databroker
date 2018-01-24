@@ -46,7 +46,25 @@ EXAMPLE = {
 
 
 def test_from_config():
-    Broker.from_config(EXAMPLE)
+    broker = Broker.from_config(EXAMPLE)
+    config = broker.get_config()
+    print(config)
+    # we explicitly test for parts we know should be accepted
+    mds_example = EXAMPLE['metadatastore']['config']
+    reg_example = EXAMPLE['assets']['config']
+    root_map_example = EXAMPLE['root_map']
+
+    mds_config = config['metadatastore']
+    reg_config = config['assets']
+    root_map_config = config['root_map']
+
+    for key, val in mds_config.items():
+        assert mds_example[key] == val
+    for key, val in reg_config.items():
+        assert reg_example[key] == val
+    for key, val in root_map_config.items():
+        assert root_map_example[key] == val
+
 
 
 def test_handler_registration():
