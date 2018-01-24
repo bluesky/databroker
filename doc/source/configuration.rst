@@ -92,8 +92,9 @@ file system.
 
 .. code-block:: yaml
 
-    root_map : {'old_root': 'new_root',
-                'old_root2' : 'new_root2',}
+    root_map:
+        old_root: new_root
+        old_root2: new_root2
 
 where ``old_root`` and ``old_root2`` are the old mount points and ``new_root``
 and ``new_root2`` their respective new mount points.
