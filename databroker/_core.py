@@ -2186,6 +2186,17 @@ class Broker(BrokerES):
         db = cls.from_config(config, auto_register=auto_register)
         return db
 
+    def get_config(self):
+        ''' Get the config for this Broker.
+            To be used by Broker.from_config(config)
+        '''
+        config = dict()
+        config['metadatastore'] = self.mds.config
+        config['assets'] = self.reg.config
+        config['root_map'] = self.reg.root_map
+        return config
+
+
 
 def _sanitize(doc):
     # Make this a plain dict and strip off doct.Document artifacts.
