@@ -1,7 +1,0 @@
-v0.4.2
-------
-
-API Chnages
-+++++++++++
-
- - Change ``name`` -> ``stream_name`` in the signature of `get_table`
