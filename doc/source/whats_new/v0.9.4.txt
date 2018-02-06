@@ -1,7 +1,7 @@
 .. currentmodule:: databroker
 
-v0.9.4
-------
+v0.9.4 (2017-12-06)
+-------------------
 
 This release contains bug fixes and experimental new features.
 
