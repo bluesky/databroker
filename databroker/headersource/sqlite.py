@@ -125,7 +125,6 @@ class EventCollection(object):
             c.execute(SELECT_EVENT_STREAM % table_name)
             raw = c.fetchall()
         rows_as_dicts = [dict(row) for row in raw]
-        events = []
         for row in rows_as_dicts:
             event = {}
             event['uid'] = row.pop('uid')
@@ -140,8 +139,7 @@ class EventCollection(object):
                 else:
                     new_key = k[len('timestamps_'):]
                     event['timestamps'][new_key] = v
-            events.append(event)
-        return (ev for ev in events)
+            yield event
 
     def find_one(self, query):
         # not used on event_col
