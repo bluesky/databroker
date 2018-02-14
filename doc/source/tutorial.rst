@@ -110,6 +110,13 @@ or export to a file.
 
     t.to_csv('data.csv')
 
+.. ipython:: python
+    :suppress:
+
+    # Clean up
+    !rm data.csv
+
+
 Load Data Lazily (Good for Image Data)
 ======================================
 
