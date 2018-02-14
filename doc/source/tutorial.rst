@@ -15,6 +15,8 @@ concurrent "streams" of data in an organized way.
 
     import os
     import yaml
+    import epics
+    epics.__version__ = "0.0.0"
     from databroker import temp_config
     config = temp_config()
     os.makedirs('~/.config/databroker', exist_ok=True)
@@ -25,7 +27,7 @@ concurrent "streams" of data in an organized way.
     db = Broker.named('example')
     from bluesky import RunEngine
     from bluesky.plans import scan
-    from bluesky.examples import det, motor
+    from ophyd.sim import det, motor
     RE = RunEngine({})
     RE.subscribe(db.insert)
     for _ in range(5):
@@ -107,6 +109,13 @@ or export to a file.
 .. ipython:: python
 
     t.to_csv('data.csv')
+
+.. ipython:: python
+    :suppress:
+
+    # Clean up
+    !rm data.csv
+
 
 Load Data Lazily (Good for Image Data)
 ======================================
