@@ -212,7 +212,7 @@ Any user-provided metadata can be used in a search. Examples:
     headers = db(operator='Dan')
 
     # Search by time range. (These keywords have a special meaning.)
-    headers = db(start_time='2015-03-05', stop_time='2015-03-10')
+    headers = db(since='2015-03-05', until='2015-03-10')
 
 Full-text search is also supported, for MongoDB-backed deployments. (Other
 deploymeents will raise :class:`NotImplementedError` if you try this.)

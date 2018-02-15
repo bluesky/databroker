@@ -155,7 +155,7 @@ class MDSRO(MDSROTemplate):
 
         Parameters
         -----------
-        start_time : time-like, optional
+        since : time-like, optional
             time-like representation of the earliest time that an Event
             was created. Valid options are:
                - timestamps --> time.time()
@@ -164,9 +164,9 @@ class MDSRO(MDSROTemplate):
                - '2015-01-30'
                - '2015-03-30 03:00:00'
                - datetime.datetime.now()
-        stop_time : time-like, optional
+        until : time-like, optional
             timestamp of the latest time that an Event was created. See
-            docs for `start_time` for examples.
+            docs for `since` for examples.
         descriptor : doc.Document or str, optional
            Find events for a given EventDescriptor
         uid : str, optional

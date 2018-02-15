@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pytz
 import six
+import warnings
 
 
 class ALL:
@@ -44,17 +45,28 @@ def apply_to_dict_recursively(d, f):
 def format_time(search_dict, tz):
     """Helper function to format the time arguments in a search dict
 
-    Expects 'start_time' and 'stop_time'
+    Expects 'since' and 'until'
 
     ..warning: Does in-place mutation of the search_dict
     """
+    # The old names of 'since' and 'until' are 'start_time' and 'stop_time'.
+    if 'since' in search_dict and 'start_time' in search_dict:
+        raise TypeError("cannot use both 'since' and its deprecated name "
+                        "'start_time'")
+    if 'until' in search_dict and 'stop_time' in search_dict:
+        raise TypeError("cannot use both 'until' and its deprecated name "
+                        "'stop_time'")
+    if 'start_time' in search_dict or 'stop_time' in search_dict:
+        warnings.warn("The keyword 'start_time' and 'stop_time' have been "
+                      "renamed to 'since' and 'until'. The old names are "
+                      "deprecated.")
     time_dict = {}
-    start_time = search_dict.pop('start_time', None)
-    stop_time = search_dict.pop('stop_time', None)
-    if start_time:
-        time_dict['$gte'] = normalize_human_friendly_time(start_time, tz)
-    if stop_time:
-        time_dict['$lte'] = normalize_human_friendly_time(stop_time, tz)
+    since = search_dict.pop('since', search_dict.pop('start_time', None))
+    until = search_dict.pop('until', search_dict.pop('stop_time', None))
+    if since:
+        time_dict['$gte'] = normalize_human_friendly_time(since, tz)
+    if until:
+        time_dict['$lte'] = normalize_human_friendly_time(until, tz)
     if time_dict:
         search_dict['time'] = time_dict
 

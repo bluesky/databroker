@@ -1,0 +1,28 @@
+.. currentmodule:: databroker
+
+v0.10.0
+-------
+
+Enhancements
+++++++++++++
+
+* Add special name ``Broker.named('temp')`` which creates new, temporary
+  storage each time it is called. This is convenient for testing and teaching.
+
+Deprecations
+++++++++++++
+
+* The :meth:`Broker.__call__` method for searching headers by metadata accepted
+  special keyword arguments, ``start_time`` and/or ``end_time``, which filtered
+  results by RunStart time. These names proved to be confusing, so they have
+  been renamed ``since`` and ``until`` (terminology inspired by ``git log``).
+  The original names still work, but warn if used.
+
+Bug Fixes
++++++++++
+
+* The mongoquery backend returned identical references (i.e. the same
+  dictionary) on subsequent queries, meaning that mutations could propagate
+  across results sets.
+* Ensure there is only one definition of a ``DuplicateHandler`` exception.
+* Remove invalid keyword argument from ``get_images``.

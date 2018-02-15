@@ -55,15 +55,15 @@ class ArchiverEventSource(object):
             # Mock up descriptors and cache them so that the ephemeral uid is
             # stable for the duration of this process.
             descs = []
-            start_time = header['start']['time'],
-            stop_time = header['stop']['time']
+            since = header['start']['time'],
+            until = header['stop']['time']
             for name, pv in six.iteritems(self.pvs):
                 data_keys = {name: {'source': pv,
                                     'dtype': 'number',
                                     'shape': []}}
-                _from = _munge_time(start_time[0], self.tz)
-                # because start_time is a tuple^
-                _to = _munge_time(stop_time, self.tz)
+                _from = _munge_time(since[0], self.tz)
+                # because since is a tuple^
+                _to = _munge_time(until, self.tz)
                 params = {'pv': pv, 'from': _from, 'to': _to}
                 desc = {'time': header['start']['time'],
                         'uid': 'empheral-' + str(uuid.uuid4()),
@@ -85,10 +85,10 @@ class ArchiverEventSource(object):
             pv = list(d['data_keys'].values())[0]['source']
             desc_uids[pv] = d['uid']
             yield d
-        start_time, stop_time = header['start']['time'], header['stop']['time']
+        since, until = header['start']['time'], header['stop']['time']
         for name, pv in six.iteritems(self.pvs):
-            _from = _munge_time(start_time, self.tz)
-            _to = _munge_time(stop_time, self.tz)
+            _from = _munge_time(since, self.tz)
+            _to = _munge_time(until, self.tz)
             params = {'pv': pv, 'from': _from, 'to': _to}
             req = requests.get(self.archiver_addr, params=params, stream=True)
             req.raise_for_status()

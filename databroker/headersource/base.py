@@ -230,7 +230,7 @@ class MDSROTemplate(object):
 
         Parameters
         ----------
-        start_time : time-like, optional
+        since : time-like, optional
             time-like representation of the earliest time that a RunStart
             was created. Valid options are:
                - timestamps --> time.time()
@@ -239,9 +239,9 @@ class MDSROTemplate(object):
                - '2015-01-30'
                - '2015-03-30 03:00:00'
                - datetime.datetime.now()
-        stop_time : time-like, optional
+        until : time-like, optional
             timestamp of the latest time that a RunStart was created. See
-            docs for `start_time` for examples.
+            docs for `since` for examples.
         beamline_id : str, optional
             String identifier for a specific beamline
         project : str, optional
@@ -260,11 +260,11 @@ class MDSROTemplate(object):
         --------
         >>> find_run_starts(scan_id=123)
         >>> find_run_starts(owner='arkilic')
-        >>> find_run_starts(start_time=1421176750, stop_time=time.time()})
-        >>> find_run_starts(start_time=1421176750, stop_time=time.time())
+        >>> find_run_starts(since=1421176750, until=time.time()})
+        >>> find_run_starts(since=1421176750, until=time.time())
 
-        >>> find_run_starts(owner='arkilic', start_time=1421176750.514707,
-        ...                stop_time=time.time())
+        >>> find_run_starts(owner='arkilic', since=1421176750.514707,
+        ...                until=time.time())
 
         """
         gen = self._api.find_run_starts(self._runstart_col,
@@ -281,7 +281,7 @@ class MDSROTemplate(object):
         ----------
         run_start : doc.Document or str, optional
             The RunStart document or uid to get the corresponding run end for
-        start_time : time-like, optional
+        since : time-like, optional
             time-like representation of the earliest time that a RunStop
             was created. Valid options are:
                - timestamps --> time.time()
@@ -290,9 +290,9 @@ class MDSROTemplate(object):
                - '2015-01-30'
                - '2015-03-30 03:00:00'
                - datetime.datetime.now()
-        stop_time : time-like, optional
+        until : time-like, optional
             timestamp of the latest time that a RunStop was created. See
-            docs for `start_time` for examples.
+            docs for `since` for examples.
         exit_status : {'success', 'fail', 'abort'}, optional
             provides information regarding the run success.
         reason : str, optional
@@ -319,7 +319,7 @@ class MDSROTemplate(object):
         ----------
         run_start : doc.Document or str, optional
             The RunStart document or uid to get the corresponding run end for
-        start_time : time-like, optional
+        since : time-like, optional
             time-like representation of the earliest time that an
             EventDescriptor was created. Valid options are:
                - timestamps --> time.time()
@@ -328,9 +328,9 @@ class MDSROTemplate(object):
                - '2015-01-30'
                - '2015-03-30 03:00:00'
                - datetime.datetime.now()
-        stop_time : time-like, optional
+        until : time-like, optional
             timestamp of the latest time that an EventDescriptor was created.
-            See docs for `start_time` for examples.
+            See docs for `since` for examples.
         uid : str, optional
             Globally unique id string provided to metadatastore
 

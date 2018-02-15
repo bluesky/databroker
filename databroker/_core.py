@@ -1118,22 +1118,6 @@ class BrokerES(object):
 
     ALL = ALL  # sentinel used as default value for `stream_name`
 
-    def _format_time(self, val):
-        "close over the timezone config"
-        # modifies a query dict in place, remove keys 'start_time' and
-        # 'stop_time' and adding $lte and/or $gte queries on 'time' key
-        format_time(val, self.hs.mds.config['timezone'])
-
-    @property
-    def filters(self):
-        return self._filters
-
-    @filters.setter
-    def filters(self, val):
-        for elem in val:
-            self._format_time(elem)
-        self._filters = val
-
     def add_filter(self, **kwargs):
         """
         Add query to the list of 'filter' queries.
@@ -1150,7 +1134,7 @@ class BrokerES(object):
         March 2017.
 
         >>> db.add_filter(user='Dan')
-        >>> db.add_filter(start_time='2017-3')
+        >>> db.add_filter(since='2017-3')
 
         The following query is equivalent to
         ``db(user='Dan', plan_name='scan')``.
@@ -1160,7 +1144,7 @@ class BrokerES(object):
         Review current filters.
 
         >>> db.filters
-        {'user': 'Dan', 'start_time': '2017-3'}
+        {'user': 'Dan', 'since': '2017-3'}
 
         Clear filters.
 
@@ -1287,8 +1271,7 @@ class BrokerES(object):
 
         >>> import time
         >>> db.dynamic_alias('today',
-        ...                  lambda: {'start_time':
-        ...                           start_time=time.time()- 24*60*60})
+        ...                  lambda: {'since': time.time() - 24*60*60})
 
         Use it.
 
@@ -1317,7 +1300,7 @@ class BrokerES(object):
         addition to the Parameters below, advanced users can specifiy arbitrary
         queries using the MongoDB query syntax.
 
-        The ``start_time`` and ``stop_time`` parameters accepts the following
+        The ``since`` and ``until`` parameters accepts the following
         representations of time:
 
         * timestamps like ``time.time()`` and ``datetime.datetime.now()``
@@ -1330,9 +1313,9 @@ class BrokerES(object):
         ----------
         text_search : str, optional
             search full text of RunStart documents
-        start_time : str, optional
+        since: str, optional
             Restrict results to runs that started after this time.
-        stop_time : str, optional
+        until : str, optional
             Restrict results to runs that started before this time.
         data_key : str, optional
             Restrict results to runs that contained this data_key (a.k.a field)
@@ -1362,7 +1345,7 @@ class BrokerES(object):
 
         Search by time range. (These keywords have a special meaning.)
 
-        >>> db(start_time='2015-03-05', stop_time='2015-03-10')
+        >>> db(since='2015-03-05', until='2015-03-10')
 
         Perform text search on all values in the Run Start document.
 
