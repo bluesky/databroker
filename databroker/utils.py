@@ -51,11 +51,11 @@ def format_time(search_dict, tz):
     """
     # The old names of 'since' and 'until' are 'start_time' and 'stop_time'.
     if 'since' in search_dict and 'start_time' in search_dict:
-        raise ValueError("cannot use both 'since' and its deprecated name "
-                         "'start_time'")
+        raise TypeError("cannot use both 'since' and its deprecated name "
+                        "'start_time'")
     if 'until' in search_dict and 'stop_time' in search_dict:
-        raise ValueError("cannot use both 'until' and its deprecated name "
-                         "'stop_time'")
+        raise TypeError("cannot use both 'until' and its deprecated name "
+                        "'stop_time'")
     if 'start_time' in search_dict or 'stop_time' in search_dict:
         warnings.warn("The keyword 'start_time' and 'stop_time' have been "
                       "renamed to 'since' and 'until'. The old names are "
