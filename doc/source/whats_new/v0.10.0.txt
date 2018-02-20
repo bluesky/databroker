@@ -1,7 +1,7 @@
 .. currentmodule:: databroker
 
-v0.10.0
--------
+v0.10.0 (2018-02-20)
+-------------------
 
 Enhancements
 ++++++++++++
