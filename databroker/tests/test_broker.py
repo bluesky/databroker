@@ -546,11 +546,13 @@ def test_stream_name(db, RE, hw):
 
     db.mds.insert_event(descriptor=desc_uid2, time=ttime.time(), uid=event_uid2,
                         data={'image2': datum_id2},
-                        timestamps={'image': ttime.time()}, seq_num=0)
+                        timestamps={'image2': ttime.time()}, seq_num=0)
 
     h = db[rs_uid]
 
-    assert h.fields() == {'image', 'image2'}
+    assert h.fields() == {'image', 'image2', 'det'}
+    assert h.fields(stream_name='primary') == {'det'}
+    assert h.fields(stream_name='injected') == {'image'}
     assert h.fields(stream_name='injected2') == {'image2'}
 
 
