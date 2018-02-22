@@ -188,7 +188,8 @@ class Header(object):
         """
         fields = set()
         for es in self.db.event_sources:
-            fields.update(es.fields_given_header(header=self))
+            fields.update(es.fields_given_header(header=self,
+                                                 stream_name=stream_name))
         return fields
 
     def devices(self, stream_name=ALL):

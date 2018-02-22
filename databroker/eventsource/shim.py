@@ -39,9 +39,9 @@ class EventSourceShim(object):
         return set(d.get('name', 'primary') for d in
                    self.descriptors_given_header(header))
 
-    def fields_given_header(self, header):
+    def fields_given_header(self, header, stream_name=ALL):
         fields = set()
-        for d in self.descriptors_given_header(header):
+        for d in self.descriptors_given_header(header, stream_name=stream_name):
             fields.update(d['data_keys'])
         return fields
 
