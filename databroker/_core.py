@@ -1097,10 +1097,25 @@ class BrokerES(object):
         doc : dict
             Document
         """
-        if name in {'start', 'stop'}:
+        if name in {'event', 'bulk_events', 'descriptor'}:
+            return self.event_source_for_insert.insert(name, doc)
+        # We are transitioning from ophyd objects inserting directly into a
+        # Registry to ophyd objects passing documents to the RunEngine which in
+        # turn inserts them into a Registry. During the transition period, we
+        # allow an ophyd object to attempt BOTH so that configuration files are
+        # compatible with both the new model and the old model. Thus, we
+        # need to ignore the second attempt to insert.
+        elif name == 'datum':
+            return self.reg.insert_datum(ignore_duplicate_error=True, **doc)
+        elif name == 'bulk_datum':
+            return self.reg.bulk_insert_datum(ignore_duplicate_error=True,
+                                              **doc)
+        elif name == 'resource':
+            return self.reg.insert_resource(ignore_duplicate_error=True, **doc)
+        elif name in {'start', 'stop'}:
             return self.hs.insert(name, doc)
         else:
-            return self.event_source_for_insert.insert(name, doc)
+            raise ValueError
 
     @property
     def mds(self):

@@ -117,7 +117,10 @@ def register_datum(col, resource_uid, datum_kwargs):
 
 
 def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
-                 resource_col):
+                 resource_col, ignore_duplicate_error=False,
+                 duplicate_exc=None):
+    if ignore_duplicate_error:
+        assert duplicate_exc is not None
     try:
         resource['spec']
         spec = resource['spec']
@@ -133,7 +136,19 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
                  datum_id=str(datum_id),
                  datum_kwargs=dict(datum_kwargs))
     apply_to_dict_recursively(datum, sanitize_np)
-    col.insert_one(datum)
+    # We are transitioning from ophyd objects inserting directly into a
+    # Registry to ophyd objects passing documents to the RunEngine which in
+    # turn inserts them into a Registry. During the transition period, we allow
+    # an ophyd object to attempt BOTH so that configuration files are
+    # compatible with both the new model and the old model. Thus, we need to
+    # ignore the second attempt to insert.
+    try:
+        col.insert_one(datum)
+    except duplicate_exc:
+        if ignore_duplicate_error:
+            pass
+        else:
+            raise
     # do not leak mongo objectID
     datum.pop('_id', None)
 
@@ -141,20 +156,35 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
-                    known_spec, root, path_semantics='posix'):
+                    known_spec, root, path_semantics='posix', uid=None,
+                    ignore_duplicate_error=False, duplicate_exc=None):
+    if ignore_duplicate_error:
+        assert duplicate_exc is not None
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
+    if uid is None:
+        uid = str(uuid.uuid4())
 
     resource_object = dict(spec=str(spec),
                            resource_path=str(resource_path),
                            root=str(root),
                            resource_kwargs=resource_kwargs,
                            path_semantics=path_semantics,
-                           uid=str(uuid.uuid4()))
-
-    col.insert_one(resource_object)
-    # maintain back compatibility
+                           uid=uid)
+    # We are transitioning from ophyd objects inserting directly into a
+    # Registry to ophyd objects passing documents to the RunEngine which in
+    # turn inserts them into a Registry. During the transition period, we allow
+    # an ophyd object to attempt BOTH so that configuration files are
+    # compatible with both the new model and the old model. Thus, we need to
+    # ignore the second attempt to insert.
+    try:
+        col.insert_one(resource_object)
+    except duplicate_exc:
+        if ignore_duplicate_error:
+            pass
+        else:
+            raise
     resource_object['id'] = resource_object['uid']
     resource_object.pop('_id', None)
     return resource_object
