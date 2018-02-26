@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import six
 from jsonschema import validate as js_validate
+import warnings
 import uuid
 import time as ttime
 import pandas as pd
@@ -146,7 +147,11 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
         col.insert_one(datum)
     except duplicate_exc:
         if ignore_duplicate_error:
-            pass
+            warnings.warn("Ignoring attempt to insert Resource with duplicate "
+                          "uid, assuming that both ophyd and bluesky "
+                          "attempted to insert this document. Remove the "
+                          "Registry (`reg` parameter) from your ophyd "
+                          "instance to remove this warning.")
         else:
             raise
     # do not leak mongo objectID
@@ -182,7 +187,11 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
         col.insert_one(resource_object)
     except duplicate_exc:
         if ignore_duplicate_error:
-            pass
+            warnings.warn("Ignoring attempt to insert Datum with duplicate "
+                          "datum_id, assuming that both ophyd and bluesky "
+                          "attempted to insert this document. Remove the "
+                          "Registry (`reg` parameter) from your ophyd "
+                          "instance to remove this warning.")
         else:
             raise
     resource_object['id'] = resource_object['uid']
