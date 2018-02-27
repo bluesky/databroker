@@ -511,49 +511,31 @@ def test_configuration(db, RE):
 
 @py3
 def test_stream_name(db, RE, hw):
-    datum_id = str(uuid.uuid4())
-    datum_id2 = str(uuid.uuid4())
-    desc_uid = str(uuid.uuid4())
-    desc_uid2 = str(uuid.uuid4())
-    event_uid = str(uuid.uuid4())
-    event_uid2 = str(uuid.uuid4())
-
-    # Side-band resource and datum documents.
-    res = db.reg.insert_resource('foo', '', {'x': 1})
-    db.reg.insert_datum(res, datum_id, {'y': 2})
-
-    res2 = db.reg.insert_resource('foo', '', {'x': 1})
-    db.reg.insert_datum(res2, datum_id2, {'y': 2})
-
-    # Generate a normal run.
+    # subscribe db.insert
     RE.subscribe(db.insert)
-    rs_uid, = RE(count([hw.det]))
 
-    # Side band an extra descriptor and event into this run.
-    data_keys = {'image': {'dtype': 'array', 'source': '', 'shape': [5, 5],
-                           'external': 'FILESTORE://simulated'}}
-    data_keys2 = {'image2': {'dtype': 'array', 'source': '', 'shape': [5, 5],
-                           'external': 'FILESTORE://simulated'}}
-    db.mds.insert_descriptor(run_start=rs_uid, data_keys=data_keys,
-                             time=ttime.time(), uid=desc_uid,
-                             name='injected')
-    db.mds.insert_descriptor(run_start=rs_uid, data_keys=data_keys2,
-                             time=ttime.time(), uid=desc_uid2,
-                             name='injected2')
-    db.mds.insert_event(descriptor=desc_uid, time=ttime.time(), uid=event_uid,
-                        data={'image': datum_id},
-                        timestamps={'image': ttime.time()}, seq_num=0)
 
-    db.mds.insert_event(descriptor=desc_uid2, time=ttime.time(), uid=event_uid2,
-                        data={'image2': datum_id2},
-                        timestamps={'image2': ttime.time()}, seq_num=0)
+    # custom plan that will generate two streams
+    @run_decorator()
+    def myplan(dets):
+        ''' Simple plan to trigger two detectors.
 
+        Meant for test only.
+        '''
+        yield from trigger_and_read([dets[0]], name='primary')
+        yield from trigger_and_read([dets[1]], name='secondary')
+
+
+    # this test is meaningless (will always pass)
+    # if our two detectors have the same name. Ensure this is true
+    assert hw.det.name != hw.det2.name
+
+    rs_uid, = RE(myplan([hw.det, hw.det2]))
     h = db[rs_uid]
 
-    assert h.fields() == {'image', 'image2', 'det'}
+    assert h.fields() == {'det', 'det2'}
     assert h.fields(stream_name='primary') == {'det'}
-    assert h.fields(stream_name='injected') == {'image'}
-    assert h.fields(stream_name='injected2') == {'image2'}
+    assert h.fields(stream_name='secondary') == {'det2'}
 
 
 @py3
