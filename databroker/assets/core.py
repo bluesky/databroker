@@ -162,6 +162,7 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
                     known_spec, root, path_semantics='posix', uid=None,
+                    run_start=None,
                     ignore_duplicate_error=False, duplicate_exc=None):
     if ignore_duplicate_error:
         assert duplicate_exc is not None
@@ -177,6 +178,10 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
                            resource_kwargs=resource_kwargs,
                            path_semantics=path_semantics,
                            uid=uid)
+    # This is special-cased because it was added later.
+    # Someday this may be required and no longer special-cased.
+    if run_start is not None:
+        resource_object['run_start'] = run_start
     # We are transitioning from ophyd objects inserting directly into a
     # Registry to ophyd objects passing documents to the RunEngine which in
     # turn inserts them into a Registry. During the transition period, we allow
