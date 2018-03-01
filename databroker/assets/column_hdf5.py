@@ -143,25 +143,48 @@ def register_datum(datum_col, resource_uid, datum_kwargs):
 
 
 def insert_datum(datum_col, resource, datum_id, datum_kwargs,
-                 known_spec, resource_col):
+                 known_spec, resource_col, ignore_duplicate_error=False,
+                 duplicate_exc=None):
     resource = doc_or_uid_to_uid(resource)
+    if datum_id is not None:
+        # Validate that the datum_id we were handed is correct.
+        try:
+            hopefully_resource, d_id = datum_id.split('/', 1)
+            assert hopefully_resource == resource
+            int(d_id)
+        except Exception:
+            raise NotImplementedError("Column insert assumes datum_id "
+                                      "has format {resource}/{int}.")
     path, fname = make_file_name(datum_col, resource)
     p = Path(path) / Path(fname)
+    # We are transitioning from ophyd objects inserting directly into a
+    # Registry to ophyd objects passing documents to the RunEngine which in
+    # turn inserts them into a Registry. During the transition period, we allow
+    # an ophyd object to attempt BOTH so that configuration files are
+    # compatible with both the new model and the old model. Thus, we need to
+    # ignore the second attempt to insert.
     if p.is_file():
+        # Append to an existing file.
         with h5py.File(str(p), 'a') as fout:
+            last = fout['datum_id'][-1]
             cur_max = fout['datum_id'][-1]
-            d_id = cur_max + 1
-            d_uid = '{resource}/{d_id}'.format(resource=resource, d_id=d_id)
-            append(fout['datum_id'], [d_id])
-            for k, v in datum_kwargs.items():
-                append(fout[k], [v])
+            d_id = cur_max + 1  # the integer in datum_id
+            datum_id = '{resource}/{d_id}'.format(resource=resource, d_id=d_id)
+            if ignore_duplicate_error and d_id <= last:
+                # We have seen this already.
+                pass
+            else:
+                assert d_id - last == 1
+                append(fout['datum_id'], [d_id])
+                for k, v in datum_kwargs.items():
+                    append(fout[k], [v])
 
     else:
         df = pd.DataFrame([datum_kwargs])
-        d_uid, = bulk_register_datum_table(datum_col,
+        datum_id, = bulk_register_datum_table(datum_col,
                                            resource, df, False)
     return dict(resource=resource,
-                datum_id=str(d_uid),
+                datum_id=str(datum_id),
                 datum_kwargs=dict(datum_kwargs))
 
 

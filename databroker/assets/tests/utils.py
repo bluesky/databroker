@@ -54,7 +54,7 @@ def insert_syn_data_with_resource(fs, f_type, shape, count):
                                      lambda x: x['id'],
                                      lambda x: str(x['id'])))
     for k, rmap in zip(range(count), res_map_cycle):
-        r_id = str(uuid.uuid4())
+        r_id = '{}/{}'.format(fb['uid'], k)
         datum = fs.insert_datum(rmap(fb), r_id, {'n': k + 1})
         ret.append(datum['datum_id'])
     return ret, fb

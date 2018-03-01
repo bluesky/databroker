@@ -150,7 +150,7 @@ def moving_files(request, fs_v1, tmpdir):
         fpath = os.path.join(tmpdir, local_path,
                              fmt.format(point_number=j))
         np.save(fpath, np.ones(shape) * j)
-        d = fs_v1.insert_datum(res, str(uuid.uuid4()),
+        d = fs_v1.insert_datum(res, '{}/{}'.format(res['uid'], j),
                                {'point_number': j})
         datum_ids.append(d['datum_id'])
         fnames.append(fpath)
@@ -219,7 +219,7 @@ def test_temporary_root(fs_v1):
     print(fs.root_map)
     print(fs._handler_cache)
     res = fs.insert_resource('root-test', 'foo', {}, root='bar')
-    dm = fs.insert_datum(res, str(uuid.uuid4()), {})
+    dm = fs.insert_datum(res, res['uid'] + '/0', {})
     if fs.version == 1:
         assert res['root'] == 'bar'
 
@@ -236,7 +236,7 @@ def test_temporary_root(fs_v1):
 
     # test two root maps work
     res = fs.insert_resource('root-test', 'foo', {}, root='bar2')
-    dm = fs.insert_datum(res, str(uuid.uuid4()), {})
+    dm = fs.insert_datum(res, res['uid'] + '/0', {})
     if fs.version == 1:
         assert res['root'] == 'bar2'
 

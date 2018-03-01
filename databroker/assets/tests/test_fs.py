@@ -31,7 +31,7 @@ def test_non_exist(fs):
 def test_root(fs):
     print(fs._db)
     res = fs.insert_resource('root-test', 'foo', {}, root='bar')
-    dm = fs.insert_datum(res, str(uuid.uuid4()), {})
+    dm = fs.insert_datum(res, res['uid'] + '/0', {})
     if fs.version == 1:
         assert res['root'] == 'bar'
 
