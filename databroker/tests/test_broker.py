@@ -522,8 +522,8 @@ def test_stream_name(db, RE, hw):
 
         Meant for test only.
         '''
-        yield from trigger_and_read([dets[0]], name='primary')
-        yield from trigger_and_read([dets[1]], name='secondary')
+        yield trigger_and_read([dets[0]], name='primary')
+        yield trigger_and_read([dets[1]], name='secondary')
 
 
     # this test is meaningless (will always pass)
