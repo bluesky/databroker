@@ -21,6 +21,9 @@ addons:
     - mongodb-org-server
     - mongodb-org
 
+before_install:
+  - export TZ=US/Eastern
+
 matrix:
   fast_finish: true
   include:
