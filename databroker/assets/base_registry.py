@@ -568,7 +568,9 @@ class RegistryTemplate(BaseRegistryRO):
         pass
 
     # ## OLD API
-    def insert_resource(self, spec, resource_path, resource_kwargs, root=None):
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
+                        path_semantics='posix', uid=None, run_start=None,
+                        ignore_duplicate_error=False):
         '''
 
         '''
@@ -577,12 +579,19 @@ class RegistryTemplate(BaseRegistryRO):
 
         col = self._resource_col
 
-        return self._api.insert_resource(col, spec, resource_path,
-                                         resource_kwargs,
-                                         self.known_spec,
-                                         root=root)
+        return self._api.insert_resource(
+            col, spec, resource_path,
+            resource_kwargs,
+            self.known_spec,
+            root=root,
+            path_semantics=path_semantics,
+            uid=uid,
+            run_start=run_start,
+            ignore_duplicate_error=ignore_duplicate_error,
+            duplicate_exc=self.DuplicateKeyError)
 
-    def insert_datum(self, resource, datum_id, datum_kwargs):
+    def insert_datum(self, resource, datum_id, datum_kwargs,
+                     ignore_duplicate_error=False):
         '''insert a datum for the given resource
 
         Parameters
@@ -603,8 +612,11 @@ class RegistryTemplate(BaseRegistryRO):
         '''
         col = self._datum_col
 
-        return self._api.insert_datum(col, resource, datum_id, datum_kwargs,
-                                      self.known_spec, self._resource_col)
+        return self._api.insert_datum(
+            col, resource, datum_id, datum_kwargs,
+            self.known_spec, self._resource_col,
+            ignore_duplicate_error=ignore_duplicate_error,
+            duplicate_exc=self.DuplicateKeyError)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         col = self._datum_col

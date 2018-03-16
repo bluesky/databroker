@@ -86,15 +86,14 @@ class NpyWriter(HandlerBase):
             raise IOError("the requested file {fpath} "
                           "already exist".format(fpath=self._fpath))
 
-        if uid is None:
-            uid = str(uuid.uuid1())
-
         np.save(self._fpath, np.asanyarray(data))
         self._writable = False
         fb = self.fs.insert_resource(self.SPEC_NAME,
                                      self._fpath,
                                      self._f_custom,
                                      root='/')
+        if uid is None:
+            uid = fb['uid'] + '/0'
         evl = self.fs.insert_datum(fb, uid, {})
 
         return evl['datum_id']
