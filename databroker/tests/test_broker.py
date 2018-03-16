@@ -525,6 +525,35 @@ def test_configuration(db, RE):
 
 
 @py3
+def test_stream_name(db, RE, hw):
+    # subscribe db.insert
+    RE.subscribe(db.insert)
+
+    # custom plan that will generate two streams
+    @run_decorator()
+    def myplan(dets):
+        ''' Simple plan to trigger two detectors.
+
+        Meant for test only.
+        '''
+        for msg in trigger_and_read([dets[0]], name='primary'):
+            yield msg
+        for msg in trigger_and_read([dets[1]], name='secondary'):
+            yield msg
+
+    # this test is meaningless (will always pass)
+    # if our two detectors have the same name. Ensure this is true
+    assert hw.det.name != hw.det2.name
+
+    rs_uid, = RE(myplan([hw.det, hw.det2]))
+    h = db[rs_uid]
+
+    assert h.fields() == {'det', 'det2'}
+    assert h.fields(stream_name='primary') == {'det'}
+    assert h.fields(stream_name='secondary') == {'det2'}
+
+
+@py3
 def test_handler_options(db, RE, hw):
     datum_id = str(uuid.uuid4())
     datum_id2 = str(uuid.uuid4())
