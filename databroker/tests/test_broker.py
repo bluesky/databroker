@@ -514,7 +514,6 @@ def test_stream_name(db, RE, hw):
     # subscribe db.insert
     RE.subscribe(db.insert)
 
-
     # custom plan that will generate two streams
     @run_decorator()
     def myplan(dets):
@@ -522,9 +521,10 @@ def test_stream_name(db, RE, hw):
 
         Meant for test only.
         '''
-        yield trigger_and_read([dets[0]], name='primary')
-        yield trigger_and_read([dets[1]], name='secondary')
-
+        for msg in trigger_and_read([dets[0]], name='primary'):
+            yield msg
+        for msg in trigger_and_read([dets[1]], name='secondary'):
+            yield msg
 
     # this test is meaningless (will always pass)
     # if our two detectors have the same name. Ensure this is true
