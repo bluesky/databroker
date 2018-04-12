@@ -51,12 +51,6 @@ API proposal ::
        def __init__(self, **kwargs):
            ...
 
-       def insert(self,
-                  name: {'event', 'bulkevent',  'descriptor',
-                         'datum', 'bulkdatum', 'resource'},
-                  doc: dict) -> None:
-           ...
-
        def stream_names_given_header(self, header: Header) -> List[str]:
            ...
 
@@ -87,6 +81,14 @@ API proposal ::
            ...
 
        def set_root_map(self, root_map: Dict[str, str]) -> None:
+           ...
+
+
+   class InsertEV(EventSource):
+       def insert(self,
+                  name: {'event', 'bulkevent',  'descriptor',
+                         'datum', 'bulkdatum', 'resource'},
+                  doc: dict) -> None:
            ...
 
 
