@@ -21,5 +21,4 @@ Index
     assets
     creating
     whats_new
-    asset_registry
     DBEP/index
