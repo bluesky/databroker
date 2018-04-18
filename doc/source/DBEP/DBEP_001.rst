@@ -25,8 +25,8 @@ The motivation of this document is to try to consolidate all efforts for
 storing derived data generated from beamlines in a more permanent setting.
 It should help with:
 
-- avoiding duplicating code
-  - making design decisions that will survive most long term use cases
+* avoiding duplicating code
+  * making design decisions that will survive most long term use cases
 
 
 
@@ -62,15 +62,15 @@ There are two pieces to retrieving/storing data:
 
 This scheme requires just two items for transforming data into a series of
 documents:
-    1. data_dicts: a list of nested dicionaries:
-        data_dicts[n][stream_name][key] gives one data element (number, np
-array etc)
-        where n is just a number, stream_name the stream name and key the
-data_key
+    1. ``data_dicts``: a list of nested dicionaries:
+        ``data_dicts[n][stream_name][key]`` gives one data element (number, np
+        array etc)
+        where ``n`` is just a number, ``stream_name`` the stream name and key
+        the data_key
 
-    2. md: metadata for the start document
+    2. ``md``: metadata for the start document
 
-Optionally, one can pass a writers_dict. This is a dictionary of writers:
+Optionally, one can pass a ``writers_dict``. This is a dictionary of writers:
 
 .. code-block:: yaml
 
@@ -87,14 +87,39 @@ where 'data_key' is the key name of the data (i.e. 'pilatus2M_image' etc...).
 This should be enough to submit documents to an analysis store.
 
 
+Data Provenance
+===============
+Data from analysis store will typically come from a few locations. For example:
+1. Data derived from an analysis pipeline which pulled data straight from
+   databroker
+2. Data ingested from a file in a scientist's directory.
+
+When storing this data, rather than leaving it up to the user, we may want to
+enforce saving certain amounts of information.
+
+In the case of data coming from an analysis pipeline derivced from data stored
+in metadatastore/filestore, saving the uid's of the parents involved may be
+enough. For data ingested from files, the file path may be sufficient. We may
+want to list all elements needed for some rudimentary provenance:
+
+* parent uid's (if applicable)
+* filenames (if applicable)
+* source code
+    * name
+    * version/commit hash
+    * URL
+
+It might be worth discussing all the possible provenance we might want to
+enforce to first order.
 
 Resources/similar work
 ======================
 
     CJ has written a library that takes data and tranforms it into a series of
-documents:
+    documents:
         https://github.com/xpdAcq/SHED/blob/master/shed/translation.py
-    This does not write data to disk, or emit resource/datum documents.
+    As far as I(Julien L.) understand, this does not write data to disk, or
+    emit resource/datum documents.
 
 
 Backwards Compatibility
