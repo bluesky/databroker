@@ -97,7 +97,7 @@ Data from analysis store will typically come from a few locations. For example:
 When storing this data, rather than leaving it up to the user, we may want to
 enforce saving certain amounts of information.
 
-In the case of data coming from an analysis pipeline derivced from data stored
+In the case of data coming from an analysis pipeline derived from data stored
 in metadatastore/filestore, saving the uid's of the parents involved may be
 enough. For data ingested from files, the file path may be sufficient. We may
 want to list all elements needed for some rudimentary provenance:
