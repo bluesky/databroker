@@ -193,10 +193,11 @@ the data.
 One possible API is ::
 
   with header.fill_context() as fc:
-      fc.fill(ev_doc)
-      fc.fill_table(table)
+      fc.fill(ev_doc, fields)
+      fc.fill_table(table, fields)
 
-which cuts down
+which lets us have clear grantees about both scope of any given call
+and clear lifetime of when we need to have resources open.
 
 Implementation
 ==============
