@@ -6,7 +6,6 @@ Databroker Enhancement Proposals
 
 .. toctree::
    :maxdepth: 1
-
+   :glob:
    template
-   DBEP01
-   DBEP02
+   DBEP*
