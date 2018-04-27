@@ -273,6 +273,13 @@ class ArchiverEventSource(object):
         else:
             return pd.DataFrame()
 
+        
+    def fill_event(self, *args, **kwrags):
+        raise NotImplementedError()
+
+    def fill_table(self, *args, **kwargs):
+        raise NotImplementedError()
+
 def _munge_time(t, timezone):
     """Close your eyes and trust @arkilic
     Parameters
