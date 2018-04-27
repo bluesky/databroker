@@ -20,5 +20,6 @@ Index
     configuration
     assets
     creating
+    archiver
     whats_new
     DBEP/index

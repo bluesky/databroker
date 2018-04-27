@@ -10,45 +10,113 @@ from datetime import datetime
 import pytz
 import uuid
 
+import numpy as np
+
 import requests
 import pandas as pd
 
+from ..utils import ALL
 
 class ArchiverEventSource(object):
-    def __init__(self, url, timezone, pvs):
+    
+    def __init__(self, config):
         """
-        DataBroker plugin
+        Shim class to turn the EPICS Archiver Appliance into EventSource
+        """
 
-        Parameters
-        ----------
-        url : string
-            e.g., 'http://host:port/'
-        timezone : string
-            e.g., 'US/Eastern'
-        pvs : dict
-            a dict mapping human-friendly names to PVs
-        """
+        if all (k in config for k in ['name', 'url']):
+            pass
+        else:
+            raise TypeError("config {} does not include one of required"
+                            " keys (name, url).".format(config))
+        
+        self._name = config['name']
+        
+        url =  config['url']
         if not url.endswith('/'):
             url += '/'
         self.url = url
         self.archiver_addr = self.url + "retrieval/data/getData.json"
+
+        if 'timezone' in config:
+            timezone = config['timezone']
+        else:
+            timezone = 'US/Eastern'
         self.tz = pytz.timezone(timezone)
+
+        if 'pvs' in config:
+            pvs = config['pvs']
+        else :
+            pvs = {}
         self.pvs = pvs
+        
         self._descriptors = {}
 
+
+    @property
+    def name(self):
+        return self._name
+
+    def add_pvs(self, new_pvs):
+        self.pvs.update(dict(new_pvs))
+        return dict(self.pvs)
+
+    def get_pvs(self):
+        return dict(self.pvs)
+
     def insert(self, name, doc):
-        raise NotImplementedError()
+         """
+         Not supported, data archiving is managed via the EPICS Archiver Appliance Toolkit
+         """
+         raise TypeError("Not supported, data archiving is managed via the EPICS Archiver Appliance Toolkit")
 
     def stream_names_given_header(self, header):
         # We actually don't use the header in this case.
-        return ['archiver_{}'.format(name) for name in self.pvs]
+        """
+        Return a list of user-defined PV names
+
+        Parameters
+        ----------
+        header: Header
+            not used. stream_names are generated from pvs
+        Returns
+        -------
+        list: list of user-defined PV names
+        """
+            
+        return [name for name in self.pvs]
 
     def fields_given_header(self, header):
         # We actually don't use the header in this case.
-        return list(self.pvs)
+        """
+        Return a set of user-defined PV names
+
+        Parameters
+        ----------
+        header: Header
+            not used. fields are generated from pvs
+
+        Returns
+        -------
+        set: set of user-defined PV names
+        """
+               
+        return set(self.pvs)
 
     def descriptors_given_header(self, header):
+        """
+        Return PV descriptors for given Header
+
+        Parameters
+        ----------
+        header: Header
+
+        Returns
+        -------
+        list: list of PV descriptors
+        """
         run_start_uid = header['start']['uid']
+        
         try:
             return self._descriptors[run_start_uid]
         except KeyError:
@@ -65,7 +133,8 @@ class ArchiverEventSource(object):
                 # because since is a tuple^
                 _to = _munge_time(until, self.tz)
                 params = {'pv': pv, 'from': _from, 'to': _to}
-                desc = {'time': header['start']['time'],
+                desc = {'name' : name,
+                        'time': header['start']['time'],
                         'uid': 'empheral-' + str(uuid.uuid4()),
                         'data_keys': data_keys,
                         'run_start': header['start']['uid'],
@@ -73,65 +142,177 @@ class ArchiverEventSource(object):
                         'external_url': self.url}
                 descs.append(desc)
             self._descriptors[run_start_uid] = descs
-            return [ d for d in self._descriptors]
-            #prepare = partial(self.prepare_hook, 'descriptor')
-            #return list(map(prepare, self._descriptors[run_start_uid]))
+            return list(self._descriptors[run_start_uid])     
 
-    def docs_given_header(self, header,fill=False, fields=None,
-                          **kwargs):
+    def docs_given_header(self, header, stream_name=ALL, fields=None):
+        """
+        Return documents for given Header
+
+        Parameters
+        ----------
+        header: Header
+            The header to fetch the events for
+        stream_name: string
+            user-defined PV name
+        fields: list, not used
+            names of interest are defined via user-defined PVs
+
+        Yields
+        ------
+        str: name
+            The name of the document being yielded
+        doc: Document
+            The data payload
+        """
+
         desc_uids = {}
-        for d in self.descriptors_given_header(header):
-            # Stash the desc uids in a local var so we can use them in events.
-            pv = list(d['data_keys'].values())[0]['source']
-            desc_uids[pv] = d['uid']
-            yield d
+
         since, until = header['start']['time'], header['stop']['time']
-        for name, pv in six.iteritems(self.pvs):
-            _from = _munge_time(since, self.tz)
-            _to = _munge_time(until, self.tz)
-            params = {'pv': pv, 'from': _from, 'to': _to}
-            req = requests.get(self.archiver_addr, params=params, stream=True)
-            req.raise_for_status()
-            raw, = req.json()
-            timestamps = [x['secs'] for x in raw['data']]
-            data = [x['val'] for x in raw['data']]
-            for seq_num, (d, t) in enumerate(zip(data, timestamps)):
-                doc = {'data': {name: d},
-                       'timestamps': {name: t},
-                       'time': t,
-                       'uid': 'ephemeral-' + str(uuid.uuid4()),
-                       'seq_num': seq_num,
-                       'descriptor': desc_uids[pv]}
-                yield doc               
+        _from = _munge_time(since, self.tz)
+        _to = _munge_time(until, self.tz)
 
-    def table_given_header(self, header, fields=None):
-        # TODO: Add timezone goodies
-        no_fields_filter = False
-        if fields is None:
-            no_fields_filter = True
-            fields = []
-        fields = set(fields)
-        docs = list(self.docs_given_header(header=header,
-                                    fill=False, fields=fields))
-        return pd.DataFrame.from_records(data=docs, index='seq_num')
+        yield 'start', header['start']
+        
+        for d in self.descriptors_given_header(header):
 
-    def fill_event(self, *args, **kwrags):
-        raise NotImplementedError()
+            if d['name'] == stream_name:
 
-    def fill_table(self, *args, **kwargs):
-        raise NotImplementedError()
+                yield 'descriptor', d
+            
+                # Stash the desc uids in a local var so we can use them in events.
+                name = list(d['data_keys'].keys())[0]
+                pv = list(d['data_keys'].values())[0]['source']
+                desc_uids[pv] = d['uid']
+            
+                params = {'pv': pv, 'from': _from, 'to': _to}
+            
+                req = requests.get(self.archiver_addr, params=params, stream=True)
+                req.raise_for_status()
+                raw, = req.json()
+            
+                timestamps = [x['secs'] for x in raw['data']]
+                data = [x['val'] for x in raw['data']]
+            
+                for seq_num, (v, t) in enumerate(zip(data, timestamps), start=1):
+                    doc = {'data': {name: v},
+                           'timestamps': {name: t},
+                           'time': t,
+                           'uid': 'ephemeral-' + str(uuid.uuid4()),
+                           'seq_num': seq_num,
+                           'descriptor': desc_uids[pv]}
+                    yield 'event', doc
+            else:
+                continue
 
+        yield 'stop', header['stop']
 
+    def _table_given_times(self, pv, since, until):
+        
+        _from = _munge_time(since, self.tz)
+        _to = _munge_time(until, self.tz)
+
+        params = {'pv': pv, 'from': _from, 'to': _to}
+            
+        req = requests.get(self.archiver_addr, params=params, stream=True)
+        req.raise_for_status()
+        raw, = req.json()
+            
+        secs = [x['secs'] for x in raw['data']]
+        nanos = [x['nanos'] for x in raw['data']]
+        data = [x['val'] for x in raw['data']]
+
+        asecs = np.asarray(secs)
+        ananos = np.asarray(nanos)
+        times = asecs*1.0e+3 + ananos*1.0e-6
+
+        datetimes = pd.to_datetime(times, unit='ms')
+
+        df = pd.DataFrame()
+        df['time'] = datetimes.values
+        df['data'] = data
+
+        return df
+
+    def tables_given_times(self, since, until):
+
+        """
+        Make PV tables (pandas.DataFrame) for given time interval
+
+        Parameters
+        ----------
+        since: timestamp
+            beginning of the time interval
+        until: timestamp
+            end of the time interval
+
+        Returns
+        -------
+        table: dictionary of the pv pandas.DataFrames
+        """
+
+        dfs = {}
+        for key in self.pvs.keys():
+            dfs[key] = self._table_given_times(self.pvs[key], since, until)
+            
+        return dfs
+ 
+    def table_given_header(self, header, stream_name = ALL,
+                            fields=None, convert_times=True,
+                            timezone=None, localize_times=True):
+
+        """
+        Make PV table (pandas.DataFrame) from given Header
+
+        Parameters
+        ----------
+        header: Header
+            The header to fetch the table for
+        stream_name: string, 
+            PV stream_name (e.g., archiver_PV1)
+        fields: list, not used
+            names of interest are defined via user-defined PVs
+        convert_times: bool, optional
+            Whether to convert times from float (seconds since 1970) to
+            numpy datetime64, using pandas. True by default, returns naive
+            datetime64 objects in UTC
+        timezone: str, optional
+            e.g., 'US/Eastern'
+        localize_times: bool, optional
+            If the times should be localized to the 'local' time zone.  If
+            True (the default) the time stamps are converted to the localtime zone.
+
+        Returns
+        -------
+        tables: dictionary of the pv pandas.DataFrames
+        """
+        
+        if timezone is None:
+            timezone = self.tz.zone
+
+        desc_uids = {}
+
+        since, until = header['start']['time'], header['stop']['time']
+  
+        df = pd.DataFrame()
+
+        if stream_name in self.stream_names_given_header(header):
+            name = stream_name
+            pv = self.pvs[name]
+            df = self._table_given_times(pv, since, until)
+            df.rename(columns = {"time": "time", "data" : stream_name}, inplace=True)
+            new_index = np.arange(1, df.index.size +1)
+            df.index = new_index
+
+        return df
+ 
 def _munge_time(t, timezone):
     """Close your eyes and trust @arkilic
-
     Parameters
     ----------
     t : float
         POSIX (seconds since 1970)
     timezone : pytz object
         e.g. ``pytz.timezone('US/Eastern')``
-
     Return
     ------
     time
@@ -139,3 +320,4 @@ def _munge_time(t, timezone):
     """
     t = datetime.fromtimestamp(t)
     return timezone.localize(t).replace(microsecond=0).isoformat()
+

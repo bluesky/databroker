@@ -1,4 +1,6 @@
 coverage
 glueviz
 matplotlib
+pathlib
 pytest
+vcrpy
