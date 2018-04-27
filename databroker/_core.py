@@ -19,13 +19,13 @@ import yaml
 import glob
 import tempfile
 import copy
-from .eventsource import EventSourceShim, check_fields_exist
+from .eventsource import EventSourceShim
 from .headersource import HeaderSourceShim, safe_get_stop
 import humanize
 import jinja2
 import time
 
-from .utils import ALL, normalize_human_friendly_time
+from .utils import ALL
 
 
 try:
