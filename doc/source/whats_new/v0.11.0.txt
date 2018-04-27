@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v0.11.0 (2018-05-10)
+-------------------
+
+Enhancements
+++++++++++++
+
+* Broker objects now have a ``db.name`` attribute which is the name passed into
+  ``Broker.named`` or ``None``.

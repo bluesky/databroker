@@ -72,6 +72,7 @@ def test_handler_registration():
     assert 'AD_HDF5' not in db.reg.handler_reg  # builtin
     assert 'FOO' in db.reg.handler_reg  # specified by config
 
+
 def test_root_map():
     db = Broker.from_config(EXAMPLE)
     assert 'foo' in db.reg.root_map
@@ -88,6 +89,7 @@ def test_lookup_config():
         yaml.dump(EXAMPLE, f)
     actual = lookup_config(name)
     broker = Broker.named(name)  # smoke test
+    assert broker.name == name
     assert name in list_configs()
     assert name in describe_configs()
     assert describe_configs()[name] == 'DESCRIPTION_PLACEHOLDER'
