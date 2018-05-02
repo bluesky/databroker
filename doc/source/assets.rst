@@ -1,6 +1,6 @@
-******
-Assets
-******
+========
+ Assets
+========
 
 The databroker includes an "asset registry" for interfacing transparently to
 externally-stored data. Here's how it works.

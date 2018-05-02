@@ -32,8 +32,10 @@ This FEP will provide API to
  - database to keep track of the full history of file locations *implemented*
  - make a copy of all data from a resource from one location in the file
    system to another and update all relevant entries *implemented*
+
    - This may be trouble for some usage patterns where multiple
      resources point to same file
+
  - move files from one place to another *implemented*
  - delete files *implemented*
  - delete resources
@@ -46,18 +48,24 @@ General Requirements
 --------------------
 
  - implement Datum-level hashing
+
    - this should be a new collection which is keyed on DatumID and
      contains the hash (sha1 or md5) of the values
    - may contain additional statistics, proprieties about datum
+
      - shape, dtype, (min, max, mean, histogram ?)
      - may want to stats as separate transient DB
+
  - each file spec needs class/handler that will, given a resource,
    produce a list of all the files that are needed *partial, need to flesh out handlers*
  - implement resource < - > absolute path mapping collection
+
    - this is transient as it can always be re-generated
    - need a way to flag as 'alive' or not
+
  - implement hashing of files
  - maybe implement a chroot, as well as path into Resource *implemented, but not as described*
+
    - this is so that you can say ``change_root(resource_id, new_root)``
      and then the files along with the folder structure would be moved.
    - without doing this we could do something like
@@ -71,6 +79,7 @@ General Requirements
      user.
    - if there are multiple copies of the same file be able to control
      which version gets hit
+
      - this needs to be controllable based on which computer the compute
        is running on
 

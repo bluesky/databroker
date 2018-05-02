@@ -33,6 +33,16 @@ configuration or by providing the name of a configuration file on disk.
 
 Click the links the table above for details and examples.
 
+You can also add *EventSource* instances to a *Broker* once it
+is constructed
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Broker.add_event_source
+
+
 Searching
 =========
 
@@ -65,9 +75,9 @@ The newer :class:`Header` methods, :ref:`documented later on this page
    header = db[-1]
    header.table()
 
-(Notice that we only had to type ``db`` once.) However, these are still useful
-to loading data from *multiple* headers at once, which the new methods cannot
-do:
+(Notice that we only had to type ``db`` once.) However, these are
+still useful to loading data from *multiple* headers at once, which
+the new methods cannot do:
 
 .. code-block:: python
 
@@ -86,6 +96,17 @@ do:
    Broker.process
    Broker.fill_events
    Broker.fill_table
+
+
+The broker also has a number of methods to introspect headers:
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Broker.get_fields
+   Broker.stream_names_given_header
+
 
 Saving Data
 ===========
@@ -219,6 +240,43 @@ attribute :class:`Header.stream_names`, a list.
 To request data from *all* event streams at once, use the special constant
 :data:`databroker.ALL`.
 
+
+``dict`` compatibility
+======================
+
+:class:`Header` objects duck-type as dictionaries to maintain back-compatibility.
+
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Header.items
+   Header.keys
+   Header.values
+   Header.get
+
+Additionally we maintain compatibility with :class:`~doct.Doct`
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Header.to_name_dict_pair
+
+Constructor
+===========
+
+There is a helper class method to build a :class:`Header` instance given
+a :class:`Broker` instance and a run start.
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Header.from_run_start
+
+
 .. _configuration_utilities:
 
 Configuration Utilities
@@ -234,3 +292,15 @@ Configuration Utilities
 
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.
+
+Deprecated
+----------
+
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Broker.stream
+   Header.stream
+   Broker.fill_event

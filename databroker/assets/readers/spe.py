@@ -39,7 +39,8 @@ class PrincetonSPEFile(FramesSequence):
 
     def __init__(self, fname):
         """Initialize class.
-        Parameters:
+        Parameters
+        ----------
            fname = Filename of SPE file
            fid = File ID of open stream
 
