@@ -1727,6 +1727,9 @@ class BrokerES(object):
         """
         Get all Documents from given run(s).
 
+        This output can be used as a drop-in replacement for the output of the
+        bluesky Run Engine.
+
         Parameters
         ----------
         headers : Header or iterable of Headers
@@ -1752,11 +1755,6 @@ class BrokerES(object):
         >>> for name, doc in restream(h):
         ...     f(name, doc)
 
-        Notes
-        -----
-        This output can be used as a drop-in replacement for the output of the
-        bluesky Run Engine.
-
         See Also
         --------
         :meth:`Broker.process`
@@ -1769,6 +1767,9 @@ class BrokerES(object):
     def process(self, headers, func, fields=None, fill=False):
         """
         Pass all the documents from one or more runs into a callback.
+
+        This output can be used as a drop-in replacement for the output of the
+        bluesky Run Engine.
 
         Parameters
         ----------
@@ -1790,11 +1791,6 @@ class BrokerES(object):
         ...
         >>> h = db[-1]  # most recent header
         >>> process(h, f)
-
-        Notes
-        -----
-        This output can be used as a drop-in replacement for the output of the
-        bluesky Run Engine.
 
         See Also
         --------
