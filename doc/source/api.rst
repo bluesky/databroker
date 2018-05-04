@@ -37,7 +37,7 @@ You can also add *EventSource* instances to a *Broker* once it
 is constructed
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Broker.add_event_source
@@ -101,7 +101,7 @@ the new methods cannot do:
 The broker also has a number of methods to introspect headers:
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Broker.get_fields
@@ -248,7 +248,7 @@ To request data from *all* event streams at once, use the special constant
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Header.items
@@ -259,7 +259,7 @@ To request data from *all* event streams at once, use the special constant
 Additionally we maintain compatibility with :class:`~doct.Doct`
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Header.to_name_dict_pair
@@ -271,7 +271,7 @@ There is a helper class method to build a :class:`Header` instance given
 a :class:`Broker` instance and a run start.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Header.from_run_start
@@ -298,7 +298,7 @@ Deprecated
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Broker.stream
