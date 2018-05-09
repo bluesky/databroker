@@ -289,6 +289,7 @@ Configuration Utilities
    list_configs
    lookup_config
    temp_config
+   Broker.get_config
 
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.
