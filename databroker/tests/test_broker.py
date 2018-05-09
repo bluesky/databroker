@@ -1214,3 +1214,17 @@ def test_repr_html(db, RE, hw):
 
     # smoke test
     h._repr_html_()
+
+
+@py3
+def test_externals(db, RE, hw):
+    def external_fetcher(start, stop):
+        return start['uid']
+
+    RE.subscribe(db.insert)
+    uid, = RE(count([hw.det], 5))
+    db.external_fetchers['suid'] = external_fetcher
+
+    h = db[uid]
+
+    assert h.ext.suid == h.start['uid']

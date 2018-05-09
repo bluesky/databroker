@@ -24,8 +24,22 @@ from .headersource import HeaderSourceShim, safe_get_stop
 import humanize
 import jinja2
 import time
-
 from .utils import ALL
+
+try:
+    from types import SimpleNamespace
+except ImportError:
+    class SimpleNamespace:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+        def __repr__(self):
+            keys = sorted(self.__dict__)
+            items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
+            return "{}({})".format(type(self).__name__, ", ".join(items))
+
+        def __eq__(self, other):
+            return self.__dict__ == other.__dict__
 
 
 try:
@@ -68,6 +82,7 @@ class Header(object):
     db = attr.ib(cmp=False, hash=False)
     start = attr.ib()
     stop = attr.ib(default=attr.Factory(dict))
+    ext = attr.ib(default=attr.Factory(SimpleNamespace), cmp=False, hash=False)
     _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False,
                      repr=False)
 
@@ -100,6 +115,8 @@ class Header(object):
         d = {'start': db.prepare_hook('start', run_start)}
         if run_stop is not None:
             d['stop'] = db.prepare_hook('stop', run_stop or {})
+
+        d['ext'] = SimpleNamespace(**db.fetch_external(run_start, run_stop))
         h = cls(db, **d)
         return h
 
@@ -112,7 +129,7 @@ class Header(object):
     ### dict-like methods ###
 
     def __getitem__(self, k):
-        if k in ('start', 'descriptors', 'stop'):
+        if k in ('start', 'descriptors', 'stop', 'ext'):
             return getattr(self, k)
         else:
             raise KeyError(k)
@@ -129,7 +146,7 @@ class Header(object):
             yield getattr(self, k)
 
     def keys(self):
-        for k in ('start', 'descriptors', 'stop'):
+        for k in ('start', 'descriptors', 'stop', 'ext'):
             yield k
 
     def to_name_dict_pair(self):
@@ -140,7 +157,7 @@ class Header(object):
         return self._name, ret
 
     def __len__(self):
-        return 3
+        return 4
 
     def __iter__(self):
         return self.keys()
@@ -490,6 +507,7 @@ def register_builtin_handlers(reg):
             for spec in cls.specs:
                 logger.debug("Registering Handler %r for spec %r", cls, spec)
                 reg.register_handler(spec, cls)
+
 
 def get_fields(header, name=None):
     """
@@ -1071,11 +1089,13 @@ class BrokerES(object):
     name : str, optional
         The name of the broker
     """
-    def __init__(self, hs, event_sources, assets, name=None):
+    def __init__(self, hs, event_sources, assets, external_fetchers,
+                 name=None):
         self.hs = hs
         self.event_sources = event_sources
         self.assets = assets
         self.name = name
+        self.external_fetchers = external_fetchers
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
         self.filters = {}
@@ -1083,6 +1103,10 @@ class BrokerES(object):
         self.event_source_for_insert = self.event_sources[0]
         self.registry_for_insert = self.event_sources[0]
         self.prepare_hook = wrap_in_deprecated_doct
+
+    def fetch_external(self, start, stop):
+        return {k: func(start, stop) for
+                k, func in self.external_fetchers.items()}
 
     def add_event_source(self, es):
         self.event_sources.append(es)
@@ -2065,19 +2089,21 @@ class Broker(BrokerES):
         The name of the broker
     """
     def __init__(self, mds, reg=None, plugins=None, filters=None,
-                 auto_register=True, name=None):
+                 auto_register=True, external_fetchers=None, name=None):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
         if filters is None:
             filters = {}
+        if external_fetchers is None:
+            external_fetchers = {}
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      [EventSourceShim(mds, reg)],
-                                     {'': reg}, name=name)
+                                     {'': reg}, external_fetchers, name=name)
         self.filters = filters
         if auto_register:
             register_builtin_handlers(self.reg)
