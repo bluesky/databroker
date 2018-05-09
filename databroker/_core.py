@@ -87,7 +87,7 @@ class Header(object):
                      repr=False)
 
     @classmethod
-    def from_run_start(cls, db, run_start):
+    def from_run_start(cls, db, run_start, run_stop=None):
         """
         Build a Header from a RunStart Document.
 
@@ -102,21 +102,19 @@ class Header(object):
         -------
         header : databroker.core.Header
         """
-        mds = db.hs.mds
+        hs = db.hs
         if isinstance(run_start, six.string_types):
-            run_start = mds.run_start_given_uid(run_start)
-        run_start_uid = run_start['uid']
+            run_start = hs.run_start_given_uid(run_start)
 
-        try:
-            run_stop = mds.stop_by_start(run_start_uid)
-        except mds.NoRunStop:
-            run_stop = None
+        if run_stop is None:
+            run_stop = safe_get_stop(hs, run_start['uid'])
 
         d = {'start': db.prepare_hook('start', run_start)}
         if run_stop is not None:
             d['stop'] = db.prepare_hook('stop', run_stop or {})
 
         d['ext'] = SimpleNamespace(**db.fetch_external(run_start, run_stop))
+        print(d['ext'])
         h = cls(db, **d)
         return h
 
@@ -860,9 +858,7 @@ class Results(object):
     def __iter__(self):
         self._res, res = itertools.tee(self._res)
         for start, stop in res:
-            header = Header(start=self._db.prepare_hook('start', start),
-                            stop=self._db.prepare_hook('stop', stop),
-                            db=self._db)
+            header = Header.from_run_start(self._db, start, stop)
             if self._data_key is None:
                 yield header
             else:
@@ -1249,9 +1245,7 @@ class BrokerES(object):
 
         >>> header = db[42]
         """
-        ret = [Header(start=self.prepare_hook('start', start),
-                      stop=self.prepare_hook('stop', stop),
-                      db=self)
+        ret = [Header.from_run_start(self, start, stop)
                for start, stop in search(key, self)]
         squeeze = not isinstance(key, (set, tuple, MutableSequence, slice))
         if squeeze and len(ret) == 1:
