@@ -6,7 +6,7 @@ import datetime
 
 import pytz
 import pytest
-from databroker._core import normalize_human_friendly_time
+from databroker.utils import normalize_human_friendly_time
 
 
 # ### Test metadatastore time formatting ######################################

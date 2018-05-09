@@ -112,6 +112,9 @@ generated/
 # Ctags
 .tags
 
+.pytest_cache
+doc/source/_as_gen/*
+
 # For VIM Users
 
 #

@@ -37,7 +37,7 @@ You can also add *EventSource* instances to a *Broker* once it
 is constructed
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Broker.add_event_source
@@ -101,7 +101,7 @@ the new methods cannot do:
 The broker also has a number of methods to introspect headers:
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Broker.get_fields
@@ -191,9 +191,15 @@ Metadata
 The :class:`Header` bundles together the metadata of a run, accessible via the
 attributes corresponding to the underlying documents:
 
+
 * :class:`Header.start`
 * :class:`Header.stop`
-* :class:`Header.descriptors`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Header.descriptors
 
 Measurements are organized into "streams" of asynchronously collected data. The
 names of all the streams are listed in the attribute
@@ -215,6 +221,7 @@ make it easier to extract some key information:
    Header.fields
    Header.devices
    Header.config_data
+   Header.stream_names
 
 Data
 ====
@@ -248,7 +255,7 @@ To request data from *all* event streams at once, use the special constant
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Header.items
@@ -259,7 +266,7 @@ To request data from *all* event streams at once, use the special constant
 Additionally we maintain compatibility with :class:`~doct.Doct`
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Header.to_name_dict_pair
@@ -271,7 +278,7 @@ There is a helper class method to build a :class:`Header` instance given
 a :class:`Broker` instance and a run start.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Header.from_run_start
@@ -289,18 +296,30 @@ Configuration Utilities
    list_configs
    lookup_config
    temp_config
+   Broker.get_config
 
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.
+
+Internals
+---------
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Broker.reg
+
 
 Deprecated
 ----------
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Broker.stream
    Header.stream
    Broker.fill_event
+   Broker.fs
+   Broker.mds

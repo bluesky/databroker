@@ -19,13 +19,13 @@ import yaml
 import glob
 import tempfile
 import copy
-from .eventsource import EventSourceShim, check_fields_exist
+from .eventsource import EventSourceShim
 from .headersource import HeaderSourceShim, safe_get_stop
 import humanize
 import jinja2
 import time
 
-from .utils import ALL, normalize_human_friendly_time
+from .utils import ALL
 
 
 try:
@@ -1065,13 +1065,17 @@ class BrokerES(object):
     Parameters
     ----------
     hs : HeaderSource
-    *event_sources :
+    event_sources : List[EventSource]
         zero, one or more EventSource objects
+    assets : List[AssetRegistry]
+    name : str, optional
+        The name of the broker
     """
-    def __init__(self, hs, event_sources, assets):
+    def __init__(self, hs, event_sources, assets, name=None):
         self.hs = hs
         self.event_sources = event_sources
         self.assets = assets
+        self.name = name
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
         self.filters = {}
@@ -1723,6 +1727,9 @@ class BrokerES(object):
         """
         Get all Documents from given run(s).
 
+        This output can be used as a drop-in replacement for the output of the
+        bluesky Run Engine.
+
         Parameters
         ----------
         headers : Header or iterable of Headers
@@ -1748,11 +1755,6 @@ class BrokerES(object):
         >>> for name, doc in restream(h):
         ...     f(name, doc)
 
-        Notes
-        -----
-        This output can be used as a drop-in replacement for the output of the
-        bluesky Run Engine.
-
         See Also
         --------
         :meth:`Broker.process`
@@ -1765,6 +1767,9 @@ class BrokerES(object):
     def process(self, headers, func, fields=None, fill=False):
         """
         Pass all the documents from one or more runs into a callback.
+
+        This output can be used as a drop-in replacement for the output of the
+        bluesky Run Engine.
 
         Parameters
         ----------
@@ -1786,11 +1791,6 @@ class BrokerES(object):
         ...
         >>> h = db[-1]  # most recent header
         >>> process(h, f)
-
-        Notes
-        -----
-        This output can be used as a drop-in replacement for the output of the
-        bluesky Run Engine.
 
         See Also
         --------
@@ -2061,10 +2061,11 @@ class Broker(BrokerES):
         By default, automatically register built-in asset handlers (classes
         that handle I/O for externally stored data). Set this to ``False``
         to do all registration manually.
-
+    name : str, optional
+        The name of the broker
     """
     def __init__(self, mds, reg=None, plugins=None, filters=None,
-                 auto_register=True):
+                 auto_register=True, name=None):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
@@ -2076,13 +2077,13 @@ class Broker(BrokerES):
                           "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      [EventSourceShim(mds, reg)],
-                                     {'': reg})
+                                     {'': reg}, name=name)
         self.filters = filters
         if auto_register:
             register_builtin_handlers(self.reg)
 
     @classmethod
-    def from_config(cls, config, auto_register=True):
+    def from_config(cls, config, auto_register=True, name=None):
         """
         Create a new Broker instance using a dictionary of configuration.
 
@@ -2093,7 +2094,8 @@ class Broker(BrokerES):
             By default, automatically register built-in asset handlers (classes
             that handle I/O for externally stored data). Set this to ``False``
             to do all registration manually.
-
+        name : str, optional
+            The name of the generated Broker
         Returns
         -------
         db : Broker
@@ -2131,7 +2133,7 @@ class Broker(BrokerES):
         mds = mds_cls(config['metadatastore']['config'])
         assets = assets_cls(config['assets']['config'])
         # Instantiate Broker.
-        db = cls(mds, assets, auto_register=auto_register)
+        db = cls(mds, assets, auto_register=auto_register, name=name)
         # Register handlers included in the config, if any.
         for spec, handler in config.get('handlers', {}).items():
             cls = load_cls(handler)
@@ -2182,7 +2184,7 @@ class Broker(BrokerES):
             config = temp_config()
         else:
             config = lookup_config(name)
-        db = cls.from_config(config, auto_register=auto_register)
+        db = cls.from_config(config, auto_register=auto_register, name=name)
         return db
 
     def get_config(self):

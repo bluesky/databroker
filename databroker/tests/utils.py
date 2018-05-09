@@ -55,7 +55,7 @@ def build_hdf5_backed_broker(request):
 
     return BrokerES(HeaderSourceShim(mds),
                     [EventSourceShim(mds, fs)],
-                    {'': fs})
+                    {'': fs}, name=None)
 
 
 def build_pymongo_backed_broker(request):
