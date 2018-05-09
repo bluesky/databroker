@@ -697,7 +697,7 @@ def test_export(broker_factory, RE, hw):
     from ophyd import sim
     db1 = broker_factory()
     db2 = broker_factory()
-    RE.subscribe(db1.mds.insert)
+    RE.subscribe(db1.insert)
 
     # test mds only
     uid, = RE(count([hw.det]))
@@ -752,7 +752,7 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
                               reg=db1.reg, save_path=dir1)
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
-    RE.subscribe(db1.mds.insert)
+    RE.subscribe(db1.insert)
     uid, = RE(count([detfs], num=3))
 
     file_pairs = db1.export(db1[uid], db2, new_root=dir2)
@@ -771,7 +771,7 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
 def test_export_size_smoke(broker_factory, RE, tmpdir):
     from ophyd import sim
     db1 = broker_factory()
-    RE.subscribe(db1.mds.insert)
+    RE.subscribe(db1.insert)
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
