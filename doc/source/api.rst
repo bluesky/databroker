@@ -191,9 +191,15 @@ Metadata
 The :class:`Header` bundles together the metadata of a run, accessible via the
 attributes corresponding to the underlying documents:
 
+
 * :class:`Header.start`
 * :class:`Header.stop`
-* :class:`Header.descriptors`
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Header.descriptors
 
 Measurements are organized into "streams" of asynchronously collected data. The
 names of all the streams are listed in the attribute
@@ -215,6 +221,7 @@ make it easier to extract some key information:
    Header.fields
    Header.devices
    Header.config_data
+   Header.stream_names
 
 Data
 ====
@@ -294,6 +301,15 @@ Configuration Utilities
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.
 
+Internals
+---------
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Broker.reg
+
+
 Deprecated
 ----------
 
@@ -305,3 +321,5 @@ Deprecated
    Broker.stream
    Header.stream
    Broker.fill_event
+   Broker.fs
+   Broker.mds
