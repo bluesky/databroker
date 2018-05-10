@@ -734,13 +734,30 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
     class BrokenSynRegistry(sim.SynSignalWithRegistry):
 
         def stage(self):
-            self._file_stem = self.save_path
-            self._path_stem = (os.path.join(self.save_path, self._file_stem)
-                               + os.path.sep)
-            self._resource_id = self.reg.register_resource(self._spec,
-                                                           '',
-                                                           self._path_stem,
-                                                           {})
+            self._file_stem = sim.short_uid()
+            self._path_stem = os.path.join(self.save_path, self._file_stem)
+            self._datum_counter = itertools.count()
+            # This is temporarily more complicated than it will be in the future.
+            # It needs to support old configurations that have a registry.
+            resource = {'spec': self._spec,
+                        'root': '',
+                        'resource_path': self._path_stem,
+                        'resource_kwargs': {},
+                        'path_semantics': os.name}
+            # If a Registry is set, we need to allow it to generate the uid for us.
+            if self.reg is not None:
+                # register_resource has accidentally different parameter names...
+                self._resource_uid = self.reg.register_resource(
+                    rpath=resource['resource_path'],
+                    rkwargs=resource['resource_kwargs'],
+                    root=resource['root'],
+                    spec=resource['spec'],
+                    path_semantics=resource['path_semantics'])
+            # If a Registry is not set, we need to generate the uid.
+            else:
+                self._resource_uid = sim.new_uid()
+            resource['uid'] = self._resource_uid
+            self._asset_docs_cache.append(('resource', resource))
 
     dir1 = str(tmpdir.mkdir('a'))
     dir2 = str(tmpdir.mkdir('b'))
