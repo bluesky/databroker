@@ -1083,6 +1083,7 @@ class BrokerES(object):
     event_sources : List[EventSource]
         zero, one or more EventSource objects
     assets : List[AssetRegistry]
+    external_fetchers : Dict[str, Callable[Start, Stop]]
     name : str, optional
         The name of the broker
     """
@@ -2080,6 +2081,9 @@ class Broker(BrokerES):
         By default, automatically register built-in asset handlers (classes
         that handle I/O for externally stored data). Set this to ``False``
         to do all registration manually.
+    external_fetchers, optional : Dict[str, Callable[Start, Stop]]
+        Used to attach extra data to the returned Headers in the `h.ext`
+        namespace.
     name : str, optional
         The name of the broker
     """
