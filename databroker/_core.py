@@ -124,7 +124,7 @@ class Header(object):
         template = env.from_string(_HTML_TEMPLATE)
         return template.render(document=self)
 
-    ### dict-like methods ###
+    # ## dict-like methods ###
 
     def __getitem__(self, k):
         if k in ('start', 'descriptors', 'stop', 'ext'):
@@ -876,6 +876,7 @@ class Results(object):
 # And for Windows we only look in:
 #   %APPDATA%/databroker
 
+
 if os.name == 'nt':
     _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
     CONFIG_SEARCH_PATH = (_user_conf,)
@@ -1406,8 +1407,8 @@ class BrokerES(object):
         >>> db(plan_name={'$ne': 'relative_scan'})
 
         Read the
-        `MongoDB query documentation <http://docs.mongodb.org/manual/tutorial/query-documents/>`_
-        for more.
+        `MongoDB query documentation
+        <http://docs.mongodb.org/manual/tutorial/query-documents/>`_ for more.
         """
         data_key = kwargs.pop('data_key', None)
 
@@ -2216,7 +2217,6 @@ class Broker(BrokerES):
         config['assets'] = self.reg.config
         config['root_map'] = self.reg.root_map
         return config
-
 
 
 def _sanitize(doc):
