@@ -697,7 +697,7 @@ def test_export(broker_factory, RE, hw):
     from ophyd import sim
     db1 = broker_factory()
     db2 = broker_factory()
-    RE.subscribe(db1.mds.insert)
+    RE.subscribe(db1.insert)
 
     # test mds only
     uid, = RE(count([hw.det]))
@@ -734,13 +734,30 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
     class BrokenSynRegistry(sim.SynSignalWithRegistry):
 
         def stage(self):
-            self._file_stem = self.save_path
-            self._path_stem = (os.path.join(self.save_path, self._file_stem)
-                               + os.path.sep)
-            self._resource_id = self.reg.register_resource(self._spec,
-                                                           '',
-                                                           self._path_stem,
-                                                           {})
+            self._file_stem = sim.short_uid()
+            self._path_stem = os.path.join(self.save_path, self._file_stem)
+            self._datum_counter = itertools.count()
+            # This is temporarily more complicated than it will be in the future.
+            # It needs to support old configurations that have a registry.
+            resource = {'spec': self._spec,
+                        'root': '',
+                        'resource_path': self._path_stem,
+                        'resource_kwargs': {},
+                        'path_semantics': os.name}
+            # If a Registry is set, we need to allow it to generate the uid for us.
+            if self.reg is not None:
+                # register_resource has accidentally different parameter names...
+                self._resource_uid = self.reg.register_resource(
+                    rpath=resource['resource_path'],
+                    rkwargs=resource['resource_kwargs'],
+                    root=resource['root'],
+                    spec=resource['spec'],
+                    path_semantics=resource['path_semantics'])
+            # If a Registry is not set, we need to generate the uid.
+            else:
+                self._resource_uid = sim.new_uid()
+            resource['uid'] = self._resource_uid
+            self._asset_docs_cache.append(('resource', resource))
 
     dir1 = str(tmpdir.mkdir('a'))
     dir2 = str(tmpdir.mkdir('b'))
@@ -752,7 +769,7 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
                               reg=db1.reg, save_path=dir1)
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
-    RE.subscribe(db1.mds.insert)
+    RE.subscribe(db1.insert)
     uid, = RE(count([detfs], num=3))
 
     file_pairs = db1.export(db1[uid], db2, new_root=dir2)
@@ -771,7 +788,7 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
 def test_export_size_smoke(broker_factory, RE, tmpdir):
     from ophyd import sim
     db1 = broker_factory()
-    RE.subscribe(db1.mds.insert)
+    RE.subscribe(db1.insert)
 
     # test file copying
     if not hasattr(db1.fs, 'copy_files'):
@@ -1214,3 +1231,17 @@ def test_repr_html(db, RE, hw):
 
     # smoke test
     h._repr_html_()
+
+
+@py3
+def test_externals(db, RE, hw):
+    def external_fetcher(start, stop):
+        return start['uid']
+
+    RE.subscribe(db.insert)
+    uid, = RE(count([hw.det], 5))
+    db.external_fetchers['suid'] = external_fetcher
+
+    h = db[uid]
+
+    assert h.ext.suid == h.start['uid']

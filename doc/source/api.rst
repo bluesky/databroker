@@ -308,7 +308,7 @@ Internals
    :nosignatures:
 
    Broker.reg
-
+   Broker.fetch_external
 
 Deprecated
 ----------

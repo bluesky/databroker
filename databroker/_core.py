@@ -24,8 +24,22 @@ from .headersource import HeaderSourceShim, safe_get_stop
 import humanize
 import jinja2
 import time
-
 from .utils import ALL
+
+try:
+    from types import SimpleNamespace
+except ImportError:
+    class SimpleNamespace:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+        def __repr__(self):
+            keys = sorted(self.__dict__)
+            items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
+            return "{}({})".format(type(self).__name__, ", ".join(items))
+
+        def __eq__(self, other):
+            return self.__dict__ == other.__dict__
 
 
 try:
@@ -68,11 +82,12 @@ class Header(object):
     db = attr.ib(cmp=False, hash=False)
     start = attr.ib()
     stop = attr.ib(default=attr.Factory(dict))
+    ext = attr.ib(default=attr.Factory(SimpleNamespace), cmp=False, hash=False)
     _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False,
                      repr=False)
 
     @classmethod
-    def from_run_start(cls, db, run_start):
+    def from_run_start(cls, db, run_start, run_stop=None):
         """
         Build a Header from a RunStart Document.
 
@@ -87,19 +102,19 @@ class Header(object):
         -------
         header : databroker.core.Header
         """
-        mds = db.hs.mds
+        hs = db.hs
         if isinstance(run_start, six.string_types):
-            run_start = mds.run_start_given_uid(run_start)
-        run_start_uid = run_start['uid']
+            run_start = hs.run_start_given_uid(run_start)
 
-        try:
-            run_stop = mds.stop_by_start(run_start_uid)
-        except mds.NoRunStop:
-            run_stop = None
+        if run_stop is None:
+            run_stop = safe_get_stop(hs, run_start['uid'])
 
         d = {'start': db.prepare_hook('start', run_start)}
         if run_stop is not None:
             d['stop'] = db.prepare_hook('stop', run_stop or {})
+
+        d['ext'] = SimpleNamespace(**db.fetch_external(run_start, run_stop))
+        print(d['ext'])
         h = cls(db, **d)
         return h
 
@@ -109,10 +124,10 @@ class Header(object):
         template = env.from_string(_HTML_TEMPLATE)
         return template.render(document=self)
 
-    ### dict-like methods ###
+    # ## dict-like methods ###
 
     def __getitem__(self, k):
-        if k in ('start', 'descriptors', 'stop'):
+        if k in ('start', 'descriptors', 'stop', 'ext'):
             return getattr(self, k)
         else:
             raise KeyError(k)
@@ -129,7 +144,7 @@ class Header(object):
             yield getattr(self, k)
 
     def keys(self):
-        for k in ('start', 'descriptors', 'stop'):
+        for k in ('start', 'descriptors', 'stop', 'ext'):
             yield k
 
     def to_name_dict_pair(self):
@@ -140,7 +155,7 @@ class Header(object):
         return self._name, ret
 
     def __len__(self):
-        return 3
+        return 4
 
     def __iter__(self):
         return self.keys()
@@ -490,6 +505,7 @@ def register_builtin_handlers(reg):
             for spec in cls.specs:
                 logger.debug("Registering Handler %r for spec %r", cls, spec)
                 reg.register_handler(spec, cls)
+
 
 def get_fields(header, name=None):
     """
@@ -842,9 +858,7 @@ class Results(object):
     def __iter__(self):
         self._res, res = itertools.tee(self._res)
         for start, stop in res:
-            header = Header(start=self._db.prepare_hook('start', start),
-                            stop=self._db.prepare_hook('stop', stop),
-                            db=self._db)
+            header = Header.from_run_start(self._db, start, stop)
             if self._data_key is None:
                 yield header
             else:
@@ -861,6 +875,7 @@ class Results(object):
 #   /etc/databroker
 # And for Windows we only look in:
 #   %APPDATA%/databroker
+
 
 if os.name == 'nt':
     _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
@@ -1068,14 +1083,17 @@ class BrokerES(object):
     event_sources : List[EventSource]
         zero, one or more EventSource objects
     assets : List[AssetRegistry]
+    external_fetchers : Dict[str, Callable[Start, Stop]]
     name : str, optional
         The name of the broker
     """
-    def __init__(self, hs, event_sources, assets, name=None):
+    def __init__(self, hs, event_sources, assets, external_fetchers,
+                 name=None):
         self.hs = hs
         self.event_sources = event_sources
         self.assets = assets
         self.name = name
+        self.external_fetchers = external_fetchers
         # Once we drop Python 2, we can accept initial filter and aliases as
         # keyword-only args if we want to.
         self.filters = {}
@@ -1083,6 +1101,10 @@ class BrokerES(object):
         self.event_source_for_insert = self.event_sources[0]
         self.registry_for_insert = self.event_sources[0]
         self.prepare_hook = wrap_in_deprecated_doct
+
+    def fetch_external(self, start, stop):
+        return {k: func(start, stop) for
+                k, func in self.external_fetchers.items()}
 
     def add_event_source(self, es):
         self.event_sources.append(es)
@@ -1225,9 +1247,7 @@ class BrokerES(object):
 
         >>> header = db[42]
         """
-        ret = [Header(start=self.prepare_hook('start', start),
-                      stop=self.prepare_hook('stop', stop),
-                      db=self)
+        ret = [Header.from_run_start(self, start, stop)
                for start, stop in search(key, self)]
         squeeze = not isinstance(key, (set, tuple, MutableSequence, slice))
         if squeeze and len(ret) == 1:
@@ -1388,8 +1408,8 @@ class BrokerES(object):
         >>> db(plan_name={'$ne': 'relative_scan'})
 
         Read the
-        `MongoDB query documentation <http://docs.mongodb.org/manual/tutorial/query-documents/>`_
-        for more.
+        `MongoDB query documentation
+        <http://docs.mongodb.org/manual/tutorial/query-documents/>`_ for more.
         """
         data_key = kwargs.pop('data_key', None)
 
@@ -2061,23 +2081,28 @@ class Broker(BrokerES):
         By default, automatically register built-in asset handlers (classes
         that handle I/O for externally stored data). Set this to ``False``
         to do all registration manually.
+    external_fetchers, optional : Dict[str, Callable[Start, Stop]]
+        Used to attach extra data to the returned Headers in the `h.ext`
+        namespace.
     name : str, optional
         The name of the broker
     """
     def __init__(self, mds, reg=None, plugins=None, filters=None,
-                 auto_register=True, name=None):
+                 auto_register=True, external_fetchers=None, name=None):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
         if filters is None:
             filters = {}
+        if external_fetchers is None:
+            external_fetchers = {}
         if filters:
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.", stacklevel=2)
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      [EventSourceShim(mds, reg)],
-                                     {'': reg}, name=name)
+                                     {'': reg}, external_fetchers, name=name)
         self.filters = filters
         if auto_register:
             register_builtin_handlers(self.reg)
@@ -2196,7 +2221,6 @@ class Broker(BrokerES):
         config['assets'] = self.reg.config
         config['root_map'] = self.reg.root_map
         return config
-
 
 
 def _sanitize(doc):
