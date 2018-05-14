@@ -1,6 +1,6 @@
 .. currentmodule:: databroker
 
-v0.11.0 (2018-05-10)
+v0.11.0 (2018-05-14)
 --------------------
 
 Enhancements
@@ -8,3 +8,22 @@ Enhancements
 
 * Broker objects now have a ``db.name`` attribute which is the name passed into
   ``Broker.named`` or ``None``.
+* Header objects now an ``ext`` attribute, containing a ``SimpleNamespace``. By
+  default, it is empty. It is intended to be used to pull metadata from
+  external data sources, such as sample metadata, comments or tags, or proposal
+  information. To register a datasource, add an item to the dictionary
+  ``Broker.external_fetchers``. The value, which should be a callable, will be
+  passed two arguments, the RunStart document and RunStop document, and the
+  result will be added to ``ext`` using the key. The callable is expected to
+  handle all special cases (errors, etc.) internally and return ``None`` if it
+  has nothing to add.
+* Accept Resource and Datum documents via the generic ``insert`` method. To
+  facilitate the "asset refactor" transition in bluesky and ophyd, ignore
+  duplicate attempts to insert a document with the same ``uid``. (This is
+  controllable by a new flag ``ignore_duplicate_error`` on the Registry insert
+  methods.)
+
+Bug Fixes
++++++++++
+
+* The ``Header.fields()`` method wrongly ignored its ``stream_name`` argument.
