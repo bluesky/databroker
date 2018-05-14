@@ -42,7 +42,8 @@ install:
     elif [ $TRAVIS_PYTHON_VERSION = "3.4" ]; then
       echo;
     else
-      pip install bluesky ophyd pyqt5;
+      pip install bluesky pyqt5;
+      pip install -U ophyd --pre
     fi;
   - pip install .[all]
   - pip install -r test-requirements.txt
