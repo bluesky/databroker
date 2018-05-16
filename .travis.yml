@@ -43,7 +43,7 @@ install:
       echo;
     else
       pip install bluesky pyqt5;
-      pip install -U ophyd --pre
+      pip install -U ophyd --pre;
     fi;
   - pip install .[all]
   - pip install -r test-requirements.txt
