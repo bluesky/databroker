@@ -114,7 +114,6 @@ class Header(object):
             d['stop'] = db.prepare_hook('stop', run_stop or {})
 
         d['ext'] = SimpleNamespace(**db.fetch_external(run_start, run_stop))
-        print(d['ext'])
         h = cls(db, **d)
         return h
 
