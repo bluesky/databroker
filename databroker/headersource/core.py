@@ -934,4 +934,7 @@ def find_last(start_col, start_cache, num):
     col = start_col
     gen = col.find({}, sort=[('time', DESCENDING)])
     for _ in range(num):
-        yield _cache_run_start(next(gen), start_cache)
+        try:
+            yield _cache_run_start(next(gen), start_cache)
+        except StopIteration:
+            return
