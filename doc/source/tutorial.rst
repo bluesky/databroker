@@ -230,6 +230,7 @@ unbounded number of results. To avoid slowness, the results are loaded
 "lazily," only as needed. Here's an example of what works and what doesn't.
 
 .. ipython:: python
+    :okexcept:
 
     headers = db(plan_name='scan')
     headers
