@@ -45,6 +45,8 @@ install:
       pip install bluesky pyqt5;
       pip install -U ophyd --pre;
     fi;
+  - pip install --upgrade cython
+  - pip install --quiet --upgrade --global-option='--without-libyaml' pyyaml
   - pip install .[all]
   - pip install -r test-requirements.txt
   - pip install codecov
