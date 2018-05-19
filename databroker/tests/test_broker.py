@@ -1245,3 +1245,20 @@ def test_externals(db, RE, hw):
     h = db[uid]
 
     assert h.ext.suid == h.start['uid']
+
+
+@py3
+def test_monitoring(db, RE, hw):
+    # A monitored signal emits Events from its subscription thread, which
+    # silently failed on the sqlite backend until it was refactored to make
+    # this test pass.
+    import bluesky.plan_stubs as bps
+    import bluesky.plans as bp
+    from bluesky.preprocessors import SupplementalData
+
+    RE.subscribe(db.insert)
+    sd = SupplementalData()
+    RE.preprocessors.append(sd)
+    sd.monitors.append(hw.rand)
+    RE(bp.count([hw.det], 5, delay=1))
+    assert len(db[-1].table('rand_monitor')) > 1
