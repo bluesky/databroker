@@ -1,6 +1,8 @@
 import os
 import sqlite3
 import re
+import queue
+import threading
 from collections import defaultdict
 from contextlib import contextmanager
 from .mongoquery import JSONCollection
@@ -66,7 +68,14 @@ class EventCollection(object):
         self._runstarts = {}
         self._descriptors = {}
         self._dirpath = dirpath
-        self.reconnect()
+        # Create a special thread for interacting with sqlite. This thread will
+        # create all connections and do all insertions.
+        self.__process_request_queue_thread = threading.Thread(
+            target=self.__process_request_queue,
+            daemon=True, name='process-doc-queue')
+        self.__request_queue = queue.Queue()
+        self.__shutdown_event = threading.Event()
+        self.__process_request_queue_thread.start()
 
     def reconnect(self):
         for fn in os.listdir(self._dirpath):
@@ -89,13 +98,6 @@ class EventCollection(object):
                     duid = descriptor_uid['name'][5:].replace('_', '-')
                     self._descriptors[duid] = uid
 
-    def new_runstart(self, doc):
-        uid = doc['uid']
-        fp = os.path.join(self._dirpath, '{}.sqlite'.format(uid))
-        conn = sqlite3.connect(fp)
-        conn.row_factory = sqlite3.Row
-        self._runstarts[uid] = conn
-
     @classmethod
     def columns(cls, keys):
         sorted_keys = list(sorted(keys))
@@ -105,26 +107,44 @@ class EventCollection(object):
                         ['timestamps_' + key for key in safe_keys])
         return columns
 
+    def new_runstart(self, doc):
+        # Use a threading.Event (nothing to do with an Event document) to
+        # detect when the document has been inserted.
+        success_event = threading.Event()
+        self.__request_queue.put((success_event, 'start', doc))
+        # Timeout after 5 seconds because that is how long sqlite takes to
+        # timeout, by default.
+        success = success_event.wait(timeout=5)
+        if not success:
+            raise TimeoutError("insertion failed")
+
     def new_descriptor(self, doc):
-        uid = doc['uid']
-        table_name = 'desc_' + uid.replace('-', '_')
-        run_start_uid = doc['run_start']
-        columns = self.columns(doc['data_keys'])
-        with cursor(self._runstarts[run_start_uid]) as c:
-            c.execute(CREATE_TABLE % table_name
-                      + '(' + ','.join(columns) + ')')
-        self._descriptors[uid] = run_start_uid
+        success_event = threading.Event()
+        self.__request_queue.put((success_event, 'descriptor', doc))
+        success = success_event.wait(timeout=5)
+        if not success:
+            raise TimeoutError("descriptor %s insertion failed" % id(doc))
 
     def find(self, query, sort=None):
+        # FIXME: sort is a no-op
         if list(query.keys()) != ['descriptor']:
             raise NotImplementedError("Only queries based on descriptor uid "
                                       "are supported.")
+        results_queue = queue.Queue()
+        self.__request_queue.put((None, 'query', (query, results_queue)))
+        results = results_queue.get(timeout=5)
+        for result in results:
+            yield result
+
+    def _find(self, request):
+        query, results_queue = request
         desc_uid = query['descriptor']
         table_name = 'desc_' + desc_uid.replace('-', '_')
         with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
             c.execute(SELECT_EVENT_STREAM % table_name)
             raw = c.fetchall()
         rows_as_dicts = [dict(row) for row in raw]
+        results = []
         for row in rows_as_dicts:
             event = {}
             event['uid'] = row.pop('uid')
@@ -139,27 +159,51 @@ class EventCollection(object):
                 else:
                     new_key = k[len('timestamps_'):]
                     event['timestamps'][new_key] = v
-            yield event
+            results.append(event)
+        results_queue.put(results)
 
     def find_one(self, query):
         # not used on event_col
         raise NotImplementedError()
 
     def insert_one(self, doc):
-        ordered_keys = sorted(doc['data'])
-        columns = self.columns(doc['data'])
-        desc_uid = doc['descriptor']
-        table_name = 'desc_' + desc_uid.replace('-', '_')
-
-        values = tuple([doc['uid']] + [doc['seq_num']] + [doc['time']] +
-                        [doc['data'][k] for k in ordered_keys] +
-                        [doc['timestamps'][k] for k in ordered_keys])
-        with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
-            c.execute("INSERT INTO %s (%s) VALUES %s " %
-                      (table_name, ','.join(columns), qmarks(len(columns))),
-                      values)
+        self.insert([doc])
 
     def insert(self, docs):
+        success_event = threading.Event()
+        self.__request_queue.put((success_event, 'bulk_event', docs))
+        success = success_event.wait(timeout=5)
+        if not success:
+            raise TimeoutError("event %s insertion failed" % id(docs))
+
+    def __process_request_queue(self):
+        self.reconnect()
+        while not self.__shutdown_event.is_set():
+            try:
+                item = self.__request_queue.get(timeout=0.5)
+            except queue.Empty:
+                # Check whether we are shutting down (and should therefore
+                # terminate this loop) and then resume waiting on the
+                # queue.
+                continue
+            success_event, name, payload = item
+            if name == 'bulk_event':
+                self._insert_events(payload)
+                success_event.set()
+            elif name == 'descriptor':
+                self._insert_descriptor(payload)
+                success_event.set()
+            elif name == 'start':
+                self._insert_start(payload)
+                success_event.set()
+            elif name == 'query':
+                self._find(payload)
+            else:
+                raise NotImplementedError()
+            # Signal to thread that put into __request_queue that the insertion is
+            # done.
+
+    def _insert_events(self, docs):
         values = defaultdict(list)
         ordered_keys = {}
         columns = {}
@@ -177,10 +221,33 @@ class EventCollection(object):
         for desc_uid in values:
             table_name = 'desc_' + desc_uid.replace('-', '_')
             cols = columns[desc_uid]
-            with cursor(self._runstarts[self._descriptors[desc_uid]]) as c:
+            run_start_uid = self._descriptors[desc_uid]
+            run_start = self._runstarts[run_start_uid]
+            with cursor(run_start) as c:
                 c.executemany("INSERT INTO %s (%s) VALUES %s" %
                               (table_name, ','.join(cols), qmarks(len(cols))),
                               values[desc_uid])
+
+    def _insert_descriptor(self, doc):
+        uid = doc['uid']
+        table_name = 'desc_' + uid.replace('-', '_')
+        run_start_uid = doc['run_start']
+        columns = self.columns(doc['data_keys'])
+        with cursor(self._runstarts[run_start_uid]) as c:
+            c.execute(CREATE_TABLE % table_name
+                      + '(' + ','.join(columns) + ')')
+        self._descriptors[uid] = run_start_uid
+
+    def _insert_start(self, doc):
+        uid = doc['uid']
+        fp = os.path.join(self._dirpath, '{}.sqlite'.format(uid))
+        conn = sqlite3.connect(fp)
+        conn.row_factory = sqlite3.Row
+        self._runstarts[uid] = conn
+
+    def __del__(self):
+        self.__shutdown_event.set()  # Poison the __process_request_queue_thread.
+        self.__process_request_queue_thread.join()
 
 
 class _CollectionMixin(object):
