@@ -29,9 +29,9 @@ def cursor(connection):
     c = connection.cursor()
     try:
         yield c
-    except:
+    except BaseException as e:
         connection.rollback()
-        raise
+        raise e
     else:
         connection.commit()
     finally:
