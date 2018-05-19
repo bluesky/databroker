@@ -802,7 +802,7 @@ def _(key, db):
 
 @search.register(str)
 @search.register(six.text_type)
-@search.register(six.string_types,)
+@search.register(*six.string_types)
 def _(key, db):
     logger.info('Interpreting key = %s as a str' % key)
     results = None
