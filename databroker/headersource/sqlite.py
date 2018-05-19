@@ -111,19 +111,27 @@ class EventCollection(object):
         # Use a threading.Event (nothing to do with an Event document) to
         # detect when the document has been inserted.
         success_event = threading.Event()
-        self.__request_queue.put((success_event, 'start', doc))
+        ret = {}
+        self.__request_queue.put((success_event, 'start', doc, ret))
         # Timeout after 5 seconds because that is how long sqlite takes to
         # timeout, by default.
         success = success_event.wait(timeout=5)
         if not success:
             raise TimeoutError("insertion failed")
+        excp = ret.get('exception')
+        if excp is not None:
+            raise excp
 
     def new_descriptor(self, doc):
         success_event = threading.Event()
-        self.__request_queue.put((success_event, 'descriptor', doc))
+        ret = {}
+        self.__request_queue.put((success_event, 'descriptor', doc, ret))
         success = success_event.wait(timeout=5)
         if not success:
             raise TimeoutError("descriptor %s insertion failed" % id(doc))
+        excp = ret.get('exception')
+        if excp is not None:
+            raise excp
 
     def find(self, query, sort=None):
         # FIXME: sort is a no-op
@@ -131,10 +139,15 @@ class EventCollection(object):
             raise NotImplementedError("Only queries based on descriptor uid "
                                       "are supported.")
         results_queue = queue.Queue()
-        self.__request_queue.put((None, 'query', (query, results_queue)))
+        ret = {}
+        self.__request_queue.put((None, 'query', (query, results_queue), ret))
         results = results_queue.get(timeout=5)
+
         for result in results:
             yield result
+        excp = ret.get('exception')
+        if excp is not None:
+            raise excp
 
     def _find(self, request):
         query, results_queue = request
@@ -171,10 +184,14 @@ class EventCollection(object):
 
     def insert(self, docs):
         success_event = threading.Event()
-        self.__request_queue.put((success_event, 'bulk_event', docs))
+        ret = {}
+        self.__request_queue.put((success_event, 'bulk_event', docs, ret))
         success = success_event.wait(timeout=5)
         if not success:
             raise TimeoutError("event %s insertion failed" % id(docs))
+        excp = ret.get('exception')
+        if excp is not None:
+            raise excp
 
     def __process_request_queue(self):
         self.reconnect()
@@ -186,20 +203,23 @@ class EventCollection(object):
                 # terminate this loop) and then resume waiting on the
                 # queue.
                 continue
-            success_event, name, payload = item
-            if name == 'bulk_event':
-                self._insert_events(payload)
+            try:
+                success_event, name, payload, ret = item
+                if name == 'bulk_event':
+                    self._insert_events(payload)
+                elif name == 'descriptor':
+                    self._insert_descriptor(payload)
+                elif name == 'start':
+                    self._insert_start(payload)
+                elif name == 'query':
+                    self._find(payload)
+                else:
+                    raise NotImplementedError()
+            except Exception as e:
+                ret['exception'] = e
+            if success_event is not None:
                 success_event.set()
-            elif name == 'descriptor':
-                self._insert_descriptor(payload)
-                success_event.set()
-            elif name == 'start':
-                self._insert_start(payload)
-                success_event.set()
-            elif name == 'query':
-                self._find(payload)
-            else:
-                raise NotImplementedError()
+
             # Signal to thread that put into __request_queue that the insertion is
             # done.
 
