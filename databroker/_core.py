@@ -1336,7 +1336,7 @@ class BrokerES(object):
         This function returns an iterable of :class:`Header` objects. Each
         Header encapsulates the metadata for a run -- start time, instruments
         used, and so on, and provides methods for loading the data. In
-        addition to the Parameters below, advanced users can specifiy arbitrary
+        addition to the Parameters below, advanced users can specify arbitrary
         queries using the MongoDB query syntax.
 
         The ``since`` and ``until`` parameters accepts the following
