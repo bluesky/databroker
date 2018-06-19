@@ -277,7 +277,7 @@ def get_datumkw_by_resuid_gen(datum_col, resource_uid):
 
     Parameters
     ----------
-    datam_col : Collection
+    datum_col : Collection
         The Datum collection
 
     resource_uid : dict or str
@@ -304,7 +304,7 @@ def get_datum_by_res_gen(datum_col, resource_uid):
 
     Parameters
     ----------
-    datam_col : Collection
+    datum_col : Collection
         The Datum collection
 
     resource_uid : dict or str
