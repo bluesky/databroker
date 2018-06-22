@@ -105,7 +105,7 @@ assign each one a unique ID, which we can use later to retrieve it.
 
 The arguments here are the ``resource_id`` returned by ``insert_resource``
 above, the unique ID we'll use to retrieve each piece of data, and finally the
-arguments needed by ``__call__`` to read that that data from the file. In our
+arguments needed by ``__call__`` to read that data from the file. In our
 case, ``__call__`` needs just one argument, ``line_no``.
 
 .. ipython:: python
