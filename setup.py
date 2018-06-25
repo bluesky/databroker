@@ -38,6 +38,7 @@ setup(
     packages=find_packages(),
     description='Unification of NSLS-II data sources',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     package_data={'databroker.assets': ['schemas/*.json']},
     # The project's main homepage.
     url='https://github.com/NSLS-II/databroker',
