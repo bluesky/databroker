@@ -290,7 +290,7 @@ class Header(object):
         for d in sorted(self.descriptors, key=lambda d: d['time']):
             config = d['configuration'].get(device_name)
             if config:
-                result[d['name']].append(config['data'])
+                result[d.get('name')].append(config['data'])
         return dict(result)  # strip off defaultdict behavior
 
     def documents(self, stream_name=ALL, fields=None, fill=False):
@@ -1657,7 +1657,7 @@ class BrokerES(object):
 
                 # get the first descriptor for this event stream
                 desc = next((d for d in h.descriptors
-                             if d['name'] == stream_name),
+                             if d.get('name') == stream_name),
                             None)
                 if desc is None:
                     continue
@@ -2278,7 +2278,7 @@ _HTML_TEMPLATE = """
       <caption>Descriptors</caption>
          {%- for d in document.descriptors -%}
          <tr>
-         <td> {{ rtable(d, d['name']) }} </td>
+         <td> {{ rtable(d, d.get('name')) }} </td>
          </tr>
          {%- endfor -%}
       </table>
