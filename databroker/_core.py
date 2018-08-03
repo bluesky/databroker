@@ -1105,6 +1105,13 @@ class BrokerES(object):
         return {k: func(start, stop) for
                 k, func in self.external_fetchers.items()}
 
+    @property
+    def event_sources_by_name(self):
+        es = {}
+        for event_source in self.event_sources:
+            es[event_source.name] = event_source
+        return es
+
     def add_event_source(self, es):
         self.event_sources.append(es)
 
