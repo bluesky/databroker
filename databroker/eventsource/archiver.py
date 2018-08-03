@@ -24,11 +24,11 @@ class ArchiverEventSource(object):
         Shim class to turn the EPICS Archiver Appliance into EventSource
         """
 
-        if all (k in config for k in ['name', 'url']):
+        if all(k in config for k in ['name', 'url', 'timezone']):
             pass
         else:
             raise TypeError("config {} does not include one of required"
-                            " keys (name, url).".format(config))
+                            " keys (name, url, timezone).".format(config))
         
         self._name = config['name']
         
@@ -38,15 +38,12 @@ class ArchiverEventSource(object):
         self.url = url
         self.archiver_addr = self.url + "retrieval/data/getData.json"
 
-        if 'timezone' in config:
-            timezone = config['timezone']
-        else:
-            timezone = 'US/Eastern'
+        timezone = config['timezone']
         self.tz = pytz.timezone(timezone)
 
         if 'pvs' in config:
             pvs = config['pvs']
-        else :
+        else:
             pvs = {}
         self.pvs = pvs
         
@@ -58,15 +55,23 @@ class ArchiverEventSource(object):
         return self._name
 
     def add_pvs(self, new_pvs):
+        """
+        Extend a dictionary mapping user-defined names to EPICS PV's
+        """
+        
         self.pvs.update(dict(new_pvs))
         return dict(self.pvs)
 
     def get_pvs(self):
+        """
+        Return a dictionary mapping user-defined names to EPICS PV's
+        """
+        
         return dict(self.pvs)
 
     def insert(self, name, doc):
          """
-         Not supported, data archiving is managed via the EPICS Archiver Appliance Toolkit
+         Not supported, data archiving is managed via the EPICS Archiver
          """
          raise TypeError("Not supported, data archiving is managed via the EPICS Archiver Appliance Toolkit")
 
@@ -77,14 +82,15 @@ class ArchiverEventSource(object):
 
         Parameters
         ----------
-        header: Header
+        header : Header
             not used. stream_names are generated from pvs
+
         Returns
         -------
-        list: list of user-defined PV names
+        list : list of user-defined PV names
         """
             
-        return [name for name in self.pvs]
+        return list(self.pvs)
 
     def fields_given_header(self, header):
         # We actually don't use the header in this case.
@@ -93,12 +99,12 @@ class ArchiverEventSource(object):
 
         Parameters
         ----------
-        header: Header
+        header : Header
             not used. fields are generated from pvs
 
         Returns
         -------
-        set: set of user-defined PV names
+        set : set of user-defined PV names
         """
                
         return set(self.pvs)
@@ -109,11 +115,11 @@ class ArchiverEventSource(object):
 
         Parameters
         ----------
-        header: Header
+        header : Header
 
         Returns
         -------
-        list: list of PV descriptors
+        list : list of PV descriptors
         """
         run_start_uid = header['start']['uid']
         
@@ -150,18 +156,18 @@ class ArchiverEventSource(object):
 
         Parameters
         ----------
-        header: Header
+        header : Header
             The header to fetch the events for
-        stream_name: string
+        stream_name : string
             user-defined PV name
-        fields: list, not used
+        fields : list, not used
             names of interest are defined via user-defined PVs
 
         Yields
         ------
-        str: name
+        str : name
             The name of the document being yielded
-        doc: Document
+        doc : Document
             The data payload
         """
 
@@ -228,7 +234,7 @@ class ArchiverEventSource(object):
         datetimes = pd.to_datetime(times, unit='ms')
 
         df = pd.DataFrame()
-        df['time'] = datetimes.values
+        df['time'] = datetimes
         df['data'] = data
 
         return df
@@ -240,14 +246,14 @@ class ArchiverEventSource(object):
 
         Parameters
         ----------
-        since: timestamp
+        since : timestamp
             beginning of the time interval
-        until: timestamp
+        until : timestamp
             end of the time interval
 
         Returns
         -------
-        table: dictionary of the pv pandas.DataFrames
+        table : dictionary of the pv pandas.DataFrames
         """
 
         dfs = {}
@@ -265,25 +271,25 @@ class ArchiverEventSource(object):
 
         Parameters
         ----------
-        header: Header
+        header : Header
             The header to fetch the table for
-        stream_name: string, 
+        stream_name : string, 
             PV stream_name (e.g., archiver_PV1)
-        fields: list, not used
+        fields : list, not used
             names of interest are defined via user-defined PVs
-        convert_times: bool, optional
+        convert_times : bool, optional
             Whether to convert times from float (seconds since 1970) to
             numpy datetime64, using pandas. True by default, returns naive
             datetime64 objects in UTC
-        timezone: str, optional
+        timezone : str, optional
             e.g., 'US/Eastern'
-        localize_times: bool, optional
+        localize_times : bool, optional
             If the times should be localized to the 'local' time zone.  If
             True (the default) the time stamps are converted to the localtime zone.
 
         Returns
         -------
-        tables: dictionary of the pv pandas.DataFrames
+        tables : dictionary of the pv pandas.DataFrames
         """
         
         if timezone is None:
@@ -307,12 +313,14 @@ class ArchiverEventSource(object):
  
 def _munge_time(t, timezone):
     """Close your eyes and trust @arkilic
+
     Parameters
     ----------
     t : float
         POSIX (seconds since 1970)
     timezone : pytz object
         e.g. ``pytz.timezone('US/Eastern')``
+
     Return
     ------
     time
