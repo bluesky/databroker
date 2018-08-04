@@ -47,7 +47,3 @@ def test_table_given_header():
     
     values = df[pvs[0]].values.tolist()
     assert len(values) == 61
-
-
-def test_pkg_resources():
-    from databroker.eventsource.archiver import ArchiverEventSource
