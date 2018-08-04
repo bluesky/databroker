@@ -300,7 +300,7 @@ Configuration Utilities
 
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.
-     
+
 Internals
 ---------
 
