@@ -1,16 +1,15 @@
-import time
 from importlib import import_module
-import six
 
 from databroker.eventsource.archiver import ArchiverEventSource
 from databroker.eventsource.shim import EventSourceShim
 from databroker import Broker
 
-arch_csx_url = 'http://xf23id-ca.cs.nsls2.local:17668'
+arch_csx_url = 'http://localhost:17668'
 arch_csx_pv = 'XF:23ID-ID{BPM}Val:PosXS-I'
 
 t1 = 1475790935.6912444
 t2 = 1475790875.0159147
+
 
 def get_config_for_archiver():
     config = {'name': 'arch_csx',
@@ -19,13 +18,16 @@ def get_config_for_archiver():
               'pvs': {'pv1': arch_csx_pv}}
     return config
 
+
 def get_header_for_archiver():
     hdr = {'start': {'time': t1},
            'stop': {'time':  t2}}
     return hdr
 
+
 def build_es_backed_archiver(config):
     return ArchiverEventSource(config)
+
 
 def get_db_config_for_metadastore():
     config = {'module': 'databroker.headersource.mongo',
@@ -34,8 +36,9 @@ def get_db_config_for_metadastore():
                   'host': 'localhost',
                   'port': '27017',
                   'database': 'mds',
-                  'timezone' : 'US/Eastern'}}
+                  'timezone': 'US/Eastern'}}
     return config
+
 
 def get_db_config_for_assets():
     config = {'module': 'databroker.assets.mongo',
@@ -46,23 +49,25 @@ def get_db_config_for_assets():
                   'database': 'fs'}}
     return config
 
+
 def get_db_config_for_event_sources():
-	archiver_config =  get_config_for_archiver()
-	arv_config = {'module': 'databroker.eventsource.archiver',
-				  'class': 'ArchiverEventSource',
-				  'config': get_config_for_archiver()}
-	config = []
-	config.append(arv_config)
-	return config
+    arv_config = {'module': 'databroker.eventsource.archiver',
+                  'class': 'ArchiverEventSource',
+                  'config': get_config_for_archiver()}
+    config = []
+    config.append(arv_config)
+    return config
+
 
 def get_db_config():
-	mds_config = get_db_config_for_metadastore()
-	fs_config = get_db_config_for_assets()
-	ess_config = get_db_config_for_event_sources()
-	config = {'metadatastore': mds_config,
-			  'assets': fs_config,
-			  'event_sources': ess_config}
-	return config
+    mds_config = get_db_config_for_metadastore()
+    fs_config = get_db_config_for_assets()
+    ess_config = get_db_config_for_event_sources()
+    config = {'metadatastore': mds_config,
+              'assets': fs_config,
+              'event_sources': ess_config}
+    return config
+
 
 def load_cls(config):
     modname = config['module']
@@ -71,17 +76,20 @@ def load_cls(config):
     cls = getattr(mod, clsname)
     return cls
 
+
 def build_mds_from_config():
-	config = get_db_config_for_metadastore()
-	mds_cls = load_cls(config)
-	mds = mds_cls(config['config'])
-	return mds
+    config = get_db_config_for_metadastore()
+    mds_cls = load_cls(config)
+    mds = mds_cls(config['config'])
+    return mds
+
 
 def build_assets_from_config():
-	config = get_db_config_for_assets()
-	assets_cls = load_cls(config)
-	assets = assets_cls(config['config'])
-	return assets
+    config = get_db_config_for_assets()
+    assets_cls = load_cls(config)
+    assets = assets_cls(config['config'])
+    return assets
+
 
 def build_event_sources_from_config():
     event_sources = []
@@ -91,18 +99,21 @@ def build_event_sources_from_config():
         event_sources.append(es_cls(es['config']))
     return event_sources
 
+
 def build_shim_from_init():
     mds = build_mds_from_config()
     reg = build_assets_from_config()
     ess = EventSourceShim(mds, reg)
     return ess
 
+
 def build_db_from_init():
-	mds = build_mds_from_config()
-	assets = build_assets_from_config()
-	event_sources = build_event_sources_from_config()
-	db = Broker(mds, assets, event_sources=event_sources)
-	return db
+    mds = build_mds_from_config()
+    assets = build_assets_from_config()
+    event_sources = build_event_sources_from_config()
+    db = Broker(mds, assets, event_sources=event_sources)
+    return db
+
 
 def build_db_from_config():
     config = get_db_config()

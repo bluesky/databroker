@@ -4,7 +4,7 @@
         {
             "request": {
                 "method": "GET",
-                "uri": "http://xf23id-ca.cs.nsls2.local:17668/retrieval/data/getData.json?pv=XF%3A23ID-ID%7BBPM%7DVal%3APosXS-I&from=2016-10-06T17%3A54%3A29-04%3A00&to=2016-10-06T17%3A54%3A35-04%3A00",
+                "uri": "http://localhost:17668/retrieval/data/getData.json?pv=XF%3A23ID-ID%7BBPM%7DVal%3APosXS-I&from=2016-10-06T17%3A54%3A29-04%3A00&to=2016-10-06T17%3A54%3A35-04%3A00",
                 "body": null,
                 "headers": {
                     "User-Agent": [
