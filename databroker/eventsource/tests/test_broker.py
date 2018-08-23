@@ -8,10 +8,10 @@ from databroker.eventsource.tests.utils import (build_db_from_init,
 def test_event_sources_by_name():
     db = build_db_from_init()
     event_sources = db.event_sources_by_name
-    assert list(event_sources) == ['mds', 'arch_csx']
+    assert sorted(event_sources) == ['arch_csx', 'mds']
 
 
 def test_from_config():
     db = build_db_from_config()
     event_sources = db.event_sources_by_name
-    assert list(event_sources) == ['mds', 'arch_csx']
+    assert sorted(event_sources) == ['arch_csx', 'mds']
