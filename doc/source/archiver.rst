@@ -57,7 +57,7 @@ A pvs dictionary can be extended via :class:`Broker` as:
   
    db = Broker.named('csx_with_archivers')
    arch_csx  = db.event_sources_by_name['arch_csx']
-   arch_csx.add_pvs({'pv1':'XF:23ID-ID{BPM}Val:PosXS-I'})
+   arch_csx.pvs.update({'pv1':'XF:23ID-ID{BPM}Val:PosXS-I'})
 
 
 

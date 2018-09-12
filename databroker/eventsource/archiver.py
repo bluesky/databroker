@@ -53,21 +53,6 @@ class ArchiverEventSource(object):
     def name(self):
         return self._name
 
-    def add_pvs(self, new_pvs):
-        """
-        Extend a dictionary mapping user-defined names to EPICS PV's
-        """
-
-        self.pvs.update(dict(new_pvs))
-        return dict(self.pvs)
-
-    def get_pvs(self):
-        """
-        Return a dictionary mapping user-defined names to EPICS PV's
-        """
-
-        return dict(self.pvs)
-
     def insert(self, name, doc):
         """
         Not supported, data archiving is managed via the EPICS Archiver
@@ -103,7 +88,7 @@ class ArchiverEventSource(object):
         Parameters
         ----------
         header : Header
-            not used. 
+            not used.
 
         Returns
         -------
