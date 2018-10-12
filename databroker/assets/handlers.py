@@ -217,7 +217,6 @@ class HDF5SingleHandler(HandlerBase):
     frame_per_point : float
         the number of frames per point.
     '''
-    specs = {'AD_HDF5_SINGLE'} | HandlerBase.specs
 
     def __init__(self, fpath, template, filename, key, frame_per_point=1):
         self._path = os.path.join(fpath, '')
