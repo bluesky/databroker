@@ -2,6 +2,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import logging
 import numpy as np
+import pandas as pd
 import os.path
 from .handlers_base import HandlerBase
 from .readers.spe import PrincetonSPEFile
@@ -202,8 +203,10 @@ class AreaDetectorHDF5Handler(HDF5DatasetSliceHandler):
             frame_per_point=frame_per_point)
 
 
-class HDF5SingleHandler(HandlerBase):
-    '''Handler for hdf5 data stored 1 image per file.
+class AreaDetector_HDF5SingleHandler(HandlerBase):
+    '''Handler for hdf5 data stored 1 image per file and returned as a
+    numpy.array.
+
     Parameters
     ----------
     fpath : string
@@ -214,11 +217,16 @@ class HDF5SingleHandler(HandlerBase):
         filename
     key : string
         the 'path' inside the file to the data set.
+    column_names : list[str]
+        The column names of the table
     frame_per_point : float
         the number of frames per point.
     '''
+    specs = {'AD_HDF5_SINGLE'} | HandlerBase.specs
 
-    def __init__(self, fpath, template, filename, key, frame_per_point=1):
+    def __init__(self, fpath, template, filename, key='/entry/data/data',
+                 frame_per_point=1):
+        # I have included defaults for `key` for back compatibility.
         self._path = os.path.join(fpath, '')
         self._fpp = frame_per_point
         self._template = template
@@ -232,12 +240,12 @@ class HDF5SingleHandler(HandlerBase):
             yield self._template % (self._path, self._filename, j)
 
     def __call__(self, point_number):
-        import h5py
         ret = []
+        import h5py
         for fn in self._fnames_for_point(point_number):
-            f = h5py.File(fn, 'r')
-            data = f[self._key]
-            ret.append(data)
+            with h5py.File(fn, 'r') as f:
+                array = np.array(f[self._key][:])
+            ret.append(array)
         return ret
 
     def get_file_list(self, datum_kwargs):
@@ -247,8 +255,11 @@ class HDF5SingleHandler(HandlerBase):
         return ret
 
 
-class AreaDetectorHDF5SingleHandler(HDF5SingleHandler):
-    '''Handler for hdf5 data stored 1 image per file by areadetector
+class AreaDetector_HDF5SingleHandler_DataFrame(AreaDetector_HDF5SingleHandler):
+    '''Handler for hdf5 data stored 1 image per file and returned as a
+    Pandas.DataFrame.
+    This will work with all hdf5 files that are a mxn arrays and the data is
+    'table like' where m is the number of columns and n is the number of rows.
     Parameters
     ----------
     fpath : string
@@ -257,14 +268,38 @@ class AreaDetectorHDF5SingleHandler(HDF5SingleHandler):
         filename template string.
     filename : string
         filename
+    key : string
+        the 'path' inside the file to the data set.
+    column_names : list[str]
+        The column names of the table
     frame_per_point : float
         the number of frames per point.
     '''
-    def __init__(self, fpath, template, filename, frame_per_point=1):
-        hardcoded_key = '/entry/data/data'
-        super(AreaDetectorHDF5SingleHandler, self).__init__(
-            fpath=fpath, template=template, filename=filename,
-            key=hardcoded_key, frame_per_point=frame_per_point)
+    specs = {'AD_HDF5_SINGLE_DATAFRAME'} | HandlerBase.specs
+
+    def __init__(self, fpath, template, filename, key='/entry/data/data',
+                 column_names=None, frame_per_point=1):
+        # I have included defaults for `key` and 'column_names' for back
+        # compatibility with existing files at SIX.
+        super(AreaDetector_HDF5SingleHandler_DataFrame, self).__init__(
+              fpath=fpath, template=template, filename=filename, key=key,
+              frame_per_point=frame_per_point)
+        self._path = os.path.join(fpath, '')
+        self._fpp = frame_per_point
+        self._template = template
+        self._filename = filename
+        self._key = key
+        self._column_names = column_names
+
+    def __call__(self, point_number):
+        ret = []
+        import h5py
+        for fn in self._fnames_for_point(point_number):
+            with h5py.File(fn, 'r') as f:
+                dataframe = pd.DataFrame(f[self._key][:],
+                                         columns=self._column_names)
+            ret.append(dataframe)
+        return ret
 
 
 class AreaDetectorHDF5SWMRHandler(AreaDetectorHDF5Handler):
