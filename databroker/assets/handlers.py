@@ -281,9 +281,8 @@ class AreaDetector_HDF5SingleHandler_DataFrame(AreaDetector_HDF5SingleHandler):
                  column_names=None, frame_per_point=1):
         # I have included defaults for `key` and 'column_names' for back
         # compatibility with existing files at SIX.
-        super(AreaDetector_HDF5SingleHandler_DataFrame, self).__init__(
-              fpath=fpath, template=template, filename=filename, key=key,
-              frame_per_point=frame_per_point)
+        super().__init__(fpath=fpath, template=template, filename=filename,
+                         key=key, frame_per_point=frame_per_point)
         self._path = os.path.join(fpath, '')
         self._fpp = frame_per_point
         self._template = template
