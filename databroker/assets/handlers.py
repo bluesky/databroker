@@ -235,9 +235,9 @@ class AreaDetector_HDF5SingleHandler(HandlerBase):
 
     def _fnames_for_point(self, point_number):
         start = int(point_number * self._fpp)
-        stop = int((point_number + 1) * self._fpp)
+        stop = int(start + self._fpp)
         for j in range(start, stop):
-            yield self._template % (self._path, self._filename, j)
+            yield self._template.format(self._path, self._filename, j)
 
     def __call__(self, point_number):
         ret = []
