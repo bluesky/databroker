@@ -1,8 +1,8 @@
 # DATA ACQUISITION
 import pymongo
 from bluesky import RunEngine
-from bluesky.plans import count
-from ophyd.sim import det
+from bluesky.plans import scan
+from ophyd.sim import det, motor
 
 
 class MongoInsertCallback:
@@ -46,7 +46,7 @@ class MongoInsertCallback:
 uri = 'mongodb://localhost:27017/test1'
 RE = RunEngine({})
 RE.subscribe(MongoInsertCallback(uri))
-uid, = RE(count([det], 20))
+uid, = RE(scan([det], motor, -1, 1, 20))
 
 
 # DATA ACCESS
@@ -54,17 +54,29 @@ uid, = RE(count([det], 20))
 from intake_bluesky import MongoMetadataStoreCatalog
 
 
+print('connect to Mongo')
 mds = MongoMetadataStoreCatalog(uri)
+print(mds)
+print('lookup a run by uid')
 run = mds[uid]
+print(run)
+print("Read the primary stream as one structure.")
 print(run.primary.read())
+print("Read a user-specified slice (along the Event axis).")
 print(run.primary.read_slice(slice(7, 10)))
+print("Iterate through a generator of chunks with some default size.")
 for chunk in run.primary.read_chunked():
     print(chunk)
+print("Iterate through a generator of chunks with a custom size.")
 for chunk in run.primary.read_chunked(chunks=4):
     print(chunk)
+print("Read just one field from the primary stream.")
 print(run.primary.det.read())
+print("Read a user-specified slice (along the Event axis).")
 print(run.primary.det.read_slice(slice(7, 10)))
+print("Iterate through a generator of chunks with some default size.")
 for chunk in run.primary.det.read_chunked():
     print(chunk)
+print("Iterate through a generator of chunks with a custom size.")
 for chunk in run.primary.det.read_chunked(chunks=4):
     print(chunk)

@@ -125,8 +125,8 @@ class MongoEventStream(intake.catalog.Catalog):
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
                  run_stop_collection, metadata=None):
-        self._partition_size = 100
-        self._default_chunks = 100
+        self._partition_size = 10
+        self._default_chunks = 10
         self._run_start_doc = run_start_doc
         self._event_collection = event_collection
         self._event_descriptor_docs = event_descriptor_docs
@@ -211,8 +211,8 @@ class MongoField(intake.source.base.DataSource):
 
     def __init__(self, field, event_descriptor_docs, event_collection,
                  metadata=None):
-        self._partition_size = 100
-        self._default_chunks = 100
+        self._partition_size = 10
+        self._default_chunks = 10
         self._field = field
         self._event_collection = event_collection
         self._event_descriptor_docs = event_descriptor_docs
