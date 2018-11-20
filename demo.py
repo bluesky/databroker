@@ -85,6 +85,8 @@ print("Iterate through a generator of chunks with some default size.")
 for chunk in run.primary.read_chunked():
     print(chunk)
 print("Iterate through a generator of chunks with a custom size.")
+# Note that 'chunks' means *size* of the chunks, not number of chunks. This is
+# consitent with dask.
 for chunk in run.primary.read_chunked(chunks=4):
     print(chunk)
 print("Read just one field from the primary stream.")

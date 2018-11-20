@@ -66,7 +66,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
     def _close(self):
         self._client.close()
 
-    def search(self, query, depth=1):
+    def search(self, query):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = MongoMetadataStoreCatalog(
