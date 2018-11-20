@@ -133,6 +133,11 @@ class RunCatalog(intake.catalog.Catalog):
                                           self._run_stop_collection)
             for stream_name, event_descriptor_docs in streams}
 
+    def read(self):
+        return pandas.concat(
+            [stream.read().set_index('time') for stream in self._entries.values()],
+            axis=0, sort=True)
+
 
 class MongoEventStream(intake.catalog.Catalog):
     container = 'dataframe'

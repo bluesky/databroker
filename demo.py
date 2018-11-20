@@ -2,6 +2,7 @@
 import pymongo
 from bluesky import RunEngine
 from bluesky.plans import scan
+from bluesky.preprocessors import SupplementalData
 from ophyd.sim import det, motor
 
 
@@ -45,6 +46,8 @@ class MongoInsertCallback:
 
 uri = 'mongodb://localhost:27017/test1'
 RE = RunEngine({})
+sd = SupplementalData(baseline=[motor])
+RE.preprocessors.append(sd)
 RE.subscribe(MongoInsertCallback(uri))
 uid, = RE(scan([det], motor, -1, 1, 20))
 
@@ -60,6 +63,8 @@ print(mds)
 print('lookup a run by uid')
 run = mds[uid]
 print(run)
+print("Read all the streams as one structure, time-sorted.")
+print(run.read())
 print("Read the primary stream as one structure.")
 print(run.primary.read())
 print("Read a user-specified slice (along the Event axis).")
