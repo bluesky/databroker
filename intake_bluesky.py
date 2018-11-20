@@ -18,6 +18,19 @@ class FacilityCatalog(intake.catalog.Catalog):
 class MongoMetadataStoreCatalog(intake.catalog.Catalog):
     "represents one MongoDB instance"
     def __init__(self, uri, *, query=None, **kwargs):
+        """
+        A Catalog backed by a MongoDB with metadatastore v1 collections.
+
+        Parameters
+        ----------
+        uri : string
+            This URI must include a database name.
+            Example: ``mongodb://localhost:27107/database_name``.
+        query : dict
+            Mongo query. This is used internally by the ``search`` method.
+        **kwargs :
+            passed up to the Catalog base class
+        """
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self._uri = uri
@@ -67,6 +80,14 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         self._client.close()
 
     def search(self, query):
+        """
+        Return a new Catalog with a subset of the entries in this Catalog.
+
+        Parameters
+        ----------
+        query : dict
+            MongoDB query.
+        """
         if self._query:
             query = {'$and': [self._query, query]}
         cat = MongoMetadataStoreCatalog(
@@ -135,6 +156,17 @@ class RunCatalog(intake.catalog.Catalog):
             for stream_name, event_descriptor_docs in streams}
 
     def read(self, *, include=None, exclude=None):
+        """
+        Read all the data from this run into one structure.
+
+        Parameters
+        ----------
+        include : list, optional
+            List of field names to include.
+        exclude : list, optional
+            List of field names to exclude. May only be used in ``include`` is
+            blank.
+        """
         return pandas.concat(
             [stream.read(include=include, exclude=exclude).set_index('time')
              for stream in self._entries.values()],
@@ -187,6 +219,19 @@ class MongoEventStream(intake.catalog.Catalog):
         )
 
     def read_slice(self, slice_, *, include=None, exclude=None):
+        """
+        Read data from a Slice of Events from this Stream into one structure.
+
+        Parameters
+        ----------
+        slice_ : slice
+            Example: ``slice(3, 7)``
+        include : list, optional
+            List of field names to include.
+        exclude : list, optional
+            List of field names to exclude. May only be used in ``include`` is
+            blank.
+        """
         if include and exclude:
             raise ValueError(
                 "You may specify fields to include or fields to exclude, but "
@@ -228,9 +273,34 @@ class MongoEventStream(intake.catalog.Catalog):
         return pandas.DataFrame({'time': times, **data_table}, index=seq_nums)
 
     def read(self, *, include=None, exclude=None):
+        """
+        Read all the data from this Stream into one structure.
+
+        Parameters
+        ----------
+        include : list, optional
+            List of field names to include.
+        exclude : list, optional
+            List of field names to exclude. May only be used in ``include`` is
+            blank.
+        """
         return self.read_slice(slice(None), include=include, exclude=exclude)
 
     def read_chunked(self, chunks=None, *, include=None, exclude=None):
+        """
+        Read data from this Stream in chunks.
+
+        Parameters
+        ----------
+        chunks : integer, optional
+            Chunk size (NOT number of chunks). If None, use default specified
+            by Catalog. 
+        include : list, optional
+            List of field names to include.
+        exclude : list, optional
+            List of field names to exclude. May only be used in ``include`` is
+            blank.
+        """
         if chunks is None:
             chunks = self._default_chunks
         for i in itertools.count():
@@ -274,6 +344,14 @@ class MongoField(intake.source.base.DataSource):
         )
 
     def read_slice(self, slice_):
+        """
+        Read a slice of data from this field.
+
+        Parameters
+        ----------
+        slice_ : slice
+            Example: ``slice(3, 7)``
+        """
         if isinstance(slice_, collections.Iterable):
             first_axis = slice_[0]
         else:
@@ -309,6 +387,15 @@ class MongoField(intake.source.base.DataSource):
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
 
     def read_chunked(self, chunks=None):
+        """
+        Read all the data from this field in chunks.
+
+        Parameters
+        ----------
+        chunks : integer, optional
+            Chunk size (NOT number of chunks). If None, use default specified
+            by Catalog. 
+        """
         if chunks is None:
             chunks = self._default_chunks
         for i in itertools.count():
@@ -321,6 +408,9 @@ class MongoField(intake.source.base.DataSource):
                 break
 
     def read(self):
+        """
+        Read all the data from this field into one structure.
+        """
         return self.read_slice(slice(None))
 
     def _close(self):
