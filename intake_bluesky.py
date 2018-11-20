@@ -133,17 +133,18 @@ class RunCatalog(intake.catalog.Catalog):
                                           self._run_stop_collection)
             for stream_name, event_descriptor_docs in streams}
 
-    def read(self):
+    def read(self, *, include=None, exclude=None):
         return pandas.concat(
-            [stream.read().set_index('time') for stream in self._entries.values()],
+            [stream.read(include=include, exclude=exclude).set_index('time')
+             for stream in self._entries.values()],
             axis=0, sort=True)
 
-    def read_slice(self, slice_):
+    def read_slice(self, slice_, *, include=None, exclude=None):
         raise NotImplementedError(
             "Sliced reading is support on the individal Streams in a Run, "
             "but not on the Run in aggregate.")
 
-    def read_chunked(self, chunks=None):
+    def read_chunked(self, chunks=None, *, include=None, exclude=None):
         raise NotImplementedError(
             "Chunked reading is support on the individal Streams in a Run, "
             "but not on the Run in aggregate.")
@@ -184,7 +185,12 @@ class MongoEventStream(intake.catalog.Catalog):
             extra_metadata=dict(c=3, d=4)
         )
 
-    def read_slice(self, slice_):
+    def read_slice(self, slice_, *, include=None, exclude=None):
+        if include and exclude:
+            raise ValueError(
+                "You may specify fields to include or fields to exclude, but "
+                "not both.")
+
         if isinstance(slice_, collections.Iterable):
             first_axis = slice_[0]
         else:
@@ -210,22 +216,27 @@ class MongoEventStream(intake.catalog.Catalog):
         times = [ev['time'] for ev in events]
         # uids = [ev['uid'] for ev in events]
         keys = list(self._event_descriptor_docs[0]['data_keys'])
+        if include:
+            keys = list(set(keys) & set(include))
+        elif exclude:
+            keys = list(set(keys) - set(exclude))
         data_table = _transpose(events, keys, 'data')
         # timestamps_table = _transpose(all_events, keys, 'timestamps')
         # data_keys = descriptor['data_keys']
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
         return pandas.DataFrame({'time': times, **data_table}, index=seq_nums)
 
-    def read(self):
-        return self.read_slice(slice(None))
+    def read(self, *, include=None, exclude=None):
+        return self.read_slice(slice(None), include=include, exclude=exclude)
 
-    def read_chunked(self, chunks=None):
+    def read_chunked(self, chunks=None, *, include=None, exclude=None):
         if chunks is None:
             chunks = self._default_chunks
         for i in itertools.count():
             # Start at 1 because seq_num starts at 1 ugh....
             partition = self.read_slice(
-                slice(1 + i * chunks, 1 + (i + 1) * chunks))
+                slice(1 + i * chunks, 1 + (i + 1) * chunks),
+                include=include, exclude=exclude)
             if len(partition):
                 yield partition
             else:
