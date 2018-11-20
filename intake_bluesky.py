@@ -46,7 +46,8 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
     def _get_entry(self, name):
         query = {'$and': [self._query, {'uid': name}]}
         run_start_doc = self._run_start_collection.find_one(query)
-        del run_start_doc['_id']  # Drop internal Mongo detail.
+        if run_start_doc is not None:
+            del run_start_doc['_id']  # Drop internal Mongo detail.
         return RunCatalog(run_start_doc=run_start_doc,
                           run_stop_collection=self._run_stop_collection,
                           event_descriptor_collection=self._event_descriptor_collection,
@@ -66,10 +67,10 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         self._client.close()
 
     def search(self, query, depth=1):
-        if self.query:
+        if self._query:
             query = {'$and': [self._query, query]}
-        cat = MetadataStoreCatalog(
-            uri=self.uri,
+        cat = MongoMetadataStoreCatalog(
+            uri=self._uri,
             query=query,
             getenv=self.getenv,
             getshell=self.getshell,

@@ -63,6 +63,10 @@ print(mds)
 print('lookup a run by uid')
 run = mds[uid]
 print(run)
+print('serach for runs by plan_name')
+query = {'plan_name': 'scan'}
+result_catalog = mds.search(query)
+print('result count:', len(list(result_catalog)))
 print("Read all the streams as one structure, time-sorted.")
 print(run.read())
 print("Filter the fields by whitelist (include='motor')...")
