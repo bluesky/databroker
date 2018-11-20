@@ -138,6 +138,16 @@ class RunCatalog(intake.catalog.Catalog):
             [stream.read().set_index('time') for stream in self._entries.values()],
             axis=0, sort=True)
 
+    def read_slice(self, slice_):
+        raise NotImplementedError(
+            "Sliced reading is support on the individal Streams in a Run, "
+            "but not on the Run in aggregate.")
+
+    def read_chunked(self, chunks=None):
+        raise NotImplementedError(
+            "Chunked reading is support on the individal Streams in a Run, "
+            "but not on the Run in aggregate.")
+
 
 class MongoEventStream(intake.catalog.Catalog):
     container = 'dataframe'
