@@ -1,12 +1,13 @@
 import collections
+from datetime import datetime
 import intake.catalog
 import intake.catalog.entry
 import intake.source.base
 import itertools
-import math
 import pandas
 import pymongo
 import pymongo.errors
+import time
 
 
 class FacilityCatalog(intake.catalog.Catalog):
@@ -80,7 +81,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
 
 
 class RunCatalog(intake.catalog.Catalog):
-    "represents one MongoDB instance"
+    "represents one Run"
     def __init__(self, *,
                  run_start_doc,
                  run_stop_collection,
@@ -90,17 +91,33 @@ class RunCatalog(intake.catalog.Catalog):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self._run_start_doc = run_start_doc
+        self._run_stop_doc = None  # loaded in _load below
         self._run_stop_collection = run_stop_collection
         self._event_descriptor_collection = event_descriptor_collection
         self._event_collection = event_collection
         super().__init__(**kwargs)
 
+    def __repr__(self):
+        try:
+            start = self._run_start_doc
+            stop = self._run_stop_doc or {}
+            out = (f"<Intake catalog: Run {start['uid']!r}>\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
+                   f"  Streams:\n")
+            for stream_name in self:
+                out += f"    * {stream_name}\n"
+        except Exception as exc:
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
+        return out
+
     def _load(self):
         uid = self._run_start_doc['uid']
         run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
-        del run_stop_doc['_id']  # Drop internal Mongo detail.
-        self.metadata.update(self._run_start_doc)
-        self.metadata.update(run_stop_doc)
+        self._run_stop_doc = run_stop_doc
+        if run_stop_doc is not None:
+            del run_stop_doc['_id']  # Drop internal Mongo detail.
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': run_stop_doc})
         cursor = self._event_descriptor_collection.find(
             {'run_start': uid},
             sort=[('time', pymongo.ASCENDING)])
@@ -310,3 +327,9 @@ def _transpose(in_data, keys, field):
         for k in keys:
             out[k][j] = dd[k]
     return out
+
+def _ft(timestamp):
+    "format timestamp"
+    # Truncate microseconds to miliseconds. Do not bother to round.
+    return (datetime.fromtimestamp(timestamp)
+            .strftime('%Y-%m-%d %H:%M:%S.%f'))[:-3]
