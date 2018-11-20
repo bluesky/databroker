@@ -123,7 +123,7 @@ class RunCatalog(intake.catalog.Catalog):
         try:
             start = self._run_start_doc
             stop = self._run_stop_doc or {}
-            out = (f"<Intake catalog: Run {start['uid']!r}>\n"
+            out = (f"<Intake catalog: Run {start['uid'][:8]}...>\n"
                    f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
                    f"  Streams:\n")
             for stream_name in self:
@@ -194,17 +194,28 @@ class MongoEventStream(intake.catalog.Catalog):
         self._partition_size = 10
         self._default_chunks = 10
         self._run_start_doc = run_start_doc
+        self._run_stop_doc  = None
         self._event_collection = event_collection
         self._event_descriptor_docs = event_descriptor_docs
+        self._stream_name = event_descriptor_docs[0].get('name')
         self._run_stop_collection = run_stop_collection
         super().__init__(
             metadata=metadata
         )
 
+    def __repr__(self):
+        try:
+            out = (f"<Intake catalog: Stream {self._stream_name!r} "
+                   f"from Run {self._run_start_doc['uid'][:8]}...>")
+        except Exception as exc:
+            out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc}>"
+        return out
+
     def _load(self):
         # Make a MongoEventStreamSource for each stream_name.
         self._entries = {
             field: MongoField(field,
+                              self._run_start_doc,
                               self._event_descriptor_docs,
                               self._event_collection)
             for field in list(self._event_descriptor_docs[0]['data_keys'])}
@@ -323,16 +334,28 @@ class MongoField(intake.source.base.DataSource):
     version = '0.0.1'
     partition_access = True
 
-    def __init__(self, field, event_descriptor_docs, event_collection,
+    def __init__(self, field,
+                 run_start_doc, event_descriptor_docs, event_collection,
                  metadata=None):
         self._partition_size = 10
         self._default_chunks = 10
         self._field = field
+        self._run_start_doc = run_start_doc  # just used for __repr__
         self._event_collection = event_collection
         self._event_descriptor_docs = event_descriptor_docs
+        self._stream_name = event_descriptor_docs[0].get('name')
         super().__init__(
             metadata=metadata
         )
+
+    def __repr__(self):
+        try:
+            out = (f"<Intake datasource: Field {self._field!r} "
+                   f"of Stream {self._stream_name!r} "
+                   f"from Run {self._run_start_doc['uid'][:8]}...>")
+        except Exception as exc:
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
+        return out
 
     def _get_schema(self):
         return intake.source.base.Schema(
@@ -450,3 +473,41 @@ def _ft(timestamp):
     # Truncate microseconds to miliseconds. Do not bother to round.
     return (datetime.fromtimestamp(timestamp)
             .strftime('%Y-%m-%d %H:%M:%S.%f'))[:-3]
+
+
+class MongoInsertCallback:
+    """
+    This is a replacmenet for db.insert.
+    """
+    def __init__(self, uri):
+        self._uri = uri
+        self._client = pymongo.MongoClient(uri)
+        try:
+            # Called with no args, get_database() returns the database
+            # specified in the uri --- or raises if there was none. There is no
+            # public method for checking this in advance, so we just catch the
+            # error.
+            db = self._client.get_database()
+        except pymongo.errors.ConfigurationError as err:
+            raise ValueError(
+                "Invalid uri. Did you forget to include a database?") from err
+
+        self._run_start_collection = db.get_collection('run_start')
+        self._run_stop_collection = db.get_collection('run_stop')
+        self._event_descriptor_collection = db.get_collection('event_descriptor')
+        self._event_collection = db.get_collection('event')
+
+    def __call__(self, name, doc):
+        getattr(self, name)(doc)
+
+    def start(self, doc):
+        self._run_start_collection.insert_one(doc)
+
+    def descriptor(self, doc):
+        self._event_descriptor_collection.insert_one(doc)
+
+    def event(self, doc):
+        self._event_collection.insert_one(doc)
+
+    def stop(self, doc):
+        self._run_stop_collection.insert_one(doc)
