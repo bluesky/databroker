@@ -4,10 +4,12 @@ import intake.catalog
 import intake.catalog.entry
 import intake.source.base
 import itertools
+import numpy
 import pandas
 import pymongo
 import pymongo.errors
 import time
+import xarray
 
 
 class FacilityCatalog(intake.catalog.Catalog):
@@ -167,10 +169,9 @@ class RunCatalog(intake.catalog.Catalog):
             List of field names to exclude. May only be used in ``include`` is
             blank.
         """
-        return pandas.concat(
-            [stream.read(include=include, exclude=exclude).set_index('time')
-             for stream in self._entries.values()],
-            axis=0, sort=True)
+        return xarray.concat(
+            [stream.read(include=include, exclude=exclude)
+             for stream in self._entries.values()])
 
     def read_slice(self, slice_, *, include=None, exclude=None):
         raise NotImplementedError(
@@ -269,19 +270,37 @@ class MongoEventStream(intake.catalog.Catalog):
                   ('time', pymongo.ASCENDING)])
 
         events = list(cursor)
-        seq_nums = [ev['seq_num'] for ev in events]
+        # Put seq_nums into a vectory data sturcutre with suitable dimensions
+        # for xarray coords.
+        seq_nums = numpy.expand_dims([ev['seq_num'] for ev in events], 0)
         times = [ev['time'] for ev in events]
         # uids = [ev['uid'] for ev in events]
-        keys = list(self._event_descriptor_docs[0]['data_keys'])
+        data_keys = self._event_descriptor_docs[0]['data_keys']
         if include:
-            keys = list(set(keys) & set(include))
+            keys = list(set(data_keys) & set(include))
         elif exclude:
-            keys = list(set(keys) - set(exclude))
+            keys = list(set(data_keys) - set(exclude))
+        else:
+            keys = list(data_keys)
         data_table = _transpose(events, keys, 'data')
         # timestamps_table = _transpose(all_events, keys, 'timestamps')
         # data_keys = descriptor['data_keys']
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
-        return pandas.DataFrame({'time': times, **data_table}, index=seq_nums)
+        data_arrays = {}
+        for key in keys:
+            # TODO Some sim objects wrongly report 'integer'. with event-model
+            # should not allow.
+            SCALAR_TYPES = ('number', 'string',  'boolean', 'null', 'integer')
+            if data_keys[key]['dtype'] in SCALAR_TYPES:
+                data_arrays[key] = xarray.DataArray(data=data_table[key],
+                                                    dims=('seq_num',),
+                                                    coords=seq_nums,
+                                                    name=key)
+            else:
+                raise NotImplementedError
+        return data_arrays
+        return xarray.Dataset(coords = {'time': times, 'seq_num': seq_nums},
+                              data_vars=data_arrays)
 
     def read(self, *, include=None, exclude=None):
         """
