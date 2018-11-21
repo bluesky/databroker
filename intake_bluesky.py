@@ -169,7 +169,7 @@ class RunCatalog(intake.catalog.Catalog):
             List of field names to exclude. May only be used in ``include`` is
             blank.
         """
-        return xarray.concat(
+        return xarray.merge(
             [stream.read(include=include, exclude=exclude)
              for stream in self._entries.values()])
 
@@ -270,10 +270,10 @@ class MongoEventStream(intake.catalog.Catalog):
                   ('time', pymongo.ASCENDING)])
 
         events = list(cursor)
-        # Put seq_nums into a vectory data sturcutre with suitable dimensions
+        # Put time into a vectorized data sturcutre with suitable dimensions
         # for xarray coords.
-        seq_nums = numpy.expand_dims([ev['seq_num'] for ev in events], 0)
-        times = [ev['time'] for ev in events]
+        times = numpy.expand_dims([ev['time'] for ev in events], 0)
+        # seq_nums = numpy.expand_dims([ev['seq_num'] for ev in events], 0)
         # uids = [ev['uid'] for ev in events]
         data_keys = self._event_descriptor_docs[0]['data_keys']
         if include:
@@ -293,14 +293,12 @@ class MongoEventStream(intake.catalog.Catalog):
             SCALAR_TYPES = ('number', 'string',  'boolean', 'null', 'integer')
             if data_keys[key]['dtype'] in SCALAR_TYPES:
                 data_arrays[key] = xarray.DataArray(data=data_table[key],
-                                                    dims=('seq_num',),
-                                                    coords=seq_nums,
+                                                    dims=('time',),
+                                                    coords=times,
                                                     name=key)
             else:
                 raise NotImplementedError
-        return data_arrays
-        return xarray.Dataset(coords = {'time': times, 'seq_num': seq_nums},
-                              data_vars=data_arrays)
+        return xarray.Dataset(data_vars=data_arrays)
 
     def read(self, *, include=None, exclude=None):
         """
