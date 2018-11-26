@@ -1,7 +1,7 @@
 import collections
 from datetime import datetime
 import intake.catalog
-import intake.catalog.entry
+import intake.catalog.local
 import intake.source.base
 import itertools
 import numpy
@@ -54,29 +54,72 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         self._event_collection = db.get_collection('event')
         self._query = query or {}
         super().__init__(**kwargs)
-        # Note: We don't do anything with self._entries, which is defined by
-        # the base class, because we fetch our entries lazily rather than
-        # caching them in a dict.
 
-    def _get_entry(self, name):
-        query = {'$and': [self._query, {'uid': name}]}
-        run_start_doc = self._run_start_collection.find_one(query)
-        if run_start_doc is not None:
-            del run_start_doc['_id']  # Drop internal Mongo detail.
-        return RunCatalog(run_start_doc=run_start_doc,
-                          run_stop_collection=self._run_stop_collection,
-                          event_descriptor_collection=self._event_descriptor_collection,
-                          event_collection=self._event_collection)
+        catalog = self
 
-    def __iter__(self):
-        cursor = self._run_start_collection.find(
-            self._query, sort=[('time', pymongo.DESCENDING)])
-        for run_start_doc in cursor:
-            yield (run_start_doc['uid'],
-                   RunCatalog(run_start_doc=run_start_doc,
-                              run_stop_collection=self._run_stop_collection,
-                              event_descriptor_collection=self._event_descriptor_collection,
-                              event_collection=self._event_collection))
+        class Entries:
+            "Mock the dict interface around a MongoDB query result."
+            def _doc_to_entry(self, run_start_doc):
+                args = dict(
+                    run_start_doc=run_start_doc,
+                    run_stop_collection=catalog._run_stop_collection,
+                    event_descriptor_collection=catalog._event_descriptor_collection,
+                    event_collection=catalog._event_collection)
+                return intake.catalog.local.LocalCatalogEntry(
+                    name=run_start_doc['uid'],
+                    description={},  # TODO
+                    driver='intake_bluesky.RunCatalog',
+                    direct_access='forbid',  # ???
+                    args=args,
+                    cache=None,  # ???
+                    parameters={},
+                    metadata={},  # TODO
+                    catalog_dir=None,
+                    getenv=True,
+                    getshell=True,
+                    catalog=catalog)
+
+            def __iter__(self):
+                yield from self.keys()
+
+            def keys(self):
+                cursor = catalog._run_start_collection.find(
+                    catalog._query, sort=[('time', pymongo.DESCENDING)])
+                for run_start_doc in cursor:
+                    yield run_start_doc['uid']
+
+            def values(self):
+                cursor = catalog._run_start_collection.find(
+                    catalog._query, sort=[('time', pymongo.DESCENDING)])
+                for run_start_doc in cursor:
+                    del run_start_doc['_id']  # Drop internal Mongo detail.
+                    yield self._doc_to_entry(run_start_doc)
+
+            def items(self):
+                cursor = catalog._run_start_collection.find(
+                    catalog._query, sort=[('time', pymongo.DESCENDING)])
+                for run_start_doc in cursor:
+                    del run_start_doc['_id']  # Drop internal Mongo detail.
+                    yield run_start_doc['uid'], self._doc_to_entry(run_start_doc)
+
+            def __getitem__(self, name):
+                query = {'$and': [catalog._query, {'uid': name}]}
+                run_start_doc = catalog._run_start_collection.find_one(query)
+                if run_start_doc is None:
+                    raise KeyError(name)
+                del run_start_doc['_id']  # Drop internal Mongo detail.
+                return self._doc_to_entry(run_start_doc)
+
+        self._entries = Entries()
+
+    def _get_schema(self):
+        return intake.source.base.Schema(
+            datashape=None,
+            dtype={'x': "int64", 'y': "int64"},
+            shape=(None, 2),
+            npartitions=2,
+            extra_metadata=dict(c=3, d=4)
+        )
 
     def _close(self):
         self._client.close()
@@ -106,7 +149,11 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
 
 class RunCatalog(intake.catalog.Catalog):
     "represents one Run"
-    def __init__(self, *,
+    container = 'xarray'
+    name = 'foo'
+    version = '0.0.1'
+    partition_access = True
+    def __init__(self,
                  run_start_doc,
                  run_stop_collection,
                  event_descriptor_collection,
@@ -114,6 +161,7 @@ class RunCatalog(intake.catalog.Catalog):
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
+        self.metadata = {}
         self._run_start_doc = run_start_doc
         self._run_stop_doc = None  # loaded in _load below
         self._run_stop_collection = run_stop_collection
@@ -134,7 +182,17 @@ class RunCatalog(intake.catalog.Catalog):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
         return out
 
+    def _get_schema(self):
+        return intake.source.base.Schema(
+            datashape=None,
+            dtype={'x': "int64", 'y': "int64"},
+            shape=(None, 2),
+            npartitions=2,
+            extra_metadata=dict(c=3, d=4)
+        )
+
     def _load(self):
+        self._load_metadata()
         uid = self._run_start_doc['uid']
         run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
         self._run_stop_doc = run_stop_doc
@@ -244,6 +302,7 @@ class MongoEventStream(intake.catalog.Catalog):
             List of field names to exclude. May only be used in ``include`` is
             blank.
         """
+        self._load_metadata()
         if include and exclude:
             raise ValueError(
                 "You may specify fields to include or fields to exclude, but "
