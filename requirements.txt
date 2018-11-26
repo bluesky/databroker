@@ -1,0 +1,3 @@
+intake
+git+https://github.com/ContinuumIO/intake-xarray
+zarr
