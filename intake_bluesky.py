@@ -115,15 +115,6 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
 
         self._entries = Entries()
 
-    def _get_schema(self):
-        return intake.source.base.Schema(
-            datashape=None,
-            dtype={'x': "int64", 'y': "int64"},
-            shape=(None, 2),
-            npartitions=2,
-            extra_metadata=dict(c=3, d=4)
-        )
-
     def _close(self):
         self._client.close()
 
@@ -153,7 +144,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
 class RunCatalog(intake_xarray.base.DataSourceMixin):
     "represents one Run"
     container = 'xarray'
-    name = 'foo'
+    name = 'run'
     version = '0.0.1'
     partition_access = True
 
@@ -166,7 +157,6 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self.urlpath = ''
-        self.metadata = {}
         self._ds = None
 
         self._run_start_doc = run_start_doc
@@ -176,11 +166,6 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
         self._event_collection = event_collection
 
         super().__init__(**kwargs)
-
-        if self.metadata is None:
-            self.metadata = {}
-        self._get_schema()
-        self._load_metadata()
 
     def __repr__(self):
         try:
@@ -220,16 +205,6 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
         self._ds = xarray.merge(
             [stream.read()
              for stream in entries.values()])
-
-    def read_slice(self, slice_, *, include=None, exclude=None):
-        raise NotImplementedError(
-            "Sliced reading is support on the individal Streams in a Run, "
-            "but not on the Run in aggregate.")
-
-    def read_chunked(self, chunks=None, *, include=None, exclude=None):
-        raise NotImplementedError(
-            "Chunked reading is support on the individal Streams in a Run, "
-            "but not on the Run in aggregate.")
 
 
 class MongoEventStream(intake.catalog.Catalog):
