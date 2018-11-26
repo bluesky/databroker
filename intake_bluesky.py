@@ -185,7 +185,7 @@ class RunCatalog(intake.catalog.Catalog):
 
 
 class MongoEventStream(intake.catalog.Catalog):
-    container = 'dataframe'
+    container = 'xarray'
     name = 'foo'
     version = '0.0.1'
     partition_access = True
@@ -336,7 +336,8 @@ class MongoEventStream(intake.catalog.Catalog):
             partition = self.read_slice(
                 slice(1 + i * chunks, 1 + (i + 1) * chunks),
                 include=include, exclude=exclude)
-            if len(partition):
+            # This is how to tell if an xarray.Dataset is empty.
+            if any(any(da.shape) for da in partition.data_vars.values()):
                 yield partition
             else:
                 break
@@ -346,7 +347,7 @@ class MongoEventStream(intake.catalog.Catalog):
 
 
 class MongoField(intake.source.base.DataSource):
-    container = 'dataframe'
+    container = 'xarray'
     name = 'foo'
     version = '0.0.1'
     partition_access = True
@@ -413,18 +414,27 @@ class MongoField(intake.source.base.DataSource):
                   ('time', pymongo.ASCENDING)])
 
         events = list(cursor)
-        seq_nums = [ev['seq_num'] for ev in events]
-        times = [ev['time'] for ev in events]
-        # uids = [ev['uid'] for ev in events]
+        # seq_nums = [ev['seq_num'] for ev in events]
+        times = numpy.expand_dims([ev['time'] for ev in events], 0)
         data_keys = self._event_descriptor_docs[0]['data_keys']
-        data_table = _transpose(events, data_keys, 'data')
-        if data_keys[self._field]['dtype'] != 'array':
-            return pandas.Series(data_table[self._field], index=seq_nums)
-        else:
-             raise NotImplementedError
+        keys = (self._field,)
+        data_table = _transpose(events, keys, 'data')
         # timestamps_table = _transpose(all_events, keys, 'timestamps')
         # data_keys = descriptor['data_keys']
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
+        data_arrays = {}
+        for key in keys:
+            # TODO Some sim objects wrongly report 'integer'. with event-model
+            # should not allow.
+            SCALAR_TYPES = ('number', 'string',  'boolean', 'null', 'integer')
+            if data_keys[key]['dtype'] in SCALAR_TYPES:
+                data_arrays[key] = xarray.DataArray(data=data_table[key],
+                                                    dims=('time',),
+                                                    coords=times,
+                                                    name=key)
+            else:
+                raise NotImplementedError
+        return xarray.Dataset(data_vars=data_arrays)
 
     def read_chunked(self, chunks=None):
         """
