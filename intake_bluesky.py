@@ -3,6 +3,7 @@ from datetime import datetime
 import intake.catalog
 import intake.catalog.local
 import intake.source.base
+import intake_xarray.base
 import itertools
 import numpy
 import pandas
@@ -149,12 +150,13 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         return cat
 
 
-class RunCatalog(intake.catalog.Catalog):
+class RunCatalog(intake_xarray.base.DataSourceMixin):
     "represents one Run"
     container = 'xarray'
     name = 'foo'
     version = '0.0.1'
     partition_access = True
+
     def __init__(self,
                  run_start_doc,
                  run_stop_collection,
@@ -163,15 +165,22 @@ class RunCatalog(intake.catalog.Catalog):
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
+        self.urlpath = ''
         self.metadata = {}
+        self._ds = None
+
         self._run_start_doc = run_start_doc
         self._run_stop_doc = None  # loaded in _load below
         self._run_stop_collection = run_stop_collection
         self._event_descriptor_collection = event_descriptor_collection
         self._event_collection = event_collection
+
         super().__init__(**kwargs)
+
         if self.metadata is None:
             self.metadata = {}
+        self._get_schema()
+        self._load_metadata()
 
     def __repr__(self):
         try:
@@ -186,17 +195,7 @@ class RunCatalog(intake.catalog.Catalog):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
         return out
 
-    def _get_schema(self):
-        return intake.source.base.Schema(
-            datashape=None,
-            dtype={'x': "int64", 'y': "int64"},
-            shape=(None, 2),
-            npartitions=2,
-            extra_metadata=dict(c=3, d=4)
-        )
-
-    def _load(self):
-        self._load_metadata()
+    def _open_dataset(self):
         uid = self._run_start_doc['uid']
         run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
         self._run_stop_doc = run_stop_doc
@@ -212,28 +211,15 @@ class RunCatalog(intake.catalog.Catalog):
         streams = itertools.groupby(cursor,
                                     key=lambda d: d.get('name'))
         # Make a MongoEventStreamSource for each stream_name.
-        self._entries = {
-            stream_name: MongoEventStream(self._run_start_doc,
-                                          list(event_descriptor_docs),
-                                          self._event_collection,
-                                          self._run_stop_collection)
-            for stream_name, event_descriptor_docs in streams}
-
-    def read(self, *, include=None, exclude=None):
-        """
-        Read all the data from this run into one structure.
-
-        Parameters
-        ----------
-        include : list, optional
-            List of field names to include.
-        exclude : list, optional
-            List of field names to exclude. May only be used in ``include`` is
-            blank.
-        """
-        return xarray.merge(
-            [stream.read(include=include, exclude=exclude)
-             for stream in self._entries.values()])
+        entries = {
+             stream_name: MongoEventStream(self._run_start_doc,
+                                           list(event_descriptor_docs),
+                                           self._event_collection,
+                                           self._run_stop_collection)
+             for stream_name, event_descriptor_docs in streams}
+        self._ds = xarray.merge(
+            [stream.read()
+             for stream in entries.values()])
 
     def read_slice(self, slice_, *, include=None, exclude=None):
         raise NotImplementedError(
