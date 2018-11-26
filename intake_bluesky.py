@@ -54,6 +54,8 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         self._event_collection = db.get_collection('event')
         self._query = query or {}
         super().__init__(**kwargs)
+        if self.metadata is None:
+            self.metadata = {}
 
         catalog = self
 
@@ -168,6 +170,8 @@ class RunCatalog(intake.catalog.Catalog):
         self._event_descriptor_collection = event_descriptor_collection
         self._event_collection = event_collection
         super().__init__(**kwargs)
+        if self.metadata is None:
+            self.metadata = {}
 
     def __repr__(self):
         try:
@@ -261,6 +265,8 @@ class MongoEventStream(intake.catalog.Catalog):
         super().__init__(
             metadata=metadata
         )
+        if self.metadata is None:
+            self.metadata = {}
 
     def __repr__(self):
         try:
