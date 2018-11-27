@@ -54,40 +54,13 @@ class RemoteCatalog(intake.catalog.base.Catalog):
         self.auth = kwargs.get('auth', None)  # instance of BaseClientAuth
         super().__init__(self, **kwargs)
 
-    def _load(self):
-        """Fetch entries from remote"""
-        # This will not immediately fetch any sources (entries). It will lazily
-        # fetch sources from the server in paginated blocks when this Catalog
-        # is iterated over. It will fetch specific sources when they are
-        # accessed in this Catalog via __getitem__.
-
-        # Add the auth headers to any other headers
-        headers = self.http_args.get('headers', {})
-        if self.auth is not None:
-            auth_headers = self.auth.get_headers()
-            headers.update(auth_headers)
-
-        # build new http args with these headers
-        http_args = self.http_args.copy()
-        if self._source_id is not None:
-            headers['source_id'] = self._source_id
-        http_args['headers'] = headers
-
-        # Just fetch the metadata.
-        params = {'page[number]': 1, 'page[size]': 0}
-        response = requests.get(self.info_url, params=params, **http_args)
-        if response.status_code != 200:
-            raise Exception('%s: status code %d' % (response.url,
-                                                    response.status_code))
-        info = msgpack.unpackb(response.content, encoding='utf-8')
-        self.metadata = info['metadata']
-
         PAGE_SIZE = 100
 
         def fetch_page(page_number):
             print("FETCH", page_number)
             params = {'page[number]': page_number, 'page[size]': PAGE_SIZE}
-            response = requests.get(self.info_url, params=params, **http_args)
+            response = requests.get(self.info_url, params=params,
+                                    **self._get_http_args())
             if response.status_code != 200:
                 raise Exception('%s: status code %d' % (response.url,
                                                         response.status_code))
@@ -104,7 +77,8 @@ class RemoteCatalog(intake.catalog.base.Catalog):
         def fetch_by_name(name):
             print("FETCH", name)
             params = {'name': name}
-            response = requests.get(self.source_url, params=params, **http_args)
+            response = requests.get(self.source_url, params=params,
+                                    **self._get_http_args())
             if response.status_code == 404:
                 raise KeyError(name)
             if response.status_code != 200:
@@ -158,6 +132,41 @@ class RemoteCatalog(intake.catalog.base.Catalog):
                     return source
 
         self._entries = Entries()
+
+    def _get_http_args(self):
+        """
+        Return a copy of the http_args with auth headers and 'source_id' added.
+        """
+        # Add the auth headers to any other headers
+        headers = self.http_args.get('headers', {})
+        if self.auth is not None:
+            auth_headers = self.auth.get_headers()
+            headers.update(auth_headers)
+
+        # build new http args with these headers
+        http_args = self.http_args.copy()
+        if self._source_id is not None:
+            headers['source_id'] = self._source_id
+        http_args['headers'] = headers
+        return http_args
+
+    def _load(self):
+        """Fetch metadata from remote"""
+        # This will not immediately fetch any sources (entries). It will lazily
+        # fetch sources from the server in paginated blocks when this Catalog
+        # is iterated over. It will fetch specific sources when they are
+        # accessed in this Catalog via __getitem__.
+
+        # Just fetch the metadata.
+        params = {'page[number]': 1, 'page[size]': 0}
+        response = requests.get(self.info_url, params=params,
+                                **self._get_http_args())
+        if response.status_code != 200:
+            raise Exception('%s: status code %d' % (response.url,
+                                                    response.status_code))
+        info = msgpack.unpackb(response.content, encoding='utf-8')
+        self.metadata = info['metadata']
+
 
 class FacilityCatalog(intake.catalog.Catalog):
     "spans multiple MongoDB instances"
