@@ -113,14 +113,13 @@ class RemoteCatalog(intake.catalog.base.Catalog):
             if response.status_code != 200:
                 raise Exception('%s: status code %d' % (response.url,
                                                         response.status_code))
-            res = msgpack.unpackb(response.content, encoding='utf-8')
-            source = res['source']
+            info = msgpack.unpackb(response.content, encoding='utf-8')
             return intake.catalog.remote.RemoteCatalogEntry(
                 url=self.source_url,
                 getenv=self.getenv,
                 getshell=self.getshell,
                 auth=self.auth,
-                http_args=self.http_args, **source)
+                http_args=self.http_args, **info['source'])
 
         class Entries:
             def __init__(self):
