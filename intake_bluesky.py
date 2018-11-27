@@ -22,7 +22,7 @@ class RemoteCatalog(intake.catalog.base.Catalog):
     name = 'bluesky_remote'
     """The state of a remote Intake server"""
 
-    def __init__(self, url, http_args={}, query=None, **kwargs):
+    def __init__(self, url, http_args={}, **kwargs):
         """Connect to remote Intake Server as a catalog
 
         Parameters
@@ -52,9 +52,6 @@ class RemoteCatalog(intake.catalog.base.Catalog):
             self.source_url = url
             self.info_url = url.replace('v1/source', 'v1/info')
         self.auth = kwargs.get('auth', None)  # instance of BaseClientAuth
-        if query is None:
-            query = {}
-        self._query = query
         super().__init__(self, **kwargs)
 
     def _load(self):
