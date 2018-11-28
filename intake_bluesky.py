@@ -199,10 +199,10 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
             start = self._run_start_doc
             stop = self._run_stop_doc or {}
             out = (f"<Intake catalog: Run {start['uid'][:8]}...>\n"
-                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
-                   f"  Streams:\n")
-            for stream_name in self:
-                out += f"    * {stream_name}\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n")
+                   # f"  Streams:\n")
+            # for stream_name in self:
+            #     out += f"    * {stream_name}\n"
         except Exception as exc:
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
         return out
@@ -550,6 +550,8 @@ def _transpose(in_data, keys, field):
 
 def _ft(timestamp):
     "format timestamp"
+    if isinstance(timestamp, str):
+        return timestamp
     # Truncate microseconds to miliseconds. Do not bother to round.
     return (datetime.fromtimestamp(timestamp)
             .strftime('%Y-%m-%d %H:%M:%S.%f'))[:-3]
