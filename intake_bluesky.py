@@ -111,8 +111,30 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                     yield run_start_doc['uid'], self._doc_to_entry(run_start_doc)
 
             def __getitem__(self, name):
-                query = {'$and': [catalog._query, {'uid': name}]}
-                run_start_doc = catalog._run_start_collection.find_one(query)
+                # If this came from a client, we might be getting '-1'.
+                try:
+                    name = int(name)
+                except TypeError:
+                    pass
+                if isinstance(name, int):
+                    if name < 0:
+                        # Interpret negative N as "the Nth from last entry".
+                        query = catalog._query
+                        cursor = (catalog._run_start_collection.find(query)
+                                .sort('time', pymongo.DESCENDING)
+                                .limit(name))
+                        *_, run_start_doc = cursor
+                    else:
+                        # Interpret positive N as
+                        # "most recent entry with scan_id == N".
+                        query = {'$and': [catalog._query, {'scan_id': name}]}
+                        cursor = (catalog._run_start_collection.find(query)
+                                .sort('time', pymongo.DESCENDING)
+                                .limit(1))
+                        run_start_doc, = cursor
+                else:
+                    query = {'$and': [catalog._query, {'uid': name}]}
+                    run_start_doc = catalog._run_start_collection.find_one(query)
                 if run_start_doc is None:
                     raise KeyError(name)
                 del run_start_doc['_id']  # Drop internal Mongo detail.
