@@ -144,6 +144,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                 return self._doc_to_entry(run_start_doc)
 
         self._entries = Entries()
+        self._schema = {}
 
     def _close(self):
         self._client.close()
