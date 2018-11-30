@@ -1,0 +1,12 @@
+plugins:
+  source:
+    - module: intake_bluesky
+sources:
+  xyz:
+    description: Some imaginary beamline
+    driver: mongo_metadatastore
+    container: catalog
+    args:
+      uri: mongodb://localhost:27017/test1
+    metadata:
+      beamline: "00-ID"
