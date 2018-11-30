@@ -117,7 +117,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                 # If this came from a client, we might be getting '-1'.
                 try:
                     name = int(name)
-                except TypeError:
+                except ValueError:
                     pass
                 if isinstance(name, int):
                     if name < 0:
