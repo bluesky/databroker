@@ -345,16 +345,13 @@ class MongoEventStream(intake.catalog.Catalog):
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
         data_arrays = {}
         for key in keys:
-            # TODO Some sim objects wrongly report 'integer'. with event-model
-            # should not allow.
-            SCALAR_TYPES = ('number', 'string',  'boolean', 'null', 'integer')
-            if data_keys[key]['dtype'] in SCALAR_TYPES:
+            if data_keys[key].get('external'):
+                raise NotImplementedError
+            else:
                 data_arrays[key] = xarray.DataArray(data=data_table[key],
                                                     dims=('time',),
                                                     coords=times,
                                                     name=key)
-            else:
-                raise NotImplementedError
         return xarray.Dataset(data_vars=data_arrays)
 
     def read(self, *, include=None, exclude=None):
