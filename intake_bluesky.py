@@ -25,6 +25,9 @@ class FacilityCatalog(intake.catalog.Catalog):
 
 class MongoMetadataStoreCatalog(intake.catalog.Catalog):
     "represents one MongoDB instance"
+    name = 'mongo_metadatastore'
+    container = 'catalog'
+
     def __init__(self, uri, *, query=None, **kwargs):
         """
         A Catalog backed by a MongoDB with metadatastore v1 collections.
