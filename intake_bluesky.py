@@ -26,7 +26,6 @@ class FacilityCatalog(intake.catalog.Catalog):
 class MongoMetadataStoreCatalog(intake.catalog.Catalog):
     "represents one MongoDB instance"
     name = 'mongo_metadatastore'
-    container = 'catalog'
 
     def __init__(self, uri, *, query=None, **kwargs):
         """
@@ -124,8 +123,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                         # Interpret negative N as "the Nth from last entry".
                         query = catalog._query
                         cursor = (catalog._run_start_collection.find(query)
-                                .sort('time', pymongo.DESCENDING)
-                                .limit(name))
+                                .sort('time', pymongo.DESCENDING) .limit(name))
                         *_, run_start_doc = cursor
                     else:
                         # Interpret positive N as
@@ -144,7 +142,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                 return self._doc_to_entry(run_start_doc)
 
         self._entries = Entries()
-        self._schema = {}
+        self._schema = {}  # TODO This is cheating, I think.
 
     def _close(self):
         self._client.close()
@@ -172,9 +170,9 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         return cat
 
 
-class RunCatalog(intake_xarray.base.DataSourceMixin):
+class RunCatalog(intake.catalog.Catalog):
     "represents one Run"
-    container = 'xarray'
+    container = 'catalog'
     name = 'run'
     version = '0.0.1'
     partition_access = True
@@ -187,8 +185,7 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
-        self.urlpath = ''
-        self._ds = None
+        self.urlpath = ''  # TODO Not sure why I had to add this.
 
         self._run_start_doc = run_start_doc
         self._run_stop_doc = None  # loaded in _load below
@@ -197,6 +194,7 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
         self._event_collection = event_collection
 
         super().__init__(**kwargs)
+        self._schema = {}  # TODO This is cheating, I think.
 
     def __repr__(self):
         try:
@@ -211,7 +209,7 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
         return out
 
-    def _open_dataset(self):
+    def _load(self):
         uid = self._run_start_doc['uid']
         run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
         self._run_stop_doc = run_stop_doc
@@ -226,34 +224,46 @@ class RunCatalog(intake_xarray.base.DataSourceMixin):
         # {'stream_name': [descriptor1, descriptor2, ...], ...}
         streams = itertools.groupby(cursor,
                                     key=lambda d: d.get('name'))
+
         # Make a MongoEventStreamSource for each stream_name.
-        entries = {
-             stream_name: MongoEventStream(self._run_start_doc,
-                                           list(event_descriptor_docs),
-                                           self._event_collection,
-                                           self._run_stop_collection)
-             for stream_name, event_descriptor_docs in streams}
-        self._ds = xarray.merge(
-            [stream.read()
-             for stream in entries.values()])
+        for stream_name, event_descriptor_docs in streams:
+            args = {'run_start_doc': self._run_start_doc,
+                    'event_descriptor_docs': list(event_descriptor_docs),
+                    'event_collection': self._event_collection,
+                    'run_stop_collection': self._run_stop_collection}
+            self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
+                name=stream_name,
+                description={},  # TODO
+                driver='intake_bluesky.MongoEventStream',
+                direct_access='forbid',  # ???
+                args=args,
+                cache=None,  # ???
+                parameters={},
+                metadata={},  # TODO
+                catalog_dir=None,
+                getenv=True,
+                getshell=True,
+                catalog=self)
 
 
-class MongoEventStream(intake.catalog.Catalog):
+class MongoEventStream(intake_xarray.base.DataSourceMixin):
     container = 'xarray'
-    name = 'foo'
+    name = 'event-stream'
     version = '0.0.1'
     partition_access = True
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
                  run_stop_collection, metadata=None):
-        self._partition_size = 10
-        self._default_chunks = 10
+        # self._partition_size = 10
+        # self._default_chunks = 10
+        self.urlpath = ''  # TODO Not sure why I had to add this.
         self._run_start_doc = run_start_doc
         self._run_stop_doc  = None
         self._event_collection = event_collection
         self._event_descriptor_docs = event_descriptor_docs
         self._stream_name = event_descriptor_docs[0].get('name')
         self._run_stop_collection = run_stop_collection
+        self._ds = None  # set by _open_dataset below
         super().__init__(
             metadata=metadata
         )
@@ -268,49 +278,25 @@ class MongoEventStream(intake.catalog.Catalog):
             out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc}>"
         return out
 
-    def _load(self):
-        # Make a MongoEventStreamSource for each stream_name.
-        self._entries = {
-            field: MongoField(field,
-                              self._run_start_doc,
-                              self._event_descriptor_docs,
-                              self._event_collection)
-            for field in list(self._event_descriptor_docs[0]['data_keys'])}
-
-    def _get_schema(self):
-        return intake.source.base.Schema(
-            datashape=None,
-            dtype={'x': "int64", 'y': "int64"},
-            shape=(None, 2),
-            npartitions=2,
-            extra_metadata=dict(c=3, d=4)
-        )
-
-    def read_slice(self, slice_, *, include=None, exclude=None):
-        """
-        Read data from a Slice of Events from this Stream into one structure.
-
-        Parameters
-        ----------
-        slice_ : slice
-            Example: ``slice(3, 7)``
-        include : list, optional
-            List of field names to include.
-        exclude : list, optional
-            List of field names to exclude. May only be used in ``include`` is
-            blank.
-        """
-        self._load_metadata()
-        if include and exclude:
-            raise ValueError(
-                "You may specify fields to include or fields to exclude, but "
-                "not both.")
+    def _open_dataset(self):
+        uid = self._run_start_doc['uid']
+        run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
+        self._run_stop_doc = run_stop_doc
+        if run_stop_doc is not None:
+            del run_stop_doc['_id']  # Drop internal Mongo detail.
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': run_stop_doc})
+        # TODO pass this in from BlueskyEntry
+        slice_ = slice(None)
+        include = []
+        exclude = []
 
         if isinstance(slice_, collections.Iterable):
             first_axis = slice_[0]
         else:
             first_axis = slice_
-        query = {'descriptor': {'$in': [d['uid'] for d in self._event_descriptor_docs]}}
+        query = {'descriptor': {'$in': [d['uid']
+                                for d in self._event_descriptor_docs]}}
         seq_num_filter = {}
         if first_axis.start is not None:
             seq_num_filter['$gte'] = first_axis.start
@@ -352,173 +338,7 @@ class MongoEventStream(intake.catalog.Catalog):
                                                     dims=('time',),
                                                     coords=times,
                                                     name=key)
-        return xarray.Dataset(data_vars=data_arrays)
-
-    def read(self, *, include=None, exclude=None):
-        """
-        Read all the data from this Stream into one structure.
-
-        Parameters
-        ----------
-        include : list, optional
-            List of field names to include.
-        exclude : list, optional
-            List of field names to exclude. May only be used in ``include`` is
-            blank.
-        """
-        return self.read_slice(slice(None), include=include, exclude=exclude)
-
-    def read_chunked(self, chunks=None, *, include=None, exclude=None):
-        """
-        Read data from this Stream in chunks.
-
-        Parameters
-        ----------
-        chunks : integer, optional
-            Chunk size (NOT number of chunks). If None, use default specified
-            by Catalog. 
-        include : list, optional
-            List of field names to include.
-        exclude : list, optional
-            List of field names to exclude. May only be used in ``include`` is
-            blank.
-        """
-        if chunks is None:
-            chunks = self._default_chunks
-        for i in itertools.count():
-            # Start at 1 because seq_num starts at 1 ugh....
-            partition = self.read_slice(
-                slice(1 + i * chunks, 1 + (i + 1) * chunks),
-                include=include, exclude=exclude)
-            # This is how to tell if an xarray.Dataset is empty.
-            if any(any(da.shape) for da in partition.data_vars.values()):
-                yield partition
-            else:
-                break
-
-    def _close(self):
-        pass
-
-
-class MongoField(intake.source.base.DataSource):
-    container = 'xarray'
-    name = 'foo'
-    version = '0.0.1'
-    partition_access = True
-
-    def __init__(self, field,
-                 run_start_doc, event_descriptor_docs, event_collection,
-                 metadata=None):
-        self._partition_size = 10
-        self._default_chunks = 10
-        self._field = field
-        self._run_start_doc = run_start_doc  # just used for __repr__
-        self._event_collection = event_collection
-        self._event_descriptor_docs = event_descriptor_docs
-        self._stream_name = event_descriptor_docs[0].get('name')
-        super().__init__(
-            metadata=metadata
-        )
-
-    def __repr__(self):
-        try:
-            out = (f"<Intake datasource: Field {self._field!r} "
-                   f"of Stream {self._stream_name!r} "
-                   f"from Run {self._run_start_doc['uid'][:8]}...>")
-        except Exception as exc:
-            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
-        return out
-
-    def _get_schema(self):
-        return intake.source.base.Schema(
-            datashape=None,
-            dtype={'x': "int64", 'y': "int64"},
-            shape=(None, 2),
-            npartitions=2,
-            extra_metadata=dict(c=3, d=4)
-        )
-
-    def read_slice(self, slice_):
-        """
-        Read a slice of data from this field.
-
-        Parameters
-        ----------
-        slice_ : slice
-            Example: ``slice(3, 7)``
-        """
-        if isinstance(slice_, collections.Iterable):
-            first_axis = slice_[0]
-        else:
-            first_axis = slice_
-        query = {'descriptor': {'$in': [d['uid'] for d in self._event_descriptor_docs]}}
-        seq_num_filter = {}
-        if first_axis.start is not None:
-            seq_num_filter['$gte'] = first_axis.start
-        if first_axis.stop is not None:
-            seq_num_filter['$lt'] = first_axis.stop
-        if first_axis.step is not None:
-            # Have to think about how this interacts with repeated seq_num.
-            raise NotImplementedError
-        if seq_num_filter:
-            query['seq_num'] = seq_num_filter
-        cursor = self._event_collection.find(
-            query,
-            sort=[('descriptor', pymongo.DESCENDING),
-                  ('time', pymongo.ASCENDING)])
-
-        events = list(cursor)
-        # seq_nums = [ev['seq_num'] for ev in events]
-        times = numpy.expand_dims([ev['time'] for ev in events], 0)
-        data_keys = self._event_descriptor_docs[0]['data_keys']
-        keys = (self._field,)
-        data_table = _transpose(events, keys, 'data')
-        # timestamps_table = _transpose(all_events, keys, 'timestamps')
-        # data_keys = descriptor['data_keys']
-        # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
-        data_arrays = {}
-        for key in keys:
-            # TODO Some sim objects wrongly report 'integer'. with event-model
-            # should not allow.
-            SCALAR_TYPES = ('number', 'string',  'boolean', 'null', 'integer')
-            if data_keys[key]['dtype'] in SCALAR_TYPES:
-                data_arrays[key] = xarray.DataArray(data=data_table[key],
-                                                    dims=('time',),
-                                                    coords=times,
-                                                    name=key)
-            else:
-                raise NotImplementedError
-        return xarray.Dataset(data_vars=data_arrays)
-
-    def read_chunked(self, chunks=None):
-        """
-        Read all the data from this field in chunks.
-
-        Parameters
-        ----------
-        chunks : integer, optional
-            Chunk size (NOT number of chunks). If None, use default specified
-            by Catalog. 
-        """
-        if chunks is None:
-            chunks = self._default_chunks
-        for i in itertools.count():
-            # Start at 1 because seq_num starts at 1 ugh....
-            partition = self.read_slice(
-                slice(1 + i * chunks, 1 + (i + 1) * chunks))
-            if len(partition):
-                yield partition
-            else:
-                break
-
-    def read(self):
-        """
-        Read all the data from this field into one structure.
-        """
-        return self.read_slice(slice(None))
-
-    def _close(self):
-        pass
+        self._ds = xarray.Dataset(data_vars=data_arrays)
 
 
 def _transpose(in_data, keys, field):
