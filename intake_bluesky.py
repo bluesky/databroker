@@ -320,8 +320,11 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             keys = list(set(data_keys) - set(exclude))
         else:
             keys = list(data_keys)
-        datasets = []  # Collect Dataset for each descriptor. Merge at the end.
+
+        # Collect a Dataset for each descriptor. Merge at the end.
+        datasets = []
         for descriptor in self._event_descriptor_docs:
+            # Fetch (relevant range of) Event data and transpose rows -> cols.
             query = {'descriptor': descriptor['uid']}
             if seq_num_filter:
                 query['seq_num'] = seq_num_filter
@@ -335,7 +338,13 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             data_table = _transpose(events, keys, 'data')
             # timestamps_table = _transpose(all_events, keys, 'timestamps')
             # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
+
+            # Collect a DataArray for each field in Event, each field in
+            # configuration, and 'seq_num'. The Event 'time' will be the
+            # default coordinate.
             data_arrays = {}
+
+            # Make DataArrays for Event data.
             for key in keys:
                 field_metadata = data_keys[key]
                 # Verify the actual ndim by looking at the data.
@@ -351,7 +360,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                         # TODO Warn
                         ...
                 if dims is None:
-                    # Construct the same default dimension names xarray would do.
+                    # Construct the same default dimension names xarray would.
                     dims = tuple(f'dim_{i}' for i in range(ndim))
                 if data_keys[key].get('external'):
                     raise NotImplementedError
@@ -361,6 +370,49 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                         dims=('time',) + dims,
                         coords={'time': times},
                         name=key)
+
+            # Make DataArrays for configuration data.
+            for object_name, config in descriptor['configuration'].items():
+                data_keys = config['data_keys']
+                if include:
+                    keys = list(set(data_keys) & set(include))
+                elif exclude:
+                    keys = list(set(data_keys) - set(exclude))
+                else:
+                    keys = list(data_keys)
+                for key in keys:
+                    field_metadata = data_keys[key]
+                    # Verify the actual ndim by looking at the data.
+                    ndim = numpy.asarray(config['data'][key]).ndim
+                    dims = None
+                    if 'dims' in field_metadata:
+                        # As of this writing no Devices report dimension names ('dims')
+                        # but they could in the future.
+                        reported_ndim = len(field_metadata['dims'])
+                        if reported_ndim == ndim:
+                            dims = tuple(field_metadata['dims'])
+                        else:
+                            # TODO Warn
+                            ...
+                    if dims is None:
+                        # Construct the same default dimension names xarray would.
+                        dims = tuple(f'dim_{i}' for i in range(ndim))
+                    if data_keys[key].get('external'):
+                        raise NotImplementedError
+                    else:
+                        # For configuration, label the dimension specially to
+                        # avoid key collisions.
+                        dim = f'{object_name}:{key}'
+                        data_arrays[dim] = xarray.DataArray(
+                            # TODO Once we know we have one Event Descriptor
+                            # per stream we can be more efficient about this.
+                            data=numpy.tile(config['data'][key],
+                                            (len(times),) + ndim * (1,)),
+                            dims=('time',) + dims,
+                            coords={'time': times},
+                            name=key)
+
+            # Finally, make a DataArray for 'seq_num'.
             data_arrays['seq_num'] = xarray.DataArray(
                 data=seq_nums,
                 dims=('time',),
