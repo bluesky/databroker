@@ -70,6 +70,12 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         class Entries:
             "Mock the dict interface around a MongoDB query result."
             def _doc_to_entry(self, run_start_doc):
+                uid = run_start_doc['uid']
+                run_stop_doc = catalog._run_stop_collection.find_one({'run_start': uid})
+                if run_stop_doc is not None:
+                    del run_stop_doc['_id']  # Drop internal Mongo detail.
+                entry_metadata = {'start': run_start_doc,
+                                  'stop': run_stop_doc}
                 args = dict(
                     run_start_doc=run_start_doc,
                     run_stop_collection=catalog._run_stop_collection,
@@ -83,7 +89,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                     args=args,
                     cache=None,  # ???
                     parameters={},
-                    metadata={},  # TODO
+                    metadata=entry_metadata,
                     catalog_dir=None,
                     getenv=True,
                     getshell=True,
@@ -217,6 +223,7 @@ class RunCatalog(intake.catalog.Catalog):
             del run_stop_doc['_id']  # Drop internal Mongo detail.
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': run_stop_doc})
+
         cursor = self._event_descriptor_collection.find(
             {'run_start': uid},
             sort=[('time', pymongo.ASCENDING)])
@@ -239,7 +246,7 @@ class RunCatalog(intake.catalog.Catalog):
                 args=args,
                 cache=None,  # ???
                 parameters={},
-                metadata={},  # TODO
+                metadata=self.metadata,
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,

@@ -94,6 +94,14 @@ def test_search(bundle):
     assert name == bundle.det_scan_uid
 
 
+def test_run_metadata(bundle):
+    "Find 'start' and 'stop' in the Entry metadata."
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.det_scan_uid]
+    for key in ('start', 'stop'):
+        assert key in run.metadata  # entry
+        assert key in run().metadata  # datasource
+
 def test_access_scalar_data(bundle):
     "Access simple scalar data that is stored directly in Event documents."
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
