@@ -302,8 +302,6 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             first_axis = slice_[0]
         else:
             first_axis = slice_
-        query = {'descriptor': {'$in': [d['uid']
-                                for d in self._event_descriptor_docs]}}
         seq_num_filter = {}
         if first_axis.start is not None:
             seq_num_filter['$gte'] = first_axis.start
@@ -312,16 +310,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         if first_axis.step is not None:
             # Have to think about how this interacts with repeated seq_num.
             raise NotImplementedError
-        if seq_num_filter:
-            query['seq_num'] = seq_num_filter
-        cursor = self._event_collection.find(
-            query,
-            sort=[('descriptor', pymongo.DESCENDING),
-                  ('time', pymongo.ASCENDING)])
 
-        events = list(cursor)
-        times = [ev['time'] for ev in events]
-        seq_nums = [ev['seq_num'] for ev in events]
         # Data keys must not change within one stream, so we can safely sample
         # just the first Event Descriptor.
         data_keys = self._event_descriptor_docs[0]['data_keys']
@@ -331,41 +320,59 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             keys = list(set(data_keys) - set(exclude))
         else:
             keys = list(data_keys)
-        data_table = _transpose(events, keys, 'data')
-        # timestamps_table = _transpose(all_events, keys, 'timestamps')
-        # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
-        data_arrays = {}
-        for key in keys:
-            field_metadata = data_keys[key]
-            # Verify the actual ndim by looking at the data.
-            ndim = numpy.asarray(data_table[key][0]).ndim
-            dims = None
-            if 'dims' in field_metadata:
-                # As of this writing no Devices report dimension names ('dims')
-                # but they could in the future.
-                reported_ndim = len(field_metadata['dims'])
-                if reported_ndim == ndim:
-                    dims = tuple(field_metadata['dims'])
+        datasets = []  # Collect Dataset for each descriptor. Merge at the end.
+        for descriptor in self._event_descriptor_docs:
+            query = {'descriptor': descriptor['uid']}
+            if seq_num_filter:
+                query['seq_num'] = seq_num_filter
+            cursor = self._event_collection.find(
+                query,
+                sort=[('descriptor', pymongo.DESCENDING),
+                    ('time', pymongo.ASCENDING)])
+            events = list(cursor)
+            times = [ev['time'] for ev in events]
+            seq_nums = [ev['seq_num'] for ev in events]
+            data_table = _transpose(events, keys, 'data')
+            # timestamps_table = _transpose(all_events, keys, 'timestamps')
+            # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
+            data_arrays = {}
+            for key in keys:
+                field_metadata = data_keys[key]
+                # Verify the actual ndim by looking at the data.
+                ndim = numpy.asarray(data_table[key][0]).ndim
+                dims = None
+                if 'dims' in field_metadata:
+                    # As of this writing no Devices report dimension names ('dims')
+                    # but they could in the future.
+                    reported_ndim = len(field_metadata['dims'])
+                    if reported_ndim == ndim:
+                        dims = tuple(field_metadata['dims'])
+                    else:
+                        # TODO Warn
+                        ...
+                if dims is None:
+                    # Construct the same default dimension names xarray would do.
+                    dims = tuple(f'dim_{i}' for i in range(ndim))
+                if data_keys[key].get('external'):
+                    raise NotImplementedError
                 else:
-                    # TODO Warn
-                    ...
-            if dims is None:
-                # Construct the same default dimension names xarray would do.
-                dims = tuple(f'dim_{i}' for i in range(ndim))
-            if data_keys[key].get('external'):
-                raise NotImplementedError
-            else:
-                data_arrays[key] = xarray.DataArray(
-                    data=data_table[key],
-                    dims=('time',) + dims,
-                    coords={'time': times},
-                    name=key)
-        data_arrays['seq_num'] = xarray.DataArray(
-            data=seq_nums,
-            dims=('time',),
-            coords={'time': times},
-            name='seq_num')
-        self._ds = xarray.Dataset(data_vars=data_arrays)
+                    data_arrays[key] = xarray.DataArray(
+                        data=data_table[key],
+                        dims=('time',) + dims,
+                        coords={'time': times},
+                        name=key)
+            data_arrays['seq_num'] = xarray.DataArray(
+                data=seq_nums,
+                dims=('time',),
+                coords={'time': times},
+                name='seq_num')
+
+            datasets.append(xarray.Dataset(data_vars=data_arrays))
+        # Merge Datasets from all Event Descriptors into one representing the
+        # whole stream. (In the future we may simplify to one Event Descriptor
+        # per stream, but as of this writing we must account for the
+        # possibility of multiple.)
+        self._ds = xarray.merge(datasets)
 
 
 def _transpose(in_data, keys, field):
