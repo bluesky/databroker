@@ -1262,3 +1262,33 @@ def test_monitoring(db, RE, hw):
     sd.monitors.append(hw.rand)
     RE(bp.count([hw.det], 5, delay=1))
     assert len(db[-1].table('rand_monitor')) > 1
+
+
+@py3
+def test_interlace_gens():
+    from databroker.eventsource.shim import interlace_gens
+    a = ({'time': i} for i in range(10) if i % 2 == 0)
+    b = ({'time': i} for i in range(10) if i % 2 == 1)
+    c = ({'time': i} for i in range(100, 110))
+    d = interlace_gens(a, b, c)
+    expected = list(range(10)) + list(range(100, 110))
+    for z, zz in zip(d, expected):
+        assert z['time'] == zz
+
+
+@py3
+def test_order(db, RE, hw):
+    from ophyd import sim
+    RE.subscribe(db.insert)
+    d = sim.SynPeriodicSignal(name='d', period=.5)
+    uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1), [d]))
+
+    t0 = None
+    for name, doc in db[uid].documents():
+        print(name, doc['time'])
+        # TODO: include datums in here at some point
+        if name in ['event']:
+            t1 = doc['time']
+            if t0:
+                assert t1 > t0
+            t0 = t1
