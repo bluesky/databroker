@@ -107,7 +107,7 @@ def test_access_scalar_data(bundle):
 def test_access_nonscalar_data(bundle):
     "Access nonscalar data that is stored directly in Event documents."
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.det_scan_uid]()
+    run = cat['xyz']()[bundle.direct_img_scan_uid]()
     entry = run['primary']
     entry.read()
     entry().to_dask()

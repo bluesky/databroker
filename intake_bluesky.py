@@ -313,11 +313,10 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                   ('time', pymongo.ASCENDING)])
 
         events = list(cursor)
-        # Put time into a vectorized data sturcutre with suitable dimensions
-        # for xarray coords.
-        times = numpy.expand_dims([ev['time'] for ev in events], 0)
-        # seq_nums = numpy.expand_dims([ev['seq_num'] for ev in events], 0)
-        # uids = [ev['uid'] for ev in events]
+        times = [ev['time'] for ev in events]
+        seq_nums = [ev['seq_num'] for ev in events]
+        # Data keys must not change within one stream, so we can safely sample
+        # just the first Event Descriptor.
         data_keys = self._event_descriptor_docs[0]['data_keys']
         if include:
             keys = list(set(data_keys) & set(include))
@@ -327,17 +326,38 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             keys = list(data_keys)
         data_table = _transpose(events, keys, 'data')
         # timestamps_table = _transpose(all_events, keys, 'timestamps')
-        # data_keys = descriptor['data_keys']
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
         data_arrays = {}
         for key in keys:
+            field_metadata = data_keys[key]
+            # Verify the actual ndim by looking at the data.
+            ndim = numpy.asarray(data_table[key][0]).ndim
+            dims = None
+            if 'dims' in field_metadata:
+                # As of this writing no Devices report dimension names ('dims')
+                # but they could in the future.
+                reported_ndim = len(field_metadata['dims'])
+                if reported_ndim == ndim:
+                    dims = tuple(field_metadata['dims'])
+                else:
+                    # TODO Warn
+                    ...
+            if dims is None:
+                # Construct the same default dimension names xarray would do.
+                dims = tuple(f'dim_{i}' for i in range(ndim))
             if data_keys[key].get('external'):
                 raise NotImplementedError
             else:
-                data_arrays[key] = xarray.DataArray(data=data_table[key],
-                                                    dims=('time',),
-                                                    coords=times,
-                                                    name=key)
+                data_arrays[key] = xarray.DataArray(
+                    data=data_table[key],
+                    dims=('time',) + dims,
+                    coords={'time': times},
+                    name=key)
+        data_arrays['seq_num'] = xarray.DataArray(
+            data=seq_nums,
+            dims=('time',),
+            coords={'time': times},
+            name='seq_num')
         self._ds = xarray.Dataset(data_vars=data_arrays)
 
 
@@ -382,26 +402,41 @@ class MongoInsertCallback:
     """
     This is a replacmenet for db.insert.
     """
-    def __init__(self, uri):
-        self._uri = uri
-        self._client = pymongo.MongoClient(uri)
+    def __init__(self, metadatastore_uri, asset_registry_uri):
+        self._metadatastore_client = pymongo.MongoClient(metadatastore_uri)
+        self._asset_registry_client = pymongo.MongoClient(asset_registry_uri)
+
         try:
             # Called with no args, get_database() returns the database
             # specified in the uri --- or raises if there was none. There is no
             # public method for checking this in advance, so we just catch the
             # error.
-            db = self._client.get_database()
+            mds_db = self._metadatastore_client.get_database()
         except pymongo.errors.ConfigurationError as err:
             raise ValueError(
-                "Invalid uri. Did you forget to include a database?") from err
+                f"Invalid metadatastore_uri: {metadatastore_uri} "
+                f"Did you forget to include a database?") from err
+        try:
+            assets_db = self._asset_registry_client.get_database()
+        except pymongo.errors.ConfigurationError as err:
+            raise ValueError(
+                f"Invalid asset_registry_uri: {asset_registry_uri} "
+                f"Did you forget to include a database?") from err
 
-        self._run_start_collection = db.get_collection('run_start')
-        self._run_stop_collection = db.get_collection('run_stop')
-        self._event_descriptor_collection = db.get_collection('event_descriptor')
-        self._event_collection = db.get_collection('event')
+        self._run_start_collection = mds_db.get_collection('run_start')
+        self._run_stop_collection = mds_db.get_collection('run_stop')
+        self._event_descriptor_collection = mds_db.get_collection('event_descriptor')
+        self._event_collection = mds_db.get_collection('event')
+
+        self._resource_collection = assets_db.get_collection('resource')
+        self._datum_collection = assets_db.get_collection('datum')
 
     def __call__(self, name, doc):
-        getattr(self, name)(doc)
+        # Before inserting into mongo, convert any numpy objects into built-in
+        # Python types compatible with pymongo.
+        sanitized_doc = doc.copy()
+        _apply_to_dict_recursively(sanitized_doc, _sanitize_numpy)
+        getattr(self, name)(sanitized_doc)
 
     def start(self, doc):
         self._run_start_collection.insert_one(doc)
@@ -409,8 +444,30 @@ class MongoInsertCallback:
     def descriptor(self, doc):
         self._event_descriptor_collection.insert_one(doc)
 
+    def resource(self, doc):
+        self._resource_collection.insert_one(doc)
+
     def event(self, doc):
         self._event_collection.insert_one(doc)
 
+    def datum(self, doc):
+        self._datum_collection.insert_one(doc)
+
     def stop(self, doc):
         self._run_stop_collection.insert_one(doc)
+
+
+def _sanitize_numpy(val):
+    "Convert any numpy objects into built-in Python types."
+    if isinstance(val, (numpy.generic, numpy.ndarray)):
+        if numpy.isscalar(val):
+            return val.item()
+        return val.tolist()
+    return val
+
+
+def _apply_to_dict_recursively(d, f):
+    for key, val in d.items():
+        if hasattr(val, 'items'):
+            d[key] = _apply_to_dict_recursively(val, f)
+        d[key] = f(val)
