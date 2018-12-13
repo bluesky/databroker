@@ -1559,9 +1559,12 @@ class BrokerES(object):
         # dirty hack!
         with self.reg.handler_context(handler_registry):
             for h in headers:
+                external_keys = set()
+                resources = set()
                 if not isinstance(h, Header):
                     h = self[h['start']['uid']]
                 # TODO filter fill by fields
+                # TODO: eliminate this in favor of the Retrieve callback
                 proc_gen = self._fill_events_coro(h.descriptors,
                                                   fields=fill,
                                                   inplace=True)
@@ -1571,8 +1574,27 @@ class BrokerES(object):
                         header=h, stream_name=stream_name,
                         fields=fields)
                     for name, doc in gen:
+                        # Find all the res/datum backed keys
+                        if name == 'descriptor':
+                            for k, v in six.iteritems(doc['data_keys']):
+                                if 'external' in v:
+                                    external_keys.add(k)
                         if name == 'event':
+                            # for external keys get res/datum
+                            for k, v in six.iteritems(doc['data']):
+                                if k in external_keys:
+                                    datum = self.reg.get_datum_from_datum_id(v)
+                                    if datum['resource'] not in resources:
+                                        res = self.reg.resource_given_datum_id(
+                                            v)
+                                        yield 'resource', self.prepare_hook(
+                                            name, res)
+                                        resources.add(res['uid'])
+                                    yield 'datum', self.prepare_hook(name,
+                                                                     datum)
+
                             doc = proc_gen.send(doc)
+
                         yield name, self.prepare_hook(name, doc)
                 proc_gen.close()
 

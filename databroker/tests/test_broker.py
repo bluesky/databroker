@@ -17,6 +17,7 @@ import copy
 import pytest
 import six
 import numpy as np
+from databroker._core import DOCT_NAMES
 
 if sys.version_info >= (3, 5):
     from bluesky.plans import count
@@ -1292,3 +1293,32 @@ def test_order(db, RE, hw):
             if t0:
                 assert t1 > t0
             t0 = t1
+
+@py3
+def test_res_datum(db, RE, hw):
+    from ophyd.sim import NumpySeqHandler
+    import copy
+    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+    for spec in NumpySeqHandler.specs:
+        db.reg.register_handler(spec, NumpySeqHandler)
+    L = []
+    RE.subscribe(db.insert)
+    RE.subscribe(lambda *x: L.append(x))
+
+    uid, = RE(count([hw.img], num=7, delay=0.1))
+
+    names = set()
+    for (n1, d1), (n2, d2) in zip(db[uid].documents(), L):
+        print(n1)
+        names.add(n1)
+        assert n1 == n2
+        # It seems that some of the documents don't have key parity
+        if n1 == 'resource':
+            d1.pop('id')
+            d2.pop('run_start')
+        if n1 == 'stop':
+            d2.pop('reason')
+        # don't run direct equality because db changes tuple to list
+        print(d2)
+        assert set(d1.keys()) == set(d2.keys())
+    assert names == set(DOCT_NAMES.keys())

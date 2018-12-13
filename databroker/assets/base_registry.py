@@ -318,6 +318,10 @@ class BaseRegistryRO(object):
                                                    actual_resource['uid'])
         return datum_gen
 
+    def get_datum_from_datum_id(self, datum_id):
+        return self._api._get_datum_from_datum_id(self._datum_col, datum_id,
+                                  self._datum_cache, logger)
+
     # ## File-related API
     # This may move to a mix-in class or something
     def copy_files(self, resource_or_uid, new_root,

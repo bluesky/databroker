@@ -37,7 +37,7 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
     try:
         datum = datum_cache[datum_id]
     except KeyError:
-        keys = ['datum_kwargs', 'resource']
+        keys = ['datum_kwargs', 'resource', 'datum_id']
         # find the current document
         edoc = col.find_one({'datum_id': datum_id})
         if edoc is None:
