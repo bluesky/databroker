@@ -1265,7 +1265,6 @@ def test_monitoring(db, RE, hw):
     assert len(db[-1].table('rand_monitor')) > 1
 
 
-@py3
 def test_interlace_gens():
     from databroker.eventsource.shim import interlace_gens
     a = ({'time': i} for i in range(10) if i % 2 == 0)
@@ -1315,7 +1314,6 @@ def test_res_datum(db, RE, hw):
         # It seems that some of the documents don't have key parity
         if n1 == 'resource':
             d1.pop('id')
-            d2.pop('run_start')
         if n1 == 'stop':
             d2.pop('reason')
         # don't run direct equality because db changes tuple to list

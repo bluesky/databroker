@@ -29,26 +29,26 @@ def interlace_gens(*gens):
 
     Yields
     -------
-    val : tuple
-        The next (name, dict) pair in time order
+    val : dict
+        The next document in time order
 
     """
     iters = [iter(g) for g in gens]
     heap = []
 
-    def safe_next(indx):
+    def safe_next(itr, indx):
         try:
-            val = next(iters[indx])
+            val = next(itr)
         except StopIteration:
             return
-        heapq.heappush(heap, (val['time'], indx, val))
+        heapq.heappush(heap, (val['time'], indx, val, itr))
 
-    for i in range(len(iters)):
-        safe_next(i)
+    for j, itr in enumerate(iters):
+        safe_next(itr, j)
     while heap:
-        _, indx, val = heapq.heappop(heap)
+        _, j, val, itr = heapq.heappop(heap)
         yield val
-        safe_next(indx)
+        safe_next(itr, j)
 
 
 class EventSourceShim(object):
