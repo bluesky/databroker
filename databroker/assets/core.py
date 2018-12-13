@@ -37,14 +37,14 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
     try:
         datum = datum_cache[datum_id]
     except KeyError:
-        keys = ['datum_kwargs', 'resource', 'datum_id']
         # find the current document
         edoc = col.find_one({'datum_id': datum_id})
         if edoc is None:
             raise DatumNotFound(
                 "No datum found with datum_id {!r}".format(datum_id))
         # save it for later
-        datum = {k: edoc[k] for k in keys}
+        datum = dict(edoc)
+        datum.pop('_id')
 
         res = edoc['resource']
         count = 0
@@ -52,7 +52,7 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
             count += 1
             d_id = dd['datum_id']
             if d_id not in datum_cache:
-                datum_cache[d_id] = {k: dd[k] for k in keys}
+                datum_cache[d_id] = dict(datum)
         if count > datum_cache.max_size:
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
