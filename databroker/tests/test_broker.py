@@ -1262,3 +1262,16 @@ def test_monitoring(db, RE, hw):
     sd.monitors.append(hw.rand)
     RE(bp.count([hw.det], 5, delay=1))
     assert len(db[-1].table('rand_monitor')) > 1
+
+
+def test_search_order(db, RE, hw):
+    RE.subscribe(db.insert)
+    RE(count([hw.det], 5))
+    RE(count([hw.det], 5))
+
+    hdrs1 = db(order='descending')
+    hdrs2 = db(order='ascending')
+
+    for h1, h2 in zip(list(hdrs1), reversed(list(hdrs2))):
+        assert h1 == h2
+

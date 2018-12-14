@@ -777,7 +777,9 @@ def bulk_insert_events(event_col, descriptor, events, validate):
 
 # DATABASE RETRIEVAL ##########################################################
 
-def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
+def find_run_starts(run_start_col, run_start_cache, tz,
+                    order='descending',
+                    **kwargs):
     """Given search criteria, locate RunStart Documents.
 
     Parameters
@@ -802,6 +804,8 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
         The username of the logged-in user when the scan was performed
     scan_id : int, optional
         Integer scan identifier
+    order : {'ascending', 'descending'}
+        The time order to return the headers in.
 
     Returns
     -------
@@ -822,8 +826,13 @@ def find_run_starts(run_start_col, run_start_cache, tz, **kwargs):
     # now try rest of formatting
     _format_time(kwargs, tz)
     _format_regex(kwargs)
-    rs_objects = run_start_col.find(kwargs,
-                                    sort=[('time', DESCENDING)])
+    if order == 'descending':
+        sort = [('time', DESCENDING)]
+    elif order == 'ascending':
+        sort = [('time', ASCENDING)]
+    else:
+        raise NotImplementedError('That order option is not implemented')
+    rs_objects = run_start_col.find(kwargs, sort=sort)
 
     for rs in rs_objects:
         yield _cache_run_start(rs, run_start_cache)
