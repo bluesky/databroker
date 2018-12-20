@@ -44,7 +44,6 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
                 "No datum found with datum_id {!r}".format(datum_id))
         # save it for later
         datum = dict(edoc)
-        datum.pop('_id')
 
         res = edoc['resource']
         count = 0
@@ -52,7 +51,7 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
             count += 1
             d_id = dd['datum_id']
             if d_id not in datum_cache:
-                datum_cache[d_id] = dict(datum)
+                datum_cache[d_id] = dict(dd)
         if count > datum_cache.max_size:
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")

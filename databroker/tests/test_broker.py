@@ -1151,49 +1151,49 @@ def test_extraneous_filled_stripped_on_insert(db, RE, hw):
 
 @py3
 def test_filled_false_stripped_on_insert(db, RE, hw):
+    datum_id_list = []
+
     # Hack the Event and the Descriptor consistently.
     def insert(name, doc):
         if name == 'event':
-            doc['filled'] = {'det': False}
-            doc['data']['det'] = 'DATUM_ID_PLACEHOLDER'
+            datum_id_list.append(doc['data']['img'])
             assert 'filled' in doc
-        elif name == 'descriptor':
-            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
         db.insert(name, doc)
 
     RE.subscribe(insert)
 
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.img]))
     h = db[uid]
 
     # expect event['filled'] == {'det': False}
     for ev in h.events():
-        assert 'det' in ev['filled']
-        assert not ev['filled']['det']
-        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+        assert 'img' in ev['filled']
+        assert not ev['filled']['img']
+        assert ev['data']['img'] == datum_id_list[-1]
 
 
 @py3
 def test_filled_true_rotated_on_insert(db, RE, hw):
+    datum_id_list = []
+
     # Hack the Event and the Descriptor consistently.
     def insert(name, doc):
         if name == 'event':
-            doc['filled'] = {'det': 'DATUM_ID_PLACEHOLDER'}
+            datum_id_list.append(doc['data']['img'])
+            doc['filled'] = {'img': doc['data']['img']}
             assert 'filled' in doc
-        elif name == 'descriptor':
-            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
         db.insert(name, doc)
 
     RE.subscribe(insert)
 
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.img]))
     h = db[uid]
 
     # expect event['filled'] == {'det': False}
     for ev in h.events():
-        assert 'det' in ev['filled']
-        assert not ev['filled']['det']
-        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+        assert 'img' in ev['filled']
+        assert not ev['filled']['img']
+        assert ev['data']['img'] == datum_id_list[-1]
 
 
 @py3
