@@ -26,7 +26,7 @@ if sys.version_info >= (3, 5):
                                        run_decorator,
                                        baseline_wrapper,
                                        stage_wrapper,
-                                       pchain)
+                                       pchain, run_wrapper)
 
 logger = logging.getLogger(__name__)
 
@@ -563,10 +563,10 @@ def test_handler_options(db, RE, hw):
     event_uid2 = str(uuid.uuid4())
 
     # Side-band resource and datum documents.
-    res = db.reg.insert_resource('foo', '', {'x': 1})
+    res = db.reg.insert_resource('foo', '', {'x': 1}, run_start='hi')
     db.reg.insert_datum(res, datum_id, {'y': 2})
 
-    res2 = db.reg.insert_resource('foo', '', {'x': 1})
+    res2 = db.reg.insert_resource('foo', '', {'x': 1}, run_start='hi')
     db.reg.insert_datum(res2, datum_id2, {'y': 2})
 
     # Generate a normal run.
