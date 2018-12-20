@@ -26,7 +26,7 @@ if sys.version_info >= (3, 5):
                                        run_decorator,
                                        baseline_wrapper,
                                        stage_wrapper,
-                                       pchain, run_wrapper)
+                                       pchain)
 
 logger = logging.getLogger(__name__)
 
