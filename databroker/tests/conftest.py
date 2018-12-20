@@ -29,7 +29,7 @@ if sys.version_info >= (3, 5):
 
 
 @pytest.fixture(params=['sqlite', 'mongo', 'hdf5',
-                        # 'client'
+                        'client'
                         ], scope='module')
 def db(request):
     param_map = {'sqlite': build_sqlite_backed_broker,
@@ -42,7 +42,7 @@ def db(request):
 
 
 @pytest.fixture(params=['sqlite', 'mongo', 'hdf5',
-                        # 'client'
+                        'client'
                         ], scope='function')
 def db_empty(request):
     param_map = {'sqlite': build_sqlite_backed_broker,
@@ -57,7 +57,7 @@ def db_empty(request):
 
 
 @pytest.fixture(params=['sqlite', 'mongo', 'hdf5',
-                        # 'client'
+                        'client'
                         ], scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."

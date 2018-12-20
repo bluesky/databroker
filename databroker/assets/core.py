@@ -56,6 +56,7 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
+    datum.pop('_id', None)
     return datum
 
 

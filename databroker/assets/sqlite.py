@@ -8,16 +8,19 @@ from .base_registry import (RegistryTemplate, BaseRegistryRO, _ChainMap,
                             RegistryMovingTemplate)
 
 
+RESOURCE_VERSION = 'v2'
+
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
 CREATE_RESOURCES_TABLE = """
-CREATE TABLE Resources(
+CREATE TABLE Resources_{}(
     uid TEXT PRIMARY KEY NOT NULL,
     spec TEXT NOT NULL,
     resource_path TEXT NOT NULL,
     root TEXT NOT NULL,
     path_semantics TEXT NOT NULL,
-    resource_kwargs BLOB NOT NULL
-);"""
+    resource_kwargs BLOB NOT NULL,
+    run_start TEXT NOT NULL
+);""".format(RESOURCE_VERSION)
 CREATE_DATUMS_TABLE = """
 CREATE TABLE Datums(
     datum_id TEXT PRIMARY KEY NOT NULL,
@@ -39,10 +42,12 @@ INSERT_DATUM = """
 INSERT INTO Datums (datum_id, datum_kwargs, resource)
 VALUES (?, ?, ?);"""
 INSERT_RESOURCE = """
-INSERT INTO Resources (uid, spec, resource_path, root, path_semantics,
-                       resource_kwargs)
-VALUES (?, ?, ?, ?, ?, ?);"""
-SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
+INSERT INTO Resources_{} (uid, spec, resource_path, root, path_semantics,
+                       resource_kwargs, run_start)
+VALUES (?, ?, ?, ?, ?, ?, ?);""".format(RESOURCE_VERSION)
+SELECT_RESOURCE = "SELECT * FROM Resources_{} WHERE uid=?;".format(
+    RESOURCE_VERSION)
+OLD_SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
 SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_id=?;"
 SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource=?;"
 UPDATE_RESOURCE = """
@@ -104,7 +109,8 @@ class RegistryDatabase(object):
                 c.execute(CREATE_DATUMS_TABLE)
                 c.execute(CREATE_RESOURCE_UPDATES_TABLE)
         else:
-            EXPECTED_TABLES = ['Resources', 'Datums', 'ResourceUpdates']
+            EXPECTED_TABLES = ['Resources_{}'.format(RESOURCE_VERSION),
+                               'Datums', 'ResourceUpdates']
             if tables != set(EXPECTED_TABLES):
                 raise RuntimeError("Database exists at {} but does not "
                                    "have expected schema. Expected "
@@ -187,7 +193,7 @@ class ResourceCollection(object):
     def insert_one(self, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
         keys = ['uid', 'spec', 'resource_path', 'root', 'path_semantics',
-                'resource_kwargs']
+                'resource_kwargs', 'run_start']
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE, [resource[k] for k in keys])
 
@@ -198,9 +204,14 @@ class ResourceCollection(object):
             c.execute(UPDATE_RESOURCE, [resource[k] for k in keys])
 
     def find_one(self, query):
-        with cursor(self._conn) as c:
-            c.execute(SELECT_RESOURCE, (query['uid'],))
-            raw = c.fetchone()
+        # Cycle through the resource tables if we can't find something look
+        # it up in an older one.
+        for select in [SELECT_RESOURCE, OLD_SELECT_RESOURCE]:
+            with cursor(self._conn) as c:
+                c.execute(select, (query['uid'],))
+                raw = c.fetchone()
+                if raw is not None:
+                    break
         if raw is None:
             return None
         doc = dict(raw)
