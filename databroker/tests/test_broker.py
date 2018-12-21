@@ -1285,7 +1285,6 @@ def test_order(db, RE, hw):
 
     t0 = None
     for name, doc in db[uid].documents():
-        print(name, doc['time'])
         # TODO: include datums in here at some point
         if name in ['event']:
             t1 = doc['time']
