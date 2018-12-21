@@ -1308,7 +1308,6 @@ def test_res_datum(db, RE, hw):
 
     names = set()
     for (n1, d1), (n2, d2) in zip(db[uid].documents(), L):
-        print(n1)
         names.add(n1)
         assert n1 == n2
         # It seems that some of the documents don't have key parity
