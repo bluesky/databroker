@@ -125,7 +125,7 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
     if duplicate_exc is None:
         class _PrivateException(Exception):
-            ...
+            pass
         duplicate_exc = _PrivateException
     try:
         resource['spec']
@@ -173,7 +173,7 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
         assert duplicate_exc is not None
     if duplicate_exc is None:
         class _PrivateException(Exception):
-            ...
+            pass
         duplicate_exc = _PrivateException
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
