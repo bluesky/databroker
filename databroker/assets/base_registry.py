@@ -434,7 +434,6 @@ class RegistryTemplate(BaseRegistryRO):
 
     # ## Hi-level API: insertion
     def register_resource(self, spec, root, rpath, rkwargs,
-                          path_semantics='posix',
                           run_start=None):
         '''Register a Resource with this Registry.
 
