@@ -170,7 +170,7 @@ Write a Handler
        def __init__(self, filename):
            self.file = h5py.File(filename)
        def __call__(self, key):
-           return self.file[key].value
+           return self.file[key][()]
 
 Make a Record of the Data
 -------------------------
@@ -222,7 +222,7 @@ Write a Handler
    class HDF5DatasetSliceHandler(object):
        def __init__(self, filename, dataset_name):
            f = h5py.File(filename)
-           self.data = f[dataset_name].value
+           self.data = f[dataset_name][()]
        def __call__(self, frame_no):
            return self.data[frame_no, :, :]
 
