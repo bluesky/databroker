@@ -11,6 +11,7 @@ from .base_registry import (RegistryTemplate, BaseRegistryRO, _ChainMap,
 RESOURCE_VERSION = 'v2'
 
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
+
 CREATE_RESOURCES_TABLE = """
 CREATE TABLE Resources_{}(
     uid TEXT PRIMARY KEY NOT NULL,
@@ -26,8 +27,8 @@ CREATE TABLE Datums(
     datum_id TEXT PRIMARY KEY NOT NULL,
     datum_kwargs BLOB NOT NULL,
     resource TEXT NOT NULL,
-    FOREIGN KEY(resource) REFERENCES Resources(uid)
-);"""
+    FOREIGN KEY(resource) REFERENCES Resources_{}(uid)
+);""".format(RESOURCE_VERSION)
 CREATE_RESOURCE_UPDATES_TABLE = """
 CREATE TABLE ResourceUpdates(
     resource TEXT,
@@ -36,8 +37,9 @@ CREATE TABLE ResourceUpdates(
     time FLOAT NOT NULL,
     cmd TEXT NOT NULL,
     cmd_kwargs BLOB NOT NULL,
-    FOREIGN KEY(resource) REFERENCES Resources(uid)
-);"""
+    FOREIGN KEY(resource) REFERENCES Resources_{}(uid)
+);""".format(RESOURCE_VERSION)
+
 INSERT_DATUM = """
 INSERT INTO Datums (datum_id, datum_kwargs, resource)
 VALUES (?, ?, ?);"""
@@ -45,19 +47,21 @@ INSERT_RESOURCE = """
 INSERT INTO Resources_{} (uid, spec, resource_path, root, path_semantics,
                        resource_kwargs, run_start)
 VALUES (?, ?, ?, ?, ?, ?, ?);""".format(RESOURCE_VERSION)
+
 SELECT_RESOURCE = "SELECT * FROM Resources_{} WHERE uid=?;".format(
     RESOURCE_VERSION)
 OLD_SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
 SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_id=?;"
 SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource=?;"
+
 UPDATE_RESOURCE = """
-UPDATE Resources
+UPDATE Resources_{}
 SET
 spec=?,
 resource_path=?,
 root=?,
 resource_kwargs=?
-WHERE uid=?;"""
+WHERE uid=?;""".format(RESOURCE_VERSION)
 INSERT_RESOURCE_UPDATE = """
 INSERT INTO ResourceUpdates (resource, old, new, time, cmd, cmd_kwargs)
 VALUES (?, ?, ?, ?, ?, ?);"""
