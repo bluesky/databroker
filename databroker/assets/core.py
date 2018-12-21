@@ -122,6 +122,11 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
                  duplicate_exc=None):
     if ignore_duplicate_error:
         assert duplicate_exc is not None
+
+    if duplicate_exc is None:
+        class _PrivateException(Exception):
+            ...
+        duplicate_exc = _PrivateException
     try:
         resource['spec']
         spec = resource['spec']
