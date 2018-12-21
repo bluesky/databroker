@@ -199,7 +199,7 @@ class ResourceCollection(object):
         keys = ['uid', 'spec', 'resource_path', 'root', 'path_semantics',
                 'resource_kwargs']
         data = [resource[k] for k in keys]
-        data.append(resource.get('run_start', ''))
+        data.append(resource.get('run_start', 'THISISNOTARUNSTART'))
         with cursor(self._conn) as c:
             c.execute(INSERT_RESOURCE, data)
 
@@ -221,6 +221,8 @@ class ResourceCollection(object):
         if raw is None:
             return None
         doc = dict(raw)
+        if doc['run_start'] == 'THISISNOTARUNSTART':
+            doc.pop('run_start')
         doc['resource_kwargs'] = json.loads(doc['resource_kwargs'])
         return doc
 

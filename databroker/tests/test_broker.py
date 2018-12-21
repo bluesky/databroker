@@ -563,10 +563,10 @@ def test_handler_options(db, RE, hw):
     event_uid2 = str(uuid.uuid4())
 
     # Side-band resource and datum documents.
-    res = db.reg.insert_resource('foo', '', {'x': 1}, run_start='hi')
+    res = db.reg.insert_resource('foo', '', {'x': 1})
     db.reg.insert_datum(res, datum_id, {'y': 2})
 
-    res2 = db.reg.insert_resource('foo', '', {'x': 1}, run_start='hi')
+    res2 = db.reg.insert_resource('foo', '', {'x': 1})
     db.reg.insert_datum(res2, datum_id2, {'y': 2})
 
     # Generate a normal run.
@@ -1285,7 +1285,6 @@ def test_order(db, RE, hw):
 
     t0 = None
     for name, doc in db[uid].documents():
-        print(name, doc['time'])
         # TODO: include datums in here at some point
         if name in ['event']:
             t1 = doc['time']
@@ -1308,7 +1307,6 @@ def test_res_datum(db, RE, hw):
 
     names = set()
     for (n1, d1), (n2, d2) in zip(db[uid].documents(), L):
-        print(n1)
         names.add(n1)
         assert n1 == n2
         # It seems that some of the documents don't have key parity
@@ -1317,6 +1315,5 @@ def test_res_datum(db, RE, hw):
         if n1 == 'stop':
             d2.pop('reason')
         # don't run direct equality because db changes tuple to list
-        print(d2)
         assert set(d1.keys()) == set(d2.keys())
     assert names == set(DOCT_NAMES.keys())
