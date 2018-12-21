@@ -193,9 +193,11 @@ class ResourceCollection(object):
     def insert_one(self, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
         keys = ['uid', 'spec', 'resource_path', 'root', 'path_semantics',
-                'resource_kwargs', 'run_start']
+                'resource_kwargs']
+        data = [resource[k] for k in keys]
+        data.append(resource.get('run_start', ''))
         with cursor(self._conn) as c:
-            c.execute(INSERT_RESOURCE, [resource[k] for k in keys])
+            c.execute(INSERT_RESOURCE, data)
 
     def replace_one(self, query, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
