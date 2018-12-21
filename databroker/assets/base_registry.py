@@ -434,6 +434,7 @@ class RegistryTemplate(BaseRegistryRO):
 
     # ## Hi-level API: insertion
     def register_resource(self, spec, root, rpath, rkwargs,
+                          path_semantics='posix',
                           run_start=None):
         '''Register a Resource with this Registry.
 
@@ -467,7 +468,9 @@ class RegistryTemplate(BaseRegistryRO):
         return self._api.insert_resource(col, spec, rpath,
                                          rkwargs,
                                          self.known_spec,
-                                         root=root, **rs_kwarg)['uid']
+                                         root=root,
+                                         path_semantics=path_semantics,
+                                         **rs_kwarg)['uid']
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
         '''Register a datum with the Registry.
