@@ -141,7 +141,8 @@ def moving_files(request, fs_v1, tmpdir):
     res = fs_v1.insert_resource('npy_series',
                                 local_path,
                                 {'fmt': fmt},
-                                root=tmpdir)
+                                root=tmpdir,
+                                run_start=str(uuid.uuid4()))
 
     datum_ids = []
     fnames = []
