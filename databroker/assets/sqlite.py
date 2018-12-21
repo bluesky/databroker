@@ -47,6 +47,10 @@ INSERT_RESOURCE = """
 INSERT INTO Resources_{} (uid, spec, resource_path, root, path_semantics,
                        resource_kwargs, run_start)
 VALUES (?, ?, ?, ?, ?, ?, ?);""".format(RESOURCE_VERSION)
+OLD_INSERT_RESOURCE = """
+INSERT INTO Resources_{} (uid, spec, resource_path, root, path_semantics,
+                       resource_kwargs, run_start)
+VALUES (?, ?, ?, ?, ?, ?, ?);""".format(RESOURCE_VERSION)
 
 SELECT_RESOURCE = "SELECT * FROM Resources_{} WHERE uid=?;".format(
     RESOURCE_VERSION)
@@ -62,6 +66,14 @@ resource_path=?,
 root=?,
 resource_kwargs=?
 WHERE uid=?;""".format(RESOURCE_VERSION)
+OLD_UPDATE_RESOURCE = """
+UPDATE Resources
+SET
+spec=?,
+resource_path=?,
+root=?,
+resource_kwargs=?
+WHERE uid=?;"""
 INSERT_RESOURCE_UPDATE = """
 INSERT INTO ResourceUpdates (resource, old, new, time, cmd, cmd_kwargs)
 VALUES (?, ?, ?, ?, ?, ?);"""
@@ -113,9 +125,14 @@ class RegistryDatabase(object):
                 c.execute(CREATE_DATUMS_TABLE)
                 c.execute(CREATE_RESOURCE_UPDATES_TABLE)
         else:
-            EXPECTED_TABLES = ['Resources_{}'.format(RESOURCE_VERSION),
-                               'Datums', 'ResourceUpdates']
-            if tables != set(EXPECTED_TABLES):
+            have_tables = False
+            for res in ['Resources_{}'.format(RESOURCE_VERSION),
+                        'Resources']:
+                EXPECTED_TABLES = [res, 'Datums', 'ResourceUpdates']
+                if tables == set(EXPECTED_TABLES):
+                    have_tables = True
+                    break
+            if not have_tables:
                 raise RuntimeError("Database exists at {} but does not "
                                    "have expected schema. Expected "
                                    "tables: {}; found tables: {}".format(
@@ -200,14 +217,38 @@ class ResourceCollection(object):
                 'resource_kwargs']
         data = [resource[k] for k in keys]
         data.append(resource.get('run_start', 'THISISNOTARUNSTART'))
-        with cursor(self._conn) as c:
-            c.execute(INSERT_RESOURCE, data)
+        # Check if we inserted properly, else raise
+        inserted = False
+        for insert in [INSERT_RESOURCE, OLD_INSERT_RESOURCE]:
+            try:
+                with cursor(self._conn) as c:
+                    c.execute(insert, data)
+            except sqlite3.ProgrammingError:
+                pass
+            else:
+                inserted = True
+                break
+        if not inserted:
+            raise RuntimeError('No databases were found to insert into')
+
 
     def replace_one(self, query, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
         keys = ['spec', 'resource_path', 'root', 'resource_kwargs', 'uid']
-        with cursor(self._conn) as c:
-            c.execute(UPDATE_RESOURCE, [resource[k] for k in keys])
+
+        # Check if we inserted properly, else raise
+        inserted = False
+        for cmd in [UPDATE_RESOURCE, OLD_UPDATE_RESOURCE]:
+            try:
+                with cursor(self._conn) as c:
+                    c.execute(cmd, [resource[k] for k in keys])
+            except sqlite3.ProgrammingError:
+                pass
+            else:
+                inserted = True
+                break
+        if not inserted:
+            raise RuntimeError('No databases were found to update')
 
     def find_one(self, query):
         # Cycle through the resource tables if we can't find something look
