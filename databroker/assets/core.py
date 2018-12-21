@@ -171,6 +171,10 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
                     ignore_duplicate_error=False, duplicate_exc=None):
     if ignore_duplicate_error:
         assert duplicate_exc is not None
+    if duplicate_exc is None:
+        class _PrivateException(Exception):
+            ...
+        duplicate_exc = _PrivateException
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])
