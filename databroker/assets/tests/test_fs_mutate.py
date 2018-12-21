@@ -45,7 +45,8 @@ def test_root_shift(fs_v1, step, sign):
     last_res = fs.insert_resource('root-test',
                                   rpath,
                                   {'a': 'fizz', 'b': 5},
-                                  root=root)
+                                  root=root,
+                                  run_start=str(uuid.uuid4()))
     for n, j in enumerate(range(step, n_paths, step)):
         new_res, log = fs.shift_root(last_res, sign * step)
         assert last_res == log['old']
@@ -68,7 +69,8 @@ def test_pathological_root(fs_v1, root):
     last_res = fs.insert_resource('root-test',
                                   rpath,
                                   {'a': 'fizz', 'b': 5},
-                                  root=root)
+                                  root=root,
+                                  run_start=str(uuid.uuid4()))
     new_res, _ = fs.shift_root(last_res, 2)
     assert new_res['root'] == '/foo/bar'
     assert new_res['resource_path'] == 'baz'
@@ -82,7 +84,8 @@ def test_history(fs_v1):
     last_res = fs.insert_resource('root-test',
                                   rpath,
                                   {'a': 'fizz', 'b': 5},
-                                  root=root)
+                                  root=root,
+                                  run_start=str(uuid.uuid4()))
     for j in range(shift_count):
         new_res, log = fs.shift_root(last_res, 1)
 
@@ -107,7 +110,8 @@ def test_over_step(fs_v1, shift):
     last_res = fs.insert_resource('root-test',
                                   'a/b',
                                   {'a': 'fizz', 'b': 5},
-                                  root='/c')
+                                  root='/c',
+                                  run_start=str(uuid.uuid4()))
     with pytest.raises(RuntimeError):
         fs.shift_root(last_res, shift)
 
@@ -201,7 +205,8 @@ def test_no_root(fs_v1, tmpdir):
     res = fs.insert_resource('npy_series',
                              os.path.join(str(tmpdir),
                                           local_path),
-                             {'fmt': fmt})
+                             {'fmt': fmt},
+                             run_start=str(uuid.uuid4()))
     fs_v1.move_files(res, '/foobar')
 
 
@@ -219,7 +224,8 @@ def test_temporary_root(fs_v1):
     fs.set_root_map({'bar': 'baz', 'bar2' : 'baz2'})
     print(fs.root_map)
     print(fs._handler_cache)
-    res = fs.insert_resource('root-test', 'foo', {}, root='bar')
+    res = fs.insert_resource('root-test', 'foo', {}, root='bar',
+                             run_start=str(uuid.uuid4()))
     dm = fs.insert_datum(res, res['uid'] + '/0', {})
     if fs.version == 1:
         assert res['root'] == 'bar'
@@ -236,7 +242,8 @@ def test_temporary_root(fs_v1):
     assert path == os.path.join('baz', 'foo')
 
     # test two root maps work
-    res = fs.insert_resource('root-test', 'foo', {}, root='bar2')
+    res = fs.insert_resource('root-test', 'foo', {}, root='bar2',
+                             run_start=str(uuid.uuid4()))
     dm = fs.insert_datum(res, res['uid'] + '/0', {})
     if fs.version == 1:
         assert res['root'] == 'bar2'
