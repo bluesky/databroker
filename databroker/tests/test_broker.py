@@ -1317,6 +1317,5 @@ def test_res_datum(db, RE, hw):
         if n1 == 'stop':
             d2.pop('reason')
         # don't run direct equality because db changes tuple to list
-        print(d2)
         assert set(d1.keys()) == set(d2.keys())
     assert names == set(DOCT_NAMES.keys())
