@@ -1105,6 +1105,13 @@ class BrokerES(object):
         return {k: func(start, stop) for
                 k, func in self.external_fetchers.items()}
 
+    @property
+    def event_sources_by_name(self):
+        es = {}
+        for event_source in self.event_sources:
+            es[event_source.name] = event_source
+        return es
+
     def add_event_source(self, es):
         self.event_sources.append(es)
 
@@ -2108,8 +2115,10 @@ class Broker(BrokerES):
     name : str, optional
         The name of the broker
     """
+
     def __init__(self, mds, reg=None, plugins=None, filters=None,
-                 auto_register=True, external_fetchers=None, name=None):
+                 auto_register=True, external_fetchers=None,
+                 name=None, event_sources=None):
         if plugins is not None:
             raise ValueError("The 'plugins' argument is no longer supported. "
                              "Use an EventSource instead.")
@@ -2121,9 +2130,13 @@ class Broker(BrokerES):
             warnings.warn("Future versions of the databroker will not accept "
                           "'filters' in __init__. Set them using the filters "
                           "attribute after initialization.", stacklevel=2)
+
+        ess = [EventSourceShim(mds, reg)]
+        if event_sources:
+            ess += event_sources
         super(Broker, self).__init__(HeaderSourceShim(mds),
-                                     [EventSourceShim(mds, reg)],
-                                     {'': reg}, external_fetchers, name=name)
+                                     ess,
+                                     {'': reg}, external_fetchers, name=name)    
         self.filters = filters
         if auto_register:
             register_builtin_handlers(self.reg)
@@ -2178,8 +2191,17 @@ class Broker(BrokerES):
         # Instantiate component classes.
         mds = mds_cls(config['metadatastore']['config'])
         assets = assets_cls(config['assets']['config'])
+        # Instantiate event sources.
+        event_sources = []
+        ess = []
+        if 'event_sources' in config.keys():
+            ess = config['event_sources']
+        for es in ess:
+            es_cls = load_cls(es)
+            event_sources.append(es_cls(es['config']))
         # Instantiate Broker.
-        db = cls(mds, assets, auto_register=auto_register, name=name)
+        db = cls(mds, assets, auto_register=auto_register,
+                 name=name, event_sources=event_sources)
         # Register handlers included in the config, if any.
         for spec, handler in config.get('handlers', {}).items():
             cls = load_cls(handler)

@@ -303,6 +303,7 @@ See also the Broker methods :meth:`Broker.from_config` and
 
 Internals
 ---------
+
 .. autosummary::
    :toctree: generated
    :nosignatures:
@@ -312,7 +313,6 @@ Internals
 
 Deprecated
 ----------
-
 
 .. autosummary::
    :toctree: generated

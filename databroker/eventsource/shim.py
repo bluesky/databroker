@@ -59,6 +59,10 @@ class EventSourceShim(object):
     '''
 
     @property
+    def name(self):
+        return 'mds'
+
+    @property
     def NoEventDescriptors(self):
         return self.mds.NoEventDescriptors
 
