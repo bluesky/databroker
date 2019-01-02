@@ -8,23 +8,27 @@ from .base_registry import (RegistryTemplate, BaseRegistryRO, _ChainMap,
                             RegistryMovingTemplate)
 
 
+RESOURCE_VERSION = 'v2'
+
 LIST_TABLES = "SELECT name FROM sqlite_master WHERE type='table';"
+
 CREATE_RESOURCES_TABLE = """
-CREATE TABLE Resources(
+CREATE TABLE Resources_{}(
     uid TEXT PRIMARY KEY NOT NULL,
     spec TEXT NOT NULL,
     resource_path TEXT NOT NULL,
     root TEXT NOT NULL,
     path_semantics TEXT NOT NULL,
-    resource_kwargs BLOB NOT NULL
-);"""
+    resource_kwargs BLOB NOT NULL,
+    run_start TEXT NOT NULL
+);""".format(RESOURCE_VERSION)
 CREATE_DATUMS_TABLE = """
 CREATE TABLE Datums(
     datum_id TEXT PRIMARY KEY NOT NULL,
     datum_kwargs BLOB NOT NULL,
     resource TEXT NOT NULL,
-    FOREIGN KEY(resource) REFERENCES Resources(uid)
-);"""
+    FOREIGN KEY(resource) REFERENCES Resources_{}(uid)
+);""".format(RESOURCE_VERSION)
 CREATE_RESOURCE_UPDATES_TABLE = """
 CREATE TABLE ResourceUpdates(
     resource TEXT,
@@ -33,19 +37,36 @@ CREATE TABLE ResourceUpdates(
     time FLOAT NOT NULL,
     cmd TEXT NOT NULL,
     cmd_kwargs BLOB NOT NULL,
-    FOREIGN KEY(resource) REFERENCES Resources(uid)
-);"""
+    FOREIGN KEY(resource) REFERENCES Resources_{}(uid)
+);""".format(RESOURCE_VERSION)
+
 INSERT_DATUM = """
 INSERT INTO Datums (datum_id, datum_kwargs, resource)
 VALUES (?, ?, ?);"""
 INSERT_RESOURCE = """
-INSERT INTO Resources (uid, spec, resource_path, root, path_semantics,
-                       resource_kwargs)
-VALUES (?, ?, ?, ?, ?, ?);"""
-SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
+INSERT INTO Resources_{} (uid, spec, resource_path, root, path_semantics,
+                       resource_kwargs, run_start)
+VALUES (?, ?, ?, ?, ?, ?, ?);""".format(RESOURCE_VERSION)
+OLD_INSERT_RESOURCE = """
+INSERT INTO Resources_{} (uid, spec, resource_path, root, path_semantics,
+                       resource_kwargs, run_start)
+VALUES (?, ?, ?, ?, ?, ?, ?);""".format(RESOURCE_VERSION)
+
+SELECT_RESOURCE = "SELECT * FROM Resources_{} WHERE uid=?;".format(
+    RESOURCE_VERSION)
+OLD_SELECT_RESOURCE = "SELECT * FROM Resources WHERE uid=?;"
 SELECT_DATUM_BY_UID = "SELECT * FROM Datums WHERE datum_id=?;"
 SELECT_DATUM_BY_RESOURCE = "SELECT * FROM Datums WHERE resource=?;"
+
 UPDATE_RESOURCE = """
+UPDATE Resources_{}
+SET
+spec=?,
+resource_path=?,
+root=?,
+resource_kwargs=?
+WHERE uid=?;""".format(RESOURCE_VERSION)
+OLD_UPDATE_RESOURCE = """
 UPDATE Resources
 SET
 spec=?,
@@ -104,8 +125,14 @@ class RegistryDatabase(object):
                 c.execute(CREATE_DATUMS_TABLE)
                 c.execute(CREATE_RESOURCE_UPDATES_TABLE)
         else:
-            EXPECTED_TABLES = ['Resources', 'Datums', 'ResourceUpdates']
-            if tables != set(EXPECTED_TABLES):
+            have_tables = False
+            for res in ['Resources_{}'.format(RESOURCE_VERSION),
+                        'Resources']:
+                EXPECTED_TABLES = [res, 'Datums', 'ResourceUpdates']
+                if tables == set(EXPECTED_TABLES):
+                    have_tables = True
+                    break
+            if not have_tables:
                 raise RuntimeError("Database exists at {} but does not "
                                    "have expected schema. Expected "
                                    "tables: {}; found tables: {}".format(
@@ -188,22 +215,55 @@ class ResourceCollection(object):
         resource = shadow_with_json(resource, ['resource_kwargs'])
         keys = ['uid', 'spec', 'resource_path', 'root', 'path_semantics',
                 'resource_kwargs']
-        with cursor(self._conn) as c:
-            c.execute(INSERT_RESOURCE, [resource[k] for k in keys])
+        data = [resource[k] for k in keys]
+        data.append(resource.get('run_start', 'THISISNOTARUNSTART'))
+        # Check if we inserted properly, else raise
+        inserted = False
+        for insert in [INSERT_RESOURCE, OLD_INSERT_RESOURCE]:
+            try:
+                with cursor(self._conn) as c:
+                    c.execute(insert, data)
+            except sqlite3.ProgrammingError:
+                pass
+            else:
+                inserted = True
+                break
+        if not inserted:
+            raise RuntimeError('No databases were found to insert into')
+
 
     def replace_one(self, query, resource):
         resource = shadow_with_json(resource, ['resource_kwargs'])
         keys = ['spec', 'resource_path', 'root', 'resource_kwargs', 'uid']
-        with cursor(self._conn) as c:
-            c.execute(UPDATE_RESOURCE, [resource[k] for k in keys])
+
+        # Check if we inserted properly, else raise
+        inserted = False
+        for cmd in [UPDATE_RESOURCE, OLD_UPDATE_RESOURCE]:
+            try:
+                with cursor(self._conn) as c:
+                    c.execute(cmd, [resource[k] for k in keys])
+            except sqlite3.ProgrammingError:
+                pass
+            else:
+                inserted = True
+                break
+        if not inserted:
+            raise RuntimeError('No databases were found to update')
 
     def find_one(self, query):
-        with cursor(self._conn) as c:
-            c.execute(SELECT_RESOURCE, (query['uid'],))
-            raw = c.fetchone()
+        # Cycle through the resource tables if we can't find something look
+        # it up in an older one.
+        for select in [SELECT_RESOURCE, OLD_SELECT_RESOURCE]:
+            with cursor(self._conn) as c:
+                c.execute(select, (query['uid'],))
+                raw = c.fetchone()
+                if raw is not None:
+                    break
         if raw is None:
             return None
         doc = dict(raw)
+        if doc['run_start'] == 'THISISNOTARUNSTART':
+            doc.pop('run_start')
         doc['resource_kwargs'] = json.loads(doc['resource_kwargs'])
         return doc
 

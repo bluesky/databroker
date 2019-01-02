@@ -5,16 +5,50 @@ from itertools import chain
 import pandas as pd
 import logging
 import boltons.cacheutils
+import heapq
 import re
 from ..utils import ALL
+
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
 except ImportError:
     from toolz.dicttoolz import merge
 
-
 logger = logging.getLogger(__name__)
+
+
+def interlace_gens(*gens):
+    """Take generators and interlace their results by timestamp
+
+    Parameters
+    ----------
+    gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time'
+        key.
+
+    Yields
+    -------
+    val : dict
+        The next document in time order
+
+    """
+    iters = [iter(g) for g in gens]
+    heap = []
+
+    def safe_next(itr, indx):
+        try:
+            val = next(itr)
+        except StopIteration:
+            return
+        heapq.heappush(heap, (val['time'], indx, val, itr))
+
+    for j, itr in enumerate(iters):
+        safe_next(itr, j)
+    while heap:
+        _, j, val, itr = heapq.heappop(heap)
+        yield val
+        safe_next(itr, j)
 
 
 class EventSourceShim(object):
@@ -41,7 +75,8 @@ class EventSourceShim(object):
 
     def fields_given_header(self, header, stream_name=ALL):
         fields = set()
-        for d in self.descriptors_given_header(header, stream_name=stream_name):
+        for d in self.descriptors_given_header(header,
+                                               stream_name=stream_name):
             fields.update(d['data_keys'])
         return fields
 
@@ -93,10 +128,11 @@ class EventSourceShim(object):
         stop = header['stop']
 
         yield 'start', header['start']
+        ev_gens = []
         for d in descs:
             (all_extra_dk, all_extra_data,
              all_extra_ts, discard_fields) = _extract_extra_data(
-                 start, stop, d, fields, comp_re, no_fields_filter)
+                start, stop, d, fields, comp_re, no_fields_filter)
 
             d = d.copy()
             dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
@@ -108,21 +144,21 @@ class EventSourceShim(object):
                 continue
 
             yield 'descriptor', d
-            ev_gen = self.mds.get_events_generator(d)
-            for ev in ev_gen:
-                event_data = ev['data']  # cache for perf
-                event_timestamps = ev['timestamps']
-                event_data.update(all_extra_data)
-                event_timestamps.update(all_extra_ts)
-                for field in discard_fields:
-                    del event_data[field]
-                    del event_timestamps[field]
-                if not event_data:
-                    # Skip events that are now empty because they had no
-                    # applicable fields.
-                    continue
+            ev_gens.append(self.mds.get_events_generator(d))
+        for ev in interlace_gens(*ev_gens):
+            event_data = ev['data']  # cache for perf
+            event_timestamps = ev['timestamps']
+            event_data.update(all_extra_data)
+            event_timestamps.update(all_extra_ts)
+            for field in discard_fields:
+                del event_data[field]
+                del event_timestamps[field]
+            if not event_data:
+                # Skip events that are now empty because they had no
+                # applicable fields.
+                continue
 
-                yield 'event', ev
+            yield 'event', ev
 
         yield 'stop', header['stop']
 
@@ -190,7 +226,7 @@ class EventSourceShim(object):
         for d in descs:
             (all_extra_dk, all_extra_data,
              all_extra_ts, discard_fields) = _extract_extra_data(
-                 start, stop, d, fields, comp_re, no_fields_filter)
+                start, stop, d, fields, comp_re, no_fields_filter)
 
             payload = self.mds.get_events_table(d)
             _, data, seq_nums, times, uids, timestamps = payload
@@ -204,9 +240,9 @@ class EventSourceShim(object):
             # if localizing to 'local' time
             if localize_times:
                 times = (times
-                         .dt.tz_localize('UTC')     # first make tz aware
-                         .dt.tz_convert(timezone)   # convert to 'local'
-                         .dt.tz_localize(None)      # make naive again
+                         .dt.tz_localize('UTC')  # first make tz aware
+                         .dt.tz_convert(timezone)  # convert to 'local'
+                         .dt.tz_localize(None)  # make naive again
                          )
 
             df['time'] = times
@@ -337,7 +373,6 @@ class EventSourceShim(object):
 
 def _extract_extra_data(start, stop, d, fields, comp_re,
                         no_fields_filter):
-
     def _project_header_data(source_data, source_ts,
                              selected_fields, comp_re):
         """Extract values from a header for merging into events

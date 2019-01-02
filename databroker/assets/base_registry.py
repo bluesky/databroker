@@ -318,6 +318,10 @@ class BaseRegistryRO(object):
                                                    actual_resource['uid'])
         return datum_gen
 
+    def get_datum_from_datum_id(self, datum_id):
+        return self._api._get_datum_from_datum_id(self._datum_col, datum_id,
+                                  self._datum_cache, logger)
+
     # ## File-related API
     # This may move to a mix-in class or something
     def copy_files(self, resource_or_uid, new_root,
@@ -430,7 +434,8 @@ class RegistryTemplate(BaseRegistryRO):
 
     # ## Hi-level API: insertion
     def register_resource(self, spec, root, rpath, rkwargs,
-                          path_semantics='posix'):
+                          path_semantics='posix',
+                          run_start=None):
         '''Register a Resource with this Registry.
 
         Parameters
@@ -454,12 +459,18 @@ class RegistryTemplate(BaseRegistryRO):
         if root is None:
             root = ''
 
+        rs_kwarg = {}
+        if run_start is not None:
+            rs_kwarg['run_start'] = run_start
+
         col = self._resource_col
 
         return self._api.insert_resource(col, spec, rpath,
                                          rkwargs,
                                          self.known_spec,
-                                         root=root)['uid']
+                                         root=root,
+                                         path_semantics=path_semantics,
+                                         **rs_kwarg)['uid']
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
         '''Register a datum with the Registry.

@@ -108,3 +108,9 @@ except ImportError:
 
         def __len__(self):
             return len(set(self.primary) | set(self.fallback))
+
+        def get(self, k, dflt=None):
+            try:
+                return self[k]
+            except KeyError:
+                return dflt

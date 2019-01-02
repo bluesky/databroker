@@ -37,14 +37,13 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
     try:
         datum = datum_cache[datum_id]
     except KeyError:
-        keys = ['datum_kwargs', 'resource']
         # find the current document
         edoc = col.find_one({'datum_id': datum_id})
         if edoc is None:
             raise DatumNotFound(
                 "No datum found with datum_id {!r}".format(datum_id))
         # save it for later
-        datum = {k: edoc[k] for k in keys}
+        datum = dict(edoc)
 
         res = edoc['resource']
         count = 0
@@ -52,11 +51,12 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
             count += 1
             d_id = dd['datum_id']
             if d_id not in datum_cache:
-                datum_cache[d_id] = {k: dd[k] for k in keys}
+                datum_cache[d_id] = dict(dd)
         if count > datum_cache.max_size:
             logger.warn("More datum in a resource than your "
                         "datum cache can hold.")
 
+    datum.pop('_id', None)
     return datum
 
 
@@ -122,6 +122,11 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
                  duplicate_exc=None):
     if ignore_duplicate_error:
         assert duplicate_exc is not None
+
+    if duplicate_exc is None:
+        class _PrivateException(Exception):
+            pass
+        duplicate_exc = _PrivateException
     try:
         resource['spec']
         spec = resource['spec']
@@ -166,6 +171,10 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
                     ignore_duplicate_error=False, duplicate_exc=None):
     if ignore_duplicate_error:
         assert duplicate_exc is not None
+    if duplicate_exc is None:
+        class _PrivateException(Exception):
+            pass
+        duplicate_exc = _PrivateException
     resource_kwargs = dict(resource_kwargs)
     if spec in known_spec:
         js_validate(resource_kwargs, known_spec[spec]['resource'])

@@ -17,6 +17,7 @@ import copy
 import pytest
 import six
 import numpy as np
+from databroker._core import DOCT_NAMES
 
 if sys.version_info >= (3, 5):
     from bluesky.plans import count
@@ -1150,49 +1151,49 @@ def test_extraneous_filled_stripped_on_insert(db, RE, hw):
 
 @py3
 def test_filled_false_stripped_on_insert(db, RE, hw):
+    datum_id_list = []
+
     # Hack the Event and the Descriptor consistently.
     def insert(name, doc):
         if name == 'event':
-            doc['filled'] = {'det': False}
-            doc['data']['det'] = 'DATUM_ID_PLACEHOLDER'
+            datum_id_list.append(doc['data']['img'])
             assert 'filled' in doc
-        elif name == 'descriptor':
-            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
         db.insert(name, doc)
 
     RE.subscribe(insert)
 
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.img]))
     h = db[uid]
 
     # expect event['filled'] == {'det': False}
     for ev in h.events():
-        assert 'det' in ev['filled']
-        assert not ev['filled']['det']
-        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+        assert 'img' in ev['filled']
+        assert not ev['filled']['img']
+        assert ev['data']['img'] == datum_id_list[-1]
 
 
 @py3
 def test_filled_true_rotated_on_insert(db, RE, hw):
+    datum_id_list = []
+
     # Hack the Event and the Descriptor consistently.
     def insert(name, doc):
         if name == 'event':
-            doc['filled'] = {'det': 'DATUM_ID_PLACEHOLDER'}
+            datum_id_list.append(doc['data']['img'])
+            doc['filled'] = {'img': doc['data']['img']}
             assert 'filled' in doc
-        elif name == 'descriptor':
-            doc['data_keys']['det']['external'] = 'PLACEHOLDER'
         db.insert(name, doc)
 
     RE.subscribe(insert)
 
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.img]))
     h = db[uid]
 
     # expect event['filled'] == {'det': False}
     for ev in h.events():
-        assert 'det' in ev['filled']
-        assert not ev['filled']['det']
-        assert ev['data']['det'] == 'DATUM_ID_PLACEHOLDER'
+        assert 'img' in ev['filled']
+        assert not ev['filled']['img']
+        assert ev['data']['img'] == datum_id_list[-1]
 
 
 @py3
@@ -1262,3 +1263,57 @@ def test_monitoring(db, RE, hw):
     sd.monitors.append(hw.rand)
     RE(bp.count([hw.det], 5, delay=1))
     assert len(db[-1].table('rand_monitor')) > 1
+
+
+def test_interlace_gens():
+    from databroker.eventsource.shim import interlace_gens
+    a = ({'time': i} for i in range(10) if i % 2 == 0)
+    b = ({'time': i} for i in range(10) if i % 2 == 1)
+    c = ({'time': i} for i in range(100, 110))
+    d = interlace_gens(a, b, c)
+    expected = list(range(10)) + list(range(100, 110))
+    for z, zz in zip(d, expected):
+        assert z['time'] == zz
+
+
+@py3
+def test_order(db, RE, hw):
+    from ophyd import sim
+    RE.subscribe(db.insert)
+    d = sim.SynPeriodicSignal(name='d', period=.5)
+    uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1), [d]))
+
+    t0 = None
+    for name, doc in db[uid].documents():
+        # TODO: include datums in here at some point
+        if name in ['event']:
+            t1 = doc['time']
+            if t0:
+                assert t1 > t0
+            t0 = t1
+
+@py3
+def test_res_datum(db, RE, hw):
+    from ophyd.sim import NumpySeqHandler
+    import copy
+    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+    for spec in NumpySeqHandler.specs:
+        db.reg.register_handler(spec, NumpySeqHandler)
+    L = []
+    RE.subscribe(db.insert)
+    RE.subscribe(lambda *x: L.append(x))
+
+    uid, = RE(count([hw.img], num=7, delay=0.1))
+
+    names = set()
+    for (n1, d1), (n2, d2) in zip(db[uid].documents(), L):
+        names.add(n1)
+        assert n1 == n2
+        # It seems that some of the documents don't have key parity
+        if n1 == 'resource':
+            d1.pop('id')
+        if n1 == 'stop':
+            d2.pop('reason')
+        # don't run direct equality because db changes tuple to list
+        assert set(d1.keys()) == set(d2.keys())
+    assert names == set(DOCT_NAMES.keys())
