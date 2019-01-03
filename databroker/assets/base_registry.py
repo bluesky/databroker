@@ -440,21 +440,28 @@ class RegistryTemplate(BaseRegistryRO):
 
         Parameters
         ----------
+        spec : str
+            The type of asset being registered.
 
-         resource_path : str or None
-             Url to the physical location of this resource
+        root : Path or str
+            The 'root' or non-semantic part of the rpath
 
-         resource_kwargs : dict, optional
-             resource_kwargs name/value pairs of additional kwargs to be
-             passed to the handler to open this resource.
+        rpath : str
+            Url to the physical location of this resource.
+            Must start with 'root'
 
-         root : str, optional
-             The 'root' part of the resource path.
+        rkwargs : dict
+            resource_kwargs name/value pairs of additional kwargs to be
+            passed to the handler to open this resource.
+
+        path_semantics : {'posix', 'windows'}, optional
+            The type of separator used in the path.
 
         Returns
         -------
         uid : str
             The uid of the created resource.
+
         '''
         if root is None:
             root = ''
