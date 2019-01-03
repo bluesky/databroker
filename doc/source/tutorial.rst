@@ -15,8 +15,6 @@ concurrent "streams" of data in an organized way.
 
     import os
     import yaml
-    import epics
-    epics.__version__ = "0.0.0"
     from databroker import temp_config
     config = temp_config()
     os.makedirs('~/.config/databroker', exist_ok=True)
@@ -64,7 +62,7 @@ Load the most recently saved run.
 
 .. ipython:: python
 
-    header = db[-1] 
+    header = db[-1]
 
 The result, a :class:`Header`, encapsulates the metadata from this run. Loading
 the data itself can be a longer process, so it's a separate step. For scalar
