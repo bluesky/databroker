@@ -41,7 +41,7 @@ is constructed
    :nosignatures:
 
    Broker.add_event_source
-
+   Broker.event_sources_by_name
 
 Searching
 =========

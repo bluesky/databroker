@@ -1107,12 +1107,14 @@ class BrokerES(object):
 
     @property
     def event_sources_by_name(self):
+        '''Mapping between names and EventSources'''
         es = {}
         for event_source in self.event_sources:
             es[event_source.name] = event_source
         return es
 
     def add_event_source(self, es):
+        '''Add an EventSource to the Broker'''
         self.event_sources.append(es)
 
     def stream_names_given_header(self, header):
@@ -2136,7 +2138,7 @@ class Broker(BrokerES):
             ess += event_sources
         super(Broker, self).__init__(HeaderSourceShim(mds),
                                      ess,
-                                     {'': reg}, external_fetchers, name=name)    
+                                     {'': reg}, external_fetchers, name=name)
         self.filters = filters
         if auto_register:
             register_builtin_handlers(self.reg)
