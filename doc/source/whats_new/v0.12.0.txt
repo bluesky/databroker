@@ -1,0 +1,24 @@
+.. currentmodule:: databroker
+
+v0.12.0 (2019-01-03)
+--------------------
+Enhancements
+++++++++++++
+* ``hdr.documents(...)`` now yields resources and datums from ``event``
+  documents
+* Event documents are now published in time order.
+* Added ``event_sources_by_name()`` method to ``BrokerES`` class
+* Added ``event_sources`` kwarg to ``Broker`` class
+* Replaced ``url``, ``timezone`` and ``pvs`` kwargs in ``ArchiveEventSource``
+  class with a ``config`` dictionary kwarg and updated other methods to use
+  this.
+* Added ``name`` and ``pvs`` attributes to ``ArchiveEventSource`` class and
+  updated other methods to use these.
+* Added ``tables_given_times`` method to ``ArchiveEventSource`` class.
+* Added ``name`` property to ``EventSourceShim`` class
+
+Bug Fixes
++++++++++
+
+* Fixed an issue in the tutorial where importing databroker was forgotten.
+
