@@ -277,12 +277,14 @@ From this data it extracts the phase of the moon at a given time.
    import os
    import requests
    url = "https://api.forecast.io/forecast/{api_key}/{lat},{long},{time}"
-   api_key = os.environ['FORECAST_IO_API_KEY']
+   api_key = os.environ.get('FORECAST_IO_API_KEY', None)
    class MoonPhaseHandler(object):
        def __init__(self, _):
            "This handler does not require a filename."
            pass
        def __call__(self, time):
+           if api_key is None:
+                return 'Waxing'
            text = requests.get(url.format(api_key=api_key, lat=0, long=0,
                                           time=int(time))).text
            data = json.loads(text)
