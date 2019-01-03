@@ -21,4 +21,4 @@ Bug Fixes
 +++++++++
 
 * Fixed an issue in the tutorial where importing databroker was forgotten.
-
+* The docstring for the ``RegistryTemplate`` class has been fixed.
