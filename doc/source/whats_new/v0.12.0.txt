@@ -14,14 +14,14 @@ Enhancements/API changes
   :class:`~databroker.BrokerES` class
 * Added ``event_sources`` kwarg to :class:`~databroker.Broker` class
 * Replaced ``url``, ``timezone`` and ``pvs`` kwargs in
-  :class:`~databroker.ArchiveEventSource` class with a ``config`` dictionary
+  :class:`~databroker.ArchiverEventSource` class with a ``config`` dictionary
   kwarg and updated other methods to use this.
-* Added :attr:`~databroker.ArchiveEventSource.name` and
-  :attr:`~databroker.ArchiveEventSource.pvs` attributes to
-  :class:`~databroker.ArchiveEventSource` class and updated other methods to
+* Added :attr:`~databroker.ArchiverEventSource.name` and
+  :attr:`~databroker.ArchiverEventSource.pvs` attributes to
+  :class:`~databroker.ArchiverEventSource` class and updated other methods to
   use these.
-* Added :meth:`~databroker.ArchiveEventSource.tables_given_times` method to
-  :class:`~databroker.ArchiveEventSource` class.
+* Added :meth:`~databroker.ArchiverEventSource.tables_given_times` method to
+  :class:`~databroker.ArchiverEventSource` class.
 * Added :attr:`~databroker.EventSourceShim.name` property to
   :class:`~databroker.EventSourceShim` class
 
