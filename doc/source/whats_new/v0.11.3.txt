@@ -1,0 +1,9 @@
+.. currentmodule:: databroker
+
+v0.11.3 (2018-09-05)
+--------------------
+
+Bug Fixes
++++++++++
+
+* Removes an assumption that Descriptors have a 'name' field.

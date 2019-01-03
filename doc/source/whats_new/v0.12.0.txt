@@ -1,0 +1,33 @@
+.. currentmodule:: databroker
+
+v0.12.0 (2019-01-03)
+--------------------
+Enhancements/API changes
+++++++++++++++++++++++++
+
+* :meth:`~databroker.Header.documents` now yields any Resource and Datum
+  documents referenced by Event documents.
+* :meth:`~databroker.Header.documents` now yields documents in strict time
+  order which may interlace Events from different streams.  Previously documents
+  were yielded in time order by descriptor.
+* Added :attr:`~databroker.BrokerES.event_sources_by_name` property to
+  :class:`~databroker.BrokerES` class
+* Added ``event_sources`` kwarg to :class:`~databroker.Broker` class
+* Replaced ``url``, ``timezone`` and ``pvs`` kwargs in
+  :class:`~databroker.ArchiveEventSource` class with a ``config`` dictionary
+  kwarg and updated other methods to use this.
+* Added :attr:`~databroker.ArchiveEventSource.name` and
+  :attr:`~databroker.ArchiveEventSource.pvs` attributes to
+  :class:`~databroker.ArchiveEventSource` class and updated other methods to
+  use these.
+* Added :meth:`~databroker.ArchiveEventSource.tables_given_times` method to
+  :class:`~databroker.ArchiveEventSource` class.
+* Added :attr:`~databroker.EventSourceShim.name` property to
+  :class:`~databroker.EventSourceShim` class
+
+Bug Fixes
++++++++++
+
+* Fixed an issue in the tutorial where importing databroker was forgotten.
+* The docstring for the :class:`~databroker.RegistryTemplate` class has been
+  fixed.

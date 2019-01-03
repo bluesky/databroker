@@ -292,30 +292,6 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 
 todo_include_todos = True
 
-
-class MyMock(object):
-
-    __all__ = []
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def __call__(self, *args, **kwargs):
-        return MyMock()
-
-    def __getattr__(self, name):
-        if name in ('__file__', '__path__'):
-            return '/dev/null'
-        elif name == 'c_byte':
-            return 0
-        else:
-            return MyMock()
-
-
-MOCK_MODULES = ['epics', 'epics.pv', 'epics.ca', 'pcaspy']
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = MyMock()
-
 import six
 if six.PY3:
     import queue

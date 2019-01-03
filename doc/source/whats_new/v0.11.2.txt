@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v0.11.2 (2018-06-19)
+--------------------
+
+Bug Fixes
++++++++++
+
+* Fixed a number of typos in the documentation
+* Fixed  rendering issue of the README.md file on PyPI.
