@@ -255,14 +255,18 @@ class ResourceCollection(object):
         # it up in an older one.
         for select in [SELECT_RESOURCE, OLD_SELECT_RESOURCE]:
             with cursor(self._conn) as c:
-                c.execute(select, (query['uid'],))
-                raw = c.fetchone()
+                raw = None
+                try:
+                    c.execute(select, (query['uid'],))
+                    raw = c.fetchone()
+                except sqlite3.OperationalError:
+                    pass
                 if raw is not None:
                     break
         if raw is None:
             return None
         doc = dict(raw)
-        if doc['run_start'] == 'THISISNOTARUNSTART':
+        if doc.get('run_start', '') == 'THISISNOTARUNSTART':
             doc.pop('run_start')
         doc['resource_kwargs'] = json.loads(doc['resource_kwargs'])
         return doc
