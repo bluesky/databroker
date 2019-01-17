@@ -147,6 +147,15 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                 del run_start_doc['_id']  # Drop internal Mongo detail.
                 return self._doc_to_entry(run_start_doc)
 
+            def __contains__(self, key):
+                # Avoid iterating through all entries.
+                try:
+                    self[key]
+                except KeyError:
+                    return False
+                else:
+                    return True
+
         self._entries = Entries()
         self._schema = {}  # TODO This is cheating, I think.
 
