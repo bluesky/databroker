@@ -1348,3 +1348,21 @@ def test_filtering_fields(db, RE, hw):
                 fields=fields):
             if name == 'event':
                 assert set(doc['data']) == set(fields)
+
+
+@py3
+def resource_roundtrip(broker_factory, RE, hw):
+    db = broker_factory()
+    db2 = broker_factory()
+    from ophyd.sim import NumpySeqHandler
+    import copy
+    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+    for spec in NumpySeqHandler.specs:
+        db.reg.register_handler(spec, NumpySeqHandler)
+    RE.subscribe(db.insert)
+    RE.subscribe(lambda *x: L.append(x))
+
+    uid, = RE(count([hw.img], num=7, delay=0.1))
+
+    for nd in db[-1].documents():
+        db2.insert(*nd)
