@@ -588,6 +588,7 @@ class RegistryTemplate(BaseRegistryRO):
     # ## OLD API
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
                         path_semantics='posix', uid=None, run_start=None,
+                        id=None,
                         ignore_duplicate_error=False):
         '''
 

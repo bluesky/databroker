@@ -168,6 +168,7 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 def insert_resource(col, spec, resource_path, resource_kwargs,
                     known_spec, root, path_semantics='posix', uid=None,
                     run_start=None,
+                    id=None,
                     ignore_duplicate_error=False, duplicate_exc=None):
     if ignore_duplicate_error:
         assert duplicate_exc is not None
