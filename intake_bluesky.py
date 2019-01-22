@@ -1,5 +1,6 @@
 import collections
 from datetime import datetime
+import intake
 import intake.catalog
 import intake.catalog.base
 import intake.catalog.local
@@ -185,10 +186,24 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         return cat
 
 
+class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
+    """
+    Client-side proxy to a RunCatalog on the server.
+    """
+    name = 'bluesky-run-catalog'
+
+    def read_canonical(self):
+        yield self.metadata['start']
+        for stream_name, datasource in self.items():
+            for descriptor in datasource.metadata['descriptors']
+                yield descriptor
+            xarray_to_event_gen(
+        yield self.metadata['stop']
+
+
 class RunCatalog(intake.catalog.Catalog):
     "represents one Run"
-    container = 'catalog'
-    name = 'run'
+    container = 'bluesky-run-catalog'
     version = '0.0.1'
     partition_access = True
 
@@ -246,7 +261,8 @@ class RunCatalog(intake.catalog.Catalog):
             args = {'run_start_doc': self._run_start_doc,
                     'event_descriptor_docs': list(event_descriptor_docs),
                     'event_collection': self._event_collection,
-                    'run_stop_collection': self._run_stop_collection}
+                    'run_stop_collection': self._run_stop_collection,
+                    'metadata': {'descriptors': list(event_descriptor_docs)}}
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -269,7 +285,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     partition_access = True
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
-                 run_stop_collection, metadata=None):
+                 run_stop_collection, metadata):
         # self._partition_size = 10
         # self._default_chunks = 10
         self.urlpath = ''  # TODO Not sure why I had to add this.
@@ -283,8 +299,6 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         super().__init__(
             metadata=metadata
         )
-        if self.metadata is None:
-            self.metadata = {}
 
     def __repr__(self):
         try:
@@ -546,3 +560,8 @@ def _apply_to_dict_recursively(d, f):
         if hasattr(val, 'items'):
             d[key] = _apply_to_dict_recursively(val, f)
         d[key] = f(val)
+
+
+intake.registry['remote-bluesky-run-catalog'] = RemoteRunCatalog
+intake.container.container_map['bluesky-run-catalog'] = RemoteRunCatalog
+intake.registry['mongo_metadatastore'] = MongoMetadataStoreCatalog
