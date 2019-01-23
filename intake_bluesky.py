@@ -192,13 +192,19 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     """
     name = 'bluesky-run-catalog'
 
-    def read_canonical(self):
-        yield self.metadata['start']
-        for stream_name, datasource in self.items():
-            for descriptor in datasource.metadata['descriptors']
-                yield descriptor
-            xarray_to_event_gen(
-        yield self.metadata['stop']
+    def read_canonical(self, page_size=1):
+        yield 'start', self.metadata['start']
+        for stream_name, datasource in list(self._entries.items()):
+            if stream_name.startswith('timestamps-'):
+                continue
+            tssource = self[f'timestamps-{stream_name}']
+            for descriptor in datasource.metadata['descriptors']:
+                yield 'descriptor', descriptor
+            for event_page in xarray_to_event_gen(datasource.read(),
+                                                  tssource.read(),
+                                                  page_size):
+                yield 'event_page', event_page
+        yield 'stop', self.metadata['stop']
 
 
 class RunCatalog(intake.catalog.Catalog):
@@ -268,14 +274,30 @@ class RunCatalog(intake.catalog.Catalog):
                 description={},  # TODO
                 driver='intake_bluesky.MongoEventStream',
                 direct_access='forbid',  # ???
-                args=args,
+                args={'data_or_timestamps': 'data', **args},
                 cache=None,  # ???
                 parameters={},
-                metadata=self.metadata,
+                metadata={'descriptors': list(event_descriptor_docs)},
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
                 catalog=self)
+            self._entries[f'timestamps-{stream_name}'] = intake.catalog.local.LocalCatalogEntry(
+                name=stream_name,
+                description={},  # TODO
+                driver='intake_bluesky.MongoEventStream',
+                direct_access='forbid',  # ???
+                args={'data_or_timestamps': 'timestamps', **args},
+                cache=None,  # ???
+                parameters={},
+                metadata={'descriptors': list(event_descriptor_docs)},
+                catalog_dir=None,
+                getenv=True,
+                getshell=True,
+                catalog=self)
+
+    def read_canonical(self):
+        return [1, 2, 3]
 
 
 class MongoEventStream(intake_xarray.base.DataSourceMixin):
@@ -285,7 +307,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     partition_access = True
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
-                 run_stop_collection, metadata):
+                 run_stop_collection, metadata, data_or_timestamps):
         # self._partition_size = 10
         # self._default_chunks = 10
         self.urlpath = ''  # TODO Not sure why I had to add this.
@@ -296,6 +318,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self._stream_name = event_descriptor_docs[0].get('name')
         self._run_stop_collection = run_stop_collection
         self._ds = None  # set by _open_dataset below
+        self._data_or_timestamps = data_or_timestamps
         super().__init__(
             metadata=metadata
         )
@@ -358,8 +381,8 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             events = list(cursor)
             times = [ev['time'] for ev in events]
             seq_nums = [ev['seq_num'] for ev in events]
-            data_table = _transpose(events, keys, 'data')
-            # timestamps_table = _transpose(all_events, keys, 'timestamps')
+            uids = [ev['uid'] for ev in events]
+            data_table = _transpose(events, keys, self._data_or_timestamps)
             # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
 
             # Collect a DataArray for each field in Event, each field in
@@ -406,7 +429,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                 for key in keys:
                     field_metadata = data_keys[key]
                     # Verify the actual ndim by looking at the data.
-                    ndim = numpy.asarray(config['data'][key]).ndim
+                    ndim = numpy.asarray(config[self._data_or_timestamps][key]).ndim
                     dims = None
                     if 'dims' in field_metadata:
                         # As of this writing no Devices report dimension names ('dims')
@@ -429,18 +452,23 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                         data_arrays[dim] = xarray.DataArray(
                             # TODO Once we know we have one Event Descriptor
                             # per stream we can be more efficient about this.
-                            data=numpy.tile(config['data'][key],
+                            data=numpy.tile(config[self._data_or_timestamps][key],
                                             (len(times),) + ndim * (1,)),
                             dims=('time',) + dims,
                             coords={'time': times},
                             name=key)
 
-            # Finally, make a DataArray for 'seq_num'.
+            # Finally, make DataArrays for 'seq_num' and 'uid'.
             data_arrays['seq_num'] = xarray.DataArray(
                 data=seq_nums,
                 dims=('time',),
                 coords={'time': times},
                 name='seq_num')
+            data_arrays['uid'] = xarray.DataArray(
+                data=uids,
+                dims=('time',),
+                coords={'time': times},
+                name='uid')
 
             datasets.append(xarray.Dataset(data_vars=data_arrays))
         # Merge Datasets from all Event Descriptors into one representing the
@@ -560,6 +588,32 @@ def _apply_to_dict_recursively(d, f):
         if hasattr(val, 'items'):
             d[key] = _apply_to_dict_recursively(val, f)
         d[key] = f(val)
+
+
+def xarray_to_event_gen(data_xarr, ts_xarr, page_size):
+    for start_idx in range(0, len(data_xarr['time']), page_size):
+        stop_idx = start_idx + page_size
+        data = {name: variable.values
+                for name, variable in
+                data_xarr.isel({'time': slice(start_idx, stop_idx)}).items()
+                if ':' not in name}
+        ts = {name: variable.values
+              for name, variable in
+              ts_xarr.isel({'time': slice(start_idx, stop_idx)}).items()
+              if ':' not in name}
+        event_page = {}
+        seq_num = data.pop('seq_num')
+        ts.pop('seq_num')
+        uids = data.pop('uid')
+        ts.pop('uid')
+        event_page['data'] = data
+        event_page['timestamps'] = ts
+        event_page['time'] = data_xarr['time'][start_idx:stop_idx].values
+        event_page['uid'] = uids
+        event_page['seq_num'] = seq_num
+        event_page['filled'] = {}
+
+        yield event_page
 
 
 intake.registry['remote-bluesky-run-catalog'] = RemoteRunCatalog
