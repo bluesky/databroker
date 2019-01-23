@@ -1292,6 +1292,7 @@ def test_order(db, RE, hw):
                 assert t1 > t0
             t0 = t1
 
+
 @py3
 def test_res_datum(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
@@ -1317,3 +1318,33 @@ def test_res_datum(db, RE, hw):
         # don't run direct equality because db changes tuple to list
         assert set(d1.keys()) == set(d2.keys())
     assert names == set(DOCT_NAMES.keys())
+
+
+@py3
+def test_filtering_fields(db, RE, hw):
+    from bluesky.preprocessors import run_decorator
+    from bluesky.plan_stubs import trigger_and_read
+
+    RE.subscribe(db.insert)
+
+    m1, m2 = hw.motor1, hw.motor2
+    m1.acceleration.put(2)
+    m2.acceleration.put(3)
+
+    @run_decorator()
+    def round_robin_plan():
+        for j in range(7):
+            yield from trigger_and_read([m1], 'a')
+            yield from trigger_and_read([m2], 'b')
+
+    uid, = RE(round_robin_plan())
+    h = db[uid]
+
+    for fields in (
+            [m1.name, m1.acceleration.name],
+            [m2.name, m2.acceleration.name]):
+
+        for name, doc in h.documents(
+                fields=fields):
+            if name == 'event':
+                assert set(doc['data']) == set(fields)

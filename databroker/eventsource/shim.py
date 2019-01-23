@@ -133,10 +133,17 @@ class EventSourceShim(object):
 
         yield 'start', header['start']
         ev_gens = []
+        per_desc_discards = {}
+        per_desc_extra_data = {}
+        per_desc_extra_ts = {}
         for d in descs:
             (all_extra_dk, all_extra_data,
              all_extra_ts, discard_fields) = _extract_extra_data(
                 start, stop, d, fields, comp_re, no_fields_filter)
+
+            per_desc_discards[d['uid']] = discard_fields
+            per_desc_extra_data[d['uid']] = all_extra_data
+            per_desc_extra_ts[d['uid']] = all_extra_ts
 
             d = d.copy()
             dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
@@ -151,9 +158,11 @@ class EventSourceShim(object):
             ev_gens.append(self.mds.get_events_generator(d))
         for ev in interlace_gens(*ev_gens):
             event_data = ev['data']  # cache for perf
+            desc = ev['descriptor']
             event_timestamps = ev['timestamps']
-            event_data.update(all_extra_data)
-            event_timestamps.update(all_extra_ts)
+            event_data.update(per_desc_extra_data[desc])
+            event_timestamps.update(per_desc_extra_ts[desc])
+            discard_fields = per_desc_discards[desc]
             for field in discard_fields:
                 del event_data[field]
                 del event_timestamps[field]
