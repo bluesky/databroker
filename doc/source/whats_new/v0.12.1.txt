@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v0.12.1 (2019-01-25)
+--------------------
+
+Bug Fixes
++++++++++
+
+* Fixed a bug in EventSourceShim.docs_given_header when filtering the
+  fields.
