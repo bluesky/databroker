@@ -32,13 +32,14 @@ The next step is to install a version sentinel. This is done as follows:
 
 .. code-block:: python
 
+    import databroker
+
     # Instantiate databroker instance
     from databroker import Broker
-    db_analysis = Broker.named(config_name)
+    db = Broker.named(config_name)
 
     # install sentinels
-    db_analysis.assets.utils.install_sentinels(db_analysis.reg.config,
-                                              version=1)
+    databroker.assets.utils.install_sentinels(db.reg.config, version=1)
 
 where ``config_name`` is the name of your configuration and ``version=1``
 refers to the version of asset registry you are using (it is currently ``1`` as
