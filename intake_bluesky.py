@@ -89,7 +89,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                     direct_access='forbid',  # ???
                     args=args,
                     cache=None,  # ???
-                    parameters={},
+                    parameters=[],
                     metadata=entry_metadata,
                     catalog_dir=None,
                     getenv=True,
@@ -268,28 +268,16 @@ class RunCatalog(intake.catalog.Catalog):
                     'event_descriptor_docs': list(event_descriptor_docs),
                     'event_collection': self._event_collection,
                     'run_stop_collection': self._run_stop_collection,
-                    'metadata': {'descriptors': list(event_descriptor_docs)}}
+                    'metadata': {'descriptors': list(event_descriptor_docs)},
+                    'astype': '{{ astype }}'}
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
                 driver='intake_bluesky.MongoEventStream',
-                direct_access='forbid',  # ???
-                args={'data_or_timestamps': 'data', **args},
+                direct_access='forbid',
+                args=args,
                 cache=None,  # ???
-                parameters={},
-                metadata={'descriptors': list(event_descriptor_docs)},
-                catalog_dir=None,
-                getenv=True,
-                getshell=True,
-                catalog=self)
-            self._entries[f'timestamps-{stream_name}'] = intake.catalog.local.LocalCatalogEntry(
-                name=stream_name,
-                description={},  # TODO
-                driver='intake_bluesky.MongoEventStream',
-                direct_access='forbid',  # ???
-                args={'data_or_timestamps': 'timestamps', **args},
-                cache=None,  # ???
-                parameters={},
+                parameters=[_ASTYPE_PARAMETER],
                 metadata={'descriptors': list(event_descriptor_docs)},
                 catalog_dir=None,
                 getenv=True,
@@ -300,6 +288,13 @@ class RunCatalog(intake.catalog.Catalog):
         return [1, 2, 3]
 
 
+_ASTYPE_PARAMETER = intake.catalog.local.UserParameter(
+    name='astype',
+    description="whether to access data as xarray or 'document'",
+    type='str',
+    default='xarray')
+
+
 class MongoEventStream(intake_xarray.base.DataSourceMixin):
     container = 'xarray'
     name = 'event-stream'
@@ -307,9 +302,10 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     partition_access = True
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
-                 run_stop_collection, metadata, data_or_timestamps):
+                 run_stop_collection, metadata, astype):
         # self._partition_size = 10
         # self._default_chunks = 10
+        print('AS TYPE', astype)
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._run_start_doc = run_start_doc
         self._run_stop_doc  = None
@@ -318,7 +314,6 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self._stream_name = event_descriptor_docs[0].get('name')
         self._run_stop_collection = run_stop_collection
         self._ds = None  # set by _open_dataset below
-        self._data_or_timestamps = data_or_timestamps
         super().__init__(
             metadata=metadata
         )
@@ -382,6 +377,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             times = [ev['time'] for ev in events]
             seq_nums = [ev['seq_num'] for ev in events]
             uids = [ev['uid'] for ev in events]
+            self._data_or_timestamps = 'data'  # HACK FOR NOW
             data_table = _transpose(events, keys, self._data_or_timestamps)
             # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
 

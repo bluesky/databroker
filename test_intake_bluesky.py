@@ -103,6 +103,7 @@ def test_run_metadata(bundle):
         assert key in run.metadata  # entry
         assert key in run().metadata  # datasource
 
+
 def test_access_scalar_data(bundle):
     "Access simple scalar data that is stored directly in Event documents."
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
@@ -121,3 +122,12 @@ def test_access_nonscalar_data(bundle):
     entry.read()
     entry().to_dask()
     entry().to_dask().load()
+
+
+def test_access_nonscalar_data_canonical(bundle):
+    "Access nonscalar data that is stored directly in Event documents."
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.direct_img_scan_uid]()
+    entry = run['primary']
+    print(type(entry))
+    entry.get(astype='documents').read()
