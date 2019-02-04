@@ -3,7 +3,7 @@ from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
 import intake
 from intake.conftest import intake_server
-from intake_bluesky import MongoInsertCallback
+from suitcase.mongo_layout1 import Serializer
 from ophyd.sim import motor, det, img, direct_img
 import os
 import pymongo
@@ -38,7 +38,8 @@ def bundle(intake_server):
     RE = RunEngine({})
     sd = SupplementalData(baseline=[motor])
     RE.preprocessors.append(sd)
-    RE.subscribe(MongoInsertCallback(metadatastore_uri, asset_registry_uri))
+    serializer = Serializer(metadatastore_uri, asset_registry_uri)
+    RE.subscribe(serializer)
     # Simulate data with a scalar detector.
     det_scan_uid, = RE(scan([det], motor, -1, 1, 20))
     # Simulate data with an array detector.
