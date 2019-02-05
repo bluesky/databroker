@@ -114,6 +114,20 @@ def test_access_scalar_data(bundle):
     entry().to_dask().load()
 
 
+def test_include_and_exclude(bundle):
+    "Access simple scalar data that is stored directly in Event documents."
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.det_scan_uid]()
+    entry = run['primary']
+    assert 'motor' in entry().read().variables
+    assert 'motor' not in entry(exclude=['motor']).read().variables
+    assert 'det' in entry(exclude=['motor']).read().variables
+    expected = set(['time', 'uid', 'seq_num', 'det'])
+    assert set(entry(include=['det']).read().variables) == expected
+    expected = set(['time', 'uid', 'seq_num', 'motor:motor_velocity'])
+    assert set(entry(include=['motor:motor_velocity']).read().variables) == expected
+
+
 def test_access_nonscalar_data(bundle):
     "Access nonscalar data that is stored directly in Event documents."
     cat = intake.open_catalog(bundle.intake_server, page_size=10)

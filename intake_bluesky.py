@@ -1,3 +1,4 @@
+import ast
 import collections
 from datetime import datetime
 import intake
@@ -269,7 +270,8 @@ class RunCatalog(intake.catalog.Catalog):
                     'event_collection': self._event_collection,
                     'run_stop_collection': self._run_stop_collection,
                     'metadata': {'descriptors': list(event_descriptor_docs)},
-                    'astype': '{{ astype }}'}
+                    'include': '{{ include }}',
+                    'exclude': '{{ exclude }}'}
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -277,7 +279,7 @@ class RunCatalog(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # ???
-                parameters=[_ASTYPE_PARAMETER],
+                parameters=[_INCLUDE_PARAMETER, _EXCLUDE_PARAMETER],
                 metadata={'descriptors': list(event_descriptor_docs)},
                 catalog_dir=None,
                 getenv=True,
@@ -288,11 +290,16 @@ class RunCatalog(intake.catalog.Catalog):
         return [1, 2, 3]
 
 
-_ASTYPE_PARAMETER = intake.catalog.local.UserParameter(
-    name='astype',
-    description="whether to access data as xarray or 'document'",
-    type='str',
-    default='xarray')
+_EXCLUDE_PARAMETER = intake.catalog.local.UserParameter(
+    name='exclude',
+    description="fields to exclude",
+    type='list',
+    default=None)
+_INCLUDE_PARAMETER = intake.catalog.local.UserParameter(
+    name='include',
+    description="fields to explicitly include at exclusion of all others",
+    type='list',
+    default=None)
 
 
 class MongoEventStream(intake_xarray.base.DataSourceMixin):
@@ -302,10 +309,9 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     partition_access = True
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
-                 run_stop_collection, metadata, astype):
+                 run_stop_collection, metadata, include, exclude):
         # self._partition_size = 10
         # self._default_chunks = 10
-        print('AS TYPE', astype)
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._run_start_doc = run_start_doc
         self._run_stop_doc  = None
@@ -314,6 +320,9 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self._stream_name = event_descriptor_docs[0].get('name')
         self._run_stop_collection = run_stop_collection
         self._ds = None  # set by _open_dataset below
+        # TODO Is there a more direct way to get non-string UserParameters in?
+        self.include = ast.literal_eval(include)
+        self.exclude = ast.literal_eval(exclude)
         super().__init__(
             metadata=metadata
         )
@@ -336,8 +345,6 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self.metadata.update({'stop': run_stop_doc})
         # TODO pass this in from BlueskyEntry
         slice_ = slice(None)
-        include = []
-        exclude = []
 
         if isinstance(slice_, collections.Iterable):
             first_axis = slice_[0]
@@ -355,10 +362,10 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         # Data keys must not change within one stream, so we can safely sample
         # just the first Event Descriptor.
         data_keys = self._event_descriptor_docs[0]['data_keys']
-        if include:
-            keys = list(set(data_keys) & set(include))
-        elif exclude:
-            keys = list(set(data_keys) - set(exclude))
+        if self.include:
+            keys = list(set(data_keys) & set(self.include))
+        elif self.exclude:
+            keys = list(set(data_keys) - set(self.exclude))
         else:
             keys = list(data_keys)
 
@@ -416,13 +423,19 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
             # Make DataArrays for configuration data.
             for object_name, config in descriptor['configuration'].items():
                 data_keys = config['data_keys']
-                if include:
-                    keys = list(set(data_keys) & set(include))
-                elif exclude:
-                    keys = list(set(data_keys) - set(exclude))
+                # For configuration, label the dimension specially to
+                # avoid key collisions.
+                scoped_data_keys = {key: f'{object_name}:{key}'
+                                    for key in data_keys}
+                if self.include:
+                    keys = {k: v for k, v in scoped_data_keys.items()
+                            if v in self.include}
+                elif self.exclude:
+                    keys = {k: v for k, v in scoped_data_keys.items()
+                            if v not in self.include}
                 else:
-                    keys = list(data_keys)
-                for key in keys:
+                    keys = scoped_data_keys
+                for key, scoped_key in keys.items():
                     field_metadata = data_keys[key]
                     # Verify the actual ndim by looking at the data.
                     ndim = numpy.asarray(config[self._data_or_timestamps][key]).ndim
@@ -442,10 +455,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                     if data_keys[key].get('external'):
                         raise NotImplementedError
                     else:
-                        # For configuration, label the dimension specially to
-                        # avoid key collisions.
-                        dim = f'{object_name}:{key}'
-                        data_arrays[dim] = xarray.DataArray(
+                        data_arrays[scoped_key] = xarray.DataArray(
                             # TODO Once we know we have one Event Descriptor
                             # per stream we can be more efficient about this.
                             data=numpy.tile(config[self._data_or_timestamps][key],
