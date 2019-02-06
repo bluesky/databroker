@@ -1,8 +1,10 @@
 from bluesky import RunEngine
 from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
+import event_model
 import intake
 from intake.conftest import intake_server
+import json
 from suitcase.mongo_layout1 import Serializer
 from ophyd.sim import motor, det, img, direct_img
 import os
@@ -40,11 +42,32 @@ def bundle(intake_server):
     RE.preprocessors.append(sd)
     serializer = Serializer(metadatastore_uri, asset_registry_uri)
     RE.subscribe(serializer)
+
     # Simulate data with a scalar detector.
-    det_scan_uid, = RE(scan([det], motor, -1, 1, 20))
+    det_scan_docs = []
+
+    def collect(name, doc):
+        doc = json.loads(json.dumps(event_model.sanitize_doc(doc)))
+        det_scan_docs.append((name, doc))
+
+    det_scan_uid, = RE(scan([det], motor, -1, 1, 20), collect)
+
     # Simulate data with an array detector.
+    direct_img_scan_docs = []
+
+    def collect(name, doc):
+        doc = json.loads(json.dumps(event_model.sanitize_doc(doc)))
+        direct_img_scan_docs.append((name, doc))
+
     direct_img_scan_uid, = RE(scan([direct_img], motor, -1, 1, 20))
+
     # Simulate data with an array detector that stores its data externally.
+    img_scan_docs = []
+
+    def collect(name, doc):
+        doc = json.loads(json.dumps(event_model.sanitize_doc(doc)))
+        img_scan_docs.append((name, doc))
+
     img_scan_uid, = RE(scan([img], motor, -1, 1, 20))
 
     with open(fullname, 'w') as f:
@@ -67,8 +90,11 @@ sources:
 
     yield types.SimpleNamespace(intake_server=intake_server,
                                 det_scan_uid=det_scan_uid,
+                                det_scan_docs=det_scan_docs,
                                 direct_img_scan_uid=direct_img_scan_uid,
-                                img_scan_uid=img_scan_uid)
+                                direct_img_scan_docs=direct_img_scan_docs,
+                                img_scan_uid=img_scan_uid,
+                                img_scan_docs=img_scan_docs)
 
     os.remove(fullname)
     for uri in (metadatastore_uri, asset_registry_uri):
@@ -108,8 +134,18 @@ def test_read_canonical(bundle):
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
     run = cat['xyz']()[bundle.det_scan_uid]
     run.read_canonical()
-    for name, doc in run.read_canonical():
-        print(name)
+
+    def sorted_actual():
+        for name_ in ('start', 'descriptor', 'event', 'stop'):
+            for name, doc in bundle.det_scan_docs:
+                if name == name_:
+                    yield name, doc
+
+    for actual, expected in zip(run.read_canonical(), sorted_actual()):
+        actual_name, actual_doc = actual
+        expected_name, expected_doc = expected
+        assert actual_name == expected_name
+        assert actual_doc == expected_doc
 
 
 def test_access_scalar_data(bundle):

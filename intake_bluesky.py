@@ -306,7 +306,9 @@ class RunCatalog(intake.catalog.Catalog):
         if run_stop_doc is not None:
             del run_stop_doc['_id']  # Drop internal Mongo detail.
         self._run_stop_doc = run_stop_doc
-        cursor = self._event_descriptor_collection.find({'run_start': uid})
+        cursor = self._event_descriptor_collection.find(
+            {'run_start': uid},
+            sort=[('time', pymongo.ASCENDING)])
         self._descriptors = list(cursor)
         self._offset = len(self._descriptors) + 1
         self.metadata.update({'start': self._run_start_doc})
@@ -392,7 +394,8 @@ class RunCatalog(intake.catalog.Catalog):
         """
         self._load()
         payload = []
-        start, stop = i * self.PARTITION_SIZE, (1 + i) * self.PARTITION_SIZE
+        start = i * self.PARTITION_SIZE
+        stop = (1 + i) * self.PARTITION_SIZE
         if start < self._offset:
             payload.extend(
                 itertools.islice(
@@ -402,13 +405,20 @@ class RunCatalog(intake.catalog.Catalog):
                     start,
                     stop))
         descriptor_uids = [doc['uid'] for doc in self._descriptors]
-        payload.extend(
-            (('event', doc) for doc in self._event_collection
-                .find({'descriptor': {'$in': descriptor_uids}})
-                .skip(max(0, start - self._offset))
-                .limit(self.PARTITION_SIZE - len(payload))))
-        if i == self.npartitions - 1 and self._run_stop_doc is not None:
-            payload.append(('stop', self.run_stop_doc))
+        skip = start - self._offset
+        limit = stop - start - len(payload)
+        # print('start, stop, skip, limit', start, stop, skip, limit)
+        if skip >= 0 and limit > 0:
+            payload.extend(
+                (('event', doc) for doc in self._event_collection
+                    .find({'descriptor': {'$in': descriptor_uids}},
+                          sort=[('time', pymongo.ASCENDING)])
+                    .skip(skip)
+                    .limit(limit)))
+            if i == self.npartitions - 1 and self._run_stop_doc is not None:
+                payload.append(('stop', self.run_stop_doc))
+        for _, doc in payload:
+            doc.pop('_id', None)
         return payload
 
 
