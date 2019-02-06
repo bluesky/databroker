@@ -1,4 +1,6 @@
 import ast
+import dask
+import dask.bag
 import collections
 from datetime import datetime
 import intake
@@ -6,7 +8,10 @@ import intake.catalog
 import intake.catalog.base
 import intake.catalog.local
 import intake.catalog.remote
+import intake.container.base
+import intake.container.semistructured
 import intake.source.base
+from intake.compat import unpack_kwargs
 import intake_xarray.base
 import itertools
 import msgpack
@@ -193,19 +198,82 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     """
     name = 'bluesky-run-catalog'
 
-    def read_canonical(self, page_size=1):
-        yield 'start', self.metadata['start']
-        for stream_name, datasource in list(self._entries.items()):
-            if stream_name.startswith('timestamps-'):
-                continue
-            tssource = self[f'timestamps-{stream_name}']
-            for descriptor in datasource.metadata['descriptors']:
-                yield 'descriptor', descriptor
-            for event_page in xarray_to_event_gen(datasource.read(),
-                                                  tssource.read(),
-                                                  page_size):
-                yield 'event_page', event_page
-        yield 'stop', self.metadata['stop']
+    def __init__(self, url, headers, name, parameters, metadata=None, **kwargs):
+        """
+
+        Parameters
+        ----------
+        url: str
+            Address of the server
+        headers: dict
+            HTTP headers to sue in calls
+        name: str
+            handle to reference this data
+        parameters: dict
+            To pass to the server when it instantiates the data source
+        metadata: dict
+            Additional info
+        kwargs: ignored
+        """
+        super().__init__(url=url, headers=headers, name=name,
+                metadata=metadata, **kwargs)
+        self.url = url
+        self.name = name
+        self.parameters = parameters
+        self.headers = headers
+        self._source_id = None
+        self.metadata = metadata or {}
+        self._get_source_id()
+        self.bag = None
+
+    def _get_source_id(self):
+        if self._source_id is None:
+            payload = dict(action='open', name=self.name,
+                           parameters=self.parameters)
+            req = requests.post(urljoin(self.url, '/v1/source'),
+                                data=msgpack.packb(payload, use_bin_type=True),
+                                **self.headers)
+            req.raise_for_status()
+            response = msgpack.unpackb(req.content, **unpack_kwargs)
+            self._parse_open_response(response)
+
+    def _parse_open_response(self, response):
+        self.npartitions = response['npartitions']
+        self.metadata = response['metadata']
+        self._schema = intake.source.base.Schema(datashape=None, dtype=None,
+                              shape=self.shape,
+                              npartitions=self.npartitions,
+                              metadata=self.metadata)
+        self._source_id = response['source_id']
+
+    def _load_metadata(self):
+        if self.bag is None:
+            self.parts = [dask.delayed(intake.container.base.get_partition)(
+                self.url, self.headers, self._source_id, self.container, i
+            )
+                          for i in range(self.npartitions)]
+            self.bag = dask.bag.from_delayed(self.parts)
+        return self._schema
+
+    def _get_partition(self, i):
+        self._load_metadata()
+        return self.parts[i].compute()
+
+    def read(self):
+        self._load_metadata()
+        return self.bag.compute()
+
+    def to_dask(self):
+        self._load_metadata()
+        return self.bag
+
+    def _close(self):
+        self.bag = None
+
+    def read_canonical(self):
+        for i in range(self.npartitions):
+            for name, doc in self._get_partition(i):
+                yield name, doc
 
 
 class RunCatalog(intake.catalog.Catalog):
@@ -213,6 +281,7 @@ class RunCatalog(intake.catalog.Catalog):
     container = 'bluesky-run-catalog'
     version = '0.0.1'
     partition_access = True
+    PARTITION_SIZE = 100
 
     def __init__(self,
                  run_start_doc,
@@ -226,12 +295,29 @@ class RunCatalog(intake.catalog.Catalog):
 
         self._run_start_doc = run_start_doc
         self._run_stop_doc = None  # loaded in _load below
+        self._descriptors = None  # loaded on demand in property
+        self._run_stop_doc = None  # loaded on demand in property
         self._run_stop_collection = run_stop_collection
         self._event_descriptor_collection = event_descriptor_collection
         self._event_collection = event_collection
-
         super().__init__(**kwargs)
-        self._schema = {}  # TODO This is cheating, I think.
+        
+        # Count the total number of documents in this run.
+        count = 1
+        uid = run_start_doc['uid']
+        descriptor_uids = [doc['uid'] for doc in self.descriptors]
+        count += len(descriptor_uids)
+        query = {'descriptor': {'$in': descriptor_uids}}
+        count += self._event_collection.find(query).count()
+        count += (self.run_stop_doc is not None)
+        self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
+
+        self._schema = intake.source.base.Schema(
+            datashape=None,
+            dtype=None,
+            shape=(count,),
+            npartitions=self.npartitions,
+            metadata=self.metadata)
 
     def __repr__(self):
         try:
@@ -287,7 +373,44 @@ class RunCatalog(intake.catalog.Catalog):
                 catalog=self)
 
     def read_canonical(self):
-        return [1, 2, 3]
+        ...
+
+    @property
+    def descriptors(self):
+        if self._descriptors is None:
+            uid = self._run_start_doc['uid']
+            cursor = self._event_descriptor_collection.find({'run_start': uid})
+            self._descriptors = list(cursor)
+        return self._descriptors
+
+    @property
+    def run_stop_doc(self):
+        if self._run_stop_doc is None:
+            run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
+            if run_stop_doc is not None:
+                del run_stop_doc['_id']  # Drop internal Mongo detail.
+            self._run_stop_doc = run_stop_doc
+        return self._run_stop_doc
+
+    def read_partition(self, i):
+        """Fetch one chunk of data at tuple index i
+        """
+        self._load_metadata()
+        payload = []
+        if i == 0:
+            payload.append(('start', self._run_start_doc))
+        if (1 + i) * self.PARTITION_SIZE < len(self.descriptors):
+            payload.extend((('descriptor', doc) for doc in 
+                            itertools.islice(self.descriptors,
+                                             i * self.PARTITION_SIZE,
+                                             (1 + i) * self.PARTITION_SIZE)))
+        descriptor_uids = [doc['uid'] for doc in self.descriptors]
+        query = {'descriptor': {'$in': descriptor_uids}}
+        payload.extend(('event', doc) for doc in self._event_collection
+                            .find(query)
+                            .skip(i * self.PARTITION_SIZE)
+                            .limit(self.PARTITION_SIZE))
+        return payload
 
 
 _EXCLUDE_PARAMETER = intake.catalog.local.UserParameter(

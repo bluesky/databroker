@@ -104,6 +104,13 @@ def test_run_metadata(bundle):
         assert key in run().metadata  # datasource
 
 
+def test_read_canonical(bundle):
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.det_scan_uid]
+    run.read_canonical()
+    print(list(run.read_canonical()))
+
+
 def test_access_scalar_data(bundle):
     "Access simple scalar data that is stored directly in Event documents."
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
