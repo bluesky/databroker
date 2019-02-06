@@ -294,18 +294,26 @@ class RunCatalog(intake.catalog.Catalog):
         self.urlpath = ''  # TODO Not sure why I had to add this.
 
         self._run_start_doc = run_start_doc
-        self._run_stop_doc = None  # loaded in _load below
-        self._descriptors = None  # loaded on demand in property
-        self._run_stop_doc = None  # loaded on demand in property
         self._run_stop_collection = run_stop_collection
         self._event_descriptor_collection = event_descriptor_collection
         self._event_collection = event_collection
+        # loaded in _load below
         super().__init__(**kwargs)
         
         # Count the total number of documents in this run.
+        uid = self._run_start_doc['uid']
+        run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
+        if run_stop_doc is not None:
+            del run_stop_doc['_id']  # Drop internal Mongo detail.
+        self._run_stop_doc = run_stop_doc
+        cursor = self._event_descriptor_collection.find({'run_start': uid})
+        self._descriptors = list(cursor)
+        self._offset = len(self._descriptors) + 1
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': run_stop_doc})
+
         count = 1
-        uid = run_start_doc['uid']
-        descriptor_uids = [doc['uid'] for doc in self.descriptors]
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
         count += len(descriptor_uids)
         query = {'descriptor': {'$in': descriptor_uids}}
         count += self._event_collection.find(query).count()
@@ -334,13 +342,6 @@ class RunCatalog(intake.catalog.Catalog):
 
     def _load(self):
         uid = self._run_start_doc['uid']
-        run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
-        self._run_stop_doc = run_stop_doc
-        if run_stop_doc is not None:
-            del run_stop_doc['_id']  # Drop internal Mongo detail.
-        self.metadata.update({'start': self._run_start_doc})
-        self.metadata.update({'stop': run_stop_doc})
-
         cursor = self._event_descriptor_collection.find(
             {'run_start': uid},
             sort=[('time', pymongo.ASCENDING)])
@@ -375,12 +376,6 @@ class RunCatalog(intake.catalog.Catalog):
     def read_canonical(self):
         ...
 
-    @property
-    def descriptors(self):
-        if self._descriptors is None:
-            uid = self._run_start_doc['uid']
-            cursor = self._event_descriptor_collection.find({'run_start': uid})
-            self._descriptors = list(cursor)
         return self._descriptors
 
     @property
@@ -393,23 +388,27 @@ class RunCatalog(intake.catalog.Catalog):
         return self._run_stop_doc
 
     def read_partition(self, i):
-        """Fetch one chunk of data at tuple index i
+        """Fetch one chunk of documents.
         """
-        self._load_metadata()
+        self._load()
         payload = []
-        if i == 0:
-            payload.append(('start', self._run_start_doc))
-        if (1 + i) * self.PARTITION_SIZE < len(self.descriptors):
-            payload.extend((('descriptor', doc) for doc in 
-                            itertools.islice(self.descriptors,
-                                             i * self.PARTITION_SIZE,
-                                             (1 + i) * self.PARTITION_SIZE)))
-        descriptor_uids = [doc['uid'] for doc in self.descriptors]
-        query = {'descriptor': {'$in': descriptor_uids}}
-        payload.extend(('event', doc) for doc in self._event_collection
-                            .find(query)
-                            .skip(i * self.PARTITION_SIZE)
-                            .limit(self.PARTITION_SIZE))
+        start, stop = i * self.PARTITION_SIZE, (1 + i) * self.PARTITION_SIZE
+        if start < self._offset:
+            payload.extend(
+                itertools.islice(
+                    itertools.chain(
+                        (('start', self._run_start_doc),),
+                        (('descriptor', doc) for doc in self._descriptors)),
+                    start,
+                    stop))
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        payload.extend(
+            (('event', doc) for doc in self._event_collection
+                .find({'descriptor': {'$in': descriptor_uids}})
+                .skip(max(0, start - self._offset))
+                .limit(self.PARTITION_SIZE - len(payload))))
+        if i == self.npartitions - 1 and self._run_stop_doc is not None:
+            payload.append(('stop', self.run_stop_doc))
         return payload
 
 

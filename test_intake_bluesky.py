@@ -108,7 +108,8 @@ def test_read_canonical(bundle):
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
     run = cat['xyz']()[bundle.det_scan_uid]
     run.read_canonical()
-    print(list(run.read_canonical()))
+    for name, doc in run.read_canonical():
+        print(name)
 
 
 def test_access_scalar_data(bundle):
