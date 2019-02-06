@@ -30,6 +30,12 @@ def teardown_module(module):
         pass
 
 
+def normalize(doc):
+    # numpy arrays -> lists (via sanitize doc)
+    # tuples -> lists (via json dump/load)
+    return json.loads(json.dumps(event_model.sanitize_doc(doc)))
+
+
 @pytest.fixture
 def bundle(intake_server):
     "A SimpleNamespace with an intake_server and some uids of sample data."
@@ -47,7 +53,7 @@ def bundle(intake_server):
     det_scan_docs = []
 
     def collect(name, doc):
-        doc = json.loads(json.dumps(event_model.sanitize_doc(doc)))
+        doc = normalize(doc)
         det_scan_docs.append((name, doc))
 
     det_scan_uid, = RE(scan([det], motor, -1, 1, 20), collect)
@@ -56,7 +62,7 @@ def bundle(intake_server):
     direct_img_scan_docs = []
 
     def collect(name, doc):
-        doc = json.loads(json.dumps(event_model.sanitize_doc(doc)))
+        doc = normalize(doc)
         direct_img_scan_docs.append((name, doc))
 
     direct_img_scan_uid, = RE(scan([direct_img], motor, -1, 1, 20))
@@ -65,7 +71,7 @@ def bundle(intake_server):
     img_scan_docs = []
 
     def collect(name, doc):
-        doc = json.loads(json.dumps(event_model.sanitize_doc(doc)))
+        doc = normalize(doc)
         img_scan_docs.append((name, doc))
 
     img_scan_uid, = RE(scan([img], motor, -1, 1, 20))
