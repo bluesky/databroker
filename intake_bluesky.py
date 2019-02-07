@@ -405,10 +405,10 @@ class RunCatalog(intake.catalog.Catalog):
                     start,
                     stop))
         descriptor_uids = [doc['uid'] for doc in self._descriptors]
-        skip = start - self._offset
+        skip = max(0, start - len(payload))
         limit = stop - start - len(payload)
         # print('start, stop, skip, limit', start, stop, skip, limit)
-        if skip >= 0 and limit > 0:
+        if limit > 0:
             payload.extend(
                 (('event', doc) for doc in self._event_collection
                     .find({'descriptor': {'$in': descriptor_uids}},
