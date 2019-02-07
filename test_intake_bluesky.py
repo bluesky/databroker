@@ -2,11 +2,12 @@ from bluesky import RunEngine
 from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
 import event_model
+import itertools
 import intake
 from intake.conftest import intake_server
 import json
 from suitcase.mongo_layout1 import Serializer
-from ophyd.sim import motor, det, img, direct_img
+from ophyd.sim import motor, det, img, direct_img, NumpySeqHandler
 import os
 import pymongo
 import pytest
@@ -65,7 +66,7 @@ def bundle(intake_server):
         doc = normalize(doc)
         direct_img_scan_docs.append((name, doc))
 
-    direct_img_scan_uid, = RE(scan([direct_img], motor, -1, 1, 20))
+    direct_img_scan_uid, = RE(scan([direct_img], motor, -1, 1, 20), collect)
 
     # Simulate data with an array detector that stores its data externally.
     img_scan_docs = []
@@ -74,7 +75,7 @@ def bundle(intake_server):
         doc = normalize(doc)
         img_scan_docs.append((name, doc))
 
-    img_scan_uid, = RE(scan([img], motor, -1, 1, 20))
+    img_scan_uid, = RE(scan([img], motor, -1, 1, 20), collect)
 
     with open(fullname, 'w') as f:
         f.write(f'''
@@ -136,7 +137,7 @@ def test_run_metadata(bundle):
         assert key in run().metadata  # datasource
 
 
-def test_read_canonical(bundle):
+def test_read_canonical_scalar(bundle):
     cat = intake.open_catalog(bundle.intake_server, page_size=10)
     run = cat['xyz']()[bundle.det_scan_uid]
     run.read_canonical()
@@ -144,6 +145,47 @@ def test_read_canonical(bundle):
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'event', 'stop'):
             for name, doc in bundle.det_scan_docs:
+                if name == name_:
+                    yield name, doc
+
+    for actual, expected in zip(run.read_canonical(), sorted_actual()):
+        actual_name, actual_doc = actual
+        expected_name, expected_doc = expected
+        assert actual_name == expected_name
+        assert actual_doc == expected_doc
+
+
+def test_read_canonical_external(bundle):
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.img_scan_uid]
+    run.read_canonical()
+    filler = event_model.Filler({'NPY_SEQ': NumpySeqHandler})
+
+    def sorted_actual():
+        for name_ in ('start', 'descriptor', 'resource', 'datum', 'event_page', 'event', 'stop'):
+            for name, doc in bundle.img_scan_docs:
+                # Fill external data.
+                _, filled_doc = filler(name, doc)
+                if name == name_ and name in ('start', 'descriptor', 'event', 'event_page', 'stop'):
+                    yield name, filled_doc
+
+    for actual, expected in itertools.zip_longest(
+            run.read_canonical(), sorted_actual()):
+        actual_name, actual_doc = actual
+        expected_name, expected_doc = expected
+        print(expected_name)
+        assert actual_name == expected_name
+        assert actual_doc == expected_doc
+
+
+def test_read_canonical_nonscalar(bundle):
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.direct_img_scan_uid]
+    run.read_canonical()
+
+    def sorted_actual():
+        for name_ in ('start', 'descriptor', 'event', 'stop'):
+            for name, doc in bundle.direct_img_scan_docs:
                 if name == name_:
                     yield name, doc
 
