@@ -43,11 +43,13 @@ def bundle(intake_server):
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
 
     metadatastore_uri = f'mongodb://localhost:27017/test-{str(uuid.uuid4())}'
-    asset_registry_uri = f'mongodb://localhost:27017/test-{str(uuid.uuid4())}'
+    metadatastore_cli = pymongo.MongoClient(metadatastore_uri)
+    asset_registry_cli = pymongo.MongoClient(
+        f'mongodb://localhost:27017/test-{str(uuid.uuid4())}')
     RE = RunEngine({})
     sd = SupplementalData(baseline=[motor])
     RE.preprocessors.append(sd)
-    serializer = Serializer(metadatastore_uri, asset_registry_uri)
+    serializer = Serializer(metadatastore_cli, asset_registry_cli)
     RE.subscribe(serializer)
 
     # Simulate data with a scalar detector.
@@ -103,10 +105,8 @@ sources:
                                 img_scan_uid=img_scan_uid,
                                 img_scan_docs=img_scan_docs)
 
-    os.remove(fullname)
-    for uri in (metadatastore_uri, asset_registry_uri):
-        cli = pymongo.MongoClient(uri)
-        cli.drop_database(cli.get_database().name)
+    metadatastore_cli.drop_database(metadatastore_cli.get_database())
+    asset_registry_cli.drop_database(asset_registry_cli.get_database())
 
 
 def test_fixture(bundle):
