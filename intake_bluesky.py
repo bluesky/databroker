@@ -493,7 +493,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     version = '0.0.1'
     partition_access = True
 
-    def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
+    def __init__(self, *, run_start_doc, event_descriptor_docs, event_collection,
                  run_stop_collection, resource_collection, datum_collection,
                  filler, metadata, include, exclude):
         # self._partition_size = 10
@@ -616,12 +616,11 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                 if dims is None:
                     # Construct the same default dimension names xarray would.
                     dims = tuple(f'dim_{i}' for i in range(ndim))
-                else:
-                    data_arrays[key] = xarray.DataArray(
-                        data=data_table[key],
-                        dims=('time',) + dims,
-                        coords={'time': times},
-                        name=key)
+                data_arrays[key] = xarray.DataArray(
+                    data=data_table[key],
+                    dims=('time',) + dims,
+                    coords={'time': times},
+                    name=key)
 
             # Make DataArrays for configuration data.
             for object_name, config in descriptor['configuration'].items():
@@ -655,15 +654,14 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                     if dims is None:
                         # Construct the same default dimension names xarray would.
                         dims = tuple(f'dim_{i}' for i in range(ndim))
-                    else:
-                        data_arrays[scoped_key] = xarray.DataArray(
-                            # TODO Once we know we have one Event Descriptor
-                            # per stream we can be more efficient about this.
-                            data=numpy.tile(config[self._data_or_timestamps][key],
-                                            (len(times),) + ndim * (1,)),
-                            dims=('time',) + dims,
-                            coords={'time': times},
-                            name=key)
+                    data_arrays[scoped_key] = xarray.DataArray(
+                        # TODO Once we know we have one Event Descriptor
+                        # per stream we can be more efficient about this.
+                        data=numpy.tile(config[self._data_or_timestamps][key],
+                                        (len(times),) + ndim * (1,)),
+                        dims=('time',) + dims,
+                        coords={'time': times},
+                        name=key)
 
             # Finally, make DataArrays for 'seq_num' and 'uid'.
             data_arrays['seq_num'] = xarray.DataArray(
