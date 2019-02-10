@@ -235,6 +235,16 @@ def test_access_nonscalar_data(bundle):
     entry().to_dask().load()
 
 
+def test_access_external_data(bundle):
+    "Access nonscalar data that is stored directly in Event documents."
+    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    run = cat['xyz']()[bundle.img_scan_uid]()
+    entry = run['primary']
+    entry.read()
+    entry().to_dask()
+    entry().to_dask().load()
+
+
 def test_access_nonscalar_data_canonical(bundle):
     "Access nonscalar data that is stored directly in Event documents."
     cat = intake.open_catalog(bundle.intake_server, page_size=10)

@@ -394,6 +394,7 @@ class RunCatalog(intake.catalog.Catalog):
                     'run_stop_collection': self._run_stop_collection,
                     'resource_collection': self._resource_collection,
                     'datum_collection': self._datum_collection,
+                    'filler': self.filler,
                     'metadata': {'descriptors': list(event_descriptor_docs)},
                     'include': '{{ include }}',
                     'exclude': '{{ exclude }}'}
@@ -459,8 +460,6 @@ class RunCatalog(intake.catalog.Catalog):
                         {'datum_id': err.key})
                     resource = self._resource_collection.find_one(
                         {'uid': datum['resource']})
-                    print('RESOURCE DAN DAN DAN')
-                    print(resource)
                     self.filler('resource', resource)
                     # Pre-fetch all datum for this resource.
                     for datum in self._datum_collection.find(
@@ -496,7 +495,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
                  run_stop_collection, resource_collection, datum_collection,
-                 metadata, include, exclude):
+                 filler, metadata, include, exclude):
         # self._partition_size = 10
         # self._default_chunks = 10
         self.urlpath = ''  # TODO Not sure why I had to add this.
@@ -508,6 +507,7 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self._run_stop_collection = run_stop_collection
         self._resource_collection = resource_collection
         self._datum_collection = datum_collection
+        self.filler = filler
         self._ds = None  # set by _open_dataset below
         # TODO Is there a more direct way to get non-string UserParameters in?
         self.include = ast.literal_eval(include)
@@ -570,6 +570,22 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                 sort=[('descriptor', pymongo.DESCENDING),
                     ('time', pymongo.ASCENDING)])
             events = list(cursor)
+            if any(data_keys[key].get('external') for key in keys):
+                for event in events:
+                    try:
+                        self.filler('event', event)
+                    except event_model.UnresolvableForeignKeyError as err:
+                        datum = self._datum_collection.find_one(
+                            {'datum_id': err.key})
+                        resource = self._resource_collection.find_one(
+                            {'uid': datum['resource']})
+                        self.filler('resource', resource)
+                        # Pre-fetch all datum for this resource.
+                        for datum in self._datum_collection.find(
+                                {'resource': datum['resource']}):
+                            self.filler('datum', datum)
+                        # TODO -- When to clear the datum cache in filler?
+                        self.filler('event', event)
             times = [ev['time'] for ev in events]
             seq_nums = [ev['seq_num'] for ev in events]
             uids = [ev['uid'] for ev in events]
@@ -600,8 +616,6 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                 if dims is None:
                     # Construct the same default dimension names xarray would.
                     dims = tuple(f'dim_{i}' for i in range(ndim))
-                if data_keys[key].get('external'):
-                    raise NotImplementedError
                 else:
                     data_arrays[key] = xarray.DataArray(
                         data=data_table[key],
@@ -641,8 +655,6 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
                     if dims is None:
                         # Construct the same default dimension names xarray would.
                         dims = tuple(f'dim_{i}' for i in range(ndim))
-                    if data_keys[key].get('external'):
-                        raise NotImplementedError
                     else:
                         data_arrays[scoped_key] = xarray.DataArray(
                             # TODO Once we know we have one Event Descriptor
