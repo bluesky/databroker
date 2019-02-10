@@ -3,6 +3,8 @@ import dask
 import dask.bag
 import collections
 from datetime import datetime
+import event_model
+import importlib
 import intake
 import intake.catalog
 import intake.catalog.base
@@ -30,44 +32,66 @@ class FacilityCatalog(intake.catalog.Catalog):
     ...
 
 
+def parse_handler_registry(handler_registry):
+    result = {}
+    for spec, handler_str in handler_registry.items():
+        module_name, _, class_name = handler_str.rpartition('.')
+        result[spec] = getattr(importlib.import_module(module_name), class_name)
+    return result
+
+
 class MongoMetadataStoreCatalog(intake.catalog.Catalog):
-    "represents one MongoDB instance"
-    name = 'mongo_metadatastore'
-
-    def __init__(self, uri, *, query=None, **kwargs):
+    def __init__(self, metadatastore_uri, asset_registry_uri, *,
+                 handler_registry=None, query=None, **kwargs):
         """
-        A Catalog backed by a MongoDB with metadatastore v1 collections.
+        Insert documents into MongoDB using layout v1.
 
-        Parameters
-        ----------
-        uri : string
-            This URI must include a database name.
-            Example: ``mongodb://localhost:27107/database_name``.
-        query : dict
-            Mongo query. This is used internally by the ``search`` method.
-        **kwargs :
-            passed up to the Catalog base class
+        This layout uses a separate Mongo collection per document type and a
+        separate Mongo document for each logical document.
+
+        Note that this Seralizer does not share the standard Serializer
+        name or signature common to suitcase packages because it can only write
+        via pymongo, not to an arbitrary user-provided buffer.
         """
-        # All **kwargs are passed up to base class. TODO: spell them out
-        # explicitly.
-        self._uri = uri
-        self._query = query
-        self._client = pymongo.MongoClient(uri)
-        kwargs.setdefault('name', uri)
+        name = 'mongo_metadatastore'
+
+        self._metadatastore_uri = metadatastore_uri
+        self._asset_registry_uri = asset_registry_uri
+        metadatastore_client = pymongo.MongoClient(metadatastore_uri)
+        asset_registry_client = pymongo.MongoClient(asset_registry_uri)
+        self._metadatastore_client = metadatastore_client
+        self._asset_registry_client = asset_registry_client
+
         try:
             # Called with no args, get_database() returns the database
-            # specified in the uri --- or raises if there was none. There is no
-            # public method for checking this in advance, so we just catch the
-            # error.
-            db = self._client.get_database()
+            # specified in the client's uri --- or raises if there was none.
+            # There is no public method for checking this in advance, so we
+            # just catch the error.
+            mds_db = self._metadatastore_client.get_database()
         except pymongo.errors.ConfigurationError as err:
             raise ValueError(
-                "Invalid uri. Did you forget to include a database?") from err
-        self._run_start_collection = db.get_collection('run_start')
-        self._run_stop_collection = db.get_collection('run_stop')
-        self._event_descriptor_collection = db.get_collection('event_descriptor')
-        self._event_collection = db.get_collection('event')
+                f"Invalid metadatastore_client: {metadatastore_client} "
+                f"Did you forget to include a database?") from err
+        try:
+            assets_db = self._asset_registry_client.get_database()
+        except pymongo.errors.ConfigurationError as err:
+            raise ValueError(
+                f"Invalid asset_registry_client: {asset_registry_client} "
+                f"Did you forget to include a database?") from err
+
+        self._run_start_collection = mds_db.get_collection('run_start')
+        self._run_stop_collection = mds_db.get_collection('run_stop')
+        self._event_descriptor_collection = mds_db.get_collection('event_descriptor')
+        self._event_collection = mds_db.get_collection('event')
+
+        self._resource_collection = assets_db.get_collection('resource')
+        self._datum_collection = assets_db.get_collection('datum')
+
         self._query = query or {}
+        if handler_registry is None:
+            handler_registry = {}
+        parsed_handler_registry = parse_handler_registry(handler_registry)
+        self.filler = event_model.Filler(parsed_handler_registry)
         super().__init__(**kwargs)
         if self.metadata is None:
             self.metadata = {}
@@ -87,7 +111,10 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                     run_start_doc=run_start_doc,
                     run_stop_collection=catalog._run_stop_collection,
                     event_descriptor_collection=catalog._event_descriptor_collection,
-                    event_collection=catalog._event_collection)
+                    event_collection=catalog._event_collection,
+                    resource_collection=catalog._resource_collection,
+                    datum_collection=catalog._datum_collection,
+                    filler=catalog.filler)
                 return intake.catalog.local.LocalCatalogEntry(
                     name=run_start_doc['uid'],
                     description={},  # TODO
@@ -181,7 +208,8 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = MongoMetadataStoreCatalog(
-            uri=self._uri,
+            metadatastore_uri=self._metadatastore_uri,
+            asset_registry_uri=self._asset_registry_uri,
             query=query,
             getenv=self.getenv,
             getshell=self.getshell,
@@ -288,6 +316,9 @@ class RunCatalog(intake.catalog.Catalog):
                  run_stop_collection,
                  event_descriptor_collection,
                  event_collection,
+                 resource_collection,
+                 datum_collection,
+                 filler,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
@@ -297,6 +328,9 @@ class RunCatalog(intake.catalog.Catalog):
         self._run_stop_collection = run_stop_collection
         self._event_descriptor_collection = event_descriptor_collection
         self._event_collection = event_collection
+        self._resource_collection = resource_collection
+        self._datum_collection = datum_collection
+        self.filler = filler
         # loaded in _load below
         super().__init__(**kwargs)
         
@@ -358,6 +392,8 @@ class RunCatalog(intake.catalog.Catalog):
                     'event_descriptor_docs': list(event_descriptor_docs),
                     'event_collection': self._event_collection,
                     'run_stop_collection': self._run_stop_collection,
+                    'resource_collection': self._resource_collection,
+                    'datum_collection': self._datum_collection,
                     'metadata': {'descriptors': list(event_descriptor_docs)},
                     'include': '{{ include }}',
                     'exclude': '{{ exclude }}'}
@@ -409,12 +445,30 @@ class RunCatalog(intake.catalog.Catalog):
         limit = stop - start - len(payload)
         # print('start, stop, skip, limit', start, stop, skip, limit)
         if limit > 0:
-            payload.extend(
-                (('event', doc) for doc in self._event_collection
-                    .find({'descriptor': {'$in': descriptor_uids}},
-                          sort=[('time', pymongo.ASCENDING)])
-                    .skip(skip)
-                    .limit(limit)))
+            events = [doc
+                      for doc in self._event_collection
+                          .find({'descriptor': {'$in': descriptor_uids}},
+                                sort=[('time', pymongo.ASCENDING)])
+                          .skip(skip)
+                          .limit(limit)]
+            for event in events:
+                try:
+                    self.filler('event', event)
+                except event_model.UnresolvableForeignKeyError as err:
+                    datum = self._datum_collection.find_one(
+                        {'datum_id': err.key})
+                    resource = self._resource_collection.find_one(
+                        {'uid': datum['resource']})
+                    print('RESOURCE DAN DAN DAN')
+                    print(resource)
+                    self.filler('resource', resource)
+                    # Pre-fetch all datum for this resource.
+                    for datum in self._datum_collection.find(
+                            {'resource': datum['resource']}):
+                        self.filler('datum', datum)
+                    # TODO -- When to clear the datum cache in filler?
+                    self.filler('event', event)
+                payload.append(('event', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self.run_stop_doc))
         for _, doc in payload:
@@ -441,7 +495,8 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     partition_access = True
 
     def __init__(self, run_start_doc, event_descriptor_docs, event_collection,
-                 run_stop_collection, metadata, include, exclude):
+                 run_stop_collection, resource_collection, datum_collection,
+                 metadata, include, exclude):
         # self._partition_size = 10
         # self._default_chunks = 10
         self.urlpath = ''  # TODO Not sure why I had to add this.
@@ -451,6 +506,8 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self._event_descriptor_docs = event_descriptor_docs
         self._stream_name = event_descriptor_docs[0].get('name')
         self._run_stop_collection = run_stop_collection
+        self._resource_collection = resource_collection
+        self._datum_collection = datum_collection
         self._ds = None  # set by _open_dataset below
         # TODO Is there a more direct way to get non-string UserParameters in?
         self.include = ast.literal_eval(include)

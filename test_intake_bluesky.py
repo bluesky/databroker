@@ -43,9 +43,9 @@ def bundle(intake_server):
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
 
     metadatastore_uri = f'mongodb://localhost:27017/test-{str(uuid.uuid4())}'
+    asset_registry_uri = f'mongodb://localhost:27017/test-{str(uuid.uuid4())}'
     metadatastore_cli = pymongo.MongoClient(metadatastore_uri)
-    asset_registry_cli = pymongo.MongoClient(
-        f'mongodb://localhost:27017/test-{str(uuid.uuid4())}')
+    asset_registry_cli = pymongo.MongoClient(asset_registry_uri)
     RE = RunEngine({})
     sd = SupplementalData(baseline=[motor])
     RE.preprocessors.append(sd)
@@ -90,7 +90,10 @@ sources:
     driver: mongo_metadatastore
     container: catalog
     args:
-      uri: {metadatastore_uri}
+      metadatastore_uri: {metadatastore_uri}
+      asset_registry_uri: {asset_registry_uri}
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
       beamline: "00-ID"
         ''')
@@ -174,8 +177,10 @@ def test_read_canonical_external(bundle):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
         print(expected_name)
-        assert actual_name == expected_name
-        assert actual_doc == expected_doc
+        try:
+            assert actual_name == expected_name
+        except ValueError:
+            assert array_equal(actual_doc, expected_doc)
 
 
 def test_read_canonical_nonscalar(bundle):
