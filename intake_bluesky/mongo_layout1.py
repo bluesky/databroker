@@ -26,6 +26,8 @@ from requests.compat import urljoin, urlparse
 import time
 import xarray
 
+from .core import RemoteRunCatalog
+
 
 class FacilityCatalog(intake.catalog.Catalog):
     "spans multiple MongoDB instances"
@@ -118,7 +120,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                 return intake.catalog.local.LocalCatalogEntry(
                     name=run_start_doc['uid'],
                     description={},  # TODO
-                    driver='intake_bluesky.RunCatalog',
+                    driver='intake_bluesky.mongo_layout1.RunCatalog',  # TODO move to core
                     direct_access='forbid',  # ???
                     args=args,
                     cache=None,  # ???
@@ -220,90 +222,6 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         return cat
 
 
-class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
-    """
-    Client-side proxy to a RunCatalog on the server.
-    """
-    name = 'bluesky-run-catalog'
-
-    def __init__(self, url, headers, name, parameters, metadata=None, **kwargs):
-        """
-
-        Parameters
-        ----------
-        url: str
-            Address of the server
-        headers: dict
-            HTTP headers to sue in calls
-        name: str
-            handle to reference this data
-        parameters: dict
-            To pass to the server when it instantiates the data source
-        metadata: dict
-            Additional info
-        kwargs: ignored
-        """
-        super().__init__(url=url, headers=headers, name=name,
-                metadata=metadata, **kwargs)
-        self.url = url
-        self.name = name
-        self.parameters = parameters
-        self.headers = headers
-        self._source_id = None
-        self.metadata = metadata or {}
-        self._get_source_id()
-        self.bag = None
-
-    def _get_source_id(self):
-        if self._source_id is None:
-            payload = dict(action='open', name=self.name,
-                           parameters=self.parameters)
-            req = requests.post(urljoin(self.url, '/v1/source'),
-                                data=msgpack.packb(payload, use_bin_type=True),
-                                **self.headers)
-            req.raise_for_status()
-            response = msgpack.unpackb(req.content, **unpack_kwargs)
-            self._parse_open_response(response)
-
-    def _parse_open_response(self, response):
-        self.npartitions = response['npartitions']
-        self.metadata = response['metadata']
-        self._schema = intake.source.base.Schema(datashape=None, dtype=None,
-                              shape=self.shape,
-                              npartitions=self.npartitions,
-                              metadata=self.metadata)
-        self._source_id = response['source_id']
-
-    def _load_metadata(self):
-        if self.bag is None:
-            self.parts = [dask.delayed(intake.container.base.get_partition)(
-                self.url, self.headers, self._source_id, self.container, i
-            )
-                          for i in range(self.npartitions)]
-            self.bag = dask.bag.from_delayed(self.parts)
-        return self._schema
-
-    def _get_partition(self, i):
-        self._load_metadata()
-        return self.parts[i].compute()
-
-    def read(self):
-        self._load_metadata()
-        return self.bag.compute()
-
-    def to_dask(self):
-        self._load_metadata()
-        return self.bag
-
-    def _close(self):
-        self.bag = None
-
-    def read_canonical(self):
-        for i in range(self.npartitions):
-            for name, doc in self._get_partition(i):
-                yield name, doc
-
-
 class RunCatalog(intake.catalog.Catalog):
     "represents one Run"
     container = 'bluesky-run-catalog'
@@ -401,7 +319,7 @@ class RunCatalog(intake.catalog.Catalog):
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
-                driver='intake_bluesky.MongoEventStream',
+                driver='intake_bluesky.mongo_layout1.MongoEventStream',  # TODO move to core
                 direct_access='forbid',
                 args=args,
                 cache=None,  # ???

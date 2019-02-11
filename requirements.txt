@@ -1,3 +1,9 @@
+dask
+msgpack
 intake
-git+https://github.com/ContinuumIO/intake-xarray
-zarr
+intake-xarray
+numpy
+pandas
+pymongo  # to be split into extras or a separate package
+requests
+xarray

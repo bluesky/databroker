@@ -3,7 +3,8 @@ from bluesky import RunEngine
 from bluesky.plans import scan
 from ophyd.sim import direct_img, motor
 from suitcase.jsonl import Serializer
-from utils import documents_to_xarray
+from ..core import documents_to_xarray
+
 
 def test_jsonl_smoke():
     RE = RunEngine({})

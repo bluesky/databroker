@@ -1,3 +1,4 @@
+import intake_bluesky.mongo_layout1  # trigger registration
 from bluesky import RunEngine
 from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
@@ -87,7 +88,7 @@ plugins:
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: mongo_metadatastore
+    driver: intake_bluesky.mongo_layout1.MongoMetadataStoreCatalog
     container: catalog
     args:
       metadatastore_uri: {metadatastore_uri}
