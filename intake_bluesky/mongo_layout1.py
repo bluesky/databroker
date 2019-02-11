@@ -1,9 +1,10 @@
 import ast
+import collections
 import dask
 import dask.bag
-import collections
 from datetime import datetime
 import event_model
+from functools import partial
 import importlib
 import intake
 import intake.catalog
@@ -95,9 +96,67 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
         parsed_handler_registry = parse_handler_registry(handler_registry)
         self.filler = event_model.Filler(parsed_handler_registry)
         super().__init__(**kwargs)
-        if self.metadata is None:
-            self.metadata = {}
 
+    def _get_run_stop(self, run_start_uid):
+        doc = self._run_stop_collection.find_one(
+            {'run_start': run_start_uid})
+        # It is acceptable to return None if the document does not exist.
+        if doc is not None:
+            doc.pop('_id')
+        return doc
+
+    def _get_event_descriptors(self, run_start_uid):
+        results = []
+        cursor = self._event_descriptor_collection.find(
+            {'run_start': run_start_uid},
+            sort=[('time', pymongo.ASCENDING)])
+        for doc in cursor:
+            doc.pop('_id')
+            results.append(doc)
+        return results
+
+    def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
+        cursor = (self._event_collection
+            .find({'descriptor': {'$in': descriptor_uids}},
+                    sort=[('time', pymongo.ASCENDING)]))
+        cursor.skip(skip)
+        if limit is not None:
+            cursor = cursor.limit(limit)
+        for doc in cursor:
+            doc.pop('_id')
+            yield doc
+
+    def _get_event_count(self, descriptor_uids):
+        cursor = (self._event_collection
+            .find({'descriptor': {'$in': descriptor_uids}},
+                    sort=[('time', pymongo.ASCENDING)]))
+        return cursor.count()
+
+    def _get_resource(self, uid):
+        doc = self._resource_collection.find_one(
+            {'uid': uid})
+        if doc is None:
+            raise ValueError(f"Could not find Resource with uid={uid}")
+        doc.pop('_id')
+        return doc
+
+    def _get_datum(self, datum_id):
+        doc = self._datum_collection.find_one(
+            {'datum_id': datum_id})
+        if doc is None:
+            raise ValueError(f"Could not find Datum with datum_id={datum_id}")
+        doc.pop('_id')
+        return doc
+
+    def _get_datum_cursor(self, resource_uid):
+        cursor = self._datum_collection.find({'resource': resource_uid})
+        for doc in cursor:
+            doc.pop('_id')
+            yield doc
+
+        self._schema = {}  # TODO This is cheating, I think.
+
+    def _make_entries_container(self):
         catalog = self
 
         class Entries:
@@ -111,11 +170,13 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                                   'stop': run_stop_doc}
                 args = dict(
                     run_start_doc=run_start_doc,
-                    run_stop_collection=catalog._run_stop_collection,
-                    event_descriptor_collection=catalog._event_descriptor_collection,
-                    event_collection=catalog._event_collection,
-                    resource_collection=catalog._resource_collection,
-                    datum_collection=catalog._datum_collection,
+                    get_run_stop=partial(catalog._get_run_stop, uid),
+                    get_event_descriptors=partial(catalog._get_event_descriptors, uid),
+                    get_event_cursor=catalog._get_event_cursor,
+                    get_event_count=catalog._get_event_count,
+                    get_resource=catalog._get_resource,
+                    get_datum=catalog._get_datum,
+                    get_datum_cursor=catalog._get_datum_cursor,
                     filler=catalog.filler)
                 return intake.catalog.local.LocalCatalogEntry(
                     name=run_start_doc['uid'],
@@ -192,8 +253,7 @@ class MongoMetadataStoreCatalog(intake.catalog.Catalog):
                 else:
                     return True
 
-        self._entries = Entries()
-        self._schema = {}  # TODO This is cheating, I think.
+        return Entries()
 
     def _close(self):
         self._client.close()
@@ -231,11 +291,13 @@ class RunCatalog(intake.catalog.Catalog):
 
     def __init__(self,
                  run_start_doc,
-                 run_stop_collection,
-                 event_descriptor_collection,
-                 event_collection,
-                 resource_collection,
-                 datum_collection,
+                 get_run_stop,
+                 get_event_descriptors,
+                 get_event_cursor,
+                 get_event_count,
+                 get_resource,
+                 get_datum,
+                 get_datum_cursor,
                  filler,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
@@ -243,43 +305,16 @@ class RunCatalog(intake.catalog.Catalog):
         self.urlpath = ''  # TODO Not sure why I had to add this.
 
         self._run_start_doc = run_start_doc
-        self._run_stop_collection = run_stop_collection
-        self._event_descriptor_collection = event_descriptor_collection
-        self._event_collection = event_collection
-        self._resource_collection = resource_collection
-        self._datum_collection = datum_collection
+        self._get_run_stop = get_run_stop
+        self._get_event_descriptors = get_event_descriptors
+        self._get_event_cursor = get_event_cursor
+        self._get_event_count = get_event_count
+        self._get_resource = get_resource
+        self._get_datum = get_datum
+        self._get_datum_cursor = get_datum_cursor
         self.filler = filler
-        # loaded in _load below
         super().__init__(**kwargs)
         
-        # Count the total number of documents in this run.
-        uid = self._run_start_doc['uid']
-        run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
-        if run_stop_doc is not None:
-            del run_stop_doc['_id']  # Drop internal Mongo detail.
-        self._run_stop_doc = run_stop_doc
-        cursor = self._event_descriptor_collection.find(
-            {'run_start': uid},
-            sort=[('time', pymongo.ASCENDING)])
-        self._descriptors = list(cursor)
-        self._offset = len(self._descriptors) + 1
-        self.metadata.update({'start': self._run_start_doc})
-        self.metadata.update({'stop': run_stop_doc})
-
-        count = 1
-        descriptor_uids = [doc['uid'] for doc in self._descriptors]
-        count += len(descriptor_uids)
-        query = {'descriptor': {'$in': descriptor_uids}}
-        count += self._event_collection.find(query).count()
-        count += (self.run_stop_doc is not None)
-        self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
-
-        self._schema = intake.source.base.Schema(
-            datashape=None,
-            dtype=None,
-            shape=(count,),
-            npartitions=self.npartitions,
-            metadata=self.metadata)
 
     def __repr__(self):
         try:
@@ -295,27 +330,50 @@ class RunCatalog(intake.catalog.Catalog):
         return out
 
     def _load(self):
+        # Count the total number of documents in this run.
         uid = self._run_start_doc['uid']
-        cursor = self._event_descriptor_collection.find(
-            {'run_start': uid},
-            sort=[('time', pymongo.ASCENDING)])
+        self._run_stop_doc = self._get_run_stop()
+        self._descriptors = self._get_event_descriptors()
+        self._offset = len(self._descriptors) + 1
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': self._run_stop_doc})
+
+        count = 1
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        count += len(descriptor_uids)
+        query = {'descriptor': {'$in': descriptor_uids}}
+        count += self._get_event_count(
+            [doc['uid'] for doc in self._descriptors])
+        count += (self._run_stop_doc is not None)
+        self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
+
+        self._schema = intake.source.base.Schema(
+            datashape=None,
+            dtype=None,
+            shape=(count,),
+            npartitions=self.npartitions,
+            metadata=self.metadata)
+
         # Sort descriptors like
         # {'stream_name': [descriptor1, descriptor2, ...], ...}
-        streams = itertools.groupby(cursor,
+        streams = itertools.groupby(self._descriptors,
                                     key=lambda d: d.get('name'))
 
         # Make a MongoEventStreamSource for each stream_name.
         for stream_name, event_descriptor_docs in streams:
-            args = {'run_start_doc': self._run_start_doc,
-                    'event_descriptor_docs': list(event_descriptor_docs),
-                    'event_collection': self._event_collection,
-                    'run_stop_collection': self._run_stop_collection,
-                    'resource_collection': self._resource_collection,
-                    'datum_collection': self._datum_collection,
-                    'filler': self.filler,
-                    'metadata': {'descriptors': list(event_descriptor_docs)},
-                    'include': '{{ include }}',
-                    'exclude': '{{ exclude }}'}
+            args = dict(
+                run_start_doc=self._run_start_doc,
+                event_descriptor_docs=list(event_descriptor_docs),
+                get_run_stop=self._get_run_stop,
+                get_event_cursor=self._get_event_cursor,
+                get_event_count=self._get_event_count,
+                get_resource=self._get_resource,
+                get_datum=self._get_datum,
+                get_datum_cursor=self._get_datum_cursor,
+                filler=self.filler,
+                metadata={'descriptors': list(self._descriptors)},
+                include='{{ include }}',
+                exclude='{{ exclude }}')
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -324,7 +382,7 @@ class RunCatalog(intake.catalog.Catalog):
                 args=args,
                 cache=None,  # ???
                 parameters=[_INCLUDE_PARAMETER, _EXCLUDE_PARAMETER],
-                metadata={'descriptors': list(event_descriptor_docs)},
+                metadata={'descriptors': list(self._descriptors)},
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
@@ -334,15 +392,6 @@ class RunCatalog(intake.catalog.Catalog):
         ...
 
         return self._descriptors
-
-    @property
-    def run_stop_doc(self):
-        if self._run_stop_doc is None:
-            run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
-            if run_stop_doc is not None:
-                del run_stop_doc['_id']  # Drop internal Mongo detail.
-            self._run_stop_doc = run_stop_doc
-        return self._run_stop_doc
 
     def read_partition(self, i):
         """Fetch one chunk of documents.
@@ -364,30 +413,24 @@ class RunCatalog(intake.catalog.Catalog):
         limit = stop - start - len(payload)
         # print('start, stop, skip, limit', start, stop, skip, limit)
         if limit > 0:
-            events = [doc
-                      for doc in self._event_collection
-                          .find({'descriptor': {'$in': descriptor_uids}},
-                                sort=[('time', pymongo.ASCENDING)])
-                          .skip(skip)
-                          .limit(limit)]
+            events = self._get_event_cursor(descriptor_uids, skip, limit)
             for event in events:
                 try:
                     self.filler('event', event)
                 except event_model.UnresolvableForeignKeyError as err:
-                    datum = self._datum_collection.find_one(
-                        {'datum_id': err.key})
-                    resource = self._resource_collection.find_one(
-                        {'uid': datum['resource']})
+                    datum_id = err.key
+                    datum = self._get_datum(datum_id)
+                    resource_uid = datum['resource']
+                    resource = self._get_resource(resource_uid)
                     self.filler('resource', resource)
                     # Pre-fetch all datum for this resource.
-                    for datum in self._datum_collection.find(
-                            {'resource': datum['resource']}):
+                    for datum in self._get_datum_cursor(resource_uid):
                         self.filler('datum', datum)
                     # TODO -- When to clear the datum cache in filler?
                     self.filler('event', event)
                 payload.append(('event', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
-                payload.append(('stop', self.run_stop_doc))
+                payload.append(('stop', self._run_stop_doc))
         for _, doc in payload:
             doc.pop('_id', None)
         return payload
@@ -411,21 +454,32 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
     version = '0.0.1'
     partition_access = True
 
-    def __init__(self, *, run_start_doc, event_descriptor_docs, event_collection,
-                 run_stop_collection, resource_collection, datum_collection,
-                 filler, metadata, include, exclude):
+    def __init__(self,
+                 run_start_doc,
+                 event_descriptor_docs,
+                 get_run_stop,
+                 get_event_cursor,
+                 get_event_count,
+                 get_resource,
+                 get_datum,
+                 get_datum_cursor,
+                 filler,
+                 metadata,
+                 include,
+                 exclude,
+                 **kwargs):
         # self._partition_size = 10
         # self._default_chunks = 10
-        self.urlpath = ''  # TODO Not sure why I had to add this.
         self._run_start_doc = run_start_doc
-        self._run_stop_doc  = None
-        self._event_collection = event_collection
-        self._event_descriptor_docs = event_descriptor_docs
-        self._stream_name = event_descriptor_docs[0].get('name')
-        self._run_stop_collection = run_stop_collection
-        self._resource_collection = resource_collection
-        self._datum_collection = datum_collection
+        self._event_descriptor_docs=event_descriptor_docs
+        self._get_run_stop = get_run_stop
+        self._get_event_cursor = get_event_cursor
+        self._get_event_count = get_event_count
+        self._get_resource = get_resource
+        self._get_datum = get_datum
+        self._get_datum_cursor = get_datum_cursor
         self.filler = filler
+        self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         # TODO Is there a more direct way to get non-string UserParameters in?
         self.include = ast.literal_eval(include)
@@ -444,12 +498,9 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
 
     def _open_dataset(self):
         uid = self._run_start_doc['uid']
-        run_stop_doc = self._run_stop_collection.find_one({'run_start': uid})
-        self._run_stop_doc = run_stop_doc
-        if run_stop_doc is not None:
-            del run_stop_doc['_id']  # Drop internal Mongo detail.
+        self._run_stop_doc = self._get_run_stop()
         self.metadata.update({'start': self._run_start_doc})
-        self.metadata.update({'stop': run_stop_doc})
+        self.metadata.update({'stop': self._run_stop_doc})
         # TODO pass this in from BlueskyEntry
         slice_ = slice(None)
 
@@ -480,27 +531,19 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         datasets = []
         for descriptor in self._event_descriptor_docs:
             # Fetch (relevant range of) Event data and transpose rows -> cols.
-            query = {'descriptor': descriptor['uid']}
-            if seq_num_filter:
-                query['seq_num'] = seq_num_filter
-            cursor = self._event_collection.find(
-                query,
-                sort=[('descriptor', pymongo.DESCENDING),
-                    ('time', pymongo.ASCENDING)])
-            events = list(cursor)
+            events = list(self._get_event_cursor([descriptor['uid']]))
             if any(data_keys[key].get('external') for key in keys):
                 for event in events:
                     try:
                         self.filler('event', event)
                     except event_model.UnresolvableForeignKeyError as err:
-                        datum = self._datum_collection.find_one(
-                            {'datum_id': err.key})
-                        resource = self._resource_collection.find_one(
-                            {'uid': datum['resource']})
+                        datum_id = err.key
+                        datum = self._get_datum(datum_id)
+                        resource_uid = datum['resource']
+                        resource = self._get_resource(resource_uid)
                         self.filler('resource', resource)
                         # Pre-fetch all datum for this resource.
-                        for datum in self._datum_collection.find(
-                                {'resource': datum['resource']}):
+                        for datum in self._get_datum_cursor(resource_uid):
                             self.filler('datum', datum)
                         # TODO -- When to clear the datum cache in filler?
                         self.filler('event', event)
