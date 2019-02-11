@@ -502,11 +502,15 @@ class MongoEventStream(intake_xarray.base.DataSourceMixin):
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         self._ds = documents_to_xarray(
-            self._run_start_doc,
-            self._run_stop_doc,
-            self._event_descriptor_docs,
-            list(self._get_event_cursor(
+            start_doc=self._run_start_doc,
+            stop_doc=self._run_stop_doc,
+            descriptor_docs=self._event_descriptor_docs,
+            event_docs=list(self._get_event_cursor(
                 [doc['uid'] for doc in self._event_descriptor_docs])),
+            filler=self.filler,
+            get_resource=self._get_resource,
+            get_datum=self._get_datum,
+            get_datum_cursor=self._get_datum_cursor,
             include=self.include,
             exclude=self.exclude)
 

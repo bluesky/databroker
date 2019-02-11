@@ -1,3 +1,4 @@
+import event_model
 import dask
 import dask.bag
 import intake.catalog.base
@@ -9,7 +10,8 @@ import numpy
 import xarray
 
 
-def documents_to_xarray(start_doc, stop_doc, descriptor_docs, event_docs,
+def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
+                        filler, get_resource, get_datum, get_datum_cursor,
                         include=None, exclude=None):
     if include is None:
         include = []
@@ -35,6 +37,21 @@ def documents_to_xarray(start_doc, stop_doc, descriptor_docs, event_docs,
     for descriptor in descriptor_docs:
         events = [doc for doc in event_docs
                   if doc['descriptor'] == descriptor['uid']]
+        if any(data_keys[key].get('external') for key in keys):
+            for event in events:
+                try:
+                    filler('event', event)
+                except event_model.UnresolvableForeignKeyError as err:
+                    datum_id = err.key
+                    datum = get_datum(datum_id)
+                    resource_uid = datum['resource']
+                    resource = get_resource(resource_uid)
+                    filler('resource', resource)
+                    # Pre-fetch all datum for this resource.
+                    for datum in get_datum_cursor(resource_uid):
+                        filler('datum', datum)
+                    # TODO -- When to clear the datum cache in filler?
+                    filler('event', event)
         times = [ev['time'] for ev in events]
         seq_nums = [ev['seq_num'] for ev in events]
         uids = [ev['uid'] for ev in events]
@@ -64,14 +81,11 @@ def documents_to_xarray(start_doc, stop_doc, descriptor_docs, event_docs,
             if dims is None:
                 # Construct the same default dimension names xarray would.
                 dims = tuple(f'dim_{i}' for i in range(ndim))
-            if data_keys[key].get('external'):
-                raise NotImplementedError
-            else:
-                data_arrays[key] = xarray.DataArray(
-                    data=data_table[key],
-                    dims=('time',) + dims,
-                    coords={'time': times},
-                    name=key)
+            data_arrays[key] = xarray.DataArray(
+                data=data_table[key],
+                dims=('time',) + dims,
+                coords={'time': times},
+                name=key)
 
         # Make DataArrays for configuration data.
         for object_name, config in descriptor['configuration'].items():
@@ -105,17 +119,14 @@ def documents_to_xarray(start_doc, stop_doc, descriptor_docs, event_docs,
                 if dims is None:
                     # Construct the same default dimension names xarray would.
                     dims = tuple(f'dim_{i}' for i in range(ndim))
-                if data_keys[key].get('external'):
-                    raise NotImplementedError
-                else:
-                    data_arrays[scoped_key] = xarray.DataArray(
-                        # TODO Once we know we have one Event Descriptor
-                        # per stream we can be more efficient about this.
-                        data=numpy.tile(config['data'][key],
-                                        (len(times),) + ndim * (1,)),
-                        dims=('time',) + dims,
-                        coords={'time': times},
-                        name=key)
+                data_arrays[scoped_key] = xarray.DataArray(
+                    # TODO Once we know we have one Event Descriptor
+                    # per stream we can be more efficient about this.
+                    data=numpy.tile(config['data'][key],
+                                    (len(times),) + ndim * (1,)),
+                    dims=('time',) + dims,
+                    coords={'time': times},
+                    name=key)
 
         # Finally, make DataArrays for 'seq_num' and 'uid'.
         data_arrays['seq_num'] = xarray.DataArray(
