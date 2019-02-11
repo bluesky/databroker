@@ -1,13 +1,14 @@
-import intake_bluesky.mongo_layout1  # trigger registration
+import intake_bluesky.mongo_layout1  # noqa
 from bluesky import RunEngine
 from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
 import event_model
 import itertools
 import intake
-from intake.conftest import intake_server
+from intake.conftest import intake_server  # noqa
 import json
 from suitcase.mongo_layout1 import Serializer
+import numpy
 from ophyd.sim import motor, det, img, direct_img, NumpySeqHandler
 import os
 import pymongo
@@ -28,7 +29,7 @@ YAML_FILENAME = 'intake_test_catalog.yml'
 def teardown_module(module):
     try:
         shutil.rmtree(TMP_DIR)
-    except:
+    except BaseException:
         pass
 
 
@@ -39,7 +40,7 @@ def normalize(doc):
 
 
 @pytest.fixture
-def bundle(intake_server):
+def bundle(intake_server):  # noqa
     "A SimpleNamespace with an intake_server and some uids of sample data."
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
 
@@ -88,7 +89,7 @@ plugins:
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_layout1.MongoMetadataStoreCatalog
+    driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
     container: catalog
     args:
       metadatastore_uri: {metadatastore_uri}
@@ -127,8 +128,8 @@ def test_search(bundle):
     assert list(cat['xyz']()) == list(cat['xyz'].search({}))
     # Progressive (i.e. nested) search:
     name, = (cat['xyz']
-                .search({'plan_name': 'scan'})
-                .search({'detectors': 'det'}))
+             .search({'plan_name': 'scan'})
+             .search({'detectors': 'det'}))
     assert name == bundle.det_scan_uid
 
 
@@ -181,7 +182,7 @@ def test_read_canonical_external(bundle):
         try:
             assert actual_name == expected_name
         except ValueError:
-            assert array_equal(actual_doc, expected_doc)
+            assert numpy.array_equal(actual_doc, expected_doc)
 
 
 def test_read_canonical_nonscalar(bundle):

@@ -1,11 +1,17 @@
+import ast
 import event_model
+from datetime import datetime
 import dask
 import dask.bag
+import importlib
+import itertools
 import intake.catalog.base
+import intake.container.base
+import intake_xarray.base
 from intake.compat import unpack_kwargs
 import msgpack
 import requests
-from requests.compat import urljoin, urlparse
+from requests.compat import urljoin
 import numpy
 import xarray
 
@@ -20,7 +26,6 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     if include and exclude:
         raise ValueError(
             "The parameters `include` and `exclude` are mutually exclusive.")
-    uid = start_doc['uid']
 
     # Data keys must not change within one stream, so we can safely sample
     # just the first Event Descriptor.
@@ -148,43 +153,6 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     return xarray.merge(datasets)
 
 
-def _transpose(in_data, keys, field):
-    """Turn a list of dicts into dict of lists
-
-    Parameters
-    ----------
-    in_data : list
-        A list of dicts which contain at least one dict.
-        All of the inner dicts must have at least the keys
-        in `keys`
-
-    keys : list
-        The list of keys to extract
-
-    field : str
-        The field in the outer dict to use
-
-    Returns
-    -------
-    transpose : dict
-        The transpose of the data
-    """
-    out = {k: [None] * len(in_data) for k in keys}
-    for j, ev in enumerate(in_data):
-        dd = ev[field]
-        for k in keys:
-            out[k][j] = dd[k]
-    return out
-
-def _ft(timestamp):
-    "format timestamp"
-    if isinstance(timestamp, str):
-        return timestamp
-    # Truncate microseconds to miliseconds. Do not bother to round.
-    return (datetime.fromtimestamp(timestamp)
-            .strftime('%Y-%m-%d %H:%M:%S.%f'))[:-3]
-
-
 class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     """
     Client-side proxy to a RunCatalog on the server.
@@ -209,7 +177,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         kwargs: ignored
         """
         super().__init__(url=url, headers=headers, name=name,
-                metadata=metadata, **kwargs)
+                         metadata=metadata, **kwargs)
         self.url = url
         self.name = name
         self.parameters = parameters
@@ -233,10 +201,11 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     def _parse_open_response(self, response):
         self.npartitions = response['npartitions']
         self.metadata = response['metadata']
-        self._schema = intake.source.base.Schema(datashape=None, dtype=None,
-                              shape=self.shape,
-                              npartitions=self.npartitions,
-                              metadata=self.metadata)
+        self._schema = intake.source.base.Schema(
+            datashape=None, dtype=None,
+            shape=self.shape,
+            npartitions=self.npartitions,
+            metadata=self.metadata)
         self._source_id = response['source_id']
 
     def _load_metadata(self):
@@ -269,3 +238,306 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
                 yield name, doc
 
 
+class RunCatalog(intake.catalog.Catalog):
+    "represents one Run"
+    container = 'bluesky-run-catalog'
+    version = '0.0.1'
+    partition_access = True
+    PARTITION_SIZE = 100
+
+    def __init__(self,
+                 run_start_doc,
+                 get_run_stop,
+                 get_event_descriptors,
+                 get_event_cursor,
+                 get_event_count,
+                 get_resource,
+                 get_datum,
+                 get_datum_cursor,
+                 filler,
+                 **kwargs):
+        # All **kwargs are passed up to base class. TODO: spell them out
+        # explicitly.
+        self.urlpath = ''  # TODO Not sure why I had to add this.
+
+        self._run_start_doc = run_start_doc
+        self._get_run_stop = get_run_stop
+        self._get_event_descriptors = get_event_descriptors
+        self._get_event_cursor = get_event_cursor
+        self._get_event_count = get_event_count
+        self._get_resource = get_resource
+        self._get_datum = get_datum
+        self._get_datum_cursor = get_datum_cursor
+        self.filler = filler
+        super().__init__(**kwargs)
+
+    def __repr__(self):
+        try:
+            start = self._run_start_doc
+            stop = self._run_stop_doc or {}
+            out = (f"<Intake catalog: Run {start['uid'][:8]}...>\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n")
+            # f"  Streams:\n")
+            # for stream_name in self:
+            #     out += f"    * {stream_name}\n"
+        except Exception as exc:
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
+        return out
+
+    def _load(self):
+        # Count the total number of documents in this run.
+        self._run_stop_doc = self._get_run_stop()
+        self._descriptors = self._get_event_descriptors()
+        self._offset = len(self._descriptors) + 1
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': self._run_stop_doc})
+
+        count = 1
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        count += len(descriptor_uids)
+        count += self._get_event_count(
+            [doc['uid'] for doc in self._descriptors])
+        count += (self._run_stop_doc is not None)
+        self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
+
+        self._schema = intake.source.base.Schema(
+            datashape=None,
+            dtype=None,
+            shape=(count,),
+            npartitions=self.npartitions,
+            metadata=self.metadata)
+
+        # Sort descriptors like
+        # {'stream_name': [descriptor1, descriptor2, ...], ...}
+        streams = itertools.groupby(self._descriptors,
+                                    key=lambda d: d.get('name'))
+
+        # Make a BlueskyEventStream for each stream_name.
+        for stream_name, event_descriptor_docs in streams:
+            args = dict(
+                run_start_doc=self._run_start_doc,
+                event_descriptor_docs=list(event_descriptor_docs),
+                get_run_stop=self._get_run_stop,
+                get_event_cursor=self._get_event_cursor,
+                get_event_count=self._get_event_count,
+                get_resource=self._get_resource,
+                get_datum=self._get_datum,
+                get_datum_cursor=self._get_datum_cursor,
+                filler=self.filler,
+                metadata={'descriptors': list(self._descriptors)},
+                include='{{ include }}',
+                exclude='{{ exclude }}')
+            self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
+                name=stream_name,
+                description={},  # TODO
+                driver='intake_bluesky.core.BlueskyEventStream',
+                direct_access='forbid',
+                args=args,
+                cache=None,  # ???
+                parameters=[_INCLUDE_PARAMETER, _EXCLUDE_PARAMETER],
+                metadata={'descriptors': list(self._descriptors)},
+                catalog_dir=None,
+                getenv=True,
+                getshell=True,
+                catalog=self)
+
+    def read_canonical(self):
+        ...
+
+        return self._descriptors
+
+    def read_partition(self, i):
+        """Fetch one chunk of documents.
+        """
+        self._load()
+        payload = []
+        start = i * self.PARTITION_SIZE
+        stop = (1 + i) * self.PARTITION_SIZE
+        if start < self._offset:
+            payload.extend(
+                itertools.islice(
+                    itertools.chain(
+                        (('start', self._run_start_doc),),
+                        (('descriptor', doc) for doc in self._descriptors)),
+                    start,
+                    stop))
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        skip = max(0, start - len(payload))
+        limit = stop - start - len(payload)
+        # print('start, stop, skip, limit', start, stop, skip, limit)
+        if limit > 0:
+            events = self._get_event_cursor(descriptor_uids, skip, limit)
+            for event in events:
+                try:
+                    self.filler('event', event)
+                except event_model.UnresolvableForeignKeyError as err:
+                    datum_id = err.key
+                    datum = self._get_datum(datum_id)
+                    resource_uid = datum['resource']
+                    resource = self._get_resource(resource_uid)
+                    self.filler('resource', resource)
+                    # Pre-fetch all datum for this resource.
+                    for datum in self._get_datum_cursor(resource_uid):
+                        self.filler('datum', datum)
+                    # TODO -- When to clear the datum cache in filler?
+                    self.filler('event', event)
+                payload.append(('event', event))
+            if i == self.npartitions - 1 and self._run_stop_doc is not None:
+                payload.append(('stop', self._run_stop_doc))
+        for _, doc in payload:
+            doc.pop('_id', None)
+        return payload
+
+
+_EXCLUDE_PARAMETER = intake.catalog.local.UserParameter(
+    name='exclude',
+    description="fields to exclude",
+    type='list',
+    default=None)
+_INCLUDE_PARAMETER = intake.catalog.local.UserParameter(
+    name='include',
+    description="fields to explicitly include at exclusion of all others",
+    type='list',
+    default=None)
+
+
+class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
+    container = 'xarray'
+    name = 'event-stream'
+    version = '0.0.1'
+    partition_access = True
+
+    def __init__(self,
+                 run_start_doc,
+                 event_descriptor_docs,
+                 get_run_stop,
+                 get_event_cursor,
+                 get_event_count,
+                 get_resource,
+                 get_datum,
+                 get_datum_cursor,
+                 filler,
+                 metadata,
+                 include,
+                 exclude,
+                 **kwargs):
+        # self._partition_size = 10
+        # self._default_chunks = 10
+        self._run_start_doc = run_start_doc
+        self._event_descriptor_docs = event_descriptor_docs
+        self._get_run_stop = get_run_stop
+        self._get_event_cursor = get_event_cursor
+        self._get_event_count = get_event_count
+        self._get_resource = get_resource
+        self._get_datum = get_datum
+        self._get_datum_cursor = get_datum_cursor
+        self.filler = filler
+        self.urlpath = ''  # TODO Not sure why I had to add this.
+        self._ds = None  # set by _open_dataset below
+        # TODO Is there a more direct way to get non-string UserParameters in?
+        self.include = ast.literal_eval(include)
+        self.exclude = ast.literal_eval(exclude)
+        super().__init__(
+            metadata=metadata
+        )
+
+    def __repr__(self):
+        try:
+            out = (f"<Intake catalog: Stream {self._stream_name!r} "
+                   f"from Run {self._run_start_doc['uid'][:8]}...>")
+        except Exception as exc:
+            out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc}>"
+        return out
+
+    def _open_dataset(self):
+        self._run_stop_doc = self._get_run_stop()
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': self._run_stop_doc})
+        self._ds = documents_to_xarray(
+            start_doc=self._run_start_doc,
+            stop_doc=self._run_stop_doc,
+            descriptor_docs=self._event_descriptor_docs,
+            event_docs=list(self._get_event_cursor(
+                [doc['uid'] for doc in self._event_descriptor_docs])),
+            filler=self.filler,
+            get_resource=self._get_resource,
+            get_datum=self._get_datum,
+            get_datum_cursor=self._get_datum_cursor,
+            include=self.include,
+            exclude=self.exclude)
+
+
+def _transpose(in_data, keys, field):
+    """Turn a list of dicts into dict of lists
+
+    Parameters
+    ----------
+    in_data : list
+        A list of dicts which contain at least one dict.
+        All of the inner dicts must have at least the keys
+        in `keys`
+
+    keys : list
+        The list of keys to extract
+
+    field : str
+        The field in the outer dict to use
+
+    Returns
+    -------
+    transpose : dict
+        The transpose of the data
+    """
+    out = {k: [None] * len(in_data) for k in keys}
+    for j, ev in enumerate(in_data):
+        dd = ev[field]
+        for k in keys:
+            out[k][j] = dd[k]
+    return out
+
+
+def _ft(timestamp):
+    "format timestamp"
+    if isinstance(timestamp, str):
+        return timestamp
+    # Truncate microseconds to miliseconds. Do not bother to round.
+    return (datetime.fromtimestamp(timestamp)
+            .strftime('%Y-%m-%d %H:%M:%S.%f'))[:-3]
+
+
+def xarray_to_event_gen(data_xarr, ts_xarr, page_size):
+    for start_idx in range(0, len(data_xarr['time']), page_size):
+        stop_idx = start_idx + page_size
+        data = {name: variable.values
+                for name, variable in
+                data_xarr.isel({'time': slice(start_idx, stop_idx)}).items()
+                if ':' not in name}
+        ts = {name: variable.values
+              for name, variable in
+              ts_xarr.isel({'time': slice(start_idx, stop_idx)}).items()
+              if ':' not in name}
+        event_page = {}
+        seq_num = data.pop('seq_num')
+        ts.pop('seq_num')
+        uids = data.pop('uid')
+        ts.pop('uid')
+        event_page['data'] = data
+        event_page['timestamps'] = ts
+        event_page['time'] = data_xarr['time'][start_idx:stop_idx].values
+        event_page['uid'] = uids
+        event_page['seq_num'] = seq_num
+        event_page['filled'] = {}
+
+        yield event_page
+
+
+def parse_handler_registry(handler_registry):
+    result = {}
+    for spec, handler_str in handler_registry.items():
+        module_name, _, class_name = handler_str.rpartition('.')
+        result[spec] = getattr(importlib.import_module(module_name), class_name)
+    return result
+
+
+intake.registry['remote-bluesky-run-catalog'] = RemoteRunCatalog
+intake.container.container_map['bluesky-run-catalog'] = RemoteRunCatalog

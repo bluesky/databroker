@@ -19,4 +19,4 @@ def test_jsonl_smoke():
     _, stop = docs[-1]
     descriptors = [doc for name, doc in docs if name == 'descriptor']
     events = [doc for name, doc in docs if name == 'event']
-    xarr = documents_to_xarray(start, stop, descriptors, events)
+    documents_to_xarray(start, stop, descriptors, events)
