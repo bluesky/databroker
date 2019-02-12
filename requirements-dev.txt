@@ -9,6 +9,7 @@ flake8
 ophyd
 pytest
 sphinx
+suitcase-mongo
 # These are dependencies of various sphinx extensions for documentation.
 ipython
 matplotlib
