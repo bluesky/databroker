@@ -5,6 +5,8 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
+services:
+  - mongodb
 addons:
   apt:
     packages:
