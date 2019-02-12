@@ -1,4 +1,5 @@
 dask[bag]
+event_model >=1.8.0rc3
 msgpack
 intake
 intake-xarray
