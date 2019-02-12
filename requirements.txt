@@ -2,6 +2,7 @@ dask
 msgpack
 intake
 intake-xarray
+msgpack
 numpy
 pandas
 pymongo  # to be split into extras or a separate package

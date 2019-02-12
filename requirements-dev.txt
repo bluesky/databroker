@@ -1,8 +1,12 @@
 # These are required for developing the package (running the tests, building
 # the documentation) but not necessarily required for _using_ it.
+bluesky
 codecov
 coverage
+# TEMPORARY until https://github.com/NSLS-II/event-model/pull/45 is merged
+git+git://github.com/danielballan/event-model@stash-key-on-exception
 flake8
+ophyd
 pytest
 sphinx
 # These are dependencies of various sphinx extensions for documentation.
