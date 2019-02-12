@@ -10,11 +10,6 @@ import pymongo.errors
 from .core import parse_handler_registry
 
 
-class FacilityCatalog(intake.catalog.Catalog):
-    "spans multiple MongoDB instances"
-    ...
-
-
 class BlueskyMongoCatalog(intake.catalog.Catalog):
     def __init__(self, metadatastore_uri, asset_registry_uri, *,
                  handler_registry=None, query=None, **kwargs):
