@@ -228,12 +228,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             metadatastore_db=self._metadatastore_db,
             asset_registry_db=self._asset_registry_db,
             query=query,
+            name='search results',
             getenv=self.getenv,
             getshell=self.getshell,
             auth=self.auth,
             metadata=(self.metadata or {}).copy(),
             storage_options=self.storage_options)
-        cat.metadata['search'] = {'query': query, 'upstream': self.name}
         return cat
 
 

@@ -275,13 +275,15 @@ class RunCatalog(intake.catalog.Catalog):
         try:
             start = self._run_start_doc
             stop = self._run_stop_doc or {}
-            out = (f"<Intake catalog: Run {start['uid'][:8]}...>\n"
-                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n")
-            # f"  Streams:\n")
-            # for stream_name in self:
-            #     out += f"    * {stream_name}\n"
+            out = (f"Run Catalog\n"
+                   f"  uid={start['uid']!r}\n"
+                   f"  exit_status={stop.get('exit_status')!r}\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
+                   f"  Streams:\n")
+            for stream_name in self:
+                out += f"    * {stream_name}\n"
         except Exception as exc:
-            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc}>"
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
     def _load(self):
