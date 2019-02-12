@@ -5,6 +5,10 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
+addons:
+  apt:
+    packages:
+      - libsnappy-dev
 
 install:
   # Install this package and the packages listed in requirements.txt.
