@@ -185,7 +185,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'intake-bluesky', 'Intake Bluesky Documentation',
-     author, 'intake-bluesky', 'Bridge between intake and bluesky's event model',
+     author, 'intake-bluesky', "Bridge between intake and bluesky's event model",
      'Miscellaneous'),
 ]
 

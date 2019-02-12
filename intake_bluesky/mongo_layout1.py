@@ -82,10 +82,8 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             yield doc
 
     def _get_event_count(self, descriptor_uids):
-        cursor = (self._event_collection
-                  .find({'descriptor': {'$in': descriptor_uids}},
-                        sort=[('time', pymongo.ASCENDING)]))
-        return cursor.count()
+        return self._event_collection.count_documents(
+            {'descriptor': {'$in': descriptor_uids}})
 
     def _get_resource(self, uid):
         doc = self._resource_collection.find_one(
