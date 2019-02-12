@@ -118,11 +118,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             "Mock the dict interface around a MongoDB query result."
             def _doc_to_entry(self, run_start_doc):
                 uid = run_start_doc['uid']
-                run_stop_doc = catalog._run_stop_collection.find_one({'run_start': uid})
-                if run_stop_doc is not None:
-                    del run_stop_doc['_id']  # Drop internal Mongo detail.
+                run_start_doc.pop('_id')
                 entry_metadata = {'start': run_start_doc,
-                                  'stop': run_stop_doc}
+                                  'stop': catalog._get_run_stop(uid)}
                 args = dict(
                     run_start_doc=run_start_doc,
                     get_run_stop=partial(catalog._get_run_stop, uid),
@@ -160,14 +158,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 cursor = catalog._run_start_collection.find(
                     catalog._query, sort=[('time', pymongo.DESCENDING)])
                 for run_start_doc in cursor:
-                    del run_start_doc['_id']  # Drop internal Mongo detail.
                     yield self._doc_to_entry(run_start_doc)
 
             def items(self):
                 cursor = catalog._run_start_collection.find(
                     catalog._query, sort=[('time', pymongo.DESCENDING)])
                 for run_start_doc in cursor:
-                    del run_start_doc['_id']  # Drop internal Mongo detail.
                     yield run_start_doc['uid'], self._doc_to_entry(run_start_doc)
 
             def __getitem__(self, name):
@@ -196,7 +192,6 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     run_start_doc = catalog._run_start_collection.find_one(query)
                 if run_start_doc is None:
                     raise KeyError(name)
-                del run_start_doc['_id']  # Drop internal Mongo detail.
                 return self._doc_to_entry(run_start_doc)
 
             def __contains__(self, key):
