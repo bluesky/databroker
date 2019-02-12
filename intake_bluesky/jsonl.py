@@ -60,25 +60,77 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
 
 
     def _get_run_stop(self, run_start_uid):
-        return doc
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            name, doc = json.loads(run_file.readlines()[-1])
+        if name == 'stop':
+            return doc
+        else:
+            return None
 
     def _get_event_descriptors(self, run_start_uid):
-        return doc
+        descriptors = []
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            for line in run_file:
+                name, doc = json.loads(line)
+                if name == 'descriptor':
+                    descriptors.append(doc)
+        return descriptors
 
-    def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
-        return doc
+    def _get_event_cursor(self, descriptor_uids, run_start_uid,
+                           skip=0, limit=None):
+        skip_counter = 0
+        descriptor_set = set(descriptor_uids)
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            for line in run_file:
+                name, doc = json.loads(line)
+                    if name == 'event' and doc['descriptor'] in descriptor_set:
+                        if skip_counter >= skip and (skip_counter < limit 
+                               or limit == None):
+                            yield doc
+                        skip_counter += 1
+                        if limit != None and skip_counter >= limit:
+                            return
 
-    def _get_event_count(self, descriptor_uids):
-        return doc
+    def _get_event_count(self, descriptor_uids, run_start_uid):
+        event_count = 0
+        descriptor_set = set(descriptor_uids)
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            for line in run_file:
+                name, doc = json.loads(line)
+                    if name == 'event' and doc['descriptor'] in descriptor_set:
+                        event_count += 1
+        return event_count
 
-    def _get_resource(self, uid):
-        return doc
+    def _get_resource(self, uid, run_start_uid):
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            for line in run_file:
+                name, doc = json.loads(line)
+                if name == 'resource' and doc['uid'] == uid:
+                    return doc
+        raise ValueError(f"Resource uid {uid} not found.")
 
-    def _get_datum(self, datum_id):
-        return doc
+    def _get_datum(self, datum_id, run_start_uid):
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            for line in run_file:
+                name, doc = json.loads(line)
+                if name == 'datum' and doc['datum_id'] == datum_id:
+                    return doc
+        raise ValueError(f"Datum_id {datum_id} not found.")
 
-    def _get_datum_cursor(self, resource_uid):
-        return doc
+    def _get_datum_cursor(self, resource_uid, run_start_uid,
+            skip=0, limit=None):
+        skip_counter = 0
+        resource_set = set(resource_uids)
+        with open(self._runs[run_start_uid], 'r') as run_file:
+            for line in run_file:
+                name, doc = json.loads(line)
+                    if name == 'datum' and doc['resource'] in resource_set:
+                        if skip_counter >= skip and (skip_counter < limit
+                                        or limit == None):
+                            yield doc
+                        skip_counter += 1
+                        if limit != None and skip_counter >= limit:
+                            return
 
     def _make_entries_container(self):
         catalog = self
