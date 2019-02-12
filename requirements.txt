@@ -1,4 +1,4 @@
-dask
+dask[bag]
 msgpack
 intake
 intake-xarray
