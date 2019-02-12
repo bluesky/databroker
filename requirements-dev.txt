@@ -3,8 +3,6 @@
 bluesky
 codecov
 coverage
-# TEMPORARY until https://github.com/NSLS-II/event-model/pull/45 is merged
-git+git://github.com/danielballan/event-model@stash-key-on-exception
 flake8
 ophyd
 pytest
