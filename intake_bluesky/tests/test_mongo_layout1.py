@@ -39,8 +39,8 @@ def normalize(doc):
     return json.loads(json.dumps(event_model.sanitize_doc(doc)))
 
 
-@pytest.fixture
-def bundle(intake_server):  # noqa
+@pytest.fixture(params=['local', 'remote'])
+def bundle(request, intake_server):  # noqa
     "A SimpleNamespace with an intake_server and some uids of sample data."
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
 
@@ -102,7 +102,14 @@ sources:
 
     time.sleep(2)
 
+    if request.param == 'local':
+        cat = intake.Catalog(os.path.join(TMP_DIR, YAML_FILENAME))
+    elif request.param == 'remote':
+        cat = intake.Catalog(intake_server, page_size=10)
+    else:
+        raise ValueError
     yield types.SimpleNamespace(intake_server=intake_server,
+                                cat=cat,
                                 det_scan_uid=det_scan_uid,
                                 det_scan_docs=det_scan_docs,
                                 direct_img_scan_uid=direct_img_scan_uid,
@@ -116,12 +123,11 @@ sources:
 
 def test_fixture(bundle):
     "Simply open the Catalog created by the fixture."
-    intake.Catalog(bundle.intake_server, page_size=10)
 
 
 def test_search(bundle):
     "Test search and progressive (nested) search with Mongo queries."
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
+    cat = bundle.cat
     # Make sure the Catalog is nonempty.
     assert list(cat['xyz']())
     # Null serach should return full Catalog.
@@ -135,16 +141,14 @@ def test_search(bundle):
 
 def test_run_metadata(bundle):
     "Find 'start' and 'stop' in the Entry metadata."
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.det_scan_uid]
+    run = bundle.cat['xyz']()[bundle.det_scan_uid]
     for key in ('start', 'stop'):
         assert key in run.metadata  # entry
         assert key in run().metadata  # datasource
 
 
 def test_read_canonical_scalar(bundle):
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.det_scan_uid]
+    run = bundle.cat['xyz']()[bundle.det_scan_uid]
     run.read_canonical()
 
     def sorted_actual():
@@ -161,8 +165,7 @@ def test_read_canonical_scalar(bundle):
 
 
 def test_read_canonical_external(bundle):
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.img_scan_uid]
+    run = bundle.cat['xyz']()[bundle.img_scan_uid]
     run.read_canonical()
     filler = event_model.Filler({'NPY_SEQ': NumpySeqHandler})
 
@@ -186,8 +189,7 @@ def test_read_canonical_external(bundle):
 
 
 def test_read_canonical_nonscalar(bundle):
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.direct_img_scan_uid]
+    run = bundle.cat['xyz']()[bundle.direct_img_scan_uid]
     run.read_canonical()
 
     def sorted_actual():
@@ -205,8 +207,7 @@ def test_read_canonical_nonscalar(bundle):
 
 def test_access_scalar_data(bundle):
     "Access simple scalar data that is stored directly in Event documents."
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.det_scan_uid]()
+    run = bundle.cat['xyz']()[bundle.det_scan_uid]()
     entry = run['primary']
     entry.read()
     entry().to_dask()
@@ -215,8 +216,7 @@ def test_access_scalar_data(bundle):
 
 def test_include_and_exclude(bundle):
     "Access simple scalar data that is stored directly in Event documents."
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.det_scan_uid]()
+    run = bundle.cat['xyz']()[bundle.det_scan_uid]()
     entry = run['primary']
     assert 'motor' in entry().read().variables
     assert 'motor' not in entry(exclude=['motor']).read().variables
@@ -229,8 +229,7 @@ def test_include_and_exclude(bundle):
 
 def test_access_nonscalar_data(bundle):
     "Access nonscalar data that is stored directly in Event documents."
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.direct_img_scan_uid]()
+    run = bundle.cat['xyz']()[bundle.direct_img_scan_uid]()
     entry = run['primary']
     entry.read()
     entry().to_dask()
@@ -239,28 +238,7 @@ def test_access_nonscalar_data(bundle):
 
 def test_access_external_data(bundle):
     "Access nonscalar data that is stored directly in Event documents."
-    cat = intake.open_catalog(bundle.intake_server, page_size=10)
-    run = cat['xyz']()[bundle.img_scan_uid]()
-    entry = run['primary']
-    entry.read()
-    entry().to_dask()
-    entry().to_dask().load()
-
-
-def test_local_scalar_data(bundle):
-    "Access simple scalar data that is stored directly in Event documents."
-    cat = intake.Catalog(os.path.join(TMP_DIR, YAML_FILENAME))
-    run = cat['xyz']()[bundle.det_scan_uid]()
-    entry = run['primary']
-    entry.read()
-    entry().to_dask()
-    entry().to_dask().load()
-
-
-def test_local_external_data(bundle):
-    "Access nonscalar data that is stored directly in Event documents."
-    cat = intake.Catalog(os.path.join(TMP_DIR, YAML_FILENAME))
-    run = cat['xyz']()[bundle.img_scan_uid]()
+    run = bundle.cat['xyz']()[bundle.img_scan_uid]()
     entry = run['primary']
     entry.read()
     entry().to_dask()
