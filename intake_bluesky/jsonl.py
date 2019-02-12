@@ -87,7 +87,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                                or limit == None):
                             yield doc
                         skip_counter += 1
-                        if limit != None and skip_counter >= limit:
+                        if skip_counter >= limit:
                             return
 
     def _get_event_count(self, descriptor_uids, run_start_uid):
