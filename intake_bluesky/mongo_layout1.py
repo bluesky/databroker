@@ -11,7 +11,7 @@ from .core import parse_handler_registry
 
 
 class BlueskyMongoCatalog(intake.catalog.Catalog):
-    def __init__(self, metadatastore_uri, asset_registry_uri, *,
+    def __init__(self, metadatastore_db, asset_registry_db, *,
                  handler_registry=None, query=None, **kwargs):
         """
         Insert documents into MongoDB using layout v1.
@@ -25,29 +25,14 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         """
         name = 'mongo_metadatastore'  # noqa
 
-        self._metadatastore_uri = metadatastore_uri
-        self._asset_registry_uri = asset_registry_uri
-        metadatastore_client = pymongo.MongoClient(metadatastore_uri)
-        asset_registry_client = pymongo.MongoClient(asset_registry_uri)
-        self._metadatastore_client = metadatastore_client
-        self._asset_registry_client = asset_registry_client
-
-        try:
-            # Called with no args, get_database() returns the database
-            # specified in the client's uri --- or raises if there was none.
-            # There is no public method for checking this in advance, so we
-            # just catch the error.
-            mds_db = self._metadatastore_client.get_database()
-        except pymongo.errors.ConfigurationError as err:
-            raise ValueError(
-                f"Invalid metadatastore_client: {metadatastore_client} "
-                f"Did you forget to include a database?") from err
-        try:
-            assets_db = self._asset_registry_client.get_database()
-        except pymongo.errors.ConfigurationError as err:
-            raise ValueError(
-                f"Invalid asset_registry_client: {asset_registry_client} "
-                f"Did you forget to include a database?") from err
+        if isinstance(metadatastore_db, str):
+            mds_db = _get_database(metadatastore_db)
+        else:
+            mds_db = metadatastore_db
+        if isinstance(asset_registry_db, str):
+            assets_db = _get_database(asset_registry_db)
+        else:
+            assets_db = asset_registry_db
 
         self._run_start_collection = mds_db.get_collection('run_start')
         self._run_stop_collection = mds_db.get_collection('run_stop')
@@ -56,6 +41,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
         self._resource_collection = assets_db.get_collection('resource')
         self._datum_collection = assets_db.get_collection('datum')
+
+        self._metadatastore_db = mds_db
+        self._asset_registry_db = assets_db
 
         self._query = query or {}
         if handler_registry is None:
@@ -237,8 +225,8 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
-            metadatastore_uri=self._metadatastore_uri,
-            asset_registry_uri=self._asset_registry_uri,
+            metadatastore_db=self._metadatastore_db,
+            asset_registry_db=self._asset_registry_db,
             query=query,
             getenv=self.getenv,
             getshell=self.getshell,
@@ -247,6 +235,20 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             storage_options=self.storage_options)
         cat.metadata['search'] = {'query': query, 'upstream': self.name}
         return cat
+
+
+def _get_database(uri):
+    client = pymongo.MongoClient(uri)
+    try:
+        # Called with no args, get_database() returns the database
+        # specified in the client's uri --- or raises if there was none.
+        # There is no public method for checking this in advance, so we
+        # just catch the error.
+        return client.get_database()
+    except pymongo.errors.ConfigurationError as err:
+        raise ValueError(
+            f"Invalid client: {client} "
+            f"Did you forget to include a database?") from err
 
 
 intake.registry['mongo_metadatastore'] = BlueskyMongoCatalog

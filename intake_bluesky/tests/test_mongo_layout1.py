@@ -92,8 +92,8 @@ sources:
     driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
     container: catalog
     args:
-      metadatastore_uri: {metadatastore_uri}
-      asset_registry_uri: {asset_registry_uri}
+      metadatastore_db: {metadatastore_uri}
+      asset_registry_db: {asset_registry_uri}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
