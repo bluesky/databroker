@@ -307,17 +307,13 @@ class RunCatalog(intake.catalog.Catalog):
             npartitions=self.npartitions,
             metadata=self.metadata)
 
-        # Sort descriptors like
-        # {'stream_name': [descriptor1, descriptor2, ...], ...}
-        streams = itertools.groupby(self._descriptors,
-                                    key=lambda d: d.get('name'))
-
         # Make a BlueskyEventStream for each stream_name.
-        for stream_name, event_descriptor_docs in streams:
+        for stream_name in set(doc.get('name') for doc in self._descriptors):
             args = dict(
                 run_start_doc=self._run_start_doc,
-                event_descriptor_docs=list(event_descriptor_docs),
+                stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
+                get_event_descriptors=self._get_event_descriptors,
                 get_event_cursor=self._get_event_cursor,
                 get_event_count=self._get_event_count,
                 get_resource=self._get_resource,
@@ -403,14 +399,15 @@ _INCLUDE_PARAMETER = intake.catalog.local.UserParameter(
 
 class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     container = 'xarray'
-    name = 'event-stream'
+    name = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
 
     def __init__(self,
                  run_start_doc,
-                 event_descriptor_docs,
+                 stream_name,
                  get_run_stop,
+                 get_event_descriptors,
                  get_event_cursor,
                  get_event_count,
                  get_resource,
@@ -424,7 +421,8 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         # self._partition_size = 10
         # self._default_chunks = 10
         self._run_start_doc = run_start_doc
-        self._event_descriptor_docs = event_descriptor_docs
+        self._stream_name = stream_name
+        self._get_event_descriptors = get_event_descriptors
         self._get_run_stop = get_run_stop
         self._get_event_cursor = get_event_cursor
         self._get_event_count = get_event_count
@@ -446,19 +444,21 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
                    f"from Run {self._run_start_doc['uid'][:8]}...>")
         except Exception as exc:
-            out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc}>"
+            out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
     def _open_dataset(self):
         self._run_stop_doc = self._get_run_stop()
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
+        descriptor_docs = [doc for doc in self._get_event_descriptors()
+                           if doc.get('name') == self._stream_name]
         self._ds = documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
-            descriptor_docs=self._event_descriptor_docs,
+            descriptor_docs=descriptor_docs,
             event_docs=list(self._get_event_cursor(
-                [doc['uid'] for doc in self._event_descriptor_docs])),
+                [doc['uid'] for doc in descriptor_docs])),
             filler=self.filler,
             get_resource=self._get_resource,
             get_datum=self._get_datum,
