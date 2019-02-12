@@ -342,9 +342,9 @@ class RunCatalog(intake.catalog.Catalog):
                 catalog=self)
 
     def read_canonical(self):
-        ...
-
-        return self._descriptors
+        for i in range(self.npartitions):
+            for name, doc in self.read_partition(i):
+                yield name, doc
 
     def read_partition(self, i):
         """Fetch one chunk of documents.
