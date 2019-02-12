@@ -32,16 +32,15 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             Catalog.
         """
 
-        self._update_index(jsonl_filelist)
         self._runs = {} # this maps run_start_uids to file paths
         self._run_starts = {} # this maps run_start_uids to run_start_docs
-
 
         self._query = query or {}
         if handler_registry is None:
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
         self.filler = event_model.Filler(parsed_handler_registry)
+        self._update_index(jsonl_filelist)
         super().__init__(**kwargs)
 
     def _update_index(self, file_list):
@@ -54,7 +53,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                                 f"first line must be a valid start document.")
 
                 if Query(self._query).match(run_start_doc):
-                    run_start_uid = run_start['uid']
+                    run_start_uid = run_start_doc['uid']
                     self._runs[run_start_uid] = run_file
                     self._run_starts[run_start_uid] = run_start_doc
 
@@ -87,7 +86,6 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             "Mock the dict interface around a MongoDB query result."
             def _doc_to_entry(self, run_start_doc):
                 uid = run_start_doc['uid']
-                run_start_doc.pop('_id')
                 entry_metadata = {'start': run_start_doc,
                                   'stop': catalog._get_run_stop(uid)}
                 args = dict(
@@ -144,7 +142,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 if isinstance(name, int):
                      raise NotImplementedError
                 else:
-                    run_start_doc = self._runs[name]
+                    run_start_doc = catalog._run_starts[name]
                     return self._doc_to_entry(run_start_doc)
 
             def __contains__(self, key):
@@ -170,6 +168,3 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         query : dict
         """
         return cat
-
-
-intake.registry['mongo_metadatastore'] = BlueskyMongoCatalog
