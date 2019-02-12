@@ -19,6 +19,32 @@ import xarray
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
                         filler, get_resource, get_datum, get_datum_cursor,
                         include=None, exclude=None):
+    """
+    Represent the data in one Event stream as an xarray.
+
+    start_doc: dict
+        RunStart Document
+    stop_doc : dict
+        RunStop Document
+    descriptor_docs : list
+        EventDescriptor Documents
+    event_docs : list
+        Event Documents
+    filler : event_model.Filler
+    get_resource : callable
+        Expected signature ``get_resource(resource_uid) -> Resource``
+    get_datum : callable
+        Expected signature ``get_datum(datum_id) -> Datum``
+    get_datum_cursor : callable
+        Expected signature ``get_datum_cursor(resource_uid) -> generator``
+        where ``generator`` yields Datum documents
+    include : list, optional
+        Fields ('data keys') to include. By default all are included. This
+        parameter is mutually exclusive with ``exclude``.
+    exclude : list, optional
+        Fields ('data keys') to exclude. By default none are excluded. This
+        parameter is mutually exclusive with ``include``.
+    """
     if include is None:
         include = []
     if exclude is None:
@@ -155,27 +181,27 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
 
 class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     """
-    Client-side proxy to a RunCatalog on the server.
+    Catalog representing one Run.
+
+    This is a client-side proxy to a RunCatalog stored on a remote server.
+
+    Parameters
+    ----------
+    url: str
+        Address of the server
+    headers: dict
+        HTTP headers to sue in calls
+    name: str
+        handle to reference this data
+    parameters: dict
+        To pass to the server when it instantiates the data source
+    metadata: dict
+        Additional info
+    kwargs: ignored
     """
     name = 'bluesky-run-catalog'
 
     def __init__(self, url, headers, name, parameters, metadata=None, **kwargs):
-        """
-
-        Parameters
-        ----------
-        url: str
-            Address of the server
-        headers: dict
-            HTTP headers to sue in calls
-        name: str
-            handle to reference this data
-        parameters: dict
-            To pass to the server when it instantiates the data source
-        metadata: dict
-            Additional info
-        kwargs: ignored
-        """
         super().__init__(url=url, headers=headers, name=name,
                          metadata=metadata, **kwargs)
         self.url = url
@@ -239,7 +265,32 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
 
 
 class RunCatalog(intake.catalog.Catalog):
-    "represents one Run"
+    """
+    Catalog representing one Run.
+
+    Parameters
+    ----------
+    run_start_doc: dict
+        RunStart Document
+    get_run_stop : callable
+        Expected signature ``get_run_stop(run_start_uid) -> RunStop``
+    get_event_descriptors : callable
+        Expected signature ``get_event_descriptors(run_start_uid) -> List[EventDescriptors]``
+    get_event_cursor : callable
+        Expected signature ``get_event_cursor(descriptor_uids) -> generator``
+        where ``generator`` yields Event documents
+    get_resource : callable
+        Expected signature ``get_resource(resource_uid) -> Resource``
+    get_datum : callable
+        Expected signature ``get_datum(datum_id) -> Datum``
+    get_datum_cursor : callable
+        Expected signature ``get_datum_cursor(resource_uid) -> generator``
+        where ``generator`` yields Datum documents
+    filler : event_model.Filler
+    **kwargs :
+        Additional keyword arguments are passed through to the base class,
+        Catalog.
+    """
     container = 'bluesky-run-catalog'
     version = '0.0.1'
     partition_access = True
@@ -400,6 +451,41 @@ _INCLUDE_PARAMETER = intake.catalog.local.UserParameter(
 
 
 class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
+    """
+    Catalog representing one Event Stream from one Run.
+
+    Parameters
+    ----------
+    run_start_doc: dict
+        RunStart Document
+    stream_name : string
+        Stream name, such as 'primary'.
+    get_run_stop : callable
+        Expected signature ``get_run_stop(run_start_uid) -> RunStop``
+    get_event_descriptors : callable
+        Expected signature ``get_event_descriptors(run_start_uid) -> List[EventDescriptors]``
+    get_event_cursor : callable
+        Expected signature ``get_event_cursor(descriptor_uids) -> generator``
+        where ``generator`` yields Event documents
+    get_resource : callable
+        Expected signature ``get_resource(resource_uid) -> Resource``
+    get_datum : callable
+        Expected signature ``get_datum(datum_id) -> Datum``
+    get_datum_cursor : callable
+        Expected signature ``get_datum_cursor(resource_uid) -> generator``
+        where ``generator`` yields Datum documents
+    filler : event_model.Filler
+    metadata : dict
+        passed through to base class
+    include : list, optional
+        Fields ('data keys') to include. By default all are included. This
+        parameter is mutually exclusive with ``exclude``.
+    exclude : list, optional
+        Fields ('data keys') to exclude. By default none are excluded. This
+        parameter is mutually exclusive with ``include``.
+    **kwargs :
+        Additional keyword arguments are passed through to the base class.
+    """
     container = 'xarray'
     name = 'bluesky-event-stream'
     version = '0.0.1'
@@ -534,10 +620,30 @@ def xarray_to_event_gen(data_xarr, ts_xarr, page_size):
 
 
 def parse_handler_registry(handler_registry):
+    """
+    Parse mapping of spec name to 'import path' into mapping to class itself.
+
+    Parameters
+    ----------
+    handler_registry : dict
+        Values may be string 'import paths' to classes or actual classes.
+
+    Example
+    -------
+    Pass in name; get back actual class.
+
+    >>> parse_handler_registry({'my_spec': 'package.module.ClassName'})
+    {'my_spec': <package.module.ClassName>}
+
+    """
     result = {}
     for spec, handler_str in handler_registry.items():
-        module_name, _, class_name = handler_str.rpartition('.')
-        result[spec] = getattr(importlib.import_module(module_name), class_name)
+        if isinstance(handler_str, str):
+            module_name, _, class_name = handler_str.rpartition('.')
+            class_ = getattr(importlib.import_module(module_name), class_name)
+        else:
+            class_ = handler_str
+        result[spec] = class_
     return result
 
 

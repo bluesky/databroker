@@ -14,14 +14,26 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
     def __init__(self, metadatastore_db, asset_registry_db, *,
                  handler_registry=None, query=None, **kwargs):
         """
-        Insert documents into MongoDB using layout v1.
+        This Catalog is backed by a pair of MongoDBs with "layout 1".
 
         This layout uses a separate Mongo collection per document type and a
         separate Mongo document for each logical document.
 
-        Note that this Seralizer does not share the standard Serializer
-        name or signature common to suitcase packages because it can only write
-        via pymongo, not to an arbitrary user-provided buffer.
+        Parameters
+        ----------
+        metadatastore_db : pymongo.database.Database or string
+            Must be a Database or a URI string that includes a database name.
+        asset_registry_db : pymongo.database.Database or string
+            Must be a Database or a URI string that includes a database name.
+        handler_registry : dict, optional
+            Maps each asset spec to a handler class or a string specifying the
+            module name and class name, as in (for example)
+            ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+        query : dict, optional
+            MongoDB query. Used internally by the ``search()`` method.
+        **kwargs :
+            Additional keyword arguments are passed through to the base class,
+            Catalog.
         """
         name = 'mongo_metadatastore'  # noqa
 
