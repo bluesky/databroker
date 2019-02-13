@@ -11,18 +11,19 @@ from .core import parse_handler_registry
 
 
 class BlueskyJSONLCatalog(intake.catalog.Catalog):
-
-
     def __init__(self,  jsonl_filelist, *,
-        handler_registry=None, query=None, **kwargs):
-
+                 handler_registry=None, query=None, **kwargs):
         """
-        This Catalog is backed by a jsonl file.
-        This Catalog uses a jsonl file, bluesky documents are store in
-        chronological order in the jsonl file.
+        This Catalog is backed by a newline-delimited JSON (jsonl) file.
+
+        Each line of the file is expected to be a JSON list with two elements,
+        the document name (type) and the document itself. The documents are
+        expected to be in chronological order.
 
         Parameters
         ----------
+        jsonl_filelist : list
+            list of filepaths
         handler_registry : dict, optional
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
@@ -32,8 +33,8 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             Catalog.
         """
 
-        self._runs = {} # this maps run_start_uids to file paths
-        self._run_starts = {} # this maps run_start_uids to run_start_docs
+        self._runs = {}  # This maps run_start_uids to file paths.
+        self._run_starts = {}  # This maps run_start_uids to run_start_docs.
 
         self._query = query or {}
         if handler_registry is None:
@@ -49,14 +50,14 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 name, run_start_doc = json.loads(f.readline())
 
                 if name != 'start':
-                    raise ValueError(f"Invalid file {run_file}: "
-                                f"first line must be a valid start document.")
+                    raise ValueError(
+                        f"Invalid file {run_file}: "
+                        f"first line must be a valid start document.")
 
                 if Query(self._query).match(run_start_doc):
                     run_start_uid = run_start_doc['uid']
                     self._runs[run_start_uid] = run_file
                     self._run_starts[run_start_uid] = run_start_doc
-
 
     def _get_run_stop(self, run_start_uid):
         with open(self._runs[run_start_uid], 'r') as run_file:
@@ -114,14 +115,14 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     return doc
         raise ValueError(f"Datum_id {datum_id} not found.")
 
-    def _get_datum_cursor(self, run_start_uid, resource_uid, skip=0, limit=None):
+    def _get_datum_cursor(self, run_start_uid, resource_uids, skip=0, limit=None):
         skip_counter = 0
         resource_set = set(resource_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
                 if name == 'datum' and doc['resource'] in resource_set:
-                    if skip_counter >= skip and (skip_counter < limit or limit == None):
+                    if skip_counter >= skip and (limit is None or skip_counter < limit):
                         yield doc
                     skip_counter += 1
                     if limit is not None and skip_counter >= limit:
@@ -188,7 +189,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 except ValueError:
                     pass
                 if isinstance(name, int):
-                     raise NotImplementedError
+                    raise NotImplementedError
                 else:
                     run_start_doc = catalog._run_starts[name]
                     return self._doc_to_entry(run_start_doc)
