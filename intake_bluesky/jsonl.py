@@ -209,4 +209,16 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         ----------
         query : dict
         """
+        if self._query:
+            query = {'$and': [self._query, query]}
+        cat = type(self)(
+            metadatastore_db=self._metadatastore_db,
+            asset_registry_db=self._asset_registry_db,
+            query=query,
+            name='search results',
+            getenv=self.getenv,
+            getshell=self.getshell,
+            auth=self.auth,
+            metadata=(self.metadata or {}).copy(),
+            storage_options=self.storage_options)
         return cat
