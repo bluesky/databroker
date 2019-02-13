@@ -82,13 +82,12 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
-                    if name == 'event' and doc['descriptor'] in descriptor_set:
-                        if skip_counter >= skip and (skip_counter < limit 
-                               or limit == None):
-                            yield doc
-                        skip_counter += 1
-                        if skip_counter >= limit:
-                            return
+                if name == 'event' and doc['descriptor'] in descriptor_set:
+                    if skip_counter >= skip and (limit is None or skip_counter < limit):
+                        yield doc
+                    skip_counter += 1
+                    if skip_counter >= limit:
+                        break
 
     def _get_event_count(self, descriptor_uids, run_start_uid):
         event_count = 0
@@ -96,8 +95,8 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
-                    if name == 'event' and doc['descriptor'] in descriptor_set:
-                        event_count += 1
+                if name == 'event' and doc['descriptor'] in descriptor_set:
+                    event_count += 1
         return event_count
 
     def _get_resource(self, uid, run_start_uid):
@@ -123,13 +122,12 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
-                    if name == 'datum' and doc['resource'] in resource_set:
-                        if skip_counter >= skip and (skip_counter < limit
-                                        or limit == None):
-                            yield doc
-                        skip_counter += 1
-                        if limit != None and skip_counter >= limit:
-                            return
+                if name == 'datum' and doc['resource'] in resource_set:
+                    if skip_counter >= skip and (skip_counter < limit or limit == None):
+                        yield doc
+                    skip_counter += 1
+                    if limit is not None and skip_counter >= limit:
+                        return
 
     def _make_entries_container(self):
         catalog = self
