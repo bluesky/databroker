@@ -75,8 +75,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     descriptors.append(doc)
         return descriptors
 
-    def _get_event_cursor(self, descriptor_uids, run_start_uid,
-                           skip=0, limit=None):
+    def _get_event_cursor(self, run_start_uid, descriptor_uids,  skip=0, limit=None):
         skip_counter = 0
         descriptor_set = set(descriptor_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
@@ -86,10 +85,10 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     if skip_counter >= skip and (limit is None or skip_counter < limit):
                         yield doc
                     skip_counter += 1
-                    if skip_counter >= limit:
+                    if limit is not None and skip_counter >= limit:
                         break
 
-    def _get_event_count(self, descriptor_uids, run_start_uid):
+    def _get_event_count(self, run_start_uid, descriptor_uids):
         event_count = 0
         descriptor_set = set(descriptor_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
@@ -99,7 +98,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     event_count += 1
         return event_count
 
-    def _get_resource(self, uid, run_start_uid):
+    def _get_resource(self, run_start_uid, uid):
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
@@ -107,7 +106,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     return doc
         raise ValueError(f"Resource uid {uid} not found.")
 
-    def _get_datum(self, datum_id, run_start_uid):
+    def _get_datum(self, run_start_uid, datum_id):
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
@@ -115,8 +114,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     return doc
         raise ValueError(f"Datum_id {datum_id} not found.")
 
-    def _get_datum_cursor(self, resource_uid, run_start_uid,
-            skip=0, limit=None):
+    def _get_datum_cursor(self, run_start_uid, resource_uid, skip=0, limit=None):
         skip_counter = 0
         resource_set = set(resource_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
@@ -142,11 +140,11 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     run_start_doc=run_start_doc,
                     get_run_stop=partial(catalog._get_run_stop, uid),
                     get_event_descriptors=partial(catalog._get_event_descriptors, uid),
-                    get_event_cursor=catalog._get_event_cursor,
-                    get_event_count=catalog._get_event_count,
-                    get_resource=catalog._get_resource,
-                    get_datum=catalog._get_datum,
-                    get_datum_cursor=catalog._get_datum_cursor,
+                    get_event_cursor=partial(catalog._get_event_cursor, uid),
+                    get_event_count=partial(catalog._get_event_count, uid),
+                    get_resource=partial(catalog._get_resource, uid),
+                    get_datum=partial(catalog._get_datum, uid),
+                    get_datum_cursor=partial(catalog._get_datum_cursor, uid),
                     filler=catalog.filler)
                 return intake.catalog.local.LocalCatalogEntry(
                     name=run_start_doc['uid'],
