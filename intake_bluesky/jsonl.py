@@ -165,22 +165,15 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 yield from self.keys()
 
             def keys(self):
-                cursor = catalog._run_start_collection.find(
-                    catalog._query, sort=[('time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield run_start_doc['uid']
+                yield from self._runs
 
             def values(self):
-                cursor = catalog._run_start_collection.find(
-                    catalog._query, sort=[('time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
+                for run_start_doc in self._run_starts.values():
                     yield self._doc_to_entry(run_start_doc)
 
             def items(self):
-                cursor = catalog._run_start_collection.find(
-                    catalog._query, sort=[('time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield run_start_doc['uid'], self._doc_to_entry(run_start_doc)
+                for uid, run_start_doc in self._run_starts.items():
+                    yield uid, self._doc_to_entry(run_start_doc)
 
             def __getitem__(self, name):
                 # If this came from a client, we might be getting '-1'.
