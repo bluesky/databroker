@@ -10,3 +10,4 @@ pymongo  # to be split into extras or a separate package
 pyyaml  # undeclared by intake v0.4.1
 requests
 xarray
+mongoquery
