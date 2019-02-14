@@ -54,8 +54,7 @@ def test_read_canonical(bundle):
             assert numpy.array_equal(actual_doc, expected_doc)
 
 
-def test_access_scalar_data(bundle):
-    "Access simple scalar data that is stored directly in Event documents."
+def test_read(bundle):
     run = bundle.cat['xyz']()[bundle.uid]()
     entry = run['primary']
     entry.read()
@@ -64,7 +63,6 @@ def test_access_scalar_data(bundle):
 
 
 def test_include_and_exclude(bundle):
-    "Access simple scalar data that is stored directly in Event documents."
     run = bundle.cat['xyz']()[bundle.uid]()
     entry = run['primary']
     assert 'motor' in entry().read().variables
