@@ -197,9 +197,6 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
 
         return Entries()
 
-    def _close(self):
-        self._jsonl_documents.close()
-
     def search(self, query):
         """
         Return a new Catalog with a subset of the entries in this Catalog.
