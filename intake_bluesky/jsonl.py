@@ -165,14 +165,14 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 yield from self.keys()
 
             def keys(self):
-                yield from self._runs
+                yield from catalog._runs
 
             def values(self):
-                for run_start_doc in self._run_starts.values():
+                for run_start_doc in catalog._run_starts.values():
                     yield self._doc_to_entry(run_start_doc)
 
             def items(self):
-                for uid, run_start_doc in self._run_starts.items():
+                for uid, run_start_doc in catalog._run_starts.items():
                     yield uid, self._doc_to_entry(run_start_doc)
 
             def __getitem__(self, name):
@@ -209,8 +209,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
-            metadatastore_db=self._metadatastore_db,
-            asset_registry_db=self._asset_registry_db,
+            jsonl_filelist=list(self._runs.values()),
             query=query,
             name='search results',
             getenv=self.getenv,
