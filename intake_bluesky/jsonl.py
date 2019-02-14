@@ -11,7 +11,7 @@ from .core import parse_handler_registry
 
 
 class BlueskyJSONLCatalog(intake.catalog.Catalog):
-    def __init__(self,  jsonl_filelist, *,
+    def __init__(self, jsonl_filelist, *,
                  handler_registry=None, query=None, **kwargs):
         """
         This Catalog is backed by a newline-delimited JSON (jsonl) file.
@@ -32,7 +32,6 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             Additional keyword arguments are passed through to the base class,
             Catalog.
         """
-
         self._runs = {}  # This maps run_start_uids to file paths.
         self._run_starts = {}  # This maps run_start_uids to run_start_docs.
 
