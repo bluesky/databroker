@@ -7,7 +7,7 @@ flake8
 ophyd
 pytest
 sphinx
-suitcase-mongo >=0.1.0b3
+suitcase-mongo >=0.1.0b4
 # These are dependencies of various sphinx extensions for documentation.
 ipython
 matplotlib
