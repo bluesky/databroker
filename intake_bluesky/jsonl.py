@@ -32,6 +32,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             Additional keyword arguments are passed through to the base class,
             Catalog.
         """
+        name = 'bluesky-jsonl-catalog'  # noqa
         self._runs = {}  # This maps run_start_uids to file paths.
         self._run_starts = {}  # This maps run_start_uids to run_start_docs.
 
