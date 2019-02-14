@@ -6,18 +6,17 @@ import event_model
 import itertools
 import intake
 from intake.conftest import intake_server  # noqa
+from suitcase.mongo_layout1.tests.conftest import db_factory  # noqa
 import json
 from suitcase.mongo_layout1 import Serializer
 import numpy
 from ophyd.sim import motor, det, img, direct_img, NumpySeqHandler
 import os
-import pymongo
 import pytest
 import shutil
 import tempfile
 import time
 import types
-import uuid
 
 
 TMP_DIR = tempfile.mkdtemp()
@@ -40,18 +39,16 @@ def normalize(doc):
 
 
 @pytest.fixture(params=['local', 'remote'])
-def bundle(request, intake_server):  # noqa
+def bundle(request, intake_server, db_factory):  # noqa
     "A SimpleNamespace with an intake_server and some uids of sample data."
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
 
-    metadatastore_uri = f'mongodb://localhost:27017/test-{str(uuid.uuid4())}'
-    asset_registry_uri = f'mongodb://localhost:27017/test-{str(uuid.uuid4())}'
-    metadatastore_cli = pymongo.MongoClient(metadatastore_uri)
-    asset_registry_cli = pymongo.MongoClient(asset_registry_uri)
     RE = RunEngine({})
     sd = SupplementalData(baseline=[motor])
     RE.preprocessors.append(sd)
-    serializer = Serializer(metadatastore_cli, asset_registry_cli)
+    mds_db = db_factory()
+    assets_db = db_factory()
+    serializer = Serializer(mds_db, assets_db)
     RE.subscribe(serializer)
 
     # Simulate data with a scalar detector.
@@ -81,6 +78,9 @@ def bundle(request, intake_server):  # noqa
 
     img_scan_uid, = RE(scan([img], motor, -1, 1, 20), collect)
 
+    def extract_uri(db):
+        return f'mongodb://{db.client.address[0]}:{db.client.address[1]}/{db.name}'
+
     with open(fullname, 'w') as f:
         f.write(f'''
 plugins:
@@ -92,8 +92,8 @@ sources:
     driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
     container: catalog
     args:
-      metadatastore_db: {metadatastore_uri}
-      asset_registry_db: {asset_registry_uri}
+      metadatastore_db: {extract_uri(mds_db)}
+      asset_registry_db: {extract_uri(assets_db)}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
@@ -116,9 +116,6 @@ sources:
                                 direct_img_scan_docs=direct_img_scan_docs,
                                 img_scan_uid=img_scan_uid,
                                 img_scan_docs=img_scan_docs)
-
-    metadatastore_cli.drop_database(metadatastore_cli.get_database())
-    asset_registry_cli.drop_database(asset_registry_cli.get_database())
 
 
 def test_fixture(bundle):
