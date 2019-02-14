@@ -5,7 +5,6 @@ from bluesky.preprocessors import SupplementalData
 import event_model
 import itertools
 import intake
-import json
 from suitcase.mongo_layout1 import Serializer
 import numpy
 import ophyd.sim
