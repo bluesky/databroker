@@ -76,7 +76,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     descriptors.append(doc)
         return descriptors
 
-    def _get_event_cursor(self, run_start_uid, descriptor_uids,  skip=0, limit=None):
+    def _get_event_cursor(self, run_start_uid, descriptor_uids, skip=0, limit=None):
         skip_counter = 0
         descriptor_set = set(descriptor_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
