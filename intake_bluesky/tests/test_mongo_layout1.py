@@ -30,12 +30,6 @@ def teardown_module(module):
         pass
 
 
-def normalize(doc):
-    # numpy arrays -> lists (via sanitize doc)
-    # tuples -> lists (via json dump/load)
-    return json.loads(json.dumps(event_model.sanitize_doc(doc)))
-
-
 @pytest.fixture
 def hw():
     return ophyd.sim.hw()  # a SimpleNamespace of simulated devices
@@ -60,8 +54,7 @@ def example_data(hw, detector):
     docs = []
 
     def collect(name, doc):
-        doc = normalize(doc)
-        docs.append((name, doc))
+        docs.append((name, event_model.sanitize_doc(doc)))
 
     uid, = RE(scan([detector], hw.motor, -1, 1, 20), collect)
     return uid, docs
