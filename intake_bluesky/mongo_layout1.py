@@ -35,7 +35,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             Additional keyword arguments are passed through to the base class,
             Catalog.
         """
-        name = 'mongo_metadatastore'  # noqa
+        name = 'bluesky-mongo-catalog'  # noqa
 
         if isinstance(metadatastore_db, str):
             mds_db = _get_database(metadatastore_db)

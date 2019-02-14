@@ -349,7 +349,7 @@ class RunCatalog(intake.catalog.Catalog):
         descriptor_uids = [doc['uid'] for doc in self._descriptors]
         count += len(descriptor_uids)
         count += self._get_event_count(
-            [doc['uid'] for doc in self._descriptors])
+            descriptor_uids=[doc['uid'] for doc in self._descriptors])
         count += (self._run_stop_doc is not None)
         self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
 
@@ -415,18 +415,19 @@ class RunCatalog(intake.catalog.Catalog):
         limit = stop - start - len(payload)
         # print('start, stop, skip, limit', start, stop, skip, limit)
         if limit > 0:
-            events = self._get_event_cursor(descriptor_uids, skip, limit)
+            events = self._get_event_cursor(descriptor_uids=descriptor_uids,
+                                            skip=skip, limit=limit)
             for event in events:
                 try:
                     self.filler('event', event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
-                    datum = self._get_datum(datum_id)
+                    datum = self._get_datum(datum_id=datum_id)
                     resource_uid = datum['resource']
-                    resource = self._get_resource(resource_uid)
+                    resource = self._get_resource(uid=resource_uid)
                     self.filler('resource', resource)
                     # Pre-fetch all datum for this resource.
-                    for datum in self._get_datum_cursor(resource_uid):
+                    for datum in self._get_datum_cursor(resource_uid=resource_uid):
                         self.filler('datum', datum)
                     # TODO -- When to clear the datum cache in filler?
                     self.filler('event', event)
