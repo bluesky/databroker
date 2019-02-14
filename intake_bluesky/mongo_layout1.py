@@ -64,6 +64,14 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         self.filler = event_model.Filler(parsed_handler_registry)
         super().__init__(**kwargs)
 
+    def _get_run_start(self, run_start_uid):
+        doc = self._run_stop_collection.find_one(
+            {'run_start': run_start_uid})
+        # It is acceptable to return None if the document does not exist.
+        if doc is not None:
+            doc.pop('_id')
+        return doc
+
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
             {'run_start': run_start_uid})
@@ -132,7 +140,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 entry_metadata = {'start': run_start_doc,
                                   'stop': catalog._get_run_stop(uid)}
                 args = dict(
-                    run_start_doc=run_start_doc,
+                    get_run_start=lambda *_, **__: run_start_doc,
                     get_run_stop=partial(catalog._get_run_stop, uid),
                     get_event_descriptors=partial(catalog._get_event_descriptors, uid),
                     get_event_cursor=catalog._get_event_cursor,
