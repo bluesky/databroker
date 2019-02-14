@@ -115,13 +115,12 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     return doc
         raise ValueError(f"Datum_id {datum_id} not found.")
 
-    def _get_datum_cursor(self, run_start_uid, resource_uids, skip=0, limit=None):
+    def _get_datum_cursor(self, run_start_uid, resource_uid, skip=0, limit=None):
         skip_counter = 0
-        resource_set = set(resource_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
             for line in run_file:
                 name, doc = json.loads(line)
-                if name == 'datum' and doc['resource'] in resource_set:
+                if name == 'datum' and doc['resource'] == resource_uid:
                     if skip_counter >= skip and (limit is None or skip_counter < limit):
                         yield doc
                     skip_counter += 1
