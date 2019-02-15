@@ -22,6 +22,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     """
     Represent the data in one Event stream as an xarray.
 
+    Parameters
+    ----------
     start_doc: dict
         RunStart Document
     stop_doc : dict
@@ -44,6 +46,10 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     exclude : list, optional
         Fields ('data keys') to exclude. By default none are excluded. This
         parameter is mutually exclusive with ``include``.
+
+    Returns
+    -------
+    dataset : xarray.Dataset
     """
     if include is None:
         include = []
@@ -631,8 +637,8 @@ def parse_handler_registry(handler_registry):
     handler_registry : dict
         Values may be string 'import paths' to classes or actual classes.
 
-    Example
-    -------
+    Examples
+    --------
     Pass in name; get back actual class.
 
     >>> parse_handler_registry({'my_spec': 'package.module.ClassName'})
