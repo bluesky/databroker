@@ -66,7 +66,7 @@ this more succinct expression:
 
     catalog[uid].primary.read()
 
-Our simple scan produced one logical tables ("event stream") named 'primary'. In
+Our simple scan produced one logical table ("event stream") named 'primary'. In
 general experiments can produce multiple tables with different time-bases. They
 can be merged into one xarray Dataset like so:
 
@@ -96,7 +96,7 @@ Search
 
 The :meth:`Catalog.search` method returns another Catalog with a subset of the
 original Catalog's entries. The search results can be searched in turn. Here we
-search for data acquired using the 'scan' experiment plan, and the narrow that
+search for data acquired using the 'scan' experiment plan, and then narrow that
 to results from the last 60 seconds.
 
 .. ipython:: python
@@ -109,8 +109,8 @@ to results from the last 60 seconds.
 
 This is accomplished using `mongoquery <https://pypi.org/project/mongoquery/>`_,
 which provides a MongoDB-like query language for querying Python collections.
-For a Catalogs backed by a real MongoDB instance, as in the Binder example
-linked above, the full MongoDB query language is supported.
+For Catalogs backed by a real MongoDB instance, as in the Binder example linked
+above, the full MongoDB query language is supported.
 
 The Catalogs carry the composite search query as internal state.
 

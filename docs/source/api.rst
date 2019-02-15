@@ -17,10 +17,10 @@ order) and random access (requesting a specific entry by name) by implementing
 ``__iter__`` and ``__getitem__`` respectively.
 
 It should also implement ``__contains__`` because, similarly, if
-``__contains__`` if contains specifically implemented, Python will iterate
-through all the entries and check each in turn. In this case, it is likely more
-efficient to implement a ``__contains__`` method that uses ``__getitem__`` to
-determine whether a given key in conatined.
+``__contains__`` specifically implemented, Python will iterate through all the
+entries and check each in turn. In this case, it is likely more efficient to
+implement a ``__contains__`` method that uses ``__getitem__`` to determine
+whether a given key in contained.
 
 Finally, the Catalog itself should implement ``__len__``. If it is not
 implemented, intake may obtain a Catalog's length by iterating through it
@@ -34,7 +34,7 @@ For each file format / backend (MongoDB, newline-delimited JSON, directory of
 TIFFs, etc.) one needs to write a single custom catalog. Its entries, created
 dynamically as described above, should be ``LocalCatalogEntry`` objects that
 identify ``intake_bluesky.core.RunCatalog`` as their driver. See below for the
-arguments that they would provide to the entry so that it can instanitate the
+arguments that they would provide to the entry so that it can instantiate the
 catalog when called upon.
 
 Core
