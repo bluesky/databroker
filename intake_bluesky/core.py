@@ -271,11 +271,11 @@ class RunCatalog(intake.catalog.Catalog):
     Parameters
     ----------
     get_run_start: callable
-        RunStart Document
+        Expected signature ``get_run_start() -> RunStart``
     get_run_stop : callable
-        Expected signature ``get_run_stop(run_start_uid) -> RunStop``
+        Expected signature ``get_run_stop() -> RunStop``
     get_event_descriptors : callable
-        Expected signature ``get_event_descriptors(run_start_uid) -> List[EventDescriptors]``
+        Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_cursor : callable
         Expected signature ``get_event_cursor(descriptor_uids) -> generator``
         where ``generator`` yields Event documents
@@ -459,13 +459,13 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     Parameters
     ----------
     get_run_start: callable
-        RunStart Document
+        Expected signature ``get_run_start() -> RunStart``
     stream_name : string
         Stream name, such as 'primary'.
     get_run_stop : callable
-        Expected signature ``get_run_stop(run_start_uid) -> RunStop``
+        Expected signature ``get_run_stop() -> RunStop``
     get_event_descriptors : callable
-        Expected signature ``get_event_descriptors(run_start_uid) -> List[EventDescriptors]``
+        Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_cursor : callable
         Expected signature ``get_event_cursor(descriptor_uids) -> generator``
         where ``generator`` yields Event documents
