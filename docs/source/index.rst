@@ -23,14 +23,15 @@ bluesky.
   instead of performing plain-text search.
 * Intake-Bluesky ships Catalogs that embody the semantics of bluesky's data
   model. A bluesky "run" (e.g. one scan) is represented by a
-  :class:`RunCatalog`.  Each logical table of data within a given run is
-  represented by a :class:`BlueskyEventStream`.
-* The methods :meth:`BlueskyEventStream.read()` and
-  :meth:`BlueskyEventStream.to_dask()` provide the in SciPy/PyData structures
-  and their "lazy" dask-backed counterparts, as with any other intake data
-  source.
-* The additional method :meth:`RunCatalog.read_canonical` returns a generator
-  suitable for streaming. Its elements satisfy
+  :class:`~intake_bluesky.core.RunCatalog`.  Each logical table of data within
+  a given run is represented by a
+  :class:`~intake_bluesky.core.BlueskyEventStream`.
+* The methods :meth:`~intake_bluesky.core.BlueskyEventStream.read()` and
+  :meth:`~intake_bluesky.core.BlueskyEventStream.to_dask()` provide the data in
+  SciPy/PyData structures and their "lazy" dask-backed counterparts, as with
+  any other intake data source.
+* The additional method :meth:`~intake_bluesky.core.RunCatalog.read_canonical`
+  returns a generator suitable for streaming. Its elements satisfy
   `bluesky's data model <https://nsls-ii.github.io/event-model>`_ and can be
   fed into streaming visualization, processing, and serialization tools that
   consume this representation.
@@ -45,14 +46,17 @@ files, whereas a lab or facility might use a MongoDB instance. Intake-Bluesky
 will address the range of possible use cases by implementing an intake driver
 for each serializer. Currently supported:
 
-* :class:`BlueskyMongoCatalog` --- Backed by MongoDB
-* :class:`BluekysJSONLCatalog` --- Backed by a set of newline-delimited JSON
-  files, illustrating "minimal deployment overhead" use case
+* :class:`~intake_bluesky.mongo_layout1.BlueskyMongoCatalog` --- Backed by
+  MongoDB
+* :class:`~intake_bluesky.jsonl.BlueskyJSONLCatalog` --- Backed by a set of
+  newline-delimited JSON files, illustrating "minimal deployment overhead" use
+  case
 
 Intake-Bluesky will also address the use case of reading files *not* produced
 by bluesky, retrofitting the semantics of its data model. Thus, a "bucket
 of files" such as a directory of TIFFs could be fed through tools that consume
-the representation returned by :meth:`RunCatalog.read_canonical`.
+the representation returned by
+:meth:`~intake_bluesky.core.RunCatalog.read_canonical`.
 
 .. note::
 
