@@ -6,7 +6,7 @@
 Intake Bluesky
 ==============
 
-Search for data, and it retrieve it as SciPy/PyData data structures for
+Search for data, and retrieve it as SciPy/PyData data structures for
 interactive data exploration or in
 `a representation suitable for streaming applications <https://nsls-ii.github.io/event-model>`_ .
 
