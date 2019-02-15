@@ -20,7 +20,7 @@ It should also implement ``__contains__`` because, similarly, if
 ``__contains__`` is specifically implemented, Python will iterate through all the
 entries and check each in turn. In this case, it is likely more efficient to
 implement a ``__contains__`` method that uses ``__getitem__`` to determine
-whether a given key in contained.
+whether a given key is contained.
 
 Finally, the Catalog itself should implement ``__len__``. If it is not
 implemented, intake may obtain a Catalog's length by iterating through it
