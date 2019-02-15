@@ -15,8 +15,6 @@ env:
   global:
     # Doctr deploy key for NSLS-II/NSLS-II.github.io
     - secure: "dbjw3t57yRD8sIfeWnyIbUOxFI6upKHmhr5Kc4fqh8varqczi9LpnkrSABS/sdeb56rSwOnuTpgfwLB3qgqcodIepecAL9x7HDbNWejzQHHpKpE8ExsrBxKSLfX3CmU1veHZLk3UZV6ybhJCeut2f4kAsu14NlgmFc21u8C4AU/fQKGpoiWDTmzem1azck3903LE8zEpWRnTazhJuUd7H2KlsjEQd7bRFhKJHJmad7rXezWrfUrtFvNn3uKq6vYGQsqqvGGB3xIdjNxbJu2T8fqUkphc5VbLxQyGutK8uDviM7eq9wit6xY0tgDp4Av/eZjoYH7FwyQzqGMadn+QPnmW1izYFiOIcj7nw13S3Sfjs4FTkTD7pqdQTC1KMr72z86WdJBH/4FkRTFiXHRUbfRG5h+zZ7W7c8xI8SOfz4TQ1aakZ6JYt4Nxt+bQI9zh/5g3WEV2LRkLsBmM/nX+wGZpREE/s2+9LGMp9khdEReeklcXJ8W8pZb8iddMt4/zPS66Ej2nthJ9nd/QuurlOBh27GQFBGpSfmBe+XqDC9zHN0kWcUpPJ0mldvoWz/WtZw4VguuqTK+Kh9TqRYCbfXIHtCZMHaVsUVE7t1/HS6B/LlDwFVwxTvGrpl7Q0t3ZJi04vcitBUrWy2D7D7t5JXREhVlB999fMR7Gh4nXlKk="
-    script:
-
 
 install:
   # Install this package and the packages listed in requirements.txt.
