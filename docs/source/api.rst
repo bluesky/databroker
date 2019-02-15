@@ -17,7 +17,7 @@ order) and random access (requesting a specific entry by name) by implementing
 ``__iter__`` and ``__getitem__`` respectively.
 
 It should also implement ``__contains__`` because, similarly, if
-``__contains__`` specifically implemented, Python will iterate through all the
+``__contains__`` is specifically implemented, Python will iterate through all the
 entries and check each in turn. In this case, it is likely more efficient to
 implement a ``__contains__`` method that uses ``__getitem__`` to determine
 whether a given key in contained.
