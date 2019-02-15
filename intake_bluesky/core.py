@@ -270,12 +270,12 @@ class RunCatalog(intake.catalog.Catalog):
 
     Parameters
     ----------
-    run_start_doc: dict
-        RunStart Document
+    get_run_start: callable
+        Expected signature ``get_run_start() -> RunStart``
     get_run_stop : callable
-        Expected signature ``get_run_stop(run_start_uid) -> RunStop``
+        Expected signature ``get_run_stop() -> RunStop``
     get_event_descriptors : callable
-        Expected signature ``get_event_descriptors(run_start_uid) -> List[EventDescriptors]``
+        Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_cursor : callable
         Expected signature ``get_event_cursor(descriptor_uids) -> generator``
         where ``generator`` yields Event documents
@@ -297,7 +297,7 @@ class RunCatalog(intake.catalog.Catalog):
     PARTITION_SIZE = 100
 
     def __init__(self,
-                 run_start_doc,
+                 get_run_start,
                  get_run_stop,
                  get_event_descriptors,
                  get_event_cursor,
@@ -311,7 +311,7 @@ class RunCatalog(intake.catalog.Catalog):
         # explicitly.
         self.urlpath = ''  # TODO Not sure why I had to add this.
 
-        self._run_start_doc = run_start_doc
+        self._get_run_start = get_run_start
         self._get_run_stop = get_run_stop
         self._get_event_descriptors = get_event_descriptors
         self._get_event_cursor = get_event_cursor
@@ -340,6 +340,7 @@ class RunCatalog(intake.catalog.Catalog):
     def _load(self):
         # Count the total number of documents in this run.
         self._run_stop_doc = self._get_run_stop()
+        self._run_start_doc = self._get_run_start()
         self._descriptors = self._get_event_descriptors()
         self._offset = len(self._descriptors) + 1
         self.metadata.update({'start': self._run_start_doc})
@@ -363,7 +364,7 @@ class RunCatalog(intake.catalog.Catalog):
         # Make a BlueskyEventStream for each stream_name.
         for stream_name in set(doc.get('name') for doc in self._descriptors):
             args = dict(
-                run_start_doc=self._run_start_doc,
+                get_run_start=self._get_run_start,
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
                 get_event_descriptors=self._get_event_descriptors,
@@ -406,7 +407,7 @@ class RunCatalog(intake.catalog.Catalog):
             payload.extend(
                 itertools.islice(
                     itertools.chain(
-                        (('start', self._run_start_doc),),
+                        (('start', self._get_run_start()),),
                         (('descriptor', doc) for doc in self._descriptors)),
                     start,
                     stop))
@@ -457,14 +458,14 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
 
     Parameters
     ----------
-    run_start_doc: dict
-        RunStart Document
+    get_run_start: callable
+        Expected signature ``get_run_start() -> RunStart``
     stream_name : string
         Stream name, such as 'primary'.
     get_run_stop : callable
-        Expected signature ``get_run_stop(run_start_uid) -> RunStop``
+        Expected signature ``get_run_stop() -> RunStop``
     get_event_descriptors : callable
-        Expected signature ``get_event_descriptors(run_start_uid) -> List[EventDescriptors]``
+        Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_cursor : callable
         Expected signature ``get_event_cursor(descriptor_uids) -> generator``
         where ``generator`` yields Event documents
@@ -493,7 +494,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     partition_access = True
 
     def __init__(self,
-                 run_start_doc,
+                 get_run_start,
                  stream_name,
                  get_run_stop,
                  get_event_descriptors,
@@ -509,7 +510,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
                  **kwargs):
         # self._partition_size = 10
         # self._default_chunks = 10
-        self._run_start_doc = run_start_doc
+        self._get_run_start = get_run_start
         self._stream_name = stream_name
         self._get_event_descriptors = get_event_descriptors
         self._get_run_stop = get_run_stop
@@ -531,13 +532,14 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
-                   f"from Run {self._run_start_doc['uid'][:8]}...>")
+                   f"from Run {self._get_run_start()['uid'][:8]}...>")
         except Exception as exc:
             out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
     def _open_dataset(self):
         self._run_stop_doc = self._get_run_stop()
+        self._run_start_doc = self._get_run_start()
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         descriptor_docs = [doc for doc in self._get_event_descriptors()
