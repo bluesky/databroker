@@ -207,13 +207,13 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     """
     name = 'bluesky-run-catalog'
 
-    def __init__(self, url, headers, name, parameters, metadata=None, **kwargs):
-        super().__init__(url=url, headers=headers, name=name,
+    def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
+        super().__init__(url=url, http_args=http_args, name=name,
                          metadata=metadata, **kwargs)
         self.url = url
         self.name = name
         self.parameters = parameters
-        self.headers = headers
+        self.http_args = http_args
         self._source_id = None
         self.metadata = metadata or {}
         self._get_source_id()
@@ -225,7 +225,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
                            parameters=self.parameters)
             req = requests.post(urljoin(self.url, '/v1/source'),
                                 data=msgpack.packb(payload, use_bin_type=True),
-                                **self.headers)
+                                **self.http_args)
             req.raise_for_status()
             response = msgpack.unpackb(req.content, **unpack_kwargs)
             self._parse_open_response(response)
@@ -243,7 +243,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     def _load_metadata(self):
         if self.bag is None:
             self.parts = [dask.delayed(intake.container.base.get_partition)(
-                self.url, self.headers, self._source_id, self.container, i
+                self.url, self.http_args, self._source_id, self.container, i
             )
                           for i in range(self.npartitions)]
             self.bag = dask.bag.from_delayed(self.parts)
