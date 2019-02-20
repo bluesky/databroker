@@ -254,12 +254,15 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         return self.parts[i].compute()
 
     def read(self):
-        self._load_metadata()
-        return self.bag.compute()
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
+
 
     def to_dask(self):
-        self._load_metadata()
-        return self.bag
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
 
     def _close(self):
         self.bag = None
@@ -268,6 +271,9 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         for i in range(self.npartitions):
             for name, doc in self._get_partition(i):
                 yield name, doc
+
+    def search(self):
+        raise NotImplementedError("Cannot search within one run.")
 
 
 class RunCatalog(intake.catalog.Catalog):
@@ -444,6 +450,16 @@ class RunCatalog(intake.catalog.Catalog):
         for _, doc in payload:
             doc.pop('_id', None)
         return payload
+
+    def read(self):
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
+
+    def to_dask(self):
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
 
 
 _EXCLUDE_PARAMETER = intake.catalog.local.UserParameter(

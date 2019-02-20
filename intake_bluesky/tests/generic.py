@@ -2,6 +2,7 @@ import event_model
 import itertools
 import numpy
 import ophyd.sim
+import pytest
 
 
 def test_fixture(bundle):
@@ -20,6 +21,16 @@ def test_search(bundle):
              .search({'plan_name': 'scan'})
              .search({'time': {'$gt': 0}}))
     assert name == bundle.uid
+
+
+def test_run_read_not_implemented(bundle):
+    "Test that custom repr (with run uid) appears."
+    cat = bundle.cat
+    run = bundle.cat['xyz']()[bundle.uid]
+    with pytest.raises(NotImplementedError):
+        run.read()
+    with pytest.raises(NotImplementedError):
+        run.to_dask()
 
 
 def test_run_metadata(bundle):
