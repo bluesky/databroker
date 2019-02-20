@@ -209,7 +209,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
 
     def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
         super().__init__(url=url, http_args=http_args, name=name,
-                         metadata=metadata, **kwargs)
+                         metadata=metadata)
         self.url = url
         self.name = name
         self.parameters = parameters
@@ -257,7 +257,6 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         raise NotImplementedError(
             "Reading the RunCatalog itself is not supported. Instead read one "
             "its entries, representing individual Event Streams.")
-
 
     def to_dask(self):
         raise NotImplementedError(
