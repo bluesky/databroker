@@ -217,3 +217,6 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             metadata=(self.metadata or {}).copy(),
             storage_options=self.storage_options)
         return cat
+
+    def __len__(self):
+        return len(self._runs)

@@ -29,6 +29,17 @@ def test_repr(bundle):
     assert bundle.uid in repr(run)
 
 
+def test_len(bundle):
+    """
+    Test that Catalog implements __len__.
+
+    Otherwise intake will loop it as `sum(1 for _ in catalog)` which is likely
+    less efficient.
+    """
+    cat = bundle.cat['xyz']()
+    len(cat)  # If not implemented, will raise TypeError
+
+
 def test_run_read_not_implemented(bundle):
     "Test that custom repr (with run uid) appears."
     run = bundle.cat['xyz']()[bundle.uid]
