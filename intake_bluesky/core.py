@@ -272,6 +272,22 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
             for name, doc in self._get_partition(i):
                 yield name, doc
 
+    def __repr__(self):
+        self._load_metadata()
+        try:
+            start = self.metadata['start']
+            stop = self.metadata['stop']
+            out = (f"Run Catalog\n"
+                   f"  uid={start['uid']!r}\n"
+                   f"  exit_status={stop.get('exit_status')!r}\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
+                   f"  Streams:\n")
+            for stream_name in self:
+                out += f"    * {stream_name}\n"
+        except Exception as exc:
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
+        return out
+
     def search(self):
         raise NotImplementedError("Cannot search within one run.")
 

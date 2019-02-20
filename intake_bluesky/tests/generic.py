@@ -23,6 +23,13 @@ def test_search(bundle):
     assert name == bundle.uid
 
 
+def test_repr(bundle):
+    "Test that custom repr (with run uid) appears."
+    cat = bundle.cat
+    run = bundle.cat['xyz']()[bundle.uid]
+    assert bundle.uid in repr(run)
+
+
 def test_run_read_not_implemented(bundle):
     "Test that custom repr (with run uid) appears."
     cat = bundle.cat
