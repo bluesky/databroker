@@ -25,8 +25,11 @@ def test_search(bundle):
 
 def test_repr(bundle):
     "Test that custom repr (with run uid) appears."
-    run = bundle.cat['xyz']()[bundle.uid]
+    entry = bundle.cat['xyz']()[bundle.uid]
+    assert bundle.uid in repr(entry)
+    run = entry()
     assert bundle.uid in repr(run)
+    assert 'primary' in repr(run)
 
 
 def test_len(bundle):

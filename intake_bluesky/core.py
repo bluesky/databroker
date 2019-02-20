@@ -272,7 +272,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
                 yield name, doc
 
     def __repr__(self):
-        self._load_metadata()
+        self._load()
         try:
             start = self.metadata['start']
             stop = self.metadata['stop']
