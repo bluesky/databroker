@@ -32,6 +32,11 @@ def test_repr(bundle):
     assert 'primary' in repr(run)
 
 
+def test_iteration(bundle):
+    cat = bundle.cat['xyz']()
+    list(cat)
+
+
 def test_len(bundle):
     """
     Test that Catalog implements __len__.
