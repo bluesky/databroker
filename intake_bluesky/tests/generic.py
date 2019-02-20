@@ -1,5 +1,6 @@
 import event_model
 import itertools
+from intake.catalog.utils import RemoteCatalogError
 import numpy
 import ophyd.sim
 import pytest
@@ -46,6 +47,21 @@ def test_len(bundle):
     """
     cat = bundle.cat['xyz']()
     len(cat)  # If not implemented, will raise TypeError
+
+
+def test_getitem_sugar(bundle):
+    cat = bundle.cat['xyz']()
+    # Test lookup by recency (e.g. -1 is latest)
+    cat[-1]
+    with pytest.raises((ValueError, RemoteCatalogError)):
+        cat[-(1 + len(cat))]  # There aren't this many entries
+    expected = cat[-1]()
+    scan_id = expected.metadata['start']['scan_id']
+    actual = cat[scan_id]()
+    assert actual.metadata['start']['uid'] == expected.metadata['start']['uid']
+    with pytest.raises((KeyError, RemoteCatalogError)):
+        cat[234234234234234234]  # This scan_id doesn't exit.
+    
 
 
 def test_run_read_not_implemented(bundle):
