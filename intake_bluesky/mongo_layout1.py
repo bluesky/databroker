@@ -178,16 +178,32 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
             def __getitem__(self, name):
                 # If this came from a client, we might be getting '-1'.
+                collection = catalog._run_start_collection
                 try:
                     N = int(name)
                 except ValueError:
                     query = {'$and': [catalog._query, {'uid': name}]}
-                    run_start_doc = catalog._run_start_collection.find_one(query)
+                    run_start_doc = collection.find_one(query)
+                    if run_start_doc is None:
+                        regex_query = {
+                            '$and': [catalog._query,
+                                     {'uid': {'$regex': f'{name}.*'}}]}
+                        matches = list(collection.find(regex_query).limit(10))
+                        if not matches:
+                            raise KeyError(name)
+                        elif len(matches) == 1:
+                            run_start_doc, = matches
+                        else:
+                            match_list = '\n'.join(doc['uid'] for doc in matches)
+                            raise ValueError(
+                                f"Multiple matches to partial uid {name!r}. "
+                                f"Up to 10 listed here:\n"
+                                f"{match_list}")
                 else:
                     if N < 0:
                         # Interpret negative N as "the Nth from last entry".
                         query = catalog._query
-                        cursor = (catalog._run_start_collection.find(query)
+                        cursor = (collection.find(query)
                                   .sort('time', pymongo.DESCENDING)
                                   .skip(-N - 1)
                                   .limit(1))
@@ -201,7 +217,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
                         query = {'$and': [catalog._query, {'scan_id': N}]}
-                        cursor = (catalog._run_start_collection.find(query)
+                        cursor = (collection.find(query)
                                   .sort('time', pymongo.DESCENDING)
                                   .limit(1))
                         try:

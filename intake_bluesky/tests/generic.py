@@ -51,17 +51,24 @@ def test_len(bundle):
 
 def test_getitem_sugar(bundle):
     cat = bundle.cat['xyz']()
+
     # Test lookup by recency (e.g. -1 is latest)
     cat[-1]
     with pytest.raises((ValueError, RemoteCatalogError)):
         cat[-(1 + len(cat))]  # There aren't this many entries
-    expected = cat[-1]()
+
+    # Test lookup by integer, not globally-unique, 'scan_id'.
+    expected = cat[bundle.uid]()
     scan_id = expected.metadata['start']['scan_id']
     actual = cat[scan_id]()
     assert actual.metadata['start']['uid'] == expected.metadata['start']['uid']
     with pytest.raises((KeyError, RemoteCatalogError)):
         cat[234234234234234234]  # This scan_id doesn't exit.
-    
+
+    # Test lookup by partial uid.
+    expected = cat[bundle.uid]()
+    actual = cat[bundle.uid[:8]]()
+    assert actual.metadata['start']['uid'] == expected.metadata['start']['uid']
 
 
 def test_run_read_not_implemented(bundle):

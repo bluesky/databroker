@@ -179,7 +179,23 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 try:
                     N = int(name)
                 except ValueError:
-                    run_start_doc = catalog._run_starts[name]
+                    try:
+                        run_start_doc = catalog._run_starts[name]
+                    except KeyError:
+                        # Try looking up by *partial* uid.
+                        matches = {}
+                        for uid, run_start_doc in catalog._run_starts.items():
+                            if uid.startswith(name):
+                                matches[uid] = run_start_doc
+                        if not matches:
+                            raise KeyError(name)
+                        elif len(matches) > 1:
+                            match_list = '\n'.join(matches)
+                            raise ValueError(
+                                f"Multiple matches to partial uid {name!r}:\n"
+                                f"{match_list}")
+                        else:
+                            run_start_doc, = matches.values()
                 else:
                     if N < 0:
                         # Interpret negative N as "the Nth from last entry".
