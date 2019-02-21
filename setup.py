@@ -37,7 +37,7 @@ setup(
     package_data={'databroker.assets': ['schemas/*.json']},
     # The project's main homepage.
     url='https://github.com/NSLS-II/databroker',
-    scripts=['scripts/fs_rename', 'scripts/start_md_server'],
+    scripts=['scripts/fs_rename'],
     license='BSD (3-clause)',
 
     install_requires=requirements,
