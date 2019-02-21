@@ -43,10 +43,11 @@ script:
   - set -e
   - pip install -r requirements-docs.txt
   - make -C doc html
-  - if [ $PUBLISH_DOCS ]; then
+  - |
+    if [ $PUBLISH_DOCS ]; then
       # Push built documentation to GH pages.
-      pip install doctr
-      doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master databroker
+      pip install doctr;
+      doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master databroker;
       doctr deploy --deploy-repo bluesky/bluesky.github.io --deploy-branch-name master databroker
     fi
 
