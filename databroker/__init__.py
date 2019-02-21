@@ -5,14 +5,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-try:
-    import attr  # confusingly, this comes from 'attrs' on PyPI, not 'attr'
-    attr.s
-except AttributeError:
-    raise ImportError("Wrong attr module imported. Please uninstall 'attr' "
-                      "and install 'attrs' which provides the correct module.")
-
-
 from ._core import (Broker, BrokerES, Header, ALL,
                     lookup_config, list_configs, describe_configs, temp_config,
                     wrap_in_doct,

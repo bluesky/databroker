@@ -1,0 +1,2 @@
+* Stripped out attrs so that attrs' magic and intake's getattr magic do not
+  fight. No changes to tests were needed.

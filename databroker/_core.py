@@ -5,7 +5,6 @@ from collections import defaultdict, deque
 from datetime import datetime
 from pims import FramesSequence, Frame
 import logging
-import attr
 from warnings import warn
 from importlib import import_module
 import itertools
@@ -72,19 +71,25 @@ class InvalidDocumentSequence(Exception):
     pass
 
 
-@attr.s(frozen=True)
 class Header(object):
     """
     A dictionary-like object summarizing metadata for a run.
     """
 
     _name = 'header'
-    db = attr.ib(cmp=False, hash=False)
-    start = attr.ib()
-    stop = attr.ib(default=attr.Factory(dict))
-    ext = attr.ib(default=attr.Factory(SimpleNamespace), cmp=False, hash=False)
-    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False,
-                     repr=False)
+    def __init__(self, db, start, stop, ext=None, _cache=None):
+        self.db = db
+        self.start = start
+        self.stop = stop
+        if ext is None:
+            ext = {}
+        self.ext = ext
+        if _cache is None:
+            _cache = {}
+        self._cache = _cache
+
+    def __eq__(self, other):
+        return self.start == other.start
 
     @classmethod
     def from_run_start(cls, db, run_start, run_stop=None):
@@ -147,11 +152,9 @@ class Header(object):
             yield k
 
     def to_name_dict_pair(self):
-        ret = attr.asdict(self)
-        ret.pop('db')
-        ret.pop('_cache')
-        ret['descriptors'] = self.descriptors
-        return self._name, ret
+        return self._name, {'start': self.start, 'stop': self.stop,
+                            'descriptors': self.descriptors,
+                            'ext': self.ext}
 
     def __len__(self):
         return 4
