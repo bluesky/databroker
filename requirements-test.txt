@@ -1,4 +1,5 @@
 bluesky
+codecov
 coverage
 glueviz
 matplotlib
