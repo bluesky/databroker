@@ -87,6 +87,16 @@ class Header:
     def __iter__(self):
         return self.keys()
 
+    def table(self, stream_name='primary'):
+        return self._entry()[stream_name]().read().to_dataframe()
+
+    def documents(self):
+        # TODO Get Resource and Datum as well --- read_direct() or something.
+        # Resources should be rewritten to URLs where the files can be
+        # retrieved as bytes.
+        return self._entry().read_canonical()
+
+
 class Results:
     """
     Iterable object encapsulating a results set of Headers
