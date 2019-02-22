@@ -20,6 +20,7 @@ import tempfile
 import copy
 from .eventsource import EventSourceShim
 from .headersource import HeaderSourceShim, safe_get_stop
+from . import transitional
 import humanize
 import jinja2
 import time
@@ -2193,6 +2194,8 @@ class Broker(BrokerES):
 
         >>> Broker.from_config(config)
         """
+        if 'uri' in config:
+            return transitional.Broker(config['uri'], config.get('source'))
         # Import component classes.
         mds_cls = load_cls(config['metadatastore'])
         assets_cls = load_cls(config['assets'])
