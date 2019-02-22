@@ -1,8 +1,8 @@
 from intake import Catalog
 
 # This triggers driver registration.
-import intake_bluesky.core
-import intake_bluesky.mongo_layout1
+import intake_bluesky.core  # noqa
+import intake_bluesky.mongo_layout1  # noqa
 
 
 class Broker:
