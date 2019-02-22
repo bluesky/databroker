@@ -1,29 +1,57 @@
 from intake import Catalog
 
+# This triggers driver registration.
+import intake_bluesky.core
+import intake_bluesky.mongo_layout1
+
 
 class Broker:
-    def __init__(self, uri, source):
+    """
+    This supports the original Broker API but implemented on intake.Catalog.
+    """
+    def __init__(self, uri, source, header_version=1):
         catalog = Catalog(uri)
         if source is not None:
             catalog = catalog[source]
         self._catalog = catalog
+        self._header_version = header_version
+
+    @property
+    def header_version(self):
+        return self._header_version
+
+    @property
+    def _api_version_2(self):
+        return self._catalog
 
     def __call__(self, text_search=None, **kwargs):
         data_key = kwargs.pop('data_key', None)
-        return Results(self, self._catalog.search(kwargs), data_key)
+        return Results(self, self._catalog.search(kwargs), data_key,
+                       self._header_version)
 
     def __getitem__(self, key):
         entry = self._catalog[key]
-        return Header(entry, self)
+        if self._header_version == 1:
+            return Header(entry, self)
+        else:
+            return entry
 
 
 class Header:
+    """
+    This supports the original Header API but implemented on intake's Entry.
+    """
     def __init__(self, entry, broker):
         self.start = entry.metadata['start']
         self.stop = entry.metadata['stop']
+        self._entry = entry
         self._descriptors = None  # Fetch lazily in property.
         self.ext = None  # TODO
         self.db = broker
+
+    @property
+    def _api_version_2(self):
+        return self._entry
 
     @property
     def descriptors(self):
@@ -70,15 +98,19 @@ class Results:
     data_key : string or None
         Special query parameter that filters results
     """
-    def __init__(self, broker, catalog, data_key):
+    def __init__(self, broker, catalog, data_key, header_version):
         self._broker = broker
         self._catalog = catalog
         self._data_key = data_key
+        self._header_version = header_version
 
     def __iter__(self):
-        # TODO walk() fails. We should probably support Catalog.items().
+        # TODO Catalog.walk() fails. We should probably support Catalog.items().
         for uid, entry in self._catalog._entries.items():
-            header = Header(entry, self._broker)
+            if self._header_version == 1:
+                header = Header(entry, self._broker)
+            else:
+                header = entry
             if self._data_key is None:
                 yield header
             else:
