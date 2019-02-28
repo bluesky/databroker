@@ -51,19 +51,17 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         super().__init__(**kwargs)
 
     def _get_run_stop(self, run_uid):
-        header_doc = self._db.header.find_one({'run_id': run_uid},
-                                              {'_id':False})
-        return header_doc['start']
+        return self._db.header.find_one({'run_id': run_uid},
+                                        {'stop': True,'_id': False})
 
     def _get_descriptors(self, run_uid):
-        header_doc = self._db.header.find_one({'run_id': run_uid},
-                                              {'_id':False})
-        return header_doc['descriptors']
+        return self._db.header.find_one({'run_id': run_uid},
+                                        {'descriptors': True, '_id': False})
 
     def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
-        cursor = (self._db.event.find({'descriptor': {'$in': descriptor_uids}},
-                                      {'_id':False},
-                                      sort=[('time', pymongo.ASCENDING)]))
+        cursor = self._db.event.find({'descriptor': {'$in': descriptor_uids}},
+                                     {'_id':False},
+                                     sort=[('time.0', pymongo.ASCENDING)])
         cursor.skip(skip)
         if limit is not None:
             cursor = cursor.limit(limit)
@@ -75,9 +73,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                                                descriptor_uids}}))
 
     def _get_resource(self, run_uid, uid):
-        header_doc = self._db.header.find_one({'run_id': run_uid},
-                                              {'_id':False})
-        for doc in header_doc['resources']:
+        resources_doc = self._db.header.find_one({'run_id': run_uid},
+                                              {'resources': True, '_id':False})
+        for doc in resources_doc:
             if doc['uid'] == uid:
                 return doc
 
