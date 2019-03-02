@@ -177,14 +177,44 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             def __getitem__(self, name):
                 # If this came from a client, we might be getting '-1'.
                 try:
-                    name = int(name)
+                    N = int(name)
                 except ValueError:
-                    pass
-                if isinstance(name, int):
-                    raise NotImplementedError
+                    try:
+                        run_start_doc = catalog._run_starts[name]
+                    except KeyError:
+                        # Try looking up by *partial* uid.
+                        matches = {}
+                        for uid, run_start_doc in catalog._run_starts.items():
+                            if uid.startswith(name):
+                                matches[uid] = run_start_doc
+                        if not matches:
+                            raise KeyError(name)
+                        elif len(matches) > 1:
+                            match_list = '\n'.join(matches)
+                            raise ValueError(
+                                f"Multiple matches to partial uid {name!r}:\n"
+                                f"{match_list}")
+                        else:
+                            run_start_doc, = matches.values()
                 else:
-                    run_start_doc = catalog._run_starts[name]
-                    return self._doc_to_entry(run_start_doc)
+                    if N < 0:
+                        # Interpret negative N as "the Nth from last entry".
+                        time_sorted = sorted(catalog._run_starts.values(),
+                                             key=lambda doc: doc['time'])
+                        if abs(N) > len(time_sorted):
+                            raise ValueError(
+                                f"Catalog only contains {len(time_sorted)} "
+                                f"runs.")
+                        run_start_doc = time_sorted[N]
+                    else:
+                        # Interpret positive N as
+                        # "most recent entry with scan_id == N".
+                        for run_start_doc in catalog._run_starts.values():
+                            if run_start_doc.get('scan_id') == N:
+                                break
+                        else:
+                            raise KeyError(f"No run with scan_id={N}")
+                return self._doc_to_entry(run_start_doc)
 
             def __contains__(self, key):
                 # Avoid iterating through all entries.
@@ -217,3 +247,6 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             metadata=(self.metadata or {}).copy(),
             storage_options=self.storage_options)
         return cat
+
+    def __len__(self):
+        return len(self._runs)

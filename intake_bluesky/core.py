@@ -207,13 +207,13 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     """
     name = 'bluesky-run-catalog'
 
-    def __init__(self, url, headers, name, parameters, metadata=None, **kwargs):
-        super().__init__(url=url, headers=headers, name=name,
-                         metadata=metadata, **kwargs)
+    def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
+        super().__init__(url=url, http_args=http_args, name=name,
+                         metadata=metadata)
         self.url = url
         self.name = name
         self.parameters = parameters
-        self.headers = headers
+        self.http_args = http_args
         self._source_id = None
         self.metadata = metadata or {}
         self._get_source_id()
@@ -225,7 +225,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
                            parameters=self.parameters)
             req = requests.post(urljoin(self.url, '/v1/source'),
                                 data=msgpack.packb(payload, use_bin_type=True),
-                                **self.headers)
+                                **self.http_args)
             req.raise_for_status()
             response = msgpack.unpackb(req.content, **unpack_kwargs)
             self._parse_open_response(response)
@@ -243,7 +243,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
     def _load_metadata(self):
         if self.bag is None:
             self.parts = [dask.delayed(intake.container.base.get_partition)(
-                self.url, self.headers, self._source_id, self.container, i
+                self.url, self.http_args, self._source_id, self.container, i
             )
                           for i in range(self.npartitions)]
             self.bag = dask.bag.from_delayed(self.parts)
@@ -254,12 +254,14 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         return self.parts[i].compute()
 
     def read(self):
-        self._load_metadata()
-        return self.bag.compute()
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
 
     def to_dask(self):
-        self._load_metadata()
-        return self.bag
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
 
     def _close(self):
         self.bag = None
@@ -268,6 +270,25 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         for i in range(self.npartitions):
             for name, doc in self._get_partition(i):
                 yield name, doc
+
+    def __repr__(self):
+        self._load()
+        try:
+            start = self.metadata['start']
+            stop = self.metadata['stop']
+            out = (f"Run Catalog\n"
+                   f"  uid={start['uid']!r}\n"
+                   f"  exit_status={stop.get('exit_status')!r}\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
+                   f"  Streams:\n")
+            for stream_name in self:
+                out += f"    * {stream_name}\n"
+        except Exception as exc:
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
+        return out
+
+    def search(self):
+        raise NotImplementedError("Cannot search within one run.")
 
 
 class RunCatalog(intake.catalog.Catalog):
@@ -444,6 +465,16 @@ class RunCatalog(intake.catalog.Catalog):
         for _, doc in payload:
             doc.pop('_id', None)
         return payload
+
+    def read(self):
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
+
+    def to_dask(self):
+        raise NotImplementedError(
+            "Reading the RunCatalog itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
 
 
 _EXCLUDE_PARAMETER = intake.catalog.local.UserParameter(

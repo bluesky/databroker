@@ -1,7 +1,9 @@
 import event_model
 import itertools
+from intake.catalog.utils import RemoteCatalogError
 import numpy
 import ophyd.sim
+import pytest
 
 
 def test_fixture(bundle):
@@ -20,6 +22,62 @@ def test_search(bundle):
              .search({'plan_name': 'scan'})
              .search({'time': {'$gt': 0}}))
     assert name == bundle.uid
+
+
+def test_repr(bundle):
+    "Test that custom repr (with run uid) appears."
+    entry = bundle.cat['xyz']()[bundle.uid]
+    assert bundle.uid in repr(entry)
+    run = entry()
+    assert bundle.uid in repr(run)
+    assert 'primary' in repr(run)
+
+
+def test_iteration(bundle):
+    cat = bundle.cat['xyz']()
+    list(cat)
+
+
+def test_len(bundle):
+    """
+    Test that Catalog implements __len__.
+
+    Otherwise intake will loop it as `sum(1 for _ in catalog)` which is likely
+    less efficient.
+    """
+    cat = bundle.cat['xyz']()
+    len(cat)  # If not implemented, will raise TypeError
+
+
+def test_getitem_sugar(bundle):
+    cat = bundle.cat['xyz']()
+
+    # Test lookup by recency (e.g. -1 is latest)
+    cat[-1]
+    with pytest.raises((ValueError, RemoteCatalogError)):
+        cat[-(1 + len(cat))]  # There aren't this many entries
+
+    # Test lookup by integer, not globally-unique, 'scan_id'.
+    expected = cat[bundle.uid]()
+    scan_id = expected.metadata['start']['scan_id']
+    actual = cat[scan_id]()
+    assert actual.metadata['start']['uid'] == expected.metadata['start']['uid']
+    with pytest.raises((KeyError, RemoteCatalogError)):
+        cat[234234234234234234]  # This scan_id doesn't exit.
+
+    # Test lookup by partial uid.
+    expected = cat[bundle.uid]()
+    actual = cat[bundle.uid[:8]]()
+    assert actual.metadata['start']['uid'] == expected.metadata['start']['uid']
+
+
+def test_run_read_not_implemented(bundle):
+    "Test that custom repr (with run uid) appears."
+    run = bundle.cat['xyz']()[bundle.uid]
+    with pytest.raises(NotImplementedError):
+        run.read()
+    with pytest.raises(NotImplementedError):
+        run.to_dask()
 
 
 def test_run_metadata(bundle):

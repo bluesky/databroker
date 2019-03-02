@@ -178,28 +178,52 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
             def __getitem__(self, name):
                 # If this came from a client, we might be getting '-1'.
+                collection = catalog._run_start_collection
                 try:
-                    name = int(name)
+                    N = int(name)
                 except ValueError:
-                    pass
-                if isinstance(name, int):
-                    if name < 0:
+                    query = {'$and': [catalog._query, {'uid': name}]}
+                    run_start_doc = collection.find_one(query)
+                    if run_start_doc is None:
+                        regex_query = {
+                            '$and': [catalog._query,
+                                     {'uid': {'$regex': f'{name}.*'}}]}
+                        matches = list(collection.find(regex_query).limit(10))
+                        if not matches:
+                            raise KeyError(name)
+                        elif len(matches) == 1:
+                            run_start_doc, = matches
+                        else:
+                            match_list = '\n'.join(doc['uid'] for doc in matches)
+                            raise ValueError(
+                                f"Multiple matches to partial uid {name!r}. "
+                                f"Up to 10 listed here:\n"
+                                f"{match_list}")
+                else:
+                    if N < 0:
                         # Interpret negative N as "the Nth from last entry".
                         query = catalog._query
-                        cursor = (catalog._run_start_collection.find(query)
-                                  .sort('time', pymongo.DESCENDING) .limit(name))
-                        *_, run_start_doc = cursor
+                        cursor = (collection.find(query)
+                                  .sort('time', pymongo.DESCENDING)
+                                  .skip(-N - 1)
+                                  .limit(1))
+                        try:
+                            run_start_doc, = cursor
+                        except ValueError:
+                            raise ValueError(
+                                f"Catalog only contains {len(catalog)} "
+                                f"runs.")
                     else:
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
-                        query = {'$and': [catalog._query, {'scan_id': name}]}
-                        cursor = (catalog._run_start_collection.find(query)
+                        query = {'$and': [catalog._query, {'scan_id': N}]}
+                        cursor = (collection.find(query)
                                   .sort('time', pymongo.DESCENDING)
                                   .limit(1))
-                        run_start_doc, = cursor
-                else:
-                    query = {'$and': [catalog._query, {'uid': name}]}
-                    run_start_doc = catalog._run_start_collection.find_one(query)
+                        try:
+                            run_start_doc, = cursor
+                        except ValueError:
+                            raise KeyError(f"No run with scan_id={N}")
                 if run_start_doc is None:
                     raise KeyError(name)
                 return self._doc_to_entry(run_start_doc)
@@ -216,7 +240,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         return Entries()
 
     def __len__(self):
-        return self._run_start_collection.count()
+        return self._run_start_collection.count_documents({})
 
     def _close(self):
         self._client.close()
