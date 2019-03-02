@@ -5,7 +5,7 @@
 Tutorial
 ********
 
-The databroker is tool for access data from many sources through a unified
+The databroker is a tool to access data from many sources through a unified
 interface. It emphasizes rich searching capabilities and handling multiple
 concurrent "streams" of data in an organized way.
 
@@ -77,7 +77,7 @@ This object is DataFrame, a spreadsheet-like object provided by the library
 
 .. note::
 
-    For Python novies we point out that ``header`` above is an arbitrary
+    For Python novices we point out that ``header`` above is an arbitrary
     variable name. It could have been:
 
     .. code-block:: python
@@ -173,7 +173,7 @@ Searching
 ---------
 
 The "slicing" (square bracket) syntax is a quick way to search based on
-recently, unique ID, or counting number scan_id. Examples:
+relative indexing, unique ID, or counting number scan_id. Examples:
 
 .. code-block:: python
 
@@ -193,7 +193,7 @@ recently, unique ID, or counting number scan_id. Examples:
     # unique. In the event of duplicates, the most recent match is returned.
     header = db[42]
 
-Calling a Broker like a function (with parentheses) access richer search.
+Calling a Broker like a function (with parentheses) accesses richer searches.
 Common search parameters include ``plan_name``, ``motor``, and ``detectors``.
 Any user-provided metadata can be used in a search. Examples:
 
@@ -213,7 +213,7 @@ Any user-provided metadata can be used in a search. Examples:
     headers = db(since='2015-03-05', until='2015-03-10')
 
 Full-text search is also supported, for MongoDB-backed deployments. (Other
-deploymeents will raise :class:`NotImplementedError` if you try this.)
+deployments will raise :class:`NotImplementedError` if you try this.)
 
 .. code-block:: python
 
@@ -235,7 +235,7 @@ unbounded number of results. To avoid slowness, the results are loaded
     headers[2]  # Fails! The results are not a list.
     list(headers)[2]  # This works, but might be slow if the results are large.
 
-Loop through them loads one at a time, conserving memory.
+Looping through them loads one at a time, conserving memory.
 
 .. ipython:: python
 
