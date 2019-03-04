@@ -68,9 +68,15 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         for doc in cursor:
             yield doc
 
-    def _get_event_count(self, descriptor_uids):
-        return (self._db.event.count_documents({'descriptor': {'$in':
-                                               descriptor_uids}}))
+    def _get_event_count(self, run_uid, descriptor_uids):
+        count = self._db.header.find_one({'run_id': run_uid},
+                                         {'event_count': True, '_id': False})
+        if count is None:
+            count = self._db.event.find_one(
+                    {'desciptor': {'$in': descriptor_uids}},
+                    {'last_index': True, '_id': False},
+                    sort=[('last_index', pymongo.DESCENDING)]))
+        return count
 
     def _get_resource(self, run_uid, uid):
         resources_doc = self._db.header.find_one({'run_id': run_uid},
