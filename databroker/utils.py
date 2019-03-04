@@ -148,3 +148,27 @@ def normalize_human_friendly_time(val, tz):
 normalize_human_friendly_time.__doc__ = (
     normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
+
+
+def get_fields(header, name=None):
+    """
+    Return the set of all field names (a.k.a "data keys") in a header.
+
+    Parameters
+    ----------
+    header : Header
+    name : string, optional
+        Get field from only one "event stream" with this name. If None
+        (default) get fields from all event streams.
+
+    Returns
+    -------
+    fields : set
+    """
+    fields = set()
+    for descriptor in header['descriptors']:
+        if name is not None and name != descriptor.get('name', 'primary'):
+            continue
+        for field in descriptor['data_keys'].keys():
+            fields.add(field)
+    return fields

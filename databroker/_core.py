@@ -24,7 +24,7 @@ from . import transitional
 import humanize
 import jinja2
 import time
-from .utils import ALL
+from .utils import ALL, get_fields
 
 try:
     from types import SimpleNamespace
@@ -508,30 +508,6 @@ def register_builtin_handlers(reg):
             for spec in cls.specs:
                 logger.debug("Registering Handler %r for spec %r", cls, spec)
                 reg.register_handler(spec, cls)
-
-
-def get_fields(header, name=None):
-    """
-    Return the set of all field names (a.k.a "data keys") in a header.
-
-    Parameters
-    ----------
-    header : Header
-    name : string, optional
-        Get field from only one "event stream" with this name. If None
-        (default) get fields from all event streams.
-
-    Returns
-    -------
-    fields : set
-    """
-    fields = set()
-    for descriptor in header['descriptors']:
-        if name is not None and name != descriptor.get('name', 'primary'):
-            continue
-        for field in descriptor['data_keys'].keys():
-            fields.add(field)
-    return fields
 
 
 def get_images(db, headers, name, handler_registry=None,
