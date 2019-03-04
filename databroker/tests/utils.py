@@ -1,15 +1,114 @@
 import os
+from pathlib import Path
 import shutil
 import tempfile
 import uuid
-import time
 
+import mongobox
 import tzlocal
 
 from databroker import Broker, BrokerES, temp_config
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-from subprocess import Popen
+import intake_bluesky.jsonl
+import intake_bluesky.mongo_layout1
+import intake_bluesky.core
+import suitcase.jsonl
+import suitcase.mongo_layout1
+
+
+def build_intake_jsonl_backed_broker(request):
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_path = tmp_dir.name
+    catalog_path = Path(tmp_path) / 'catalog.yml'
+    data_dir = Path(tmp_path) / 'data'
+    with open(catalog_path, 'w') as file:
+        file.write(f"""
+plugins:
+  source:
+    - module: intake_bluesky
+sources:
+  xyz:
+    description: Some imaginary beamline
+    driver: intake_bluesky.jsonl.BlueskyJSONLCatalog
+    container: catalog
+    args:
+      paths: {data_dir / '*.jsonl'}
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
+    metadata:
+      beamline: "00-ID"
+""")
+
+    def teardown():
+        tmp_dir.cleanup()
+
+    db = Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    serializer = None
+    request.addfinalizer(teardown)
+
+    def insert(name, doc):
+        nonlocal serializer
+        if name == 'start':
+            serializer = suitcase.jsonl.Serializer(data_dir)
+        serializer(name, doc)
+        if name == 'stop':
+            serializer.close()
+            db._catalog.force_reload()
+
+    db.insert = insert
+    return db
+
+
+def build_intake_mongo_backed_broker(request):
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_path = tmp_dir.name
+    catalog_path = Path(tmp_path) / 'catalog.yml'
+    box = mongobox.MongoBox()
+    box.start()
+    client = box.client()
+    with open(catalog_path, 'w') as file:
+        file.write(f"""
+plugins:
+  source:
+    - module: intake_bluesky
+sources:
+  xyz:
+    description: Some imaginary beamline
+    driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
+    container: catalog
+    args:
+      metadatastore_db: mongodb://{client.address[0]}:{client.address[1]}/mds
+      asset_registry_db: mongodb://{client.address[0]}:{client.address[1]}/assets
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
+    metadata:
+      beamline: "00-ID"
+""")
+
+    def teardown():
+        "Delete temporary MongoDB data directory."
+        box.stop()
+        tmp_dir.cleanup()
+
+    request.addfinalizer(teardown)
+    db = Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    serializer = None
+
+    def insert(name, doc):
+        nonlocal serializer
+        if name == 'start':
+            if serializer is not None:
+                # serializer.close()
+                ...
+            serializer = suitcase.mongo_layout1.Serializer(client['mds'],
+                                                           client['assets'])
+        serializer(name, doc)
+        if name == 'stop':
+            db._catalog.reload()
+
+    db.insert = insert
+    return db
 
 
 def build_sqlite_backed_broker(request):

@@ -4,7 +4,9 @@ import sys
 import uuid
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker,
-                                    build_hdf5_backed_broker)
+                                    build_hdf5_backed_broker,
+                                    build_intake_jsonl_backed_broker,
+                                    build_intake_mongo_backed_broker)
 import tempfile
 import time
 import requests.exceptions
@@ -23,39 +25,30 @@ if sys.version_info >= (3, 5):
         from ophyd.sim import hw
         return hw()
 
+param_map = {'sqlite': build_sqlite_backed_broker,
+             'mongo': build_pymongo_backed_broker,
+             'hdf5': build_hdf5_backed_broker,
+             'intake_jsonl': build_intake_jsonl_backed_broker,
+             'intake_mongo': build_intake_mongo_backed_broker,
+             }
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='module')
+@pytest.fixture(params=list(param_map), scope='module')
 def db(request):
-    param_map = {'sqlite': build_sqlite_backed_broker,
-                 'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker,
-                 }
-
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='function')
+@pytest.fixture(params=list(param_map), scope='function')
 def db_empty(request):
-    param_map = {'sqlite': build_sqlite_backed_broker,
-                 'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker,
-                 }
     if ('array_data' in request.function.__name__ and
             request.param == 'sqlite'):
         pytest.xfail('can not put lists into sqlite columns')
-
     return param_map[request.param](request)
 
 
 @pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
-    param_map = {'sqlite': lambda: build_sqlite_backed_broker(request),
-                 'mongo': lambda: build_pymongo_backed_broker(request),
-                 'hdf5': lambda: build_hdf5_backed_broker(request),
-                 }
-
-    return param_map[request.param]
+    return {k: lambda: v(request) for k, v in param_map.items()}[request.param]
 
 
 AUTH = os.environ.get('MDSTESTWITHAUTH', False)
