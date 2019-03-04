@@ -4,15 +4,17 @@ from intake import Catalog
 import intake_bluesky.core  # noqa
 import intake_bluesky.mongo_layout1  # noqa
 
+from .utils import get_fields
+
 
 class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
     """
     def __init__(self, uri, source, header_version=1):
-        catalog = Catalog(uri)
+        catalog = Catalog(str(uri))
         if source is not None:
-            catalog = catalog[source]
+            catalog = catalog[source]()
         self._catalog = catalog
         self._header_version = header_version
 
@@ -26,8 +28,8 @@ class Broker:
 
     def __call__(self, text_search=None, **kwargs):
         data_key = kwargs.pop('data_key', None)
-        return Results(self, self._catalog.search(kwargs), data_key,
-                       self._header_version)
+        return Results(self, self._catalog.search(kwargs),
+                       data_key, self._header_version)
 
     def __getitem__(self, key):
         entry = self._catalog[key]
@@ -35,6 +37,8 @@ class Broker:
             return Header(entry, self)
         else:
             return entry
+
+    get_fields = staticmethod(get_fields)
 
 
 class Header:
@@ -56,9 +60,16 @@ class Header:
     @property
     def descriptors(self):
         if self._descriptors is None:
-            # TODO Fetch descriptors
-            ...
+            self._descriptors = []
+            catalog = self._entry()
+            for name, entry in catalog._entries.items():
+                self._descriptors.extend(entry().metadata['descriptors'])
         return self._descriptors
+
+    @property
+    def stream_names(self):
+        catalog = self._entry()
+        return list(catalog)
 
     # These methods mock part of the dict interface. It has been proposed that
     # we might remove them for 1.0.
