@@ -6,6 +6,8 @@ matplotlib
 ophyd
 pathlib
 pyqt5
-pytest
+pytest >=3.9
+suitcase-jsonl
+suitcase-mongo
 vcrpy
 ujson
