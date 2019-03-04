@@ -13,6 +13,7 @@ import msgpack
 import requests
 from requests.compat import urljoin
 import numpy
+import warnings
 import xarray
 
 
@@ -389,7 +390,13 @@ class RunCatalog(intake.catalog.Catalog):
             metadata=self.metadata)
 
         # Make a BlueskyEventStream for each stream_name.
-        for stream_name in set(doc.get('name') for doc in self._descriptors):
+        for doc in self._descriptors:
+            if not 'name' in doc:
+                warnings.warn(
+                    f"EventDescriptor {doc['uid']!r} has no 'name', likely "
+                    f"because it was generated using an old version of "
+                    f"bluesky. The name 'primary' will be used.")
+        for stream_name in set(doc.get('name', 'primary') for doc in self._descriptors):
             args = dict(
                 get_run_start=self._get_run_start,
                 stream_name=stream_name,
