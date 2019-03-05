@@ -6,6 +6,7 @@ import intake.catalog.local
 import intake.source.base
 import pymongo
 import pymongo.errors
+import collections
 
 from .core import parse_handler_registry
 
@@ -68,7 +69,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         for doc in cursor:
             yield doc
 
-    def _get_event_count(self, run_uid, descriptor_uids):
+    def _get_event_count(self, descriptor_uids):
         count = self._db.header.find_one({'run_id': run_uid},
                                          {'event_count': True, '_id': False})
         if count is None:
@@ -78,23 +79,6 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     sort=[('last_index', pymongo.DESCENDING)]))
         return count
 
-    def _get_resource(self, run_uid, uid):
-        resources_doc = self._db.header.find_one({'run_id': run_uid},
-                                              {'resources': True, '_id':False})
-        for doc in resources_doc:
-            if doc['uid'] == uid:
-                return doc
-
-        raise ValueError(f"Could not find Resource with uid={uid}")
-
-    def _get_datum(self, run_uid, datum_id):
-        datum_cursor = self._db.datum.find({'run_id' : run_uid}, {'_id':False})
-
-        for datum_page in datum_cursor:
-            for datum in datum_page:
-                if datum['datum_id'] = datum_id:
-                    return datum
-        raise ValueError(f"Could not find Datum with datum_id={datum_id}")
 
     def _get_datum_cursor(self, resource_uid):
         return self._db.datum.find({'run_id' : run_uid}, {'_id':False})
@@ -105,19 +89,49 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         catalog = self
 
         class Entries:
+
             "Mock the dict interface around a MongoDB query result."
             def _doc_to_entry(self, run_start_doc):
+
+                header_doc = None
                 uid = run_start_doc['uid']
+
+                def get_header_field(self, field):
+                    if header_doc is None:
+                        header_doc = catalog._db.header.find_one(
+                                        {'run_id': uid}, {'_id': False})
+                    return header_doc[field]
+
+                def get_resource(self, uid):
+                    resources = get_header_field('resource')
+                    for resource in resources:
+                        if resource['uid'] == uid:
+                            return resource
+                    raise ValueError(f"Could not find Resource with id={uid}")
+
+                def get_datum(self, datum_id):
+                    resources = get_header_field('resources')
+                    for resource in resources:
+                        resource_doc = catalog._db.datum.find(
+                                {'resource': resource}, {
+                        event_model.unpack_datum_page
+                    for datum_page in datum_cursor:
+                        for datum in datum_page:
+                            if datum['datum_id'] = datum_id:
+                                return datum
+                    raise ValueError(f"Could not find datum_id={datum_id}")
+
                 entry_metadata = {'start': run_start_doc,
-                                  'stop': catalog._get_run_stop(uid)}
+                                  'stop': partial(get_header_field, 'stop'}
+
                 args = dict(
                     run_start_doc=run_start_doc,
-                    get_run_stop=partial(catalog._get_run_stop, uid),
-                    get_event_descriptors=partial(catalog._get_descriptors,
-                                                  uid),
+                    get_run_stop= partial(get_header_doc,'stop'),
+                    get_event_descriptors=partial(
+                                    get_header_field,'descriptors'),
                     get_event_cursor=catalog._get_event_cursor,
-                    get_event_count=catalog._get_event_count,
-                    get_resource=catalog._get_resource,
+                    get_event_count=partial(get_header_field, 'event_count'),
+                    get_resource=get_resource,
                     get_datum=catalog._get_datum,
                     get_datum_cursor=catalog._get_datum_cursor,
                     filler=catalog.filler)
