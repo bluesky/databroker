@@ -461,8 +461,13 @@ class RunCatalog(intake.catalog.Catalog):
                     self.filler('event', event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
-                    datum = self._get_datum(datum_id=datum_id)
-                    resource_uid = datum['resource']
+
+                    if '/' in datum_id:
+                        resource_uid = datum_id.split('/')[0]
+                    else:
+                        datum = self._get_datum(datum_id=datum_id)
+                        resource_uid = datum['resource']
+
                     resource = self._get_resource(uid=resource_uid)
                     self.filler('resource', resource)
                     # Pre-fetch all datum for this resource.
