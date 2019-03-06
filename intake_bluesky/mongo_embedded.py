@@ -51,39 +51,23 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         self.filler = event_model.Filler(parsed_handler_registry)
         super().__init__(**kwargs)
 
-    def _get_run_stop(self, run_uid):
-        return self._db.header.find_one({'run_id': run_uid},
-                                        {'stop': True,'_id': False})
-
-    def _get_descriptors(self, run_uid):
-        return self._db.header.find_one({'run_id': run_uid},
-                                        {'descriptors': True, '_id': False})
-
     def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
-        cursor = self._db.event.find({'descriptor': {'$in': descriptor_uids}},
-                                     {'_id':False},
-                                     sort=[('time.0', pymongo.ASCENDING)])
+        page_cursor = self._db.event.find(
+                                {'descriptor': {'$in': descriptor_uids}},
+                                {'_id':False},
+                                sort=[('last_index', pymongo.ASCENDING)])
         cursor.skip(skip)
         if limit is not None:
             cursor = cursor.limit(limit)
         for doc in cursor:
             yield doc
 
-    def _get_event_count(self, descriptor_uids):
-        count = self._db.header.find_one({'run_id': run_uid},
-                                         {'event_count': True, '_id': False})
-        if count is None:
-            count = self._db.event.find_one(
-                    {'desciptor': {'$in': descriptor_uids}},
-                    {'last_index': True, '_id': False},
-                    sort=[('last_index', pymongo.DESCENDING)]))
-        return count
-
-
     def _get_datum_cursor(self, resource_uid):
-        return self._db.datum.find({'run_id' : run_uid}, {'_id':False})
+        page_cursor = self._db.datum.find({'resource' : resource_uid}, 
+                                   {'_id':False},
+                                   sort=[('last_index', pymongo.ASCENDING)])
 
-        self._schema = {}  # TODO This is cheating, I think.
+        self._schema = {}  # TODO This is cheating, I think. What does this do?
 
     def _make_entries_container(self):
         catalog = self
@@ -97,29 +81,34 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 uid = run_start_doc['uid']
 
                 def get_header_field(self, field):
+                    nonlocal uid
                     if header_doc is None:
                         header_doc = catalog._db.header.find_one(
                                         {'run_id': uid}, {'_id': False})
-                    return header_doc[field]
+                    if field in header_doc:
+                        return header_doc[field]
+                    else:
+                        return None
 
-                def get_resource(self, uid):
-                    resources = get_header_field('resource')
-                    for resource in resources:
-                        if resource['uid'] == uid:
-                            return resource
-                    raise ValueError(f"Could not find Resource with id={uid}")
-
-                def get_datum(self, datum_id):
+                def get_resource(self, resource_uid):
                     resources = get_header_field('resources')
                     for resource in resources:
-                        resource_doc = catalog._db.datum.find(
-                                {'resource': resource}, {
-                        event_model.unpack_datum_page
-                    for datum_page in datum_cursor:
-                        for datum in datum_page:
-                            if datum['datum_id'] = datum_id:
-                                return datum
-                    raise ValueError(f"Could not find datum_id={datum_id}")
+                        if resource['uid'] == resource_uid:
+                            return resource
+                    return None
+
+                def get_datum(self, datum_id):
+                    """ This method is likely very slow. """
+                    resources = get_header_field('resources')
+                    datum_page = catalog._db.datum.find(
+                                {'$and': [{'resource': {'$in' : resources}},
+                                          {'datum_id': datum_id}]},
+                                {'_id': False})
+
+                    for datum in event_model.unpack_datum_page(datum_page):
+                        if datum['datum_id'] == datum_id:
+                            return datum
+                    return None
 
                 entry_metadata = {'start': run_start_doc,
                                   'stop': partial(get_header_field, 'stop'}
@@ -154,13 +143,15 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
             def keys(self):
                 cursor = catalog._db.header.find(catalog._query,
+                        {'start.uid' : True, '_id': False},
                         sort=[('start.time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield run_start_doc['uid']
+                for run_start_uid in cursor:
+                    yield run_start_uid
 
             def values(self):
-                cursor = catalog._db.header.find(
-                    catalog._query, sort=[('start.time', pymongo.DESCENDING)])
+                cursor = catalog._db.header.find(catalog._query,
+                            {'start': True, '_id': False},
+                            sort=[('start.time', pymongo.DESCENDING)])
                 for run_start_doc in cursor:
                     yield self._doc_to_entry(run_start_doc)
 
