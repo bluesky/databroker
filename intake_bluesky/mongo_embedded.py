@@ -52,22 +52,32 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         super().__init__(**kwargs)
 
     def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
+        if limit = None:
+            limit = sys.maxsize
         page_cursor = self._db.event.find(
-                                {'descriptor': {'$in': descriptor_uids}},
+                                {'$and': [
+                                    {'descriptor': {'$in': descriptor_uids}},
+                                    {'last_index': {'$gte': skip}},
+                                    {'first_index': {'$lte': limit}}]},
                                 {'_id':False},
                                 sort=[('last_index', pymongo.ASCENDING)])
-        cursor.skip(skip)
-        if limit is not None:
-            cursor = cursor.limit(limit)
-        for doc in cursor:
-            yield doc
+        for event_page in page_cursor:
+            for event in event_model.unpack_event_page(event_page):
+                yield event
 
-    def _get_datum_cursor(self, resource_uid):
-        page_cursor = self._db.datum.find({'resource' : resource_uid}, 
-                                   {'_id':False},
-                                   sort=[('last_index', pymongo.ASCENDING)])
-
-        self._schema = {}  # TODO This is cheating, I think. What does this do?
+    def _get_datum_cursor(self, resource_uid, skip=0, limit=None):
+        if limit = None:
+            limit = sys.maxsize
+        page_cursor = self._db.datum.find(
+                                {'$and': [
+                                    {'resource' : resource_uid},
+                                    {'last_index': {'$gte': skip}},
+                                    {'first_index': {'$lte': skip + limit}}]},
+                                {'_id':False},
+                                sort=[('last_index', pymongo.ASCENDING)])
+        for datum_page in page_cursor:
+            for datum in event_model.unpack_datum_page(datum_page):
+                yield datum
 
     def _make_entries_container(self):
         catalog = self
@@ -81,7 +91,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 uid = run_start_doc['uid']
 
                 def get_header_field(self, field):
-                    nonlocal uid
+                    nonlocal header_doc
                     if header_doc is None:
                         header_doc = catalog._db.header.find_one(
                                         {'run_id': uid}, {'_id': False})
@@ -101,9 +111,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     """ This method is likely very slow. """
                     resources = get_header_field('resources')
                     datum_page = catalog._db.datum.find(
-                                {'$and': [{'resource': {'$in' : resources}},
-                                          {'datum_id': datum_id}]},
-                                {'_id': False})
+                           {'$and': [{'resource': {'$in' : resources}},
+                                     {'datum_id': datum_id}]},
+                           {'_id': False})
 
                     for datum in event_model.unpack_datum_page(datum_page):
                         if datum['datum_id'] == datum_id:
@@ -115,7 +125,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
                 args = dict(
                     run_start_doc=run_start_doc,
-                    get_run_stop= partial(get_header_doc,'stop'),
+                    get_run_stop= partial(get_header_field,'stop'),
                     get_event_descriptors=partial(
                                     get_header_field,'descriptors'),
                     get_event_cursor=catalog._get_event_cursor,
@@ -177,13 +187,13 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     else:
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
-                        query = {'$and': [catalog._query, {'scan_id': name}]}
+                        query = {'$and': [catalog._query, {'start.scan_id': name}]}
                         cursor = (catalog._db.header.find(query)
                                   .sort('start.time', pymongo.DESCENDING)
                                   .limit(1))
                         run_start_doc, = cursor
                 else:
-                    query = {'$and': [catalog._query, {'uid': name}]}
+                    query = {'$and': [catalog._query, {'start.uid': name}]}
                     run_start_doc = catalog._db.header.find_one(query)
                 if run_start_doc is None:
                     raise KeyError(name)
