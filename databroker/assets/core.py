@@ -170,7 +170,7 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
                     run_start=None,
                     id=None,
                     ignore_duplicate_error=False, duplicate_exc=None):
-    """Insert resource into a databroker
+    """Insert resource into a databroker.
 
     Parameters
     ----------
