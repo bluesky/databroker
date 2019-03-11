@@ -170,6 +170,36 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
                     run_start=None,
                     id=None,
                     ignore_duplicate_error=False, duplicate_exc=None):
+    """Insert resource into a databroker
+
+    Parameters
+    ----------
+    col :
+        Collection to insert data into
+    spec : str
+        The resource data spec
+    resource_path : str
+        The path to the resource files
+    resource_kwargs : dict
+        The kwargs for the resource
+    known_spec : set
+        The known specs
+    root : str
+        The root of the file path
+    path_semantics : str, optional
+        The name of the path semantics, eg ``posix`` for linux systems
+    uid : str, optional
+        The unique ID for the resource
+    run_start : str, optional
+        The unique ID for the start document the resource is associated with
+    id : str, optional
+        Dummy variable so that we round trip resources, same as ``uid``
+
+    Returns
+    -------
+    resource_object : dict
+        The resource
+    """
     if ignore_duplicate_error:
         assert duplicate_exc is not None
     if duplicate_exc is None:
