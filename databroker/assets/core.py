@@ -187,7 +187,7 @@ def insert_resource(col, spec, resource_path, resource_kwargs,
     root : str
         The root of the file path
     path_semantics : str, optional
-        The name of the path semantics, eg ``posix`` for linux systems
+        The name of the path semantics, e.g. ``posix`` for Linux systems
     uid : str, optional
         The unique ID for the resource
     run_start : str, optional
