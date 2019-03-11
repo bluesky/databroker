@@ -463,7 +463,7 @@ class RunCatalog(intake.catalog.Catalog):
                     datum_id = err.key
 
                     if '/' in datum_id:
-                        resource_uid = datum_id.split('/')[0]
+                        resource_uid, datum_id = datum_id.split('/', 1)
                     else:
                         datum = self._get_datum(datum_id=datum_id)
                         resource_uid = datum['resource']

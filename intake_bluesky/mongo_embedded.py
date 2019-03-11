@@ -1,4 +1,5 @@
 import event_model
+from sys import maxsize
 from functools import partial
 import intake
 import intake.catalog
@@ -6,7 +7,6 @@ import intake.catalog.local
 import intake.source.base
 import pymongo
 import pymongo.errors
-import collections
 
 from .core import parse_handler_registry
 
@@ -15,16 +15,16 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
     def __init__(self, datastore_db, *, handler_registry=None,
                  query=None, **kwargs):
         """
-        This Catalog is backed by a pair of MongoDBs with "layout 1".
+        This Catalog is backed by a MongoDB with an embedded data model.
 
-        This layout uses a separate Mongo collection per document type and a
-        separate Mongo document for each logical document.
+        This embedded data model has three collections: header, event, datum.
+        The header collection includes start, stop, descriptor, and resource
+        documents. The event_pages are stored in the event colleciton, and
+        datum_pages are stored in the datum collection.
 
         Parameters
         ----------
-        metadatastore_db : pymongo.database.Database or string
-            Must be a Database or a URI string that includes a database name.
-        asset_registry_db : pymongo.database.Database or string
+        datastore_db : pymongo.database.Database or string
             Must be a Database or a URI string that includes a database name.
         handler_registry : dict, optional
             Maps each asset spec to a handler class or a string specifying the
@@ -52,32 +52,46 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         super().__init__(**kwargs)
 
     def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
-        if limit = None:
-            limit = sys.maxsize
+        if limit is None:
+            limit = maxsize
+
         page_cursor = self._db.event.find(
-                                {'$and': [
-                                    {'descriptor': {'$in': descriptor_uids}},
-                                    {'last_index': {'$gte': skip}},
-                                    {'first_index': {'$lte': limit}}]},
-                                {'_id':False},
-                                sort=[('last_index', pymongo.ASCENDING)])
-        for event_page in page_cursor:
-            for event in event_model.unpack_event_page(event_page):
+                            {'$and': [
+                                {'descriptor': {'$in': descriptor_uids}},
+                                {'last_index': {'$gte': skip}},
+                                {'first_index': {'$lte': skip + limit}}]},
+                            {'_id': False},
+                            sort=[('last_index', pymongo.ASCENDING)])
+
+        for page_index, event_page in enumerate(page_cursor):
+            for event_index, event in (
+                    enumerate(event_model.unpack_event_page(event_page))):
+                while ((event_index + 1) * (page_index + 1)) < skip:
+                    continue
                 yield event
+                if not ((event_index + 1) * (page_index + 1)) < (skip + limit):
+                    return
 
     def _get_datum_cursor(self, resource_uid, skip=0, limit=None):
-        if limit = None:
-            limit = sys.maxsize
+        if limit is None:
+            limit = maxsize
+
         page_cursor = self._db.datum.find(
-                                {'$and': [
-                                    {'resource' : resource_uid},
-                                    {'last_index': {'$gte': skip}},
-                                    {'first_index': {'$lte': skip + limit}}]},
-                                {'_id':False},
-                                sort=[('last_index', pymongo.ASCENDING)])
-        for datum_page in page_cursor:
-            for datum in event_model.unpack_datum_page(datum_page):
+                            {'$and': [
+                                {'resource': resource_uid},
+                                {'last_index': {'$gte': skip}},
+                                {'first_index': {'$lte': skip + limit}}]},
+                            {'_id': False},
+                            sort=[('last_index', pymongo.ASCENDING)])
+
+        for page_index, datum_page in enumerate(page_cursor):
+            for datum_index, datum in (
+                    enumerate(event_model.unpack_datum_page(datum_page))):
+                while ((datum_index + 1) * (page_index + 1)) < skip:
+                    continue
                 yield datum
+                if not ((datum_index + 1) * (page_index + 1)) < (skip + limit):
+                    return
 
     def _make_entries_container(self):
         catalog = self
@@ -111,7 +125,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     """ This method is likely very slow. """
                     resources = get_header_field('resources')
                     datum_page = catalog._db.datum.find(
-                           {'$and': [{'resource': {'$in' : resources}},
+                           {'$and': [{'resource': {'$in': resources}},
                                      {'datum_id': datum_id}]},
                            {'_id': False})
 
@@ -121,17 +135,17 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     return None
 
                 entry_metadata = {'start': run_start_doc,
-                                  'stop': partial(get_header_field, 'stop'}
+                                  'stop': partial(get_header_field, 'stop')}
 
                 args = dict(
                     run_start_doc=run_start_doc,
-                    get_run_stop= partial(get_header_field,'stop'),
+                    get_run_stop=partial(get_header_field, 'stop'),
                     get_event_descriptors=partial(
-                                    get_header_field,'descriptors'),
+                                    get_header_field, 'descriptors'),
                     get_event_cursor=catalog._get_event_cursor,
                     get_event_count=partial(get_header_field, 'event_count'),
                     get_resource=get_resource,
-                    get_datum=catalog._get_datum,
+                    get_datum=get_datum,
                     get_datum_cursor=catalog._get_datum_cursor,
                     filler=catalog.filler)
                 return intake.catalog.local.LocalCatalogEntry(
@@ -152,14 +166,17 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 yield from self.keys()
 
             def keys(self):
-                cursor = catalog._db.header.find(catalog._query,
-                        {'start.uid' : True, '_id': False},
-                        sort=[('start.time', pymongo.DESCENDING)])
+                cursor = catalog._db.header.find(
+                            catalog._query,
+                            {'start.uid': True, '_id': False},
+                            sort=[('start.time', pymongo.DESCENDING)])
+
                 for run_start_uid in cursor:
                     yield run_start_uid
 
             def values(self):
-                cursor = catalog._db.header.find(catalog._query,
+                cursor = catalog._db.header.find(
+                            catalog._query,
                             {'start': True, '_id': False},
                             sort=[('start.time', pymongo.DESCENDING)])
                 for run_start_doc in cursor:
@@ -181,7 +198,8 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     if name < 0:
                         # Interpret negative N as "the Nth from last entry".
                         query = catalog._query
-                        cursor = (catalog._db.header.find(query)
+                        cursor = (
+                            catalog._db.header.find(query)
                             .sort('start.time', pymongo.DESCENDING).limit(name))
                         *_, run_start_doc = cursor
                     else:
