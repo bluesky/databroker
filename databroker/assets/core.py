@@ -167,14 +167,13 @@ def insert_datum(col, resource, datum_id, datum_kwargs, known_spec,
 
 def insert_resource(col, spec, resource_path, resource_kwargs,
                     known_spec, root, path_semantics='posix', uid=None,
-                    run_start=None,
-                    id=None,
+                    run_start=None, id=None,
                     ignore_duplicate_error=False, duplicate_exc=None):
     """Insert resource into a databroker.
 
     Parameters
     ----------
-    col :
+    col : pymongo.Collection instance
         Collection to insert data into
     spec : str
         The resource data spec

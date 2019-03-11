@@ -588,11 +588,33 @@ class RegistryTemplate(BaseRegistryRO):
     # ## OLD API
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
                         path_semantics='posix', uid=None, run_start=None,
-                        id=None,
-                        ignore_duplicate_error=False):
-        '''
+                        id=None, ignore_duplicate_error=False):
+        """Insert resource into a databroker.
 
-        '''
+        Parameters
+        ----------
+        spec : str
+            The resource data spec
+        resource_path : str
+            The path to the resource files
+        resource_kwargs : dict
+            The kwargs for the resource
+        root : str
+            The root of the file path
+        path_semantics : str, optional
+            The name of the path semantics, e.g. ``posix`` for Linux systems
+        uid : str, optional
+            The unique ID for the resource
+        run_start : str, optional
+            The unique ID for the start document the resource is associated with
+        id : str, optional
+            Dummy variable so that we round trip resources, same as ``uid``
+
+        Returns
+        -------
+        resource_object : dict
+            The resource
+        """
         if root is None:
             root = ''
 
