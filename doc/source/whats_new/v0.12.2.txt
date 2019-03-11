@@ -1,0 +1,15 @@
+.. currentmodule:: databroker
+
+v0.12.2 (2019-03-11)
+--------------------
+
+Bug Fixes
++++++++++
+
+* Support round trip of resource
+
+Documentation
++++++++++++++
+
+* Fix typos in the tutorial
+* Update installing sentinel code example 
