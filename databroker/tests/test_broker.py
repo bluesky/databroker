@@ -415,22 +415,36 @@ def test_filters(db_empty, RE, hw):
     [slice(1, None, None),  # raise because trying to slice by scan id
      slice(-1, 2, None),    # raise because slice stop value is > 0
      slice(None, None, None),  # raise because slice has slice.start == None
-     4500,  # raise on not finding a header by a scan id
-     str(uuid.uuid4()),  # raise on not finding a header by uuid
      ],
     ids=['slice by scan id',
          'positve slice stop',
-         'no start',
-         'no scan id',
-         'no uuid']
+         'no start']
     )
-def test_raise_conditions(key, db, RE, hw):
+def test_raise_value_error_conditions(key, db, RE, hw):
     RE.subscribe(db.insert)
     for _ in range(5):
         RE(count([hw.det]))
 
     with pytest.raises(ValueError):
         db[key]
+
+@py3
+@pytest.mark.parametrize(
+    'key',
+    [4500,  # raise on not finding a header by a scan id
+     str(uuid.uuid4()),  # raise on not finding a header by uuid
+     ],
+    ids=['no scan id',
+         'no uuid']
+    )
+def test_raise_key_error_conditions(key, db, RE, hw):
+    RE.subscribe(db.insert)
+    for _ in range(5):
+        RE(count([hw.det]))
+
+    with pytest.raises(KeyError):
+        db[key]
+
 
 
 @pytest.mark.parametrize('method_name', ['restream', 'stream'])

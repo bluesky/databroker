@@ -767,8 +767,8 @@ def _(key, db):
         try:
             result = next(gen)  # most recent match
         except StopIteration:
-            raise ValueError("No such run found for key=%s which is "
-                             "being interpreted as a scan id." % key)
+            raise KeyError("No such run found for key=%s which is "
+                           "being interpreted as a scan id." % key)
     else:
         # Interpret key as the Nth last scan.
         gen = db.hs.find_last(-key)
@@ -801,7 +801,7 @@ def _(key, db):
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
-        raise ValueError("No such run found for key=%r" % key)
+        raise KeyError("No such run found for key=%r" % key)
     if len(results) > 1:
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
