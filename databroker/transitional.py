@@ -3,6 +3,7 @@ from collections import defaultdict
 import pandas
 from intake import Catalog
 import re
+import warnings
 
 # This triggers driver registration.
 import intake_bluesky.core  # noqa
@@ -387,18 +388,94 @@ class Broker:
             query = query()
         return self(**query)
 
+    def restream(self, headers, fields=None, fill=False):
+        """
+        Get all Documents from given run(s).
+
+        This output can be used as a drop-in replacement for the output of the
+        bluesky Run Engine.
+
+        Parameters
+        ----------
+        headers : Header or iterable of Headers
+            header or headers to fetch the documents for
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        fill : bool, optional
+            Whether externally-stored data should be filled in. Defaults to
+            False.
+
+        Yields
+        ------
+        name, doc : tuple
+            string name of the Document type and the Document itself.
+            Example: ('start', {'time': ..., ...})
+
+        Examples
+        --------
+        >>> def f(name, doc):
+        ...     # do something
+        ...
+        >>> h = db[-1]  # most recent header
+        >>> for name, doc in restream(h):
+        ...     f(name, doc)
+
+        See Also
+        --------
+        :meth:`Broker.process`
+        """
+        for payload in self.get_documents(headers, fields=fields, fill=fill):
+            yield payload
+
+    stream = restream  # compat
+
+    def process(self, headers, func, fields=None, fill=False):
+        """
+        Pass all the documents from one or more runs into a callback.
+
+        This output can be used as a drop-in replacement for the output of the
+        bluesky Run Engine.
+
+        Parameters
+        ----------
+        headers : Header or iterable of Headers
+            header or headers to process documents from
+        func : callable
+            function with the signature `f(name, doc)`
+            where `name` is a string and `doc` is a dict
+        fields : list, optional
+            whitelist of field names of interest; if None, all are returned
+        fill : bool, optional
+            Whether externally-stored data should be filled in. Defaults to
+            False.
+
+        Examples
+        --------
+        >>> def f(name, doc):
+        ...     # do something
+        ...
+        >>> h = db[-1]  # most recent header
+        >>> process(h, f)
+
+        See Also
+        --------
+        :meth:`Broker.restream`
+        """
+        for name, doc in self.get_documents(headers, fields=fields, fill=fill):
+            func(name, doc)
+
 
 class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
     """
     def __init__(self, entry, broker):
-        self.start = entry.metadata['start']
-        self.stop = entry.metadata['stop']
         self._entry = entry
+        self.db = broker
         self._descriptors = None  # Fetch lazily in property.
         self.ext = None  # TODO
-        self.db = broker
+        self.start = self.db.prepare_hook('start', entry.metadata['start'])
+        self.stop = self.db.prepare_hook('stop', entry.metadata['stop'])
 
     def __eq__(self, other):
         return self.start == other.start
@@ -414,7 +491,8 @@ class Header:
             catalog = self._entry()
             for name, entry in catalog._entries.items():
                 self._descriptors.extend(entry.metadata['descriptors'])
-        return self._descriptors
+        return [self.db.prepare_hook('descriptor', doc)
+                for doc in self._descriptors]
 
     @property
     def stream_names(self):
@@ -565,6 +643,176 @@ class Header:
                                     fill=fill)
         for payload in gen:
             yield payload
+
+    def data(self, field, stream_name='primary', fill=True):
+        """
+        Extract data for one field. This is convenient for loading image data.
+
+        Parameters
+        ----------
+        field : string
+            such as 'image' or 'intensity'
+
+        stream_name : string, optional
+            Get data from a single "event stream." Default is 'primary'
+
+        fill : bool, optional
+             If the data should be filled.
+
+        Yields
+        ------
+        data
+        """
+        if fill:
+            fill = {field}
+        for event in self.events(stream_name=stream_name,
+                                 fields=[field],
+                                 fill=fill):
+            yield event['data'][field]
+
+    def stream(self, *args, **kwargs):
+        warnings.warn(
+            "The 'stream' method been renamed to 'documents'. The old name "
+            "will be removed in the future.")
+        for payload in self.documents(*args, **kwargs):
+            yield payload
+
+    def fields(self, stream_name=ALL):
+        """
+        Return the names of the fields ('data keys') in this run.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
+
+        Returns
+        -------
+        fields : set
+
+        Examples
+        --------
+        Load the most recent run and list its fields.
+
+        >>> h = db[-1]
+        >>> h.fields()
+        {'eiger_stats1_total', 'eiger_image'}
+
+        See Also
+        --------
+        :meth:`Header.devices`
+        """
+        fields = set()
+        for descriptor in self.descriptors:
+            if stream_name is ALL or descriptor.get('name') == stream_name:
+                fields.update(descriptor['data_keys'])
+        return fields
+
+    def config_data(self, device_name):
+        """
+        Extract device configuration data from Event Descriptors.
+
+        This refers to the data obtained from ``device.read_configuration()``.
+
+        See example below. The result is structed as a [...deep breath...]
+        dictionary of lists of dictionaries because:
+
+        * The device might have been read in multiple event streams
+          ('primary', 'baseline', etc.). Each stream name is a key in the
+          outer dictionary.
+        * The configuration is typically read once per event stream, but in
+          general may be read multiple times if the configuration is changed
+          mid-stream. Thus, a list is needed.
+        * Each device typically produces multiple configuration fields
+          ('exposure_time', 'period', etc.). These are the keys of the inner
+          dictionary.
+
+        Parameters
+        ----------
+        device_name : string
+            device name (originally obtained from the ``name`` attribute of
+            some readable Device)
+
+        Returns
+        -------
+        result : dict
+            mapping each stream name (such as 'primary' or 'baseline') to a
+            list of data dictionaries
+
+        Examples
+        --------
+        Get the device configuration recorded for the device named 'eiger'.
+
+        >>> h.config_data('eiger')
+        {'primary': [{'exposure_time': 1.0}]}
+
+        Assign the exposure time to a variable.
+
+        >>> exp_time = h.config_data('eiger')['primary'][0]['exposure_time']
+
+        How did we know that ``'eiger'`` was a valid argument? We can query for
+        the complete list of device names:
+
+        >>> h.devices()
+        {'eiger', 'cs700'}
+        """
+        result = defaultdict(list)
+        for d in sorted(self.descriptors, key=lambda d: d['time']):
+            config = d['configuration'].get(device_name)
+            if config:
+                result[d.get('name')].append(config['data'])
+        return dict(result)  # strip off defaultdict behavior
+
+    def events(self, stream_name='primary', fields=None, fill=False):
+        """
+        Load all Event documents from one event stream.
+
+        This is a generator the yields Event documents.
+
+        Parameters
+        ----------
+        stream_name : str, optional
+            Get events from only "event stream" with this name.
+
+            Default is 'primary'
+
+        fields : List[str], optional
+            whitelist of field names of interest; if None, all are returned
+
+            Default is None
+
+        fill : bool or Iterable[str], optional
+            Which fields to fill.  If `True`, fill all
+            possible fields.
+
+            Each event will have the data filled for the intersection
+            of it's external keys and the fields requested filled.
+
+            Default is False
+
+        Yields
+        ------
+        doc : dict
+
+        Examples
+        --------
+        Loop through the Event documents from a run. This is 'lazy', meaning
+        that only one Event at a time is loaded into memory.
+
+        >>> h = db[-1]
+        >>> for event in h.events():
+        ...    # do something
+
+        List the Events documents from a run, loading them all into memory at
+        once.
+
+        >>> events = list(h.events())
+        """
+        ev_gen = self.db.get_events([self], stream_name=stream_name,
+                                    fields=fields, fill=fill)
+        for ev in ev_gen:
+            yield ev
 
 
 class Results:
