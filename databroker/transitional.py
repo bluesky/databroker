@@ -230,7 +230,9 @@ class Broker:
         dfs = []
         for header in headers:
             uid = header.start['uid']
-            df = self._catalog[uid][stream_name].read().to_dataframe()
+            df = (self._catalog[uid][stream_name].read()
+                  .to_dataframe()
+                  .set_index('seq_num'))
             dfs.append(df)
         return pandas.concat(dfs)
 
