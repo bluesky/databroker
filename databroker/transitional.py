@@ -28,6 +28,7 @@ class Broker:
         self._catalog = catalog
         self._header_version = header_version
         self.prepare_hook = wrap_in_deprecated_doct
+        self.aliases = {}
 
     @property
     def header_version(self):
@@ -288,6 +289,83 @@ class Broker:
                   .set_index('seq_num'))
             dfs.append(df)
         return pandas.concat(dfs)
+
+    def alias(self, key, **query):
+        """
+        Create an alias for a query.
+
+        Parameters
+        ----------
+        key : string
+            must be a valid Python identifier
+        query :
+            keyword argument comprising a query
+
+        Examples
+        --------
+        Define an alias that searches for headers with purpose='calibration'.
+
+        >>> db.alias('cal', purpose='calibration')
+
+        Use it.
+
+        >>> headers = db.cal  # -> db(purpose='calibration')
+
+        Review defined aliases.
+
+        >>> db.aliases
+        {'cal': {'purpose': 'calibration'}}
+        """
+        if hasattr(self, key) and key not in self.aliases:
+            raise ValueError("'%s' is not a legal alias." % key)
+        self.aliases[key] = query
+
+    def dynamic_alias(self, key, func):
+        """
+        Create an alias for a "dynamic" query, a function that returns a query.
+
+        Parameters
+        ----------
+        key : string
+            must be a valid Python identifier
+        func : callable
+            When called with no arguments, must return a dict that is a valid
+            query.
+
+        Examples
+        --------
+        Define an alias to get headers from the last 24 hours.
+
+        >>> import time
+        >>> db.dynamic_alias('today',
+        ...                  lambda: {'since': time.time() - 24*60*60})
+
+        Use it.
+
+        >>> headers = db.today
+
+        Define an alias to get headers with the 'user' field in metadata
+        matches the current logged-in user.
+
+        >>> import getpass
+        >>> db.dynamic_alias('mine', lambda: {'user': getpass.getuser()})
+
+        Use it
+
+        >>> headers = db.mine
+        """
+        if hasattr(self, key) and key not in self.aliases:
+            raise ValueError("'%s' is not a legal alias." % key)
+        self.aliases[key] = func
+
+    def __getattr__(self, key):
+        try:
+            query = self.aliases[key]
+        except KeyError:
+            raise AttributeError(key)
+        if callable(query):
+            query = query()
+        return self(**query)
 
 
 class Header:
