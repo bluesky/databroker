@@ -1,9 +1,14 @@
 from collections.abc import Iterable
 from collections import defaultdict
+from datetime import datetime
 import pandas
 from intake import Catalog
 import re
 import warnings
+import time
+import humanize
+import jinja2
+from types import SimpleNamespace
 
 # This triggers driver registration.
 import intake_bluesky.core  # noqa
@@ -814,6 +819,12 @@ class Header:
         for ev in ev_gen:
             yield ev
 
+    def _repr_html_(self):
+        env = jinja2.Environment()
+        env.filters['human_time'] = _pretty_print_time
+        template = env.from_string(_HTML_TEMPLATE)
+        return template.render(document=self)
+
 
 class Results:
     """
@@ -933,3 +944,70 @@ def _extract_extra_data(start, stop, d, fields, comp_re,
 
     return (all_extra_dk, all_extra_data, all_extra_ts,
             discard_fields)
+
+
+_HTML_TEMPLATE = """
+{% macro rtable(doc, cap) -%}
+<table>
+<caption> {{ cap }} </caption>
+{%- for key, value in doc | dictsort recursive -%}
+  <tr>
+    <th> {{ key }} </th>
+    <td>
+      {%- if value.items -%}
+        <table>
+          {{ loop(value | dictsort) }}
+        </table>
+      {%- elif value is iterable and value is not string -%}
+        <table>
+          {%- set outer_loop = loop -%}
+          {%- for stuff in value  -%}
+            {%- if stuff.items -%}
+               {{ outer_loop(stuff | dictsort) }}
+            {%- else -%}
+              <tr><td>{{ stuff }}</td></tr>
+            {%- endif -%}
+          {%- endfor -%}
+        </table>
+      {%- else -%}
+        {%- if key == 'time' -%}
+          {{ value | human_time }}
+        {%- else -%}
+          {{ value }}
+        {%- endif -%}
+      {%- endif -%}
+    </td>
+  </tr>
+{%- endfor -%}
+</table>
+{%- endmacro %}
+
+<table>
+  <tr>
+    <td>{{ rtable(document.start, 'Start') }}</td>
+  </tr
+  <tr>
+    <td>{{ rtable(document.stop, 'Stop') }}</td>
+  </tr>
+  <tr>
+  <td>
+      <table>
+      <caption>Descriptors</caption>
+         {%- for d in document.descriptors -%}
+         <tr>
+         <td> {{ rtable(d, d.get('name')) }} </td>
+         </tr>
+         {%- endfor -%}
+      </table>
+    </td>
+</tr>
+</table>
+"""
+
+
+def _pretty_print_time(timestamp):
+    # timestamp needs to be a float or fromtimestamp() will barf
+    timestamp = float(timestamp)
+    dt = datetime.fromtimestamp(timestamp).isoformat()
+    ago = humanize.naturaltime(time.time() - timestamp)
+    return '{ago} ({date})'.format(ago=ago, date=dt)
