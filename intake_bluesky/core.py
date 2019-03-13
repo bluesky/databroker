@@ -392,7 +392,7 @@ class RunCatalog(intake.catalog.Catalog):
 
         # Make a BlueskyEventStream for each stream_name.
         for doc in self._descriptors:
-            if not 'name' in doc:
+            if 'name' not in doc:
                 warnings.warn(
                     f"EventDescriptor {doc['uid']!r} has no 'name', likely "
                     f"because it was generated using an old version of "
