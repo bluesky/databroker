@@ -1,10 +1,18 @@
 from collections.abc import Iterable
+from collections import defaultdict
 import pandas
 from intake import Catalog
+import re
 
 # This triggers driver registration.
 import intake_bluesky.core  # noqa
 import intake_bluesky.mongo_layout1  # noqa
+
+# Toolz and CyToolz have identical APIs -- same test suite, docstrings.
+try:
+    from cytoolz.dicttoolz import merge
+except ImportError:
+    from toolz.dicttoolz import merge
 
 from .utils import ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct
 
@@ -93,10 +101,42 @@ class Broker:
         pre header.
         """
         headers = _ensure_list(headers)
+
+        no_fields_filter = False
+        if fields is None:
+            no_fields_filter = True
+            fields = []
+        fields = set(fields)
+
+        comp_re = _compile_re(fields)
+
         for header in headers:
             uid = header.start['uid']
+            descs = header.descriptors
 
             descriptors = set()
+            per_desc_discards = {}
+            per_desc_extra_data = {}
+            per_desc_extra_ts = {}
+            for d in descs:
+                (all_extra_dk, all_extra_data,
+                all_extra_ts, discard_fields) = _extract_extra_data(
+                    header.start, header.stop, d, fields, comp_re,
+                    no_fields_filter)
+
+                per_desc_discards[d['uid']] = discard_fields
+                per_desc_extra_data[d['uid']] = all_extra_data
+                per_desc_extra_ts[d['uid']] = all_extra_ts
+
+                d = d.copy()
+                dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
+                for k in discard_fields:
+                    del d['data_keys'][k]
+                d['data_keys'].update(all_extra_dk)
+
+                if not len(d['data_keys']) and not len(all_extra_data):
+                    continue
+
             for name, doc in self._catalog[uid].read_canonical():
                 if stream_name is not ALL:
                     # Filter by stream_name.
@@ -107,6 +147,19 @@ class Broker:
                             continue
                     elif name == 'event':
                         if doc['descriptor'] not in descriptors:
+                            continue
+                        event_data = doc['data']  # cache for perf
+                        desc = doc['descriptor']
+                        event_timestamps = doc['timestamps']
+                        event_data.update(per_desc_extra_data[desc])
+                        event_timestamps.update(per_desc_extra_ts[desc])
+                        discard_fields = per_desc_discards[desc]
+                        for field in discard_fields:
+                            del event_data[field]
+                            del event_timestamps[field]
+                        if not event_data:
+                            # Skip events that are now empty because they had no
+                            # applicable fields.
                             continue
                 yield name, self.prepare_hook(name, doc)
 
@@ -455,3 +508,79 @@ def _ensure_list(headers):
         return headers
     else:
         return [headers]
+
+
+def _compile_re(fields=[]):
+    """
+    Return a regular expression object based on a list of regular expressions.
+
+    Parameters
+    ----------
+    fields : list, optional
+        List of regular expressions. If fields is empty returns a general RE.
+
+    Returns
+    -------
+    comp_re : regular expression object
+
+    """
+    if len(fields) == 0:
+        fields = ['.*']
+    f = ["(?:" + regex + r")\Z" for regex in fields]
+    comp_re = re.compile('|'.join(f))
+    return comp_re
+
+
+def _extract_extra_data(start, stop, d, fields, comp_re,
+                        no_fields_filter):
+    def _project_header_data(source_data, source_ts,
+                             selected_fields, comp_re):
+        """Extract values from a header for merging into events
+
+        Parameters
+        ----------
+        source : dict
+        selected_fields : set
+        comp_re : SRE_Pattern
+
+        Returns
+        -------
+        data_keys : dict
+        data : dict
+        timestamps : dict
+        """
+        fields = (set(filter(comp_re.match, source_data)) - selected_fields)
+        data = {k: source_data[k] for k in fields}
+        timestamps = {k: source_ts[k] for k in fields}
+
+        return {}, data, timestamps
+
+    if fields:
+        event_fields = set(d['data_keys'])
+        selected_fields = set(filter(comp_re.match, event_fields))
+        discard_fields = event_fields - selected_fields
+    else:
+        discard_fields = set()
+        selected_fields = set(d['data_keys'])
+
+    objs_config = d.get('configuration', {}).values()
+    config_data = merge(obj_conf['data'] for obj_conf in objs_config)
+    config_ts = merge(obj_conf['timestamps']
+                      for obj_conf in objs_config)
+    all_extra_data = {}
+    all_extra_ts = {}
+    all_extra_dk = {}
+    if not no_fields_filter:
+        for dt, ts in [(config_data, config_ts),
+                       (start, defaultdict(lambda: start['time'])),
+                       (stop, defaultdict(lambda: stop['time']))]:
+            # Look in the descriptor, then start, then stop.
+            l_dk, l_data, l_ts = _project_header_data(
+                dt, ts, selected_fields, comp_re)
+            all_extra_data.update(l_data)
+            all_extra_ts.update(l_ts)
+            selected_fields.update(l_data)
+            all_extra_dk.update(l_dk)
+
+    return (all_extra_dk, all_extra_data, all_extra_ts,
+            discard_fields)
