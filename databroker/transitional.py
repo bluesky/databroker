@@ -95,8 +95,19 @@ class Broker:
         headers = _ensure_list(headers)
         for header in headers:
             uid = header.start['uid']
-            # TODO Filter by stream_name.
+
+            descriptors = set()
             for name, doc in self._catalog[uid].read_canonical():
+                if stream_name is not ALL:
+                    # Filter by stream_name.
+                    if name == 'descriptor':
+                        if doc.get('name', 'primary') == stream_name:
+                            descriptors.add(doc['uid'])
+                        else:
+                            continue
+                    elif name == 'event':
+                        if doc['descriptor'] not in descriptors:
+                            continue
                 yield name, self.prepare_hook(name, doc)
 
     def get_events(self,
