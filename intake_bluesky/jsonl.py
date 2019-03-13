@@ -186,7 +186,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 # If this came from a client, we might be getting '-1'.
                 try:
                     N = int(name)
-                except ValueError:
+                except (ValueError, TypeError):
                     try:
                         run_start_doc = catalog._run_starts[name]
                     except KeyError:
@@ -205,10 +205,11 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                         else:
                             run_start_doc, = matches.values()
                 else:
+                    # Sort in reverse chronological order (most recent first).
+                    time_sorted = sorted(catalog._run_starts.values(),
+                                         key=lambda doc: -doc['time'])
                     if N < 0:
                         # Interpret negative N as "the Nth from last entry".
-                        time_sorted = sorted(catalog._run_starts.values(),
-                                             key=lambda doc: doc['time'])
                         if abs(N) > len(time_sorted):
                             raise ValueError(
                                 f"Catalog only contains {len(time_sorted)} "
@@ -217,7 +218,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     else:
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
-                        for run_start_doc in catalog._run_starts.values():
+                        for run_start_doc in time_sorted:
                             if run_start_doc.get('scan_id') == N:
                                 break
                         else:
