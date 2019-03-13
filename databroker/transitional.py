@@ -27,12 +27,13 @@ class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
     """
-    def __init__(self, uri, source, header_version=1):
+    def __init__(self, uri, source, header_version=1, external_fetchers=None):
         catalog = Catalog(str(uri))
         if source is not None:
             catalog = catalog[source]()
         self._catalog = catalog
         self._header_version = header_version
+        self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
 
@@ -43,6 +44,10 @@ class Broker:
     @property
     def _api_version_2(self):
         return self._catalog
+
+    def fetch_external(self, start, stop):
+        return {k: func(start, stop) for
+                k, func in self.external_fetchers.items()}
 
     def __call__(self, text_search=None, **kwargs):
         data_key = kwargs.pop('data_key', None)
@@ -481,6 +486,8 @@ class Header:
         self.ext = None  # TODO
         self.start = self.db.prepare_hook('start', entry.metadata['start'])
         self.stop = self.db.prepare_hook('stop', entry.metadata['stop'])
+        self.ext = SimpleNamespace(
+            **self.db.fetch_external(self.start, self.stop))
 
     def __eq__(self, other):
         return self.start == other.start
