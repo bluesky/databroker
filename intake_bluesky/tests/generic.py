@@ -67,7 +67,20 @@ def test_getitem_sugar(bundle):
 
     # Test lookup by partial uid.
     expected = cat[bundle.uid]()
-    actual = cat[bundle.uid[:8]]()
+    uid = bundle.uid
+    for j in itertools.count(8, len(uid)):
+        trunc_uid = uid[:j]
+        try:
+            int(trunc_uid)
+        except ValueError:
+            break
+        else:
+            continue
+    else:
+        raise pytest.skip(
+            "got an all int (!?) uid, can not truncate and retrieve "
+            "due to intake not respecting types in getitem across the network.")
+    actual = cat[trunc_uid]()
     assert actual.metadata['start']['uid'] == expected.metadata['start']['uid']
 
 
