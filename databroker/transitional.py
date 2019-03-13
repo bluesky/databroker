@@ -47,6 +47,26 @@ class Broker:
         # If this came from a client, we might be getting '-1'.
         if not isinstance(key, str) and isinstance(key, Iterable):
             return [self[item] for item in key]
+        if isinstance(key, slice):
+            if key.start is not None and key.start > -1:
+                raise ValueError("slice.start must be negative. You gave me "
+                                "key=%s The offending part is key.start=%s"
+                                % (key, key.start))
+            if key.stop is not None and key.stop > 0:
+                raise ValueError("slice.stop must be <= 0. You gave me key=%s. "
+                                "The offending part is key.stop = %s"
+                                % (key, key.stop))
+            if key.stop is not None:
+                stop = -key.stop
+            else:
+                stop = None
+            if key.start is None:
+                raise ValueError("slice.start cannot be None because we do not "
+                                "support slicing infinitely into the past; "
+                                "the size of the result is non-deterministic "
+                                "and could become too large.")
+            return [self[index]
+                    for index in range(key.start, key.stop, key.step or 1)]
         entry = self._catalog[key]
         if self._header_version == 1:
             return Header(entry, self)
