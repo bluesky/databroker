@@ -400,6 +400,9 @@ class Header:
         self.ext = None  # TODO
         self.db = broker
 
+    def __eq__(self, other):
+        return self.start == other.start
+
     @property
     def _api_version_2(self):
         return self._entry
