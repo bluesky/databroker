@@ -2,3 +2,4 @@
   fight. No changes to tests were needed.
 * Delete 'mds_server', client, and associated tests, fixtures, scripts, deps.
 * Raise KeyError in places where we were wrongly raising ValueError.
+* Skip test that tries to use a dict as a Header.

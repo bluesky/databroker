@@ -833,6 +833,7 @@ def test_results_multiple_iters(db, RE, hw):
     assert first == second == third
 
 
+@pytest.mark.skip(reason='headers are rich objects now')
 @py3
 def test_dict_header(db, RE, hw):
     # Ensure that we aren't relying on h being a doct as opposed to a dict.
