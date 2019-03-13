@@ -24,7 +24,8 @@ from . import transitional
 import humanize
 import jinja2
 import time
-from .utils import ALL, get_fields
+from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
+                    DeprecatedDoct, DOCT_NAMES)
 
 try:
     from types import SimpleNamespace
@@ -995,64 +996,6 @@ def temp_config():
         }
     }
     return config
-
-
-DOCT_NAMES = {'resource': 'Resource',
-              'datum': 'Datum',
-              'descriptor': 'Event Descriptor',
-              'event': 'Event',
-              'start': 'Run Start',
-              'stop': 'Run Stop'}
-
-
-def wrap_in_doct(name, doc):
-    """
-    Put document contents into a doct.Document object.
-
-    A ``doct.Document`` is a subclass of dict that:
-
-    * is immutable
-    * provides human-readable :meth:`__repr__` and :meth:`__str__`
-    * supports dot access (:meth:`__getattr__`) as a synonym for item access
-      (:meth:`__getitem__`) whenever possible
-    """
-    return doct.Document(DOCT_NAMES[name], doc)
-
-
-_STANDARD_DICT_ATTRS = dir(dict)
-
-
-class DeprecatedDoct(doct.Document):
-    "Subclass of doct.Document that warns that dot access may be removed."
-    # We must use __getattribute__ here, not the gentle __getattr__, in order
-    # to successfully override doct.Document. doct.Document aggressively edits
-    # its own __dict__, a subclass's __getattr__ would never be called.
-    def __getattribute__(self, key):
-        # Get the result first and let any errors be raised.
-        res = super(DeprecatedDoct, self).__getattribute__(key)
-        # Now warn before returning it.
-        if not (key in _STANDARD_DICT_ATTRS or key.startswith('_')):
-            # This is not a standard dict attribute.
-            # Warn that dot access is deprecated.
-            warnings.warn("Dot access may be removed in a future version. "
-                          "Use ['{0}'] instead of .{0}".format(key))
-        if key == '_name':
-            warnings.warn("In a future version of databroker, plain dicts "
-                          "without a '_name' attribute may be returned. "
-                          "Do not rely on '_name'.")
-        return res
-
-
-def wrap_in_deprecated_doct(name, doc):
-    """
-    Put document contents into a DeprecatedDoct object.
-
-    See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
-    and :class:`doct.Document` is a warning that dot access
-    (:meth:`__getattr__` as a synonym for :meth:`__getitem__`) may be removed
-    in the future.
-    """
-    return DeprecatedDoct(DOCT_NAMES[name], doc)
 
 
 class BrokerES(object):
