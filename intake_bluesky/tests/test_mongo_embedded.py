@@ -1,6 +1,6 @@
-import intake_bluesky.mongo_layout1  # noqa
+import intake_bluesky.mongo_normalized  # noqa
 import intake
-from suitcase.mongo_layout1 import Serializer
+from suitcase.mongo_embedded import Serializer
 import os
 import pytest
 import shutil
@@ -26,9 +26,8 @@ def teardown_module(module):
 @pytest.fixture(params=['local', 'remote'])
 def bundle(request, intake_server, example_data, db_factory):  # noqa
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
-    mds_db = db_factory()
-    assets_db = db_factory()
-    serializer = Serializer(mds_db, assets_db)
+    db = db_factory()
+    serializer = Serializer(db)
     uid, docs = example_data
     for name, doc in docs:
         serializer(name, doc)
@@ -44,7 +43,7 @@ plugins:
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
+    driver: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
     container: catalog
     args:
       metadatastore_db: {extract_uri(mds_db)}

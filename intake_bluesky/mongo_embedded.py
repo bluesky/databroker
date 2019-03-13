@@ -68,9 +68,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     enumerate(event_model.unpack_event_page(event_page))):
                 while ((event_index + 1) * (page_index + 1)) < skip:
                     continue
-                yield event
                 if not ((event_index + 1) * (page_index + 1)) < (skip + limit):
                     return
+                yield event
 
     def _get_datum_cursor(self, resource_uid, skip=0, limit=None):
         if limit is None:
@@ -89,9 +89,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     enumerate(event_model.unpack_datum_page(datum_page))):
                 while ((datum_index + 1) * (page_index + 1)) < skip:
                     continue
-                yield datum
                 if not ((datum_index + 1) * (page_index + 1)) < (skip + limit):
                     return
+                yield datum
 
     def _make_entries_container(self):
         catalog = self
@@ -143,7 +143,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     get_event_descriptors=partial(
                                     get_header_field, 'descriptors'),
                     get_event_cursor=catalog._get_event_cursor,
-                    get_event_count=partial(get_header_field, 'event_count'),
+                    get_event_count=(
+                            lambda: sum(partial(get_header_field,
+                                                'event_count')).values()),
                     get_resource=get_resource,
                     get_datum=get_datum,
                     get_datum_cursor=catalog._get_datum_cursor,
