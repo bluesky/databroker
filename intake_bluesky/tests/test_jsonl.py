@@ -43,7 +43,7 @@ sources:
     driver: intake_bluesky.jsonl.BlueskyJSONLCatalog
     container: catalog
     args:
-      jsonl_filelist: {[str(path) for path in serializer.artifacts['all']]}
+      paths: {[str(path) for path in serializer.artifacts['all']]}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:

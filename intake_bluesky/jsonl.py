@@ -1,17 +1,19 @@
 import event_model
 from functools import partial
+import glob
 import intake
 import intake.catalog
 import intake.catalog.local
 import intake.source.base
 import json
+import pathlib
 from mongoquery import Query
 
 from .core import parse_handler_registry
 
 
 class BlueskyJSONLCatalog(intake.catalog.Catalog):
-    def __init__(self, jsonl_filelist, *,
+    def __init__(self, paths, *,
                  handler_registry=None, query=None, **kwargs):
         """
         This Catalog is backed by a newline-delimited JSON (jsonl) file.
@@ -22,7 +24,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
 
         Parameters
         ----------
-        jsonl_filelist : list
+        paths : list
             list of filepaths
         handler_registry : dict, optional
             Maps each asset spec to a handler class or a string specifying the
@@ -33,6 +35,11 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             Catalog.
         """
         name = 'bluesky-jsonl-catalog'  # noqa
+
+        # Tolerate a single path (as opposed to a list).
+        if isinstance(paths, (str, pathlib.Path)):
+            paths = [paths]
+        self.paths = paths
         self._runs = {}  # This maps run_start_uids to file paths.
         self._run_starts = {}  # This maps run_start_uids to run_start_docs.
 
@@ -41,23 +48,24 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
         self.filler = event_model.Filler(parsed_handler_registry)
-        self._update_index(jsonl_filelist)
         super().__init__(**kwargs)
 
-    def _update_index(self, file_list):
-        for run_file in file_list:
-            with open(run_file, 'r') as f:
-                name, run_start_doc = json.loads(f.readline())
+    def _load(self):
+        for path in self.paths:
+            file_list = glob.glob(path)
+            for run_file in file_list:
+                with open(run_file, 'r') as f:
+                    name, run_start_doc = json.loads(f.readline())
 
-                if name != 'start':
-                    raise ValueError(
-                        f"Invalid file {run_file}: "
-                        f"first line must be a valid start document.")
+                    if name != 'start':
+                        raise ValueError(
+                            f"Invalid file {run_file}: "
+                            f"first line must be a valid start document.")
 
-                if Query(self._query).match(run_start_doc):
-                    run_start_uid = run_start_doc['uid']
-                    self._runs[run_start_uid] = run_file
-                    self._run_starts[run_start_uid] = run_start_doc
+                    if Query(self._query).match(run_start_doc):
+                        run_start_uid = run_start_doc['uid']
+                        self._runs[run_start_uid] = run_file
+                        self._run_starts[run_start_uid] = run_start_doc
 
     def _get_run_stop(self, run_start_uid):
         with open(self._runs[run_start_uid], 'r') as run_file:
@@ -178,7 +186,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 # If this came from a client, we might be getting '-1'.
                 try:
                     N = int(name)
-                except ValueError:
+                except (ValueError, TypeError):
                     try:
                         run_start_doc = catalog._run_starts[name]
                     except KeyError:
@@ -197,10 +205,11 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                         else:
                             run_start_doc, = matches.values()
                 else:
+                    # Sort in reverse chronological order (most recent first).
+                    time_sorted = sorted(catalog._run_starts.values(),
+                                         key=lambda doc: -doc['time'])
                     if N < 0:
                         # Interpret negative N as "the Nth from last entry".
-                        time_sorted = sorted(catalog._run_starts.values(),
-                                             key=lambda doc: doc['time'])
                         if abs(N) > len(time_sorted):
                             raise ValueError(
                                 f"Catalog only contains {len(time_sorted)} "
@@ -209,7 +218,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     else:
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
-                        for run_start_doc in catalog._run_starts.values():
+                        for run_start_doc in time_sorted:
                             if run_start_doc.get('scan_id') == N:
                                 break
                         else:
@@ -238,7 +247,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
-            jsonl_filelist=list(self._runs.values()),
+            paths=list(self._runs.values()),
             query=query,
             name='search results',
             getenv=self.getenv,

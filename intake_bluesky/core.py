@@ -1,4 +1,5 @@
 import ast
+import collections
 import event_model
 from datetime import datetime
 import dask
@@ -13,6 +14,7 @@ import msgpack
 import requests
 from requests.compat import urljoin
 import numpy
+import warnings
 import xarray
 
 
@@ -389,7 +391,16 @@ class RunCatalog(intake.catalog.Catalog):
             metadata=self.metadata)
 
         # Make a BlueskyEventStream for each stream_name.
-        for stream_name in set(doc.get('name') for doc in self._descriptors):
+        for doc in self._descriptors:
+            if 'name' not in doc:
+                warnings.warn(
+                    f"EventDescriptor {doc['uid']!r} has no 'name', likely "
+                    f"because it was generated using an old version of "
+                    f"bluesky. The name 'primary' will be used.")
+        descriptors_by_name = collections.defaultdict(list)
+        for doc in self._descriptors:
+            descriptors_by_name[doc.get('name', 'primary')].append(doc)
+        for stream_name, descriptors in descriptors_by_name.items():
             args = dict(
                 get_run_start=self._get_run_start,
                 stream_name=stream_name,
@@ -401,7 +412,7 @@ class RunCatalog(intake.catalog.Catalog):
                 get_datum=self._get_datum,
                 get_datum_cursor=self._get_datum_cursor,
                 filler=self.filler,
-                metadata={'descriptors': list(self._descriptors)},
+                metadata={'descriptors': descriptors},
                 include='{{ include }}',
                 exclude='{{ exclude }}')
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
@@ -412,7 +423,7 @@ class RunCatalog(intake.catalog.Catalog):
                 args=args,
                 cache=None,  # ???
                 parameters=[_INCLUDE_PARAMETER, _EXCLUDE_PARAMETER],
-                metadata={'descriptors': list(self._descriptors)},
+                metadata={'descriptors': descriptors},
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
