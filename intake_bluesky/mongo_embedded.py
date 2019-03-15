@@ -43,6 +43,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         else:
             self._db = datastore_db
 
+
         self._query = query or {}
 
         if handler_registry is None:
@@ -104,7 +105,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 header_doc = None
                 uid = run_start_doc['uid']
 
-                def get_header_field(self, field):
+                def get_header_field(field):
                     nonlocal header_doc
                     if header_doc is None:
                         header_doc = catalog._db.header.find_one(
@@ -112,16 +113,19 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     if field in header_doc:
                         return header_doc[field]
                     else:
-                        return None
+                        if field[0:6] =='count_':
+                            return 0
+                        else:
+                            return None
 
-                def get_resource(self, resource_uid):
+                def get_resource(resource_uid):
                     resources = get_header_field('resources')
                     for resource in resources:
                         if resource['uid'] == resource_uid:
                             return resource
                     return None
 
-                def get_datum(self, datum_id):
+                def get_datum(datum_id):
                     """ This method is likely very slow. """
                     resources = get_header_field('resources')
                     datum_page = catalog._db.datum.find(
@@ -134,18 +138,22 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                             return datum
                     return None
 
-                entry_metadata = {'start': run_start_doc,
-                                  'stop': partial(get_header_field, 'stop')}
+                def get_event_count(descriptor_uids):
+                    return sum([get_header_field('count_' + uid)
+                         for uid in descriptor_uids])
+
+                entry_metadata = {'start': get_header_field('start')[0],
+                                  'stop': get_header_field('stop')[0]}
+
+                print('META', entry_metadata)
 
                 args = dict(
-                    run_start_doc=run_start_doc,
+                    get_run_start=lambda: run_start_doc,
                     get_run_stop=partial(get_header_field, 'stop'),
                     get_event_descriptors=partial(
                                     get_header_field, 'descriptors'),
                     get_event_cursor=catalog._get_event_cursor,
-                    get_event_count=(
-                            lambda: sum(partial(get_header_field,
-                                                'event_count')).values()),
+                    get_event_count=get_event_count,
                     get_resource=get_resource,
                     get_datum=get_datum,
                     get_datum_cursor=catalog._get_datum_cursor,
@@ -173,22 +181,23 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                             {'start.uid': True, '_id': False},
                             sort=[('start.time', pymongo.DESCENDING)])
 
-                for run_start_uid in cursor:
-                    yield run_start_uid
+                for doc in cursor:
+                    yield doc['start'][0]['uid']
 
             def values(self):
                 cursor = catalog._db.header.find(
                             catalog._query,
                             {'start': True, '_id': False},
                             sort=[('start.time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield self._doc_to_entry(run_start_doc)
+                for header_doc in cursor:
+                    yield self._doc_to_entry(header_doc['start'][0])
 
             def items(self):
                 cursor = catalog._db.header.find(
                     catalog._query, sort=[('start.time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield run_start_doc['uid'], self._doc_to_entry(run_start_doc)
+                for header_doc in cursor:
+                    yield header_doc['start'][0]['uid'], self._doc_to_entry(
+                                header_doc['start'][0])
 
             def __getitem__(self, name):
                 # If this came from a client, we might be getting '-1'.
@@ -214,10 +223,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                         run_start_doc, = cursor
                 else:
                     query = {'$and': [catalog._query, {'start.uid': name}]}
-                    run_start_doc = catalog._db.header.find_one(query)
+                    run_start_doc = (
+                            catalog._db.header.find_one(query)['start'])
                 if run_start_doc is None:
                     raise KeyError(name)
-                return self._doc_to_entry(run_start_doc)
+                print(run_start_doc[0])
+                return self._doc_to_entry(run_start_doc[0])
 
             def __contains__(self, key):
                 # Avoid iterating through all entries.
@@ -242,6 +253,8 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         query : dict
             MongoDB query.
         """
+        if query:
+            query = {'start.' + key : val for key, val in query.items()}
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
