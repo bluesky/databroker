@@ -111,7 +111,10 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                         header_doc = catalog._db.header.find_one(
                                         {'run_id': uid}, {'_id': False})
                     if field in header_doc:
-                        return header_doc[field]
+                        if field in ['start','stop']:
+                            return header_doc[field][0]
+                        else:
+                            return header_doc[field]
                     else:
                         if field[0:6] =='count_':
                             return 0
@@ -142,10 +145,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                     return sum([get_header_field('count_' + uid)
                          for uid in descriptor_uids])
 
-                entry_metadata = {'start': get_header_field('start')[0],
-                                  'stop': get_header_field('stop')[0]}
+                entry_metadata = {'start': get_header_field('start'),
+                                  'stop': get_header_field('stop')}
 
-                print('META', entry_metadata)
+               # print('META', entry_metadata)
+               # print('START' , entry_metadata['start']['time'])
+               # print('STOP' , entry_metadata['stop'].get('time'))
 
                 args = dict(
                     get_run_start=lambda: run_start_doc,
@@ -243,6 +248,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
     def _close(self):
         self._client.close()
+
+    def  __len__(self):
+        return self._db.header.count_documents({})
 
     def search(self, query):
         """

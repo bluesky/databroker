@@ -355,6 +355,8 @@ class RunCatalog(intake.catalog.Catalog):
         try:
             start = self._run_start_doc
             stop = self._run_stop_doc or {}
+            print("START", start)
+            print("STOP", stop)
             out = (f"Run Catalog\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
