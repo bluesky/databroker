@@ -43,7 +43,6 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         else:
             self._db = datastore_db
 
-
         self._query = query or {}
 
         if handler_registry is None:
@@ -111,31 +110,31 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                         header_doc = catalog._db.header.find_one(
                                         {'run_id': uid}, {'_id': False})
                     if field in header_doc:
-                        if field in ['start','stop']:
+                        if field in ['start', 'stop']:
                             return header_doc[field][0]
                         else:
                             return header_doc[field]
                     else:
-                        if field[0:6] =='count_':
+                        if field[0:6] == 'count_':
                             return 0
                         else:
                             return None
 
-                def get_resource(resource_uid):
+                def get_resource(uid):
                     resources = get_header_field('resources')
                     for resource in resources:
-                        if resource['uid'] == resource_uid:
+                        if resource['uid'] == uid:
                             return resource
                     return None
 
                 def get_datum(datum_id):
                     """ This method is likely very slow. """
-                    resources = get_header_field('resources')
-                    datum_page = catalog._db.datum.find(
+                    resources = [resource['uid']
+                                 for resource in get_header_field('resources')]
+                    datum_page = catalog._db.datum.find_one(
                            {'$and': [{'resource': {'$in': resources}},
                                      {'datum_id': datum_id}]},
                            {'_id': False})
-
                     for datum in event_model.unpack_datum_page(datum_page):
                         if datum['datum_id'] == datum_id:
                             return datum
@@ -143,14 +142,10 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
 
                 def get_event_count(descriptor_uids):
                     return sum([get_header_field('count_' + uid)
-                         for uid in descriptor_uids])
+                                for uid in descriptor_uids])
 
                 entry_metadata = {'start': get_header_field('start'),
                                   'stop': get_header_field('stop')}
-
-               # print('META', entry_metadata)
-               # print('START' , entry_metadata['start']['time'])
-               # print('STOP' , entry_metadata['stop'].get('time'))
 
                 args = dict(
                     get_run_start=lambda: run_start_doc,
@@ -207,33 +202,54 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             def __getitem__(self, name):
                 # If this came from a client, we might be getting '-1'.
                 try:
-                    name = int(name)
+                    N = int(name)
                 except ValueError:
-                    pass
-                if isinstance(name, int):
-                    if name < 0:
+                    query = {'$and': [catalog._query, {'uid': name}]}
+                    header_doc = catalog._db.header.find_one(query)
+                    if header_doc is None:
+                        regex_query = {
+                            '$and': [catalog._query,
+                                     {'start.uid': {'$regex': f'{name}.*'}}]}
+                        matches = list(
+                                catalog._db.header.find(regex_query).limit(10))
+                        if not matches:
+                            raise KeyError(name)
+                        elif len(matches) == 1:
+                            header_doc, = matches
+                        else:
+                            match_list = '\n'.join(doc['uid'] for doc in matches)
+                            raise ValueError(
+                                f"Multiple matches to partial uid {name!r}. "
+                                f"Up to 10 listed here:\n"
+                                f"{match_list}")
+                else:
+                    if N < 0:
                         # Interpret negative N as "the Nth from last entry".
                         query = catalog._query
-                        cursor = (
-                            catalog._db.header.find(query)
-                            .sort('start.time', pymongo.DESCENDING).limit(name))
-                        *_, run_start_doc = cursor
+                        cursor = (catalog._db.header.find(query)
+                                  .sort('start.time', pymongo.DESCENDING)
+                                  .skip(-N - 1)
+                                  .limit(1))
+                        try:
+                            header_doc, = cursor
+                        except ValueError:
+                            raise ValueError(
+                                f"Catalog only contains {len(catalog)} "
+                                f"runs.")
                     else:
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
-                        query = {'$and': [catalog._query, {'start.scan_id': name}]}
+                        query = {'$and': [catalog._query, {'start.scan_id': N}]}
                         cursor = (catalog._db.header.find(query)
                                   .sort('start.time', pymongo.DESCENDING)
                                   .limit(1))
-                        run_start_doc, = cursor
-                else:
-                    query = {'$and': [catalog._query, {'start.uid': name}]}
-                    run_start_doc = (
-                            catalog._db.header.find_one(query)['start'])
-                if run_start_doc is None:
+                        try:
+                            header_doc, = cursor
+                        except ValueError:
+                            raise KeyError(f"No run with scan_id={N}")
+                if header_doc is None:
                     raise KeyError(name)
-                print(run_start_doc[0])
-                return self._doc_to_entry(run_start_doc[0])
+                return self._doc_to_entry(header_doc['start'][0])
 
             def __contains__(self, key):
                 # Avoid iterating through all entries.
@@ -249,7 +265,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
     def _close(self):
         self._client.close()
 
-    def  __len__(self):
+    def __len__(self):
         return self._db.header.count_documents({})
 
     def search(self, query):
@@ -262,7 +278,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             MongoDB query.
         """
         if query:
-            query = {'start.' + key : val for key, val in query.items()}
+            query = {'start.' + key: val for key, val in query.items()}
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
