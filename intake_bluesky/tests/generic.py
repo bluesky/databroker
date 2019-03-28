@@ -129,6 +129,29 @@ def test_read_canonical(bundle):
             assert numpy.array_equal(actual_doc, expected_doc)
 
 
+def test_read_raw(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]
+    run.read_raw()
+
+    def sorted_actual():
+        for name, doc in bundle.docs:
+            yield name, doc
+    #     for name_ in ('start', 'descriptor', 'resource', 'datum', 'event_page', 'event', 'stop'):
+    #         for name, doc in bundle.docs:
+    #             if name == name_:
+    #                 yield name, doc
+
+    for actual, expected in itertools.zip_longest(
+            run.read_raw(), sorted_actual()):
+        actual_name, actual_doc = actual
+        expected_name, expected_doc = expected
+        print(expected_name)
+        try:
+            assert actual_name == expected_name
+        except ValueError:
+            assert numpy.array_equal(actual_doc, expected_doc)
+
+
 def test_read(bundle):
     run = bundle.cat['xyz']()[bundle.uid]()
     entry = run['primary']
