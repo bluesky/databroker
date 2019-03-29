@@ -2265,8 +2265,10 @@ class Broker(BrokerES):
             To be used by Broker.from_config(config)
         '''
         config = dict()
-        config['metadatastore'] = self.mds.config
-        config['assets'] = self.reg.config
+        for k, v in zip(['metadatastore', 'assets'], [self.mds, self.reg]):
+            config[k] = {'config': v.config,
+                         'module': v.__module__,
+                         'class': v.__class__.__name__}
         config['root_map'] = self.reg.root_map
         return config
 
