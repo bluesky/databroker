@@ -6,6 +6,17 @@ import ophyd.sim
 import pytest
 
 
+def uid_sorted(docs):
+    def key(item):
+        name, doc = item
+        if name == 'datum':
+            return doc['datum_id']
+        else:
+            return doc['uid']
+
+    return sorted(docs, key=key)
+
+
 def test_fixture(bundle):
     "Simply open the Catalog created by the fixture."
 
@@ -133,16 +144,8 @@ def test_read_raw(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
     run.read_raw()
 
-    def sorted_actual():
-        for name, doc in bundle.docs:
-            yield name, doc
-    #     for name_ in ('start', 'descriptor', 'resource', 'datum', 'event_page', 'event', 'stop'):
-    #         for name, doc in bundle.docs:
-    #             if name == name_:
-    #                 yield name, doc
-
     for actual, expected in itertools.zip_longest(
-            run.read_raw(), sorted_actual()):
+            uid_sorted(run.read_raw()), uid_sorted(bundle.docs)):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
         print(expected_name)

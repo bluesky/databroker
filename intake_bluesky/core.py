@@ -423,6 +423,11 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             for name, doc in self._get_partition((i, False)):
                 yield name, doc
 
+    def read_raw(self):
+        for i in range(self.npartitions):
+            for name, doc in self._get_partition((i, True)):
+                yield name, doc
+
     def __repr__(self):
         self._load()
         try:
