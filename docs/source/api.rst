@@ -64,7 +64,6 @@ Backend-Specific Catalogs
    core is deemed stable.
 
 .. autoclass:: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
-
    :members:
 
 .. autoclass:: intake_bluesky.jsonl.BlueskyJSONLCatalog
