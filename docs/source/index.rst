@@ -46,7 +46,7 @@ files, whereas a lab or facility might use a MongoDB instance. Intake-Bluesky
 will address the range of possible use cases by implementing an intake driver
 for each serializer. Currently supported:
 
-* :class:`~intake_bluesky.mongo_layout1.BlueskyMongoCatalog` --- Backed by
+* :class:`~intake_bluesky.mongo_normalized.BlueskyMongoCatalog` --- Backed by
   MongoDB
 * :class:`~intake_bluesky.jsonl.BlueskyJSONLCatalog` --- Backed by a set of
   newline-delimited JSON files, illustrating "minimal deployment overhead" use

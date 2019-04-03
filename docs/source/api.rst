@@ -63,7 +63,8 @@ Backend-Specific Catalogs
    dependencies and release cycles. This will be done once the interface with
    core is deemed stable.
 
-.. autoclass:: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
+.. autoclass:: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
+
    :members:
 
 .. autoclass:: intake_bluesky.jsonl.BlueskyJSONLCatalog
