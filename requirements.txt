@@ -11,4 +11,3 @@ pyyaml  # undeclared by intake v0.4.1
 requests
 xarray
 mongoquery
-suitcase-mongo
