@@ -1,6 +1,6 @@
-import intake_bluesky.mongo_layout1  # noqa
+import intake_bluesky.mongo_normalized  # noqa
 import intake
-from suitcase.mongo_layout1 import Serializer
+from suitcase.mongo_normalized import Serializer
 import os
 import pytest
 import shutil
@@ -44,7 +44,7 @@ plugins:
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
+    driver: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
     container: catalog
     args:
       metadatastore_db: {extract_uri(mds_db)}

@@ -15,7 +15,7 @@ def test_search(bundle):
     cat = bundle.cat
     # Make sure the Catalog is nonempty.
     assert list(cat['xyz']())
-    # Null serach should return full Catalog.
+    # Null search should return full Catalog.
     assert list(cat['xyz']()) == list(cat['xyz'].search({}))
     # Progressive (i.e. nested) search:
     name, = (cat['xyz']
@@ -26,9 +26,11 @@ def test_search(bundle):
 
 def test_repr(bundle):
     "Test that custom repr (with run uid) appears."
+    print(bundle.uid)
     entry = bundle.cat['xyz']()[bundle.uid]
     assert bundle.uid in repr(entry)
     run = entry()
+    print(repr(run))
     assert bundle.uid in repr(run)
     assert 'primary' in repr(run)
 
