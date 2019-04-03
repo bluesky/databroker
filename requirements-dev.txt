@@ -8,7 +8,7 @@ ophyd
 pytest >=3.9
 sphinx
 suitcase-jsonl >=0.1.0b2
-suitcase-mongo >=0.1.0b4
+suitcase-mongo >=0.1.0b5
 # These are dependencies of various sphinx extensions for documentation.
 ipython
 matplotlib
