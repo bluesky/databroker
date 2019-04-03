@@ -278,7 +278,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             MongoDB query.
         """
         if query:
-            query = {'start.' + key: val for key, val in query.items()}
+            query = {f"start.{key}": val for key, val in query.items()}
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(

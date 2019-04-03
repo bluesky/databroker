@@ -355,8 +355,6 @@ class RunCatalog(intake.catalog.Catalog):
         try:
             start = self._run_start_doc
             stop = self._run_stop_doc or {}
-            print("START", start)
-            print("STOP", stop)
             out = (f"Run Catalog\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
@@ -465,7 +463,7 @@ class RunCatalog(intake.catalog.Catalog):
                     datum_id = err.key
 
                     if '/' in datum_id:
-                        resource_uid, datum_id = datum_id.split('/', 1)
+                        resource_uid, _  = datum_id.split('/', 1)
                     else:
                         datum = self._get_datum(datum_id=datum_id)
                         resource_uid = datum['resource']
