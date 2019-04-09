@@ -11,10 +11,10 @@ from databroker import Broker, BrokerES, temp_config
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
 import intake_bluesky.jsonl
-import intake_bluesky.mongo_layout1
+import intake_bluesky.mongo_normalized
 import intake_bluesky.core
 import suitcase.jsonl
-import suitcase.mongo_layout1
+import suitcase.mongo_normalized
 
 
 def build_intake_jsonl_backed_broker(request):
@@ -75,7 +75,7 @@ plugins:
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_layout1.BlueskyMongoCatalog
+    driver: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
     container: catalog
     args:
       metadatastore_db: mongodb://{client.address[0]}:{client.address[1]}/mds
@@ -101,7 +101,7 @@ sources:
             if serializer is not None:
                 # serializer.close()
                 ...
-            serializer = suitcase.mongo_layout1.Serializer(client['mds'],
+            serializer = suitcase.mongo_normalized.Serializer(client['mds'],
                                                            client['assets'])
         serializer(name, doc)
         if name == 'stop':

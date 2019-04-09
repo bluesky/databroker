@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 # This triggers driver registration.
 import intake_bluesky.core  # noqa
-import intake_bluesky.mongo_layout1  # noqa
+import intake_bluesky.mongo_normalized  # noqa
 
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
