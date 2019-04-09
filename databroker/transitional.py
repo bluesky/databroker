@@ -9,6 +9,7 @@ import time
 import humanize
 import jinja2
 from types import SimpleNamespace
+import tzlocal
 
 # This triggers driver registration.
 import intake_bluesky.core  # noqa
@@ -20,7 +21,8 @@ try:
 except ImportError:
     from toolz.dicttoolz import merge
 
-from .utils import ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct
+from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
+                    wrap_in_doct)
 
 
 class Broker:
@@ -52,9 +54,16 @@ class Broker:
 
     def __call__(self, text_search=None, **kwargs):
         data_key = kwargs.pop('data_key', None)
-        catalog = self._catalog
-        for filter in self.filters.items():
-            catalog = catalog.search(filter)
+        tz = tzlocal.get_localzone().zone
+        if self.filters:
+            filters = self.filters.copy()
+            format_time(filters, tz)  # mutates in place
+            catalog = self._catalog.search(filters)
+        else:
+            catalog = self._catalog
+        if text_search:
+            kwargs.update({'$text': {'$search': text_search}})
+        format_time(kwargs, tz)  # mutates in place
         return Results(self, catalog.search(kwargs),
                        data_key, self._header_version)
 
