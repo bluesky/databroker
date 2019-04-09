@@ -36,6 +36,7 @@ class Broker:
         self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
+        self.filters = {}
 
     @property
     def header_version(self):
@@ -51,7 +52,10 @@ class Broker:
 
     def __call__(self, text_search=None, **kwargs):
         data_key = kwargs.pop('data_key', None)
-        return Results(self, self._catalog.search(kwargs),
+        catalog = self._catalog
+        for filter in self.filters.items():
+            catalog = catalog.search(filter)
+        return Results(self, catalog.search(kwargs),
                        data_key, self._header_version)
 
     def __getitem__(self, key):
@@ -388,6 +392,61 @@ class Broker:
         if hasattr(self, key) and key not in self.aliases:
             raise ValueError("'%s' is not a legal alias." % key)
         self.aliases[key] = func
+
+    def add_filter(self, **kwargs):
+        """
+        Add query to the list of 'filter' queries.
+
+        Any query passed to ``db.add_filter()`` is stashed and "AND-ed" with
+        all future queries.
+
+        ``db.add_filter(**kwargs)`` is just a convenient way to spell
+        ``db.filters.update(**kwargs)``.
+
+        Examples
+        --------
+        Filter all searches to restrict results to a specific user after a
+        March 2017.
+
+        >>> db.add_filter(user='Dan')
+        >>> db.add_filter(since='2017-3')
+
+        The following query is equivalent to
+        ``db(user='Dan', plan_name='scan')``.
+
+        >>> db(plan_name='scan')
+
+        Review current filters.
+
+        >>> db.filters
+        {'user': 'Dan', 'since': '2017-3'}
+
+        Clear filters.
+
+        >>> db.clear_filters()
+
+        See Also
+        --------
+        :meth:`Broker.clear_filters`
+
+        """
+        self.filters.update(**kwargs)
+
+    def clear_filters(self, **kwargs):
+        """
+        Clear all 'filter' queries.
+
+        Filter queries are combined with every given query using '$and',
+        acting as a filter to restrict the results.
+
+        ``Broker.clear_filters()`` is just a convenient way to spell
+        ``Broker.filters.clear()``.
+
+        See Also
+        --------
+        :meth:`Broker.add_filter`
+        """
+        self.filters.clear()
 
     def __getattr__(self, key):
         try:
