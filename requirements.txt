@@ -1,7 +1,7 @@
 dask[bag]
 event_model >=1.8.0rc3
 msgpack
-intake !=0.4.3
+intake <0.4.3  # change in UserParameters API that we need to adapt to or revert
 intake-xarray
 msgpack
 numpy
