@@ -233,7 +233,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                         try:
                             header_doc, = cursor
                         except ValueError:
-                            raise ValueError(
+                            raise IndexError(
                                 f"Catalog only contains {len(catalog)} "
                                 f"runs.")
                     else:

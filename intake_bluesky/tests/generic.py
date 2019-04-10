@@ -56,7 +56,7 @@ def test_getitem_sugar(bundle):
 
     # Test lookup by recency (e.g. -1 is latest)
     cat[-1]
-    with pytest.raises((ValueError, RemoteCatalogError)):
+    with pytest.raises((IndexError, RemoteCatalogError)):
         cat[-(1 + len(cat))]  # There aren't this many entries
 
     # Test lookup by integer, not globally-unique, 'scan_id'.
