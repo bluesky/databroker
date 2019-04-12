@@ -1,7 +1,7 @@
 dask[bag]
 event_model >=1.8.0rc3
 msgpack
-intake !=0.4.3
+intake
 intake-xarray
 msgpack
 numpy

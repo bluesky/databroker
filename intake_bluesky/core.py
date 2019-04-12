@@ -1,4 +1,3 @@
-import ast
 import collections
 import event_model
 from datetime import datetime
@@ -412,9 +411,7 @@ class RunCatalog(intake.catalog.Catalog):
                 get_datum=self._get_datum,
                 get_datum_cursor=self._get_datum_cursor,
                 filler=self.filler,
-                metadata={'descriptors': descriptors},
-                include='{{ include }}',
-                exclude='{{ exclude }}')
+                metadata={'descriptors': descriptors})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -422,7 +419,6 @@ class RunCatalog(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # ???
-                parameters=[_INCLUDE_PARAMETER, _EXCLUDE_PARAMETER],
                 metadata={'descriptors': descriptors},
                 catalog_dir=None,
                 getenv=True,
@@ -493,18 +489,6 @@ class RunCatalog(intake.catalog.Catalog):
             "its entries, representing individual Event Streams.")
 
 
-_EXCLUDE_PARAMETER = intake.catalog.local.UserParameter(
-    name='exclude',
-    description="fields to exclude",
-    type='list',
-    default=None)
-_INCLUDE_PARAMETER = intake.catalog.local.UserParameter(
-    name='include',
-    description="fields to explicitly include at exclusion of all others",
-    type='list',
-    default=None)
-
-
 class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     """
     Catalog representing one Event Stream from one Run.
@@ -558,8 +542,8 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
                  get_datum_cursor,
                  filler,
                  metadata,
-                 include,
-                 exclude,
+                 include=None,
+                 exclude=None,
                  **kwargs):
         # self._partition_size = 10
         # self._default_chunks = 10
@@ -575,9 +559,8 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self.filler = filler
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
-        # TODO Is there a more direct way to get non-string UserParameters in?
-        self.include = ast.literal_eval(include)
-        self.exclude = ast.literal_eval(exclude)
+        self.include = include
+        self.exclude = exclude
         super().__init__(
             metadata=metadata
         )
