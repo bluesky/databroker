@@ -210,11 +210,11 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                                          key=lambda doc: -doc['time'])
                     if N < 0:
                         # Interpret negative N as "the Nth from last entry".
-                        if abs(N) > len(time_sorted):
-                            raise ValueError(
+                        if -N > len(time_sorted):
+                            raise IndexError(
                                 f"Catalog only contains {len(time_sorted)} "
                                 f"runs.")
-                        run_start_doc = time_sorted[N]
+                        run_start_doc = time_sorted[-N - 1]
                     else:
                         # Interpret positive N as
                         # "most recent entry with scan_id == N".
