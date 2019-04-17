@@ -266,7 +266,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         self._client.close()
 
     def __len__(self):
-        return self._db.header.count_documents({})
+        return self._db.header.count_documents(self._query)
 
     def search(self, query):
         """
