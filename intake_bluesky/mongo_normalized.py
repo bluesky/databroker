@@ -240,7 +240,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         return Entries()
 
     def __len__(self):
-        return self._run_start_collection.count_documents({})
+        return self._run_start_collection.count_documents(self._query)
 
     def _close(self):
         self._client.close()
