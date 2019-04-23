@@ -88,14 +88,20 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         skip_counter = 0
         descriptor_set = set(descriptor_uids)
         with open(self._runs[run_start_uid], 'r') as run_file:
+            events = []
             for line in run_file:
                 name, doc = json.loads(line)
-                if name == 'event' and doc['descriptor'] in descriptor_set:
+                if name == 'event_page' and doc['descriptor'] in descriptor_set:
+                    events.extend(event_model.unpack_event_page(doc))
+                elif name == 'event' and doc['descriptor'] in descriptor_set:
+                    events.append(doc)
+                for event in events:
                     if skip_counter >= skip and (limit is None or skip_counter < limit):
-                        yield doc
+                        yield event
                     skip_counter += 1
                     if limit is not None and skip_counter >= limit:
                         break
+                events.clear()
 
     def _get_event_count(self, run_start_uid, descriptor_uids):
         event_count = 0
@@ -126,14 +132,20 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
     def _get_datum_cursor(self, run_start_uid, resource_uid, skip=0, limit=None):
         skip_counter = 0
         with open(self._runs[run_start_uid], 'r') as run_file:
+            datums = []
             for line in run_file:
                 name, doc = json.loads(line)
-                if name == 'datum' and doc['resource'] == resource_uid:
+                if name == 'datum_page' and doc['resource'] == resource_uid:
+                    datums.extend(event_model.unpack_datum_page(doc))
+                elif name == 'datum' and doc['resource'] == resource_uid:
+                    datums.append(doc)
+                for datum in datums:
                     if skip_counter >= skip and (limit is None or skip_counter < limit):
-                        yield doc
+                        yield datum
                     skip_counter += 1
                     if limit is not None and skip_counter >= limit:
                         return
+                datums.clear()
 
     def _make_entries_container(self):
         catalog = self
