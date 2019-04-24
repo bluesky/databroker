@@ -12,9 +12,11 @@ from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
 import intake_bluesky.jsonl
 import intake_bluesky.mongo_normalized
+import intake_bluesky.mongo_embedded
 import intake_bluesky.core
 import suitcase.jsonl
 import suitcase.mongo_normalized
+import suitcase.mongo_embedded
 
 
 def build_intake_jsonl_backed_broker(request):
@@ -103,6 +105,55 @@ sources:
                 ...
             serializer = suitcase.mongo_normalized.Serializer(client['mds'],
                                                            client['assets'])
+        serializer(name, doc)
+        if name == 'stop':
+            db._catalog.reload()
+
+    db.insert = insert
+    return db
+
+def build_intake_mongo_embedded_backed_broker(request):
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_path = tmp_dir.name
+    catalog_path = Path(tmp_path) / 'catalog.yml'
+    box = mongobox.MongoBox()
+    box.start()
+    client = box.client()
+    with open(catalog_path, 'w') as file:
+        file.write(f"""
+plugins:
+  source:
+    - module: intake_bluesky
+sources:
+  xyz:
+    description: Some imaginary beamline
+    driver: intake_bluesky.mongo_embedded.BlueskyMongoCatalog
+    container: catalog
+    args:
+      datastore_db: mongodb://{client.address[0]}:{client.address[1]}/permanent
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
+    metadata:
+      beamline: "00-ID"
+""")
+
+    def teardown():
+        "Delete temporary MongoDB data directory."
+        box.stop()
+        tmp_dir.cleanup()
+
+    request.addfinalizer(teardown)
+    db = Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    serializer = None
+
+    def insert(name, doc):
+        nonlocal serializer
+        if name == 'start':
+            if serializer is not None:
+                # serializer.close()
+                ...
+            serializer = suitcase.mongo_embedded.Serializer(client['volatile'],
+                                                           client['permanent'])
         serializer(name, doc)
         if name == 'stop':
             db._catalog.reload()
