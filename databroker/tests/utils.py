@@ -152,8 +152,7 @@ sources:
             if serializer is not None:
                 # serializer.close()
                 ...
-            serializer = suitcase.mongo_embedded.Serializer(client['volatile'],
-                                                           client['permanent'])
+            serializer = suitcase.mongo_embedded.Serializer(client['permanent'])
         serializer(name, doc)
         if name == 'stop':
             db._catalog.reload()
