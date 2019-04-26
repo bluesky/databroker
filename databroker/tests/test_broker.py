@@ -1304,16 +1304,14 @@ def test_order(db, RE, hw):
     uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1), [d]))
 
     t0 = None
-    last_descriptor = None
 
     for name, doc in db[uid].documents():
         # TODO: include datums in here at some point
         if name in ['event']:
             t1 = doc['time']
-            if t0 and doc['descriptor'] == last_descriptor:
+            if t0 :
                 assert t1 > t0
             t0 = t1
-            last_decscriptor = doc['descriptor']
 
 
 @pytest.mark.skip(reason='temp')
