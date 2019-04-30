@@ -259,7 +259,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
-            paths=list(self._runs.values()),
+            paths=self.paths,
             query=query,
             name='search results',
             getenv=self.getenv,
