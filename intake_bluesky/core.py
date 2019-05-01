@@ -126,7 +126,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
                 name=key)
 
         # Make DataArrays for configuration data.
-        for object_name, config in descriptor['configuration'].items():
+        for object_name, config in descriptor.get('configuration', {}).items():
             data_keys = config['data_keys']
             # For configuration, label the dimension specially to
             # avoid key collisions.
