@@ -55,7 +55,12 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
             file_list = glob.glob(path)
             for run_file in file_list:
                 with open(run_file, 'r') as f:
-                    name, run_start_doc = json.loads(f.readline())
+                    try:
+                        name, run_start_doc = json.loads(f.readline())
+                    except json.JSONDecodeError:
+                        if not f.readline():
+                            # Empty file, maybe being written to currently
+                            continue
 
                     if name != 'start':
                         raise ValueError(
@@ -259,7 +264,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
-            paths=list(self._runs.values()),
+            paths=self.paths,
             query=query,
             name='search results',
             getenv=self.getenv,
