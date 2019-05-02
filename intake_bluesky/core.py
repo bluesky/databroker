@@ -62,19 +62,22 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
 
     # Data keys must not change within one stream, so we can safely sample
     # just the first Event Descriptor.
-    data_keys = descriptor_docs[0]['data_keys']
-    if include:
-        keys = list(set(data_keys) & set(include))
-    elif exclude:
-        keys = list(set(data_keys) - set(exclude))
-    else:
-        keys = list(data_keys)
+    if descriptor_docs:
+        data_keys = descriptor_docs[0]['data_keys']
+        if include:
+            keys = list(set(data_keys) & set(include))
+        elif exclude:
+            keys = list(set(data_keys) - set(exclude))
+        else:
+            keys = list(data_keys)
 
     # Collect a Dataset for each descriptor. Merge at the end.
     datasets = []
     for descriptor in descriptor_docs:
         events = [doc for doc in event_docs
                   if doc['descriptor'] == descriptor['uid']]
+        if not events:
+            continue
         if any(data_keys[key].get('external') for key in keys):
             for event in events:
                 try:
