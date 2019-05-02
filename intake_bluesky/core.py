@@ -76,6 +76,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     for descriptor in descriptor_docs:
         events = [doc for doc in event_docs
                   if doc['descriptor'] == descriptor['uid']]
+        if not events:
+            continue
         if any(data_keys[key].get('external') for key in keys):
             for event in events:
                 try:
