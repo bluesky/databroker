@@ -6,7 +6,9 @@ def test_no_descriptors():
     run_bundle = event_model.compose_run()
     start_doc = run_bundle.start_doc
     stop_doc = run_bundle.compose_stop()
-    documents_to_xarray(start_doc=start_doc, stop_doc=stop_doc,
+    documents_to_xarray(
+        start_doc=start_doc,
+        stop_doc=stop_doc,
         descriptor_docs=[],
         event_docs=[],
         filler=event_model.Filler({}),
@@ -23,7 +25,9 @@ def test_no_events():
         name='primary')
     descriptor_doc = desc_bundle.descriptor_doc
     stop_doc = run_bundle.compose_stop()
-    documents_to_xarray(start_doc=start_doc, stop_doc=stop_doc,
+    documents_to_xarray(
+        start_doc=start_doc,
+        stop_doc=stop_doc,
         descriptor_docs=[descriptor_doc],
         event_docs=[],
         filler=event_model.Filler({}),
