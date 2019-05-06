@@ -38,8 +38,8 @@ class ArchiverEventSource(object):
         self.url = url
         self.archiver_addr = self.url + "retrieval/data/getData.json"
 
-        timezone = config['timezone']
-        self.tz = pytz.timezone(timezone)
+        self.timezone = config['timezone']
+        self.tz = pytz.timezone(self.timezone)
 
         if 'pvs' in config:
             pvs = config['pvs']
@@ -227,6 +227,8 @@ class ArchiverEventSource(object):
         df = pd.DataFrame()
         df['time'] = datetimes
         df['data'] = data
+
+        df.time = df.time.dt.tz_localize('UTC').dt.tz_convert(self.timezone)
 
         return df
 

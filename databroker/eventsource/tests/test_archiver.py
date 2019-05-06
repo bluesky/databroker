@@ -47,3 +47,5 @@ def test_table_given_header():
     df = aes.table_given_header(hdr, stream_name=pvs[0])
     values = df[pvs[0]].values.tolist()
     assert len(values) == 61
+    assert round(values[60], 6) == 0.004321
+    assert df.time[60].strftime('%Y-%m-%d %H:%M:%S') == '2016-10-06 17:54:34'
