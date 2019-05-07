@@ -192,11 +192,11 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 yield from catalog._runs
 
             def values(self):
-                for run_start_doc in catalog._run_starts.values():
+                for run_start_doc in list(catalog._run_starts.values()):
                     yield self._doc_to_entry(run_start_doc)
 
             def items(self):
-                for uid, run_start_doc in catalog._run_starts.items():
+                for uid, run_start_doc in list(catalog._run_starts.items()):
                     yield uid, self._doc_to_entry(run_start_doc)
 
             def __getitem__(self, name):
@@ -209,7 +209,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                     except KeyError:
                         # Try looking up by *partial* uid.
                         matches = {}
-                        for uid, run_start_doc in catalog._run_starts.items():
+                        for uid, run_start_doc in list(catalog._run_starts.items()):
                             if uid.startswith(name):
                                 matches[uid] = run_start_doc
                         if not matches:
