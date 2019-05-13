@@ -140,6 +140,10 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                             return datum
                     return None
 
+
+                def get_run_start():
+                    return run_start_doc
+
                 def get_event_count(descriptor_uids):
                     return sum([get_header_field('count_' + uid)
                                 for uid in descriptor_uids])
@@ -148,7 +152,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                                   'stop': get_header_field('stop')}
 
                 args = dict(
-                    get_run_start=lambda: run_start_doc,
+                    get_run_start=get_run_start,
                     get_run_stop=partial(get_header_field, 'stop'),
                     get_event_descriptors=partial(
                                     get_header_field, 'descriptors'),

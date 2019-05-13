@@ -131,8 +131,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 run_start_doc.pop('_id')
                 entry_metadata = {'start': run_start_doc,
                                   'stop': catalog._get_run_stop(uid)}
+
+                def get_run_start():
+                    return run_start_doc
+
                 args = dict(
-                    get_run_start=lambda: run_start_doc,
+                    get_run_start=get_run_start,
                     get_run_stop=partial(catalog._get_run_stop, uid),
                     get_event_descriptors=partial(catalog._get_event_descriptors, uid),
                     get_event_cursor=catalog._get_event_cursor,
