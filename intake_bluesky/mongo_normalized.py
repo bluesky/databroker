@@ -1,3 +1,4 @@
+import collections.abc
 import event_model
 from functools import partial
 import intake
@@ -8,6 +9,115 @@ import pymongo
 import pymongo.errors
 
 from .core import parse_handler_registry
+
+
+class _Entries(collections.abc.Mapping):
+    "Mock the dict interface around a MongoDB query result."
+    def __init__(self, catalog):
+        self.catalog = catalog
+
+    def _doc_to_entry(self, run_start_doc):
+        uid = run_start_doc['uid']
+        run_start_doc.pop('_id')
+        entry_metadata = {'start': run_start_doc,
+                          'stop': self.catalog._get_run_stop(uid)}
+
+        def get_run_start():
+            return run_start_doc
+
+        args = dict(
+            get_run_start=get_run_start,
+            get_run_stop=partial(self.catalog._get_run_stop, uid),
+            get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
+            get_event_cursor=self.catalog._get_event_cursor,
+            get_event_count=self.catalog._get_event_count,
+            get_resource=self.catalog._get_resource,
+            get_datum=self.catalog._get_datum,
+            get_datum_cursor=self.catalog._get_datum_cursor,
+            filler=self.catalog.filler)
+        return intake.catalog.local.LocalCatalogEntry(
+            name=run_start_doc['uid'],
+            description={},  # TODO
+            driver='intake_bluesky.core.RunCatalog',
+            direct_access='forbid',  # ???
+            args=args,
+            cache=None,  # ???
+            parameters=[],
+            metadata=entry_metadata,
+            catalog_dir=None,
+            getenv=True,
+            getshell=True,
+            catalog=self.catalog)
+
+    def __iter__(self):
+        cursor = self.catalog._run_start_collection.find(
+            self.catalog._query, sort=[('time', pymongo.DESCENDING)])
+        for run_start_doc in cursor:
+            yield run_start_doc['uid']
+
+    def __getitem__(self, name):
+        # If this came from a client, we might be getting '-1'.
+        collection = self.catalog._run_start_collection
+        try:
+            N = int(name)
+        except ValueError:
+            query = {'$and': [self.catalog._query, {'uid': name}]}
+            run_start_doc = collection.find_one(query)
+            if run_start_doc is None:
+                regex_query = {
+                    '$and': [self.catalog._query,
+                             {'uid': {'$regex': f'{name}.*'}}]}
+                matches = list(collection.find(regex_query).limit(10))
+                if not matches:
+                    raise KeyError(name)
+                elif len(matches) == 1:
+                    run_start_doc, = matches
+                else:
+                    match_list = '\n'.join(doc['uid'] for doc in matches)
+                    raise ValueError(
+                        f"Multiple matches to partial uid {name!r}. "
+                        f"Up to 10 listed here:\n"
+                        f"{match_list}")
+        else:
+            if N < 0:
+                # Interpret negative N as "the Nth from last entry".
+                query = self.catalog._query
+                cursor = (collection.find(query)
+                          .sort('time', pymongo.DESCENDING)
+                          .skip(-N - 1)
+                          .limit(1))
+                try:
+                    run_start_doc, = cursor
+                except ValueError:
+                    raise IndexError(
+                        f"Catalog only contains {len(self.catalog)} "
+                        f"runs.")
+            else:
+                # Interpret positive N as
+                # "most recent entry with scan_id == N".
+                query = {'$and': [self.catalog._query, {'scan_id': N}]}
+                cursor = (collection.find(query)
+                          .sort('time', pymongo.DESCENDING)
+                          .limit(1))
+                try:
+                    run_start_doc, = cursor
+                except ValueError:
+                    raise KeyError(f"No run with scan_id={N}")
+        if run_start_doc is None:
+            raise KeyError(name)
+        return self._doc_to_entry(run_start_doc)
+
+    def __contains__(self, key):
+        # Avoid iterating through all entries.
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def __len__(self):
+        return len(self.catalog)
 
 
 class BlueskyMongoCatalog(intake.catalog.Catalog):
@@ -122,122 +232,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         self._schema = {}  # TODO This is cheating, I think.
 
     def _make_entries_container(self):
-        catalog = self
-
-        class Entries:
-            "Mock the dict interface around a MongoDB query result."
-            def _doc_to_entry(self, run_start_doc):
-                uid = run_start_doc['uid']
-                run_start_doc.pop('_id')
-                entry_metadata = {'start': run_start_doc,
-                                  'stop': catalog._get_run_stop(uid)}
-                args = dict(
-                    get_run_start=lambda: run_start_doc,
-                    get_run_stop=partial(catalog._get_run_stop, uid),
-                    get_event_descriptors=partial(catalog._get_event_descriptors, uid),
-                    get_event_cursor=catalog._get_event_cursor,
-                    get_event_count=catalog._get_event_count,
-                    get_resource=catalog._get_resource,
-                    get_datum=catalog._get_datum,
-                    get_datum_cursor=catalog._get_datum_cursor,
-                    filler=catalog.filler)
-                return intake.catalog.local.LocalCatalogEntry(
-                    name=run_start_doc['uid'],
-                    description={},  # TODO
-                    driver='intake_bluesky.core.RunCatalog',
-                    direct_access='forbid',  # ???
-                    args=args,
-                    cache=None,  # ???
-                    parameters=[],
-                    metadata=entry_metadata,
-                    catalog_dir=None,
-                    getenv=True,
-                    getshell=True,
-                    catalog=catalog)
-
-            def __iter__(self):
-                yield from self.keys()
-
-            def keys(self):
-                cursor = catalog._run_start_collection.find(
-                    catalog._query, sort=[('time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield run_start_doc['uid']
-
-            def values(self):
-                cursor = catalog._run_start_collection.find(
-                    catalog._query, sort=[('time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield self._doc_to_entry(run_start_doc)
-
-            def items(self):
-                cursor = catalog._run_start_collection.find(
-                    catalog._query, sort=[('time', pymongo.DESCENDING)])
-                for run_start_doc in cursor:
-                    yield run_start_doc['uid'], self._doc_to_entry(run_start_doc)
-
-            def __getitem__(self, name):
-                # If this came from a client, we might be getting '-1'.
-                collection = catalog._run_start_collection
-                try:
-                    N = int(name)
-                except ValueError:
-                    query = {'$and': [catalog._query, {'uid': name}]}
-                    run_start_doc = collection.find_one(query)
-                    if run_start_doc is None:
-                        regex_query = {
-                            '$and': [catalog._query,
-                                     {'uid': {'$regex': f'{name}.*'}}]}
-                        matches = list(collection.find(regex_query).limit(10))
-                        if not matches:
-                            raise KeyError(name)
-                        elif len(matches) == 1:
-                            run_start_doc, = matches
-                        else:
-                            match_list = '\n'.join(doc['uid'] for doc in matches)
-                            raise ValueError(
-                                f"Multiple matches to partial uid {name!r}. "
-                                f"Up to 10 listed here:\n"
-                                f"{match_list}")
-                else:
-                    if N < 0:
-                        # Interpret negative N as "the Nth from last entry".
-                        query = catalog._query
-                        cursor = (collection.find(query)
-                                  .sort('time', pymongo.DESCENDING)
-                                  .skip(-N - 1)
-                                  .limit(1))
-                        try:
-                            run_start_doc, = cursor
-                        except ValueError:
-                            raise IndexError(
-                                f"Catalog only contains {len(catalog)} "
-                                f"runs.")
-                    else:
-                        # Interpret positive N as
-                        # "most recent entry with scan_id == N".
-                        query = {'$and': [catalog._query, {'scan_id': N}]}
-                        cursor = (collection.find(query)
-                                  .sort('time', pymongo.DESCENDING)
-                                  .limit(1))
-                        try:
-                            run_start_doc, = cursor
-                        except ValueError:
-                            raise KeyError(f"No run with scan_id={N}")
-                if run_start_doc is None:
-                    raise KeyError(name)
-                return self._doc_to_entry(run_start_doc)
-
-            def __contains__(self, key):
-                # Avoid iterating through all entries.
-                try:
-                    self[key]
-                except KeyError:
-                    return False
-                else:
-                    return True
-
-        return Entries()
+        return _Entries(self)
 
     def __len__(self):
         return self._run_start_collection.count_documents(self._query)

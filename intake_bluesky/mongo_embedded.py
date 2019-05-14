@@ -1,3 +1,4 @@
+import collections.abc
 import event_model
 from sys import maxsize
 from functools import partial
@@ -9,6 +10,161 @@ import pymongo
 import pymongo.errors
 
 from .core import parse_handler_registry
+
+
+class _Entries(collections.abc.Mapping):
+    "Mock the dict interface around a MongoDB query result."
+    def __init__(self, catalog):
+        self.catalog = catalog
+
+    def _doc_to_entry(self, run_start_doc):
+
+        header_doc = None
+        uid = run_start_doc['uid']
+
+        def get_header_field(field):
+            nonlocal header_doc
+            if header_doc is None:
+                header_doc = self.catalog._db.header.find_one(
+                                {'run_id': uid}, {'_id': False})
+            if field in header_doc:
+                if field in ['start', 'stop']:
+                    return header_doc[field][0]
+                else:
+                    return header_doc[field]
+            else:
+                if field[0:6] == 'count_':
+                    return 0
+                else:
+                    return None
+
+        def get_resource(uid):
+            resources = get_header_field('resources')
+            for resource in resources:
+                if resource['uid'] == uid:
+                    return resource
+            return None
+
+        def get_datum(datum_id):
+            """ This method is likely very slow. """
+            resources = [resource['uid']
+                         for resource in get_header_field('resources')]
+            datum_page = self.catalog._db.datum.find_one(
+                    {'$and': [{'resource': {'$in': resources}},
+                              {'datum_id': datum_id}]},
+                    {'_id': False})
+            for datum in event_model.unpack_datum_page(datum_page):
+                if datum['datum_id'] == datum_id:
+                    return datum
+            return None
+
+        def get_run_start():
+            return run_start_doc
+
+        def get_event_count(descriptor_uids):
+            return sum([get_header_field('count_' + uid)
+                        for uid in descriptor_uids])
+
+        entry_metadata = {'start': get_header_field('start'),
+                          'stop': get_header_field('stop')}
+
+        args = dict(
+            get_run_start=get_run_start,
+            get_run_stop=partial(get_header_field, 'stop'),
+            get_event_descriptors=partial(
+                            get_header_field, 'descriptors'),
+            get_event_cursor=self.catalog._get_event_cursor,
+            get_event_count=get_event_count,
+            get_resource=get_resource,
+            get_datum=get_datum,
+            get_datum_cursor=self.catalog._get_datum_cursor,
+            filler=self.catalog.filler)
+        return intake.catalog.local.LocalCatalogEntry(
+            name=run_start_doc['uid'],
+            description={},  # TODO
+            driver='intake_bluesky.core.RunCatalog',
+            direct_access='forbid',  # ???
+            args=args,
+            cache=None,  # ???
+            parameters=[],
+            metadata=entry_metadata,
+            catalog_dir=None,
+            getenv=True,
+            getshell=True,
+            catalog=self.catalog)
+
+    def __iter__(self):
+        cursor = self.catalog._db.header.find(
+                    self.catalog._query,
+                    {'start.uid': True, '_id': False},
+                    sort=[('start.time', pymongo.DESCENDING)])
+
+        for doc in cursor:
+            yield doc['start'][0]['uid']
+
+    def __getitem__(self, name):
+        # If this came from a client, we might be getting '-1'.
+        try:
+            N = int(name)
+        except ValueError:
+            query = {'$and': [self.catalog._query, {'uid': name}]}
+            header_doc = self.catalog._db.header.find_one(query)
+            if header_doc is None:
+                regex_query = {
+                    '$and': [self.catalog._query,
+                             {'start.uid': {'$regex': f'{name}.*'}}]}
+                matches = list(
+                    self.catalog._db.header.find(regex_query).limit(10))
+                if not matches:
+                    raise KeyError(name)
+                elif len(matches) == 1:
+                    header_doc, = matches
+                else:
+                    match_list = '\n'.join(doc['uid'] for doc in matches)
+                    raise ValueError(
+                        f"Multiple matches to partial uid {name!r}. "
+                        f"Up to 10 listed here:\n"
+                        f"{match_list}")
+        else:
+            if N < 0:
+                # Interpret negative N as "the Nth from last entry".
+                query = self.catalog._query
+                cursor = (self.catalog._db.header.find(query)
+                          .sort('start.time', pymongo.DESCENDING)
+                          .skip(-N - 1)
+                          .limit(1))
+                try:
+                    header_doc, = cursor
+                except ValueError:
+                    raise IndexError(
+                        f"Catalog only contains {len(self.catalog)} "
+                        f"runs.")
+            else:
+                # Interpret positive N as
+                # "most recent entry with scan_id == N".
+                query = {'$and': [self.catalog._query, {'start.scan_id': N}]}
+                cursor = (self.catalog._db.header.find(query)
+                          .sort('start.time', pymongo.DESCENDING)
+                          .limit(1))
+                try:
+                    header_doc, = cursor
+                except ValueError:
+                    raise KeyError(f"No run with scan_id={N}")
+        if header_doc is None:
+            raise KeyError(name)
+        return self._doc_to_entry(header_doc['start'][0])
+
+    def __contains__(self, key):
+        # Avoid iterating through all entries.
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def __len__(self):
+        return len(self.catalog)
 
 
 class BlueskyMongoCatalog(intake.catalog.Catalog):
@@ -94,173 +250,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                 yield datum
 
     def _make_entries_container(self):
-        catalog = self
-
-        class Entries:
-
-            "Mock the dict interface around a MongoDB query result."
-            def _doc_to_entry(self, run_start_doc):
-
-                header_doc = None
-                uid = run_start_doc['uid']
-
-                def get_header_field(field):
-                    nonlocal header_doc
-                    if header_doc is None:
-                        header_doc = catalog._db.header.find_one(
-                                        {'run_id': uid}, {'_id': False})
-                    if field in header_doc:
-                        if field in ['start', 'stop']:
-                            return header_doc[field][0]
-                        else:
-                            return header_doc[field]
-                    else:
-                        if field[0:6] == 'count_':
-                            return 0
-                        else:
-                            return None
-
-                def get_resource(uid):
-                    resources = get_header_field('resources')
-                    for resource in resources:
-                        if resource['uid'] == uid:
-                            return resource
-                    return None
-
-                def get_datum(datum_id):
-                    """ This method is likely very slow. """
-                    resources = [resource['uid']
-                                 for resource in get_header_field('resources')]
-                    datum_page = catalog._db.datum.find_one(
-                           {'$and': [{'resource': {'$in': resources}},
-                                     {'datum_id': datum_id}]},
-                           {'_id': False})
-                    for datum in event_model.unpack_datum_page(datum_page):
-                        if datum['datum_id'] == datum_id:
-                            return datum
-                    return None
-
-                def get_event_count(descriptor_uids):
-                    return sum([get_header_field('count_' + uid)
-                                for uid in descriptor_uids])
-
-                entry_metadata = {'start': get_header_field('start'),
-                                  'stop': get_header_field('stop')}
-
-                args = dict(
-                    get_run_start=lambda: run_start_doc,
-                    get_run_stop=partial(get_header_field, 'stop'),
-                    get_event_descriptors=partial(
-                                    get_header_field, 'descriptors'),
-                    get_event_cursor=catalog._get_event_cursor,
-                    get_event_count=get_event_count,
-                    get_resource=get_resource,
-                    get_datum=get_datum,
-                    get_datum_cursor=catalog._get_datum_cursor,
-                    filler=catalog.filler)
-                return intake.catalog.local.LocalCatalogEntry(
-                    name=run_start_doc['uid'],
-                    description={},  # TODO
-                    driver='intake_bluesky.core.RunCatalog',
-                    direct_access='forbid',  # ???
-                    args=args,
-                    cache=None,  # ???
-                    parameters=[],
-                    metadata=entry_metadata,
-                    catalog_dir=None,
-                    getenv=True,
-                    getshell=True,
-                    catalog=catalog)
-
-            def __iter__(self):
-                yield from self.keys()
-
-            def keys(self):
-                cursor = catalog._db.header.find(
-                            catalog._query,
-                            {'start.uid': True, '_id': False},
-                            sort=[('start.time', pymongo.DESCENDING)])
-
-                for doc in cursor:
-                    yield doc['start'][0]['uid']
-
-            def values(self):
-                cursor = catalog._db.header.find(
-                            catalog._query,
-                            {'start': True, '_id': False},
-                            sort=[('start.time', pymongo.DESCENDING)])
-                for header_doc in cursor:
-                    yield self._doc_to_entry(header_doc['start'][0])
-
-            def items(self):
-                cursor = catalog._db.header.find(
-                    catalog._query, sort=[('start.time', pymongo.DESCENDING)])
-                for header_doc in cursor:
-                    yield header_doc['start'][0]['uid'], self._doc_to_entry(
-                                header_doc['start'][0])
-
-            def __getitem__(self, name):
-                # If this came from a client, we might be getting '-1'.
-                try:
-                    N = int(name)
-                except ValueError:
-                    query = {'$and': [catalog._query, {'uid': name}]}
-                    header_doc = catalog._db.header.find_one(query)
-                    if header_doc is None:
-                        regex_query = {
-                            '$and': [catalog._query,
-                                     {'start.uid': {'$regex': f'{name}.*'}}]}
-                        matches = list(
-                                catalog._db.header.find(regex_query).limit(10))
-                        if not matches:
-                            raise KeyError(name)
-                        elif len(matches) == 1:
-                            header_doc, = matches
-                        else:
-                            match_list = '\n'.join(doc['uid'] for doc in matches)
-                            raise ValueError(
-                                f"Multiple matches to partial uid {name!r}. "
-                                f"Up to 10 listed here:\n"
-                                f"{match_list}")
-                else:
-                    if N < 0:
-                        # Interpret negative N as "the Nth from last entry".
-                        query = catalog._query
-                        cursor = (catalog._db.header.find(query)
-                                  .sort('start.time', pymongo.DESCENDING)
-                                  .skip(-N - 1)
-                                  .limit(1))
-                        try:
-                            header_doc, = cursor
-                        except ValueError:
-                            raise IndexError(
-                                f"Catalog only contains {len(catalog)} "
-                                f"runs.")
-                    else:
-                        # Interpret positive N as
-                        # "most recent entry with scan_id == N".
-                        query = {'$and': [catalog._query, {'start.scan_id': N}]}
-                        cursor = (catalog._db.header.find(query)
-                                  .sort('start.time', pymongo.DESCENDING)
-                                  .limit(1))
-                        try:
-                            header_doc, = cursor
-                        except ValueError:
-                            raise KeyError(f"No run with scan_id={N}")
-                if header_doc is None:
-                    raise KeyError(name)
-                return self._doc_to_entry(header_doc['start'][0])
-
-            def __contains__(self, key):
-                # Avoid iterating through all entries.
-                try:
-                    self[key]
-                except KeyError:
-                    return False
-                else:
-                    return True
-
-        return Entries()
+        return _Entries(self)
 
     def _close(self):
         self._client.close()
