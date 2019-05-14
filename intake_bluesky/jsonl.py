@@ -1,3 +1,4 @@
+import collections.abc
 import event_model
 from functools import partial
 import glob
@@ -10,6 +11,102 @@ import pathlib
 from mongoquery import Query
 
 from .core import parse_handler_registry
+
+
+class _Entries(collections.abc.Mapping):
+    "Mock the dict interface around a MongoDB query result."
+    def __init__(self, catalog):
+        self.catalog = catalog
+
+    def _doc_to_entry(self, run_start_doc):
+        uid = run_start_doc['uid']
+        entry_metadata = {'start': run_start_doc,
+                          'stop': self.catalog._get_run_stop(uid)}
+
+        def get_run_start():
+            return run_start_doc
+
+        args = dict(
+            get_run_start=get_run_start,
+            get_run_stop=partial(self.catalog._get_run_stop, uid),
+            get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
+            get_event_cursor=partial(self.catalog._get_event_cursor, uid),
+            get_event_count=partial(self.catalog._get_event_count, uid),
+            get_resource=partial(self.catalog._get_resource, uid),
+            get_datum=partial(self.catalog._get_datum, uid),
+            get_datum_cursor=partial(self.catalog._get_datum_cursor, uid),
+            filler=self.catalog.filler)
+        return intake.catalog.local.LocalCatalogEntry(
+            name=run_start_doc['uid'],
+            description={},  # TODO
+            driver='intake_bluesky.core.RunCatalog',
+            direct_access='forbid',  # ???
+            args=args,
+            cache=None,  # ???
+            parameters=[],
+            metadata=entry_metadata,
+            catalog_dir=None,
+            getenv=True,
+            getshell=True,
+            catalog=self.catalog)
+
+    def __iter__(self):
+        yield from self.catalog._runs
+
+    def __getitem__(self, name):
+        # If this came from a client, we might be getting '-1'.
+        try:
+            N = int(name)
+        except (ValueError, TypeError):
+            try:
+                run_start_doc = self.catalog._run_starts[name]
+            except KeyError:
+                # Try looking up by *partial* uid.
+                matches = {}
+                for uid, run_start_doc in list(self.catalog._run_starts.items()):
+                    if uid.startswith(name):
+                        matches[uid] = run_start_doc
+                if not matches:
+                    raise KeyError(name)
+                elif len(matches) > 1:
+                    match_list = '\n'.join(matches)
+                    raise ValueError(
+                        f"Multiple matches to partial uid {name!r}:\n"
+                        f"{match_list}")
+                else:
+                    run_start_doc, = matches.values()
+        else:
+            # Sort in reverse chronological order (most recent first).
+            time_sorted = sorted(self.catalog._run_starts.values(),
+                                 key=lambda doc: -doc['time'])
+            if N < 0:
+                # Interpret negative N as "the Nth from last entry".
+                if -N > len(time_sorted):
+                    raise IndexError(
+                        f"Catalog only contains {len(time_sorted)} "
+                        f"runs.")
+                run_start_doc = time_sorted[-N - 1]
+            else:
+                # Interpret positive N as
+                # "most recent entry with scan_id == N".
+                for run_start_doc in time_sorted:
+                    if run_start_doc.get('scan_id') == N:
+                        break
+                else:
+                    raise KeyError(f"No run with scan_id={N}")
+        return self._doc_to_entry(run_start_doc)
+
+    def __contains__(self, key):
+        # Avoid iterating through all entries.
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def __len__(self):
+        return len(self.catalog._runs)
 
 
 class BlueskyJSONLCatalog(intake.catalog.Catalog):
@@ -153,109 +250,7 @@ class BlueskyJSONLCatalog(intake.catalog.Catalog):
                 datums.clear()
 
     def _make_entries_container(self):
-        catalog = self
-
-        class Entries:
-            "Mock the dict interface around a MongoDB query result."
-            def _doc_to_entry(self, run_start_doc):
-                uid = run_start_doc['uid']
-                entry_metadata = {'start': run_start_doc,
-                                  'stop': catalog._get_run_stop(uid)}
-
-                def get_run_start():
-                    return run_start_doc
-
-                args = dict(
-                    get_run_start=get_run_start,
-                    get_run_stop=partial(catalog._get_run_stop, uid),
-                    get_event_descriptors=partial(catalog._get_event_descriptors, uid),
-                    get_event_cursor=partial(catalog._get_event_cursor, uid),
-                    get_event_count=partial(catalog._get_event_count, uid),
-                    get_resource=partial(catalog._get_resource, uid),
-                    get_datum=partial(catalog._get_datum, uid),
-                    get_datum_cursor=partial(catalog._get_datum_cursor, uid),
-                    filler=catalog.filler)
-                return intake.catalog.local.LocalCatalogEntry(
-                    name=run_start_doc['uid'],
-                    description={},  # TODO
-                    driver='intake_bluesky.core.RunCatalog',
-                    direct_access='forbid',  # ???
-                    args=args,
-                    cache=None,  # ???
-                    parameters=[],
-                    metadata=entry_metadata,
-                    catalog_dir=None,
-                    getenv=True,
-                    getshell=True,
-                    catalog=catalog)
-
-            def __iter__(self):
-                yield from self.keys()
-
-            def keys(self):
-                yield from catalog._runs
-
-            def values(self):
-                for run_start_doc in list(catalog._run_starts.values()):
-                    yield self._doc_to_entry(run_start_doc)
-
-            def items(self):
-                for uid, run_start_doc in list(catalog._run_starts.items()):
-                    yield uid, self._doc_to_entry(run_start_doc)
-
-            def __getitem__(self, name):
-                # If this came from a client, we might be getting '-1'.
-                try:
-                    N = int(name)
-                except (ValueError, TypeError):
-                    try:
-                        run_start_doc = catalog._run_starts[name]
-                    except KeyError:
-                        # Try looking up by *partial* uid.
-                        matches = {}
-                        for uid, run_start_doc in list(catalog._run_starts.items()):
-                            if uid.startswith(name):
-                                matches[uid] = run_start_doc
-                        if not matches:
-                            raise KeyError(name)
-                        elif len(matches) > 1:
-                            match_list = '\n'.join(matches)
-                            raise ValueError(
-                                f"Multiple matches to partial uid {name!r}:\n"
-                                f"{match_list}")
-                        else:
-                            run_start_doc, = matches.values()
-                else:
-                    # Sort in reverse chronological order (most recent first).
-                    time_sorted = sorted(catalog._run_starts.values(),
-                                         key=lambda doc: -doc['time'])
-                    if N < 0:
-                        # Interpret negative N as "the Nth from last entry".
-                        if -N > len(time_sorted):
-                            raise IndexError(
-                                f"Catalog only contains {len(time_sorted)} "
-                                f"runs.")
-                        run_start_doc = time_sorted[-N - 1]
-                    else:
-                        # Interpret positive N as
-                        # "most recent entry with scan_id == N".
-                        for run_start_doc in time_sorted:
-                            if run_start_doc.get('scan_id') == N:
-                                break
-                        else:
-                            raise KeyError(f"No run with scan_id={N}")
-                return self._doc_to_entry(run_start_doc)
-
-            def __contains__(self, key):
-                # Avoid iterating through all entries.
-                try:
-                    self[key]
-                except KeyError:
-                    return False
-                else:
-                    return True
-
-        return Entries()
+        return _Entries(self)
 
     def search(self, query):
         """
