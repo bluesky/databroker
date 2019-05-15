@@ -1,6 +1,13 @@
+dist: xenial  # for Python 3.7
 language: python
-python:
-  - 3.6
+matrix:
+  include:
+  - python: 3.6
+    env: INTAKE_MASTER=false
+  - python: 3.7
+    env: INTAKE_MASTER=false
+  - python: 3.7
+    env: INTAKE_MASTER=true
 cache:
   directories:
     - $HOME/.cache/pip
@@ -24,6 +31,11 @@ install:
   - pip install .
   # Install extra requirements for running tests and building docs.
   - pip install -r requirements-dev.txt
+  # Install intake master branch if build settings indicate to do so.
+  - |
+    if [ "$INTAKE_MASTER" = true ] ; then
+      pip install git+https://github.com/intake/intake@master
+    fi
 
 script:
   - coverage run -m pytest  # Run the tests and check for test coverage.
