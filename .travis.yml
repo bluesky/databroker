@@ -15,8 +15,9 @@ matrix:
       apt:
         packages:
           - libhdf5-serial-dev
-          - netcdf-bin
           - libnetcdf-dev
+          - libsnappy-dev
+          - netcdf-bin
   allow_failures:
     - python: nightly
     - env: INTAKE_MASTER=true
