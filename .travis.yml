@@ -11,6 +11,12 @@ matrix:
     env: INTAKE_MASTER=true
   - python: nightly
     env: INTAKE_MASTER=false
+    addons:
+      apt:
+        packages:
+          - libhdf5-serial-dev
+          - netcdf-bin
+          - libnetcdf-dev
   allow_failures:
     - python: nightly
     - env: INTAKE_MASTER=true
