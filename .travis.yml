@@ -1,6 +1,7 @@
 dist: xenial  # for Python 3.7
 language: python
 matrix:
+  fast_finish: true
   include:
   - python: 3.6
     env: INTAKE_MASTER=false
@@ -8,6 +9,10 @@ matrix:
     env: INTAKE_MASTER=false
   - python: 3.7
     env: INTAKE_MASTER=true
+  - python: nightly
+  allow_failures:
+    - python: nightly
+    - env: INTAKE_MASTER=true
 cache:
   directories:
     - $HOME/.cache/pip
