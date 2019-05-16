@@ -10,6 +10,7 @@ matrix:
   - python: 3.7
     env: INTAKE_MASTER=true
   - python: nightly
+    env: INTAKE_MASTER=false
   allow_failures:
     - python: nightly
     - env: INTAKE_MASTER=true
