@@ -4,6 +4,7 @@ bluesky
 codecov
 coverage
 flake8
+intake[server]
 ophyd
 pytest >=3.9
 sphinx
