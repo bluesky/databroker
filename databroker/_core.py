@@ -959,7 +959,7 @@ def lookup_config(name):
         tried.append(filename)
         if os.path.isfile(filename):
             with open(filename) as f:
-                return yaml.load(f)
+                return yaml.load(f, Loader=yaml.FullLoader)
     else:
         raise FileNotFoundError("No config file named {!r} could be found in "
                                 "the following locations:\n{}"
