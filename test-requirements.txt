@@ -1,6 +1,9 @@
+bluesky
 coverage
 glueviz
 matplotlib
+ophyd
 pathlib
+pyqt5
 pytest
 vcrpy

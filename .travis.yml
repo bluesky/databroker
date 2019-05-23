@@ -41,14 +41,6 @@ matrix:
     - python: nightly
 
 install:
-  - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
-      pip install singledispatch pathlib2;
-    elif [ $TRAVIS_PYTHON_VERSION = "3.4" ]; then
-      echo;
-    else
-      pip install bluesky pyqt5;
-      pip install -U ophyd --pre;
-    fi;
   - pip install --upgrade cython
   - pip install --quiet --upgrade --global-option='--without-libyaml' pyyaml
   - pip install .[all]
