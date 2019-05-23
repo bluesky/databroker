@@ -31,23 +31,16 @@ before_install:
 matrix:
   fast_finish: true
   include:
-    - python: 3.4
     - python: 3.5
     - python: 3.6
+    - python: 3.7
+      dist: xenial
       env: PUBLISH_DOCS=1
     - python: nightly
   allow_failures:
     - python: nightly
 
 install:
-  - if [ $TRAVIS_PYTHON_VERSION = "2.7" ]; then
-      pip install singledispatch pathlib2;
-    elif [ $TRAVIS_PYTHON_VERSION = "3.4" ]; then
-      echo;
-    else
-      pip install bluesky pyqt5;
-      pip install -U ophyd --pre;
-    fi;
   - pip install --upgrade cython
   - pip install --quiet --upgrade --global-option='--without-libyaml' pyyaml
   - pip install .[all]
@@ -58,9 +51,13 @@ script:
   - coverage run run_tests.py
   - coverage report -m
   - set -e
-  # Build docs.
   - pip install -r docs-requirements.txt
-  - make -C doc html
+  # A mysterious problem reading assets.rst is breaking sphinx build on 3.5.
+  # Skip building on 3.5.
+  - |
+    if [ "$TRAVIS_PYTHON_VERSION" != "3.5" ]; then
+      make -C doc html
+    fi
   - |
     if [ $PUBLISH_DOCS ]; then
       # Push built documentation to GH pages.
