@@ -17,6 +17,6 @@ requests
 six
 tifffile
 toolz
-tornado
+tornado<6
 tzlocal
 ujson
