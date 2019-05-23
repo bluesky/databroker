@@ -14,16 +14,11 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 with open(path.join(here, 'requirements.txt')) as f:
     requirements = f.read().split()
 
-# Remove the 'optional' requirements
-optional = ('h5py', 'pymongo', 'requests', 'tornado', 'ujson')
-for package in optional:
-    requirements.remove(package)
-
 extras_require = {
     'mongo': ['pymongo'],
     'hdf5': ['h5py'],
     'client': ['requests'],
-    'service': ['tornado', 'ujson'],
+    'service': ['tornado<6', 'ujson'],
 }
 
 extras_require['all'] = sorted(set(sum(extras_require.values(), [])))

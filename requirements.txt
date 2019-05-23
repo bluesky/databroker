@@ -2,7 +2,6 @@ attrs
 boltons
 dask
 doct
-h5py
 humanize
 jinja2
 jsonschema
@@ -10,13 +9,9 @@ mongoquery
 numpy
 pandas
 pims
-pymongo
 pytz
 pyyaml
-requests
 six
 tifffile
 toolz
-tornado<6
 tzlocal
-ujson
