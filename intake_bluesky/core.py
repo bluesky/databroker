@@ -209,7 +209,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         Additional info
     kwargs: ignored
     """
-    name = 'bluesky-run-catalog'
+    name = 'bluesky-run'
 
     def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
         super().__init__(url=url, http_args=http_args, name=name,
@@ -322,7 +322,7 @@ class BlueskyRun(intake.catalog.Catalog):
         Additional keyword arguments are passed through to the base class,
         Catalog.
     """
-    container = 'bluesky-run-catalog'
+    container = 'bluesky-run'
     version = '0.0.1'
     partition_access = True
     PARTITION_SIZE = 100
@@ -689,5 +689,5 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-intake.registry['remote-bluesky-run-catalog'] = RemoteBlueskyRun
-intake.container.container_map['bluesky-run-catalog'] = RemoteBlueskyRun
+intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
+intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
