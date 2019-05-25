@@ -82,7 +82,7 @@ class _Entries(collections.abc.Mapping):
         return intake.catalog.local.LocalCatalogEntry(
             name=run_start_doc['uid'],
             description={},  # TODO
-            driver='intake_bluesky.core.RunCatalog',
+            driver='intake_bluesky.core.BlueskyRun',
             direct_access='forbid',  # ???
             args=args,
             cache=None,  # ???
