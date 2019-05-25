@@ -189,11 +189,11 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     return xarray.merge(datasets)
 
 
-class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
+class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     """
     Catalog representing one Run.
 
-    This is a client-side proxy to a RunCatalog stored on a remote server.
+    This is a client-side proxy to a BlueskyRun stored on a remote server.
 
     Parameters
     ----------
@@ -259,12 +259,12 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
 
     def read(self):
         raise NotImplementedError(
-            "Reading the RunCatalog itself is not supported. Instead read one "
+            "Reading the BlueskyRun itself is not supported. Instead read one "
             "its entries, representing individual Event Streams.")
 
     def to_dask(self):
         raise NotImplementedError(
-            "Reading the RunCatalog itself is not supported. Instead read one "
+            "Reading the BlueskyRun itself is not supported. Instead read one "
             "its entries, representing individual Event Streams.")
 
     def _close(self):
@@ -295,7 +295,7 @@ class RemoteRunCatalog(intake.catalog.base.RemoteCatalog):
         raise NotImplementedError("Cannot search within one run.")
 
 
-class RunCatalog(intake.catalog.Catalog):
+class BlueskyRun(intake.catalog.Catalog):
     """
     Catalog representing one Run.
 
@@ -483,12 +483,12 @@ class RunCatalog(intake.catalog.Catalog):
 
     def read(self):
         raise NotImplementedError(
-            "Reading the RunCatalog itself is not supported. Instead read one "
+            "Reading the BlueskyRun itself is not supported. Instead read one "
             "its entries, representing individual Event Streams.")
 
     def to_dask(self):
         raise NotImplementedError(
-            "Reading the RunCatalog itself is not supported. Instead read one "
+            "Reading the BlueskyRun itself is not supported. Instead read one "
             "its entries, representing individual Event Streams.")
 
 
@@ -689,5 +689,5 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-intake.registry['remote-bluesky-run-catalog'] = RemoteRunCatalog
-intake.container.container_map['bluesky-run-catalog'] = RemoteRunCatalog
+intake.registry['remote-bluesky-run-catalog'] = RemoteBlueskyRun
+intake.container.container_map['bluesky-run-catalog'] = RemoteBlueskyRun

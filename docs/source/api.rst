@@ -27,23 +27,23 @@ implemented, intake may obtain a Catalog's length by iterating through it
 entirely, which may be costly. If a more efficient approach is possible (e.g. a
 COUNT query) it should be implemented.
 
-Integration with RunCatalog
+Integration with BlueskyRun
 ---------------------------
 
 For each file format / backend (MongoDB, newline-delimited JSON, directory of
 TIFFs, etc.) one needs to write a single custom catalog. Its entries, created
 dynamically as described above, should be ``LocalCatalogEntry`` objects that
-identify ``intake_bluesky.core.RunCatalog`` as their driver. See below for the
+identify ``intake_bluesky.core.BlueskyRun`` as their driver. See below for the
 arguments that they would provide to the entry so that it can instantiate the
 catalog when called upon.
 
 Core
 ====
 
-.. autoclass:: intake_bluesky.core.RunCatalog
+.. autoclass:: intake_bluesky.core.BlueskyRun
    :members:
 
-.. autoclass:: intake_bluesky.core.RemoteRunCatalog
+.. autoclass:: intake_bluesky.core.RemoteBlueskyRun
    :members:
 
 .. autoclass:: intake_bluesky.core.BlueskyEventStream

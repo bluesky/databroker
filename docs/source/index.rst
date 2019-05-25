@@ -23,14 +23,14 @@ bluesky.
   instead of performing plain-text search.
 * Intake-Bluesky ships Catalogs that embody the semantics of bluesky's data
   model. A bluesky "run" (e.g. one scan) is represented by a
-  :class:`~intake_bluesky.core.RunCatalog`.  Each logical table of data within
+  :class:`~intake_bluesky.core.BlueskyRun`.  Each logical table of data within
   a given run is represented by a
   :class:`~intake_bluesky.core.BlueskyEventStream`.
 * The methods :meth:`~intake_bluesky.core.BlueskyEventStream.read()` and
   :meth:`~intake_bluesky.core.BlueskyEventStream.to_dask()` provide the data in
   SciPy/PyData structures and their "lazy" dask-backed counterparts, as with
   any other intake data source.
-* The additional method :meth:`~intake_bluesky.core.RunCatalog.read_canonical`
+* The additional method :meth:`~intake_bluesky.core.BlueskyRun.read_canonical`
   returns a generator suitable for streaming. Its elements satisfy
   `bluesky's data model <https://nsls-ii.github.io/event-model>`_ and can be
   fed into streaming visualization, processing, and serialization tools that
@@ -56,7 +56,7 @@ Intake-Bluesky will also address the use case of reading files *not* produced
 by bluesky, retrofitting the semantics of its data model. Thus, a "bucket
 of files" such as a directory of TIFFs could be fed through tools that consume
 the representation returned by
-:meth:`~intake_bluesky.core.RunCatalog.read_canonical`.
+:meth:`~intake_bluesky.core.BlueskyRun.read_canonical`.
 
 .. note::
 
