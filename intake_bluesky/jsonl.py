@@ -1,7 +1,9 @@
-from .in_memory import BlueskyInMemoryCatalog
 import glob
 import json
+import os
 import pathlib
+
+from .in_memory import BlueskyInMemoryCatalog
 
 
 class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
@@ -32,16 +34,19 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         if isinstance(paths, (str, pathlib.Path)):
             paths = [paths]
         self.paths = paths
+        self._filename_to_mtime = {}
         super().__init__(handler_registry=handler_registry,
                          query=query,
                          **kwargs)
 
     def _load(self):
-        # TODO Cache filepaths already loaded and check mtime to decide which
-        # need to be reloaded.
         for path in self.paths:
-            file_list = glob.glob(path)
-            for filename in file_list:
+            for filename in glob.glob(path):
+                mtime = os.path.getmtime(filename)
+                if mtime == self._filename_to_mtime.get(filename):
+                    # This file has not changed since last time we loaded it.
+                    continue
+                self._filename_to_mtime[filename] = mtime
                 with open(filename, 'r') as file:
                     try:
                         name, run_start_doc = json.loads(file.readline())
