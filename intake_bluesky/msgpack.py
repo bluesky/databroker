@@ -1,20 +1,26 @@
 import glob
-import json
+import msgpack
+import msgpack_numpy
 import os
 import pathlib
 
 from .in_memory import BlueskyInMemoryCatalog
 
 
-class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
-    name = 'bluesky-jsonl-catalog'  # noqa
+UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,
+                      encoding='utf-8',
+                      max_buffer_size=1_000_000_000)
+
+
+class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
+    name = 'bluesky-msgpack-catalog'  # noqa
 
     def __init__(self, paths, *,
                  handler_registry=None, query=None, **kwargs):
         """
-        This Catalog is backed by a newline-delimited JSON (jsonl) file.
+        This Catalog is backed by msgpack files.
 
-        Each line of the file is expected to be a JSON list with two elements,
+        Each chunk the file is expected to be a list with two elements,
         the document name (type) and the document itself. The documents are
         expected to be in chronological order.
 
@@ -47,17 +53,15 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                     # This file has not changed since last time we loaded it.
                     continue
                 self._filename_to_mtime[filename] = mtime
-                with open(filename, 'r') as file:
+                with open(filename, 'rb') as file:
+                    unpacker = msgpack.Unpacker(file, **UNPACK_OPTIONS)
                     try:
-                        name, run_start_doc = json.loads(file.readline())
-                    except json.JSONDecodeError:
-                        if not file.readline():
-                            # Empty file, maybe being written to currently
-                            continue
+                        name, run_start_doc = next(unpacker)
+                    except StopIteration:
+                        # Empty file, maybe being written to currently
+                        continue
 
                 def gen():
-                    with open(filename, 'r') as file:
-                        for line in file:
-                            name, doc = json.loads(line)
-                            yield (name, doc)
+                    with open(filename, 'rb') as file:
+                        yield from msgpack.Unpacker(file, **UNPACK_OPTIONS)
                 self.upsert(gen, (), {})
