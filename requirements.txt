@@ -5,6 +5,7 @@ msgpack-numpy
 intake !=0.5.0
 intake-xarray
 msgpack
+msgpack-numpy  # to be split into extras or a separate package
 numpy
 pandas
 pymongo  # to be split into extras or a separate package
