@@ -1,6 +1,4 @@
-import collections.abc
 import event_model
-import itertools
 import intake
 import intake.catalog
 import intake.catalog.local
