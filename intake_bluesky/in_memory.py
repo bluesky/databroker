@@ -80,7 +80,6 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(
-            paths=self.paths,
             query=query,
             name='search results',
             getenv=self.getenv,
@@ -88,6 +87,11 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
             auth=self.auth,
             metadata=(self.metadata or {}).copy(),
             storage_options=self.storage_options)
+        for key, entry in self._entries.items():
+            args = entry._captured_init_kwargs['args']
+            cat.upsert(args['gen_func'],
+                       args['gen_args'],
+                       args['gen_kwargs'])
         return cat
 
     def __getitem__(self, name):
