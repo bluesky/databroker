@@ -65,3 +65,24 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
                     with open(filename, 'rb') as file:
                         yield from msgpack.Unpacker(file, **UNPACK_OPTIONS)
                 self.upsert(gen, (), {})
+
+    def search(self, query):
+        """
+        Return a new Catalog with a subset of the entries in this Catalog.
+
+        Parameters
+        ----------
+        query : dict
+        """
+        if self._query:
+            query = {'$and': [self._query, query]}
+        cat = type(self)(
+            paths=self.paths,
+            query=query,
+            name='search results',
+            getenv=self.getenv,
+            getshell=self.getshell,
+            auth=self.auth,
+            metadata=(self.metadata or {}).copy(),
+            storage_options=self.storage_options)
+        return cat
