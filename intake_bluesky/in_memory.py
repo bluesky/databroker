@@ -34,6 +34,8 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
             ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+        query : dict, optional
+            Mongo query that filters entries' RunStart documents
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
