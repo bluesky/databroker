@@ -1,3 +1,4 @@
+import copy
 import event_model
 import intake
 import intake.catalog
@@ -6,6 +7,14 @@ import intake.source.base
 from mongoquery import Query
 
 from .core import parse_handler_registry
+
+
+class SafeLocalCatalogEntry(intake.catalog.local.LocalCatalogEntry):
+    # For compat with intake 0.5.1.
+    # Not necessary after https://github.com/intake/intake/pull/362
+    # is released.
+    def describe(self):
+        return copy.deepcopy(super().describe())
 
 
 class BlueskyInMemoryCatalog(intake.catalog.Catalog):
@@ -51,7 +60,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         uid = run_start_doc['uid']
         self._uid_to_run_start_doc[uid] = run_start_doc
 
-        entry = intake.catalog.local.LocalCatalogEntry(
+        entry = SafeLocalCatalogEntry(
             name=run_start_doc['uid'],
             description={},  # TODO
             driver='intake_bluesky.core.BlueskyRunFromGenerator',
