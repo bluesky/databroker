@@ -56,6 +56,7 @@ setup(
             # 'path/to/data_file',
             ]
         },
+    python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     install_requires=requirements,
     license="BSD (3-clause)",
     classifiers=[
