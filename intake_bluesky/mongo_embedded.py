@@ -274,6 +274,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         cat = type(self)(
             datastore_db=self._db,
             query=query,
+            handler_registry=self.filler.handler_registry,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

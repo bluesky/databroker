@@ -255,6 +255,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             metadatastore_db=self._metadatastore_db,
             asset_registry_db=self._asset_registry_db,
             query=query,
+            handler_registry=self.filler.handler_registry,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,
