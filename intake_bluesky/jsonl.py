@@ -77,6 +77,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         cat = type(self)(
             paths=self.paths,
             query=query,
+            handler_registry=self.filler.handler_registry,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

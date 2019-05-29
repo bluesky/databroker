@@ -92,6 +92,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
             query = {'$and': [self._query, query]}
         cat = type(self)(
             query=query,
+            handler_registry=self.filler.handler_registry,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,
