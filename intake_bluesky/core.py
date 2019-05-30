@@ -457,7 +457,7 @@ class BlueskyRun(intake.catalog.Catalog):
             events = self._get_event_cursor(descriptor_uids=descriptor_uids,
                                             skip=skip, limit=limit)
             for descriptor in self._descriptors:
-                filler('descriptor', descriptor)
+                self.filler('descriptor', descriptor)
             for event in events:
                 try:
                     self.filler('event', event)
