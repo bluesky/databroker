@@ -79,6 +79,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
         if not events:
             continue
         if any(data_keys[key].get('external') for key in keys):
+            filler('descriptor', descriptor)
             for event in events:
                 try:
                     filler('event', event)
@@ -455,6 +456,8 @@ class BlueskyRun(intake.catalog.Catalog):
         if limit > 0:
             events = self._get_event_cursor(descriptor_uids=descriptor_uids,
                                             skip=skip, limit=limit)
+            for descriptor in self._descriptors:
+                self.filler('descriptor', descriptor)
             for event in events:
                 try:
                     self.filler('event', event)
