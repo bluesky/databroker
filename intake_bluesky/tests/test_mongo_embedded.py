@@ -26,9 +26,8 @@ def teardown_module(module):
 @pytest.fixture(params=['local', 'remote'])
 def bundle(request, intake_server, example_data, db_factory):  # noqa
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
-    volatile_db = db_factory()
     permanent_db = db_factory()
-    serializer = Serializer(volatile_db, permanent_db)
+    serializer = Serializer(permanent_db)
     uid, docs = example_data
     for name, doc in docs:
         serializer(name, doc)
