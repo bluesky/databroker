@@ -18,7 +18,7 @@ import xarray
 
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
-                        filler, get_resource, get_datum, get_datum_cursor,
+                        filler, get_resource, get_datum, get_datum_pages,
                         include=None, exclude=None):
     """
     Represent the data in one Event stream as an xarray.
@@ -38,8 +38,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
         Expected signature ``get_resource(resource_uid) -> Resource``
     get_datum : callable
         Expected signature ``get_datum(datum_id) -> Datum``
-    get_datum_cursor : callable
-        Expected signature ``get_datum_cursor(resource_uid) -> generator``
+    get_datum_pages : callable
+        Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
     include : list, optional
         Fields ('data keys') to include. By default all are included. This
@@ -90,7 +90,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
                     resource = get_resource(resource_uid)
                     filler('resource', resource)
                     # Pre-fetch all datum for this resource.
-                    for datum in get_datum_cursor(resource_uid):
+                    for datum in get_datum_pages(resource_uid):
                         filler('datum', datum)
                     # TODO -- When to clear the datum cache in filler?
                     filler('event', event)
@@ -308,15 +308,15 @@ class BlueskyRun(intake.catalog.Catalog):
         Expected signature ``get_run_stop() -> RunStop``
     get_event_descriptors : callable
         Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
-    get_event_cursor : callable
-        Expected signature ``get_event_cursor(descriptor_uids) -> generator``
+    get_event_pages : callable
+        Expected signature ``get_event_pages(descriptor_uids) -> generator``
         where ``generator`` yields Event documents
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     get_datum : callable
         Expected signature ``get_datum(datum_id) -> Datum``
-    get_datum_cursor : callable
-        Expected signature ``get_datum_cursor(resource_uid) -> generator``
+    get_datum_pages : callable
+        Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
     filler : event_model.Filler
     **kwargs :
@@ -332,11 +332,11 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_run_start,
                  get_run_stop,
                  get_event_descriptors,
-                 get_event_cursor,
+                 get_event_page,
                  get_event_count,
                  get_resource,
                  get_datum,
-                 get_datum_cursor,
+                 get_datum_pages,
                  filler,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
@@ -346,11 +346,11 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_run_start = get_run_start
         self._get_run_stop = get_run_stop
         self._get_event_descriptors = get_event_descriptors
-        self._get_event_cursor = get_event_cursor
+        self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
         self._get_datum = get_datum
-        self._get_datum_cursor = get_datum_cursor
+        self._get_datum_pages = get_datum_pages
         self.filler = filler
         super().__init__(**kwargs)
 
@@ -409,11 +409,11 @@ class BlueskyRun(intake.catalog.Catalog):
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
                 get_event_descriptors=self._get_event_descriptors,
-                get_event_cursor=self._get_event_cursor,
+                get_event_pages=self._get_event_pages,
                 get_event_count=self._get_event_count,
                 get_resource=self._get_resource,
                 get_datum=self._get_datum,
-                get_datum_cursor=self._get_datum_cursor,
+                get_datum_pages=self._get_datum_pages,
                 filler=self.filler,
                 metadata={'descriptors': descriptors})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
@@ -454,7 +454,7 @@ class BlueskyRun(intake.catalog.Catalog):
         limit = stop - start - len(payload)
         # print('start, stop, skip, limit', start, stop, skip, limit)
         if limit > 0:
-            events = self._get_event_cursor(descriptor_uids=descriptor_uids,
+            events = self._get_event_pages(descriptor_uids=descriptor_uids,
                                             skip=skip, limit=limit)
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
@@ -473,7 +473,7 @@ class BlueskyRun(intake.catalog.Catalog):
                     resource = self._get_resource(uid=resource_uid)
                     self.filler('resource', resource)
                     # Pre-fetch all datum for this resource.
-                    for datum in self._get_datum_cursor(resource_uid=resource_uid):
+                    for datum in self._get_datum_pages(resource_uid=resource_uid):
                         self.filler('datum', datum)
                     # TODO -- When to clear the datum cache in filler?
                     self.filler('event', event)
@@ -509,15 +509,15 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         Expected signature ``get_run_stop() -> RunStop``
     get_event_descriptors : callable
         Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
-    get_event_cursor : callable
-        Expected signature ``get_event_cursor(descriptor_uids) -> generator``
+    get_event_pages : callable
+        Expected signature ``get_event_pages(descriptor_uids) -> generator``
         where ``generator`` yields Event documents
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     get_datum : callable
         Expected signature ``get_datum(datum_id) -> Datum``
-    get_datum_cursor : callable
-        Expected signature ``get_datum_cursor(resource_uid) -> generator``
+    get_datum_pages : callable
+        Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
     filler : event_model.Filler
     metadata : dict
@@ -541,11 +541,11 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
                  stream_name,
                  get_run_stop,
                  get_event_descriptors,
-                 get_event_cursor,
+                 get_event_pages,
                  get_event_count,
                  get_resource,
                  get_datum,
-                 get_datum_cursor,
+                 get_datum_pages,
                  filler,
                  metadata,
                  include=None,
@@ -557,11 +557,11 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self._stream_name = stream_name
         self._get_event_descriptors = get_event_descriptors
         self._get_run_stop = get_run_stop
-        self._get_event_cursor = get_event_cursor
+        self._get_event_ pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
         self._get_datum = get_datum
-        self._get_datum_cursor = get_datum_cursor
+        self._get_datum_pages = get_datum_pages
         self.filler = filler
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
@@ -590,12 +590,12 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
-            event_docs=list(self._get_event_cursor(
+            event_docs=list(self._get_event_pages(
                 [doc['uid'] for doc in descriptor_docs])),
             filler=self.filler,
             get_resource=self._get_resource,
             get_datum=self._get_datum,
-            get_datum_cursor=self._get_datum_cursor,
+            get_datum_pages=self._get_datum_pages,
             include=self.include,
             exclude=self.exclude)
 

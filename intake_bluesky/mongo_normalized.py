@@ -1,6 +1,7 @@
 import collections.abc
 import event_model
 from functools import partial
+import itertools
 import intake
 import intake.catalog
 import intake.catalog.local
@@ -29,11 +30,11 @@ class _Entries(collections.abc.Mapping):
             get_run_start=get_run_start,
             get_run_stop=partial(self.catalog._get_run_stop, uid),
             get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
-            get_event_cursor=self.catalog._get_event_cursor,
+            get_event_pages=self.catalog._get_event_pages,
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
             get_datum=self.catalog._get_datum,
-            get_datum_cursor=self.catalog._get_datum_cursor,
+            get_datum_pages=self.catalog._get_datum_pages,
             filler=self.catalog.filler)
         return intake.catalog.local.LocalCatalogEntry(
             name=run_start_doc['uid'],
@@ -192,16 +193,16 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             results.append(doc)
         return results
 
-    def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
+    def _get_event_pages(self, descriptor_uids, skip=0, limit=None):
         cursor = (self._event_collection
                   .find({'descriptor': {'$in': descriptor_uids}},
+                        {'_id': False},
                         sort=[('time', pymongo.ASCENDING)]))
         cursor.skip(skip)
         if limit is not None:
             cursor = cursor.limit(limit)
-        for doc in cursor:
-            doc.pop('_id')
-            yield doc
+
+        yield event_model.pack_event_page(itertools.islice(cursor, 2500))
 
     def _get_event_count(self, descriptor_uids):
         return self._event_collection.count_documents(
@@ -223,11 +224,11 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         doc.pop('_id')
         return doc
 
-    def _get_datum_cursor(self, resource_uid):
-        cursor = self._datum_collection.find({'resource': resource_uid})
-        for doc in cursor:
-            doc.pop('_id')
-            yield doc
+    def _get_datum_pages(self, resource_uid):
+        cursor = self._datum_collection.find({'resource': resource_uid},
+                                             {'_id': False})
+
+        yield event_model.pack_datum_page(itertools.islice(cursor, 2500))
 
         self._schema = {}  # TODO This is cheating, I think.
 
