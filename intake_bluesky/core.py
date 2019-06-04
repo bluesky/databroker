@@ -15,7 +15,64 @@ from requests.compat import urljoin
 import numpy
 import warnings
 import xarray
+from functools import wraps
 
+def to_event_pages(get_event_cursor):
+    #@wraps(get_event_cursor)
+    def inner(*args, **kwargs):
+        event_cursor = get_event_cursor(*args, **kwargs)
+        while True:
+            result = list(itertools.islice(event_cursor, 2500))
+            print("RRRR", result)
+            if result:
+                result = event_model.pack_event_page(*result)
+                print("PACKED", result)
+                yield result #event_model.pack_event_page(*result)
+            else:
+                break
+    return inner
+
+def to_datum_pages(get_datum_cursor):
+    #@wraps(get_datum_cursor)
+    def inner(*args, **kwargs):
+        datum_cursor = get_datum_cursor(*args, **kwargs)
+        while True:
+            result = list(itertools.islice(datum_cursor, 2500))
+            if result:
+                yield event_model.pack_datum_page(result)
+            else:
+                break
+    return inner
+
+def interlace_event_pages(*gens):
+    """Take generators and interlace their results by timestamp
+     Parameters
+    ----------
+    gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time'
+        key.
+     Yields
+    -------
+    val : tuple
+        The next (name, dict) pair in time order
+
+    from: https://github.com/bluesky/databroker/pull/378/
+    """
+    iters = [iter(event_model.unpack_event_page(g)) for g in gens]
+    heap = []
+
+    def safe_next(indx):
+        try:
+            val = next(iters[indx])
+        except StopIteration:
+            return
+        heapq.heappush(heap, (val['time'], indx, val))
+    for i in range(len(iters)):
+        safe_next(i)
+    while heap:
+        _, indx, val = heapq.heappop(heap)
+        yield val
+        safe_next(indx)
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
                         filler, get_resource, get_datum, get_datum_pages,
@@ -82,7 +139,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
             filler('descriptor', descriptor)
             for event in events:
                 try:
-                    filler('event', event)
+                    filler('event_page', event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
                     datum = get_datum(datum_id)
@@ -93,7 +150,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
                     for datum in get_datum_pages(resource_uid):
                         filler('datum', datum)
                     # TODO -- When to clear the datum cache in filler?
-                    filler('event', event)
+                    filler('event_page', event)
         times = [ev['time'] for ev in events]
         seq_nums = [ev['seq_num'] for ev in events]
         uids = [ev['uid'] for ev in events]
@@ -332,7 +389,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_run_start,
                  get_run_stop,
                  get_event_descriptors,
-                 get_event_page,
+                 get_event_pages,
                  get_event_count,
                  get_resource,
                  get_datum,
@@ -432,7 +489,14 @@ class BlueskyRun(intake.catalog.Catalog):
     def read_canonical(self):
         for i in range(self.npartitions):
             for name, doc in self.read_partition(i):
-                yield name, doc
+                if name == 'event_page':
+                    print("BEFORE", doc)
+                    events = list(event_model.unpack_event_page(doc))
+                    print("AFTER", events)
+                    for event in events:
+                        yield 'event', event
+                else:
+                    yield name, doc
 
     def read_partition(self, i):
         """Fetch one chunk of documents.
@@ -460,7 +524,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 self.filler('descriptor', descriptor)
             for event in events:
                 try:
-                    self.filler('event', event)
+                    self.filler('event_page', event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
 
@@ -476,8 +540,8 @@ class BlueskyRun(intake.catalog.Catalog):
                     for datum in self._get_datum_pages(resource_uid=resource_uid):
                         self.filler('datum', datum)
                     # TODO -- When to clear the datum cache in filler?
-                    self.filler('event', event)
-                payload.append(('event', event))
+                    self.filler('event_page', event)
+                payload.append(('event_page', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
         for _, doc in payload:
@@ -557,7 +621,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self._stream_name = stream_name
         self._get_event_descriptors = get_event_descriptors
         self._get_run_stop = get_run_stop
-        self._get_event_ pages = get_event_pages
+        self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
         self._get_datum = get_datum

@@ -14,7 +14,7 @@ def test_no_descriptors():
         filler=event_model.Filler({}),
         get_resource=None,
         get_datum=None,
-        get_datum_cursor=None)
+        get_datum_pages=None)
 
 
 def test_no_events():
@@ -33,4 +33,4 @@ def test_no_events():
         filler=event_model.Filler({}),
         get_resource=None,
         get_datum=None,
-        get_datum_cursor=None)
+        get_datum_pages=None)
