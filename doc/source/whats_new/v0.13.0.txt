@@ -1,6 +1,6 @@
 .. currentmodule:: databroker
 
-v0.13.0 (2019-06-04)
+v0.13.0 (2019-06-05)
 --------------------
 
 API Changes
