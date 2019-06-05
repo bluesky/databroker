@@ -51,12 +51,7 @@ script:
   - coverage report -m
   - set -e
   - pip install -r docs-requirements.txt
-  # A mysterious problem reading assets.rst is breaking sphinx build on 3.5.
-  # Skip building on 3.5.
-  - |
-    if [ "$TRAVIS_PYTHON_VERSION" != "3.5" ]; then
-      make -C doc html
-    fi
+  - make -C doc html
   - |
     if [ $PUBLISH_DOCS ]; then
       # Push built documentation to GH pages.
