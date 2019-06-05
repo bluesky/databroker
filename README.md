@@ -10,8 +10,8 @@ A unified interface to the various data sources at NSLS-II.
 
 ---------------
 
-[![Build Status](https://travis-ci.org/NSLS-II/databroker.svg?branch=master)](https://travis-ci.org/NSLS-II/databroker)
-[![codecov](https://codecov.io/gh/NSLS-II/databroker/branch/master/graph/badge.svg)](https://codecov.io/gh/NSLS-II/databroker)
+[![Build Status](https://travis-ci.org/bluesky/databroker.svg?branch=master)](https://travis-ci.org/bluesky/databroker)
+[![codecov](https://codecov.io/gh/bluesky/databroker/branch/master/graph/badge.svg)](https://codecov.io/gh/bluesky/databroker)
 [![Anaconda-Server Badge](https://anaconda.org/lightsource2/databroker/badges/version.svg)](https://anaconda.org/lightsource2/databroker)
 [![Anaconda-Server Badge](https://anaconda.org/lightsource2/databroker/badges/license.svg)](https://anaconda.org/lightsource2/databroker)
 
