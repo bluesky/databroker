@@ -1,4 +1,4 @@
-attrs
+attrs>=17.4.0
 boltons
 dask
 doct
