@@ -6,4 +6,4 @@ v0.13.0 (2019-06-04)
 API Changes
 +++++++++++
 
-* Drop support to Python 2
+* Drop support for Python 2
