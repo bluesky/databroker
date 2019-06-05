@@ -8,11 +8,10 @@ import logging
 
 import pymongo
 
-
 import numpy as np
 
 from ..utils import format_time as _format_time
-from .core import (doc_or_uid_to_uid,   # noqa
+from .core import (doc_or_uid_to_uid,  # noqa
                    NoRunStart, NoRunStop, NoEventDescriptors,
                    _cache_run_start, _cache_run_stop, _cache_descriptor,
                    run_start_given_uid, run_stop_given_uid,
@@ -60,10 +59,11 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         # replace descriptor with the defererenced descriptor
         ev['descriptor'] = descriptor_uid
         for k, v in ev['data'].items():
-            _dk = data_keys[k]
+            _dk = data_keys.get(k, {})
             # convert any arrays stored directly in mds into ndarray
             if convert_arrays:
-                if _dk['dtype'] == 'array' and not _dk.get('external', False):
+                if (_dk.get('dtype', None) == 'array'
+                        and not _dk.get('external', False)):
                     ev['data'][k] = np.asarray(ev['data'][k])
 
         # note which keys refer to dereferences (external) data
@@ -124,6 +124,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
         bulk.insert(ev)
 
     return bulk.execute()
+
 
 # DATABASE RETRIEVAL ##########################################################
 
@@ -266,7 +267,6 @@ def find_descriptors(descriptor_col, descriptor_cache,
 
     for event_descriptor in event_descriptor_objects:
         yield _cache_descriptor(event_descriptor, descriptor_cache)
-
 
 
 def find_events(start_col, start_cache,
