@@ -36,6 +36,7 @@ class _Entries(collections.abc.Mapping):
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
             get_datum=self.catalog._get_datum,
+            lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor),
             filler=self.catalog.filler)
         return intake.catalog.local.LocalCatalogEntry(
@@ -218,13 +219,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         doc.pop('_id')
         return doc
 
-    def _get_datum(self, datum_id):
+    def _lookup_resource_for_datum(self, datum_id):
         doc = self._datum_collection.find_one(
             {'datum_id': datum_id})
         if doc is None:
             raise ValueError(f"Could not find Datum with datum_id={datum_id}")
-        doc.pop('_id')
-        return doc
+        return doc['resource']
 
     def _get_datum_cursor(self, resource_uid):
         cursor = self._datum_collection.find({'resource': resource_uid})

@@ -93,8 +93,6 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     filler : event_model.Filler
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
-    get_datum : callable
-        Expected signature ``get_datum(datum_id) -> Datum``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
@@ -392,7 +390,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_event_pages,
                  get_event_count,
                  get_resource,
-                 get_datum,
+                 lookup_resource_for_datum,
                  get_datum_pages,
                  filler,
                  **kwargs):
@@ -406,7 +404,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
-        self._get_datum = get_datum
+        self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.filler = filler
         super().__init__(**kwargs)
@@ -469,7 +467,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_event_pages=self._get_event_pages,
                 get_event_count=self._get_event_count,
                 get_resource=self._get_resource,
-                get_datum=self._get_datum,
+                lookup_resource_for_datum=self._lookup_resource_for_datum
                 get_datum_pages=self._get_datum_pages,
                 filler=self.filler,
                 metadata={'descriptors': descriptors})
@@ -489,14 +487,7 @@ class BlueskyRun(intake.catalog.Catalog):
     def read_canonical(self):
         for i in range(self.npartitions):
             for name, doc in self.read_partition(i):
-                if name == 'event_page':
-                    print("BEFORE", doc)
-                    events = list(event_model.unpack_event_page(doc))
-                    print("AFTER", events)
-                    for event in events:
-                        yield 'event', event
-                else:
-                    yield name, doc
+                yield name, doc
 
     def read_partition(self, i):
         """Fetch one chunk of documents.
@@ -516,32 +507,34 @@ class BlueskyRun(intake.catalog.Catalog):
         descriptor_uids = [doc['uid'] for doc in self._descriptors]
         skip = max(0, start - len(payload))
         limit = stop - start - len(payload)
-        # print('start, stop, skip, limit', start, stop, skip, limit)
         if limit > 0:
-            events = self._get_event_pages(descriptor_uids=descriptor_uids,
-                                            skip=skip, limit=limit)
+
+            events = itertools.islice(interlace_event_pages(
+                    *[self._get_event_pages(descriptor_uid=descriptor_uid)
+                     for descriptor_uid in descriptor_uids]), skip, limit)
+
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
             for event in events:
                 try:
-                    self.filler('event_page', event)
+                    self.filler('event', event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
 
                     if '/' in datum_id:
                         resource_uid, _ = datum_id.split('/', 1)
                     else:
-                        datum = self._get_datum(datum_id=datum_id)
-                        resource_uid = datum['resource']
+                        resource_uid = self._get_resource_for_datum(datum_id)
 
                     resource = self._get_resource(uid=resource_uid)
                     self.filler('resource', resource)
                     # Pre-fetch all datum for this resource.
-                    for datum in self._get_datum_pages(resource_uid=resource_uid):
-                        self.filler('datum', datum)
+                    for datum_page in self._get_datum_pages(
+                                             resource_uid=resource_uid):
+                        self.filler('datum_page', datum_page)
                     # TODO -- When to clear the datum cache in filler?
-                    self.filler('event_page', event)
-                payload.append(('event_page', event))
+                    self.filler('event', event)
+                payload.append(('event', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
         for _, doc in payload:
@@ -608,7 +601,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
                  get_event_pages,
                  get_event_count,
                  get_resource,
-                 get_datum,
+                 lookup_resource_for_datum,
                  get_datum_pages,
                  filler,
                  metadata,
@@ -624,7 +617,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
-        self._get_datum = get_datum
+        self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.filler = filler
         self.urlpath = ''  # TODO Not sure why I had to add this.
@@ -658,7 +651,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
                 [doc['uid'] for doc in descriptor_docs])),
             filler=self.filler,
             get_resource=self._get_resource,
-            get_datum=self._get_datum,
+            lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
             include=self.include,
             exclude=self.exclude)
