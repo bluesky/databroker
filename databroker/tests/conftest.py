@@ -61,7 +61,10 @@ def mds_all(request, db):
     '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with both v0 and v1.
     '''
-    return db.mds
+    try:
+        return db.mds
+    except AttributeError:
+        pytest.skip("mds tests do not apply to intake-backed Broker")
 
 
 @pytest.fixture(params=[mqmds,
