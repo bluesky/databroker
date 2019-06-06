@@ -20,8 +20,9 @@ from functools import wraps
 
 def to_event_pages(get_event_cursor):
     """
-    Decorator that changes get_event_cursor which yields events,
-    to a generator function which yields event_pages.
+    Decorator that changes get_event_cursor get_event_pages.
+
+    get_event_cursor yields events, get_event_pages yields event_pages.
 
     Parameters
     ----------
@@ -31,6 +32,7 @@ def to_event_pages(get_event_cursor):
     -------
     get_event_pages : function
     """
+    @functools.wraps
     def get_event_pages(*args, **kwargs):
         event_cursor = get_event_cursor(*args, **kwargs)
         while True:
@@ -44,8 +46,9 @@ def to_event_pages(get_event_cursor):
 
 def to_datum_pages(get_datum_cursor):
     """
-    Decorator that changes get_datum_cursor which yields datum,
-    to a generator function which yields datum_pages.
+    Decorator that changes get_datum_cursor get_datum_pages.
+
+    get_datum_cursor yields datum, get_datum_pages yields datum_pages.
 
     Parameters
     ----------
@@ -55,6 +58,7 @@ def to_datum_pages(get_datum_cursor):
     -------
     get_datum_pages : function
     """
+    @functools.wraps
     def get_datum_pages(*args, **kwargs):
         datum_cursor = get_datum_cursor(*args, **kwargs)
         while True:
@@ -409,8 +413,7 @@ class BlueskyRun(intake.catalog.Catalog):
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     lookup_resource_for_datum : callable
-        Expected signature ``lookup_resource_for_datum(datum_id) ->
-        resource_uid``
+        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
@@ -551,8 +554,8 @@ class BlueskyRun(intake.catalog.Catalog):
         if limit > 0:
 
             events = itertools.islice(interlace_event_pages(
-                    *[self._get_event_pages(descriptor_uid=descriptor_uid)
-                     for descriptor_uid in descriptor_uids]), skip, limit)
+                    *(self._get_event_pages(descriptor_uid=descriptor_uid)
+                     for descriptor_uid in descriptor_uids)), skip, limit)
 
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
