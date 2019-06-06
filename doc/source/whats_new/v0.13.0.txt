@@ -1,0 +1,9 @@
+.. currentmodule:: databroker
+
+v0.13.0 (2019-06-06)
+--------------------
+
+API Changes
++++++++++++
+
+* Drop support for Python 2
