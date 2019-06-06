@@ -524,7 +524,7 @@ class BlueskyRun(intake.catalog.Catalog):
                     if '/' in datum_id:
                         resource_uid, _ = datum_id.split('/', 1)
                     else:
-                        resource_uid = self._get_resource_for_datum(datum_id)
+                        resource_uid = self._lookup_resource_for_datum(datum_id)
 
                     resource = self._get_resource(uid=resource_uid)
                     self.filler('resource', resource)
