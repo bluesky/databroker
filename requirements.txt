@@ -1,6 +1,7 @@
 boltons
 doct
 humanize
+intake-bluesky
 jinja2
 jsonschema
 mongoquery
