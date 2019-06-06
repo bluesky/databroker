@@ -15,6 +15,7 @@ from requests.compat import urljoin
 import numpy
 import warnings
 import xarray
+import heapq
 from functools import wraps
 
 def to_event_pages(get_event_cursor):
@@ -66,6 +67,17 @@ def to_datum_pages(get_datum_cursor):
 
 
 def flatten_event_page_gen(gen):
+    """
+    Converts an event_page generator to an event generator.
+
+    Parameters
+    ----------
+    gen : generator
+
+    Returns
+    -------
+    event_generator : generator
+    """
     for page in gen:
         yield from event_model.unpack_event_page(page)
 
@@ -159,7 +171,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     # Collect a Dataset for each descriptor. Merge at the end.
     datasets = []
     for descriptor in descriptor_docs:
-        events = flatten_event_page_gen(get_event_pages(descriptor['uid']))
+        events = list(flatten_event_page_gen(get_event_pages(descriptor['uid'])))
         if not events:
             continue
         if any(data_keys[key].get('external') for key in keys):
