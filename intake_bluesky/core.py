@@ -600,6 +600,83 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
             exclude=self.exclude)
 
 
+class BlueskyRunFromGenerator(BlueskyRun):
+
+    def __init__(self, gen_func, gen_args, gen_kwargs, filler=None, **kwargs):
+
+        if filler is None:
+            filler = event_model.Filler({})
+
+        descriptors = []
+        resources = {}
+        events = collections.defaultdict(list)
+        datum_by_resource = collections.defaultdict(list)
+        datum_by_id = {}
+        start_doc = None
+        stop_doc = None
+
+        for name, doc in gen_func(*gen_args, **gen_kwargs):
+            if name == 'event':
+                events[doc['descriptor']].append(doc)
+            elif name == 'event_page':
+                events[doc['descriptor']].extend(event_model.unpack_event_page(doc))
+            if name == 'datum':
+                datum_by_resource[doc['resource']].append(doc)
+                datum_by_id[doc['datum_id']] = doc
+            elif name == 'datum_page':
+                for datum in event_model.unpack_datum_page(doc):
+                    datum_by_resource[doc['resource']].append(datum)
+                    datum_by_id[doc['datum_id']] = datum
+            elif name == 'descriptor':
+                descriptors.append(doc)
+            elif name == 'resource':
+                resources[doc['uid']] = doc
+            elif name == 'start':
+                start_doc = doc
+            elif name == 'stop':
+                stop_doc = doc
+        assert start_doc is not None
+
+        def get_run_start():
+            return start_doc
+
+        def get_run_stop():
+            return stop_doc
+
+        def get_event_descriptors():
+            return descriptors
+
+        def get_event_cursor(descriptor_uids, skip=0, limit=None):
+            ret = []
+            for uid in descriptor_uids:
+                ret.extend(events[uid][skip:limit])
+            return ret
+
+        def get_event_count(descriptor_uids):
+            return sum(len(events[uid]) for uid in descriptor_uids)
+
+        def get_resource(uid):
+            return resources[uid]
+
+        def get_datum(datum_id):
+            return datum_by_id[datum_id]
+
+        def get_datum_cursor(resource_uid, skip=0, limit=None):
+            return datum_by_resource[resource_uid][skip:limit]
+
+        super().__init__(
+            get_run_start=get_run_start,
+            get_run_stop=get_run_stop,
+            get_event_descriptors=get_event_descriptors,
+            get_event_cursor=get_event_cursor,
+            get_event_count=get_event_count,
+            get_resource=get_resource,
+            get_datum=get_datum,
+            get_datum_cursor=get_datum_cursor,
+            filler=filler,
+            **kwargs)
+
+
 def _transpose(in_data, keys, field):
     """Turn a list of dicts into dict of lists
 
