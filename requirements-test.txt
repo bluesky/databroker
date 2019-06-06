@@ -2,6 +2,7 @@ bluesky
 codecov
 coverage
 glueviz
+intake[server]
 matplotlib
 ophyd
 pathlib
