@@ -31,7 +31,7 @@ param_map = {'sqlite': build_sqlite_backed_broker,
              'hdf5': build_hdf5_backed_broker,
              'intake_jsonl': build_intake_jsonl_backed_broker,
              'intake_mongo': build_intake_mongo_backed_broker,
-             'intake_mongo_embedded': build_intake_mongo_embedded_backed_broker,
+             # 'intake_mongo_embedded': build_intake_mongo_embedded_backed_broker,
              }
 
 @pytest.fixture(params=list(param_map), scope='module')
