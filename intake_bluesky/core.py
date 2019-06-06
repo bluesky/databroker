@@ -608,7 +608,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     get_event_descriptors : callable
         Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_pages : callable
-        Expected signature ``get_event_pages(descriptor_uids) -> generator``
+        Expected signature ``get_event_pages(descriptor_uid) -> generator``
         where ``generator`` yields event_page documents
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
