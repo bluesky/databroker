@@ -35,7 +35,6 @@ class _Entries(collections.abc.Mapping):
             get_event_pages=to_event_pages(self.catalog._get_event_cursor),
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
-            get_datum=self.catalog._get_datum,
             lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor),
             filler=self.catalog.filler)

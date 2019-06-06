@@ -18,35 +18,64 @@ import xarray
 from functools import wraps
 
 def to_event_pages(get_event_cursor):
-    #@wraps(get_event_cursor)
-    def inner(*args, **kwargs):
+    """
+    Decorator that changes get_event_cursor which yields events,
+    to a generator function which yields event_pages.
+
+    Parameters
+    ----------
+    get_event_cursor : function
+
+    Returns
+    -------
+    get_event_pages : function
+    """
+    def get_event_pages(*args, **kwargs):
         event_cursor = get_event_cursor(*args, **kwargs)
         while True:
             result = list(itertools.islice(event_cursor, 2500))
-            print("RRRR", result)
             if result:
-                result = event_model.pack_event_page(*result)
-                print("PACKED", result)
-                yield result #event_model.pack_event_page(*result)
+                yield event_model.pack_event_page(*result)
             else:
                 break
-    return inner
+    return get_event_pages
+
 
 def to_datum_pages(get_datum_cursor):
-    #@wraps(get_datum_cursor)
-    def inner(*args, **kwargs):
+    """
+    Decorator that changes get_datum_cursor which yields datum,
+    to a generator function which yields datum_pages.
+
+    Parameters
+    ----------
+    get_datum_cursor : function
+
+    Returns
+    -------
+    get_datum_pages : function
+    """
+    def get_datum_pages(*args, **kwargs):
         datum_cursor = get_datum_cursor(*args, **kwargs)
         while True:
             result = list(itertools.islice(datum_cursor, 2500))
             if result:
-                yield event_model.pack_datum_page(result)
+                yield event_model.pack_datum_page(*result)
             else:
                 break
-    return inner
+    return get_datum_pages
+
+
+def flatten_event_page_gen(gen):
+    for page in gen:
+        yield from event_model.unpack_event_page(page)
+
 
 def interlace_event_pages(*gens):
-    """Take generators and interlace their results by timestamp
-     Parameters
+    """
+    Take event_page generators and interlace their results by timestamp.
+    This is a modification of https://github.com/bluesky/databroker/pull/378/
+
+    Parameters
     ----------
     gens : generators
         Generators of (name, dict) pairs where the dict contains a 'time'
@@ -56,9 +85,8 @@ def interlace_event_pages(*gens):
     val : tuple
         The next (name, dict) pair in time order
 
-    from: https://github.com/bluesky/databroker/pull/378/
     """
-    iters = [iter(event_model.unpack_event_page(g)) for g in gens]
+    iters = [iter(flatten_event_page_gen(g)) for g in gens]
     heap = []
 
     def safe_next(indx):
@@ -74,8 +102,9 @@ def interlace_event_pages(*gens):
         yield val
         safe_next(indx)
 
-def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
-                        filler, get_resource, get_datum, get_datum_pages,
+def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
+                        get_event_pages, filler, get_resource,
+                        lookup_resource_for_datum, get_datum_pages,
                         include=None, exclude=None):
     """
     Represent the data in one Event stream as an xarray.
@@ -88,14 +117,15 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
         RunStop Document
     descriptor_docs : list
         EventDescriptor Documents
-    event_docs : list
-        Event Documents
     filler : event_model.Filler
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
-        where ``generator`` yields Datum documents
+        where ``generator`` yields datum_page documents
+    get_event_pages : callable
+        Expected signature ``get_event_pages(descriptor_uid) -> generator``
+        where ``generator`` yields event_page documents
     include : list, optional
         Fields ('data keys') to include. By default all are included. This
         parameter is mutually exclusive with ``exclude``.
@@ -129,26 +159,24 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs, event_docs,
     # Collect a Dataset for each descriptor. Merge at the end.
     datasets = []
     for descriptor in descriptor_docs:
-        events = [doc for doc in event_docs
-                  if doc['descriptor'] == descriptor['uid']]
+        events = flatten_event_page_gen(get_event_pages(descriptor['uid']))
         if not events:
             continue
         if any(data_keys[key].get('external') for key in keys):
             filler('descriptor', descriptor)
             for event in events:
                 try:
-                    filler('event_page', event)
+                    filler('event', event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
-                    datum = get_datum(datum_id)
-                    resource_uid = datum['resource']
+                    resource_uid = lookup_resource_for_datum(datum_id)
                     resource = get_resource(resource_uid)
                     filler('resource', resource)
                     # Pre-fetch all datum for this resource.
-                    for datum in get_datum_pages(resource_uid):
-                        filler('datum', datum)
+                    for datum_page in get_datum_pages(resource_uid):
+                        filler('datum_page', datum_page)
                     # TODO -- When to clear the datum cache in filler?
-                    filler('event_page', event)
+                    filler('event', event)
         times = [ev['time'] for ev in events]
         seq_nums = [ev['seq_num'] for ev in events]
         uids = [ev['uid'] for ev in events]
@@ -368,8 +396,9 @@ class BlueskyRun(intake.catalog.Catalog):
         where ``generator`` yields Event documents
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
-    get_datum : callable
-        Expected signature ``get_datum(datum_id) -> Datum``
+    lookup_resource_for_datum : callable
+        Expected signature ``lookup_resource_for_datum(datum_id) ->
+        resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
@@ -467,7 +496,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_event_pages=self._get_event_pages,
                 get_event_count=self._get_event_count,
                 get_resource=self._get_resource,
-                lookup_resource_for_datum=self._lookup_resource_for_datum
+                lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
                 filler=self.filler,
                 metadata={'descriptors': descriptors})
@@ -568,14 +597,15 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_pages : callable
         Expected signature ``get_event_pages(descriptor_uids) -> generator``
-        where ``generator`` yields Event documents
+        where ``generator`` yields event_page documents
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
-    get_datum : callable
-        Expected signature ``get_datum(datum_id) -> Datum``
+    lookup_resource_for_datum: callable
+        Expected signature ``lookup_resource_for_datum(datum_id) ->
+        resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
-        where ``generator`` yields Datum documents
+        where ``generator`` yields datum_page documents
     filler : event_model.Filler
     metadata : dict
         passed through to base class
@@ -647,8 +677,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
-            event_docs=list(self._get_event_pages(
-                [doc['uid'] for doc in descriptor_docs])),
+            get_event_pages=self._get_event_pages,
             filler=self.filler,
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
