@@ -206,9 +206,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             doc.pop('_id')
             yield doc
 
-    def _get_event_count(self, descriptor_uids):
+    def _get_event_count(self, descriptor_uid):
         return self._event_collection.count_documents(
-            {'descriptor': {'$in': descriptor_uids}})
+            {'descriptor': descriptor_uid})
 
     def _get_resource(self, uid):
         doc = self._resource_collection.find_one(

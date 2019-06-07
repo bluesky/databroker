@@ -486,8 +486,8 @@ class BlueskyRun(intake.catalog.Catalog):
         count = 1
         descriptor_uids = [doc['uid'] for doc in self._descriptors]
         count += len(descriptor_uids)
-        count += self._get_event_count(
-            descriptor_uids=[doc['uid'] for doc in self._descriptors])
+        for doc in self._descriptors:
+            count += self._get_event_count(doc['uid'])
         count += (self._run_stop_doc is not None)
         self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
 

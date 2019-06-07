@@ -61,9 +61,8 @@ class _Entries(collections.abc.Mapping):
         def get_run_start():
             return run_start_doc
 
-        def get_event_count(descriptor_uids):
-            return sum([get_header_field('count_' + uid)
-                        for uid in descriptor_uids])
+        def get_event_count(descriptor_uid):
+            return get_header_field(f'count_{descriptor_uid}')
 
         entry_metadata = {'start': get_header_field('start'),
                           'stop': get_header_field('stop')}
