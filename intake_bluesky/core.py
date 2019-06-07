@@ -1,5 +1,6 @@
 import collections
 import event_model
+import functools
 from datetime import datetime
 import dask
 import dask.bag
@@ -16,7 +17,7 @@ import numpy
 import warnings
 import xarray
 import heapq
-from functools import wraps
+
 
 def to_event_pages(get_event_cursor):
     """
