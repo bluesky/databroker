@@ -136,6 +136,9 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     filler : event_model.Filler
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
+    lookup_resource_for_datum : callable
+        Expected signature
+        ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
@@ -408,12 +411,15 @@ class BlueskyRun(intake.catalog.Catalog):
     get_event_descriptors : callable
         Expected signature ``get_event_descriptors() -> List[EventDescriptors]``
     get_event_pages : callable
-        Expected signature ``get_event_pages(descriptor_uids) -> generator``
+        Expected signature ``get_event_pages(descriptor_uid) -> generator``
         where ``generator`` yields Event documents
+    get_event_count : callable
+        Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     lookup_resource_for_datum : callable
-        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
+        Expected signature
+        ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
@@ -613,11 +619,13 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     get_event_pages : callable
         Expected signature ``get_event_pages(descriptor_uid) -> generator``
         where ``generator`` yields event_page documents
+    get_event_count : callable
+        Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
-    lookup_resource_for_datum: callable
-        Expected signature ``lookup_resource_for_datum(datum_id) ->
-        resource_uid``
+    lookup_resource_for_datum : callable
+        Expected signature
+        ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
