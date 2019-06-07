@@ -8,7 +8,7 @@ from .in_memory import BlueskyInMemoryCatalog
 
 
 UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,
-                      encoding='utf-8',
+                      raw=False,
                       max_buffer_size=1_000_000_000)
 
 
