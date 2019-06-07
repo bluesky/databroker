@@ -626,7 +626,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             elif name == 'datum_page':
                 for datum in event_model.unpack_datum_page(doc):
                     datum_by_resource[doc['resource']].append(datum)
-                    datum_by_id[doc['datum_id']] = datum
+                    datum_by_id[datum['datum_id']] = datum
             elif name == 'descriptor':
                 descriptors.append(doc)
             elif name == 'resource':
