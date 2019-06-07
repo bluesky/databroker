@@ -119,6 +119,7 @@ def interlace_event_pages(*gens):
         yield val
         safe_next(indx)
 
+
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
                         lookup_resource_for_datum, get_datum_pages,
@@ -562,7 +563,7 @@ class BlueskyRun(intake.catalog.Catalog):
 
             events = itertools.islice(interlace_event_pages(
                     *(self._get_event_pages(descriptor_uid=descriptor_uid)
-                     for descriptor_uid in descriptor_uids)), skip, limit)
+                      for descriptor_uid in descriptor_uids)), skip, limit)
 
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
@@ -709,6 +710,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
             include=self.include,
             exclude=self.exclude)
 
+
 class DocumentCache(event_model.DocumentRouter):
     def __init__(self):
         self.descriptors = {}
@@ -738,6 +740,7 @@ class DocumentCache(event_model.DocumentRouter):
 
     def resource(self, doc):
         self.resources[doc['uid']] = doc
+
 
 class BlueskyRunFromGenerator(BlueskyRun):
 

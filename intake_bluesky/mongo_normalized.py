@@ -1,7 +1,6 @@
 import collections.abc
 import event_model
 from functools import partial
-import itertools
 import intake
 import intake.catalog
 import intake.catalog.local
