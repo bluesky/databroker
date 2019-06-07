@@ -1843,7 +1843,7 @@ class BrokerES(object):
         ...     # do something
         ...
         >>> h = db[-1]  # most recent header
-        >>> process(h, f)
+        >>> db.process(h, f)
 
         See Also
         --------
