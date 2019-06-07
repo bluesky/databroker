@@ -708,6 +708,35 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
             include=self.include,
             exclude=self.exclude)
 
+class DocumentCache(event_model.DocumentRouter):
+    def __init__(self):
+        self.descriptors = {}
+        self.resources = {}
+        self.event_pages = collections.defaultdict(list)
+        self.datum_pages_by_resource = collections.defaultdict(list)
+        self.resource_uid_by_datum_id = {}
+        self.start_doc = None
+        self.stop_doc = None
+
+    def start(self, doc):
+        self.start_doc = doc
+
+    def stop(self, doc):
+        self.stop_doc = doc
+
+    def event_page(self, doc):
+        self.event_pages[doc['descriptor']].append(doc)
+
+    def datum_page(self, doc):
+        self.datum_pages_by_resource[doc['resource']].append(doc)
+        for datum_id in doc['datum_id']:
+            self.resource_uid_by_datum_id[datum_id] = doc['resource']
+
+    def descriptor(self, doc):
+        self.descriptors[doc['uid']] = doc
+
+    def resource(self, doc):
+        self.resources[doc['uid']] = doc
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
@@ -716,72 +745,51 @@ class BlueskyRunFromGenerator(BlueskyRun):
         if filler is None:
             filler = event_model.Filler({})
 
-        descriptors = []
-        resources = {}
-        events = collections.defaultdict(list)
-        datum_by_resource = collections.defaultdict(list)
-        datum_by_id = {}
-        start_doc = None
-        stop_doc = None
+        document_cache = DocumentCache()
 
-        for name, doc in gen_func(*gen_args, **gen_kwargs):
-            if name == 'event':
-                events[doc['descriptor']].append(doc)
-            elif name == 'event_page':
-                events[doc['descriptor']].extend(event_model.unpack_event_page(doc))
-            if name == 'datum':
-                datum_by_resource[doc['resource']].append(doc)
-                datum_by_id[doc['datum_id']] = doc
-            elif name == 'datum_page':
-                for datum in event_model.unpack_datum_page(doc):
-                    datum_by_resource[doc['resource']].append(datum)
-                    datum_by_id[datum['datum_id']] = datum
-            elif name == 'descriptor':
-                descriptors.append(doc)
-            elif name == 'resource':
-                resources[doc['uid']] = doc
-            elif name == 'start':
-                start_doc = doc
-            elif name == 'stop':
-                stop_doc = doc
-        assert start_doc is not None
+        for item in gen_func(*gen_args, **gen_kwargs):
+            document_cache(*item)
+
+        assert document_cache.start_doc is not None
 
         def get_run_start():
-            return start_doc
+            return document_cache.start_doc
 
         def get_run_stop():
-            return stop_doc
+            return document_cache.stop_doc
 
         def get_event_descriptors():
-            return descriptors
+            return document_cache.descriptors.values()
 
-        def get_event_cursor(descriptor_uids, skip=0, limit=None):
-            ret = []
-            for uid in descriptor_uids:
-                ret.extend(events[uid][skip:limit])
-            return ret
+        def get_event_pages(descriptor_uid, skip=0, limit=None):
+            if skip != 0 and limit is not None:
+                raise NotImplementedError
+            return document_cache.event_pages[descriptor_uid]
 
-        def get_event_count(descriptor_uids):
-            return sum(len(events[uid]) for uid in descriptor_uids)
+        def get_event_count(descriptor_uid):
+            return sum(len(page['seq_num'])
+                       for page in (document_cache.event_pages[descriptor_uid]))
 
         def get_resource(uid):
-            return resources[uid]
+            return document_cache.resources[uid]
 
-        def get_datum(datum_id):
-            return datum_by_id[datum_id]
+        def lookup_resource_for_datum(datum_id):
+            return document_cache.resource_uid_by_datum_id[datum_id]
 
-        def get_datum_cursor(resource_uid, skip=0, limit=None):
-            return datum_by_resource[resource_uid][skip:limit]
+        def get_datum_pages(resource_uid, skip=0, limit=None):
+            if skip != 0 and limit is not None:
+                raise NotImplementedError
+            return document_cache.datum_pages_by_resource[resource_uid]
 
         super().__init__(
             get_run_start=get_run_start,
             get_run_stop=get_run_stop,
             get_event_descriptors=get_event_descriptors,
-            get_event_cursor=get_event_cursor,
+            get_event_pages=get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
-            get_datum=get_datum,
-            get_datum_cursor=get_datum_cursor,
+            lookup_resource_for_datum=lookup_resource_for_datum,
+            get_datum_pages=get_datum_pages,
             filler=filler,
             **kwargs)
 
