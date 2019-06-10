@@ -31,11 +31,11 @@ class _Entries(collections.abc.Mapping):
             get_run_start=get_run_start,
             get_run_stop=partial(self.catalog._get_run_stop, uid),
             get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
-            get_event_pages=to_event_pages(self.catalog._get_event_cursor),
+            get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
             lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
-            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor),
+            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
             filler=self.catalog.filler)
         return intake.catalog.local.LocalCatalogEntry(
             name=run_start_doc['uid'],

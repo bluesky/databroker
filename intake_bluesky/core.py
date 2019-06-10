@@ -19,7 +19,7 @@ import xarray
 import heapq
 
 
-def to_event_pages(get_event_cursor):
+def to_event_pages(get_event_cursor, page_size):
     """
     Decorator that changes get_event_cursor get_event_pages.
 
@@ -33,11 +33,11 @@ def to_event_pages(get_event_cursor):
     -------
     get_event_pages : function
     """
-    @functools.wraps
+    @functools.wraps(get_event_cursor)
     def get_event_pages(*args, **kwargs):
         event_cursor = get_event_cursor(*args, **kwargs)
         while True:
-            result = list(itertools.islice(event_cursor, 2500))
+            result = list(itertools.islice(event_cursor, page_size))
             if result:
                 yield event_model.pack_event_page(*result)
             else:
@@ -45,7 +45,7 @@ def to_event_pages(get_event_cursor):
     return get_event_pages
 
 
-def to_datum_pages(get_datum_cursor):
+def to_datum_pages(get_datum_cursor, page_size):
     """
     Decorator that changes get_datum_cursor get_datum_pages.
 
@@ -59,11 +59,11 @@ def to_datum_pages(get_datum_cursor):
     -------
     get_datum_pages : function
     """
-    @functools.wraps
+    @functools.wraps(get_datum_cursor)
     def get_datum_pages(*args, **kwargs):
         datum_cursor = get_datum_cursor(*args, **kwargs)
         while True:
-            result = list(itertools.islice(datum_cursor, 2500))
+            result = list(itertools.islice(datum_cursor, page_size))
             if result:
                 yield event_model.pack_datum_page(*result)
             else:
@@ -139,8 +139,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     lookup_resource_for_datum : callable
-        Expected signature
-        ``lookup_resource_for_datum(datum_id) -> resource_uid``
+        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
@@ -420,8 +419,7 @@ class BlueskyRun(intake.catalog.Catalog):
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     lookup_resource_for_datum : callable
-        Expected signature
-        ``lookup_resource_for_datum(datum_id) -> resource_uid``
+        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
@@ -626,8 +624,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
     lookup_resource_for_datum : callable
-        Expected signature
-        ``lookup_resource_for_datum(datum_id) -> resource_uid``
+        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents

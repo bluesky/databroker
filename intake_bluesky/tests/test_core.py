@@ -1,8 +1,10 @@
 import event_model
 from intake_bluesky.core import documents_to_xarray
 
+
 def no_event_pages(descriptor_uid):
     yield from ()
+
 
 def test_no_descriptors():
     run_bundle = event_model.compose_run()
