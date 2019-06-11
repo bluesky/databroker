@@ -889,3 +889,198 @@ def parse_handler_registry(handler_registry):
 
 intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
+
+
+class DaskFiller():
+
+    def __init__(self, handler_registry=None, *,
+                 include=None, exclude=None, root_map=None,
+                 handler_cache={}, resource_cache={}, datum_cache={}, chunk_size = 100,
+                 retry_intervals=(0.001, 0.002, 0.004, 0.008, 0.016, 0.032,
+                                  0.064, 0.128, 0.256, 0.512, 1.024)):
+        if include is not None and exclude is not None:
+            raise EventModelValueError(
+                "The parameters `include` and `exclude` are mutually "
+                "incompatible. At least one must be left as the default, "
+                "None.")
+        self.handler_registry = handler_registry
+        self.include = include
+        self.exclude = exclude
+        self.root_map = root_map or {}
+        self._handler_cache = handler_cache or {}
+        self._resource_cache = resource_cache or {}
+        self._datum_cache = datum_cache or {}
+        self._chunk_size = chunk_size
+        self.retry_intervals = list(retry_intervals)
+        self._closed = False
+
+    def __repr__(self):
+        return "<Filler>" if not self._closed else "<Closed Filler>"
+
+    def fill(self, bes):
+        # bes is short for BlueskyEventStream
+        descriptor_docs = [doc for doc in bes._get_event_descriptors()
+                           if doc.get('name') == bes._stream_name]
+        data_keys = descriptor_docs[0]['data_keys']
+        print(data_keys)
+        more_keys = ['seq_num', 'uid']
+        needs_filling = {key for key, value in data_keys.items() if value.get('external', False)}
+        filled_pages = []
+        for descriptor in descriptor_docs:
+            filled_pages.extend([self._fill_eventpage(event_page, needs_filling)
+                           for event_page in bes._get_eventpages([descriptor['uid']])])
+        return filled_pages
+
+    def _fill_eventpage(self, event_page, needs_filling):
+        stream_key = 'descriptor'
+        coord_key = 'time'
+        array_keys = ['seq_num', 'time', 'uid']
+        dataframe_keys = ['data', 'timestamps', 'filled']
+        coords = event_page[coord_key]
+        xarr = partial(self._to_xarray, coord_label=coord_key, coords=coords)
+        filled_page = {**{stream_key: event_page[stream_key]},
+                 **{key: xarr(event_page[key], name=key) for key in array_keys},
+                 **{'data': xarray.merge({key: xarr(event_page['data'][key], name=key, fill=(key in needs_filling))
+                    for key in event_page['data'].keys()}.values())},
+                 **{'timestamps': xarray.merge({key: xarr(event_page['timestamps'][key], name=key)
+                    for key in event_page['data'].keys()}.values())},
+                 **{'filled': xarray.merge({key: xarr(event_page['filled'][key], name=key)
+                        for key in event_page['data'].keys()}.values())}}
+        return filled_page
+
+    def _xarray_datumpages(self, datum_page):
+        stream_key = 'resource'
+        coord_key = 'datum_id'
+        array_keys = ['datum_id']
+        dataframe_keys = ['datum_kwargs']
+        coords = datum_page[coord_key]
+        xarr = partial(self._to_xarray, coord_label=coord_key, coords=coords)
+        xarray_datum = {**{stream_key: datum_page[stream_key]},
+                        **{key: xarr(datum_page[key], name=key) for key in array_keys},
+                        **{'datum_kwargs': xarray.merge({key: xarr(datum_page['datum_kwargs'][key], name=key)
+                        for key in datum_page['datum_kwargs'].keys()}.values())}}
+        return xarray_datum
+
+    def _to_xarray(self, collumn, coord_label, coords, name, fill=False):
+        if fill:
+            return xarray.DataArray(array.concatenate(
+                           [array.from_delayed(self._fill_chunk(chunk), (len(chunk),), dtype=object)
+                            for chunk in self._chunks(collumn, self._chunk_size)]))
+        else:
+            return (xarray.DataArray(collumn,
+                    dims=(coord_label,),
+                    coords={coord_label: coords},
+                    name=name))
+
+    def _chunks(self, col, chunk_size):
+        for i in range(0, len(col), chunk_size):
+            yield col[i:i + chunk_size]
+
+    @delayed
+    def _fill_chunk(self, chunk):
+        return np.asarray([self._fill_item(item) for item in chunk])
+
+    def _fill_item(self, item):
+        return item
+
+    def event(self, item):
+        for key, is_filled in doc.get('filled', {}).items():
+            if self.exclude is not None and key in self.exclude:
+                continue
+            if self.include is not None and key not in self.include:
+                continue
+            if not is_filled:
+                datum_id = doc['data'][key]
+                # Look up the cached Datum doc.
+                try:
+                    datum_doc = self._datum_cache[datum_id]
+                except KeyError as err:
+                    err_with_key = UnresolvableForeignKeyError(
+                        f"Event with uid {doc['uid']} refers to unknown Datum "
+                        f"datum_id {datum_id}")
+                    err_with_key.key = datum_id
+                    raise err_with_key from err
+                resource_uid = datum_doc['resource']
+                # Look up the cached Resource.
+                try:
+                    resource = self._resource_cache[resource_uid]
+                except KeyError as err:
+                    raise UnresolvableForeignKeyError(
+                        f"Datum with id {datum_id} refers to unknown Resource "
+                        f"uid {resource_uid}") from err
+                # Look up the cached handler instance, or instantiate one.
+                try:
+                    handler = self._handler_cache[resource['uid']]
+                except KeyError:
+                    try:
+                        handler_class = self.handler_registry[resource['spec']]
+                    except KeyError as err:
+                        raise UndefinedAssetSpecification(
+                            f"Resource document with uid {resource['uid']} "
+                            f"refers to spec {resource['spec']!r} which is "
+                            f"not defined in the Filler's "
+                            f"handler registry.") from err
+                    try:
+                        # Apply root_map.
+                        resource_path = resource['resource_path']
+                        root = resource.get('root', '')
+                        root = self.root_map.get(root, root)
+                        if root:
+                            resource_path = os.path.join(root, resource_path)
+
+                        handler = handler_class(resource_path,
+                                                **resource['resource_kwargs'])
+                    except Exception as err:
+                        raise EventModelError(
+                            f"Error instantiating handler "
+                            f"class {handler_class} "
+                            f"with Resource document {resource}.") from err
+                    self._handler_cache[resource['uid']] = handler
+
+                # We are sure to attempt to read that data at least once and
+                # then perhaps additional times depending on the contents of
+                # retry_intervals.
+                error = None
+                for interval in [0] + self.retry_intervals:
+                    ttime.sleep(interval)
+                    try:
+                        actual_data = handler(**datum_doc['datum_kwargs'])
+                        # Here we are intentionally modifying doc in place.
+                        doc['data'][key] = actual_data
+                        doc['filled'][key] = datum_id
+                    except IOError as error_:
+                        # The file may not be visible on the network yet.
+                        # Wait and try again. Stash the error in a variable
+                        # that we can access later if we run out of attempts.
+                        error = error_
+                    else:
+                        break
+                else:
+                    # We have used up all our attempts. There seems to be an
+                    # actual problem. Raise the error stashed above.
+                    raise DataNotAccessible(
+                        f"Filler was unable to load the data referenced by "
+                        f"the Datum document {datum_doc} and the Resource "
+                        f"document {resource}.") from error
+        return doc
+
+    def __enter__(self):
+        return self
+
+    def close(self):
+        # Drop references to the caches. If the user holds another reference to
+        # them it's the user's problem to manage their lifecycle. If the user
+        # does not (e.g. they are the default caches) the gc will look after
+        # them.
+        self._closed = True
+        self._handler_cache = None
+        self._resource_cache = None
+        self._datum_cache = None
+
+    def __exit__(self, *exc_details):
+        self.close()
+
+    def __call__(self, name, doc, validate=False):
+        if self._closed:
+            raise EventModelRuntimeError(
+                "This Filler has been closed and is no longer usable.")
