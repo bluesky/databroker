@@ -9,6 +9,8 @@ import pymongo
 import pymongo.errors
 
 from .core import parse_handler_registry
+from .core import to_event_pages
+from .core import to_datum_pages
 
 
 class _Entries(collections.abc.Mapping):
@@ -29,11 +31,15 @@ class _Entries(collections.abc.Mapping):
             get_run_start=get_run_start,
             get_run_stop=partial(self.catalog._get_run_stop, uid),
             get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
-            get_event_cursor=self.catalog._get_event_cursor,
+            # 2500 was selected as the page_size because it worked well durring
+            # benchmarks, for HXN data a full page had roughly 3500 events.
+            get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
-            get_datum=self.catalog._get_datum,
-            get_datum_cursor=self.catalog._get_datum_cursor,
+            lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
+            # 2500 was selected as the page_size because it worked well durring
+            # benchmarks.
+            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
             filler=self.catalog.filler)
         return intake.catalog.local.LocalCatalogEntry(
             name=run_start_doc['uid'],
@@ -192,9 +198,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             results.append(doc)
         return results
 
-    def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
+    def _get_event_cursor(self, descriptor_uid, skip=0, limit=None):
         cursor = (self._event_collection
-                  .find({'descriptor': {'$in': descriptor_uids}},
+                  .find({'descriptor': descriptor_uid},
                         sort=[('time', pymongo.ASCENDING)]))
         cursor.skip(skip)
         if limit is not None:
@@ -203,9 +209,9 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
             doc.pop('_id')
             yield doc
 
-    def _get_event_count(self, descriptor_uids):
+    def _get_event_count(self, descriptor_uid):
         return self._event_collection.count_documents(
-            {'descriptor': {'$in': descriptor_uids}})
+            {'descriptor': descriptor_uid})
 
     def _get_resource(self, uid):
         doc = self._resource_collection.find_one(
@@ -215,13 +221,12 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         doc.pop('_id')
         return doc
 
-    def _get_datum(self, datum_id):
+    def _lookup_resource_for_datum(self, datum_id):
         doc = self._datum_collection.find_one(
             {'datum_id': datum_id})
         if doc is None:
             raise ValueError(f"Could not find Datum with datum_id={datum_id}")
-        doc.pop('_id')
-        return doc
+        return doc['resource']
 
     def _get_datum_cursor(self, resource_uid):
         cursor = self._datum_collection.find({'resource': resource_uid})

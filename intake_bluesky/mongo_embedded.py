@@ -43,9 +43,9 @@ class _Entries(collections.abc.Mapping):
             for resource in resources:
                 if resource['uid'] == uid:
                     return resource
-            return None
+            raise ValueError(f"Could not find Resource with uid={uid}")
 
-        def get_datum(datum_id):
+        def lookup_resource_for_datum(datum_id):
             """ This method is likely very slow. """
             resources = [resource['uid']
                          for resource in get_header_field('resources')]
@@ -55,15 +55,14 @@ class _Entries(collections.abc.Mapping):
                     {'_id': False})
             for datum in event_model.unpack_datum_page(datum_page):
                 if datum['datum_id'] == datum_id:
-                    return datum
-            return None
+                    return datum['resource']
+            raise ValueError(f"Could not find Datum with datum_id={datum_id}")
 
         def get_run_start():
             return run_start_doc
 
-        def get_event_count(descriptor_uids):
-            return sum([get_header_field('count_' + uid)
-                        for uid in descriptor_uids])
+        def get_event_count(descriptor_uid):
+            return get_header_field(f'count_{descriptor_uid}')
 
         entry_metadata = {'start': get_header_field('start'),
                           'stop': get_header_field('stop')}
@@ -73,11 +72,11 @@ class _Entries(collections.abc.Mapping):
             get_run_stop=partial(get_header_field, 'stop'),
             get_event_descriptors=partial(
                             get_header_field, 'descriptors'),
-            get_event_cursor=self.catalog._get_event_cursor,
+            get_event_pages=self.catalog._get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
-            get_datum=get_datum,
-            get_datum_cursor=self.catalog._get_datum_cursor,
+            lookup_resource_for_datum=lookup_resource_for_datum,
+            get_datum_pages=self.catalog._get_datum_pages,
             filler=self.catalog.filler)
         return intake.catalog.local.LocalCatalogEntry(
             name=run_start_doc['uid'],
@@ -207,28 +206,21 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         self.filler = event_model.Filler(parsed_handler_registry)
         super().__init__(**kwargs)
 
-    def _get_event_cursor(self, descriptor_uids, skip=0, limit=None):
+    def _get_event_pages(self, descriptor_uid, skip=0, limit=None):
         if limit is None:
             limit = maxsize
 
         page_cursor = self._db.event.find(
                             {'$and': [
-                                {'descriptor': {'$in': descriptor_uids}},
+                                {'descriptor': descriptor_uid},
                                 {'last_index': {'$gte': skip}},
                                 {'first_index': {'$lte': skip + limit}}]},
                             {'_id': False},
                             sort=[('last_index', pymongo.ASCENDING)])
 
-        for page_index, event_page in enumerate(page_cursor):
-            for event_index, event in (
-                    enumerate(event_model.unpack_event_page(event_page))):
-                while ((event_index + 1) * (page_index + 1)) < skip:
-                    continue
-                if not ((event_index + 1) * (page_index + 1)) < (skip + limit):
-                    return
-                yield event
+        return page_cursor
 
-    def _get_datum_cursor(self, resource_uid, skip=0, limit=None):
+    def _get_datum_pages(self, resource_uid, skip=0, limit=None):
         if limit is None:
             limit = maxsize
 
@@ -240,14 +232,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
                             {'_id': False},
                             sort=[('last_index', pymongo.ASCENDING)])
 
-        for page_index, datum_page in enumerate(page_cursor):
-            for datum_index, datum in (
-                    enumerate(event_model.unpack_datum_page(datum_page))):
-                while ((datum_index + 1) * (page_index + 1)) < skip:
-                    continue
-                if not ((datum_index + 1) * (page_index + 1)) < (skip + limit):
-                    return
-                yield datum
+        return page_cursor
 
     def _make_entries_container(self):
         return _Entries(self)

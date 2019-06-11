@@ -109,18 +109,20 @@ def test_read_canonical(bundle):
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
 
     def sorted_actual():
-        for name_ in ('start', 'descriptor', 'resource', 'datum', 'event_page', 'event', 'stop'):
+        for name_ in ('start', 'descriptor', 'resource',
+                      'datum', 'event_page', 'event', 'stop'):
             for name, doc in bundle.docs:
                 # Fill external data.
                 _, filled_doc = filler(name, doc)
-                if name == name_ and name in ('start', 'descriptor', 'event', 'event_page', 'stop'):
+                if name == name_ and name in ('start', 'descriptor',
+                                              'event', 'event_page', 'stop'):
                     yield name, filled_doc
 
     for actual, expected in itertools.zip_longest(
             run.read_canonical(), sorted_actual()):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
-        print(expected_name)
+        print(actual_name, expected_name)
         try:
             assert actual_name == expected_name
         except ValueError:
