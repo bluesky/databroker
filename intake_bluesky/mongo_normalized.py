@@ -27,7 +27,6 @@ class _Entries(collections.abc.Mapping):
         def get_run_start():
             return run_start_doc
 
-
         args = dict(
             get_run_start=get_run_start,
             get_run_stop=partial(self.catalog._get_run_stop, uid),
