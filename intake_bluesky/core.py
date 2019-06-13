@@ -120,10 +120,98 @@ def interlace_event_pages(*gens):
         safe_next(indx)
 
 
-def documents_to_xarray(bes):
+def bes_to_xarray(bes):
+    """
+    Represent the data in one Event stream as an xarray.
+
+    Parameters
+    ----------
 
 
-def documents_to_xarray_old(*, start_doc, stop_doc, descriptor_docs,
+    Returns
+    -------
+    dataset : xarray.Dataset
+    """
+
+    bes.filler.fill(bes)
+
+
+    if bes.include is None:
+        include = []
+    if bes.exclude is None:
+        exclude = []
+    if include and exclude:
+        raise ValueError(
+            "The parameters `include` and `exclude` are mutually exclusive.")
+
+    # Data keys must not change within one stream, so we can safely sample
+    # just the first Event Descriptor.
+
+    data_keys = descriptor_docs[0]['data_keys']
+    more_keys = ['seq_num', 'uid']
+    fill = any(data_keys[key].get('external') for key in keys)
+
+    if include:
+        keys = list(set(data_keys) & set(include))
+    elif exclude:
+        keys = list(set(data_keys) - set(exclude))
+    else:
+        keys = list(data_keys)
+
+    # Collect a Dataset for each descriptor. Merge at the end.
+    datum_dict = dict()
+    for resource in resource_docs:
+        datums = list(get_datumpages(resource['uid']))
+        keys = datums[0]['datum_kwargs'].keys()
+        datum_dict[resource['uid']] = xarray.merge(xarray_list(datums, keys,
+                                            sub_doc='datum_kwargs')
+
+    for descriptor in descriptor_docs:
+        events = list(get_eventpages([descriptor['uid']]))
+
+        if fill:
+            try:
+                filler('event', event)
+            except event_model.UnresolvableForeignKeyError as err:
+                datum_id = err.key
+                datum = get_datum(datum_id)
+                resource_uid = datum['resource']
+                resource = get_resource(resource_uid)
+                filler('resource', resource)
+                # Pre-fetch all datum for this resource.
+                for datum in get_datum_cursor(resource_uid):
+                    filler('datum', datum)
+                # TODO -- When to clear the datum cache in filler?
+                filler('event', event)
+
+
+        times = []
+        for page in events:
+            times.extend(page['time'])
+
+        data = xarray_list(events, keys, times, sub_doc='data')
+        more_data = xarray_list(events, more_keys, times)
+        filled = fill or xarray_list(events, keys, times,
+                                     sub_doc='filled', prefix='filled_')
+
+    if fill:
+        return filled('event_page', xarray.merge(data + ids))
+    else:
+        return xarray.merge(data + ids)
+
+def xarray_list(page_list, key_list, times, sub_doc=None, prefix=""):
+    data = []
+    for key in key_list:
+        data.append(xarray.DataArray(
+                    data=numpy.concatenate(
+                    [numpy.asarray(page[sub_doc][key]) for page in page_list]),
+                    dims=('time',),
+                    coords={'time': times},
+                    name=prefix + key))
+    return data
+
+
+def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
                         lookup_resource_for_datum, get_datum_pages,
                         include=None, exclude=None):
