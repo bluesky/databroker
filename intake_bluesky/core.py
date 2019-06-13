@@ -21,7 +21,7 @@ import heapq
 
 def to_event_pages(get_event_cursor, page_size):
     """
-    Decorator that changes get_event_cursor get_event_pages.
+    Decorator that changes get_event_cursor to get_event_pages.
 
     get_event_cursor yields events, get_event_pages yields event_pages.
 
@@ -47,7 +47,7 @@ def to_event_pages(get_event_cursor, page_size):
 
 def to_datum_pages(get_datum_cursor, page_size):
     """
-    Decorator that changes get_datum_cursor get_datum_pages.
+    Decorator that changes get_datum_cursor to get_datum_pages.
 
     get_datum_cursor yields datum, get_datum_pages yields datum_pages.
 
@@ -120,84 +120,68 @@ def interlace_event_pages(*gens):
         safe_next(indx)
 
 
-def bes_to_xarray(bes):
-    """
-    Represent the data in one Event stream as an xarray.
-
-    Parameters
-    ----------
-
-
-    Returns
-    -------
-    dataset : xarray.Dataset
-    """
-
-    bes.filler.fill(bes)
-
-
-    if bes.include is None:
-        include = []
-    if bes.exclude is None:
-        exclude = []
-    if include and exclude:
-        raise ValueError(
-            "The parameters `include` and `exclude` are mutually exclusive.")
-
-    # Data keys must not change within one stream, so we can safely sample
-    # just the first Event Descriptor.
-
-    data_keys = descriptor_docs[0]['data_keys']
-    more_keys = ['seq_num', 'uid']
-    fill = any(data_keys[key].get('external') for key in keys)
-
-    if include:
-        keys = list(set(data_keys) & set(include))
-    elif exclude:
-        keys = list(set(data_keys) - set(exclude))
-    else:
-        keys = list(data_keys)
-
-    # Collect a Dataset for each descriptor. Merge at the end.
-    datum_dict = dict()
-    for resource in resource_docs:
-        datums = list(get_datumpages(resource['uid']))
-        keys = datums[0]['datum_kwargs'].keys()
-        datum_dict[resource['uid']] = xarray.merge(xarray_list(datums, keys,
-                                            sub_doc='datum_kwargs')
-
-    for descriptor in descriptor_docs:
-        events = list(get_eventpages([descriptor['uid']]))
-
-        if fill:
-            try:
-                filler('event', event)
-            except event_model.UnresolvableForeignKeyError as err:
-                datum_id = err.key
-                datum = get_datum(datum_id)
-                resource_uid = datum['resource']
-                resource = get_resource(resource_uid)
-                filler('resource', resource)
-                # Pre-fetch all datum for this resource.
-                for datum in get_datum_cursor(resource_uid):
-                    filler('datum', datum)
-                # TODO -- When to clear the datum cache in filler?
-                filler('event', event)
-
-
-        times = []
-        for page in events:
-            times.extend(page['time'])
-
-        data = xarray_list(events, keys, times, sub_doc='data')
-        more_data = xarray_list(events, more_keys, times)
-        filled = fill or xarray_list(events, keys, times,
-                                     sub_doc='filled', prefix='filled_')
-
-    if fill:
-        return filled('event_page', xarray.merge(data + ids))
-    else:
-        return xarray.merge(data + ids)
+#    if bes.include is None:
+#        include = []
+#    if bes.exclude is None:
+#        exclude = []
+#    if include and exclude:
+#        raise ValueError(
+#            "The parameters `include` and `exclude` are mutually exclusive.")
+#
+#    # Data keys must not change within one stream, so we can safely sample
+#    # just the first Event Descriptor.
+#
+#    data_keys = descriptor_docs[0]['data_keys']
+#    more_keys = ['seq_num', 'uid']
+#    fill = any(data_keys[key].get('external') for key in keys)
+#
+#    if include:
+#        keys = list(set(data_keys) & set(include))
+#    elif exclude:
+#        keys = list(set(data_keys) - set(exclude))
+#    else:
+#        keys = list(data_keys)
+#
+#    # Collect a Dataset for each descriptor. Merge at the end.
+#    datum_dict = dict()
+#    for resource in resource_docs:
+#        datums = list(get_datumpages(resource['uid']))
+#        keys = datums[0]['datum_kwargs'].keys()
+#        datum_dict[resource['uid']] = xarray.merge(xarray_list(datums, keys,
+#                                            sub_doc='datum_kwargs')
+#
+#    for descriptor in descriptor_docs:
+#        events = list(get_eventpages([descriptor['uid']]))
+#
+#        if fill:
+#            try:
+#                filler('event', event)
+#            except event_model.UnresolvableForeignKeyError as err:
+#                datum_id = err.key
+#                datum = get_datum(datum_id)
+#                resource_uid = datum['resource']
+#                resource = get_resource(resource_uid)
+#                filler('resource', resource)
+#                # Pre-fetch all datum for this resource.
+#                for datum in get_datum_cursor(resource_uid):
+#                    filler('datum', datum)
+#                # TODO -- When to clear the datum cache in filler?
+#                filler('event', event)
+#
+#
+#        times = []
+#        for page in events:
+#            times.extend(page['time'])
+#
+#        data = xarray_list(events, keys, times, sub_doc='data')
+#        more_data = xarray_list(events, more_keys, times)
+#        filled = fill or xarray_list(events, keys, times,
+#                                     sub_doc='filled', prefix='filled_')
+#
+#    if fill:
+#        return filled('event_page', xarray.merge(data + ids))
+#    else:
+#        return xarray.merge(data + ids)
 
 def xarray_list(page_list, key_list, times, sub_doc=None, prefix=""):
     data = []
@@ -211,177 +195,177 @@ def xarray_list(page_list, key_list, times, sub_doc=None, prefix=""):
     return data
 
 
-def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
-                        get_event_pages, filler, get_resource,
-                        lookup_resource_for_datum, get_datum_pages,
-                        include=None, exclude=None):
-    """
-    Represent the data in one Event stream as an xarray.
-
-    Parameters
-    ----------
-    start_doc: dict
-        RunStart Document
-    stop_doc : dict
-        RunStop Document
-    descriptor_docs : list
-        EventDescriptor Documents
-    filler : event_model.Filler
-    get_resource : callable
-        Expected signature ``get_resource(resource_uid) -> Resource``
-    lookup_resource_for_datum : callable
-        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
-    get_datum_pages : callable
-        Expected signature ``get_datum_pages(resource_uid) -> generator``
-        where ``generator`` yields datum_page documents
-    get_event_pages : callable
-        Expected signature ``get_event_pages(descriptor_uid) -> generator``
-        where ``generator`` yields event_page documents
-    include : list, optional
-        Fields ('data keys') to include. By default all are included. This
-        parameter is mutually exclusive with ``exclude``.
-    exclude : list, optional
-        Fields ('data keys') to exclude. By default none are excluded. This
-        parameter is mutually exclusive with ``include``.
-
-    Returns
-    -------
-    dataset : xarray.Dataset
-    """
-    if include is None:
-        include = []
-    if exclude is None:
-        exclude = []
-    if include and exclude:
-        raise ValueError(
-            "The parameters `include` and `exclude` are mutually exclusive.")
-
-    # Data keys must not change within one stream, so we can safely sample
-    # just the first Event Descriptor.
-    if descriptor_docs:
-        data_keys = descriptor_docs[0]['data_keys']
-        if include:
-            keys = list(set(data_keys) & set(include))
-        elif exclude:
-            keys = list(set(data_keys) - set(exclude))
-        else:
-            keys = list(data_keys)
-
-    # Collect a Dataset for each descriptor. Merge at the end.
-    datasets = []
-    for descriptor in descriptor_docs:
-        events = list(flatten_event_page_gen(get_event_pages(descriptor['uid'])))
-        if not events:
-            continue
-        if any(data_keys[key].get('external') for key in keys):
-            filler('descriptor', descriptor)
-            for event in events:
-                try:
-                    filler('event', event)
-                except event_model.UnresolvableForeignKeyError as err:
-                    datum_id = err.key
-                    resource_uid = lookup_resource_for_datum(datum_id)
-                    resource = get_resource(resource_uid)
-                    filler('resource', resource)
-                    # Pre-fetch all datum for this resource.
-                    for datum_page in get_datum_pages(resource_uid):
-                        filler('datum_page', datum_page)
-                    # TODO -- When to clear the datum cache in filler?
-                    filler('event', event)
-        times = [ev['time'] for ev in events]
-        seq_nums = [ev['seq_num'] for ev in events]
-        uids = [ev['uid'] for ev in events]
-        data_table = _transpose(events, keys, 'data')
-        # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
-
-        # Collect a DataArray for each field in Event, each field in
-        # configuration, and 'seq_num'. The Event 'time' will be the
-        # default coordinate.
-        data_arrays = {}
-
-        # Make DataArrays for Event data.
-        for key in keys:
-            field_metadata = data_keys[key]
-            # Verify the actual ndim by looking at the data.
-            ndim = numpy.asarray(data_table[key][0]).ndim
-            dims = None
-            if 'dims' in field_metadata:
-                # As of this writing no Devices report dimension names ('dims')
-                # but they could in the future.
-                reported_ndim = len(field_metadata['dims'])
-                if reported_ndim == ndim:
-                    dims = tuple(field_metadata['dims'])
-                else:
-                    # TODO Warn
-                    ...
-            if dims is None:
-                # Construct the same default dimension names xarray would.
-                dims = tuple(f'dim_{i}' for i in range(ndim))
-            data_arrays[key] = xarray.DataArray(
-                data=data_table[key],
-                dims=('time',) + dims,
-                coords={'time': times},
-                name=key)
-
-        # Make DataArrays for configuration data.
-        for object_name, config in descriptor.get('configuration', {}).items():
-            data_keys = config['data_keys']
-            # For configuration, label the dimension specially to
-            # avoid key collisions.
-            scoped_data_keys = {key: f'{object_name}:{key}'
-                                for key in data_keys}
-            if include:
-                keys = {k: v for k, v in scoped_data_keys.items()
-                        if v in include}
-            elif exclude:
-                keys = {k: v for k, v in scoped_data_keys.items()
-                        if v not in include}
-            else:
-                keys = scoped_data_keys
-            for key, scoped_key in keys.items():
-                field_metadata = data_keys[key]
-                # Verify the actual ndim by looking at the data.
-                ndim = numpy.asarray(config['data'][key]).ndim
-                dims = None
-                if 'dims' in field_metadata:
-                    # As of this writing no Devices report dimension names ('dims')
-                    # but they could in the future.
-                    reported_ndim = len(field_metadata['dims'])
-                    if reported_ndim == ndim:
-                        dims = tuple(field_metadata['dims'])
-                    else:
-                        # TODO Warn
-                        ...
-                if dims is None:
-                    # Construct the same default dimension names xarray would.
-                    dims = tuple(f'dim_{i}' for i in range(ndim))
-                data_arrays[scoped_key] = xarray.DataArray(
-                    # TODO Once we know we have one Event Descriptor
-                    # per stream we can be more efficient about this.
-                    data=numpy.tile(config['data'][key],
-                                    (len(times),) + ndim * (1,)),
-                    dims=('time',) + dims,
-                    coords={'time': times},
-                    name=key)
-
-        # Finally, make DataArrays for 'seq_num' and 'uid'.
-        data_arrays['seq_num'] = xarray.DataArray(
-            data=seq_nums,
-            dims=('time',),
-            coords={'time': times},
-            name='seq_num')
-        data_arrays['uid'] = xarray.DataArray(
-            data=uids,
-            dims=('time',),
-            coords={'time': times},
-            name='uid')
-
-        datasets.append(xarray.Dataset(data_vars=data_arrays))
-    # Merge Datasets from all Event Descriptors into one representing the
-    # whole stream. (In the future we may simplify to one Event Descriptor
-    # per stream, but as of this writing we must account for the
-    # possibility of multiple.)
-    return xarray.merge(datasets)
+#def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
+#                        get_event_pages, filler, get_resource,
+#                        lookup_resource_for_datum, get_datum_pages,
+#                        include=None, exclude=None):
+#    """
+#    Represent the data in one Event stream as an xarray.
+#
+#    Parameters
+#    ----------
+#    start_doc: dict
+#        RunStart Document
+#    stop_doc : dict
+#        RunStop Document
+#    descriptor_docs : list
+#        EventDescriptor Documents
+#    filler : event_model.Filler
+#    get_resource : callable
+#        Expected signature ``get_resource(resource_uid) -> Resource``
+#    lookup_resource_for_datum : callable
+#        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
+#    get_datum_pages : callable
+#        Expected signature ``get_datum_pages(resource_uid) -> generator``
+#        where ``generator`` yields datum_page documents
+#    get_event_pages : callable
+#        Expected signature ``get_event_pages(descriptor_uid) -> generator``
+#        where ``generator`` yields event_page documents
+#    include : list, optional
+#        Fields ('data keys') to include. By default all are included. This
+#        parameter is mutually exclusive with ``exclude``.
+#    exclude : list, optional
+#        Fields ('data keys') to exclude. By default none are excluded. This
+#        parameter is mutually exclusive with ``include``.
+#
+#    Returns
+#    -------
+#    dataset : xarray.Dataset
+#    """
+#    if include is None:
+#        include = []
+#    if exclude is None:
+#        exclude = []
+#    if include and exclude:
+#        raise ValueError(
+#            "The parameters `include` and `exclude` are mutually exclusive.")
+#
+#    # Data keys must not change within one stream, so we can safely sample
+#    # just the first Event Descriptor.
+#    if descriptor_docs:
+#        data_keys = descriptor_docs[0]['data_keys']
+#        if include:
+#            keys = list(set(data_keys) & set(include))
+#        elif exclude:
+#            keys = list(set(data_keys) - set(exclude))
+#        else:
+#            keys = list(data_keys)
+#
+#    # Collect a Dataset for each descriptor. Merge at the end.
+#    datasets = []
+#    for descriptor in descriptor_docs:
+#        events = list(flatten_event_page_gen(get_event_pages(descriptor['uid'])))
+#        if not events:
+#            continue
+#        if any(data_keys[key].get('external') for key in keys):
+#            filler('descriptor', descriptor)
+#            for event in events:
+#                try:
+#                    filler('event', event)
+#                except event_model.UnresolvableForeignKeyError as err:
+#                    datum_id = err.key
+#                    resource_uid = lookup_resource_for_datum(datum_id)
+#                    resource = get_resource(resource_uid)
+#                    filler('resource', resource)
+#                    # Pre-fetch all datum for this resource.
+#                    for datum_page in get_datum_pages(resource_uid):
+#                        filler('datum_page', datum_page)
+#                    # TODO -- When to clear the datum cache in filler?
+#                    filler('event', event)
+#        times = [ev['time'] for ev in events]
+#        seq_nums = [ev['seq_num'] for ev in events]
+#        uids = [ev['uid'] for ev in events]
+#        data_table = _transpose(events, keys, 'data')
+#        # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
+#
+#        # Collect a DataArray for each field in Event, each field in
+#        # configuration, and 'seq_num'. The Event 'time' will be the
+#        # default coordinate.
+#        data_arrays = {}
+#
+#        # Make DataArrays for Event data.
+#        for key in keys:
+#            field_metadata = data_keys[key]
+#            # Verify the actual ndim by looking at the data.
+#            ndim = numpy.asarray(data_table[key][0]).ndim
+#            dims = None
+#            if 'dims' in field_metadata:
+#                # As of this writing no Devices report dimension names ('dims')
+#                # but they could in the future.
+#                reported_ndim = len(field_metadata['dims'])
+#                if reported_ndim == ndim:
+#                    dims = tuple(field_metadata['dims'])
+#                else:
+#                    # TODO Warn
+#                    ...
+#            if dims is None:
+#                # Construct the same default dimension names xarray would.
+#                dims = tuple(f'dim_{i}' for i in range(ndim))
+#            data_arrays[key] = xarray.DataArray(
+#                data=data_table[key],
+#                dims=('time',) + dims,
+#                coords={'time': times},
+#                name=key)
+#
+#        # Make DataArrays for configuration data.
+#        for object_name, config in descriptor.get('configuration', {}).items():
+#            data_keys = config['data_keys']
+#            # For configuration, label the dimension specially to
+#            # avoid key collisions.
+#            scoped_data_keys = {key: f'{object_name}:{key}'
+#                                for key in data_keys}
+#            if include:
+#                keys = {k: v for k, v in scoped_data_keys.items()
+#                        if v in include}
+#            elif exclude:
+#                keys = {k: v for k, v in scoped_data_keys.items()
+#                        if v not in include}
+#            else:
+#                keys = scoped_data_keys
+#            for key, scoped_key in keys.items():
+#                field_metadata = data_keys[key]
+#                # Verify the actual ndim by looking at the data.
+#                ndim = numpy.asarray(config['data'][key]).ndim
+#                dims = None
+#                if 'dims' in field_metadata:
+#                    # As of this writing no Devices report dimension names ('dims')
+#                    # but they could in the future.
+#                    reported_ndim = len(field_metadata['dims'])
+#                    if reported_ndim == ndim:
+#                        dims = tuple(field_metadata['dims'])
+#                    else:
+#                        # TODO Warn
+#                        ...
+#                if dims is None:
+#                    # Construct the same default dimension names xarray would.
+#                    dims = tuple(f'dim_{i}' for i in range(ndim))
+#                data_arrays[scoped_key] = xarray.DataArray(
+#                    # TODO Once we know we have one Event Descriptor
+#                    # per stream we can be more efficient about this.
+#                    data=numpy.tile(config['data'][key],
+#                                    (len(times),) + ndim * (1,)),
+#                    dims=('time',) + dims,
+#                    coords={'time': times},
+#                    name=key)
+#
+#        # Finally, make DataArrays for 'seq_num' and 'uid'.
+#        data_arrays['seq_num'] = xarray.DataArray(
+#            data=seq_nums,
+#            dims=('time',),
+#            coords={'time': times},
+#            name='seq_num')
+#        data_arrays['uid'] = xarray.DataArray(
+#            data=uids,
+#            dims=('time',),
+#            coords={'time': times},
+#            name='uid')
+#
+#        datasets.append(xarray.Dataset(data_vars=data_arrays))
+#    # Merge Datasets from all Event Descriptors into one representing the
+#    # whole stream. (In the future we may simplify to one Event Descriptor
+#    # per stream, but as of this writing we must account for the
+#    # possibility of multiple.)
+#    return xarray.merge(datasets)
 
 
 class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
@@ -767,9 +751,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
-        super().__init__(
-            metadata=metadata
-        )
+        super().__init__(metadata=metadata)
 
     def __repr__(self):
         try:
@@ -786,17 +768,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self.metadata.update({'stop': self._run_stop_doc})
         descriptor_docs = [doc for doc in self._get_event_descriptors()
                            if doc.get('name') == self._stream_name]
-        self._ds = documents_to_xarray(
-            start_doc=self._run_start_doc,
-            stop_doc=self._run_stop_doc,
-            descriptor_docs=descriptor_docs,
-            get_event_pages=self._get_event_pages,
-            filler=self.filler,
-            get_resource=self._get_resource,
-            lookup_resource_for_datum=self._lookup_resource_for_datum,
-            get_datum_pages=self._get_datum_pages,
-            include=self.include,
-            exclude=self.exclude)
+        self._ds = xarray.merge(list(self.filler.fill(self)))
 
 
 class DocumentCache(event_model.DocumentRouter):
@@ -984,9 +956,8 @@ intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
 class DaskFiller():
 
-    def __init__(self, handler_registry=None, *,
-                 include=None, exclude=None, root_map=None,
-                 handler_cache={}, resource_cache={}, datum_cache={}, chunk_size = 100,
+    def __init__(self, handler_registry=None, *, root_map=None, handler_cache={},
+                 resource_cache={}, datum_cache={}, chunk_size = 100,
                  retry_intervals=(0.001, 0.002, 0.004, 0.008, 0.016, 0.032,
                                   0.064, 0.128, 0.256, 0.512, 1.024)):
         if include is not None and exclude is not None:
@@ -995,8 +966,6 @@ class DaskFiller():
                 "incompatible. At least one must be left as the default, "
                 "None.")
         self.handler_registry = handler_registry
-        self.include = include
-        self.exclude = exclude
         self.root_map = root_map or {}
         self._handler_cache = handler_cache or {}
         self._resource_cache = resource_cache or {}
@@ -1013,14 +982,13 @@ class DaskFiller():
         descriptor_docs = [doc for doc in bes._get_event_descriptors()
                            if doc.get('name') == bes._stream_name]
         data_keys = descriptor_docs[0]['data_keys']
-        print(data_keys)
         more_keys = ['seq_num', 'uid']
-        needs_filling = {key for key, value in data_keys.items() if value.get('external', False)}
-        filled_pages = []
+        needs_filling = {key for key, value in data_keys.items()
+                         if value.get('external', False)}
+
         for descriptor in descriptor_docs:
-            filled_pages.extend([self._fill_eventpage(event_page, needs_filling)
-                           for event_page in bes._get_eventpages([descriptor['uid']])])
-        return filled_pages
+            yield from [self._fill_eventpage(event_page, needs_filling)
+                        for event_page in bes._get_eventpages([descriptor['uid']])]
 
     def _fill_eventpage(self, event_page, needs_filling):
         stream_key = 'descriptor'
