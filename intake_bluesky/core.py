@@ -4,6 +4,7 @@ import functools
 from datetime import datetime
 import dask
 import dask.bag
+from dask import delayed
 import importlib
 import itertools
 import intake.catalog.base
@@ -960,11 +961,12 @@ class DaskFiller():
                  resource_cache={}, datum_cache={}, chunk_size = 100,
                  retry_intervals=(0.001, 0.002, 0.004, 0.008, 0.016, 0.032,
                                   0.064, 0.128, 0.256, 0.512, 1.024)):
-        if include is not None and exclude is not None:
-            raise EventModelValueError(
-                "The parameters `include` and `exclude` are mutually "
-                "incompatible. At least one must be left as the default, "
-                "None.")
+        #if include is not None and exclude is not None:
+        #    raise EventModelValueError(
+        #        "The parameters `include` and `exclude` are mutually "
+        #        "incompatible. At least one must be left as the default, "
+         #       "None.")
+
         self.handler_registry = handler_registry
         self.root_map = root_map or {}
         self._handler_cache = handler_cache or {}
@@ -981,7 +983,7 @@ class DaskFiller():
         # bes is short for BlueskyEventStream
         descriptor_docs = [doc for doc in bes._get_event_descriptors()
                            if doc.get('name') == bes._stream_name]
-        data_keys = descriptor_docs[0]['data_keys']
+        data_keys = descriptor_docs[0]['data_keys'] if descriptor_docs else {}
         more_keys = ['seq_num', 'uid']
         needs_filling = {key for key, value in data_keys.items()
                          if value.get('external', False)}
