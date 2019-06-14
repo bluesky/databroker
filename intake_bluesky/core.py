@@ -754,6 +754,9 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self.exclude = exclude
         super().__init__(metadata=metadata)
 
+    def filled_event_pages(self):
+        yield from self.filler.fill(self)
+
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
@@ -769,7 +772,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self.metadata.update({'stop': self._run_stop_doc})
         descriptor_docs = [doc for doc in self._get_event_descriptors()
                            if doc.get('name') == self._stream_name]
-        self._ds = xarray.merge(list(self.filler.fill(self)))
+        self._ds = xarray.merge(list(self.filled_event_pages()))
 
 
 class DocumentCache(event_model.DocumentRouter):
