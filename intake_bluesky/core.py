@@ -476,7 +476,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
 
 class BlueskyRun(intake.catalog.Catalog):
-    """
+    """Filler' object has no attribute 'fi
     Catalog representing one Run.
 
     Parameters
@@ -747,7 +747,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self._filler = filler
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         self.include = include
@@ -755,7 +755,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         super().__init__(metadata=metadata)
 
     def filled_event_pages(self):
-        yield from self.filler.fill(self)
+        yield from self._filler.fill(self)
 
     def __repr__(self):
         try:
