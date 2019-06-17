@@ -1,9 +1,8 @@
 dask[bag]
-event_model >=1.8.0
-msgpack
-msgpack-numpy
+event-model >=1.8.0
 intake !=0.5.0
 intake-xarray
+mongoquery
 msgpack
 msgpack-numpy  # to be split into extras or a separate package
 numpy
@@ -12,4 +11,3 @@ pymongo  # to be split into extras or a separate package
 pyyaml  # undeclared by intake v0.4.1
 requests
 xarray
-mongoquery
