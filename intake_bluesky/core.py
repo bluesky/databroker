@@ -568,30 +568,43 @@ class BlueskyRun(intake.catalog.Catalog):
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
             for event in events:
-                try:
-                    self.filler('event', event)
-                except event_model.UnresolvableForeignKeyError as err:
-                    datum_id = err.key
-
-                    if '/' in datum_id:
-                        resource_uid, _ = datum_id.split('/', 1)
-                    else:
-                        resource_uid = self._lookup_resource_for_datum(datum_id)
-
-                    resource = self._get_resource(uid=resource_uid)
-                    self.filler('resource', resource)
-                    # Pre-fetch all datum for this resource.
-                    for datum_page in self._get_datum_pages(
-                                             resource_uid=resource_uid):
-                        self.filler('datum_page', datum_page)
-                    # TODO -- When to clear the datum cache in filler?
-                    self.filler('event', event)
+                self._fill(event)  # in place (for now)
                 payload.append(('event', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
         for _, doc in payload:
             doc.pop('_id', None)
         return payload
+
+    def _fill(self, event, last_datum_id=None):
+        try:
+            self.filler('event', event)
+        except event_model.UnresolvableForeignKeyError as err:
+            datum_id = err.key
+            if datum_id == last_datum_id:
+                # We tried to fetch this Datum on the last trip
+                # trip through this method, and apparently it did not
+                # work. We are in an infinite loop. Bail!
+                raise
+
+            if '/' in datum_id:
+                resource_uid, _ = datum_id.split('/', 1)
+            else:
+                resource_uid = self._lookup_resource_for_datum(datum_id)
+
+            resource = self._get_resource(uid=resource_uid)
+            self.filler('resource', resource)
+            # Pre-fetch all datum for this resource.
+            for datum_page in self._get_datum_pages(
+                    resource_uid=resource_uid):
+                self.filler('datum_page', datum_page)
+            # TODO -- When to clear the datum cache in filler?
+
+            # Re-enter and try again now that the Filler has consumed the
+            # missing Datum. There might be another missing Datum in this same
+            # Event document (hence this re-entrant structure) or might be good
+            # to go.
+            self._fill(event, last_datum_id=datum_id)
 
     def read(self):
         raise NotImplementedError(
