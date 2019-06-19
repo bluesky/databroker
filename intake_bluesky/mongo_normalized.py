@@ -202,10 +202,15 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         cursor = (self._event_collection
                   .find({'descriptor': descriptor_uid},
                         sort=[('time', pymongo.ASCENDING)]))
+        descriptor = self._event_descriptor_collection.find_one(
+            {'uid': descriptor_uid})
         cursor.skip(skip)
         if limit is not None:
             cursor = cursor.limit(limit)
+        external_keys = {k for k, v in descriptor['data_keys'].items()
+                         if 'external' in v}
         for doc in cursor:
+            doc['filled'] = {k: False for k in external_keys}
             doc.pop('_id')
             yield doc
 
