@@ -73,7 +73,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
                   'filler': self.filler},
             cache=None,  # ???
             parameters=[],
-            metadata={},  # TODO
+            metadata={'start': run_start_doc, 'stop': None},
             catalog_dir=None,
             getenv=True,
             getshell=True,
