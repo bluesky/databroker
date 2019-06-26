@@ -961,8 +961,69 @@ intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 class DaskFiller(event_model.Filler):
 
     def __init__(self, *args, chunk_size=None, **kwargs):
-        self.chunk_size = chunk_size
+        self._chunk_size = chunk_size
         super().__init__(*args, **kwargs)
+
+    def event_page(self, doc):
+        array_keys = ['seq_num', 'time', 'uid']
+        event_pages = event_model.rechunk_event_pages([doc], self._chunk_size)
+        filled_pages = []
+
+        def fill_collumn(event_page, key):
+
+
+            @dask.delayed
+            def delayed_fill(event_page, key):
+
+        for page in event_pages:
+            filled_pages.append(
+
+
+
+
+        filled_page = {'descriptor': event_page['descriptor'],
+                 **{key: xarr(event_page[key], name=key) for key in array_keys},
+                 'data': xarray.merge({key: xarr(event_page['data'][key],
+                                         name=key, fill=(key in needs_filling))
+                    for key in event_page['data'].keys()}.values())},
+                 **{'timestamps': xarray.merge({key: xarr(event_page['timestamps'][key],
+                                               name=key)
+                    for key in event_page['data'].keys()}.values())},
+                 **{'filled': xarray.merge({key: xarr(event_page['filled'][key],
+                                           name=key)
+                        for key in event_page['data'].keys()}.values())}}
+        event_page = filled_page
+
+
+
+
+    def event_page(self, doc):
+        # One chunk for column (for now)
+        data_arrays = {}  # maps data_key to xarray.DataArray
+        for key in doc['data']:
+            dask_arrays = []  # list of chunks for this column
+            for slice_ in ...:  # Slice up len(doc['data']) in chunks.
+                chunk = {}
+                chunk['uid'] = doc['uid']
+                chunk['time'] = doc['time']
+                chunk['data'] = {}
+                for k in doc['data']:
+                    chunk['data'][k] = doc['data'][k][slice_]
+
+                @dask.delayed
+                def fill_chunk(page, key):
+                    filled_chunk = super().fill_event_page(chunk, include=[key])
+                    filled_chunk['data'][key]
+                shape = ...  # Get this from self._descriptor_cache.
+                dtype = ...  # ditto
+                da = dask.array.from_delayed(fill_chunk, shape, dtype=dtype)
+                dask_arrays.append(da)
+            data_array = xarray.DataArray(dask.concatenate(dask_arrays))
+            data_arrays[key] = data_array
+        filled_doc = doc.copy()  # intentionally a shallow copy
+        filled_doc['filled'] = {}
+        filled_doc['data'] = data_arrays
+        return filled_doc```
 
     def event_page(self, event_page):
         needs_filling = []
@@ -983,6 +1044,7 @@ class DaskFiller(event_model.Filler):
                  **{'filled': xarray.merge({key: xarr(event_page['filled'][key],
                                            name=key)
                         for key in event_page['data'].keys()}.values())}}
+        event_page = filled_page
         return filled_page
 
     def _to_xarray(self, collumn, coord_label, coords, name, fill=False):
@@ -997,99 +1059,6 @@ class DaskFiller(event_model.Filler):
                     coords={coord_label: coords},
                     name=name))
 
-    def _chunks(self, col, chunk_size):
-        for i in range(0, len(col), chunk_size):
-            yield col[i:i + chunk_size]
-
     @delayed
     def _fill_chunk(self, chunk):
         return np.asarray([self._fill_item(item) for item in chunk])
-
-    def _fill_item(self, item):
-        try:
-            filled = doc['filled']
-        except KeyError:
-            # This document is not telling us which, if any, keys are filled.
-            # Infer that none of the external data is filled.
-            descriptor = self._descriptor_cache[doc['descriptor']]
-            filled = {key: 'external' in val
-                      for key, val in descriptor['data_keys'].items()}
-        for key, is_filled in filled.items():
-            if self.exclude is not None and key in self.exclude:
-                continue
-            if self.include is not None and key not in self.include:
-                continue
-            if not is_filled:
-                datum_id = doc['data'][key]
-                # Look up the cached Datum doc.
-                try:
-                    datum_doc = self._datum_cache[datum_id]
-                except KeyError as err:
-                    err_with_key = UnresolvableForeignKeyError(
-                        f"Event with uid {doc['uid']} refers to unknown Datum "
-                        f"datum_id {datum_id}")
-                    err_with_key.key = datum_id
-                    raise err_with_key from err
-                resource_uid = datum_doc['resource']
-                # Look up the cached Resource.
-                try:
-                    resource = self._resource_cache[resource_uid]
-                except KeyError as err:
-                    raise UnresolvableForeignKeyError(
-                        f"Datum with id {datum_id} refers to unknown Resource "
-                        f"uid {resource_uid}") from err
-                # Look up the cached handler instance, or instantiate one.
-                try:
-                    handler = self._handler_cache[resource['uid']]
-                except KeyError:
-                    try:
-                        handler_class = self.handler_registry[resource['spec']]
-                    except KeyError as err:
-                        raise UndefinedAssetSpecification(
-                            f"Resource document with uid {resource['uid']} "
-                            f"refers to spec {resource['spec']!r} which is "
-                            f"not defined in the Filler's "
-                            f"handler registry.") from err
-                    try:
-                        # Apply root_map.
-                        resource_path = resource['resource_path']
-                        root = resource.get('root', '')
-                        root = self.root_map.get(root, root)
-                        if root:
-                            resource_path = os.path.join(root, resource_path)
-
-                        handler = handler_class(resource_path,
-                                                **resource['resource_kwargs'])
-                    except Exception as err:
-                        raise EventModelError(
-                            f"Error instantiating handler "
-                            f"class {handler_class} "
-                            f"with Resource document {resource}.") from err
-                    self._handler_cache[resource['uid']] = handler
-
-                # We are sure to attempt to read that data at least once and
-                # then perhaps additional times depending on the contents of
-                # retry_intervals.
-                error = None
-                for interval in [0] + self.retry_intervals:
-                    ttime.sleep(interval)
-                    try:
-                        actual_data = handler(**datum_doc['datum_kwargs'])
-                        # Here we are intentionally modifying doc in place.
-                        doc['data'][key] = actual_data
-                        doc['filled'][key] = datum_id
-                    except IOError as error_:
-                        # The file may not be visible on the network yet.
-                        # Wait and try again. Stash the error in a variable
-                        # that we can access later if we run out of attempts.
-                        error = error_
-                    else:
-                        break
-                else:
-                    # We have used up all our attempts. There seems to be an
-                    # actual problem. Raise the error stashed above.
-                    raise DataNotAccessible(
-                        f"Filler was unable to load the data referenced by "
-                        f"the Datum document {datum_doc} and the Resource "
-                        f"document {resource}.") from error
-        return doc
