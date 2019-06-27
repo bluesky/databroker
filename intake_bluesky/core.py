@@ -980,7 +980,7 @@ def merge_xarray_event_pages(event_pages):
                     [page[key] for page in pages])) for key in array_keys},
             'data': xarray.concat([page['data'] for page in pages]),
             'timestamps': xarray.concat([page['timestamps'] for page in pages]),
-            'filled':  xarray.concat([page['timestamps'] for page in pages])}
+            'filled':  xarray.concat([page['filled'] for page in pages])}
 
 
 class DaskFiller(event_model.Filler):
