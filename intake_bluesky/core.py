@@ -957,6 +957,31 @@ def parse_handler_registry(handler_registry):
 intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
+def merge_xarray_event_pages(event_pages):
+    """
+    Combines a iterable of event_pages to a single event_page.
+
+    Parameters
+    ----------
+    event_pages: Iterabile
+        An iterable of event_pages
+    Returns
+    ------
+    event_page : dict
+    """
+    pages = list(event_pages)
+    if len(pages) == 1:
+        return pages[0]
+
+    array_keys = ['seq_num', 'time', 'uid']
+
+    return {'descriptor': pages[0]['descriptor'],
+            **{key: list(itertools.chain.from_iterable(
+                    [page[key] for page in pages])) for key in array_keys},
+            'data': xarray.concat([page['data'] for page in pages]),
+            'timestamps': xarray.concat([page['timestamps'] for page in pages]),
+            'filled':  xarray.concat([page['timestamps'] for page in pages])}
+
 
 class DaskFiller(event_model.Filler):
 
