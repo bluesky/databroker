@@ -1,6 +1,8 @@
 import event_model
-from intake_bluesky.core import BlueskyEventStream, DaskFiller
-
+from intake_bluesky.core import (documents_to_xarray,
+                                event_page_to_dataarray_page,
+                                concat_dataarray_pages,
+                                dataarray_page_to_dataset_page)
 
 def no_event_pages(descriptor_uid):
     yield from ()
@@ -24,24 +26,15 @@ def test_no_descriptors():
     run_bundle = event_model.compose_run()
     start_doc = run_bundle.start_doc
     stop_doc = run_bundle.compose_stop()
-
-    entry_metadata = {'start': start_doc,
-                      'stop': stop_doc}
-
-    bes = BlueskyEventStream(
-        get_run_start=lambda: start_doc,
-        stream_name=True,
-        get_run_stop=lambda: stop_doc,
-        get_event_descriptors= lambda: [],
+    documents_to_xarray(
+        start_doc=start_doc,
+        stop_doc=stop_doc,
+        descriptor_docs=[],
         get_event_pages=no_event_pages,
-        get_event_count=lambda: 0,
+        filler=event_model.Filler({}),
         get_resource=None,
         lookup_resource_for_datum=None,
-        get_datum_pages=None,
-        filler=DaskFiller(),
-        metadata=entry_metadata)
-
-    bes._open_dataset()
+        get_datum_pages=None)
 
 
 def test_no_events():
@@ -52,28 +45,20 @@ def test_no_events():
         name='primary')
     descriptor_doc = desc_bundle.descriptor_doc
     stop_doc = run_bundle.compose_stop()
-
-    entry_metadata = {'start': start_doc,
-                      'stop': stop_doc}
-
-    bes = BlueskyEventStream(
-        get_run_start=lambda: start_doc,
-        stream_name=True,
-        get_run_stop=lambda: stop_doc,
-        get_event_descriptors= lambda: [descriptor_doc],
+    documents_to_xarray(
+        start_doc=start_doc,
+        stop_doc=stop_doc,
+        descriptor_docs=[descriptor_doc],
         get_event_pages=no_event_pages,
-        get_event_count=lambda: 0,
+        filler=event_model.Filler({}),
         get_resource=None,
         lookup_resource_for_datum=None,
-        get_datum_pages=None,
-        filler=DaskFiller(),
-        metadata=entry_metadata)
+        get_datum_pages=None)
 
-    bes._open_dataset()
 
 def test_xarray_helpers():
     event_pages = list(event_page_gen(100, 5))
     dataarray_pages = [event_page_to_dataarray_page(page) for page in event_pages]
-    datarray_page = concat_xarray_event_pages(dataarray_pages)
+    datarray_page = concat_dataarray_pages(dataarray_pages)
     dataset_page =  dataarray_page_to_dataset_page(dataarray_page)
 

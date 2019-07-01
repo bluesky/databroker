@@ -698,7 +698,17 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self.metadata.update({'stop': self._run_stop_doc})
         descriptor_docs = [doc for doc in self._get_event_descriptors()
                            if doc.get('name') == self._stream_name]
-        self._ds = xarray.merge(list(self.filled_event_pages()))
+        self._ds = documents_to_xarray(
+            start_doc=self._run_start_doc,
+            stop_doc=self._run_stop_doc,
+            descriptor_docs=descriptor_docs,
+            get_event_pages=self._get_event_pages,
+            filler=self.filler,
+            get_resource=self._get_resource,
+            lookup_resource_for_datum=self._lookup_resource_for_datum,
+            get_datum_pages=self._get_datum_pages,
+            include=self.include,
+            exclude=self.exclude)
 
 
 class DocumentCache(event_model.DocumentRouter):
@@ -884,7 +894,7 @@ intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
 
-def concat_xarray_event_pages(event_pages):
+def concat_dataarray_pages(event_pages):
     """
     Combines a iterable of event_pages to a single event_page.
 
@@ -910,7 +920,7 @@ def concat_xarray_event_pages(event_pages):
             'filled':  xarray.concat([page['filled'] for page in pages])}
 
 
-def event_page_to_dataarray_page(event_page, dims, coords=None, name):
+def event_page_to_dataarray_page(event_page, dims=None, name=None, coords=None):
     """
     Converts the event_page's data, timestamps, and filled to xarray.DataArray.
 
@@ -921,19 +931,19 @@ def event_page_to_dataarray_page(event_page, dims, coords=None, name):
     ------
     event_page : dict
     """
-    if coords is None:
-        coords = event_page['time']
+    #if coords is None:
+    #    coords = event_page['time']
 
     for key in event_page['data']:
-        event_page['data'][key] = xarray.DataArray(event_page['data'][key]
+        event_page['data'][key] = xarray.DataArray(event_page['data'][key],
                                        dims=dims, coords=coords, name=name)
-        event_page['timestamps'][key] = xarray.DataArray(event_page['timestamps'][key]
+        event_page['timestamps'][key] = xarray.DataArray(event_page['timestamps'][key],
                                        dims=dims, coords=coords, name=name)
-        event_page['filled'][key] = xarray.DataArray(event_page['filled'][key]
+        event_page['filled'][key] = xarray.DataArray(event_page['filled'][key],
                                        dims=dims, coords=coords, name=name)
     return event_page
 
-def dataarray_page_to_dataset_page(dataarray_page)
+def dataarray_page_to_dataset_page(dataarray_page):
 
     """
     Converts the event_page's data, timestamps, and filled to xarray.DataSet.
