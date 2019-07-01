@@ -402,7 +402,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
 
 class BlueskyRun(intake.catalog.Catalog):
-    """Filler' object has no attribute 'fi
+    """
     Catalog representing one Run.
 
     Parameters
