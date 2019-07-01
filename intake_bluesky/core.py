@@ -5,6 +5,7 @@ from datetime import datetime
 import dask
 import dask.bag
 from dask import delayed
+from dask import array
 import importlib
 import itertools
 import intake.catalog.base
