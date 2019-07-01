@@ -1,8 +1,24 @@
 import event_model
 from intake_bluesky.core import BlueskyEventStream, DaskFiller
 
+
 def no_event_pages(descriptor_uid):
     yield from ()
+
+
+def event_page_gen(page_size, num_pages):
+    """
+    Generator event_pages for testing.
+    """
+    data_keys = ['x', 'y', 'z']
+    array_keys = ['seq_num', 'time', 'uid']
+    for i in range(num_pages):
+        yield {'descriptor': 'DESCRIPTOR',
+               **{key: list(range(page_size)) for key in array_keys},
+               'data': {key: list(range(page_size)) for key in data_keys},
+               'timestamps': {key: list(range(page_size)) for key in data_keys},
+               'filled': {key: list(range(page_size)) for key in data_keys}}
+
 
 def test_no_descriptors():
     run_bundle = event_model.compose_run()
@@ -54,3 +70,10 @@ def test_no_events():
         metadata=entry_metadata)
 
     bes._open_dataset()
+
+def test_xarray_helpers():
+    event_pages = list(event_page_gen(100, 5))
+    dataarray_pages = [event_page_to_dataarray_page(page) for page in event_pages]
+    datarray_page = concat_xarray_event_pages(dataarray_pages)
+    dataset_page =  dataarray_page_to_dataset_page(dataarray_page)
+
