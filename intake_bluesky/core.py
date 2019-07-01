@@ -957,7 +957,8 @@ def parse_handler_registry(handler_registry):
 intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
-def merge_xarray_event_pages(event_pages):
+
+def concat_xarray_event_pages(event_pages):
     """
     Combines a iterable of event_pages to a single event_page.
 
@@ -982,108 +983,30 @@ def merge_xarray_event_pages(event_pages):
             'timestamps': xarray.concat([page['timestamps'] for page in pages]),
             'filled':  xarray.concat([page['filled'] for page in pages])}
 
+def event_page_to_dataarray_page(event_page, dims, coords, name):
+
+    for key in event_page['data']:
+        event_page['data'][key] = xarray.DataArray(
+                                       np.asarray(event_page['data'][key])
+                                       dims=dims, coords=coords, name=name)
+        event_page['timestamps'][key] = xarray.DataArray(
+                                       np.asarray(event_page['timestamps'][key])
+                                       dims=dims, coords=coords, name=name)
+        event_page['filled'][key] = xarray.DataArray(
+                                       np.asarray(event_page['filled'][key])
+                                       dims=dims, coords=coords, name=name)
+    return event_page
+
 
 class DaskFiller(event_model.Filler):
 
-    def __init__(self, *args, chunk_size=None, **kwargs):
-        self._chunk_size = chunk_size
-        super().__init__(*args, **kwargs)
-
     def event_page(self, doc):
-        array_keys = ['seq_num', 'time', 'uid']
-        event_pages = event_model.rechunk_event_pages([doc], self._chunk_size)
-        filled_pages = []
 
-        def fill_collumn(event_page, key):
+        @dask.delayed
+        def delayed_fill(event_page, key):
+            self.fill_event_page(event_page, include=key)
+            return np.asarray(event_page['data'][key])
 
-
-            @dask.delayed
-            def delayed_fill(event_page, key):
-
-        for page in event_pages:
-            filled_pages.append(
-
-
-
-
-        filled_page = {'descriptor': event_page['descriptor'],
-                 **{key: xarr(event_page[key], name=key) for key in array_keys},
-                 'data': xarray.merge({key: xarr(event_page['data'][key],
-                                         name=key, fill=(key in needs_filling))
-                    for key in event_page['data'].keys()}.values())},
-                 **{'timestamps': xarray.merge({key: xarr(event_page['timestamps'][key],
-                                               name=key)
-                    for key in event_page['data'].keys()}.values())},
-                 **{'filled': xarray.merge({key: xarr(event_page['filled'][key],
-                                           name=key)
-                        for key in event_page['data'].keys()}.values())}}
-        event_page = filled_page
-
-
-
-
-    def event_page(self, doc):
-        # One chunk for column (for now)
-        data_arrays = {}  # maps data_key to xarray.DataArray
         for key in doc['data']:
-            dask_arrays = []  # list of chunks for this column
-            for slice_ in ...:  # Slice up len(doc['data']) in chunks.
-                chunk = {}
-                chunk['uid'] = doc['uid']
-                chunk['time'] = doc['time']
-                chunk['data'] = {}
-                for k in doc['data']:
-                    chunk['data'][k] = doc['data'][k][slice_]
-
-                @dask.delayed
-                def fill_chunk(page, key):
-                    filled_chunk = super().fill_event_page(chunk, include=[key])
-                    filled_chunk['data'][key]
-                shape = ...  # Get this from self._descriptor_cache.
-                dtype = ...  # ditto
-                da = dask.array.from_delayed(fill_chunk, shape, dtype=dtype)
-                dask_arrays.append(da)
-            data_array = xarray.DataArray(dask.concatenate(dask_arrays))
-            data_arrays[key] = data_array
-        filled_doc = doc.copy()  # intentionally a shallow copy
-        filled_doc['filled'] = {}
-        filled_doc['data'] = data_arrays
-        return filled_doc```
-
-    def event_page(self, event_page):
-        needs_filling = []
-        stream_key = 'descriptor'
-        coord_key = 'time'
-        array_keys = ['seq_num', 'time', 'uid']
-        dataframe_keys = ['data', 'timestamps', 'filled']
-        coords = event_page[coord_key]
-        xarr = partial(self._to_xarray, coord_label=coord_key, coords=coords)
-        filled_page = {**{stream_key: event_page[stream_key]},
-                 **{key: xarr(event_page[key], name=key) for key in array_keys},
-                 **{'data': xarray.merge({key: xarr(event_page['data'][key],
-                                         name=key, fill=(key in needs_filling))
-                    for key in event_page['data'].keys()}.values())},
-                 **{'timestamps': xarray.merge({key: xarr(event_page['timestamps'][key],
-                                               name=key)
-                    for key in event_page['data'].keys()}.values())},
-                 **{'filled': xarray.merge({key: xarr(event_page['filled'][key],
-                                           name=key)
-                        for key in event_page['data'].keys()}.values())}}
-        event_page = filled_page
-        return filled_page
-
-    def _to_xarray(self, collumn, coord_label, coords, name, fill=False):
-        if fill:
-            return xarray.DataArray(array.concatenate(
-                      [array.from_delayed(self._fill_chunk(chunk),
-                                          (len(chunk),), dtype=object)
-                       for chunk in self._chunks(collumn, self._chunk_size)]))
-        else:
-            return (xarray.DataArray(collumn,
-                    dims=(coord_label,),
-                    coords={coord_label: coords},
-                    name=name))
-
-    @delayed
-    def _fill_chunk(self, chunk):
-        return np.asarray([self._fill_item(item) for item in chunk])
+            doc['data'][key] = delayed_fill(doc, key)
+        return doc
