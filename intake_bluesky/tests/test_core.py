@@ -59,6 +59,6 @@ def test_no_events():
 def test_xarray_helpers():
     event_pages = list(event_page_gen(100, 5))
     dataarray_pages = [event_page_to_dataarray_page(page) for page in event_pages]
-    datarray_page = concat_dataarray_pages(dataarray_pages)
+    dataarray_page = concat_dataarray_pages(dataarray_pages)
     dataset_page =  dataarray_page_to_dataset_page(dataarray_page)
 

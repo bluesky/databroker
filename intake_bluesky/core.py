@@ -911,13 +911,17 @@ def concat_dataarray_pages(event_pages):
         return pages[0]
 
     array_keys = ['seq_num', 'time', 'uid']
+    data_keys = event_pages[0]['data'].keys()
 
     return {'descriptor': pages[0]['descriptor'],
             **{key: list(itertools.chain.from_iterable(
                     [page[key] for page in pages])) for key in array_keys},
-            'data': xarray.concat([page['data'] for page in pages]),
-            'timestamps': xarray.concat([page['timestamps'] for page in pages]),
-            'filled':  xarray.concat([page['filled'] for page in pages])}
+            'data': {key: xarray.concat([page['data'][key] for page in pages])
+                     for key in data_keys},
+            'timestamps': {key: xarray.concat([page['timestamps'][key] for page in pages])
+                           for key in data_keys},
+            'filled': {key: xarray.concat([page['filled'][key] for page in pages])
+                       for key in data_keys}}
 
 
 def event_page_to_dataarray_page(event_page, dims=None, name=None, coords=None):
