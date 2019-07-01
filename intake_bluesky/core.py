@@ -983,7 +983,18 @@ def concat_xarray_event_pages(event_pages):
             'timestamps': xarray.concat([page['timestamps'] for page in pages]),
             'filled':  xarray.concat([page['filled'] for page in pages])}
 
+
 def event_page_to_dataarray_page(event_page, dims, coords, name):
+    """
+    Converts the event_page's data, timestamps, and filled to xarray.DataArray.
+
+    Parameters
+    ----------
+    event_page: dict
+    Returns
+    ------
+    event_page : dict
+    """
 
     for key in event_page['data']:
         event_page['data'][key] = xarray.DataArray(
@@ -996,6 +1007,23 @@ def event_page_to_dataarray_page(event_page, dims, coords, name):
                                        np.asarray(event_page['filled'][key])
                                        dims=dims, coords=coords, name=name)
     return event_page
+
+def dataarray_page_to_dataset_page(dataarray_page)
+
+    """
+    Converts the event_page's data, timestamps, and filled to xarray.DataSet.
+
+    Parameters
+    ----------
+    event_page: dict
+    Returns
+    ------
+    event_page : dict
+    """
+    dataarray_page['data'] = xarray.merge(dataarray_page['data'])
+    dataarray_page['timestamps'] = xarray.merge(dataarray_page['timestamps'])
+    dataarray_page['filled'][key] = xarray.merge(dataarray_page['filled'])
+    return dataarray_page
 
 
 class DaskFiller(event_model.Filler):
