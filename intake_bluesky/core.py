@@ -986,24 +986,22 @@ def dataarray_page_to_dataset_page(dataarray_page):
 class DaskFiller(event_model.Filler):
 
     def __init__(self, *args, inplace=False, **kwargs):
-        super().__init__(*args, inplace=inplace, **kwargs)
+        if inplace:
+            raise NotImplementedError("DaskFiller inplace is not supported.")
+        super().__init__(*args, inplace=True, **kwargs)
 
     def event_page(self, doc):
 
         @dask.delayed
         def delayed_fill(event_page, key):
-            filled_page = self.fill_event_page(event_page, include=key)
-            return numpy.asarray(filled_page['data'][key])
+            self.fill_event_page(event_page, include=key)
+            return numpy.asarray(event_page['data'][key])
 
         descriptor = self._descriptor_cache[doc['descriptor']]
         needs_filling = {key for key, val in descriptor['data_keys'].items()
                          if 'external' in val}
-        array_keys = ['seq_num', 'time', 'uid']
-        data_keys = set(doc['data'].keys())
+        filled_doc = copy.deepcopy(doc)
 
-        return {'descriptor': doc['descriptor'],
-            **{key: doc[key] for key in array_keys},
-            'data': {**{key: doc[key] for key in set(data_keys - needs_filling)},
-                     **{key: array.from_delayed(delayed_fill(doc,key)) for key in needs_filling}},
-            'timestamps': doc['timestamps'],
-            'filled': doc['filled']}
+        for key in needs_filling:
+            filled_doc['data'][key] = array.from_delayed(delayed_fill(filled_doc, key))
+        return filled_doc
