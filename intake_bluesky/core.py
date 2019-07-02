@@ -983,7 +983,6 @@ def dataarray_page_to_dataset_page(dataarray_page):
             'filled': xarray.merge(dataarray_page['filled'].values())}
 
 
-
 class DaskFiller(event_model.Filler):
     def event_page(self, doc):
 
