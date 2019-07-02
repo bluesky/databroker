@@ -984,6 +984,10 @@ def dataarray_page_to_dataset_page(dataarray_page):
 
 
 class DaskFiller(event_model.Filler):
+
+    def __init__(self, *args, inplace=False, **kwargs):
+        super().__init__(*args, inplace=False, **kwargs)
+
     def event_page(self, doc):
 
         @dask.delayed
