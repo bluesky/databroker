@@ -1,6 +1,7 @@
 import event_model
 import xarray
 import intake_bluesky.core as core
+from intake_bluesky.core import documents_to_xarray
 
 
 def no_event_pages(descriptor_uid):
