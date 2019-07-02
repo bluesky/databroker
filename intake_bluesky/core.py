@@ -4,7 +4,6 @@ import functools
 from datetime import datetime
 import dask
 import dask.bag
-from dask import delayed
 from dask import array
 import importlib
 import itertools
@@ -894,24 +893,27 @@ intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
 
-def concat_dataarray_pages(event_pages):
+def concat_dataarray_pages(dataarray_pages):
     """
-    Combines a iterable of event_pages to a single event_page.
+    Combines a iterable of dataarray_pages to a single dataarray_page.
 
     Parameters
     ----------
-    event_pages: Iterabile
-        An iterable of event_pages
+    dataarray_pages: Iterabile
+        An iterable of event_pages with xarray.dataArrays in the data,
+        timestamp, and filled fields.
     Returns
     ------
     event_page : dict
+        A single event_pages with xarray.dataArrays in the data,
+        timestamp, and filled fields.
     """
-    pages = list(event_pages)
+    pages = list(dataarray_pages)
     if len(pages) == 1:
         return pages[0]
 
     array_keys = ['seq_num', 'time', 'uid']
-    data_keys = event_pages[0]['data'].keys()
+    data_keys = dataarray_pages[0]['data'].keys()
 
     return {'descriptor': pages[0]['descriptor'],
             **{key: list(itertools.chain.from_iterable(
@@ -924,7 +926,7 @@ def concat_dataarray_pages(event_pages):
                        for key in data_keys}}
 
 
-def event_page_to_dataarray_page(event_page, dims=None, name=None, coords=None):
+def event_page_to_dataarray_page(event_page, dims=None, coords=None):
     """
     Converts the event_page's data, timestamps, and filled to xarray.DataArray.
 
@@ -934,46 +936,56 @@ def event_page_to_dataarray_page(event_page, dims=None, name=None, coords=None):
     Returns
     ------
     event_page : dict
+        An event_pages with xarray.dataArrays in the data,
+        timestamp, and filled fields.
     """
-    #if coords is None:
-    #    coords = event_page['time']
+    if coords is None:
+        coords = {'time': event_page['time']}
+    if dims is None:
+        dims = ('time',)
 
     for key in event_page['data']:
-        event_page['data'][key] = xarray.DataArray(event_page['data'][key],
-                                       dims=dims, coords=coords, name=name)
-        event_page['timestamps'][key] = xarray.DataArray(event_page['timestamps'][key],
-                                       dims=dims, coords=coords, name=name)
-        event_page['filled'][key] = xarray.DataArray(event_page['filled'][key],
-                                       dims=dims, coords=coords, name=name)
+        event_page['data'][key] = xarray.DataArray(
+                    event_page['data'][key], dims=dims, coords=coords, name=key)
+        event_page['timestamps'][key] = xarray.DataArray(
+                    event_page['timestamps'][key], dims=dims, coords=coords, name=key)
+        event_page['filled'][key] = xarray.DataArray(
+                    event_page['filled'][key], dims=dims, coords=coords, name=key)
+
     return event_page
+
 
 def dataarray_page_to_dataset_page(dataarray_page):
 
     """
-    Converts the event_page's data, timestamps, and filled to xarray.DataSet.
+    Converts the dataarray_page's data, timestamps, and filled to xarray.DataSet.
 
     Parameters
     ----------
-    event_page: dict
+    dataarray_page: dict
     Returns
     ------
-    event_page : dict
+    dataset_page : dict
     """
-    dataarray_page['data'] = xarray.merge(dataarray_page['data'])
-    dataarray_page['timestamps'] = xarray.merge(dataarray_page['timestamps'])
-    dataarray_page['filled'][key] = xarray.merge(dataarray_page['filled'])
+    dataarray_page['data'] = xarray.merge(dataarray_page['data'].values())
+    dataarray_page['timestamps'] = xarray.merge(dataarray_page['timestamps'].values())
+    dataarray_page['filled'] = xarray.merge(dataarray_page['filled'].values())
+
     return dataarray_page
 
 
 class DaskFiller(event_model.Filler):
-# only add dask for stuff that need filling
     def event_page(self, doc):
 
         @dask.delayed
         def delayed_fill(event_page, key):
             self.fill_event_page(event_page, include=key)
-            return np.asarray(event_page['data'][key])
+            return numpy.asarray(event_page['data'][key])
 
-        for key in doc['data']:
+        descriptor = self._descriptor_cache[doc['descriptor']]
+        needs_filling = {key for key, val in descriptor['data_keys'].items()
+                         if 'external' in val}
+
+        for key in needs_filling:
             doc['data'][key] = array.from_delayed(delayed_fill(doc, key))
         return doc

@@ -1,8 +1,10 @@
 import event_model
+import xarray
 from intake_bluesky.core import (documents_to_xarray,
-                                event_page_to_dataarray_page,
-                                concat_dataarray_pages,
-                                dataarray_page_to_dataset_page)
+                                 event_page_to_dataarray_page,
+                                 concat_dataarray_pages,
+                                 dataarray_page_to_dataset_page)
+
 
 def no_event_pages(descriptor_uid):
     yield from ()
@@ -57,8 +59,10 @@ def test_no_events():
 
 
 def test_xarray_helpers():
-    event_pages = list(event_page_gen(100, 5))
+    event_pages = list(event_page_gen(10, 5))
     dataarray_pages = [event_page_to_dataarray_page(page) for page in event_pages]
     dataarray_page = concat_dataarray_pages(dataarray_pages)
-    dataset_page =  dataarray_page_to_dataset_page(dataarray_page)
-
+    dataset_page = dataarray_page_to_dataset_page(dataarray_page)
+    assert isinstance(dataset_page['data'], xarray.Dataset)
+    assert isinstance(dataset_page['timestamps'], xarray.Dataset)
+    assert isinstance(dataset_page['filled'], xarray.Dataset)
