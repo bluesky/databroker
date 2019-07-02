@@ -998,7 +998,12 @@ class DaskFiller(event_model.Filler):
         descriptor = self._descriptor_cache[doc['descriptor']]
         needs_filling = {key for key, val in descriptor['data_keys'].items()
                          if 'external' in val}
+        array_keys = ['seq_num', 'time', 'uid']
+        data_keys = set(doc['data'].keys())
 
-        for key in needs_filling:
-            doc['data'][key] = array.from_delayed(delayed_fill(doc, key))
-        return doc
+        return {'descriptor': doc['descriptor'],
+            **{key: doc[key] for key in array_keys},
+            'data': {**{key: doc[key] for key in set(data_keys - needs_filling)},
+                     **{key: array.from_delayed(delayed_fill(doc,key)) for key in needs_filling}},
+            'timestamps': doc['timestamps'],
+            'filled': doc['filled']}
