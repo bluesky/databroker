@@ -933,6 +933,11 @@ def event_page_to_dataarray_page(event_page, dims=None, coords=None):
     Parameters
     ----------
     event_page: dict
+
+    dims: tuple
+        Tuple of dimension names associated with the array
+    coords: dict-like
+        Dictionary-like container of coordinate arrays
     Returns
     ------
     event_page : dict
