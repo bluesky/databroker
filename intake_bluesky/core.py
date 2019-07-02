@@ -131,6 +131,8 @@ def interlace_event_page_chunks(*gens, chunk_size):
     gens : generators
         Generators of (name, dict) pairs where the dict contains a 'time'
         key.
+    chunk_size: integer
+        Size of pages to yield
      Yields
     -------
     val : tuple
