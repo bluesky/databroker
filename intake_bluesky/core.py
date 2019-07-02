@@ -121,6 +121,36 @@ def interlace_event_pages(*gens):
         yield val
         safe_next(indx)
 
+def interlace_event_page_chunks(*gens, chunk_size):
+    """
+    Take event_page generators and interlace their results by timestamp.
+    This is a modification of https://github.com/bluesky/databroker/pull/378/
+
+    Parameters
+    ----------
+    gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time'
+        key.
+     Yields
+    -------
+    val : tuple
+        The next (name, dict) pair in time order
+
+    """
+    iters = [iter(event_model.rechunk_event_pages(g, chunk_size)) for g in gens]
+    heap = []
+
+    def safe_next(indx):
+        try:
+            val = next(iters[indx])
+        except StopIteration:
+            return
+        heapq.heappush(heap, (val['time'][0], indx, val))
+    for i in range(len(iters)):
+        safe_next(i)
+    while heap:
+        _, indx, val = heapq.heappop(heap)
+        yield val
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
