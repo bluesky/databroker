@@ -1,9 +1,6 @@
 import event_model
 import xarray
-from intake_bluesky.core import (documents_to_xarray,
-                                 event_page_to_dataarray_page,
-                                 concat_dataarray_pages,
-                                 dataarray_page_to_dataset_page)
+import intake_bluesky.core as core
 
 
 def no_event_pages(descriptor_uid):
@@ -18,7 +15,7 @@ def event_page_gen(page_size, num_pages):
     array_keys = ['seq_num', 'time', 'uid']
     for i in range(num_pages):
         yield {'descriptor': 'DESCRIPTOR',
-               **{key: list(range(page_size)) for key in array_keys},
+               **{key: list(range(i*page_size, (i+1)*page_size)) for key in array_keys},
                'data': {key: list(range(page_size)) for key in data_keys},
                'timestamps': {key: list(range(page_size)) for key in data_keys},
                'filled': {key: list(range(page_size)) for key in data_keys}}
@@ -66,3 +63,15 @@ def test_xarray_helpers():
     assert isinstance(dataset_page['data'], xarray.Dataset)
     assert isinstance(dataset_page['timestamps'], xarray.Dataset)
     assert isinstance(dataset_page['filled'], xarray.Dataset)
+
+
+def test_interlace_event_page_chunks():
+    page_gens = [event_page_gen(10,5) for i in range(3)]
+    interlaced = core.interlace_event_page_chunks(*page_gens, chunk_size=3)
+
+    t0 = None
+    for chunk in interlaced:
+        t1 = chunk['time'][0]
+        if t0:
+            assert t1 > t0
+        t0 = t1
