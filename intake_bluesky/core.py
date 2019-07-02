@@ -679,9 +679,6 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self.exclude = exclude
         super().__init__(metadata=metadata)
 
-    def filled_event_pages(self):
-        yield from self._filler.fill(self)
-
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
@@ -933,7 +930,7 @@ def event_page_to_dataarray_page(event_page, dims=None, coords=None):
     Parameters
     ----------
     event_page: dict
-
+        A EventPage document
     dims: tuple
         Tuple of dimension names associated with the array
     coords: dict-like
@@ -949,15 +946,20 @@ def event_page_to_dataarray_page(event_page, dims=None, coords=None):
     if dims is None:
         dims = ('time',)
 
-    for key in event_page['data']:
-        event_page['data'][key] = xarray.DataArray(
-                    event_page['data'][key], dims=dims, coords=coords, name=key)
-        event_page['timestamps'][key] = xarray.DataArray(
-                    event_page['timestamps'][key], dims=dims, coords=coords, name=key)
-        event_page['filled'][key] = xarray.DataArray(
-                    event_page['filled'][key], dims=dims, coords=coords, name=key)
+    array_keys = ['seq_num', 'time', 'uid']
+    data_keys = event_page['data'].keys()
 
-    return event_page
+    return {'descriptor': event_page['descriptor'],
+            **{key: event_page[key] for key in array_keys},
+            'data': {key: xarray.DataArray(
+                            event_page['data'][key], dims=dims, coords=coords, name=key)
+                     for key in data_keys},
+            'timestamps': {key: xarray.DataArray(
+                            event_page['timestamps'][key], dims=dims, coords=coords, name=key)
+                           for key in data_keys},
+            'filled': {key: xarray.DataArray(
+                            event_page['filled'][key], dims=dims, coords=coords, name=key)
+                       for key in data_keys}}
 
 
 def dataarray_page_to_dataset_page(dataarray_page):
@@ -972,11 +974,14 @@ def dataarray_page_to_dataset_page(dataarray_page):
     ------
     dataset_page : dict
     """
-    dataarray_page['data'] = xarray.merge(dataarray_page['data'].values())
-    dataarray_page['timestamps'] = xarray.merge(dataarray_page['timestamps'].values())
-    dataarray_page['filled'] = xarray.merge(dataarray_page['filled'].values())
+    array_keys = ['seq_num', 'time', 'uid']
 
-    return dataarray_page
+    return {'descriptor': dataarray_page['descriptor'],
+            **{key: dataarray_page[key] for key in array_keys},
+            'data': xarray.merge(dataarray_page['data'].values()),
+            'timestamps': xarray.merge(dataarray_page['timestamps'].values()),
+            'filled': xarray.merge(dataarray_page['filled'].values())}
+
 
 
 class DaskFiller(event_model.Filler):
