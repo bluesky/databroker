@@ -1020,5 +1020,5 @@ class DaskFiller(event_model.Filler):
         filled_doc = copy.deepcopy(doc)
 
         for key in needs_filling:
-            filled_doc['data'][key] = delayed_fill(filled_doc, key)
+            filled_doc['data'][key] = array.from_delayed(delayed_fill(filled_doc, key))
         return filled_doc
