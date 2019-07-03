@@ -30,7 +30,7 @@ def test_no_descriptors():
         stop_doc=stop_doc,
         descriptor_docs=[],
         get_event_pages=no_event_pages,
-        filler=event_model.Filler({}),
+        filler=event_model.Filler({}, inplace=True),
         get_resource=None,
         lookup_resource_for_datum=None,
         get_datum_pages=None)
@@ -49,7 +49,7 @@ def test_no_events():
         stop_doc=stop_doc,
         descriptor_docs=[descriptor_doc],
         get_event_pages=no_event_pages,
-        filler=event_model.Filler({}),
+        filler=event_model.Filler({}, inplace=True),
         get_resource=None,
         lookup_resource_for_datum=None,
         get_datum_pages=None)

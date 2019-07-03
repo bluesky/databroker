@@ -177,7 +177,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         if handler_registry is None:
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(parsed_handler_registry)
+        self.filler = event_model.Filler(parsed_handler_registry, inplace=True)
         super().__init__(**kwargs)
 
     def _get_run_stop(self, run_start_uid):

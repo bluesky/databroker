@@ -790,7 +790,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
     def __init__(self, gen_func, gen_args, gen_kwargs, filler=None, **kwargs):
 
         if filler is None:
-            filler = event_model.Filler({})
+            filler = event_model.Filler({}, inplace=True)
 
         document_cache = DocumentCache()
 
