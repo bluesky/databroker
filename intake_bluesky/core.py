@@ -121,6 +121,7 @@ def interlace_event_pages(*gens):
         yield val
         safe_next(indx)
 
+
 def interlace_event_page_chunks(*gens, chunk_size):
     """
     Take event_page generators and interlace their results by timestamp.
@@ -153,6 +154,7 @@ def interlace_event_page_chunks(*gens, chunk_size):
     while heap:
         _, indx, val = heapq.heappop(heap)
         yield val
+
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
