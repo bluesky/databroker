@@ -97,10 +97,9 @@ def interlace_event_pages(*gens):
     Parameters
     ----------
     gens : generators
-        Generators of (name, dict) pairs where the dict contains a 'time'
-        key.
-     Yields
-    -------
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    Yields
+    ------
     val : tuple
         The next (name, dict) pair in time order
 
@@ -125,17 +124,17 @@ def interlace_event_pages(*gens):
 def interlace_event_page_chunks(*gens, chunk_size):
     """
     Take event_page generators and interlace their results by timestamp.
+
     This is a modification of https://github.com/bluesky/databroker/pull/378/
 
     Parameters
     ----------
     gens : generators
-        Generators of (name, dict) pairs where the dict contains a 'time'
-        key.
-    chunk_size: integer
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    chunk_size : integer
         Size of pages to yield
-     Yields
-    -------
+    Yields
+    ------
     val : tuple
         The next (name, dict) pair in time order
 
