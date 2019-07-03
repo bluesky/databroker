@@ -1,10 +1,12 @@
 import collections
+import copy
 import event_model
-import functools
 from datetime import datetime
 import dask
 import dask.bag
 from dask import array
+import functools
+import heapq
 import importlib
 import itertools
 import intake.catalog.base
@@ -17,7 +19,6 @@ from requests.compat import urljoin
 import numpy
 import warnings
 import xarray
-import heapq
 
 
 def to_event_pages(get_event_cursor, page_size):
