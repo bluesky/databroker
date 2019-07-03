@@ -1006,3 +1006,19 @@ class DaskFiller(event_model.Filler):
         for key in needs_filling:
             filled_doc['data'][key] = array.from_delayed(delayed_fill(filled_doc, key))
         return filled_doc
+
+    def event(self, doc):
+
+        @dask.delayed
+        def delayed_fill(event, key):
+            self.fill_event(event, include=key)
+            return numpy.asarray(event['data'][key])
+
+        descriptor = self._descriptor_cache[doc['descriptor']]
+        needs_filling = {key for key, val in descriptor['data_keys'].items()
+                         if 'external' in val}
+        filled_doc = copy.deepcopy(doc)
+
+        for key in needs_filling:
+            filled_doc['data'][key] = delayed_fill(filled_doc, key)
+        return filled_doc
