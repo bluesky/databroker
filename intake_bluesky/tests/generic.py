@@ -6,17 +6,6 @@ import ophyd.sim
 import pytest
 
 
-def uid_sorted(docs):
-    def key(item):
-        name, doc = item
-        if name == 'datum':
-            return doc['datum_id']
-        else:
-            return doc['uid']
-
-    return sorted(docs, key=key)
-
-
 def test_fixture(bundle):
     "Simply open the Catalog created by the fixture."
 
@@ -144,15 +133,33 @@ def test_read_raw(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
     run.read_raw()
 
+    def sorted_actual():
+        for name_ in ('start', 'descriptor', 'resource',
+                      'datum', 'event_page', 'event', 'stop'):
+            for name, doc in bundle.docs:
+                if name == name_ and name in ('start', 'descriptor',
+                                              'event', 'event_page', 'stop'):
+                    yield name, doc
+
+    raw_run = [(name, doc) for name, doc in list(run.read_raw())
+               if name not in ('resource', 'datum', 'datum_page')]
+
     for actual, expected in itertools.zip_longest(
-            uid_sorted(run.read_raw()), uid_sorted(bundle.docs)):
+            raw_run, sorted_actual()):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
-        print(expected_name)
+
+        print(actual_name, expected_name)
         try:
             assert actual_name == expected_name
         except ValueError:
             assert numpy.array_equal(actual_doc, expected_doc)
+
+    # Passing the run through the filler to check resource and datum are
+    # received before corresponding event.
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    for name, doc in run.read_raw():
+        filler(name, doc)
 
 
 def test_read(bundle):

@@ -614,21 +614,26 @@ class BlueskyRun(intake.catalog.Catalog):
         # print('start, stop, skip, limit', start, stop, skip, limit)
         datum_ids = set()
         if limit > 0:
-            events = self._get_event_cursor(descriptor_uids=descriptor_uids,
-                                            skip=skip, limit=limit)
+
+            events = itertools.islice(interlace_event_pages(
+                    *(self._get_event_pages(descriptor_uid=descriptor_uid)
+                      for descriptor_uid in descriptor_uids)), skip, limit)
+
             for event in events:
                 for key, is_filled in event['filled'].items():
                     if not is_filled:
                         datum_id = event['data'][key]
                         if datum_id not in datum_ids:
-                            datum = self._get_datum(datum_id=datum_id)
-                            resource_uid = datum['resource']
+                            if '/' in datum_id:
+                                resource_uid, _ = datum_id.split('/', 1)
+                            else:
+                                resource_uid = self._lookup_resource_for_datum(datum_id)
                             resource = self._get_resource(uid=resource_uid)
                             payload.append(('resource', resource))
-                            for datum in self._get_datum_cursor(resource_uid=resource_uid):
+                            for datum_page in self._get_datum_pages(resource_uid):
                                 # TODO Greedily cache but lazily emit.
-                                payload.append(('datum', datum))
-                                datum_ids.add(datum['datum_id'])
+                                payload.append(('datum_page', datum_page))
+                                datum_ids |= set(datum_page['datum_id'])
                 payload.append(('event', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
