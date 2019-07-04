@@ -44,7 +44,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         if handler_registry is None:
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(parsed_handler_registry)
+        self.filler = event_model.Filler(parsed_handler_registry, inplace=True)
         self._uid_to_run_start_doc = {}
         super().__init__(**kwargs)
 
@@ -73,7 +73,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
                   'filler': self.filler},
             cache=None,  # ???
             parameters=[],
-            metadata={},  # TODO
+            metadata={'start': run_start_doc, 'stop': None},
             catalog_dir=None,
             getenv=True,
             getshell=True,

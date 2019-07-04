@@ -177,7 +177,7 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         if handler_registry is None:
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(parsed_handler_registry)
+        self.filler = event_model.Filler(parsed_handler_registry, inplace=True)
         super().__init__(**kwargs)
 
     def _get_run_stop(self, run_start_uid):
@@ -202,10 +202,15 @@ class BlueskyMongoCatalog(intake.catalog.Catalog):
         cursor = (self._event_collection
                   .find({'descriptor': descriptor_uid},
                         sort=[('time', pymongo.ASCENDING)]))
+        descriptor = self._event_descriptor_collection.find_one(
+            {'uid': descriptor_uid})
         cursor.skip(skip)
         if limit is not None:
             cursor = cursor.limit(limit)
+        external_keys = {k for k, v in descriptor['data_keys'].items()
+                         if 'external' in v}
         for doc in cursor:
+            doc['filled'] = {k: False for k in external_keys}
             doc.pop('_id')
             yield doc
 
