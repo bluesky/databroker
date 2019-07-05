@@ -16,7 +16,6 @@ matrix:
         packages:
           - libhdf5-serial-dev
           - libnetcdf-dev
-          - libsnappy-dev
           - netcdf-bin
   allow_failures:
     - python: nightly
@@ -27,10 +26,6 @@ cache:
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 services:
   - mongodb
-addons:
-  apt:
-    packages:
-      - libsnappy-dev
 env:
   global:
     # Doctr deploy key for NSLS-II/NSLS-II.github.io

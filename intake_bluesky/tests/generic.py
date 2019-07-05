@@ -106,7 +106,7 @@ def test_run_metadata(bundle):
 def test_read_canonical(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
     run.read_canonical()
-    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler}, inplace=True)
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',

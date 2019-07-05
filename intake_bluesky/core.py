@@ -1,9 +1,12 @@
 import collections
+import copy
 import event_model
-import functools
 from datetime import datetime
 import dask
 import dask.bag
+from dask import array
+import functools
+import heapq
 import importlib
 import itertools
 import intake.catalog.base
@@ -16,12 +19,11 @@ from requests.compat import urljoin
 import numpy
 import warnings
 import xarray
-import heapq
 
 
 def to_event_pages(get_event_cursor, page_size):
     """
-    Decorator that changes get_event_cursor get_event_pages.
+    Decorator that changes get_event_cursor to get_event_pages.
 
     get_event_cursor yields events, get_event_pages yields event_pages.
 
@@ -47,7 +49,7 @@ def to_event_pages(get_event_cursor, page_size):
 
 def to_datum_pages(get_datum_cursor, page_size):
     """
-    Decorator that changes get_datum_cursor get_datum_pages.
+    Decorator that changes get_datum_cursor to get_datum_pages.
 
     get_datum_cursor yields datum, get_datum_pages yields datum_pages.
 
@@ -95,10 +97,9 @@ def interlace_event_pages(*gens):
     Parameters
     ----------
     gens : generators
-        Generators of (name, dict) pairs where the dict contains a 'time'
-        key.
-     Yields
-    -------
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    Yields
+    ------
     val : tuple
         The next (name, dict) pair in time order
 
@@ -118,6 +119,40 @@ def interlace_event_pages(*gens):
         _, indx, val = heapq.heappop(heap)
         yield val
         safe_next(indx)
+
+
+def interlace_event_page_chunks(*gens, chunk_size):
+    """
+    Take event_page generators and interlace their results by timestamp.
+
+    This is a modification of https://github.com/bluesky/databroker/pull/378/
+
+    Parameters
+    ----------
+    gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    chunk_size : integer
+        Size of pages to yield
+    Yields
+    ------
+    val : tuple
+        The next (name, dict) pair in time order
+
+    """
+    iters = [iter(event_model.rechunk_event_pages(g, chunk_size)) for g in gens]
+    heap = []
+
+    def safe_next(indx):
+        try:
+            val = next(iters[indx])
+        except StopIteration:
+            return
+        heapq.heappush(heap, (val['time'][0], indx, val))
+    for i in range(len(iters)):
+        safe_next(i)
+    while heap:
+        _, indx, val = heapq.heappop(heap)
+        yield val
 
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
@@ -689,9 +724,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
-        super().__init__(
-            metadata=metadata
-        )
+        super().__init__(metadata=metadata)
 
     def __repr__(self):
         try:
@@ -757,7 +790,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
     def __init__(self, gen_func, gen_args, gen_kwargs, filler=None, **kwargs):
 
         if filler is None:
-            filler = event_model.Filler({})
+            filler = event_model.Filler({}, inplace=True)
 
         document_cache = DocumentCache()
 
@@ -902,3 +935,182 @@ def parse_handler_registry(handler_registry):
 
 intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
+
+
+def concat_dataarray_pages(dataarray_pages):
+    """
+    Combines a iterable of dataarray_pages to a single dataarray_page.
+
+    Parameters
+    ----------
+    dataarray_pages: Iterabile
+        An iterable of event_pages with xarray.dataArrays in the data,
+        timestamp, and filled fields.
+    Returns
+    ------
+    event_page : dict
+        A single event_pages with xarray.dataArrays in the data,
+        timestamp, and filled fields.
+    """
+    pages = list(dataarray_pages)
+    if len(pages) == 1:
+        return pages[0]
+
+    array_keys = ['seq_num', 'time', 'uid']
+    data_keys = dataarray_pages[0]['data'].keys()
+
+    return {'descriptor': pages[0]['descriptor'],
+            **{key: list(itertools.chain.from_iterable(
+                    [page[key] for page in pages])) for key in array_keys},
+            'data': {key: xarray.concat([page['data'][key] for page in pages])
+                     for key in data_keys},
+            'timestamps': {key: xarray.concat([page['timestamps'][key] for page in pages])
+                           for key in data_keys},
+            'filled': {key: xarray.concat([page['filled'][key] for page in pages])
+                       for key in data_keys}}
+
+
+def event_page_to_dataarray_page(event_page, dims=None, coords=None):
+    """
+    Converts the event_page's data, timestamps, and filled to xarray.DataArray.
+
+    Parameters
+    ----------
+    event_page: dict
+        A EventPage document
+    dims: tuple
+        Tuple of dimension names associated with the array
+    coords: dict-like
+        Dictionary-like container of coordinate arrays
+    Returns
+    ------
+    event_page : dict
+        An event_pages with xarray.dataArrays in the data,
+        timestamp, and filled fields.
+    """
+    if coords is None:
+        coords = {'time': event_page['time']}
+    if dims is None:
+        dims = ('time',)
+
+    array_keys = ['seq_num', 'time', 'uid']
+    data_keys = event_page['data'].keys()
+
+    return {'descriptor': event_page['descriptor'],
+            **{key: event_page[key] for key in array_keys},
+            'data': {key: xarray.DataArray(
+                            event_page['data'][key], dims=dims, coords=coords, name=key)
+                     for key in data_keys},
+            'timestamps': {key: xarray.DataArray(
+                            event_page['timestamps'][key], dims=dims, coords=coords, name=key)
+                           for key in data_keys},
+            'filled': {key: xarray.DataArray(
+                            event_page['filled'][key], dims=dims, coords=coords, name=key)
+                       for key in data_keys}}
+
+
+def dataarray_page_to_dataset_page(dataarray_page):
+
+    """
+    Converts the dataarray_page's data, timestamps, and filled to xarray.DataSet.
+
+    Parameters
+    ----------
+    dataarray_page: dict
+    Returns
+    ------
+    dataset_page : dict
+    """
+    array_keys = ['seq_num', 'time', 'uid']
+
+    return {'descriptor': dataarray_page['descriptor'],
+            **{key: dataarray_page[key] for key in array_keys},
+            'data': xarray.merge(dataarray_page['data'].values()),
+            'timestamps': xarray.merge(dataarray_page['timestamps'].values()),
+            'filled': xarray.merge(dataarray_page['filled'].values())}
+
+
+class DaskFiller(event_model.Filler):
+
+    def __init__(self, *args, inplace=False, **kwargs):
+        if inplace:
+            raise NotImplementedError("DaskFiller inplace is not supported.")
+        # The DaskFiller will not mutate documents pass in by the user, but it
+        # will ask the base class to mutate *internal* copies in place, so we
+        # set inplace=True here, even though the user documents will never be
+        # modified in place.
+        super().__init__(*args, inplace=True, **kwargs)
+
+    def event_page(self, doc):
+
+        @dask.delayed
+        def delayed_fill(event_page, key):
+            self.fill_event_page(event_page, include=key)
+            return numpy.asarray(event_page['data'][key])
+
+        descriptor = self._descriptor_cache[doc['descriptor']]
+        needs_filling = {key for key, val in descriptor['data_keys'].items()
+                         if 'external' in val}
+        filled_doc = copy.deepcopy(doc)
+
+        for key in needs_filling:
+            shape = extract_shape(descriptor, key)
+            dtype = extract_dtype(descriptor, key)
+            filled_doc['data'][key] = array.from_delayed(
+                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
+        return filled_doc
+
+    def event(self, doc):
+
+        @dask.delayed
+        def delayed_fill(event, key):
+            self.fill_event(event, include=key)
+            return numpy.asarray(event['data'][key])
+
+        descriptor = self._descriptor_cache[doc['descriptor']]
+        needs_filling = {key for key, val in descriptor['data_keys'].items()
+                         if 'external' in val}
+        filled_doc = copy.deepcopy(doc)
+
+        for key in needs_filling:
+            shape = extract_shape(descriptor, key)
+            dtype = extract_dtype(descriptor, key)
+            filled_doc['data'][key] = array.from_delayed(
+                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
+        return filled_doc
+
+
+def extract_shape(descriptor, key):
+    """
+    Work around bug in https://github.com/bluesky/ophyd/pull/746
+    """
+    # Ideally this code would just be
+    # descriptor['data_keys'][key]['shape']
+    # but we have to do some heuristics to make up for errors in the reporting.
+
+    # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
+    data_key = descriptor['data_keys'][key]
+    if len(data_key['shape']) == 3 and data_key['shape'][-1] == 0:
+        object_keys = descriptor.get('object_keys', {})
+        for object_name, data_keys in object_keys.items():
+            if key in data_keys:
+                break
+        else:
+            raise RuntimeError(f"Could not figure out shape of {key}")
+        num_images = descriptor['configuration'][object_name]['data'].get('num_images', -1)
+        x, y, _ = data_key['shape']
+        shape = (num_images, y, x)
+    else:
+        shape = descriptor['data_keys'][key]['shape']
+    return shape
+
+
+def extract_dtype(descriptor, key):
+    """
+    Work around the fact that we currently report jsonschema data types.
+    """
+    reported = descriptor['data_keys'][key]['dtype']
+    if reported == 'array':
+        return float  # guess!
+    else:
+        return reported
