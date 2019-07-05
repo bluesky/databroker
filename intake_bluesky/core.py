@@ -1035,6 +1035,10 @@ class DaskFiller(event_model.Filler):
     def __init__(self, *args, inplace=False, **kwargs):
         if inplace:
             raise NotImplementedError("DaskFiller inplace is not supported.")
+        # The DaskFiller will not mutate documents pass in by the user, but it
+        # will ask the base class to mutate *internal* copies in place, so we
+        # set inplace=True here, even though the user documents will never be
+        # modified in place.
         super().__init__(*args, inplace=True, **kwargs)
 
     def event_page(self, doc):
@@ -1050,7 +1054,10 @@ class DaskFiller(event_model.Filler):
         filled_doc = copy.deepcopy(doc)
 
         for key in needs_filling:
-            filled_doc['data'][key] = array.from_delayed(delayed_fill(filled_doc, key))
+            shape = extract_shape(descriptor, key)
+            dtype = extract_dtype(descriptor, key)
+            filled_doc['data'][key] = array.from_delayed(
+                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
         return filled_doc
 
     def event(self, doc):
@@ -1066,5 +1073,44 @@ class DaskFiller(event_model.Filler):
         filled_doc = copy.deepcopy(doc)
 
         for key in needs_filling:
-            filled_doc['data'][key] = array.from_delayed(delayed_fill(filled_doc, key))
+            shape = extract_shape(descriptor, key)
+            dtype = extract_dtype(descriptor, key)
+            filled_doc['data'][key] = array.from_delayed(
+                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
         return filled_doc
+
+
+def extract_shape(descriptor, key):
+    """
+    Work around bug in https://github.com/bluesky/ophyd/pull/746
+    """
+    # Ideally this code would just be
+    # descriptor['data_keys'][key]['shape']
+    # but we have to do some heuristics to make up for errors in the reporting.
+
+    # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
+    data_key = descriptor['data_keys'][key]
+    if len(data_key['shape']) == 3 and data_key['shape'][-1] == 0:
+        object_keys = descriptor_doc.get('object_keys', {})
+        for object_name, data_keys in object_keys.items():
+            if key in data_keys:
+                break
+        else:
+            raise RuntimeError(f"Could not figure out shape of {key}")
+        num_images = descriptor['configuration'][object_name]['data'].get('num_images', -1)
+        x, y, _ = data_key['shape']
+        shape = (num_images, y, x)
+    else:
+        shape = descriptor['data_keys'][key]['shape']
+    return shape
+
+
+def extract_dtype(descriptor, key):
+    """
+    Work around the fact that we currently report jsonschema data types.
+    """
+    reported = descriptor['data_keys'][key]['dtype']
+    if reported == 'array':
+        return float  # guess!
+    else:
+        return reported
