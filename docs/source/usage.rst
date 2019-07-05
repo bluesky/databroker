@@ -82,7 +82,7 @@ Read Data as Bluesky "Documents"
 
 .. ipython:: python
 
-   catalog[uid].read_canonical()
+   catalog[uid].canonical()
 
 This generator yields ``(name, doc)`` pairs and can be fed into streaming
 visualization, processing, and serialization tools that consume this
