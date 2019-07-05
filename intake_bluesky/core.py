@@ -423,6 +423,12 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             for name, doc in self._get_partition((i, False)):
                 yield name, doc
 
+    def read_canonical(self):
+        warnings.warn(
+            "The method read_canonical has been renamed canonical. This alias "
+            "may be removed in a future release.")
+        yield from self.canonical()
+
     def canonical_unfilled(self):
         for i in range(self.npartitions):
             for name, doc in self._get_partition((i, True)):
