@@ -103,10 +103,15 @@ def test_run_metadata(bundle):
         assert key in run().metadata  # datasource
 
 
-def test_read_canonical(bundle):
+def test_canonical(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
-    run.read_canonical()
-    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler}, inplace=True)
+
+    # Smoke test for back-compat alias
+    with pytest.warns(UserWarning):
+        next(run.read_canonical())
+
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
+                                inplace=True)
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',
@@ -119,7 +124,7 @@ def test_read_canonical(bundle):
                     yield name, filled_doc
 
     for actual, expected in itertools.zip_longest(
-            run.read_canonical(), sorted_actual()):
+            run.canonical(), sorted_actual()):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
         print(actual_name, expected_name)
@@ -127,6 +132,39 @@ def test_read_canonical(bundle):
             assert actual_name == expected_name
         except ValueError:
             assert numpy.array_equal(actual_doc, expected_doc)
+
+
+def test_canonical_unfilled(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]
+    run.canonical_unfilled()
+
+    def sorted_actual():
+        for name_ in ('start', 'descriptor', 'resource',
+                      'datum', 'event_page', 'event', 'stop'):
+            for name, doc in bundle.docs:
+                if name == name_ and name in ('start', 'descriptor',
+                                              'event', 'event_page', 'stop'):
+                    yield name, doc
+
+    raw_run = [(name, doc) for name, doc in list(run.canonical_unfilled())
+               if name not in ('resource', 'datum', 'datum_page')]
+
+    for actual, expected in itertools.zip_longest(
+            raw_run, sorted_actual()):
+        actual_name, actual_doc = actual
+        expected_name, expected_doc = expected
+
+        print(actual_name, expected_name)
+        try:
+            assert actual_name == expected_name
+        except ValueError:
+            assert numpy.array_equal(actual_doc, expected_doc)
+
+    # Passing the run through the filler to check resource and datum are
+    # received before corresponding event.
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    for name, doc in run.canonical_unfilled():
+        filler(name, doc)
 
 
 def test_read(bundle):

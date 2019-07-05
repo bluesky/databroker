@@ -385,16 +385,25 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
     def _load_metadata(self):
         if self.bag is None:
+            self.raw_parts = [dask.delayed(intake.container.base.get_partition)(
+                self.url, self.http_args, self._source_id, self.container, (i, True)
+            )
+                          for i in range(self.npartitions)]
             self.parts = [dask.delayed(intake.container.base.get_partition)(
-                self.url, self.http_args, self._source_id, self.container, i
+                self.url, self.http_args, self._source_id, self.container, (i, False)
             )
                           for i in range(self.npartitions)]
             self.bag = dask.bag.from_delayed(self.parts)
         return self._schema
 
-    def _get_partition(self, i):
+    def _get_partition(self, index):
         self._load_metadata()
-        return self.parts[i].compute()
+        i, raw = index
+        if raw:
+            parts = self.raw_parts
+        else:
+            parts = self.parts
+        return parts[i].compute()
 
     def read(self):
         raise NotImplementedError(
@@ -409,9 +418,20 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def read_canonical(self):
+    def canonical(self):
         for i in range(self.npartitions):
-            for name, doc in self._get_partition(i):
+            for name, doc in self._get_partition((i, False)):
+                yield name, doc
+
+    def read_canonical(self):
+        warnings.warn(
+            "The method read_canonical has been renamed canonical. This alias "
+            "may be removed in a future release.")
+        yield from self.canonical()
+
+    def canonical_unfilled(self):
+        for i in range(self.npartitions):
+            for name, doc in self._get_partition((i, True)):
                 yield name, doc
 
     def __repr__(self):
@@ -570,13 +590,75 @@ class BlueskyRun(intake.catalog.Catalog):
                 catalog=self)
 
     def read_canonical(self):
+        warnings.warn(
+            "The method read_canonical has been renamed canonical. This alias "
+            "may be removed in a future release.")
+        yield from self.canonical()
+
+    def canonical(self):
         for i in range(self.npartitions):
-            for name, doc in self.read_partition(i):
+            for name, doc in self.read_partition((i, False)):
                 yield name, doc
 
-    def read_partition(self, i):
+    def canonical_unfilled(self):
+        for i in range(self.npartitions):
+            for name, doc in self.read_partition((i, True)):
+                yield name, doc
+
+    def read_partition_unfilled(self, i):
         """Fetch one chunk of documents.
         """
+        self._load()
+        payload = []
+        start = i * self.PARTITION_SIZE
+        stop = (1 + i) * self.PARTITION_SIZE
+        if start < self._offset:
+            payload.extend(
+                itertools.islice(
+                    itertools.chain(
+                        (('start', self._get_run_start()),),
+                        (('descriptor', doc) for doc in self._descriptors)),
+                    start,
+                    stop))
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        skip = max(0, start - len(payload))
+        limit = stop - start - len(payload)
+        # print('start, stop, skip, limit', start, stop, skip, limit)
+        datum_ids = set()
+        if limit > 0:
+
+            events = itertools.islice(interlace_event_pages(
+                    *(self._get_event_pages(descriptor_uid=descriptor_uid)
+                      for descriptor_uid in descriptor_uids)), skip, limit)
+
+            for event in events:
+                for key, is_filled in event['filled'].items():
+                    if not is_filled:
+                        datum_id = event['data'][key]
+                        if datum_id not in datum_ids:
+                            if '/' in datum_id:
+                                resource_uid, _ = datum_id.split('/', 1)
+                            else:
+                                resource_uid = self._lookup_resource_for_datum(datum_id)
+                            resource = self._get_resource(uid=resource_uid)
+                            payload.append(('resource', resource))
+                            for datum_page in self._get_datum_pages(resource_uid):
+                                # TODO Greedily cache but lazily emit.
+                                payload.append(('datum_page', datum_page))
+                                datum_ids |= set(datum_page['datum_id'])
+                payload.append(('event', event))
+            if i == self.npartitions - 1 and self._run_stop_doc is not None:
+                payload.append(('stop', self._run_stop_doc))
+        for _, doc in payload:
+            doc.pop('_id', None)
+        return payload
+
+    def read_partition(self, index):
+        """Fetch one chunk of documents.
+        """
+        i, raw = index
+        if raw:
+            return self.read_partition_unfilled(i)
         self._load()
         payload = []
         start = i * self.PARTITION_SIZE
