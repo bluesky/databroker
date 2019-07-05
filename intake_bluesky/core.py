@@ -1091,7 +1091,7 @@ def extract_shape(descriptor, key):
     # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
     data_key = descriptor['data_keys'][key]
     if len(data_key['shape']) == 3 and data_key['shape'][-1] == 0:
-        object_keys = descriptor_doc.get('object_keys', {})
+        object_keys = descriptor.get('object_keys', {})
         for object_name, data_keys in object_keys.items():
             if key in data_keys:
                 break
