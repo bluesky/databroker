@@ -2,6 +2,7 @@ import intake_bluesky.msgpack  # noqa
 import intake
 from suitcase.msgpack import Serializer
 import os
+from pathlib import Path
 import pytest
 import shutil
 import tempfile
@@ -10,28 +11,31 @@ import types
 
 from .generic import *  # noqa
 
-TMP_DIR = tempfile.mkdtemp()
-TEST_CATALOG_PATH = [TMP_DIR]
+TMP_DIRS = {param: tempfile.mkdtemp() for param in ['local', 'remote']}
+TEST_CATALOG_PATH = TMP_DIRS['remote']  # used by intake_server fixture
 
-YAML_FILENAME = 'intake_msgpack_test_catalog.yml'
+YAML_FILENAME = 'intake_test_catalog.yml'
 
 
 def teardown_module(module):
-    try:
-        shutil.rmtree(TMP_DIR)
-    except BaseException:
-        pass
+    for path in TMP_DIRS.values():
+        try:
+            shutil.rmtree(path)
+        except BaseException:
+            pass
 
 
-@pytest.fixture(params=['local', 'remote'])
-def bundle(request, intake_server, example_data, tmp_path):  # noqa
-    serializer = Serializer(tmp_path)
+@pytest.fixture(params=['local', 'remote'], scope='module')
+def bundle(request, intake_server, example_data):  # noqa
+    tmp_dir = TMP_DIRS[request.param]
+    tmp_data_dir = Path(tmp_dir) / 'data'
+    serializer = Serializer(tmp_data_dir)
     uid, docs = example_data
     for name, doc in docs:
         serializer(name, doc)
     serializer.close()
 
-    fullname = os.path.join(TMP_DIR, YAML_FILENAME)
+    fullname = os.path.join(tmp_dir, YAML_FILENAME)
     with open(fullname, 'w') as f:
         f.write(f'''
 plugins:
@@ -53,7 +57,7 @@ sources:
     time.sleep(2)
 
     if request.param == 'local':
-        cat = intake.Catalog(os.path.join(TMP_DIR, YAML_FILENAME))
+        cat = intake.Catalog(os.path.join(tmp_dir, YAML_FILENAME))
     elif request.param == 'remote':
         cat = intake.Catalog(intake_server, page_size=10)
     else:
