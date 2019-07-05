@@ -103,10 +103,11 @@ def test_run_metadata(bundle):
         assert key in run().metadata  # datasource
 
 
-def test_read_canonical(bundle):
+def test_canonical(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
-    run.read_canonical()
-    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler}, inplace=True)
+    run.canonical()
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
+                                inplace=True)
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',
@@ -119,7 +120,7 @@ def test_read_canonical(bundle):
                     yield name, filled_doc
 
     for actual, expected in itertools.zip_longest(
-            run.read_canonical(), sorted_actual()):
+            run.canonical(), sorted_actual()):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
         print(actual_name, expected_name)
@@ -129,9 +130,9 @@ def test_read_canonical(bundle):
             assert numpy.array_equal(actual_doc, expected_doc)
 
 
-def test_read_raw(bundle):
+def test_read_unfilled(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
-    run.read_raw()
+    run.read_unfilled()
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',
@@ -141,7 +142,7 @@ def test_read_raw(bundle):
                                               'event', 'event_page', 'stop'):
                     yield name, doc
 
-    raw_run = [(name, doc) for name, doc in list(run.read_raw())
+    raw_run = [(name, doc) for name, doc in list(run.read_unfilled())
                if name not in ('resource', 'datum', 'datum_page')]
 
     for actual, expected in itertools.zip_longest(
@@ -158,7 +159,7 @@ def test_read_raw(bundle):
     # Passing the run through the filler to check resource and datum are
     # received before corresponding event.
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    for name, doc in run.read_raw():
+    for name, doc in run.read_unfilled():
         filler(name, doc)
 
 
