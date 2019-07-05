@@ -1,4 +1,4 @@
-from bluesky import RunEngine
+from bluesky.tests.conftest import RE  # noqa
 from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
 import event_model
@@ -22,8 +22,7 @@ def detector(request, hw):
 
 
 @pytest.fixture
-def example_data(hw, detector):
-    RE = RunEngine({})
+def example_data(hw, detector, RE):  # noqa
     sd = SupplementalData(baseline=[hw.motor])
     RE.preprocessors.append(sd)
 
