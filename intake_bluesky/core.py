@@ -589,6 +589,12 @@ class BlueskyRun(intake.catalog.Catalog):
                 getshell=True,
                 catalog=self)
 
+    def read_canonical(self):
+        warnings.warn(
+            "The method read_canonical has been renamed canonical. This alias "
+            "may be removed in a future release.")
+        yield from self.canonical()
+
     def canonical(self):
         for i in range(self.npartitions):
             for name, doc in self.read_partition((i, False)):
