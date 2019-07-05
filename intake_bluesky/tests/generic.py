@@ -105,7 +105,11 @@ def test_run_metadata(bundle):
 
 def test_canonical(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
-    run.canonical()
+
+    # Smoke test for back-compat alias
+    with pytest.warns(UserWarning):
+        next(run.read_canonical())
+
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
                                 inplace=True)
 
