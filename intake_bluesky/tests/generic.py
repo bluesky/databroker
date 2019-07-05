@@ -130,9 +130,9 @@ def test_canonical(bundle):
             assert numpy.array_equal(actual_doc, expected_doc)
 
 
-def test_read_unfilled(bundle):
+def test_canonical_unfilled(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
-    run.read_unfilled()
+    run.canonical_unfilled()
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',
@@ -142,7 +142,7 @@ def test_read_unfilled(bundle):
                                               'event', 'event_page', 'stop'):
                     yield name, doc
 
-    raw_run = [(name, doc) for name, doc in list(run.read_unfilled())
+    raw_run = [(name, doc) for name, doc in list(run.canonical_unfilled())
                if name not in ('resource', 'datum', 'datum_page')]
 
     for actual, expected in itertools.zip_longest(
@@ -159,7 +159,7 @@ def test_read_unfilled(bundle):
     # Passing the run through the filler to check resource and datum are
     # received before corresponding event.
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    for name, doc in run.read_unfilled():
+    for name, doc in run.canonical_unfilled():
         filler(name, doc)
 
 
