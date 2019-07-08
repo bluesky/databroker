@@ -1,6 +1,8 @@
 import asyncio
+from distutils.version import LooseVersion
 import uuid
 
+import bluesky
 from bluesky.run_engine import RunEngine, TransitionError
 from bluesky.plans import scan
 from bluesky.preprocessors import SupplementalData
@@ -32,7 +34,8 @@ def RE(request):
             except TransitionError:
                 pass
         loop.call_soon_threadsafe(loop.stop)
-        RE._th.join()
+        if LooseVersion(bluesky.__version__) >= LooseVersion('1.6.0'):
+            RE._th.join()
         loop.close()
 
     request.addfinalizer(clean_event_loop)
