@@ -111,7 +111,7 @@ def test_canonical(bundle):
         next(run.read_canonical())
 
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
-                                inplace=True)
+                                inplace=False)
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',
@@ -162,7 +162,8 @@ def test_canonical_unfilled(bundle):
 
     # Passing the run through the filler to check resource and datum are
     # received before corresponding event.
-    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
+                                inplace=False)
     for name, doc in run.canonical_unfilled():
         filler(name, doc)
 
