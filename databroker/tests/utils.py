@@ -52,7 +52,7 @@ sources:
     def insert(name, doc):
         nonlocal serializer
         if name == 'start':
-            serializer = suitcase.jsonl.Serializer(data_dir)
+            serializer = suitcase.jsonl.Serializer(data_dir, flush=True)
         serializer(name, doc)
         if name == 'stop':
             serializer.close()
