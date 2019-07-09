@@ -548,10 +548,22 @@ class Header:
         self.db = broker
         self._descriptors = None  # Fetch lazily in property.
         self.ext = None  # TODO
-        self.start = self.db.prepare_hook('start', entry.metadata['start'])
-        self.stop = self.db.prepare_hook('stop', entry.metadata['stop'])
+        self._start = entry.describe()['metadata']['start']
+        self._stop = None
         self.ext = SimpleNamespace(
             **self.db.fetch_external(self.start, self.stop))
+
+    @property
+    def start(self):
+        return self.db.prepare_hook('start', self._start)
+
+    @property
+    def stop(self):
+        if self._stop is None:
+            doc = self._entry.describe()['metadata']['stop']
+            if doc is None:
+                return None
+        return self.db.prepare_hook('stop', self._stop)
 
     def __eq__(self, other):
         return self.start == other.start
