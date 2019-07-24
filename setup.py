@@ -45,9 +45,19 @@ setup(
     packages=find_packages(exclude=['docs', 'tests']),
     entry_points={
         'console_scripts': [
-            # 'some.module:some_function',
-            ],
-        },
+            # 'command = some.module:some_function',
+        ],
+        'intake.drivers': [
+            'bluesky-event-stream = intake_bluesky.core:BlueskyEventStream',
+            'bluesky-jsonl-catalog = intake_bluesky.jsonl:BlueskyJSONLCatalog',
+            ('bluesky-mongo-embedded-catalog = '
+             'intake_bluesky.mongo_embedded:BlueskyMongoCatalog'),
+            ('bluesky-mongo-normalized-catalog = '
+             'intake_bluesky.mongo_normalized:BlueskyMongoCatalog'),
+            'bluesky-msgpack-catalog = intake_bluesky.msgpack:BlueskyMsgpackCatalog',
+            'bluesky-run = intake_bluesky.core:BlueskyRun',
+        ]
+    },
     include_package_data=True,
     package_data={
         'intake_bluesky': [
