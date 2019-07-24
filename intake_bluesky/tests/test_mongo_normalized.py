@@ -23,7 +23,7 @@ def teardown_module(module):
         pass
 
 
-@pytest.fixture(params=['local', 'remote'])
+@pytest.fixture(params=['local', 'remote'], scope='module')
 def bundle(request, intake_server, example_data, db_factory):  # noqa
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
     mds_db = db_factory()
