@@ -209,7 +209,6 @@ class _ConnWrapper(object):
                       format(item=item))
                 continue
             try:
-                print(f'handling {name}')
                 # handle connection level stuff
                 if name == 'cursor':
                     if cur_cursor is not None:
