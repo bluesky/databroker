@@ -1,9 +1,12 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import six  # noqa
-import sqlite3
-import json
 from contextlib import contextmanager
+import json
+import six  # noqa
+from six.moves import queue
+import sqlite3
+import threading
+
 from .base_registry import (RegistryTemplate, BaseRegistryRO, _ChainMap,
                             RegistryMovingTemplate)
 
@@ -93,10 +96,11 @@ def cursor(connection):
     >>> with cursor(conn) as c:
     ...     c.execute(query)
     """
-    c = connection.cursor()
+
     try:
+        c = connection.cursor()
         yield c
-    except:
+    except BaseException:
         connection.rollback()
         raise
     else:
@@ -105,22 +109,73 @@ def cursor(connection):
         c.close()
 
 
-class RegistryDatabase(object):
+class _CursorWrapper(object):
+    def __init__(self, work_queue):
+        self._wq = work_queue
+        self.cursor()
+
+    def __getattr__(self, key):
+        def inner(*args, **kwargs):
+            finished_event = threading.Event()
+            ret = {}
+            self._wq.put((finished_event, key, args, kwargs, ret))
+            success = finished_event.wait(timeout=.1)
+            if not success:
+                raise TimeoutError("{key} call timed out".format(key=key))
+            excp = ret.get('exception')
+            if excp is not None:
+                raise excp
+            return ret.get('return', None)
+        return inner
+
+
+class _ConnWrapper(object):
     def __init__(self, fp):
         self._fp = fp
-        self.reconnect()
+        self._cursor_lock = threading.RLock()
+        # Create a special thread for interacting with sqlite. This thread will
+        # create all connections and do all insertions.
+        self.__process_request_queue_thread = threading.Thread(
+            target=self.__process_request_queue,
+            name='process-request-queue')
+        # In Python 2, this must be set by attribute, not in Thread.__init__.
+        self.__process_request_queue_thread.daemon = True
+        self.__request_queue = queue.Queue()
+        self.__shutdown_event = threading.Event()
+        self.__process_request_queue_thread.start()
 
-    def reconnect(self):
+    def cursor(self):
+        self._c = _CursorWrapper(self.__request_queue)
+        return self._c
+
+    def __getattr__(self, key):
+        def inner(*args, **kwargs):
+            finished_event = threading.Event()
+            ret = {}
+            self.__request_queue.put((finished_event, key, args, kwargs, ret))
+            success = finished_event.wait(timeout=.1)
+            if not success:
+                raise TimeoutError("{key} call timed out".format(key=key))
+            excp = ret.get('exception')
+            if excp is not None:
+                raise excp
+            return ret.get('return', None)
+        return inner
+
+    def close(self):
+        self._c.close()
+        self._c = None
+
+    def __process_request_queue(self):
         conn = sqlite3.connect(self._fp)
         # Return rows as objects that support getitem.
         conn.row_factory = sqlite3.Row
-        self.conn = conn
 
-        with cursor(self.conn) as c:
+        with cursor(conn) as c:
             c.execute(LIST_TABLES)
             tables = set([row['name'] for row in c.fetchall()])
         if tables == set():
-            with cursor(self.conn) as c:
+            with cursor(conn) as c:
                 c.execute(CREATE_RESOURCES_TABLE)
                 c.execute(CREATE_DATUMS_TABLE)
                 c.execute(CREATE_RESOURCE_UPDATES_TABLE)
@@ -137,6 +192,62 @@ class RegistryDatabase(object):
                                    "have expected schema. Expected "
                                    "tables: {}; found tables: {}".format(
                                        self._fp, EXPECTED_TABLES, tables))
+        cur_cursor = None
+        while not self.__shutdown_event.is_set():
+            finished_event = None
+            try:
+                item = self.__request_queue.get(timeout=0.5)
+            except queue.Empty:
+                # Check whether we are shutting down (and should therefore
+                # terminate this loop) and then resume waiting on the
+                # queue.
+                continue
+            try:
+                finished_event, name, args, kwargs, ret = item
+            except ValueError:
+                print("did not get the right number of values in {item}".
+                      format(item=item))
+                continue
+            try:
+                print(f'handling {name}')
+                # handle connection level stuff
+                if name == 'cursor':
+                    if cur_cursor is not None:
+                        raise RuntimeError
+                    cur_cursor = conn.cursor()
+                elif name == 'rollback':
+                    conn.rollback()
+                elif name == 'commit':
+                    conn.commit()
+                # and special case close as it touching local sate
+                elif name == 'close':
+                    if cur_cursor is not None:
+                        cur_cursor.close()
+                    cur_cursor = None
+                # pass everything else through to the cursor
+                else:
+                    if cur_cursor is None:
+                        raise RuntimeError
+                    ret['return'] = getattr(cur_cursor, name)(*args, **kwargs)
+            except Exception as e:
+                ret['exception'] = e
+            finally:
+                if finished_event is not None:
+                    # Signal to thread that put into __request_queue
+                    # that we are done trying to handle it
+                    finished_event.set()
+
+
+class RegistryDatabase(object):
+    def __init__(self, fp):
+        self._fp = fp
+        self.reconnect()
+        self.__thread = None
+        self.__request_queue = queue.Queue()
+        self.__shutdown_event = threading.Event()
+
+    def reconnect(self):
+        self.conn = _ConnWrapper(self._fp)
 
     def disconnect(self):
         self.conn.close()
