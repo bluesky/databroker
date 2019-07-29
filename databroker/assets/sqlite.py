@@ -96,9 +96,8 @@ def cursor(connection):
     >>> with cursor(conn) as c:
     ...     c.execute(query)
     """
-
+    c = connection.cursor()
     try:
-        c = connection.cursor()
         yield c
     except BaseException:
         connection.rollback()
