@@ -240,9 +240,6 @@ class RegistryDatabase(object):
     def __init__(self, fp):
         self._fp = fp
         self.reconnect()
-        self.__thread = None
-        self.__request_queue = queue.Queue()
-        self.__shutdown_event = threading.Event()
 
     def reconnect(self):
         self.conn = _ConnWrapper(self._fp)
