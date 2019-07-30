@@ -1,6 +1,5 @@
 attrs>=17.4.0
 boltons
-dask
 doct
 humanize
 jinja2
