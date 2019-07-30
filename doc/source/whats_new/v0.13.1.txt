@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v0.13.1 (2019-07-30)
+--------------------
+
+Bug Fixes
++++++++++
+
+* Make sqlite-backed assets registry threadsafe, for compatibility with bluesky
+  1.6.0.
