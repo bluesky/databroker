@@ -1,3 +1,5 @@
+import copy
+
 from databroker import (lookup_config, Broker, temp_config, list_configs,
                         describe_configs)
 
@@ -49,18 +51,13 @@ def test_from_config():
     broker = Broker.from_config(EXAMPLE)
     config = broker.get_config()
     print(config)
-    # we explicitly test for parts we know should be accepted
-    mds_example = EXAMPLE['metadatastore']['config']
-    reg_example = EXAMPLE['assets']['config']
-    root_map_example = EXAMPLE['root_map']
 
-    mds_config = config['metadatastore']
-    reg_config = config['assets']
-    root_map_config = config['root_map']
+    # we explicitly remove parts which we don't support
+    example_ish = copy.deepcopy(EXAMPLE)
+    example_ish.pop('description')
+    example_ish.pop('handlers')
 
-    assert mds_example == mds_config
-    assert reg_example == reg_config
-    assert root_map_example == root_map_config
+    assert example_ish == config
 
 
 def test_handler_registration():
@@ -192,3 +189,16 @@ def test_named_temp():
 
     db2 = Broker.named('temp')
     assert db.mds.config != db2.mds.config
+
+
+def test_temp_round_trip():
+    db = Broker.named('temp')
+    uid = str(uuid.uuid4())
+    db.insert('start', {'uid': uid, 'time': 0})
+    db.insert('stop', {'uid': str(uuid.uuid4()), 'time': 1, 'run_start': uid})
+    db[-1]
+    config = db.get_config()
+
+    db2 = Broker.from_config(config)
+    assert db.mds.config == db2.mds.config
+    assert db[-1].start == db2[-1].start

@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v0.13.2 (2019-07-30)
+--------------------
+
+Bug Fixes
++++++++++
+
+* Support round trip of databroker configs, reporting the config, module and
+  class.
