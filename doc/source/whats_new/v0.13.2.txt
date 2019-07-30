@@ -8,3 +8,12 @@ Bug Fixes
 
 * Support round trip of databroker configs, reporting the config, module and
   class.
+
+Packaging
+---------
+
+* Removed vestigial dependency on ``dask``, which is no longer used.
+
+See
+`the v0.13.2 GitHub milestone <https://github.com/bluesky/databroker/milestone/9?closed=1>`_
+for a full enumeration of the changes in this release.
