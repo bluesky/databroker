@@ -472,12 +472,14 @@ class RegistryTemplate(BaseRegistryRO):
 
         col = self._resource_col
 
-        return self._api.insert_resource(col, spec, rpath,
-                                         rkwargs,
-                                         self.known_spec,
-                                         root=root,
-                                         path_semantics=path_semantics,
-                                         **rs_kwarg)['uid']
+        return self._api.insert_resource(
+            col, spec, rpath,
+            rkwargs,
+            self.known_spec,
+            root=root,
+            path_semantics=path_semantics,
+            duplicate_exc=self.DuplicateKeyError,
+            **rs_kwarg)['uid']
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
         '''Register a datum with the Registry.

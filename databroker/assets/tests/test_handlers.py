@@ -124,7 +124,7 @@ class Test_AD_hdf5_files(_with_file):
     @classmethod
     def _make_data(self):
         filename = self.filename
-        with h5py.File(filename) as f:
+        with h5py.File(filename, 'w') as f:
             N = 5
             # Write the data.
             data = np.multiply.outer(np.arange(N), np.ones((2, 2)))
@@ -180,7 +180,7 @@ class Test_AD_hdf5_timestamp_files(_with_file):
     @classmethod
     def _make_data(self):
         filename = self.filename
-        with h5py.File(filename) as f:
+        with h5py.File(filename, 'w') as f:
             N = 5
             # Write the data.
             data = np.arange(N, dtype=np.float64)
