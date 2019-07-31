@@ -29,11 +29,10 @@ Index
    :caption: Bluesky Project
 
    Bluesky Project <https://blueskyproject.io>
+   Bluesky Project Repositories <https://github.com/bluesky>
 
 .. toctree::
    :hidden:
-   :caption: GitHub Links
+   :caption: Getting Help
 
-   Bluesky Project Repositories <https://github.com/bluesky/>
-   NSLS-II Repositories <https://github.com/NSLS-II/>
-   Bug Reports <https://github.com/NSLS-II/Bug-Reports/issues>
+   Gitter <https://gitter.im/NSLS-II/DAMA>
