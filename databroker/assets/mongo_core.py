@@ -68,12 +68,12 @@ def bulk_insert_datum(col, resource, datum_ids,
                          datum_kwargs=dict(d_kwargs))
             yield datum
 
-    bulk = col.initialize_unordered_bulk_op()
     d_uids = deque()
+    bulk = deque()
     for dm in datum_factory():
-        bulk.insert(dm)
+        bulk.append(pymongo.InsertOne(dm))
         d_uids.append(dm['datum_id'])
-    bulk.execute()
+    col.bulk_write(bulk, ordered=False)
     return d_uids
 
 
