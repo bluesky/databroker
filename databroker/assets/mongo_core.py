@@ -69,7 +69,7 @@ def bulk_insert_datum(col, resource, datum_ids,
             yield datum
 
     d_uids = deque()
-    bulk = deque()
+    bulk = []
     for dm in datum_factory():
         bulk.append(pymongo.InsertOne(dm))
         d_uids.append(dm['datum_id'])
