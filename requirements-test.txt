@@ -7,3 +7,4 @@ pathlib
 pyqt5
 pytest
 vcrpy
+ujson
