@@ -119,7 +119,8 @@ def bulk_insert_events(event_col, descriptor, events, validate):
                           seq_num=ev['seq_num'])
             yield ev_out
 
-    return event_col.bulk_write(list(event_factory()), ordered=True)
+    bulk = [pymongo.InsertOne(ev) for ev in event_factory()]
+    return event_col.bulk_write(bulk, ordered=True)
 
 # DATABASE RETRIEVAL ##########################################################
 
