@@ -23,3 +23,16 @@ Index
     archiver
     whats_new
     DBEP/index
+
+.. toctree::
+   :hidden:
+   :caption: Bluesky Project
+
+   Bluesky Project <https://blueskyproject.io>
+   Bluesky Project Repositories <https://github.com/bluesky>
+
+.. toctree::
+   :hidden:
+   :caption: Getting Help
+
+   Gitter <https://gitter.im/NSLS-II/DAMA>
