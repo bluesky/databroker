@@ -15,7 +15,7 @@ with open(path.join(here, 'requirements.txt')) as f:
     requirements = f.read().split()
 
 extras_require = {
-    'mongo': ['pymongo'],
+    'mongo': ['pymongo>=3.0'],
     'hdf5': ['h5py'],
     'client': ['requests'],
     'service': ['tornado<6', 'ujson'],
