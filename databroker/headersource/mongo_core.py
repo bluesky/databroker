@@ -119,11 +119,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
                           seq_num=ev['seq_num'])
             yield ev_out
 
-    bulk = event_col.initialize_ordered_bulk_op()
-    for ev in event_factory():
-        bulk.insert(ev)
-
-    return bulk.execute()
+    return event_col.bulk_write(list(event_factory()), ordered=True)
 
 # DATABASE RETRIEVAL ##########################################################
 
