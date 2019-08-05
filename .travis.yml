@@ -43,6 +43,7 @@ install:
   - |
     if [ "$INTAKE_MASTER" = true ] ; then
       pip install git+https://github.com/intake/intake@master
+      pip install git+https://github.com/intake/intake-xarray@master
     fi
 
 script:
