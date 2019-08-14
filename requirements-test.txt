@@ -4,6 +4,7 @@ coverage
 glueviz
 intake[server]
 matplotlib
+mongobox
 ophyd
 pathlib
 pyqt5
