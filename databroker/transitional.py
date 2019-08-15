@@ -545,13 +545,19 @@ class Header:
     """
     def __init__(self, entry, broker):
         self._entry = entry
+        self.__data_source = None
         self.db = broker
-        self._descriptors = None  # Fetch lazily in property.
         self.ext = None  # TODO
         self._start = entry.describe()['metadata']['start']
         self._stop = None
         self.ext = SimpleNamespace(
             **self.db.fetch_external(self.start, self.stop))
+
+    @property
+    def _data_source(self):
+        if self.__data_source is None:
+            self.__data_source = self._entry.get()
+        return self.__data_source
 
     @property
     def start(self):
@@ -574,13 +580,11 @@ class Header:
 
     @property
     def descriptors(self):
-        if self._descriptors is None:
-            self._descriptors = []
-            catalog = self._entry()
-            for name, entry in catalog._entries.items():
-                self._descriptors.extend(entry.metadata['descriptors'])
+        descriptors = []
+        for name, entry in self._data_source._entries.items():
+            descriptors.extend(entry.metadata['descriptors'])
         return [self.db.prepare_hook('descriptor', doc)
-                for doc in self._descriptors]
+                for doc in descriptors]
 
     @property
     def stream_names(self):
