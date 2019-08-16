@@ -6,6 +6,13 @@ import pathlib
 from .in_memory import BlueskyInMemoryCatalog
 
 
+def gen(filename):
+    with open(filename, 'r') as file:
+        for line in file:
+            name, doc = json.loads(line)
+            yield (name, doc)
+
+
 class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-jsonl-catalog'  # noqa
 
@@ -41,11 +48,6 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                          query=query,
                          **kwargs)
 
-    def gen(filename):
-        with open(filename, 'r') as file:
-            for line in file:
-                name, doc = json.loads(line)
-                yield (name, doc)
 
     def _load(self):
         for path in self.paths:
