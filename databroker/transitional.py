@@ -932,9 +932,7 @@ class Results:
 
     def __iter__(self):
         # TODO Catalog.walk() fails. We should probably support Catalog.items().
-        print("PRE ITER")
         for uid, entry in self._catalog._entries.items():
-            print("__ITER__", uid, entry)
             if self._header_version == 1:
                 header = Header(entry, self._broker)
             else:
