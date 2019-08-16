@@ -231,3 +231,7 @@ def wrap_in_deprecated_doct(name, doc):
     in the future.
     """
     return DeprecatedDoct(DOCT_NAMES[name], doc)
+
+
+class DuplicateHandler(RuntimeError):
+    pass

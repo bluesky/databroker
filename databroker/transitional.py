@@ -25,6 +25,34 @@ from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
                     wrap_in_doct)
 
 
+class Registry:
+    """
+    An accessor that serves as a backward-compatible shim for Broker.reg
+    """
+    def __init__(self, filler):
+        self._filler = filler
+
+    @property
+    def handler_reg(self):
+        return self._filler.handler_registry
+
+    def register_handler(self, key, handler, overwrite=False):
+        if (not overwrite) and (key in self.handler_reg):
+            if self.handler_reg[key] is handler:
+                return
+            raise self.DuplicateHandler(
+                "You are trying to register a second handler "
+                "for spec {}, {}".format(key, self))
+
+        self.deregister_handler(key)
+        self.handler_reg[key] = handler
+
+    def deregister_handler(self, key):
+        handler = self.handler_reg.pop(key, None)
+        # TODO Filler should support explicit de-registration that clears
+        # the relevant caches.
+
+
 class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
@@ -39,6 +67,7 @@ class Broker:
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
         self.filters = {}
+        self.reg = Registry(catalog.filler)
 
     @property
     def header_version(self):

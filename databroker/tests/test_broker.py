@@ -729,7 +729,7 @@ def test_export(broker_factory, RE, hw):
     dir2 = tempfile.mkdtemp()
     detfs = sim.SynSignalWithRegistry(name='detfs',
                                       func=lambda: np.ones((5, 5)),
-                                      reg=db1.reg, save_path=dir1)
+                                      save_path=dir1)
     uid, = RE(count([detfs]))
 
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
@@ -782,7 +782,7 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
 
     detfs = BrokenSynRegistry(name='detfs',
                               func=lambda: np.ones((5, 5)),
-                              reg=db1.reg, save_path=dir1)
+                              save_path=dir1)
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     RE.subscribe(db1.insert)
@@ -812,7 +812,6 @@ def test_export_size_smoke(broker_factory, RE, tmpdir):
 
     detfs = sim.SynSignalWithRegistry(name='detfs',
                                       func=lambda: np.ones((5, 5)),
-                                      reg=db1.reg,
                                       save_path=str(tmpdir.mkdir('a')))
 
     uid, = RE(count([detfs]))
@@ -1222,11 +1221,9 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
     RE.subscribe(db.insert)
     detfs1 = sim.SynSignalWithRegistry(name='detfs1',
                                        func=lambda: np.ones((5, 5)),
-                                       reg=db.reg,
                                        save_path=str(tmpdir.mkdir('a')))
     detfs2 = sim.SynSignalWithRegistry(name='detfs2',
                                        func=lambda: np.ones((5, 5)),
-                                       reg=db.reg,
                                        save_path=str(tmpdir.mkdir('b')))
 
     # In each event stream, put one 'fillable' (external-writing)
