@@ -41,6 +41,12 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                          query=query,
                          **kwargs)
 
+    def gen(filename):
+        with open(filename, 'r') as file:
+            for line in file:
+                name, doc = json.loads(line)
+                yield (name, doc)
+
     def _load(self):
         for path in self.paths:
             for filename in glob.glob(path):
@@ -56,13 +62,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                         if not file.readline():
                             # Empty file, maybe being written to currently
                             continue
-
-                def gen():
-                    with open(filename, 'r') as file:
-                        for line in file:
-                            name, doc = json.loads(line)
-                            yield (name, doc)
-                self.upsert(gen, (), {})
+                self.upsert(gen, (filename,), {})
 
     def search(self, query):
         """
