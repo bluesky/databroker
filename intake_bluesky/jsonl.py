@@ -48,7 +48,6 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                          query=query,
                          **kwargs)
 
-
     def _load(self):
         for path in self.paths:
             for filename in glob.glob(path):
