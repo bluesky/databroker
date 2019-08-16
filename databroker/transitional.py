@@ -566,9 +566,7 @@ class Header:
     @property
     def stop(self):
         if self._stop is None:
-            doc = self._entry.describe()['metadata']['stop']
-            if doc is None:
-                return None
+            self._stop = self._entry.describe()['metadata']['stop'] or {}
         return self.db.prepare_hook('stop', self._stop)
 
     def __eq__(self, other):
