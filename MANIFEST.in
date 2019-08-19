@@ -1,3 +1,10 @@
-include versioneer.py
 include databroker/_version.py
 include databroker/assets/schemas/*.json
+recursive-include doc/source *
+include doc/Makefile doc/make.bat
+include LICENSE
+include MANIFEST.in
+include README.md
+include requirements.txt
+include setup.py
+include versioneer.py
