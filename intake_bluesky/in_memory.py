@@ -48,32 +48,32 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         self._uid_to_run_start_doc = {}
         super().__init__(**kwargs)
 
-    def upsert(self, gen_func, gen_args, gen_kwargs):
-        gen = gen_func(*gen_args, **gen_kwargs)
-        name, run_start_doc = next(gen)
+    def upsert(self, gen_func, start_doc, get_stop, filename, gen_args, gen_kwargs):
+        stop_doc = get_stop(filename)
 
-        if name != 'start':
-            raise ValueError("Expected a generator of (name, doc) pairs where "
-                             "the first entry was ('start', {...}).")
+        if not isinstance(start_doc, dict):
+            raise ValueError(f"Invalid start doc: {start_doc}")
 
-        if not Query(self._query).match(run_start_doc):
+        if not Query(self._query).match(start_doc):
             return
 
-        uid = run_start_doc['uid']
-        self._uid_to_run_start_doc[uid] = run_start_doc
+        uid = start_doc['uid']
+        self._uid_to_run_start_doc[uid] = start_doc
 
         entry = SafeLocalCatalogEntry(
-            name=run_start_doc['uid'],
+            name=start_doc['uid'],
             description={},  # TODO
             driver='intake_bluesky.core.BlueskyRunFromGenerator',
             direct_access='forbid',
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
+                  'get_stop': get_stop,
+                  'filename': filename,
                   'filler': self.filler},
             cache=None,  # ???
             parameters=[],
-            metadata={'start': run_start_doc, 'stop': None},
+            metadata={'start': start_doc, 'stop': get_stop(filename)},
             catalog_dir=None,
             getenv=True,
             getshell=True,

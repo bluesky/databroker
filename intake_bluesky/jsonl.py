@@ -4,13 +4,30 @@ import os
 import pathlib
 
 from .in_memory import BlueskyInMemoryCatalog
+from .core import lastlines
 
 
 def gen(filename):
     with open(filename, 'r') as file:
         for line in file:
             name, doc = json.loads(line)
+            print("!!!!!!", name, doc)
             yield (name, doc)
+
+
+def get_stop_doc(filename):
+    stop_doc = None
+    lastline = list(lastlines(filename))
+    print("LASTLINE", lastline)
+    if lastline:
+        try:
+            name, doc = json.loads(next(lastlines(filename)))
+        except json.JSONDecodeError:
+            ...
+            # stop_doc will stay None if it can't be decoded correctly.
+        if (name == 'stop'):
+            stop_doc = doc
+    return stop_doc
 
 
 class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
@@ -58,12 +75,12 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                 self._filename_to_mtime[filename] = mtime
                 with open(filename, 'r') as file:
                     try:
-                        name, run_start_doc = json.loads(file.readline())
+                        name, start_doc = json.loads(file.readline())
                     except json.JSONDecodeError:
                         if not file.readline():
                             # Empty file, maybe being written to currently
                             continue
-                self.upsert(gen, (filename,), {})
+                self.upsert(gen, start_doc, get_stop_doc, filename, (filename,), {})
 
     def search(self, query):
         """
