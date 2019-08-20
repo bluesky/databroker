@@ -62,20 +62,20 @@ class Broker:
         if source is not None:
             catalog = catalog[source]()
         self._catalog = catalog
-        self._header_version = header_version
+        self.header_version = header_version
         self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
         self.filters = {}
         self.reg = Registry(catalog.filler)
 
-    @property
-    def header_version(self):
-        return self._header_version
+        from .v2 import Broker
+        self._v2 = Broker(uri, source)
 
     @property
-    def _api_version_2(self):
-        return self._catalog
+    def v2(self):
+        "Accessor to the version 2 API."
+        return self._v2
 
     def fetch_external(self, start, stop):
         return {k: func(start, stop) for
