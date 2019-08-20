@@ -68,13 +68,27 @@ class Broker:
         self.aliases = {}
         self.filters = {}
         self.reg = Registry(catalog.filler)
+        self._v2 = None
 
-        from .v2 import Broker
-        self._v2 = Broker(uri, source)
+    @classmethod
+    def from_config(cls, config, auto_register=True, name=None):
+        # Provide a way to force v0 Broker as fall-back.
+        if config.get('api_version') == 0:
+            from .v0 import Broker
+            return Broker.from_config(config, auto_register, name)
+        if 'uri' in config:
+            return cls(**config)
+        else:
+            # TODO Parse old-style config by extracing Mongo connection info.
+            raise NotImplementedError("Unable to parse config.")
+
 
     @property
     def v2(self):
         "Accessor to the version 2 API."
+        if self._v2 is None:
+            from .v2 import Broker
+            self._v2 = Broker(uri, source)
         return self._v2
 
     def fetch_external(self, start, stop):
@@ -94,7 +108,7 @@ class Broker:
             kwargs.update({'$text': {'$search': text_search}})
         format_time(kwargs, tz)  # mutates in place
         return Results(self, catalog.search(kwargs),
-                       data_key, self._header_version)
+                       data_key, self.header_version)
 
     def __getitem__(self, key):
         # If this came from a client, we might be getting '-1'.
@@ -117,7 +131,7 @@ class Broker:
             return [self[index]
                     for index in reversed(range(key.start, key.stop or 0, key.step or 1))]
         entry = self._catalog[key]
-        if self._header_version == 1:
+        if self.header_version == 1:
             return Header(entry, self)
         else:
             return entry
@@ -955,12 +969,12 @@ class Results:
         self._broker = broker
         self._catalog = catalog
         self._data_key = data_key
-        self._header_version = header_version
+        self.header_version = header_version
 
     def __iter__(self):
         # TODO Catalog.walk() fails. We should probably support Catalog.items().
         for uid, entry in self._catalog._entries.items():
-            if self._header_version == 1:
+            if self.header_version == 1:
                 header = Header(entry, self._broker)
             else:
                 header = entry

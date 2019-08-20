@@ -7,7 +7,7 @@ import uuid
 import mongobox
 import tzlocal
 
-from databroker import Broker, BrokerES, temp_config
+from databroker import v0, v1
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
 import intake_bluesky.jsonl
@@ -45,7 +45,7 @@ sources:
     def teardown():
         tmp_dir.cleanup()
 
-    db = Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
     serializer = None
     request.addfinalizer(teardown)
 
@@ -94,7 +94,7 @@ sources:
         tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
-    db = Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
     serializer = None
 
     def insert(name, doc):
@@ -143,7 +143,7 @@ sources:
         tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
-    db = Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
     serializer = None
 
     def insert(name, doc):
@@ -164,7 +164,7 @@ sources:
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
 
-    config = temp_config()
+    config = v0.temp_config()
     tempdir = config['metadatastore']['config']['directory']
 
     def cleanup():
@@ -172,7 +172,7 @@ def build_sqlite_backed_broker(request):
 
     request.addfinalizer(cleanup)
 
-    return Broker.from_config(config)
+    return v0.Broker.from_config(config)
 
 
 def build_hdf5_backed_broker(request):
@@ -202,9 +202,9 @@ def build_hdf5_backed_broker(request):
 
     request.addfinalizer(delete_fs)
 
-    return BrokerES(HeaderSourceShim(mds),
-                    [EventSourceShim(mds, fs)],
-                    {'': fs}, {}, name=None)
+    return v0.BrokerES(HeaderSourceShim(mds),
+                       [EventSourceShim(mds, fs)],
+                       {'': fs}, {}, name=None)
 
 
 def build_pymongo_backed_broker(request):
@@ -235,4 +235,4 @@ def build_pymongo_backed_broker(request):
 
     request.addfinalizer(delete_fs)
 
-    return Broker(mds, fs)
+    return v0.Broker(mds, fs)
