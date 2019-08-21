@@ -1,4 +1,6 @@
 import event_model
+import os
+import tempfile
 import xarray
 import intake_bluesky.core as core
 from intake_bluesky.core import documents_to_xarray
@@ -76,3 +78,12 @@ def test_interlace_event_page_chunks():
         if t0:
             assert t1 > t0
         t0 = t1
+
+def test_lastlines():
+    with tempfile.TemporaryDirectory() as tempdir:
+        with open(os.path.join(tempdir,'lastlines_test.txt'), 'w') as f:
+            for i in range(1000):
+                f.write(f'{i}\n')
+            filename = f.name
+
+        assert list(core.lastlines(f.name, n=2)) == ['997', '998', '999']
