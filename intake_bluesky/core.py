@@ -23,11 +23,11 @@ import warnings
 import xarray
 
 
-def lastlines(filename, n=1, bsize=2048):
+def tail(filename, n=1, bsize=2048):
     """
     Returns a generator with the last n lines of a file.
 
-    Thanks to Martijn Pieters for his solution:
+    Thanks to Martijn Pieters for this solution:
     https://stackoverflow.com/a/12295054/6513183
 
     Parameters

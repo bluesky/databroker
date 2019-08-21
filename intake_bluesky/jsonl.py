@@ -4,7 +4,7 @@ import os
 import pathlib
 
 from .in_memory import BlueskyInMemoryCatalog
-from .core import lastlines
+from .core import tail
 
 
 def gen(filename):
@@ -32,19 +32,22 @@ def get_stop(filename):
     ----------
     filename: str
         JSONL file to load.
+    Returns
+    -------
     stop_doc: dict
         A Bluesky run stop document.
     """
     stop_doc = None
-    lastline = list(lastlines(filename))[0]
+    lastline = list(tail(filename))[0]
     if lastline:
         try:
             name, doc = json.loads(lastline)
         except json.JSONDecodeError:
             ...
             # stop_doc will stay None if it can't be decoded correctly.
-        if (name == 'stop'):
-            stop_doc = doc
+        else:
+            if (name == 'stop'):
+                stop_doc = doc
     return stop_doc
 
 

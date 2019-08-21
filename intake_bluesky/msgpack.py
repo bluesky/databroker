@@ -11,6 +11,37 @@ UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,
                       raw=False,
                       max_buffer_size=1_000_000_000)
 
+def gen(filename):
+    """
+    A msgpack generator
+
+    Parameters
+    ----------
+    filename: str
+        msgpack file to laod.
+    """
+    with open(filename, 'rb') as file:
+        yield from msgpack.Unpacker(file, **UNPACK_OPTIONS)
+
+def get_stop(filename):
+    """
+    Returns the stop_doc of a Bluesky msgpack file.
+
+    The stop_doc is always the last line of the file.
+
+    Parameters
+    ----------
+    filename: str
+        msgpack file to load.
+    Returns
+    -------
+    stop_doc: dict
+        A Bluesky run_stop document.
+    """
+    with open(filename, 'rb') as file:
+        for name, doc in msgpack.Unpacker(file, **UNPACK_OPTIONS):
+            if name == 'stop':
+                return doc
 
 class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-msgpack-catalog'  # noqa
@@ -58,15 +89,12 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
                 with open(filename, 'rb') as file:
                     unpacker = msgpack.Unpacker(file, **UNPACK_OPTIONS)
                     try:
-                        name, run_start_doc = next(unpacker)
+                        name, start_doc = next(unpacker)
                     except StopIteration:
                         # Empty file, maybe being written to currently
                         continue
-
-                def gen():
-                    with open(filename, 'rb') as file:
-                        yield from msgpack.Unpacker(file, **UNPACK_OPTIONS)
-                self.upsert(gen, (), {})
+                stop_doc = get_stop(filename)
+                self.upsert(gen, start_doc, stop_doc, (filename,), {})
 
     def search(self, query):
         """
