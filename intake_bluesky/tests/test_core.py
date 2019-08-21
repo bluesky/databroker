@@ -79,11 +79,11 @@ def test_interlace_event_page_chunks():
             assert t1 > t0
         t0 = t1
 
+
 def test_tail():
     with tempfile.TemporaryDirectory() as tempdir:
-        with open(os.path.join(tempdir,'lastlines_test.txt'), 'w') as f:
+        with open(os.path.join(tempdir, 'lastlines_test.txt'), 'w') as f:
             for i in range(1000):
                 f.write(f'{i}\n')
             filename = f.name
-
-        assert list(core.tail(f.name, n=2)) == ['997', '998', '999']
+        assert list(core.tail(filename, n=2)) == ['997', '998', '999']

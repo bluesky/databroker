@@ -11,6 +11,7 @@ UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,
                       raw=False,
                       max_buffer_size=1_000_000_000)
 
+
 def gen(filename):
     """
     A msgpack generator
@@ -22,6 +23,7 @@ def gen(filename):
     """
     with open(filename, 'rb') as file:
         yield from msgpack.Unpacker(file, **UNPACK_OPTIONS)
+
 
 def get_stop(filename):
     """
@@ -42,6 +44,7 @@ def get_stop(filename):
         for name, doc in msgpack.Unpacker(file, **UNPACK_OPTIONS):
             if name == 'stop':
                 return doc
+
 
 class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-msgpack-catalog'  # noqa

@@ -59,7 +59,7 @@ def tail(filename, n=1, bsize=2048):
             # read at least n lines + 1 more; we need to skip a partial line later on
             try:
                 hfile.seek(-(bsize+1), os.SEEK_CUR)           # go backwards
-                linecount += hfile.read(bsize).count(sep.encode()) # count newlines
+                linecount += hfile.read(bsize).count(sep.encode())  # count newlines
                 hfile.seek(-bsize, os.SEEK_CUR)           # go back again
             except IOError as e:
                 if e.errno == errno.EINVAL:
