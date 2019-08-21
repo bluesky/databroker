@@ -38,7 +38,7 @@ def get_stop(filename):
         A Bluesky run stop document.
     """
     stop_doc = None
-    lastline = list(tail(filename))[0]
+    lastline = list(tail(filename))[-1]
     if lastline:
         try:
             name, doc = json.loads(lastline)
@@ -97,12 +97,13 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                 with open(filename, 'r') as file:
                     try:
                         name, start_doc = json.loads(file.readline())
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
                         if not file.readline():
                             # Empty file, maybe being written to currently
                             continue
+                        raise e
                 stop_doc = get_stop(filename)
-                self.upsert(gen, start_doc, stop_doc, (filename,), {})
+                self.upsert(start_doc, stop_doc, gen, (filename,), {})
 
     def search(self, query):
         """

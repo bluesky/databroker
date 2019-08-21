@@ -1,3 +1,4 @@
+import collections
 import copy
 import event_model
 import intake
@@ -5,6 +6,7 @@ import intake.catalog
 import intake.catalog.local
 import intake.source.base
 from mongoquery import Query
+
 
 from .core import parse_handler_registry
 
@@ -48,9 +50,9 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         self._uid_to_run_start_doc = {}
         super().__init__(**kwargs)
 
-    def upsert(self, gen_func, start_doc, stop_doc, gen_args, gen_kwargs):
+    def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
 
-        if not isinstance(start_doc, dict):
+        if not isinstance(start_doc, collections.abc.MutableMapping):
             raise ValueError(f"Invalid start doc: {start_doc}")
 
         if not Query(self._query).match(start_doc):

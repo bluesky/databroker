@@ -97,7 +97,7 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
                         # Empty file, maybe being written to currently
                         continue
                 stop_doc = get_stop(filename)
-                self.upsert(gen, start_doc, stop_doc, (filename,), {})
+                self.upsert(start_doc, stop_doc, gen, (filename,), {})
 
     def search(self, query):
         """
