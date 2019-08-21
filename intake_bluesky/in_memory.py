@@ -48,8 +48,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         self._uid_to_run_start_doc = {}
         super().__init__(**kwargs)
 
-    def upsert(self, gen_func, start_doc, get_stop, filename, gen_args, gen_kwargs):
-        stop_doc = get_stop(filename)
+    def upsert(self, gen_func, start_doc, stop_doc, gen_args, gen_kwargs):
 
         if not isinstance(start_doc, dict):
             raise ValueError(f"Invalid start doc: {start_doc}")
@@ -68,12 +67,10 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
-                  'get_stop': get_stop,
-                  'filename': filename,
                   'filler': self.filler},
             cache=None,  # ???
             parameters=[],
-            metadata={'start': start_doc, 'stop': get_stop(filename)},
+            metadata={'start': start_doc, 'stop': stop_doc},
             catalog_dir=None,
             getenv=True,
             getshell=True,

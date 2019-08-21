@@ -8,20 +8,38 @@ from .core import lastlines
 
 
 def gen(filename):
+    """
+    A JSONL file generator.
+
+    Parameters
+    ----------
+    filename: str
+        JSONL file to load.
+    """
     with open(filename, 'r') as file:
         for line in file:
             name, doc = json.loads(line)
-            print("!!!!!!", name, doc)
             yield (name, doc)
 
 
-def get_stop_doc(filename):
+def get_stop(filename):
+    """
+    Returns the stop_doc of a Bluesky JSONL file.
+
+    The stop_doc is always the last line of the file.
+
+    Parameters
+    ----------
+    filename: str
+        JSONL file to load.
+    stop_doc: dict
+        A Bluesky run stop document.
+    """
     stop_doc = None
-    lastline = list(lastlines(filename))
-    print("LASTLINE", lastline)
+    lastline = list(lastlines(filename))[0]
     if lastline:
         try:
-            name, doc = json.loads(next(lastlines(filename)))
+            name, doc = json.loads(lastline)
         except json.JSONDecodeError:
             ...
             # stop_doc will stay None if it can't be decoded correctly.
@@ -80,7 +98,8 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                         if not file.readline():
                             # Empty file, maybe being written to currently
                             continue
-                self.upsert(gen, start_doc, get_stop_doc, filename, (filename,), {})
+                stop_doc = get_stop(filename)
+                self.upsert(gen, start_doc, stop_doc, (filename,), {})
 
     def search(self, query):
         """
