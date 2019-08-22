@@ -1,4 +1,3 @@
-import collections
 import copy
 import event_model
 import intake
