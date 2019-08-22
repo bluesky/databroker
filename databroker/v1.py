@@ -74,9 +74,9 @@ class Broker:
             return Broker.from_config(config, auto_register, name)
         if 'uri' in config:
             from .v2 import Broker
-            catalog = Broker(str(uri))
+            catalog = Broker(str(config['uri']))
             if config.get('source') is not None:
-                catalog = catalog[source]()
+                catalog = catalog[config['source']]()
             return cls(catalog)
         elif 'metadatastore' in config:
             return parse_v0_config(config)
@@ -1137,32 +1137,3 @@ def _pretty_print_time(timestamp):
     dt = datetime.fromtimestamp(timestamp).isoformat()
     ago = humanize.naturaltime(time.time() - timestamp)
     return '{ago} ({date})'.format(ago=ago, date=dt)
-
-
-def parse_v0_config(config):
-"""
-Parse v0 configuration file and obtain a uri and source.
-
-Sample
-
-```
-description: 'CSX raw data'
-metadatastore:
-    module: 'databroker.headersource.mongo'
-    class: 'MDS'
-    config:
-        host: 'xf23id-broker'
-        port: 27017
-        database: 'datastore2'
-        timezone: 'US/Eastern'
-        auth: False
-assets:
-    module: 'databroker.assets.mongo'
-    class: 'Registry'
-    config:
-        host: 'xf23id-broker'
-        port: 27017
-        database: 'filestore'
-```
-"""
-

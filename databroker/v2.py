@@ -1,4 +1,4 @@
-from intake import Catalog
+from intake.catalog import Catalog
 
 
 class Broker(Catalog):
@@ -8,7 +8,7 @@ class Broker(Catalog):
     It includes the option to return, in place of the usual intake Entries,
     v1-compatible Header objects.
     """
-    def __init__(self, *args, header_version, **kwargs):
+    def __init__(self, *args, header_version=2, **kwargs):
         super().__init__(*args, **kwargs)
         self.header_version = header_version
         self._v1 = None
@@ -21,7 +21,7 @@ class Broker(Catalog):
             self._v1 = Broker(self)
         return self._v1
 
-    def __getitem__(self, key)
+    def __getitem__(self, key):
         if self.header_version == 1:
             self.v1[key]
         else:
