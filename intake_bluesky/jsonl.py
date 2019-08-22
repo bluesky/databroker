@@ -34,8 +34,8 @@ def get_stop(filename):
         JSONL file to load.
     Returns
     -------
-    stop_doc: dict
-        A Bluesky run stop document.
+    stop_doc: dict or None
+        A Bluesky run_stop document or None if one is not present.
     """
     stop_doc = None
     lastline, = tail(filename)
