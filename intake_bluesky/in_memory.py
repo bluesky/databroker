@@ -51,10 +51,6 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         super().__init__(**kwargs)
 
     def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
-
-        if not isinstance(start_doc, collections.abc.MutableMapping):
-            raise ValueError(f"Invalid start doc: {start_doc}")
-
         if not Query(self._query).match(start_doc):
             return
 

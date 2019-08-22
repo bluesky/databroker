@@ -86,4 +86,4 @@ def test_tail():
             for i in range(1000):
                 f.write(f'{i}\n')
             filename = f.name
-        assert list(core.tail(filename, n=2)) == ['997', '998', '999']
+        assert list(core.tail(filename, n=2)) == ['998', '999']

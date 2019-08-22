@@ -38,7 +38,7 @@ def get_stop(filename):
         A Bluesky run stop document.
     """
     stop_doc = None
-    lastline = list(tail(filename))[-1]
+    lastline, = tail(filename)
     if lastline:
         try:
             name, doc = json.loads(lastline)
