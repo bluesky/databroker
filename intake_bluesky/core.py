@@ -10,6 +10,7 @@ import heapq
 import importlib
 import itertools
 import intake.catalog.base
+import errno
 import intake.container.base
 import intake_xarray.base
 from intake.compat import unpack_kwargs
@@ -17,8 +18,70 @@ import msgpack
 import requests
 from requests.compat import urljoin
 import numpy
+import os
 import warnings
 import xarray
+
+
+def tail(filename, n=1, bsize=2048):
+    """
+    Returns a generator with the last n lines of a file.
+
+    Thanks to Martijn Pieters for this solution:
+    https://stackoverflow.com/a/12295054/6513183
+
+    Parameters
+    ----------
+    filename : string
+    n: int
+        number of lines
+    bsize: int
+        seek step size
+    Returns
+    -------
+    line : generator
+    """
+
+    # get newlines type, open in universal mode to find it
+    with open(filename, 'r', newline=None) as hfile:
+        if not hfile.readline():
+            return  # empty, no point
+        sep = hfile.newlines  # After reading a line, python gives us this
+    assert isinstance(sep, str), 'multiple newline types found, aborting'
+
+    # find a suitable seek position in binary mode
+    with open(filename, 'rb') as hfile:
+        hfile.seek(0, os.SEEK_END)
+        linecount = 0
+        pos = 0
+
+        while linecount <= n + 1:
+            # read at least n lines + 1 more; we need to skip a partial line later on
+            try:
+                hfile.seek(-bsize, os.SEEK_CUR)           # go backwards
+                linecount += hfile.read(bsize).count(sep.encode())  # count newlines
+                hfile.seek(-bsize, os.SEEK_CUR)           # go back again
+            except IOError as e:
+                if e.errno == errno.EINVAL:
+                    # Attempted to seek past the start, can't go further
+                    bsize = hfile.tell()
+                    hfile.seek(0, os.SEEK_SET)
+                    pos = 0
+                    linecount += hfile.read(bsize).count(sep.encode())
+                    break
+                raise  # Some other I/O exception, re-raise
+            pos = hfile.tell()
+
+    # Re-open in text mode
+    with open(filename, 'r') as hfile:
+        hfile.seek(pos, os.SEEK_SET)  # our file position from above
+        for line in hfile:
+            # We've located n lines *or more*, so skip if needed
+            if linecount > n:
+                linecount -= 1
+                continue
+            # The rest we yield
+            yield line.rstrip()
 
 
 def to_event_pages(get_event_cursor, page_size):

@@ -6,6 +6,7 @@ import intake.catalog.local
 import intake.source.base
 from mongoquery import Query
 
+
 from .core import parse_handler_registry
 
 
@@ -48,22 +49,15 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
         self._uid_to_run_start_doc = {}
         super().__init__(**kwargs)
 
-    def upsert(self, gen_func, gen_args, gen_kwargs):
-        gen = gen_func(*gen_args, **gen_kwargs)
-        name, run_start_doc = next(gen)
-
-        if name != 'start':
-            raise ValueError("Expected a generator of (name, doc) pairs where "
-                             "the first entry was ('start', {...}).")
-
-        if not Query(self._query).match(run_start_doc):
+    def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
+        if not Query(self._query).match(start_doc):
             return
 
-        uid = run_start_doc['uid']
-        self._uid_to_run_start_doc[uid] = run_start_doc
+        uid = start_doc['uid']
+        self._uid_to_run_start_doc[uid] = start_doc
 
         entry = SafeLocalCatalogEntry(
-            name=run_start_doc['uid'],
+            name=start_doc['uid'],
             description={},  # TODO
             driver='intake_bluesky.core.BlueskyRunFromGenerator',
             direct_access='forbid',
@@ -73,7 +67,7 @@ class BlueskyInMemoryCatalog(intake.catalog.Catalog):
                   'filler': self.filler},
             cache=None,  # ???
             parameters=[],
-            metadata={'start': run_start_doc, 'stop': None},
+            metadata={'start': start_doc, 'stop': stop_doc},
             catalog_dir=None,
             getenv=True,
             getshell=True,

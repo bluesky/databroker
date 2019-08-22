@@ -4,13 +4,51 @@ import os
 import pathlib
 
 from .in_memory import BlueskyInMemoryCatalog
+from .core import tail
 
 
 def gen(filename):
+    """
+    A JSONL file generator.
+
+    Parameters
+    ----------
+    filename: str
+        JSONL file to load.
+    """
     with open(filename, 'r') as file:
         for line in file:
             name, doc = json.loads(line)
             yield (name, doc)
+
+
+def get_stop(filename):
+    """
+    Returns the stop_doc of a Bluesky JSONL file.
+
+    The stop_doc is always the last line of the file.
+
+    Parameters
+    ----------
+    filename: str
+        JSONL file to load.
+    Returns
+    -------
+    stop_doc: dict or None
+        A Bluesky run_stop document or None if one is not present.
+    """
+    stop_doc = None
+    lastline, = tail(filename)
+    if lastline:
+        try:
+            name, doc = json.loads(lastline)
+        except json.JSONDecodeError:
+            ...
+            # stop_doc will stay None if it can't be decoded correctly.
+        else:
+            if (name == 'stop'):
+                stop_doc = doc
+    return stop_doc
 
 
 class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
@@ -58,12 +96,14 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                 self._filename_to_mtime[filename] = mtime
                 with open(filename, 'r') as file:
                     try:
-                        name, run_start_doc = json.loads(file.readline())
-                    except json.JSONDecodeError:
+                        name, start_doc = json.loads(file.readline())
+                    except json.JSONDecodeError as e:
                         if not file.readline():
                             # Empty file, maybe being written to currently
                             continue
-                self.upsert(gen, (filename,), {})
+                        raise e
+                stop_doc = get_stop(filename)
+                self.upsert(start_doc, stop_doc, gen, (filename,), {})
 
     def search(self, query):
         """
