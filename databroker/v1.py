@@ -57,10 +57,7 @@ class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
     """
-    def __init__(self, uri, source, header_version=1, external_fetchers=None):
-        catalog = Catalog(str(uri))
-        if source is not None:
-            catalog = catalog[source]()
+    def __init__(self, catalog, header_version=1, external_fetchers=None):
         self._catalog = catalog
         self.header_version = header_version
         self.external_fetchers = external_fetchers or {}
@@ -68,7 +65,6 @@ class Broker:
         self.aliases = {}
         self.filters = {}
         self.reg = Registry(catalog.filler)
-        self._v2 = None
 
     @classmethod
     def from_config(cls, config, auto_register=True, name=None):
@@ -77,19 +73,21 @@ class Broker:
             from .v0 import Broker
             return Broker.from_config(config, auto_register, name)
         if 'uri' in config:
-            return cls(**config)
+            from .v2 import Broker
+            catalog = Broker(str(uri))
+            if config.get('source') is not None:
+                catalog = catalog[source]()
+            return cls(catalog)
+        elif 'metadatastore' in config:
+            return parse_v0_config(config)
         else:
             # TODO Parse old-style config by extracing Mongo connection info.
             raise NotImplementedError("Unable to parse config.")
 
-
     @property
     def v2(self):
         "Accessor to the version 2 API."
-        if self._v2 is None:
-            from .v2 import Broker
-            self._v2 = Broker(uri, source)
-        return self._v2
+        return self._catalog
 
     def fetch_external(self, start, stop):
         return {k: func(start, stop) for
@@ -1139,3 +1137,32 @@ def _pretty_print_time(timestamp):
     dt = datetime.fromtimestamp(timestamp).isoformat()
     ago = humanize.naturaltime(time.time() - timestamp)
     return '{ago} ({date})'.format(ago=ago, date=dt)
+
+
+def parse_v0_config(config):
+"""
+Parse v0 configuration file and obtain a uri and source.
+
+Sample
+
+```
+description: 'CSX raw data'
+metadatastore:
+    module: 'databroker.headersource.mongo'
+    class: 'MDS'
+    config:
+        host: 'xf23id-broker'
+        port: 27017
+        database: 'datastore2'
+        timezone: 'US/Eastern'
+        auth: False
+assets:
+    module: 'databroker.assets.mongo'
+    class: 'Registry'
+    config:
+        host: 'xf23id-broker'
+        port: 27017
+        database: 'filestore'
+```
+"""
+

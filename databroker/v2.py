@@ -18,7 +18,7 @@ class Broker(Catalog):
         "Accessor to the version 1 API."
         if self._v1 is None:
             from .v1 import Broker
-            self._v1 = Broker(uri, source)
+            self._v1 = Broker(self)
         return self._v1
 
     def __getitem__(self, key)
