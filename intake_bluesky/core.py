@@ -58,7 +58,7 @@ def tail(filename, n=1, bsize=2048):
         while linecount <= n + 1:
             # read at least n lines + 1 more; we need to skip a partial line later on
             try:
-                hfile.seek(-(bsize+1), os.SEEK_CUR)           # go backwards
+                hfile.seek(-bsize, os.SEEK_CUR)           # go backwards
                 linecount += hfile.read(bsize).count(sep.encode())  # count newlines
                 hfile.seek(-bsize, os.SEEK_CUR)           # go back again
             except IOError as e:
@@ -72,7 +72,6 @@ def tail(filename, n=1, bsize=2048):
                 raise  # Some other I/O exception, re-raise
             pos = hfile.tell()
 
-    tail = []
     # Re-open in text mode
     with open(filename, 'r') as hfile:
         hfile.seek(pos, os.SEEK_SET)  # our file position from above
@@ -82,8 +81,7 @@ def tail(filename, n=1, bsize=2048):
                 linecount -= 1
                 continue
             # The rest we yield
-            tail.append(line.rstrip())
-    return tail[-n:]
+            yield line.rstrip()
 
 
 def to_event_pages(get_event_cursor, page_size):
