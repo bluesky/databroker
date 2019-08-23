@@ -1,3 +1,14 @@
+include LICENSE
+include README.md
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+
+recursive-include docs *.rst conf.py Makefile make.bat
+
 include versioneer.py
 include databroker/_version.py
 include databroker/assets/schemas/*.json
+
+# If including data files in the package, add them like:
+# include path/to/data_file

@@ -1,6 +1,7 @@
 bluesky
 codecov
 coverage
+flake8
 glueviz
 intake[server]
 matplotlib
@@ -9,7 +10,9 @@ ophyd
 pathlib
 pyqt5
 pytest >=3.9
-suitcase-jsonl
-suitcase-mongo
-vcrpy
+sphinx
+suitcase-jsonl >=0.1.0b2
+suitcase-mongo >=0.1.0
+suitcase-msgpack >=0.2.2
 ujson
+vcrpy

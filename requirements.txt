@@ -1,16 +1,25 @@
 boltons
+dask[bag]
 doct
+event-model >=1.11.1b1
 humanize
+intake !=0.5.0
 intake-bluesky
+intake-xarray
 jinja2
 jsonschema
 mongoquery
+msgpack
+msgpack-numpy  # to be split into extras or a separate package
 numpy
 pandas
 pims
+pymongo  # to be split into extras or a separate package
 pytz
 pyyaml
+requests
 six
 tifffile
 toolz
 tzlocal
+xarray
