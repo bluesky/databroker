@@ -579,6 +579,160 @@ class Broker:
         for name, doc in self.get_documents(headers, fields=fields, fill=fill):
             func(name, doc)
 
+    def insert(name, doc):
+        return self._serializer(name, doc)
+
+    def copy_files(self, resource_or_uid, new_root,
+                   verify=False, file_rename_hook=None):
+        """
+        Copy files associated with a resource to a new directory.
+
+        The registered handler must have a `get_file_list` method and the
+        process running this method must have read/write access to both the
+        source and destination file systems.
+
+        This method does *not* update the assets dataregistry_template.
+
+        Internally the resource level directory information is stored
+        as two parts: the root and the resource_path.  The 'root' is
+        the non-semantic component (typically a mount point) and the
+        'resource_path' is the 'semantic' part of the file path.  For
+        example, it is common to collect data into paths that look like
+        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
+        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
+
+
+
+        Parameters
+        ----------
+        resource_or_uid : Document or str
+            The resource to move the files of
+
+        new_root : str
+            The new 'root' to copy the files into
+
+        verify : bool, optional (False)
+            Verify that the move happened correctly.  This currently
+            is not implemented and will raise if ``verify == True``.
+
+        file_rename_hook : callable, optional
+            If provided, must be a callable with signature ::
+
+               def hook(file_counter, total_number, old_name, new_name):
+                   pass
+
+            This will be run in the inner loop of the file copy step and is
+            run inside of an unconditional try/except block.
+
+        See Also
+        --------
+        `RegistryMoving.shift_root`
+        `RegistryMoving.change_root`
+        """
+        if self.version == 0:
+            raise NotImplementedError('V0 has no notion of root so can not '
+                                      'change it')
+        if verify:
+            raise NotImplementedError('Verification is not implemented yet')
+
+        def rename_hook_wrapper(hook):
+            if hook is None:
+                def noop(n, total, old_name, new_name):
+                    return
+                return noop
+
+            def safe_hook(n, total, old_name, new_name):
+                try:
+                    hook(n, total, old_name, new_name)
+                except:
+                    pass
+            return safe_hook
+
+        file_rename_hook = rename_hook_wrapper(file_rename_hook)
+
+        # get list of files
+        resource = dict(self.resource_given_uid(resource_or_uid))
+
+        datum_gen = self.datum_gen_given_resource(resource)
+        datum_kwarg_gen = (datum['datum_kwargs'] for datum in datum_gen)
+        file_list = self.get_file_list(resource, datum_kwarg_gen)
+
+        # check that all files share the same root
+        old_root = resource.get('root')
+        if not old_root:
+            warnings.warn("There is no 'root' in this resource which "
+                          "is required to be able to change the root. "
+                          "Please use `fs.shift_root` to move some of "
+                          "the path from the 'resource_path' to the "
+                          "'root'.  For now assuming '/' as root")
+            old_root = os.path.sep
+
+        for f in file_list:
+            if not f.startswith(old_root):
+                raise RuntimeError('something is very wrong, the files '
+                                   'do not all share the same root, ABORT')
+
+        # sort out where new files should go
+        new_file_list = [os.path.join(new_root,
+                                      os.path.relpath(f, old_root))
+                         for f in file_list]
+        N = len(new_file_list)
+        # copy the files to the new location
+        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
+            # copy files
+            file_rename_hook(n, N, fin, fout)
+            ensure_path_exists(os.path.dirname(fout))
+            shutil.copy2(fin, fout)
+
+        return zip(file_list, new_file_list)
+
+    def export(self, headers, db, new_root=None, copy_kwargs=None):
+        """
+        Serialize a list of runs.
+
+        If a new_root is passed files associated with the run will be moved to
+        this new location, and the corresponding resource document will be
+        updated with the new_root.
+
+        Parameters
+        ----------
+        headers : databroker.header
+            one or more run headers that are going to be exported
+        db : databroker.Broker
+            an instance of databroker.Broker class that will be the target to
+            export info
+        new_root : str
+            optional. root directory of files that are going to
+            be exported
+        copy_kwargs : dict or None
+            passed through to the ``copy_files`` method on Registry;
+            None by default
+
+        Returns
+        ------
+        file_pairs : list
+            list of (old_file_path, new_file_path) pairs generated by
+            ``copy_files`` method on Registry.
+        """
+        if copy_kwargs is None:
+            copy_kwargs = {}
+
+        if isinstance(headers, Header):
+            headers = [headers]
+
+        file_pairs = []
+
+        for header in headers:
+            for name, doc in self._catalog[header.uid].canonical_unfilled():
+                if name == 'resource' and new_root:
+                    file_pairs.extend(self.copy_files(doc, new_root, **copy_kwargs))
+                    new_resource = copy.deepcopy(doc)
+                    new_resource['root'] = new_root
+                    self._serializer(name, new_resource)
+                else:
+                    self._serializer(name, doc)
+        return file_pairs
+
 
 class Header:
     """
@@ -603,6 +757,10 @@ class Header:
     @property
     def start(self):
         return self.db.prepare_hook('start', self._start)
+
+    @property
+    def uid(self):
+        return self._start['uid']
 
     @property
     def stop(self):
