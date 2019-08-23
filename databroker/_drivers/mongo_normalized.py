@@ -11,6 +11,7 @@ import pymongo.errors
 from ..core import parse_handler_registry
 from ..core import to_event_pages
 from ..core import to_datum_pages
+from ..v2 import Broker
 
 
 class _Entries(collections.abc.Mapping):
@@ -126,7 +127,7 @@ class _Entries(collections.abc.Mapping):
         return len(self.catalog)
 
 
-class BlueskyMongoCatalog(intake.catalog.Catalog):
+class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
                  handler_registry=None, query=None, **kwargs):
         """

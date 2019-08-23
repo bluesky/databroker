@@ -8,6 +8,7 @@ from mongoquery import Query
 
 
 from .core import parse_handler_registry
+from .v2 import Broker
 
 
 class SafeLocalCatalogEntry(intake.catalog.local.LocalCatalogEntry):
@@ -18,7 +19,7 @@ class SafeLocalCatalogEntry(intake.catalog.local.LocalCatalogEntry):
         return copy.deepcopy(super().describe())
 
 
-class BlueskyInMemoryCatalog(intake.catalog.Catalog):
+class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
     def __init__(self, handler_registry=None, query=None, **kwargs):

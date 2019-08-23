@@ -11,10 +11,7 @@ import jinja2
 from types import SimpleNamespace
 import tzlocal
 
-# This triggers driver registration.
-import intake_bluesky.core  # noqa
-import intake_bluesky.mongo_normalized  # noqa
-
+import intake
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -73,8 +70,7 @@ class Broker:
             from .v0 import Broker
             return Broker.from_config(config, auto_register, name)
         if 'uri' in config:
-            from .v2 import Broker
-            catalog = Broker(str(config['uri']))
+            catalog = intake.open_catalog(str(config['uri']))
             if config.get('source') is not None:
                 catalog = catalog[config['source']]()
             return cls(catalog)

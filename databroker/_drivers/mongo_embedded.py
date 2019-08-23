@@ -10,6 +10,7 @@ import pymongo
 import pymongo.errors
 
 from ..core import parse_handler_registry
+from ..v2 import Broker
 
 
 class _Entries(collections.abc.Mapping):
@@ -166,7 +167,7 @@ class _Entries(collections.abc.Mapping):
         return len(self.catalog)
 
 
-class BlueskyMongoCatalog(intake.catalog.Catalog):
+class BlueskyMongoCatalog(Broker):
     def __init__(self, datastore_db, *, handler_registry=None,
                  query=None, **kwargs):
         """

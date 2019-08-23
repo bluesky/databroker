@@ -10,10 +10,10 @@ import tzlocal
 from databroker import v0, v1
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-import intake_bluesky.jsonl
-import intake_bluesky.mongo_normalized
-import intake_bluesky.mongo_embedded
-import intake_bluesky.core
+from .._drivers import jsonl
+from .._drivers import mongo_normalized
+from .._drivers import mongo_embedded
+from .. import core
 import suitcase.jsonl
 import suitcase.mongo_normalized
 import suitcase.mongo_embedded
