@@ -1,4 +1,0 @@
-[run]
-branch = true
-include = intake_bluesky/*
-omit = intake_bluesky/_version.py

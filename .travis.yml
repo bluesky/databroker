@@ -1,5 +1,31 @@
+dist: xenial  # for Python 3.7
 language: python
-sudo: false
+matrix:
+  fast_finish: true
+  include:
+  - python: 3.6
+    env: INTAKE_MASTER=false
+  - python: 3.7
+    env: INTAKE_MASTER=false
+  - python: 3.7
+    env: INTAKE_MASTER=true
+  - python: nightly
+    env: INTAKE_MASTER=false
+    addons:
+      apt:
+        packages:
+          - libhdf5-serial-dev
+          - libnetcdf-dev
+          - netcdf-bin
+  allow_failures:
+    - python: nightly
+    - env: INTAKE_MASTER=true
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
+services:
+  - mongodb
 
 env:
   global:
@@ -7,15 +33,6 @@ env:
     - secure: "vJnQwcJw7t9fSS3A/u3JXjXVLErDKIPcAnwx4HaKhuPmXB8Mq5455jSJvK65DOl7Wh4q1WvHGiFdTJ7JtHOxyTCCAJQBElzhT4/6IjjgrqG5s5HIN/qyACimpeXLCdM0FslyCu4bpt0TTd/FReV0Oq3pHt1FiQkpBq07W0t1NvrSv4lymtadT6ZgVlVOFGOcbmUH6sdexBm4TSJnVJjFva8v11zaICFXCIm1PRAraj5ueBm13SpozQ6lZA0e2aOnMqgQg3cId3Hag1SzYmZeYZ8F0ZzCDOX4grbu0S5tUacz0RxieJpx3TTP3lLEXyJvkmFIwuV8aPquZZpVxtzksHnUwED4B0icSVJ1WGMw8hCQpxRHYf9W2wqlIzYb7p3eBhnbl0zrdf6+hMwRontI7HhBnqbEvWpBJArYcaYEMfw714i63bJiD7fZLZ+8Nz7pjwKxhD6dF2ZR37MPAkKeGt3Z/QfAZBZ++hW2mPxSMEMUjGX7FJsMCuryNzVDqKGk3vLc2k+OKU+DjnJyYZq+00defVfjJL0Hh4ZUnC0C97MwLgeHiC9jLcnhdqTg5U12muj4eQJ1roolNTgkjbyS8FLA2kmAVft04hgaqKg/FaAvlpxMAASwkaKO8C7Kz7TDQ8SwxpX0S1qpmd/gblbMHl0k1jfqnwoYRHxJ3jb8Whs="
     # Doctr deploy key for bluesky/bluesky.github.io
     - secure: "spb6HwGVvMPsQw9cEwJscmAlG7seL0svW8ouYlDr4OESJJJqC8bynEpAl7Zm/NuKiZ701IR9gEBFuwCRoEXNJ6AkqgBE0DOMj4Oezg4eUnaZz0aXJ+C6mz31vbcNmU6MrjSElw80cIXBpia3j//VMluMzJMsGx/ELPATu2nwyx1+KXljGpFe1/7HYcq/wFHi+sC02sZRVYJGqrb5Zms35hlk4xasWKlsgLh53kW+ss+4hY67vllL2iRkYiP+8z4e3dTOuDqJWx5lLT16wt0K+wJyP/QTyIP81tmMNoWRbdrfOrzyyVXZDbrlzpZDBRtvlMFMHOeEZOrFPIYuclEjT39Tge+T/OxR6SC8kvzqVItxyxLEKWpQu8DHRVEDAuirteuv4IKEnS80nbWn4v/sBOU+sC0/23dW9zZkMrNmRoSFcjudmy2PGIY8jxzOhGJJ+Rbi0xIaKwdLbDZoPHM3m9m2uWYfGNMBHDgnh/HDIq71zzYWaW4gChYgU0UeDM1RYnr1XRa44znlZ0YLnmEyxn/5LzH/hRDxqc5XH5OAiKLnTddZFYsvdRT1JMNSA5PRSm7E8BCvCOEwovjnvRUc0dktyd8+OC5+Eyf1neJ6M7F2sGxCi3yMKw3VmfCxINu6XO3GsPE7cKACEq0lriCxjNzFWbedOX9dTL1Uqdc3pQA="
-
-
-cache:
-  directories:
-    - $HOME/.cache/pip
-    - $HOME/.cache/matplotlib
-
-services:
-  - mongodb
 
 before_install:
   - export TZ=US/Eastern
@@ -36,6 +53,12 @@ install:
   - pip install --quiet --upgrade --global-option='--without-libyaml' pyyaml
   - pip install .[all]
   - pip install -r requirements-test.txt
+  # Install intake master branch if build settings indicate to do so.
+  - |
+    if [ "$INTAKE_MASTER" = true ] ; then
+      pip install git+https://github.com/intake/intake@master
+      pip install git+https://github.com/intake/intake-xarray@master
+    fi
 
 script:
   - coverage run run_tests.py
