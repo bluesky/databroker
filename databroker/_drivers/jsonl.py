@@ -3,8 +3,8 @@ import json
 import os
 import pathlib
 
-from .in_memory import BlueskyInMemoryCatalog
-from .core import tail
+from ..in_memory import BlueskyInMemoryCatalog
+from ..core import tail
 
 
 def gen(filename):

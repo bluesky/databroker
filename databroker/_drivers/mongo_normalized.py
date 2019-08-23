@@ -8,9 +8,9 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from .core import parse_handler_registry
-from .core import to_event_pages
-from .core import to_datum_pages
+from ..core import parse_handler_registry
+from ..core import to_event_pages
+from ..core import to_datum_pages
 
 
 class _Entries(collections.abc.Mapping):

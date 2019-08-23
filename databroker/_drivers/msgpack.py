@@ -4,7 +4,7 @@ import msgpack_numpy
 import os
 import pathlib
 
-from .in_memory import BlueskyInMemoryCatalog
+from ..in_memory import BlueskyInMemoryCatalog
 
 
 UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,

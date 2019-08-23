@@ -3,7 +3,7 @@ from bluesky.plans import count
 import numpy
 from ophyd.sim import NumpySeqHandler
 
-from ..core import DaskFiller
+from ...core import DaskFiller
 
 
 def test_fill_event(RE, hw):

@@ -9,7 +9,7 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from .core import parse_handler_registry
+from ..core import parse_handler_registry
 
 
 class _Entries(collections.abc.Mapping):
