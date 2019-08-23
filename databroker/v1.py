@@ -89,6 +89,11 @@ class Broker:
         "Accessor to the version 2 API."
         return self._catalog
 
+    @property
+    def fs(self):
+        warnings.warn("fs is deprecated, use `db.reg` instead", stacklevel=2)
+        return self.reg
+
     def fetch_external(self, start, stop):
         return {k: func(start, stop) for
                 k, func in self.external_fetchers.items()}
@@ -600,8 +605,6 @@ class Broker:
         example, it is common to collect data into paths that look like
         ``/mnt/DATA/2016/04/28``.  In this case we could split this as
         ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
-
-
 
         Parameters
         ----------
