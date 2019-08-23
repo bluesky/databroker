@@ -220,7 +220,7 @@ class Broker:
                 if not len(d['data_keys']) and not len(all_extra_data):
                     continue
 
-            for name, doc in self._catalog[uid].read_canonical():
+            for name, doc in self._catalog[uid].canonical():
                 if stream_name is not ALL:
                     # Filter by stream_name.
                     if name == 'descriptor':
