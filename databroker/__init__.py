@@ -1,3 +1,7 @@
+# Import intake to run driver discovery first and avoid circular import issues.
+import intake
+del intake
+
 import warnings
 import logging
 
