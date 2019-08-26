@@ -1,5 +1,6 @@
 import versioneer
 from setuptools import setup, find_packages
+import sys
 
 # To use a consistent encoding
 from codecs import open
@@ -11,7 +12,7 @@ from os import path
 min_version = (3, 6)
 if sys.version_info < min_version:
     error = """
-intake-bluesky does not support Python {0}.{1}.
+databroker does not support Python {0}.{1}.
 Python {2}.{3} and above is required. Check your Python version like so:
 
 python3 --version
@@ -29,8 +30,10 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-with open(path.join(here, 'requirements.txt')) as f:
-    requirements = f.read().split()
+with open(path.join(here, 'requirements.txt')) as requirements_file:
+    # Parse requirements.txt, ignoring any commented-out lines.
+    requirements = [line for line in requirements_file.read().splitlines()
+                    if not line.startswith('#')]
 
 extras_require = {
     'mongo': ['pymongo>=3.0'],
@@ -67,14 +70,14 @@ setup(
             # 'command = some.module:some_function',
         ],
         'intake.drivers': [
-            'bluesky-event-stream = intake_bluesky.core:BlueskyEventStream',
-            'bluesky-jsonl-catalog = intake_bluesky.jsonl:BlueskyJSONLCatalog',
+            'bluesky-event-stream = databroker.core:BlueskyEventStream',
+            'bluesky-jsonl-catalog = databroker._drivers.jsonl:BlueskyJSONLCatalog',
             ('bluesky-mongo-embedded-catalog = '
-             'intake_bluesky.mongo_embedded:BlueskyMongoCatalog'),
+             'databroker._drivers.mongo_embedded:BlueskyMongoCatalog'),
             ('bluesky-mongo-normalized-catalog = '
-             'intake_bluesky.mongo_normalized:BlueskyMongoCatalog'),
-            'bluesky-msgpack-catalog = intake_bluesky.msgpack:BlueskyMsgpackCatalog',
-            'bluesky-run = intake_bluesky.core:BlueskyRun',
+             'databroker._drivers.mongo_normalized:BlueskyMongoCatalog'),
+            'bluesky-msgpack-catalog = databroker._drivers.msgpack:BlueskyMsgpackCatalog',
+            'bluesky-run = databroker.core:BlueskyRun',
         ]
     },
 

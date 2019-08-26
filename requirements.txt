@@ -4,7 +4,6 @@ doct
 event-model >=1.11.1b1
 humanize
 intake !=0.5.0
-intake-bluesky
 intake-xarray
 jinja2
 jsonschema
@@ -19,6 +18,7 @@ pytz
 pyyaml
 requests
 six
+suitcase-mongo  # for back-compat to support insert()
 tifffile
 toolz
 tzlocal
