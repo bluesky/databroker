@@ -618,9 +618,6 @@ class Broker:
         `RegistryMoving.shift_root`
         `RegistryMoving.change_root`
         """
-        if self.version == 0:
-            raise NotImplementedError('V0 has no notion of root so can not '
-                                      'change it')
         if verify:
             raise NotImplementedError('Verification is not implemented yet')
 
