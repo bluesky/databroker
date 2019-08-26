@@ -1,4 +1,3 @@
-import intake_bluesky.mongo_normalized  # noqa
 import intake
 from suitcase.mongo_normalized import Serializer
 import os
@@ -40,11 +39,11 @@ def bundle(request, intake_server, example_data, db_factory):  # noqa
         f.write(f'''
 plugins:
   source:
-    - module: intake_bluesky
+    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
+    driver: databroker._drivers.mongo_normalized.BlueskyMongoCatalog
     container: catalog
     args:
       metadatastore_db: {extract_uri(mds_db)}

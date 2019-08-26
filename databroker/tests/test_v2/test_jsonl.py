@@ -1,4 +1,3 @@
-import intake_bluesky.jsonl # noqa
 import intake
 from suitcase.jsonl import Serializer
 import os
@@ -41,11 +40,11 @@ def bundle(request, intake_server, example_data):  # noqa
         f.write(f'''
 plugins:
   source:
-    - module: intake_bluesky
+    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.jsonl.BlueskyJSONLCatalog
+    driver: databroker._drivers.jsonl.BlueskyJSONLCatalog
     container: catalog
     args:
       paths: {[str(path) for path in serializer.artifacts['all']]}

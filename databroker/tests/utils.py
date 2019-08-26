@@ -28,11 +28,11 @@ def build_intake_jsonl_backed_broker(request):
         file.write(f"""
 plugins:
   source:
-    - module: intake_bluesky
+    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.jsonl.BlueskyJSONLCatalog
+    driver: databroker._drivers.jsonl.BlueskyJSONLCatalog
     container: catalog
     args:
       paths: {data_dir / '*.jsonl'}
@@ -73,11 +73,11 @@ def build_intake_mongo_backed_broker(request):
         file.write(f"""
 plugins:
   source:
-    - module: intake_bluesky
+    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
+    driver: databroker._drivers.mongo_normalized.BlueskyMongoCatalog
     container: catalog
     args:
       metadatastore_db: mongodb://{client.address[0]}:{client.address[1]}/mds
@@ -123,11 +123,11 @@ def build_intake_mongo_embedded_backed_broker(request):
         file.write(f"""
 plugins:
   source:
-    - module: intake_bluesky
+    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_embedded.BlueskyMongoCatalog
+    driver: databroker._drivers.mongo_embedded.BlueskyMongoCatalog
     container: catalog
     args:
       datastore_db: mongodb://{client.address[0]}:{client.address[1]}/permanent

@@ -60,7 +60,7 @@ class BlueskyInMemoryCatalog(Broker):
         entry = SafeLocalCatalogEntry(
             name=start_doc['uid'],
             description={},  # TODO
-            driver='intake_bluesky.core.BlueskyRunFromGenerator',
+            driver='databroker.core.BlueskyRunFromGenerator',
             direct_access='forbid',
             args={'gen_func': gen_func,
                   'gen_args': gen_args,

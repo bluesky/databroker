@@ -1,4 +1,3 @@
-import intake_bluesky.mongo_embedded  # noqa
 import intake
 from suitcase.mongo_embedded import Serializer
 import os
@@ -39,11 +38,11 @@ def bundle(request, intake_server, example_data, db_factory):  # noqa
         f.write(f'''
 plugins:
   source:
-    - module: intake_bluesky
+    - module: drivers
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.mongo_embedded.BlueskyMongoCatalog
+    driver: databroker._drivers.mongo_embedded.BlueskyMongoCatalog
     container: catalog
     args:
       datastore_db: {extract_uri(permanent_db)}

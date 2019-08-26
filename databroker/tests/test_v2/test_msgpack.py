@@ -1,4 +1,3 @@
-import intake_bluesky.msgpack  # noqa
 import intake
 from suitcase.msgpack import Serializer
 import os
@@ -40,11 +39,11 @@ def bundle(request, intake_server, example_data):  # noqa
         f.write(f'''
 plugins:
   source:
-    - module: intake_bluesky
+    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: intake_bluesky.msgpack.BlueskyMsgpackCatalog
+    driver: databroker._drivers.msgpack.BlueskyMsgpackCatalog
     container: catalog
     args:
       paths: {[str(path) for path in serializer.artifacts['all']]}

@@ -54,8 +54,10 @@ class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
     """
-    def __init__(self, catalog, header_version=1, external_fetchers=None):
+    def __init__(self, catalog, *, serializer=None,
+                 header_version=1,external_fetchers=None):
         self._catalog = catalog
+        self._serializer = serializer
         self.header_version = header_version
         self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
@@ -720,6 +722,11 @@ class Broker:
                     self._serializer(name, doc)
         return file_pairs
 
+    def insert(self, name, doc):
+        if self._serializer is None:
+            raise RuntimeError("No Serializer was configured for this.")
+        self._serializer(name, doc)
+
 
 class Header:
     """
@@ -1303,17 +1310,27 @@ def from_config(config, auto_register=True, name=None):
         catalog = intake.open_catalog(str(config['uri']))
         if config.get('source') is not None:
             catalog = catalog[config['source']]()
+            # This is a bit dirty, but it's just to provide an `insert` method
+            # for back-compat.
+            from ._drivers.mongo_normalized import BlueskyMongoCatalog
+            if isinstance(catalog, BlueskyMongoCatalog):
+                from suitcase.mongo_normalized import Serializer
+                serializer = Serializer(
+                    catalog._metadatastore_db, catalog._asset_registry_db)
+            else:
+                serializer = None
+                print('type', type(catalog))
     elif 'metadatastore' in config:
-        catalog = catalog_from_v0_config(config)
+        catalog, serializer = _from_v0_config(config)
     if forced_version == 2:
         return catalog
     elif forced_version is None or forced_version == 1:
-        return Broker(catalog)
+        return Broker(catalog, serializer=serializer)
     else:
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
 
-def catalog_from_v0_config(config):
+def _from_v0_config(config):
     mds_module = config['metadatastore']['module']
     if mds_module != 'databroker.headersource.mongo':
         raise NotImplementedError(
@@ -1330,7 +1347,10 @@ def catalog_from_v0_config(config):
     if assets_class not in ('MDS', 'MDSRO'):
         raise NotImplementedError(
             f"Unable to handle assets.class {assets_class!r}")
+
     from ._drivers.mongo_normalized import BlueskyMongoCatalog
+    from suitcase.mongo_normalized import Serializer
+
     host = config['metadatastore']['config']['host']
     port = config['metadatastore']['config'].get('port')
     metadatastore_db = _get_mongo_client(host, port)[config['database']]
@@ -1338,6 +1358,8 @@ def catalog_from_v0_config(config):
     port = config['assets']['config'].get('port')
     asset_registry_db = _get_mongo_client(host, port)[config['database']]
     catalog = BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
+    serializer = Serializer(metadatastore_db, asset_registry_db)
+    return catalog, serializer
 
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances

@@ -642,7 +642,7 @@ class BlueskyRun(intake.catalog.Catalog):
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
-                driver='intake_bluesky.core.BlueskyEventStream',
+                driver='databroker.core.BlueskyEventStream',
                 direct_access='forbid',
                 args=args,
                 cache=None,  # ???
