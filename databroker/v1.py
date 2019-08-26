@@ -65,20 +65,8 @@ class Broker:
 
     @classmethod
     def from_config(cls, config, auto_register=True, name=None):
-        # Provide a way to force v0 Broker as fall-back.
-        if config.get('api_version') == 0:
-            from .v0 import Broker
-            return Broker.from_config(config, auto_register, name)
-        if 'uri' in config:
-            catalog = intake.open_catalog(str(config['uri']))
-            if config.get('source') is not None:
-                catalog = catalog[config['source']]()
-            return cls(catalog)
-        elif 'metadatastore' in config:
-            return parse_v0_config(config)
-        else:
-            # TODO Parse old-style config by extracing Mongo connection info.
-            raise NotImplementedError("Unable to parse config.")
+        return from_config(
+            config=config, auto_register=auto_register, name=name)
 
     @property
     def v2(self):
@@ -1294,3 +1282,74 @@ def _pretty_print_time(timestamp):
     dt = datetime.fromtimestamp(timestamp).isoformat()
     ago = humanize.naturaltime(time.time() - timestamp)
     return '{ago} ({date})'.format(ago=ago, date=dt)
+
+
+def from_config(config, auto_register=True, name=None):
+    """
+    Build (some version of) a Broker instance from a configuration dict.
+
+    This can return a ``v0.Broker``, ``v1.Broker``, or ``v2.Broker`` depending
+    on the contents of ``config``.
+
+    If config contains the key 'api_version', it should be set to a value 0, 1,
+    0, or 2. That setting will always be respected. If no 'api_version' is
+    explicitly set by the configuration file, version 1 will be used.
+    """
+    forced_version = config.get('api_version')
+    if forced_version == 0:
+        from . import v0
+        return v0.Broker.from_config(config, auto_register, name)
+    if 'uri' in config:
+        catalog = intake.open_catalog(str(config['uri']))
+        if config.get('source') is not None:
+            catalog = catalog[config['source']]()
+    elif 'metadatastore' in config:
+        catalog = catalog_from_v0_config(config)
+    if forced_version == 2:
+        return catalog
+    elif forced_version is None or forced_version == 1:
+        return Broker(catalog)
+    else:
+        raise ValueError(f"Cannot handle api_version {forced_version}")
+
+
+def catalog_from_v0_config(config):
+    mds_module = config['metadatastore']['module']
+    if mds_module != 'databroker.headersource.mongo':
+        raise NotImplementedError(
+            f"Unable to handle metadatastore.module {mds_module!r}")
+    mds_class = config['metadatastore']['class']
+    if mds_class not in ('MDS', 'MDSRO'):
+        raise NotImplementedError(
+            f"Unable to handle metadatastore.class {mds_class!r}")
+    assets_module = config['assets']['module']
+    if assets_module != 'databroker.headersource.mongo':
+        raise NotImplementedError(
+            f"Unable to handle assets.module {assets_module!r}")
+    assets_class = config['assets']['class']
+    if assets_class not in ('MDS', 'MDSRO'):
+        raise NotImplementedError(
+            f"Unable to handle assets.class {assets_class!r}")
+    from ._drivers.mongo_normalized import BlueskyMongoCatalog
+    host = config['metadatastore']['config']['host']
+    port = config['metadatastore']['config'].get('port')
+    metadatastore_db = _get_mongo_client(host, port)[config['database']]
+    host = config['assets']['config']['host']
+    port = config['assets']['config'].get('port')
+    asset_registry_db = _get_mongo_client(host, port)[config['database']]
+    catalog = BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
+
+
+_mongo_clients = {}  # cache of pymongo.MongoClient instances
+
+
+def _get_mongo_client(host, port):
+    """
+    Return a pymongo.MongoClient. Use a cache to make just one per address.
+    """
+    try:
+        client = _mongo_clients[(host, port)]
+    except KeyError:
+        client = pymongo.MongoClient(host, port)
+        _mongo_clients[(host, port)] = client
+    return client
