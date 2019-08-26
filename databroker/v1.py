@@ -714,9 +714,9 @@ class Broker:
                     file_pairs.extend(self.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = copy.deepcopy(doc)
                     new_resource['root'] = new_root
-                    self._serializer(name, new_resource)
+                    db.insert(name, new_resource)
                 else:
-                    self._serializer(name, doc)
+                    db.insert(name, doc)
         return file_pairs
 
     def insert(self, name, doc):
