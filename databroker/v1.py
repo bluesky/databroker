@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from collections import defaultdict
+import copy
 from datetime import datetime
 import pandas
 from intake import Catalog
@@ -26,12 +27,12 @@ class Registry:
     """
     An accessor that serves as a backward-compatible shim for Broker.reg
     """
-    def __init__(self, filler):
-        self._filler = filler
+    def __init__(self, catalog):
+        self._catalog = catalog
 
     @property
     def handler_reg(self):
-        return self._filler.handler_registry
+        return self._catalog.filler.handler_registry
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
@@ -49,6 +50,113 @@ class Registry:
         # TODO Filler should support explicit de-registration that clears
         # the relevant caches.
 
+    def copy_files(self, resource_or_uid, new_root,
+                   verify=False, file_rename_hook=None):
+        """
+        Copy files associated with a resource to a new directory.
+
+        The registered handler must have a `get_file_list` method and the
+        process running this method must have read/write access to both the
+        source and destination file systems.
+
+        This method does *not* update the assets dataregistry_template.
+
+        Internally the resource level directory information is stored
+        as two parts: the root and the resource_path.  The 'root' is
+        the non-semantic component (typically a mount point) and the
+        'resource_path' is the 'semantic' part of the file path.  For
+        example, it is common to collect data into paths that look like
+        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
+        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
+
+        Parameters
+        ----------
+        resource_or_uid : Document or str
+            The resource to move the files of
+
+        new_root : str
+            The new 'root' to copy the files into
+
+        verify : bool, optional (False)
+            Verify that the move happened correctly.  This currently
+            is not implemented and will raise if ``verify == True``.
+
+        file_rename_hook : callable, optional
+            If provided, must be a callable with signature ::
+
+               def hook(file_counter, total_number, old_name, new_name):
+                   pass
+
+            This will be run in the inner loop of the file copy step and is
+            run inside of an unconditional try/except block.
+
+        See Also
+        --------
+        `RegistryMoving.shift_root`
+        `RegistryMoving.change_root`
+        """
+        if verify:
+            raise NotImplementedError('Verification is not implemented yet')
+
+        def rename_hook_wrapper(hook):
+            if hook is None:
+                def noop(n, total, old_name, new_name):
+                    return
+                return noop
+
+            def safe_hook(n, total, old_name, new_name):
+                try:
+                    hook(n, total, old_name, new_name)
+                except:
+                    pass
+            return safe_hook
+
+        file_rename_hook = rename_hook_wrapper(file_rename_hook)
+
+        if isinstance(resource_or_uid, str):
+            # This uses internal API.
+            warnings.warn(
+                "Pass in a Resource document, not a Resource UID.",
+                FutureWarning)
+            resource = self._catalog._get_resource(resource_or_uid)
+        else:
+            resource = resource_or_uid
+
+        run_start_uid = resource.get('run_start')
+        if run_start_uid is None:
+            raise NotImplementError(
+                "File copying does not work on Resources with no 'run_start'.")
+        file_list = self._catalog[run_start_uid].get_file_list(resource)
+
+        # check that all files share the same root
+        old_root = resource.get('root')
+        if not old_root:
+            warnings.warn("There is no 'root' in this resource which "
+                          "is required to be able to change the root. "
+                          "Please use `fs.shift_root` to move some of "
+                          "the path from the 'resource_path' to the "
+                          "'root'.  For now assuming '/' as root")
+            old_root = os.path.sep
+
+        for f in file_list:
+            if not f.startswith(old_root):
+                raise RuntimeError('something is very wrong, the files '
+                                   'do not all share the same root, ABORT')
+
+        # sort out where new files should go
+        new_file_list = [os.path.join(new_root,
+                                      os.path.relpath(f, old_root))
+                         for f in file_list]
+        N = len(new_file_list)
+        # copy the files to the new location
+        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
+            # copy files
+            file_rename_hook(n, N, fin, fout)
+            ensure_path_exists(os.path.dirname(fout))
+            shutil.copy2(fin, fout)
+
+        return zip(file_list, new_file_list)
+
 
 class Broker:
     """
@@ -63,7 +171,7 @@ class Broker:
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
         self.filters = {}
-        self.reg = Registry(catalog.filler)
+        self.reg = Registry(catalog)
 
     @classmethod
     def from_config(cls, config, auto_register=True, name=None):
@@ -573,105 +681,6 @@ class Broker:
     def insert(name, doc):
         return self._serializer(name, doc)
 
-    def copy_files(self, resource_or_uid, new_root,
-                   verify=False, file_rename_hook=None):
-        """
-        Copy files associated with a resource to a new directory.
-
-        The registered handler must have a `get_file_list` method and the
-        process running this method must have read/write access to both the
-        source and destination file systems.
-
-        This method does *not* update the assets dataregistry_template.
-
-        Internally the resource level directory information is stored
-        as two parts: the root and the resource_path.  The 'root' is
-        the non-semantic component (typically a mount point) and the
-        'resource_path' is the 'semantic' part of the file path.  For
-        example, it is common to collect data into paths that look like
-        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
-        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
-
-        Parameters
-        ----------
-        resource_or_uid : Document or str
-            The resource to move the files of
-
-        new_root : str
-            The new 'root' to copy the files into
-
-        verify : bool, optional (False)
-            Verify that the move happened correctly.  This currently
-            is not implemented and will raise if ``verify == True``.
-
-        file_rename_hook : callable, optional
-            If provided, must be a callable with signature ::
-
-               def hook(file_counter, total_number, old_name, new_name):
-                   pass
-
-            This will be run in the inner loop of the file copy step and is
-            run inside of an unconditional try/except block.
-
-        See Also
-        --------
-        `RegistryMoving.shift_root`
-        `RegistryMoving.change_root`
-        """
-        if verify:
-            raise NotImplementedError('Verification is not implemented yet')
-
-        def rename_hook_wrapper(hook):
-            if hook is None:
-                def noop(n, total, old_name, new_name):
-                    return
-                return noop
-
-            def safe_hook(n, total, old_name, new_name):
-                try:
-                    hook(n, total, old_name, new_name)
-                except:
-                    pass
-            return safe_hook
-
-        file_rename_hook = rename_hook_wrapper(file_rename_hook)
-
-        # get list of files
-        resource = dict(self.resource_given_uid(resource_or_uid))
-
-        datum_gen = self.datum_gen_given_resource(resource)
-        datum_kwarg_gen = (datum['datum_kwargs'] for datum in datum_gen)
-        file_list = self.get_file_list(resource, datum_kwarg_gen)
-
-        # check that all files share the same root
-        old_root = resource.get('root')
-        if not old_root:
-            warnings.warn("There is no 'root' in this resource which "
-                          "is required to be able to change the root. "
-                          "Please use `fs.shift_root` to move some of "
-                          "the path from the 'resource_path' to the "
-                          "'root'.  For now assuming '/' as root")
-            old_root = os.path.sep
-
-        for f in file_list:
-            if not f.startswith(old_root):
-                raise RuntimeError('something is very wrong, the files '
-                                   'do not all share the same root, ABORT')
-
-        # sort out where new files should go
-        new_file_list = [os.path.join(new_root,
-                                      os.path.relpath(f, old_root))
-                         for f in file_list]
-        N = len(new_file_list)
-        # copy the files to the new location
-        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
-            # copy files
-            file_rename_hook(n, N, fin, fout)
-            ensure_path_exists(os.path.dirname(fout))
-            shutil.copy2(fin, fout)
-
-        return zip(file_list, new_file_list)
-
     def export(self, headers, db, new_root=None, copy_kwargs=None):
         """
         Serialize a list of runs.
@@ -711,7 +720,7 @@ class Broker:
         for header in headers:
             for name, doc in self._catalog[header.uid].canonical_unfilled():
                 if name == 'resource' and new_root:
-                    file_pairs.extend(self.copy_files(doc, new_root, **copy_kwargs))
+                    file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = copy.deepcopy(doc)
                     new_resource['root'] = new_root
                     db.insert(name, new_resource)

@@ -668,6 +668,29 @@ class BlueskyRun(intake.catalog.Catalog):
             for name, doc in self.read_partition((i, True)):
                 yield name, doc
 
+    def get_file_list(self, resource=None):
+        """
+        Fetch filepaths of external files associated with this Run.
+
+        This method is not defined on RemoteBlueskyRun because the filepaths
+        may not be meaningful on a remote machine.
+
+        This method should be considered experimental. It may be changed or
+        removed in a future release.
+        """
+        resources = []
+        files = []
+        datum = collections.defaultdict(list)
+        for name, doc in self.canonical():
+            if name == 'resource':
+                resources.append(doc)
+            if name == 'datum':
+                datum[datum['resource']].append(datum)
+        for resource in resources:
+            handler = filler.get_handler(resource)
+            files.extend(handler.get_file_list(datum[resource['resource_uid']]))
+        return files
+
     def read_partition_unfilled(self, i):
         """Fetch one chunk of documents.
         """
