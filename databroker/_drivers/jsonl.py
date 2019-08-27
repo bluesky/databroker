@@ -126,3 +126,17 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             metadata=(self.metadata or {}).copy(),
             storage_options=self.storage_options)
         return cat
+
+    def _get_serializer(self):
+        "This is used internally by v1.Broker. It may be removed in future."
+        from suitcase.jsonl import Serializer
+        from event_model import RunRouter
+        path, *_ = self.paths
+        directory = os.path.dirname(path)
+
+        def factory(name, doc):
+            serializer = Serializer(directory)
+            serializer(name, doc)
+            return [serializer], []
+
+        return RunRouter([factory])
