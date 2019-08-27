@@ -5,6 +5,7 @@ import tempfile
 import uuid
 
 import mongobox
+import ophyd.sim
 import tzlocal
 
 from databroker import v0, v1
@@ -21,41 +22,17 @@ import suitcase.mongo_embedded
 
 def build_intake_jsonl_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
-    tmp_path = tmp_dir.name
-    catalog_path = Path(tmp_path) / 'catalog.yml'
-    data_dir = Path(tmp_path) / 'data'
-    with open(catalog_path, 'w') as file:
-        file.write(f"""
-sources:
-  xyz:
-    description: Some imaginary beamline
-    driver: "bluesky-jsonl-catalog"
-    container: catalog
-    args:
-      paths: {data_dir / '*.jsonl'}
-      handler_registry:
-        NPY_SEQ: ophyd.sim.NumpySeqHandler
-    metadata:
-      beamline: "00-ID"
-""")
+    catalog = jsonl.BlueskyJSONLCatalog(
+        f"{tmp_dir.name}/*.jsonl",
+        name='test',
+        handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    serializer = catalog._get_serializer()
+    db = v1.Broker(catalog, serializer=serializer)
 
     def teardown():
         tmp_dir.cleanup()
 
-    db = v2.Broker(catalog_path)
-    serializer = None
     request.addfinalizer(teardown)
-
-    def insert(name, doc):
-        nonlocal serializer
-        if name == 'start':
-            serializer = suitcase.jsonl.Serializer(data_dir, flush=True)
-        serializer(name, doc)
-        if name == 'stop':
-            serializer.close()
-            db._catalog.force_reload()
-
-    db.insert = insert
     return db
 
 
