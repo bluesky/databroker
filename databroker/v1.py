@@ -78,7 +78,7 @@ class Registry:
         # TODO Filler should support explicit de-registration that clears
         # the relevant caches.
 
-    def copy_files(self, resource_or_uid, new_root,
+    def copy_files(self, resource, new_root,
                    verify=False, file_rename_hook=None):
         """
         Copy files associated with a resource to a new directory.
@@ -99,7 +99,7 @@ class Registry:
 
         Parameters
         ----------
-        resource_or_uid : Document or str
+        resource : Document
             The resource to move the files of
 
         new_root : str
@@ -140,15 +140,6 @@ class Registry:
             return safe_hook
 
         file_rename_hook = rename_hook_wrapper(file_rename_hook)
-
-        if isinstance(resource_or_uid, str):
-            # This uses internal API.
-            warnings.warn(
-                "Pass in a Resource document, not a Resource UID.",
-                FutureWarning)
-            resource = self._catalog._get_resource(resource_or_uid)
-        else:
-            resource = resource_or_uid
 
         run_start_uid = resource.get('run_start')
         if run_start_uid is None:
