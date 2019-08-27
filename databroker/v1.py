@@ -864,7 +864,6 @@ class Broker:
             "databroker.", PendingDeprecationWarning)
         self._serializer(name, doc)
         # Make a reasonable effort to keep the Catalog in sync with new data.
-        self._catalog.reload()
         if name == 'stop':
             self._catalog.force_reload()
 
