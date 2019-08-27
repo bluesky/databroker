@@ -1,8 +1,12 @@
 """
 This module is experimental.
 """
-import collections.abc
 import abc
+import collections.abc
+
+import tzlocal
+
+from .utils import normalize_human_friendly_time
 
 
 class Query(collections.abc.Mapping):
@@ -30,18 +34,53 @@ class Query(collections.abc.Mapping):
 class TimeRange(Query):
     """
     A search query representing a time range.
+
+    Parameters
+    ----------
+    since, until: dates gives as timestamp, datetime, or human-friendly string, optional
+    timezone : string
+        As in, 'US/Eastern'. If None is given, tzlocal is used.
     """
-    def __init__(self, since=None, until=None):
+    def __init__(self, since=None, until=None, timezone=None):
+        if timezone is None:
+            timezone = tzlocal.get_localzone().zone
+        self.timezone = timezone
         self.since = since
         self.until = until
+
+    @property
+    def since(self):
+        return self._since_raw
+
+    @since.setter
+    def since(self, value):
+        if value is None:
+            self._since_normalized = None
+        else:
+            self._since_normalized = normalize_human_friendly_time(
+                value, tz=self.timezone)
+        self._since_raw = value
+
+    @property
+    def until(self):
+        return self._until_raw
+
+    @until.setter
+    def until(self, value):
+        if value is None:
+            self._until_normalized = None
+        else:
+            self._until_normalized = normalize_human_friendly_time(
+                value, tz=self.timezone)
+        self._until_raw = value
 
     @property
     def _query(self):
         query = {'time': {}}
         if self.since is not None:
-            query['time']['$gte'] = self.since
+            query['time']['$gte'] = self._since_normalized
         if self.until is not None:
-            query['time']['$lt'] = self.until
+            query['time']['$lt'] = self._until_normalized
         return query
 
     def __repr__(self):
