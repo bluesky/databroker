@@ -447,27 +447,12 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         self._source_id = response['source_id']
 
     def _load_metadata(self):
-        if self.bag is None:
-            self.raw_parts = [dask.delayed(intake.container.base.get_partition)(
-                self.url, self.http_args, self._source_id, self.container, (i, True)
-            )
-                          for i in range(self.npartitions)]
-            self.parts = [dask.delayed(intake.container.base.get_partition)(
-                self.url, self.http_args, self._source_id, self.container, (i, False)
-            )
-                          for i in range(self.npartitions)]
-            self.bag = dask.bag.from_delayed(self.parts)
         return self._schema
 
-    def _get_partition(self, index):
-        self._load_metadata()
-        i, raw = index
-        if raw:
-            parts = self.raw_parts
-        else:
-            parts = self.parts
-        return parts[i].compute()
-
+    def _get_partition(self, partition):
+        return intake.container.base.get_partition(self.url, self.http_args,
+                                             self._source_id, self.container,
+                                             partition)
     def read(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
@@ -492,17 +477,9 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             If fill is 'no' the BlueskyRun will not be filled.
 
         """
-        if fill.lower() == 'yes':
-            for i in range(self.npartitions):
-                for name, doc in self._get_partition((i, False)):
-                    yield name, doc
-        elif fill.lower() == 'no':
-            for i in range(self.npartitions):
-                for name, doc in self._get_partition((i, True)):
-                    yield name, doc
-        else:
-            raise NotImplementedError("Only fill='yes', and fill='no' are
-                                      currently implemented.")
+        for i in range(self.npartitions):
+            for name, doc in self._get_partition((i, fill)):
+                yield name, doc
 
     def read_canonical(self):
         warnings.warn(
@@ -677,17 +654,9 @@ class BlueskyRun(intake.catalog.Catalog):
             If fill is 'no' the BlueskyRun will not be filled.
 
         """
-        if fill.lower() == 'yes':
-            for i in range(self.npartitions):
-                for name, doc in self.read_partition((i, False)):
-                    yield name, doc
-        elif fill.lower() == 'no':
-            for i in range(self.npartitions):
-                for name, doc in self.read_partition((i, True)):
-                    yield name, doc
-        else:
-            raise NotImplementedError("Only fill='yes', and fill='no' are
-                                      currently implemented.")
+        for i in range(self.npartitions):
+            for name, doc in self.read_partition({'index': i, 'fill': fill}):
+                yield name, doc
 
     def read_canonical(self):
         warnings.warn(
@@ -780,11 +749,11 @@ class BlueskyRun(intake.catalog.Catalog):
             doc.pop('_id', None)
         return payload
 
-    def read_partition(self, index):
+    def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
-        i, raw = index
-        if raw:
+        i = partition['index']
+        if partition['fill'] == 'no':
             return self.read_partition_unfilled(i)
         self._load()
         payload = []
