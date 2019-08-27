@@ -23,7 +23,3 @@ class Broker(Catalog):
     @property
     def v2(self):
         return self
-
-    def search(self, query):
-        catalog = super().search(query)
-        return catalog
