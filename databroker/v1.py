@@ -736,9 +736,6 @@ class Broker:
         for name, doc in self.get_documents(headers, fields=fields, fill=fill):
             func(name, doc)
 
-    def insert(name, doc):
-        return self._serializer(name, doc)
-
     def export(self, headers, db, new_root=None, copy_kwargs=None):
         """
         Serialize a list of runs.
@@ -790,6 +787,11 @@ class Broker:
         if self._serializer is None:
             raise RuntimeError("No Serializer was configured for this.")
         self._serializer(name, doc)
+        # Make a reasonable effort to keep the Catalog in sync with new data.
+        self._catalog.reload()
+        if name == 'stop':
+            self._catalog.force_reload()
+
 
 
 class Header:
