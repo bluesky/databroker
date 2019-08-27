@@ -180,10 +180,9 @@ class Broker:
     This supports the original Broker API but implemented on intake.Catalog.
     """
     def __init__(self, catalog, *, serializer=None,
-                 header_version=1,external_fetchers=None):
+                 external_fetchers=None):
         self._catalog = catalog
         self._serializer = serializer
-        self.header_version = header_version
         self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
@@ -261,7 +260,7 @@ class Broker:
             kwargs.update({'$text': {'$search': text_search}})
         format_time(kwargs, tz)  # mutates in place
         return Results(self, catalog.search(kwargs),
-                       data_key, self.header_version)
+                       data_key)
 
     def __getitem__(self, key):
         # If this came from a client, we might be getting '-1'.
@@ -284,10 +283,7 @@ class Broker:
             return [self[index]
                     for index in reversed(range(key.start, key.stop or 0, key.step or 1))]
         entry = self._catalog[key]
-        if self.header_version == 1:
-            return Header(entry, self)
-        else:
-            return entry
+        return Header(entry)
 
     get_fields = staticmethod(get_fields)
 
@@ -857,10 +853,10 @@ class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
     """
-    def __init__(self, entry, broker):
+    def __init__(self, entry):
         self._entry = entry
         self.__data_source = None
-        self.db = broker
+        self.db = entry.catalog_object.v1
         self.ext = None  # TODO
         self._start = entry.describe()['metadata']['start']
         self._stop = entry.describe()['metadata']['stop']
@@ -1246,19 +1242,15 @@ class Results:
     data_key : string or None
         Special query parameter that filters results
     """
-    def __init__(self, broker, catalog, data_key, header_version):
+    def __init__(self, broker, catalog, data_key):
         self._broker = broker
         self._catalog = catalog
         self._data_key = data_key
-        self.header_version = header_version
 
     def __iter__(self):
         # TODO Catalog.walk() fails. We should probably support Catalog.items().
         for uid, entry in self._catalog._entries.items():
-            if self.header_version == 1:
-                header = Header(entry, self._broker)
-            else:
-                header = entry
+            header = Header(entry)
             if self._data_key is None:
                 yield header
             else:
