@@ -18,17 +18,31 @@ class Query(collections.abc.Mapping):
     and mutable attributes from which the contents of the dict are derived.
     """
     @abc.abstractproperty
-    def _query(self):
+    def query(self):
+        ...
+
+    @abc.abstractproperty
+    def kwargs(self):
         ...
 
     def __iter__(self):
-        return iter(self._query)
+        return iter(self.query)
 
     def __getitem__(self, key):
-        return self._query[key]
+        return self.query[key]
     
     def __len__(self):
-        return len(self._query)
+        return len(self.query)
+
+    def replace(self, **kwargs):
+        """
+        Make a copy with parameters changed.
+        """
+        return type(self)(**{**self.kwargs, **kwargs})
+
+    def __repr__(self):
+        return (f"{type(self).__name__}("
+                f"{', '.join(f'{k}={v}' for k, v in self.kwargs.items())})")
 
 
 class TimeRange(Query):
@@ -45,43 +59,31 @@ class TimeRange(Query):
         if timezone is None:
             timezone = tzlocal.get_localzone().zone
         self.timezone = timezone
-        self.since = since
-        self.until = until
-
-    @property
-    def since(self):
-        return self._since_raw
-
-    @since.setter
-    def since(self, value):
-        if value is None:
+        if since is None:
             self._since_normalized = None
         else:
             self._since_normalized = normalize_human_friendly_time(
-                value, tz=self.timezone)
-        self._since_raw = value
-
-    @property
-    def until(self):
-        return self._until_raw
-
-    @until.setter
-    def until(self, value):
-        if value is None:
+                since, tz=self.timezone)
+        self._since_raw = since
+        if until is None:
             self._until_normalized = None
         else:
             self._until_normalized = normalize_human_friendly_time(
-                value, tz=self.timezone)
-        self._until_raw = value
+                until, tz=self.timezone)
+        self._until_raw = until
+        if since is not None and until is not None:
+            if self._since_normalized > self._until_normalized:
+                raise ValueError("since must not be greater than until.")
 
     @property
-    def _query(self):
+    def kwargs(self):
+        return {'since': self._since_raw, 'until': self._until_raw}
+
+    @property
+    def query(self):
         query = {'time': {}}
-        if self.since is not None:
+        if self._since_normalized is not None:
             query['time']['$gte'] = self._since_normalized
-        if self.until is not None:
+        if self._until_normalized is not None:
             query['time']['$lt'] = self._until_normalized
         return query
-
-    def __repr__(self):
-        return f"{type(self).__name__}(since={self.since}, until={self.until})"
