@@ -875,6 +875,12 @@ class Header:
     def __iter__(self):
         return self.keys()
 
+    def xarray(self, stream_name='primary'):
+        return self._catalog[stream_name].read()
+
+    def xarray_dask(self, stream_name='primary'):
+        return self._catalog[stream_name].to_dask()
+
     def table(self, stream_name='primary', fields=None, fill=False,
               timezone=None, convert_times=True, localize_times=True):
         '''
