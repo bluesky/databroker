@@ -820,12 +820,16 @@ class BlueskyRun(intake.catalog.Catalog):
     def read(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
-            "its entries, representing individual Event Streams.")
+            "its entries, representing individual Event Streams. You can see "
+            "the entries using list(YOUR_VARIABLE_HERE). Tab completion may "
+            "also help, if available.")
 
     def to_dask(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
-            "its entries, representing individual Event Streams.")
+            "its entries, representing individual Event Streams. You can see "
+            "the entries using list(YOUR_VARIABLE_HERE). Tab completion may "
+            "also help, if available.")
 
 
 class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
