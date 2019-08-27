@@ -4,11 +4,14 @@ import copy
 from datetime import datetime
 import pandas
 from intake import Catalog
+from pathlib import Path
 import re
 import warnings
 import time
 import humanize
 import jinja2
+import os
+import tempfile
 from types import SimpleNamespace
 import tzlocal
 
@@ -21,6 +24,30 @@ except ImportError:
 
 from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
                     wrap_in_doct)
+
+def temp_config():
+    tmp_dir = tempfile.mkdtemp()
+    tmp_data_dir = Path(tmp_dir) / 'data'
+    catalog_path = Path(tmp_dir) / 'temp_catalog.yml'
+
+    with open(catalog_path, 'w') as file:
+        file.write(f'''
+plugins:
+  source:
+    - module: databroker
+sources:
+  temp_catalog:
+    description: A temporary catalog for tests / demos
+    driver: databroker._drivers.msgpack.BlueskyMsgpackCatalog
+    container: catalog
+    args:
+      paths: "{str(tmp_data_dir)}/*.msgpack"
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
+    metadata:
+      beamline: "00-ID"
+        ''')
+    return {'uri': catalog_path, 'source': 'temp_catalog'}
 
 
 class Registry:
@@ -177,6 +204,45 @@ class Broker:
     def from_config(cls, config, auto_register=True, name=None):
         return from_config(
             config=config, auto_register=auto_register, name=name)
+
+    @classmethod
+    def named(cls, name, auto_register=True):
+        """
+        Create a new Broker instance using a configuration file with this name.
+
+        Configuration file search path:
+
+        * ``~/.config/databroker/{name}.yml``
+        * ``{python}/../etc/databroker/{name}.yml``
+        * ``/etc/databroker/{name}.yml``
+
+        where ``{python}`` is the location of the current Python binary, as
+        reported by ``sys.executable``. It will use the first match it finds.
+
+        Special Case: The name ``'temp'`` creates a new, temporary
+        configuration. Subsequent calls to ``Broker.named('temp')`` will
+        create separate configurations. Any data saved using this temporary
+        configuration will not be accessible once the ``Broker`` instance has
+        been deleted.
+
+        Parameters
+        ----------
+        name : string
+        auto_register : boolean, optional
+            By default, automatically register built-in asset handlers (classes
+            that handle I/O for externally stored data). Set this to ``False``
+            to do all registration manually.
+
+        Returns
+        -------
+        db : Broker
+        """
+        if name == 'temp':
+            config = temp_config()
+        else:
+            config = lookup_config(name)
+        db = cls.from_config(config, auto_register=auto_register, name=name)
+        return db
 
     @property
     def v2(self):
@@ -1316,16 +1382,29 @@ def from_config(config, auto_register=True, name=None):
         catalog = intake.open_catalog(str(config['uri']))
         if config.get('source') is not None:
             catalog = catalog[config['source']]()
+
             # This is a bit dirty, but it's just to provide an `insert` method
             # for back-compat.
             from ._drivers.mongo_normalized import BlueskyMongoCatalog
+            from ._drivers.msgpack import BlueskyMsgpackCatalog
             if isinstance(catalog, BlueskyMongoCatalog):
                 from suitcase.mongo_normalized import Serializer
                 serializer = Serializer(
                     catalog._metadatastore_db, catalog._asset_registry_db)
+            elif isinstance(catalog, BlueskyMsgpackCatalog):
+                from suitcase.msgpack import Serializer
+                from event_model import RunRouter
+                path, *_ = catalog.paths
+                directory = os.path.dirname(path)
+
+                def factory(name, doc):
+                    serializer = Serializer(directory)
+                    serializer(name, doc)
+                    return [serializer], []
+
+                serializer = RunRouter([factory])
             else:
                 serializer = None
-                print('type', type(catalog))
     elif 'metadatastore' in config:
         catalog, serializer = _from_v0_config(config)
     if forced_version == 2:

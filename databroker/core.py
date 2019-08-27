@@ -687,7 +687,24 @@ class BlueskyRun(intake.catalog.Catalog):
             if name == 'datum':
                 datum[datum['resource']].append(datum)
         for resource in resources:
-            handler = filler.get_handler(resource)
+            # TODO Once event_model.Filler has a get_handler method, use that.
+            try:
+                handler_class = self.filler.handler_registry[resource['spec']]
+            except KeyError as err:
+                raise event_model.UndefinedAssetSpecification(
+                    f"Resource document with uid {resource['uid']} "
+                    f"refers to spec {resource['spec']!r} which is "
+                    f"not defined in the Filler's "
+                    f"handler registry.") from err
+            # Apply root_map.
+            resource_path = resource['resource_path']
+            root = resource.get('root', '')
+            root = filler.root_map.get(root, root)
+            if root:
+                resource_path = os.path.join(root, resource_path)
+
+            handler = handler_class(resource_path,
+                                    **resource['resource_kwargs'])
             files.extend(handler.get_file_list(datum[resource['resource_uid']]))
         return files
 
