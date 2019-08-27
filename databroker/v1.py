@@ -810,7 +810,7 @@ class Broker:
         file_pairs = []
 
         for header in headers:
-            for name, doc in self._catalog[header.uid].canonical_unfilled():
+            for name, doc in self._catalog[header.start['uid']].canonical_unfilled():
                 if name == 'resource' and new_root:
                     file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = copy.deepcopy(doc)
@@ -819,6 +819,31 @@ class Broker:
                 else:
                     db.insert(name, doc)
         return file_pairs
+
+    def export_size(self, headers):
+        """
+        Get the size of files associated with a list of headers.
+
+        Parameters
+        ----------
+        headers : :class:databroker.Header:
+            one or more headers that are going to be exported
+
+        Returns
+        -------
+        total_size : float
+            total size of all the files associated with the ``headers`` in Gb
+        """
+        headers = _ensure_list(headers)
+        total_size = 0
+        for header in headers:
+            run = self._catalog[header.start['uid']]
+            for name, doc in self._catalog[header.start['uid']].canonical_unfilled():
+                if name == 'resource':
+                    for filepath in run.get_file_list(doc):
+                        total_size += os.path.getsize(filepath)
+
+        return total_size * 1e-9
 
     def insert(self, name, doc):
         if self._serializer is None:
