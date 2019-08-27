@@ -45,8 +45,7 @@ def temp():
         f"{tmp_data_dir}/*.msgpack",
         name='temp',
         handler_registry=handler_registry)
-    serializer = catalog._get_serializer()
-    return Broker(catalog, serializer=serializer)
+    return Broker(catalog)
 
 
 class Registry:
@@ -182,6 +181,12 @@ class Broker:
     def __init__(self, catalog, *, serializer=None,
                  external_fetchers=None):
         self._catalog = catalog
+        if serializer is None:
+            # The method _get_serializer is an optional method implememented on
+            # some Broker subclasses to support the Broker.insert() method,
+            # which is pending deprecation.
+            if hasattr(catalog, '_get_serializer'):
+                serializer = catalog._get_serializer()
         self._serializer = serializer
         self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
@@ -242,14 +247,7 @@ class Broker:
                 db = cls.from_config(config, auto_register=auto_register, name=name)
                 return db
         catalog = getattr(intake.cat, name)
-        # The method _get_serializer is an optional method implememented on
-        # some Broker subclasses to support the Broker.insert() method, which
-        # is pending deprecation.
-        if hasattr(catalog, '_get_serializer'):
-            serializer = catalog._get_serializer()
-        else:
-            serializer = None
-        return Broker(catalog, serializer=serializer)
+        return Broker(catalog)
 
     @property
     def v2(self):
@@ -1452,7 +1450,7 @@ def from_config(config, auto_register=True, name=None):
         from . import v0
         return v0.Broker.from_config(config, auto_register, name)
     try:
-        catalog, serializer = _from_v0_config(config)
+        catalog = _from_v0_config(config)
     except Exception as exc:
         warnings.warn(
             f"Failed to load config. Falling back to v0."
@@ -1462,7 +1460,7 @@ def from_config(config, auto_register=True, name=None):
     if forced_version == 2:
         return catalog
     elif forced_version is None or forced_version == 1:
-        return Broker(catalog, serializer=serializer)
+        return Broker(catalog)
     else:
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
@@ -1493,10 +1491,7 @@ def _from_v0_config(config):
     host = config['assets']['config']['host']
     port = config['assets']['config'].get('port')
     asset_registry_db = _get_mongo_client(host, port)[config['database']]
-    catalog = BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
-    serializer = catalog._get_serializer()
-    return catalog, serializer
-
+    return BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
