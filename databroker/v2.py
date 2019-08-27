@@ -5,8 +5,7 @@ class Broker(Catalog):
     """
     This is a thin wrapper around intake.Catalog.
 
-    It includes the option to return, in place of the usual intake Entries,
-    v1-compatible Header objects.
+    It includes an accessor the databroker API version 1.
     """
     @property
     def v1(self):
