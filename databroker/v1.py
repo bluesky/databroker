@@ -11,6 +11,7 @@ import time
 import humanize
 import jinja2
 import os
+import shutil
 import tempfile
 from types import SimpleNamespace
 import tzlocal
@@ -23,7 +24,7 @@ except ImportError:
     from toolz.dicttoolz import merge
 
 from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
-                    wrap_in_doct)
+                    wrap_in_doct, ensure_path_exists)
 
 def temp_config():
     tmp_dir = tempfile.mkdtemp()
