@@ -15,6 +15,7 @@ import shutil
 import tempfile
 from types import SimpleNamespace
 import tzlocal
+import xarray
 
 import intake
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
@@ -527,6 +528,42 @@ class Broker:
                   .set_index('seq_num'))
             dfs.append(df)
         return pandas.concat(dfs)
+
+    def get_images(self, headers, name,
+                   stream_name='primary',
+                   handler_registry=None,):
+        """
+        This method is deprecated. Use Broker.get_documents instead.
+
+        Load image data from one or more runs into a lazy array-like object.
+
+        Parameters
+        ----------
+        headers : Header or list of Headers
+        name : string
+            field name (data key) of a detector
+        handler_registry : dict, optional
+            mapping spec names (strings) to handlers (callable classes)
+
+        Examples
+        --------
+        >>> header = db[-1]
+        >>> images = Images(header, 'my_detector_lightfield')
+        >>> for image in images:
+                # do something
+        """
+        # Defer this import so that pims is an optional dependency.
+        from ._legacy_images import Images
+        headers = _ensure_list(headers)
+        datasets = [header.xarray_dask(stream_name=stream_name)
+                    for header in headers]
+        if handler_registry is not None:
+            raise NotImplementError(
+                "The handler_registry parameter is no longer supported "
+                "and must be None.")
+        dataset = xarray.concat(datasets)
+        data_array = dataset[name]
+        return Images(data_array=data_array)
 
     def alias(self, key, **query):
         """
