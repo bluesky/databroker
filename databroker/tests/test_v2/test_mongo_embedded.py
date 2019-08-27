@@ -36,13 +36,10 @@ def bundle(request, intake_server, example_data, db_factory):  # noqa
 
     with open(fullname, 'w') as f:
         f.write(f'''
-plugins:
-  source:
-    - module: drivers
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: databroker._drivers.mongo_embedded.BlueskyMongoCatalog
+    driver: "bluesky-mongo-embedded-catalog"
     container: catalog
     args:
       datastore_db: {extract_uri(permanent_db)}

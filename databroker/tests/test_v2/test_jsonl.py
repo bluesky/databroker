@@ -38,13 +38,10 @@ def bundle(request, intake_server, example_data):  # noqa
     fullname = os.path.join(tmp_dir, YAML_FILENAME)
     with open(fullname, 'w') as f:
         f.write(f'''
-plugins:
-  source:
-    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: databroker._drivers.jsonl.BlueskyJSONLCatalog
+    driver: "bluesky-jsonl-catalog"
     container: catalog
     args:
       paths: {[str(path) for path in serializer.artifacts['all']]}

@@ -26,13 +26,10 @@ def build_intake_jsonl_backed_broker(request):
     data_dir = Path(tmp_path) / 'data'
     with open(catalog_path, 'w') as file:
         file.write(f"""
-plugins:
-  source:
-    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: databroker._drivers.jsonl.BlueskyJSONLCatalog
+    driver: "bluesky-jsonl-catalog"
     container: catalog
     args:
       paths: {data_dir / '*.jsonl'}
@@ -71,13 +68,10 @@ def build_intake_mongo_backed_broker(request):
     client = box.client()
     with open(catalog_path, 'w') as file:
         file.write(f"""
-plugins:
-  source:
-    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: databroker._drivers.mongo_normalized.BlueskyMongoCatalog
+    driver: "bluesky-mongo-normalized-catalog"
     container: catalog
     args:
       metadatastore_db: mongodb://{client.address[0]}:{client.address[1]}/mds
@@ -121,13 +115,10 @@ def build_intake_mongo_embedded_backed_broker(request):
     client = box.client()
     with open(catalog_path, 'w') as file:
         file.write(f"""
-plugins:
-  source:
-    - module: databroker
 sources:
   xyz:
     description: Some imaginary beamline
-    driver: databroker._drivers.mongo_embedded.BlueskyMongoCatalog
+    driver: "bluesky-mongo-embedded-catalog"
     container: catalog
     args:
       datastore_db: mongodb://{client.address[0]}:{client.address[1]}/permanent

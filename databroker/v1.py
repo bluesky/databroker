@@ -34,13 +34,10 @@ def temp_config():
 
     with open(catalog_path, 'w') as file:
         file.write(f'''
-plugins:
-  source:
-    - module: databroker
 sources:
   temp_catalog:
     description: A temporary catalog for tests / demos
-    driver: databroker._drivers.msgpack.BlueskyMsgpackCatalog
+    driver: "bluesky-msgpack-catalog"
     container: catalog
     args:
       paths: "{str(tmp_data_dir)}/*.msgpack"
