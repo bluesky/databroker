@@ -668,7 +668,7 @@ class BlueskyRun(intake.catalog.Catalog):
             for name, doc in self.read_partition((i, True)):
                 yield name, doc
 
-    def get_file_list(self, resource=None):
+    def get_file_list(self, resource):
         """
         Fetch filepaths of external files associated with this Run.
 
@@ -678,34 +678,31 @@ class BlueskyRun(intake.catalog.Catalog):
         This method should be considered experimental. It may be changed or
         removed in a future release.
         """
-        resources = []
         files = []
-        datum = collections.defaultdict(list)
-        for name, doc in self.canonical():
-            if name == 'resource':
-                resources.append(doc)
-            if name == 'datum':
-                datum[datum['resource']].append(datum)
-        for resource in resources:
-            # TODO Once event_model.Filler has a get_handler method, use that.
-            try:
-                handler_class = self.filler.handler_registry[resource['spec']]
-            except KeyError as err:
-                raise event_model.UndefinedAssetSpecification(
-                    f"Resource document with uid {resource['uid']} "
-                    f"refers to spec {resource['spec']!r} which is "
-                    f"not defined in the Filler's "
-                    f"handler registry.") from err
-            # Apply root_map.
-            resource_path = resource['resource_path']
-            root = resource.get('root', '')
-            root = filler.root_map.get(root, root)
-            if root:
-                resource_path = os.path.join(root, resource_path)
+        # TODO Once event_model.Filler has a get_handler method, use that.
+        try:
+            handler_class = self.filler.handler_registry[resource['spec']]
+        except KeyError as err:
+            raise event_model.UndefinedAssetSpecification(
+                f"Resource document with uid {resource['uid']} "
+                f"refers to spec {resource['spec']!r} which is "
+                f"not defined in the Filler's "
+                f"handler registry.") from err
+        # Apply root_map.
+        resource_path = resource['resource_path']
+        root = resource.get('root', '')
+        root = self.filler.root_map.get(root, root)
+        if root:
+            resource_path = os.path.join(root, resource_path)
 
-            handler = handler_class(resource_path,
-                                    **resource['resource_kwargs'])
-            files.extend(handler.get_file_list(datum[resource['resource_uid']]))
+        handler = handler_class(resource_path,
+                                **resource['resource_kwargs'])
+        def datum_kwarg_gen():
+            for page in self._get_datum_pages(resource['uid']):
+                for datum in event_model.unpack_datum_page(page):
+                    yield datum['datum_kwargs']
+
+        files.extend(handler.get_file_list(datum_kwarg_gen()))
         return files
 
     def read_partition_unfilled(self, i):
