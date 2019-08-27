@@ -374,7 +374,7 @@ class Broker:
                 if not len(d['data_keys']) and not len(all_extra_data):
                     continue
 
-            for name, doc in self._catalog[uid].canonical():
+            for name, doc in self._catalog[uid].canonical(fill='yes'):
                 if stream_name is not ALL:
                     # Filter by stream_name.
                     if name == 'descriptor':
@@ -807,7 +807,7 @@ class Broker:
         file_pairs = []
 
         for header in headers:
-            for name, doc in self._catalog[header.start['uid']].canonical_unfilled():
+            for name, doc in self._catalog[header.start['uid']].canonical(fill='no'):
                 if name == 'resource' and new_root:
                     file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = copy.deepcopy(doc)

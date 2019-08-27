@@ -481,21 +481,34 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self):
-        for i in range(self.npartitions):
-            for name, doc in self._get_partition((i, False)):
-                yield name, doc
+    def canonical(self, fill):
+        """
+        Yields a BlueskyRun in the order it was produced.
+
+        Parameters
+        ----------
+        fill: str
+            If fill is 'yes' the BlueskyRun will be filled.
+            If fill is 'no' the BlueskyRun will not be filled.
+
+        """
+        if fill.lower() == 'yes':
+            for i in range(self.npartitions):
+                for name, doc in self._get_partition((i, False)):
+                    yield name, doc
+        elif fill.lower() == 'no':
+            for i in range(self.npartitions):
+                for name, doc in self._get_partition((i, True)):
+                    yield name, doc
+        else:
+            raise NotImplementedError("Only fill='yes', and fill='no' are
+                                      currently implemented.")
 
     def read_canonical(self):
         warnings.warn(
             "The method read_canonical has been renamed canonical. This alias "
             "may be removed in a future release.")
-        yield from self.canonical()
-
-    def canonical_unfilled(self):
-        for i in range(self.npartitions):
-            for name, doc in self._get_partition((i, True)):
-                yield name, doc
+        yield from self.canonical(fill='yes')
 
     def __repr__(self):
         self._load()
@@ -652,21 +665,35 @@ class BlueskyRun(intake.catalog.Catalog):
                 getshell=True,
                 catalog=self)
 
+
+    def canonical(self, fill):
+        """
+        Yields a BlueskyRun in the order it was produced.
+
+        Parameters
+        ----------
+        fill: str
+            If fill is 'yes' the BlueskyRun will be filled.
+            If fill is 'no' the BlueskyRun will not be filled.
+
+        """
+        if fill.lower() == 'yes':
+            for i in range(self.npartitions):
+                for name, doc in self.read_partition((i, False)):
+                    yield name, doc
+        elif fill.lower() == 'no':
+            for i in range(self.npartitions):
+                for name, doc in self.read_partition((i, True)):
+                    yield name, doc
+        else:
+            raise NotImplementedError("Only fill='yes', and fill='no' are
+                                      currently implemented.")
+
     def read_canonical(self):
         warnings.warn(
             "The method read_canonical has been renamed canonical. This alias "
             "may be removed in a future release.")
-        yield from self.canonical()
-
-    def canonical(self):
-        for i in range(self.npartitions):
-            for name, doc in self.read_partition((i, False)):
-                yield name, doc
-
-    def canonical_unfilled(self):
-        for i in range(self.npartitions):
-            for name, doc in self.read_partition((i, True)):
-                yield name, doc
+        yield from self.canonical(fill='yes')
 
     def get_file_list(self, resource):
         """

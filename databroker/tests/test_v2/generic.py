@@ -108,7 +108,7 @@ def test_canonical(bundle):
 
     # Smoke test for back-compat alias
     with pytest.warns(UserWarning):
-        next(run.read_canonical())
+        next(run.canonical(fill='yes'))
 
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
                                 inplace=False)
@@ -124,7 +124,7 @@ def test_canonical(bundle):
                     yield name, filled_doc
 
     for actual, expected in itertools.zip_longest(
-            run.canonical(), sorted_actual()):
+            run.canonical(fill='yes'), sorted_actual()):
         actual_name, actual_doc = actual
         expected_name, expected_doc = expected
         print(actual_name, expected_name)
@@ -136,7 +136,7 @@ def test_canonical(bundle):
 
 def test_canonical_unfilled(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
-    run.canonical_unfilled()
+    run.canonical(fill='no')
 
     def sorted_actual():
         for name_ in ('start', 'descriptor', 'resource',
@@ -146,7 +146,7 @@ def test_canonical_unfilled(bundle):
                                               'event', 'event_page', 'stop'):
                     yield name, doc
 
-    raw_run = [(name, doc) for name, doc in list(run.canonical_unfilled())
+    raw_run = [(name, doc) for name, doc in list(run.canonical(fill='no'))
                if name not in ('resource', 'datum', 'datum_page')]
 
     for actual, expected in itertools.zip_longest(
@@ -164,7 +164,7 @@ def test_canonical_unfilled(bundle):
     # received before corresponding event.
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
                                 inplace=False)
-    for name, doc in run.canonical_unfilled():
+    for name, doc in run.canonical(fill='no'):
         filler(name, doc)
 
 
