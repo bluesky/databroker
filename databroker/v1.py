@@ -876,10 +876,10 @@ class Header:
         return self.keys()
 
     def xarray(self, stream_name='primary'):
-        return self._catalog[stream_name].read()
+        return self._data_source[stream_name].read()
 
     def xarray_dask(self, stream_name='primary'):
-        return self._catalog[stream_name].to_dask()
+        return self._data_source[stream_name].to_dask()
 
     def table(self, stream_name='primary', fields=None, fill=False,
               timezone=None, convert_times=True, localize_times=True):
