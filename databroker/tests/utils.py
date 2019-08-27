@@ -42,7 +42,7 @@ sources:
     def teardown():
         tmp_dir.cleanup()
 
-    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    db = v2.Broker(catalog_path)
     serializer = None
     request.addfinalizer(teardown)
 

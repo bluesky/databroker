@@ -3,7 +3,6 @@ from collections import defaultdict
 import copy
 from datetime import datetime
 import pandas
-from intake import Catalog
 from pathlib import Path
 import re
 import warnings
@@ -25,28 +24,29 @@ except ImportError:
     from toolz.dicttoolz import merge
 
 from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
-                    wrap_in_doct, ensure_path_exists)
+                    wrap_in_doct, ensure_path_exists, lookup_config)
 
-def temp_config():
+
+def temp():
+    from databroker._drivers.msgpack import BlueskyMsgpackCatalog
+    handler_registry = {}
+    # Let ophyd be an optional dependency.
+    # If it is not installed, then we clearly do not need its handler for this
+    # temporary data store.
+    try:
+        import ophyd.sim
+    except ImportError:
+        pass
+    else:
+        handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
     tmp_dir = tempfile.mkdtemp()
     tmp_data_dir = Path(tmp_dir) / 'data'
-    catalog_path = Path(tmp_dir) / 'temp_catalog.yml'
-
-    with open(catalog_path, 'w') as file:
-        file.write(f'''
-sources:
-  temp_catalog:
-    description: A temporary catalog for tests / demos
-    driver: "bluesky-msgpack-catalog"
-    container: catalog
-    args:
-      paths: "{str(tmp_data_dir)}/*.msgpack"
-      handler_registry:
-        NPY_SEQ: ophyd.sim.NumpySeqHandler
-    metadata:
-      beamline: "00-ID"
-        ''')
-    return {'uri': catalog_path, 'source': 'temp_catalog'}
+    catalog = BlueskyMsgpackCatalog(
+        f"{tmp_data_dir}/*.msgpack",
+        name='temp',
+        handler_registry=handler_registry)
+    serializer = catalog._get_serializer()
+    return Broker(catalog, serializer=serializer)
 
 
 class Registry:
@@ -231,11 +231,25 @@ class Broker:
         db : Broker
         """
         if name == 'temp':
-            config = temp_config()
+            return temp()
         else:
-            config = lookup_config(name)
-        db = cls.from_config(config, auto_register=auto_register, name=name)
-        return db
+            try:
+                config = lookup_config(name)
+            except FileNotFoundError:
+                # Continue on to the v2 way.
+                pass
+            else:
+                db = cls.from_config(config, auto_register=auto_register, name=name)
+                return db
+        catalog = getattr(intake.cat, name)
+        # The method _get_serializer is an optional method implememented on
+        # some Broker subclasses to support the Broker.insert() method, which
+        # is pending deprecation.
+        if hasattr(catalog, '_get_serializer'):
+            serializer = catalog._get_serializer()
+        else:
+            serializer = None
+        return Broker(catalog, serializer=serializer)
 
     @property
     def v2(self):
@@ -845,6 +859,9 @@ class Broker:
     def insert(self, name, doc):
         if self._serializer is None:
             raise RuntimeError("No Serializer was configured for this.")
+        warnings.warn(
+            "The method Broker.insert may be removed in a future release of "
+            "databroker.", PendingDeprecationWarning)
         self._serializer(name, doc)
         # Make a reasonable effort to keep the Catalog in sync with new data.
         self._catalog.reload()
@@ -1420,48 +1437,29 @@ def _pretty_print_time(timestamp):
 
 def from_config(config, auto_register=True, name=None):
     """
-    Build (some version of) a Broker instance from a configuration dict.
+    Build (some version of) a Broker instance from a v0 configuration dict.
 
     This can return a ``v0.Broker``, ``v1.Broker``, or ``v2.Broker`` depending
     on the contents of ``config``.
 
     If config contains the key 'api_version', it should be set to a value 0, 1,
-    0, or 2. That setting will always be respected. If no 'api_version' is
-    explicitly set by the configuration file, version 1 will be used.
+    0, or 2. That setting will be respected until there is an error, in which
+    case a warning will be issued and we will fall back to v0. If no
+    'api_version' is explicitly set by the configuration file, version 1 will
+    be used.
     """
     forced_version = config.get('api_version')
     if forced_version == 0:
         from . import v0
         return v0.Broker.from_config(config, auto_register, name)
-    if 'uri' in config:
-        catalog = intake.open_catalog(str(config['uri']))
-        if config.get('source') is not None:
-            catalog = catalog[config['source']]()
-
-            # This is a bit dirty, but it's just to provide an `insert` method
-            # for back-compat.
-            from ._drivers.mongo_normalized import BlueskyMongoCatalog
-            from ._drivers.msgpack import BlueskyMsgpackCatalog
-            if isinstance(catalog, BlueskyMongoCatalog):
-                from suitcase.mongo_normalized import Serializer
-                serializer = Serializer(
-                    catalog._metadatastore_db, catalog._asset_registry_db)
-            elif isinstance(catalog, BlueskyMsgpackCatalog):
-                from suitcase.msgpack import Serializer
-                from event_model import RunRouter
-                path, *_ = catalog.paths
-                directory = os.path.dirname(path)
-
-                def factory(name, doc):
-                    serializer = Serializer(directory)
-                    serializer(name, doc)
-                    return [serializer], []
-
-                serializer = RunRouter([factory])
-            else:
-                serializer = None
-    elif 'metadatastore' in config:
+    try:
         catalog, serializer = _from_v0_config(config)
+    except Exception as exc:
+        warnings.warn(
+            f"Failed to load config. Falling back to v0."
+            f"Exception was: {exc}")
+        from . import v0
+        return v0.Broker.from_config(config, auto_register, name)
     if forced_version == 2:
         return catalog
     elif forced_version is None or forced_version == 1:
@@ -1489,7 +1487,6 @@ def _from_v0_config(config):
             f"Unable to handle assets.class {assets_class!r}")
 
     from ._drivers.mongo_normalized import BlueskyMongoCatalog
-    from suitcase.mongo_normalized import Serializer
 
     host = config['metadatastore']['config']['host']
     port = config['metadatastore']['config'].get('port')
@@ -1498,7 +1495,7 @@ def _from_v0_config(config):
     port = config['assets']['config'].get('port')
     asset_registry_db = _get_mongo_client(host, port)[config['database']]
     catalog = BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
-    serializer = Serializer(metadatastore_db, asset_registry_db)
+    serializer = catalog._get_serializer()
     return catalog, serializer
 
 

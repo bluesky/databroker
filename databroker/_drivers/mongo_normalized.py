@@ -275,6 +275,11 @@ class BlueskyMongoCatalog(Broker):
             storage_options=self.storage_options)
         return cat
 
+    def _get_serializer(self):
+        "This is used internally by v1.Broker. It may be removed in future."
+        from suitcase.mongo_normalized import Serializer
+        return Serializer(self._metadatastore_db, self._asset_registry_db)
+
 
 def _get_database(uri):
     client = pymongo.MongoClient(uri)

@@ -24,7 +24,8 @@ import humanize
 import jinja2
 import time
 from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
-                    DeprecatedDoct, DOCT_NAMES)
+                    DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
+                    describe_configs)
 
 try:
     from types import SimpleNamespace
@@ -847,106 +848,6 @@ class Results(object):
                     if self._data_key in descriptor['data_keys']:
                         yield header
                         break
-
-# Search order is (for unix):
-#   ~/.config/databroker
-#   <sys.executable directory>/../etc/databroker
-#   /etc/databroker
-# And for Windows we only look in:
-#   %APPDATA%/databroker
-
-
-if os.name == 'nt':
-    _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
-    CONFIG_SEARCH_PATH = (_user_conf,)
-else:
-    _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
-    _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
-                              'etc', 'databroker')
-    _system_etc = os.path.join('/', 'etc', 'databroker')
-    CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
-
-if six.PY2:
-    FileNotFoundError = IOError
-
-
-def list_configs():
-    """
-    List the names of the available configuration files.
-
-    Returns
-    -------
-    names : list
-
-    See Also
-    --------
-    :func:`describe_configs`
-    """
-    names = set()
-    for path in CONFIG_SEARCH_PATH:
-        files = glob.glob(os.path.join(path, '*.yml'))
-        names.update([os.path.basename(f)[:-4] for f in files])
-
-    # Do not include _legacy_config.
-    names.discard(SPECIAL_NAME)
-
-    return sorted(names)
-
-
-def describe_configs():
-    """
-    Get the names and descriptions of available configuration files.
-
-    Returns
-    -------
-    configs : dict
-        map names to descriptions (if available)
-
-    See Also
-    --------
-    :func:`list_configs`
-    """
-    return {name: lookup_config(name).get('description')
-            for name in list_configs()}
-
-
-def lookup_config(name):
-    """
-    Search for a databroker configuration file with a given name.
-
-    For exmaple, the name 'example' will cause the function to search for:
-
-    * ``~/.config/databroker/example.yml``
-    * ``{python}/../etc/databroker/example.yml``
-    * ``/etc/databroker/example.yml``
-
-    where ``{python}`` is the location of the current Python binary, as
-    reported by ``sys.executable``. It will use the first match it finds.
-
-    Parameters
-    ----------
-    name : string
-
-    Returns
-    -------
-    config : dict
-    """
-    if not name.endswith('.yml'):
-        name += '.yml'
-    tried = []
-    for path in CONFIG_SEARCH_PATH:
-        filename = os.path.join(path, name)
-        tried.append(filename)
-        if os.path.isfile(filename):
-            with open(filename) as f:
-                return yaml.load(f,
-                                 Loader=getattr(yaml, 'FullLoader',
-                                                yaml.Loader)
-                                 )
-    else:
-        raise FileNotFoundError("No config file named {!r} could be found in "
-                                "the following locations:\n{}"
-                                "".format(name, '\n'.join(tried)))
 
 
 def load_cls(config):
