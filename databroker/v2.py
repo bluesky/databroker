@@ -8,14 +8,10 @@ class Broker(Catalog):
     It includes the option to return, in place of the usual intake Entries,
     v1-compatible Header objects.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._v1 = None
-
     @property
     def v1(self):
         "Accessor to the version 1 API."
-        if self._v1 is None:
+        if not hasattr(self, '_v1'):
             from .v1 import Broker
             self._v1 = Broker(self)
         return self._v1
