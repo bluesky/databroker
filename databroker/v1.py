@@ -189,6 +189,10 @@ class Broker:
         self.filters = {}
         self.reg = Registry(catalog)
 
+    @property
+    def v1(self):
+        return self
+
     @classmethod
     def from_config(cls, config, auto_register=True, name=None):
         return from_config(

@@ -20,6 +20,10 @@ class Broker(Catalog):
             self._v1 = Broker(self)
         return self._v1
 
+    @property
+    def v2(self):
+        return self
+
     def search(self, query):
         catalog = super().search(query)
         return catalog
