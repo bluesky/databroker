@@ -450,7 +450,7 @@ class Broker:
                         for datum in event_model.unpack_datum_page(doc):
                             yield 'datum', self.prepare_hook('datum', datum)
                     else:
-                        yield 'datum', self.prepare_hook('datum', datum)
+                        yield 'datum', self.prepare_hook('datum', doc)
             else:
                 for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
                     if name == 'event_page':
