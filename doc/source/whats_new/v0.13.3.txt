@@ -1,0 +1,23 @@
+.. currentmodule:: databroker
+
+v0.13.3 (2019-08-21)
+--------------------
+
+Enhancements
+++++++++++++
+
+* Replaced deprecated unordered bulk write (requires ``pymongo >= 3.0``).
+
+Documentation
+-------------
+
+* Update the links in the sidebar to point to the Bluesky Project.
+
+Packaging
+---------
+
+* Added missing files in the source distribution for PyPI.
+
+See
+`the v0.13.3 GitHub milestone <https://github.com/bluesky/databroker/milestone/10?closed=1>`_
+for a full enumeration of the changes in this release.
