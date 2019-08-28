@@ -328,3 +328,32 @@ def lookup_config(name):
         raise FileNotFoundError("No config file named {!r} could be found in "
                                 "the following locations:\n{}"
                                 "".format(name, '\n'.join(tried)))
+
+
+def transpose(in_data, keys, field):
+    """Turn a list of dicts into dict of lists
+
+    Parameters
+    ----------
+    in_data : list
+        A list of dicts which contain at least one dict.
+        All of the inner dicts must have at least the keys
+        in `keys`
+
+    keys : list
+        The list of keys to extract
+
+    field : str
+        The field in the outer dict to use
+
+    Returns
+    -------
+    transpose : dict
+        The transpose of the data
+    """
+    out = {k: [None] * len(in_data) for k in keys}
+    for j, ev in enumerate(in_data):
+        dd = ev[field]
+        for k in keys:
+            out[k][j] = dd[k]
+    return out

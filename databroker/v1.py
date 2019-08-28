@@ -25,7 +25,8 @@ except ImportError:
     from toolz.dicttoolz import merge
 
 from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
-                    wrap_in_doct, ensure_path_exists, lookup_config)
+                    wrap_in_doct, ensure_path_exists, lookup_config,
+                    transpose)
 
 
 # The v2 API is expected to grow more options for filled than just True/False
