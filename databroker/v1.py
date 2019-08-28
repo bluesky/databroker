@@ -16,6 +16,7 @@ from types import SimpleNamespace
 import tzlocal
 import xarray
 
+import event_model
 import intake
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
@@ -402,8 +403,8 @@ class Broker:
                 if not len(d['data_keys']) and not len(all_extra_data):
                     continue
 
-            for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
-                if stream_name is not ALL:
+            if stream_name is not ALL:
+                for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
                     # Filter by stream_name.
                     if name == 'descriptor':
                         if doc.get('name', 'primary') == stream_name:
@@ -426,7 +427,40 @@ class Broker:
                             # Skip events that are now empty because they had no
                             # applicable fields.
                             continue
-                yield name, self.prepare_hook(name, doc)
+                        yield name, self.prepare_hook(name, doc)
+                    elif name == 'event_page':
+                        if doc['descriptor'] not in descriptors:
+                            continue
+                        for event in event_model.unpack_event_page(doc):
+                            event_data = event['data']  # cache for perf
+                            desc = event['descriptor']
+                            event_timestamps = event['timestamps']
+                            event_data.update(per_desc_extra_data[desc])
+                            event_timestamps.update(per_desc_extra_ts[desc])
+                            discard_fields = per_desc_discards[desc]
+                            for field in discard_fields:
+                                del event_data[field]
+                                del event_timestamps[field]
+                            if not event_data:
+                                # Skip events that are now empty because they had no
+                                # applicable fields.
+                                continue
+                            yield name, self.prepare_hook(name, event)
+                    elif name == 'datum_page':
+                        for datum in event_model.unpack_datum_page(doc):
+                            yield 'datum', self.prepare_hook('datum', datum)
+                    else:
+                        yield 'datum', self.prepare_hook('datum', datum)
+            else:
+                for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
+                    if name == 'event_page':
+                        for event in event_model.unpack_event_page(doc):
+                            yield 'event', self.prepare_hook('event', event)
+                    elif name == 'datum_page':
+                        for datum in event_model.unpack_datum_page(doc):
+                            yield 'datum', self.prepare_hook('datum', datum)
+                    else:
+                        yield name, self.prepare_hook(name, doc)
 
     def get_events(self,
                    headers, stream_name='primary', fields=None, fill=False,
