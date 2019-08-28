@@ -527,7 +527,7 @@ class Broker:
                 yield doc
 
     def get_table(self,
-                  headers, stream_name='primary', fields=None, fill=None,
+                  headers, stream_name='primary', fields=None, fill=False,
                   handler_registry=None,
                   convert_times=True, timezone=None, localize_times=True):
         """
@@ -597,20 +597,76 @@ class Broker:
                                        "the Broker is initialized, usually specified "
                                        "in a configuration file.")
 
-        if not fill:
-            raise NotImplementedError("The fill argument is no longer "
-                                      "implemented. Use get_documents if you "
-                                      "need external references.")
-
         headers = _ensure_list(headers)
+        # TODO --- Use local time I guess.
+        # if timezone is None:
+        #     timezone = self.mds.config['timezone']
+
+        no_fields_filter = False
+        if fields is None:
+            no_fields_filter = True
+            fields = []
+        fields = set(fields)
+
+        comp_re = _compile_re(fields)
+
         dfs = []
         for header in headers:
-            uid = header.start['uid']
-            df = (self._catalog[uid][stream_name].read()
-                  .to_dataframe()
-                  .set_index('seq_num'))
-            dfs.append(df)
-        return pandas.concat(dfs)
+            descs = header.descriptors
+            start = header.start
+            stop = header.stop
+            descs = [desc for desc in descs if desc.get('name') == stream_name]
+            for descriptor in descs:
+                (all_extra_dk, all_extra_data,
+                all_extra_ts, discard_fields) = _extract_extra_data(
+                    start, stop, descriptor, fields, comp_re, no_fields_filter)
+
+                all_events = [
+                    doc for name, doc in
+                    self.get_documents(header, stream_name=stream_name, fill=fill)
+                    if name == 'event' and
+                    doc['descriptor'] == descriptor['uid']]
+                seq_nums = [ev['seq_num'] for ev in all_events]
+                times = [ev['time'] for ev in all_events]
+                uids = [ev['uid'] for ev in all_events]
+                keys = list(descriptor['data_keys'])
+                data = transpose(all_events, keys, 'data')
+                timestamps = transpose(all_events, keys, 'timestamps')
+
+                df = pandas.DataFrame(index=seq_nums)
+                # if converting to datetime64 (in utc or 'local' tz)
+                if convert_times or localize_times:
+                    times = pandas.to_datetime(times, unit='s')
+                # make sure this is a series
+                times = pandas.Series(times, index=seq_nums)
+
+                # if localizing to 'local' time
+                if localize_times:
+                    times = (times
+                            .dt.tz_localize('UTC')  # first make tz aware
+                            # .dt.tz_convert(timezone)  # convert to 'local'
+                            .dt.tz_localize(None)  # make naive again
+                            )
+
+                df['time'] = times
+                for field, values in data.items():
+                    if field in discard_fields:
+                        continue
+                    df[field] = values
+                if list(df.columns) == ['time']:
+                    # no content
+                    continue
+
+                for field, v in all_extra_data.items():
+                    df[field] = v
+
+                dfs.append(df)
+
+        if dfs:
+            return pandas.concat(dfs)
+        else:
+            # edge case: no data
+            return pandas.DataFrame()
 
     def get_images(self, headers, name,
                    stream_name='primary',
