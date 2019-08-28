@@ -17,4 +17,5 @@ class Broker(Catalog):
 
     @property
     def v2(self):
+        "A self-reference. This makes v1.Broker and v2.Broker symmetric."
         return self

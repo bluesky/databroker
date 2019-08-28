@@ -193,10 +193,17 @@ class Broker:
         self.aliases = {}
         self.filters = {}
         self.reg = Registry(catalog)
+        self.v2._Broker__v1 = self
 
     @property
     def v1(self):
+        "A self-reference. This makes v1.Broker and v2.Broker symmetric."
         return self
+
+    @property
+    def v2(self):
+        "Accessor to the version 2 API."
+        return self._catalog
 
     @classmethod
     def from_config(cls, config, auto_register=True, name=None):
@@ -248,11 +255,6 @@ class Broker:
                 return db
         catalog = getattr(intake.cat, name)
         return Broker(catalog)
-
-    @property
-    def v2(self):
-        "Accessor to the version 2 API."
-        return self._catalog
 
     @property
     def fs(self):
