@@ -14,8 +14,10 @@ matrix:
     addons:
       apt:
         packages:
+          # Some additional packages for the Python nightly
           - libhdf5-serial-dev
           - libnetcdf-dev
+          - libsnappy-dev
           - netcdf-bin
   allow_failures:
     - python: nightly
@@ -24,6 +26,10 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
+addons:
+  apt:
+    packages:
+      - libsnappy-dev
 services:
   - mongodb
 
