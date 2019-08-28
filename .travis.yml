@@ -56,7 +56,7 @@ install:
     fi
 
 script:
-  - coverage run run_tests.py
+  - coverage run -m pytest
   - coverage report -m
   - set -e
   - pip install -r requirements-docs.txt
