@@ -108,7 +108,7 @@ def test_canonical(bundle):
 
     # Smoke test for back-compat alias
     with pytest.warns(UserWarning):
-        next(run.canonical(fill='yes'))
+        next(run.read_canonical())
 
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
                                 inplace=False)
