@@ -30,16 +30,12 @@ if sys.version_info >= (3, 5):
 
 logger = logging.getLogger(__name__)
 
-py3 = pytest.mark.skipif(sys.version_info <= (3, 5),
-                         reason="ophyd requires python 3.5")
-
 
 def test_empty_fixture(db):
     "Test that the db pytest fixture works."
     assert len(list(db())) == 0
 
 
-@py3
 def test_uid_roundtrip(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det]))
@@ -47,7 +43,6 @@ def test_uid_roundtrip(db, RE, hw):
     assert h['start']['uid'] == uid
 
 
-@py3
 def test_no_descriptor_name(db, RE, hw):
     def local_insert(name, doc):
         doc.pop('name', None)
@@ -61,7 +56,6 @@ def test_no_descriptor_name(db, RE, hw):
     assert h.stream_names == ['primary']
 
 
-@py3
 def test_uid_list_multiple_headers(db, RE, hw):
     RE.subscribe(db.insert)
     uids = RE(pchain(count([hw.det]), count([hw.det])))
@@ -69,7 +63,6 @@ def test_uid_list_multiple_headers(db, RE, hw):
     assert uids == tuple([h['start']['uid'] for h in headers])
 
 
-@py3
 def test_no_descriptors(db, RE):
     RE.subscribe(db.insert)
     uid, = RE(count([]))
@@ -77,7 +70,6 @@ def test_no_descriptors(db, RE):
     assert [] == header.descriptors
 
 
-@py3
 def test_get_events(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det]))
@@ -92,14 +84,12 @@ def test_get_events(db, RE, hw):
     assert len(list(h.documents())) == 7 + 3
 
 
-@py3
 def test_get_events_multiple_headers(db, RE, hw):
     RE.subscribe(db.insert)
     headers = db[RE(pchain(count([hw.det]), count([hw.det])))]
     assert len(list(db.get_events(headers))) == 2
 
 
-@py3
 def test_filtering_stream_name(db, RE, hw):
     from ophyd import sim
     # one event stream
@@ -147,7 +137,6 @@ def test_filtering_stream_name(db, RE, hw):
     # assert len(list(db.get_events(h, stream_name='d_monitor'))) == 1
 
 
-@py3
 def test_table_index_name(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det], 5))
@@ -157,7 +146,6 @@ def test_table_index_name(db, RE, hw):
     assert name == 'seq_num'
 
 
-@py3
 def test_get_events_filtering_field(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det], num=7))
@@ -173,7 +161,6 @@ def test_get_events_filtering_field(db, RE, hw):
     assert len(list(db.get_events(headers, fields=['det2']))) == 3
 
 
-@py3
 def test_indexing(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -197,7 +184,6 @@ def test_indexing(db_empty, RE, hw):
         db[-11]
 
 
-@py3
 def test_full_text_search(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -218,7 +204,6 @@ def test_full_text_search(db_empty, RE, hw):
     assert len(list(db('foo'))) == 0
 
 
-@py3
 def test_table_alignment(db, RE, hw):
     # test time shift issue GH9
     RE.subscribe(db.insert)
@@ -227,7 +212,6 @@ def test_table_alignment(db, RE, hw):
     assert table.notnull().all().all()
 
 
-@py3
 def test_scan_id_lookup(db, RE, hw):
     RE.subscribe(db.insert)
 
@@ -245,7 +229,6 @@ def test_scan_id_lookup(db, RE, hw):
     assert uid1 == list(db(scan_id=1, marked=True))[0]['start']['uid']
 
 
-@py3
 def test_partial_uid_lookup(db, RE, hw):
     RE.subscribe(db.insert)
 
@@ -259,7 +242,6 @@ def test_partial_uid_lookup(db, RE, hw):
             db[first_letter]
 
 
-@py3
 def test_find_by_float_time(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -283,7 +265,6 @@ def test_find_by_float_time(db_empty, RE, hw):
     assert header['start']['uid'] == during
 
 
-@py3
 def test_find_by_string_time(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -300,7 +281,6 @@ def test_find_by_string_time(db_empty, RE, hw):
                        until=day_after_tom_str))) == 0
 
 
-@py3
 def test_data_key(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -312,7 +292,6 @@ def test_data_key(db_empty, RE, hw):
     assert len(result2) == 1
 
 
-@py3
 def test_search_for_smoke(db, RE, hw):
     RE.subscribe(db.insert)
     for _ in range(5):
@@ -336,7 +315,6 @@ def test_search_for_smoke(db, RE, hw):
         db[query]
 
 
-@py3
 def test_alias(db, RE, hw):
     RE.subscribe(db.insert)
 
@@ -362,7 +340,6 @@ def test_alias(db, RE, hw):
         db.this_is_not_a_thing
 
 
-@py3
 def test_filters(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
@@ -409,7 +386,6 @@ def test_filters(db_empty, RE, hw):
     with pytest.warns(UserWarning):
         list(db())
 
-@py3
 @pytest.mark.parametrize(
     'key',
     [slice(1, None, None),  # raise because trying to slice by scan id
@@ -428,7 +404,6 @@ def test_raise_value_error_conditions(key, db, RE, hw):
     with pytest.raises(ValueError):
         db[key]
 
-@py3
 @pytest.mark.parametrize(
     'key',
     [4500,  # raise on not finding a header by a scan id
@@ -448,7 +423,6 @@ def test_raise_key_error_conditions(key, db, RE, hw):
 
 
 @pytest.mark.parametrize('method_name', ['restream', 'stream'])
-@py3
 def test_stream(method_name, db, RE, hw):
     RE.subscribe(db.insert)
     uid = RE(count([hw.det]), owner='Dan')
@@ -470,7 +444,6 @@ def test_stream(method_name, db, RE, hw):
     assert 'exit_status' in doc  # Stop
 
 
-@py3
 def test_process(db, RE, hw):
     uid = RE.subscribe(db.insert)
     uid = RE(count([hw.det]))
@@ -483,7 +456,6 @@ def test_process(db, RE, hw):
     assert next(c) == len(list(db.restream(db[uid])))
 
 
-@py3
 def test_get_fields(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det1, hw.det2]))
@@ -496,7 +468,6 @@ def test_get_fields(db, RE, hw):
     assert actual == expected
 
 
-@py3
 def test_configuration(db, RE):
     from ophyd import Device, sim, Component as C
 
@@ -539,7 +510,6 @@ def test_configuration(db, RE):
     assert 'exit_status' in ev['timestamps']
 
 
-@py3
 def test_stream_name(db, RE, hw):
     # subscribe db.insert
     RE.subscribe(db.insert)
@@ -568,7 +538,6 @@ def test_stream_name(db, RE, hw):
     assert h.fields(stream_name='secondary') == {'det2'}
 
 
-@py3
 def test_handler_options(db, RE, hw):
     datum_id = str(uuid.uuid4())
     datum_id2 = str(uuid.uuid4())
@@ -707,7 +676,6 @@ def test_handler_options(db, RE, hw):
     # assert res[0].shape == ImageHandler.RESULT.shape
 
 
-@py3
 def test_export(broker_factory, RE, hw):
     from ophyd import sim
     db1 = broker_factory()
@@ -742,7 +710,6 @@ def test_export(broker_factory, RE, hw):
     image2, = db2.get_images(db2[uid], 'detfs')
 
 
-@py3
 def test_export_noroot(broker_factory, RE, tmpdir, hw):
     from ophyd import sim
 
@@ -799,7 +766,6 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
         assert np.array_equal(im1, im2)
 
 
-@py3
 def test_export_size_smoke(broker_factory, RE, tmpdir):
     from ophyd import sim
     db1 = broker_factory()
@@ -820,7 +786,6 @@ def test_export_size_smoke(broker_factory, RE, tmpdir):
     assert size > 0.
 
 
-@py3
 def test_results_multiple_iters(db, RE, hw):
     RE.subscribe(db.insert)
     RE(count([hw.det]))
@@ -833,7 +798,6 @@ def test_results_multiple_iters(db, RE, hw):
 
 
 @pytest.mark.skip(reason='headers are rich objects now')
-@py3
 def test_dict_header(db, RE, hw):
     # Ensure that we aren't relying on h being a doct as opposed to a dict.
     RE.subscribe(db.insert)
@@ -850,7 +814,6 @@ def test_dict_header(db, RE, hw):
         h['events']
 
 
-@py3
 def test_config_data(db, RE, hw):
     # simple case: one Event Descriptor, one stream
     RE.subscribe(db.insert)
@@ -903,7 +866,6 @@ def test_config_data(db, RE, hw):
     assert actual == expected
 
 
-@py3
 def test_events(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det]))
@@ -924,7 +886,6 @@ def _get_docs(h):
     return docs
 
 
-@py3
 def test_prepare_hook_default(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det]))
@@ -939,7 +900,6 @@ def test_prepare_hook_default(db, RE, hw):
         assert isinstance(doc, doct.Document)
 
 
-@py3
 def test_prepare_hook_old_style(db, RE, hw):
     # configure to return old-style doct.Document objects
     db.prepare_hook = wrap_in_doct
@@ -954,7 +914,6 @@ def test_prepare_hook_old_style(db, RE, hw):
             assert isinstance(doc, doct.Document)
 
 
-@py3
 def test_prepare_hook_deep_copy(db, RE, hw):
     # configure to return plain dicts
     db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
@@ -968,7 +927,6 @@ def test_prepare_hook_deep_copy(db, RE, hw):
             assert not isinstance(doc, doct.Document)
 
 
-@py3
 def test_prepare_hook_raw(db, RE, hw):
     # configure to return plain dicts
     db.prepare_hook = lambda name, doc: doc
@@ -1006,7 +964,6 @@ def test_deprecated_doct():
     assert not record  # i.e. assert no warning
 
 
-@py3
 def test_ingest_array_data(db_empty, RE):
     db = db_empty
     RE.subscribe(db.insert)
@@ -1043,7 +1000,6 @@ def test_ingest_array_data(db_empty, RE):
     RE(count([det]))
 
 
-@py3
 def test_ingest_array_metadata(db, RE):
     RE.subscribe(db.insert)
 
@@ -1062,7 +1018,6 @@ def test_ingest_array_metadata(db, RE):
     RE(count([]), mask=np.ones((3, 3, 3)))
 
 
-@py3
 def test_deprecated_stream_method(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det]))
@@ -1075,7 +1030,6 @@ def test_deprecated_stream_method(db, RE, hw):
     assert actual == expected
 
 
-@py3
 def test_data_method(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det, hw.det2], 5))
@@ -1140,7 +1094,6 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     assert isinstance(doc['stuff'], np.ndarray)
 
 
-@py3
 def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
     from ophyd import sim
     RE.subscribe(db.insert)
@@ -1166,7 +1119,6 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
     list(h.documents(stream_name=ALL, fill=True))
 
 
-@py3
 def test_repr_html(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det], 5))
@@ -1176,7 +1128,6 @@ def test_repr_html(db, RE, hw):
     h._repr_html_()
 
 
-@py3
 def test_externals(db, RE, hw):
     def external_fetcher(start, stop):
         return start['uid']
@@ -1190,7 +1141,6 @@ def test_externals(db, RE, hw):
     assert h.ext.suid == h.start['uid']
 
 
-@py3
 def test_monitoring(db, RE, hw):
     # A monitored signal emits Events from its subscription thread, which
     # silently failed on the sqlite backend until it was refactored to make
@@ -1218,7 +1168,6 @@ def test_interlace_gens():
         assert z['time'] == zz
 
 
-@py3
 def test_order(db, RE, hw):
     from ophyd import sim
     RE.subscribe(db.insert)
@@ -1235,7 +1184,6 @@ def test_order(db, RE, hw):
             t0 = t1
 
 
-@py3
 def test_res_datum(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
     import copy
@@ -1262,7 +1210,6 @@ def test_res_datum(db, RE, hw):
     assert names == set(DOCT_NAMES.keys())
 
 
-@py3
 def test_filtering_fields(db, RE, hw):
     from bluesky.preprocessors import run_decorator
     from bluesky.plan_stubs import trigger_and_read
@@ -1292,7 +1239,6 @@ def test_filtering_fields(db, RE, hw):
                 assert set(doc['data']) == set(fields)
 
 
-@py3
 def resource_roundtrip(broker_factory, RE, hw):
     db = broker_factory()
     db2 = broker_factory()
