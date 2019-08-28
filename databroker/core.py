@@ -478,7 +478,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
         """
         for i in range(self.npartitions):
-            for name, doc in self._get_partition((i, fill)):
+            for name, doc in self._get_partition({'index': i, 'fill': fill}):
                 yield name, doc
 
     def read_canonical(self):
