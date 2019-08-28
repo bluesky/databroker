@@ -282,6 +282,3 @@ def _get_database(uri):
         raise ValueError(
             f"Invalid client: {client} "
             f"Did you forget to include a database?") from err
-
-
-intake.registry['mongo_metadatastore'] = BlueskyMongoCatalog

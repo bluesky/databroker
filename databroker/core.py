@@ -1115,7 +1115,7 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-intake.registry['remote-bluesky-run'] = RemoteBlueskyRun
+# TODO Do we actually need this?
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
 
