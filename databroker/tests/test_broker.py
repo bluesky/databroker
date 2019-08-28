@@ -616,10 +616,11 @@ def test_handler_options(db, RE, hw):
             return 'dummy'
 
     # Use a one-off handler registry.
-
-    with pytest.raises(NotImplementedError):
-        ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'],
-                            fill=True, handler_registry= {'foo': ImageHandler})
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'],
+                                    fill=True,
+                                    handler_registry= {'foo': ImageHandler})
 
     # Statefully register the handler.
     db.reg.register_handler('foo', ImageHandler)
@@ -638,11 +639,13 @@ def test_handler_options(db, RE, hw):
     assert not ev['filled']['image']
     datum = ev['data']['image']
 
-    with pytest.raises(NotImplementedError):
-        ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
 
-    with pytest.raises(NotImplementedError):
-        ev2_filled = db.fill_event(ev2, inplace=False)
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            ev2_filled = db.fill_event(ev2, inplace=False)
 
     # table with fill=False (default)
     table = db.get_table(h, stream_name='injected', fields=['image'])
