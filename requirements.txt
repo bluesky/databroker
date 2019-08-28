@@ -19,6 +19,7 @@ pyyaml
 requests
 six
 suitcase-mongo  # for back-compat to support insert()
+suitcase-msgpack  # for back-compat to support insert on Broker.named('temp')
 tifffile
 toolz
 tzlocal
