@@ -617,11 +617,9 @@ def test_handler_options(db, RE, hw):
 
     # Use a one-off handler registry.
 
-    db._catalog.filler.handler_registry = {'foo': ImageHandler}
-    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'],
-                            fill=True)
-    assert ev['data']['image'].shape == ImageHandler.RESULT.shape
-    assert ev['filled']['image']
+    with pytest.raises(NotImplementedError):
+        ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'],
+                            fill=True, handler_registry= {'foo': ImageHandler})
 
     # Statefully register the handler.
     db.reg.register_handler('foo', ImageHandler)
@@ -639,15 +637,12 @@ def test_handler_options(db, RE, hw):
     assert ev['filled'] is not ev2['filled']
     assert not ev['filled']['image']
     datum = ev['data']['image']
-    ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
-    assert ev['filled']['image'] == datum
-    assert not ev2['filled']['image']
-    ev2_filled = db.fill_event(ev2, inplace=False)
-    assert ev2_filled['filled']['image'] == ev2['data']['image']
-    ev_ret2 = db.fill_events([ev], h.descriptors, inplace=True)
-    ev_ret3 = db.fill_events(ev_ret2, h.descriptors, inplace=True)
-    ev = next(ev_ret3)
-    assert ev['filled']['image'] == datum
+
+    with pytest.raises(NotImplementedError):
+        ev_ret, = db.fill_events([ev], h.descriptors, inplace=True)
+
+    with pytest.raises(NotImplementedError):
+        ev2_filled = db.fill_event(ev2, inplace=False)
 
     # table with fill=False (default)
     table = db.get_table(h, stream_name='injected', fields=['image'])
@@ -655,8 +650,8 @@ def test_handler_options(db, RE, hw):
     assert isinstance(datum_id, str)
 
     # table with fill=True
-    table = db.get_table(h, stream_name='injected', fields=['image'],
-                         fill=True)
+    table = db.get_table(h, stream_name='injected',
+                         fields=['image'], fill=True)
     img = table['image'].iloc[0]
     assert not isinstance(img, str)
     assert img.shape == ImageHandler.RESULT.shape

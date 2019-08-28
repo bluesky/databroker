@@ -526,7 +526,7 @@ class Broker:
                 yield doc
 
     def get_table(self,
-                  headers, stream_name='primary', fields=None, fill=False,
+                  headers, stream_name='primary', fields=None, fill=None,
                   handler_registry=None,
                   convert_times=True, timezone=None, localize_times=True):
         """
@@ -596,6 +596,11 @@ class Broker:
                                        "the Broker is initialized, usually specified "
                                        "in a configuration file.")
 
+        if not fill:
+            raise NotImplementedError("The fill argument is no longer "
+                                      "implemented. Use get_documents if you "
+                                      "need external references.")
+
         headers = _ensure_list(headers)
         dfs = []
         for header in headers:
@@ -638,7 +643,7 @@ class Broker:
             raise NotImplementError(
                 "The handler_registry parameter is no longer supported "
                 "and must be None.")
-        dataset = xarray.concat(datasets)
+        dataset = xarray.merge(datasets)
         data_array = dataset[name]
         return Images(data_array=data_array)
 
@@ -933,8 +938,17 @@ class Broker:
         if name == 'stop':
             self._catalog.force_reload()
 
+    def fill_event(*args, **kwargs):
+        raise NotImplementedError("This method is no longer supported. If you "
+                                  "need this please contact the developers by "
+                                  "opening an issue here: "
+                                  "https://github.com/bluesky/databroker/issues/new ")
 
-
+    def fill_events(*args, **kwargs):
+        raise NotImplementedError("This method is no longer supported. If you "
+                                  "need this please contact the developers by "
+                                  "opening an issue here: "
+                                  "https://github.com/bluesky/databroker/issues/new ")
 class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
