@@ -14,7 +14,6 @@ import doct
 import pandas as pd
 import sys
 import os
-import yaml
 import glob
 import tempfile
 import copy

@@ -7,6 +7,8 @@ import six
 import sys
 import warnings
 
+import yaml
+
 
 class ALL:
     "Sentinel used as the default value for stream_name"
