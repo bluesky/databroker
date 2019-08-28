@@ -415,6 +415,7 @@ class Broker:
                     if name == 'descriptor':
                         if doc.get('name', 'primary') == stream_name:
                             descriptors.add(doc['uid'])
+                            yield name, self.prepare_hook(name, doc)
                         else:
                             continue
                     elif name == 'event':
