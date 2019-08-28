@@ -457,6 +457,8 @@ class Broker:
                             yield 'datum', self.prepare_hook('datum', datum)
                     elif name == 'datum':
                         yield 'datum', self.prepare_hook('datum', doc)
+                    else:
+                        yield name, self.prepare_hook(name, doc)
             else:
                 for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
                     if name == 'event_page':
