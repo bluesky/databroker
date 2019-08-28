@@ -236,7 +236,6 @@ class DuplicateHandler(RuntimeError):
 # And for Windows we only look in:
 #   %APPDATA%/databroker
 
-
 if os.name == 'nt':
     _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
     CONFIG_SEARCH_PATH = (_user_conf,)
@@ -246,6 +245,10 @@ else:
                               'etc', 'databroker')
     _system_etc = os.path.join('/', 'etc', 'databroker')
     CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
+
+SPECIAL_NAME = '_legacy_config'
+if 'DATABROKER_TEST_MODE' in os.environ:
+    SPECIAL_NAME = '_test_legacy_config'
 
 
 def list_configs():

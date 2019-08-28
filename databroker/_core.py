@@ -24,7 +24,7 @@ import jinja2
 import time
 from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
                     DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
-                    describe_configs)
+                    describe_configs, SPECIAL_NAME)
 
 try:
     from types import SimpleNamespace
@@ -62,10 +62,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-SPECIAL_NAME = '_legacy_config'
-if 'DATABROKER_TEST_MODE' in os.environ:
-    SPECIAL_NAME = '_test_legacy_config'
 
 
 class InvalidDocumentSequence(Exception):
