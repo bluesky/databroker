@@ -466,15 +466,19 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self, fill):
+    def canonical(self, *, fill):
         """
-        Yields a BlueskyRun in the order it was produced.
+        Yields documents from this Run in chronological order.
 
         Parameters
         ----------
-        fill: str
-            If fill is 'yes' the BlueskyRun will be filled.
-            If fill is 'no' the BlueskyRun will not be filled.
+        fill: {'yes', 'no'}
+            If fill is 'yes', any external data referenced by Event documents
+            will be filled in (e.g. images as numpy arrays). This is typically
+            the desired option for *using* the data.
+            If fill is 'no', the Event documents will contain foreign keys as
+            placeholders for the data. This option is useful for exporting
+            copies of the documents.
 
         """
         for i in range(self.npartitions):
@@ -643,15 +647,19 @@ class BlueskyRun(intake.catalog.Catalog):
                 catalog=self)
 
 
-    def canonical(self, fill):
+    def canonical(self, *, fill):
         """
-        Yields a BlueskyRun in the order it was produced.
+        Yields documents from this Run in chronological order.
 
         Parameters
         ----------
-        fill: str
-            If fill is 'yes' the BlueskyRun will be filled.
-            If fill is 'no' the BlueskyRun will not be filled.
+        fill: {'yes', 'no'}
+            If fill is 'yes', any external data referenced by Event documents
+            will be filled in (e.g. images as numpy arrays). This is typically
+            the desired option for *using* the data.
+            If fill is 'no', the Event documents will contain foreign keys as
+            placeholders for the data. This option is useful for exporting
+            copies of the documents.
 
         """
         for i in range(self.npartitions):
