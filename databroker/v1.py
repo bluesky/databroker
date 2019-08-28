@@ -299,7 +299,7 @@ class Broker:
             return [self[index]
                     for index in reversed(range(key.start, key.stop or 0, key.step or 1))]
         entry = self._catalog[key]
-        return Header(entry)
+        return Header(entry, self)
 
     get_fields = staticmethod(get_fields)
 
@@ -871,10 +871,10 @@ class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
     """
-    def __init__(self, entry):
+    def __init__(self, entry, broker):
         self._entry = entry
         self.__data_source = None
-        self.db = entry.catalog_object.v1
+        self.db = broker
         self.ext = None  # TODO
         self._start = entry.describe()['metadata']['start']
         self._stop = entry.describe()['metadata']['stop']
@@ -1268,7 +1268,7 @@ class Results:
     def __iter__(self):
         # TODO Catalog.walk() fails. We should probably support Catalog.items().
         for uid, entry in self._catalog._entries.items():
-            header = Header(entry)
+            header = Header(entry, self._broker)
             if self._data_key is None:
                 yield header
             else:

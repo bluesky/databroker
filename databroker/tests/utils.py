@@ -22,18 +22,16 @@ import suitcase.mongo_embedded
 
 def build_intake_jsonl_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
-    catalog = jsonl.BlueskyJSONLCatalog(
+    broker = jsonl.BlueskyJSONLCatalog(
         f"{tmp_dir.name}/*.jsonl",
         name='test',
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    serializer = catalog._get_serializer()
-    db = v1.Broker(catalog, serializer=serializer)
 
     def teardown():
         tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
-    return db
+    return broker.v1
 
 
 def build_intake_mongo_backed_broker(request):

@@ -10,7 +10,7 @@ class Broker(Catalog):
     @property
     def v1(self):
         "Accessor to the version 1 API."
-        if not hasattr(self, '_v1'):
+        if not hasattr(self, '_Broker__v1'):
             from .v1 import Broker
             self.__v1 = Broker(self)
         return self.__v1
