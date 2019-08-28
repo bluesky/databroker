@@ -1,12 +1,12 @@
 from datetime import datetime
-import doct
-import numpy as np
+import glob
 import os
-import pytz
-import six
 import sys
 import warnings
 
+import doct
+import numpy as np
+import pytz
 import yaml
 
 
@@ -15,19 +15,8 @@ class ALL:
     pass
 
 
-if six.PY2:
-    # http://stackoverflow.com/a/5032238/380231
-    def ensure_path_exists(path, exist_ok=True):
-        import errno
-        try:
-            os.makedirs(path)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST or not exist_ok:
-                raise
-else:
-    # technically, this won't work with py3.1, but no one uses that
-    def ensure_path_exists(path, exist_ok=True):
-        return os.makedirs(path, exist_ok=exist_ok)
+def ensure_path_exists(path, exist_ok=True):
+    return os.makedirs(path, exist_ok=exist_ok)
 
 
 def sanitize_np(val):
@@ -107,7 +96,7 @@ def normalize_human_friendly_time(val, tz):
     epoch = pytz.UTC.localize(datetime(1970, 1, 1))
     check = True
 
-    if isinstance(val, six.string_types):
+    if isinstance(val, str):
         # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but
         # doesn't get TZ?
 
@@ -257,9 +246,6 @@ else:
                               'etc', 'databroker')
     _system_etc = os.path.join('/', 'etc', 'databroker')
     CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
-
-if six.PY2:
-    FileNotFoundError = IOError
 
 
 def list_configs():

@@ -858,7 +858,7 @@ class Broker:
         total_size = 0
         for header in headers:
             run = self._catalog[header.start['uid']]
-            for name, doc in self._catalog[header.start['uid']].canonical_unfilled():
+            for name, doc in self._catalog[header.start['uid']].canonical(fill='no'):
                 if name == 'resource':
                     for filepath in run.get_file_list(doc):
                         total_size += os.path.getsize(filepath)
