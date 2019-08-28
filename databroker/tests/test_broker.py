@@ -568,7 +568,6 @@ def test_stream_name(db, RE, hw):
     assert h.fields(stream_name='secondary') == {'det2'}
 
 
-@pytest.mark.skip(reason='temp')
 @py3
 def test_handler_options(db, RE, hw):
     datum_id = str(uuid.uuid4())
@@ -1141,80 +1140,6 @@ def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     assert isinstance(doc['stuff'], np.ndarray)
 
 
-@pytest.mark.skip(reason='temp')
-@py3
-def test_extraneous_filled_stripped_on_insert(db, RE, hw):
-
-    # TODO It would be better if this errored, but at the moment
-    # this would required looking up the event descriptor.
-
-    # Hack the Event so it does not match its Event Descriptor.
-    def insert(name, doc):
-        if name == 'event':
-            doc['filled'] = {'det': False}
-            assert 'filled' in doc
-        db.insert(name, doc)
-
-    RE.subscribe(insert)
-
-    uid, = RE(count([hw.det]))
-    h = db[uid]
-
-    # expect event['filled'] == {}
-    for ev in h.events():
-        assert not ev['filled']
-
-
-@pytest.mark.skip(reason='temp')
-@py3
-def test_filled_false_stripped_on_insert(db, RE, hw):
-    datum_id_list = []
-
-    # Hack the Event and the Descriptor consistently.
-    def insert(name, doc):
-        if name == 'event':
-            datum_id_list.append(doc['data']['img'])
-            assert 'filled' in doc
-        db.insert(name, doc)
-
-    RE.subscribe(insert)
-
-    uid, = RE(count([hw.img]))
-    h = db[uid]
-
-    # expect event['filled'] == {'det': False}
-    for ev in h.events():
-        assert 'img' in ev['filled']
-        assert not ev['filled']['img']
-        assert ev['data']['img'] == datum_id_list[-1]
-
-
-@pytest.mark.skip(reason='temp')
-@py3
-def test_filled_true_rotated_on_insert(db, RE, hw):
-    datum_id_list = []
-
-    # Hack the Event and the Descriptor consistently.
-    def insert(name, doc):
-        if name == 'event':
-            datum_id_list.append(doc['data']['img'])
-            doc['filled'] = {'img': doc['data']['img']}
-            assert 'filled' in doc
-        db.insert(name, doc)
-
-    RE.subscribe(insert)
-
-    uid, = RE(count([hw.img]))
-    h = db[uid]
-
-    # expect event['filled'] == {'det': False}
-    for ev in h.events():
-        assert 'img' in ev['filled']
-        assert not ev['filled']['img']
-        assert ev['data']['img'] == datum_id_list[-1]
-
-
-@pytest.mark.skip(reason='temp')
 @py3
 def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
     from ophyd import sim
@@ -1301,17 +1226,15 @@ def test_order(db, RE, hw):
     uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1), [d]))
 
     t0 = None
-
     for name, doc in db[uid].documents():
         # TODO: include datums in here at some point
         if name in ['event']:
             t1 = doc['time']
-            if t0 :
+            if t0:
                 assert t1 > t0
             t0 = t1
 
 
-@pytest.mark.skip(reason='temp')
 @py3
 def test_res_datum(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
@@ -1339,7 +1262,6 @@ def test_res_datum(db, RE, hw):
     assert names == set(DOCT_NAMES.keys())
 
 
-@pytest.mark.skip(reason='temp')
 @py3
 def test_filtering_fields(db, RE, hw):
     from bluesky.preprocessors import run_decorator
