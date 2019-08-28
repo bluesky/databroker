@@ -544,13 +544,23 @@ def test_handler_options(db, RE, hw):
     desc_uid = str(uuid.uuid4())
     event_uid = str(uuid.uuid4())
     event_uid2 = str(uuid.uuid4())
+    res_uid = str(uuid.uuid4())
+    res_uid2 = str(uuid.uuid4())
 
     # Side-band resource and datum documents.
-    res = db.reg.insert_resource('foo', '', {'x': 1})
-    db.reg.insert_datum(res, datum_id, {'y': 2})
+    res = db.insert('resource', {'spec': 'foo', 'resource_path': '',
+                                 'resource_kwargs': {'x': 1},
+                                 'uid': res_uid, 'path_semantics': 'posix'})
 
-    res2 = db.reg.insert_resource('foo', '', {'x': 1})
-    db.reg.insert_datum(res2, datum_id2, {'y': 2})
+    db.insert('datum', {'resource': res_uid, 'datum_id': datum_id,
+                        'datum_kwargs': {'y': 2}})
+
+    res2 = db.insert('resource', {'spec': 'foo', 'resource_path': '',
+                                 'resource_kwargs': {'x': 1},
+                                 'uid': res_uid2, 'path_semantics': 'posix'})
+
+    db.insert('datum', {'resource': res_uid2, 'datum_id': datum_id2,
+                        'datum_kwargs': {'y': 2}})
 
     # Generate a normal run.
     RE.subscribe(db.insert)
@@ -559,17 +569,20 @@ def test_handler_options(db, RE, hw):
     # Side band an extra descriptor and event into this run.
     data_keys = {'image': {'dtype': 'array', 'source': '', 'shape': [5, 5],
                            'external': 'FILESTORE://simulated'}}
-    db.mds.insert_descriptor(run_start=rs_uid, data_keys=data_keys,
-                             time=ttime.time(), uid=desc_uid,
-                             name='injected')
-    db.mds.insert_event(descriptor=desc_uid, time=ttime.time(), uid=event_uid,
-                        data={'image': datum_id},
-                        timestamps={'image': ttime.time()}, seq_num=0)
 
-    db.mds.insert_event(descriptor=desc_uid, time=ttime.time(), uid=event_uid2,
-                        data={'image': datum_id2},
-                        timestamps={'image': ttime.time()}, seq_num=0)
+    db.insert('descriptor', {'run_start': rs_uid, 'data_keys': data_keys,
+                             'time':ttime.time(), 'uid':desc_uid,
+                             'name': 'injected'})
 
+    db.insert('event', {'uid': event_uid, 'data': {'image': datum_id},
+                        'timestamps': {'image': ttime.time()},
+                        'time': ttime.time(), 'descriptor': desc_uid,
+                        'seq_num': 0 })
+
+    db.insert('event', {'uid': event_uid2, 'data': {'image': datum_id2},
+                        'timestamps': {'image': ttime.time()},
+                        'time': ttime.time(), 'descriptor': desc_uid,
+                        'seq_num': 0 })
     h = db[rs_uid]
 
     # Get unfilled event.
