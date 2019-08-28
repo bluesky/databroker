@@ -22,64 +22,34 @@ import suitcase.mongo_embedded
 
 def build_intake_jsonl_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
+
+    def teardown():
+        tmp_dir.cleanup()
+
+    request.addfinalizer(teardown)
     broker = jsonl.BlueskyJSONLCatalog(
         f"{tmp_dir.name}/*.jsonl",
         name='test',
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-
-    def teardown():
-        tmp_dir.cleanup()
-
-    request.addfinalizer(teardown)
     return broker.v1
 
 
 def build_intake_mongo_backed_broker(request):
-    tmp_dir = tempfile.TemporaryDirectory()
-    tmp_path = tmp_dir.name
-    catalog_path = Path(tmp_path) / 'catalog.yml'
     box = mongobox.MongoBox()
     box.start()
     client = box.client()
-    with open(catalog_path, 'w') as file:
-        file.write(f"""
-sources:
-  xyz:
-    description: Some imaginary beamline
-    driver: "bluesky-mongo-normalized-catalog"
-    container: catalog
-    args:
-      metadatastore_db: mongodb://{client.address[0]}:{client.address[1]}/mds
-      asset_registry_db: mongodb://{client.address[0]}:{client.address[1]}/assets
-      handler_registry:
-        NPY_SEQ: ophyd.sim.NumpySeqHandler
-    metadata:
-      beamline: "00-ID"
-""")
 
     def teardown():
         "Delete temporary MongoDB data directory."
         box.stop()
-        tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
-    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
-    serializer = None
-
-    def insert(name, doc):
-        nonlocal serializer
-        if name == 'start':
-            if serializer is not None:
-                # serializer.close()
-                ...
-            serializer = suitcase.mongo_normalized.Serializer(client['mds'],
-                                                           client['assets'])
-        serializer(name, doc)
-        if name == 'stop':
-            db._catalog.reload()
-
-    db.insert = insert
-    return db
+    broker = mongo_normalized.BlueskyMongoCatalog(
+        client['mds'],
+        client['assets'],
+        name='test',
+        handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    return broker.v1
 
 def build_intake_mongo_embedded_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
