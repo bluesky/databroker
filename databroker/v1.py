@@ -410,7 +410,7 @@ class Broker:
                     continue
 
             if stream_name is not ALL:
-                for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
+                for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
                     # Filter by stream_name.
                     if name == 'descriptor':
                         if doc.get('name', 'primary') == stream_name:
@@ -460,7 +460,7 @@ class Broker:
                     else:
                         yield name, self.prepare_hook(name, doc)
             else:
-                for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
+                for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
                     if name == 'event_page':
                         for event in event_model.unpack_event_page(doc):
                             yield 'event', self.prepare_hook('event', event)
@@ -1232,8 +1232,6 @@ class Header:
         ------
         data
         """
-        if fill:
-            fill = {field}
         for event in self.events(stream_name=stream_name,
                                  fields=[field],
                                  fill=fill):
