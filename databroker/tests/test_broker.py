@@ -1202,7 +1202,7 @@ def test_res_datum(db, RE, hw):
         assert n1 == n2
         # It seems that some of the documents don't have key parity
         if n1 == 'resource':
-            d1.pop('id')
+            d1.pop('id', None)
         if n1 == 'stop':
             d2.pop('reason')
         # don't run direct equality because db changes tuple to list

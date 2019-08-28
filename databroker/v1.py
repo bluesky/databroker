@@ -27,6 +27,11 @@ from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
                     wrap_in_doct, ensure_path_exists, lookup_config)
 
 
+# The v2 API is expected to grow more options for filled than just True/False
+# (e.g. 'delayed') so it expects a string instead of a boolean.
+_FILL = {True: 'yes', False: 'no'}
+
+
 def temp():
     from databroker._drivers.msgpack import BlueskyMsgpackCatalog
     handler_registry = {}
@@ -397,7 +402,7 @@ class Broker:
                 if not len(d['data_keys']) and not len(all_extra_data):
                     continue
 
-            for name, doc in self._catalog[uid].canonical(fill='yes'):
+            for name, doc in self._catalog[uid].canonical(fill=_FILL[fill]):
                 if stream_name is not ALL:
                     # Filter by stream_name.
                     if name == 'descriptor':
