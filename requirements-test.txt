@@ -10,6 +10,7 @@ ophyd
 pathlib
 pyqt5
 pytest >=3.9
+pytest-env
 sphinx
 suitcase-jsonl >=0.1.0b2
 suitcase-mongo >=0.1.0
