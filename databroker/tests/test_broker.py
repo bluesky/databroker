@@ -616,10 +616,10 @@ def test_handler_options(db, RE, hw):
             return 'dummy'
 
     # Use a one-off handler registry.
-    ev, ev2 = db.get_events(h,
-                            stream_name='injected', fields=['image'],
-                            fill=True,
-                            handler_registry={'foo': ImageHandler})
+
+    db._catalog.filler.handler_registry = {'foo': ImageHandler}
+    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'],
+                            fill=True)
     assert ev['data']['image'].shape == ImageHandler.RESULT.shape
     assert ev['filled']['image']
 

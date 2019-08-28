@@ -366,6 +366,11 @@ class Broker:
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
+        if handler_registry is not None:
+            raise NotImplementedError("The handler_registry must be set when "
+                                       "the Broker is initialized, usually specified "
+                                       "in a configuration file.")
+
         headers = _ensure_list(headers)
 
         no_fields_filter = False
@@ -505,6 +510,13 @@ class Broker:
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
+
+        if handler_registry is not None:
+            raise NotImplementedError("The handler_registry must be set when "
+                                       "the Broker is initialized, usually specified "
+                                       "in a configuration file.")
+
+
         for name, doc in self.get_documents(headers,
                                             fields=fields,
                                             stream_name=stream_name,
@@ -578,6 +590,12 @@ class Broker:
         -------
         table : pandas.DataFrame
         """
+
+        if handler_registry is not None:
+            raise NotImplementedError("The handler_registry must be set when "
+                                       "the Broker is initialized, usually specified "
+                                       "in a configuration file.")
+
         headers = _ensure_list(headers)
         dfs = []
         for header in headers:
