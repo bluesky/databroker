@@ -1144,11 +1144,14 @@ def concat_dataarray_pages(dataarray_pages):
     return {'descriptor': pages[0]['descriptor'],
             **{key: list(itertools.chain.from_iterable(
                     [page[key] for page in pages])) for key in array_keys},
-            'data': {key: xarray.concat([page['data'][key] for page in pages])
+            'data': {key: xarray.concat([page['data'][key] for page in pages],
+                                        dim='concat_dim')
                      for key in data_keys},
-            'timestamps': {key: xarray.concat([page['timestamps'][key] for page in pages])
+            'timestamps': {key: xarray.concat([page['timestamps'][key]
+                                              for page in pages], dim='concat_dim')
                            for key in data_keys},
-            'filled': {key: xarray.concat([page['filled'][key] for page in pages])
+            'filled': {key: xarray.concat([page['filled'][key]
+                                          for page in pages], dim='concat_dim')
                        for key in data_keys}}
 
 
