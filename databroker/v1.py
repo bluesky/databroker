@@ -666,10 +666,12 @@ class Broker:
                 dfs.append(df)
 
         if dfs:
-            return pandas.concat(dfs)
+            result = pandas.concat(dfs)
         else:
             # edge case: no data
-            return pandas.DataFrame()
+            result = pandas.DataFrame()
+        result.index.name = 'seq_num'
+        return result
 
     def get_images(self, headers, name,
                    stream_name='primary',
