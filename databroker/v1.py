@@ -1608,38 +1608,58 @@ def _get_mongo_client(host, port):
     return client
 
 
-class _GetDocumentsRouter(event_model.DocumentRouter):
-    "This is used by Broker.get_documents."
+class _GetDocumentsRouter:
+    """
+    This is used by Broker.get_documents.
+
+    It employs a pattern similar to event_model.DocumentRouter, but the methods
+    are generators instead of functions.
+    """
     def __init__(self, prepare_hook, merge_config_into_event, stream_name):
         self.prepare_hook = prepare_hook
         self.merge_config_into_event = merge_config_into_event
         self.stream_name = stream_name
         self._descriptors = set()
 
-    def __call__(self, name, doc, validate=False):
-        new_doc = super().__call__(name, doc, validate=validate)
-        if new_doc:
-            if name == 'datum_page':
-                for doc in event_model.unpack_datum_page(new_doc):
-                    yield name, self.prepare_hook('datum', doc)
-            elif name == 'event_page':
-                for doc in event_model.unpack_event_page(new_doc):
-                    yield name, self.prepare_hook('event',
-                                            merge_config_into_event(doc))
-            else:
-                yield name, self.prepare_hook(name, new_doc)
+    def __call__(self, name, doc):
+        for new_name, new_doc in getattr(self, name)(doc):
+            yield new_name, self.prepare_hook(new_name, new_doc)
 
     def descriptor(self, doc):
-        if self.stream_name:
-            if doc.get('name', 'primary') == stream_name:
-                self._descriptors.add(doc['uid'])
-        else:
+        "Cache descriptor uid and pass document through."
+        if self.stream_name is ALL or doc.get('name', 'primary') == self.stream_name:
             self._descriptors.add(doc['uid'])
-        return doc
-
-    def event(self, doc):
-        return (merge_config_into_event(doc) if doc['descriptor']
-                                    in self._descriptors else None)
+        yield 'descriptor', doc
 
     def event_page(self, doc):
-        return doc if doc['descriptor'] in self._descriptors else None
+        "Unpack into events and pass them to event method for more processing."
+        if doc['descriptor'] in self._descriptors:
+            for event in event_model.unpack_event_page(event):
+                yield from self.event(event)
+
+    def event(self, doc):
+        "Apply merge_config_into_event."
+        if doc['descriptor'] in self._descriptors:
+            # Mutate event in place, merging in content from other documents
+            # and discarding fields excluded by the user.
+            self.merge_config_into_event(doc)
+            # If the mutation above leaves event['data'] empty, omit it.
+            if doc['data']:
+                yield 'event', doc
+
+    def datum_page(self, doc):
+        "Unpack into datum."
+        for datum in event_model.unpack_datum_page(doc):
+            yield 'datum', datum
+
+    def datum(self, doc):
+        yield 'datum', doc
+
+    def start(self, doc):
+        yield 'start', doc
+
+    def stop(self, doc):
+        yield 'stop', doc
+
+    def resource(self, doc):
+        yield 'resource', doc
