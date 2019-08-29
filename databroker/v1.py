@@ -1626,10 +1626,10 @@ class _GetDocumentsRouter:
             yield new_name, self.prepare_hook(new_name, new_doc)
 
     def descriptor(self, doc):
-        "Cache descriptor uid and pass document through."
+        "Cache descriptor uid and pass it through if it is stream of interest."
         if self.stream_name is ALL or doc.get('name', 'primary') == self.stream_name:
             self._descriptors.add(doc['uid'])
-        yield 'descriptor', doc
+            yield 'descriptor', doc
 
     def event_page(self, doc):
         "Unpack into events and pass them to event method for more processing."
