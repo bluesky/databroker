@@ -37,6 +37,9 @@ param_map = {'sqlite': build_sqlite_backed_broker,
              'intake_mongo': build_intake_mongo_backed_broker,
              # 'intake_mongo_embedded': build_intake_mongo_embedded_backed_broker,
              }
+if os.environ.get('INCLUDE_V0_SERVICE_TESTS') == '1':
+    param_map['client'] = build_client_backend_broker
+
 
 @pytest.fixture(params=list(param_map), scope='module')
 def db(request):
