@@ -1,9 +1,61 @@
+import collections
 import event_model
 import itertools
 from intake.catalog.utils import RemoteCatalogError
 import numpy
 import ophyd.sim
 import pytest
+
+
+def normalize(gen):
+    """
+    Converted any pages to singles.
+    """
+    for name, doc in gen:
+        if name == 'event_page':
+            for event in event_model.unpack_event_page(doc):
+                yield 'event', event
+        elif name == 'datum_page':
+            for datum in event_model.unpack_datum_page(doc):
+                yield 'datum', datum
+        else:
+            yield name, doc
+
+
+def compare(a, b):
+    a = normalize(a)
+    b = normalize(b)
+    a_indexed = {}
+    b_indexed = {}
+    for name, doc in a:
+        if name == 'datum':
+            a_indexed[('datum', doc['datum_id'])] = doc
+        else:
+            a_indexed[(name, doc['uid'])] = doc
+    for name, doc in b:
+        if name == 'datum':
+            b_indexed[('datum', doc['datum_id'])] = doc
+        else:
+            b_indexed[(name, doc['uid'])] = doc
+    # Same total number of documents?
+    assert len(a_indexed) == len(b_indexed)
+    # Same number of each type of document?
+    a_counter = collections.Counter(name for _, uid in a_indexed)
+    b_counter = collections.Counter(name for _, uid in b_indexed)
+    assert a_counter == b_counter
+    # Same uids and names?
+    assert set(a_indexed) == set(b_indexed)
+    # Now delve into the documents themselves...
+    for (name, unique_id), a_doc in a_indexed.items():
+        b_doc = b_indexed[name, unique_id]
+        # Same top-level keys?
+        assert set(a_doc) == set(b_doc)
+        # Same contents?
+        try:
+            a_doc == b_doc
+        except ValueError:
+            # We end up here if, for example, the dict contains numpy arrays.
+            event_model.sanitize_doc(a_doc) == event_model.sanitize_doc(b_doc)
 
 
 def test_fixture(bundle):
@@ -106,59 +158,22 @@ def test_run_metadata(bundle):
 def test_canonical(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
 
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
+                                inplace=False)
+
     # Smoke test for back-compat alias
     with pytest.warns(UserWarning):
         next(run.read_canonical())
 
-    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
-                                inplace=False)
-
-    def sorted_actual():
-        for name_ in ('start', 'descriptor', 'resource',
-                      'datum', 'event_page', 'event', 'stop'):
-            for name, doc in bundle.docs:
-                # Fill external data.
-                _, filled_doc = filler(name, doc)
-                if name == name_ and name in ('start', 'descriptor',
-                                              'event', 'event_page', 'stop'):
-                    yield name, filled_doc
-
-    for actual, expected in itertools.zip_longest(
-            run.canonical(fill='yes'), sorted_actual()):
-        actual_name, actual_doc = actual
-        expected_name, expected_doc = expected
-        print(actual_name, expected_name)
-        try:
-            assert actual_name == expected_name
-        except ValueError:
-            assert numpy.array_equal(actual_doc, expected_doc)
+    compare(run.canonical(fill='yes'),
+            (filler(name, doc) for name, doc in bundle.docs))
 
 
 def test_canonical_unfilled(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
     run.canonical(fill='no')
 
-    def sorted_actual():
-        for name_ in ('start', 'descriptor', 'resource',
-                      'datum', 'event_page', 'event', 'stop'):
-            for name, doc in bundle.docs:
-                if name == name_ and name in ('start', 'descriptor',
-                                              'event', 'event_page', 'stop'):
-                    yield name, doc
-
-    raw_run = [(name, doc) for name, doc in list(run.canonical(fill='no'))
-               if name not in ('resource', 'datum', 'datum_page')]
-
-    for actual, expected in itertools.zip_longest(
-            raw_run, sorted_actual()):
-        actual_name, actual_doc = actual
-        expected_name, expected_doc = expected
-
-        print(actual_name, expected_name)
-        try:
-            assert actual_name == expected_name
-        except ValueError:
-            assert numpy.array_equal(actual_doc, expected_doc)
+    compare(run.canonical(fill='no'), bundle.docs)
 
     # Passing the run through the filler to check resource and datum are
     # received before corresponding event.
