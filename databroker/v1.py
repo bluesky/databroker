@@ -367,42 +367,6 @@ class Broker:
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
-
-        class GetDocumentsRouter(event_model.DocumentRouter):
-            def __init__(self, prepare_hook, stream_name=None):
-                self.prepare_hook = prepare_hook
-                self._stream_name = stream_name
-                self._descriptors = set()
-
-            def __call__(self, name, doc, validate=False):
-                new_doc = super().__call__(name, doc, validate=validate)
-                if new_doc:
-                    if name == 'datum_page':
-                        for doc in event_model.unpack_datum_page(new_doc):
-                            yield name, self.prepare_hook('datum', doc)
-                    elif name == 'event_page':
-                        for doc in event_model.unpack_event_page(new_doc):
-                            yield name, self.prepare_hook('event',
-                                                  merge_config_into_event(doc))
-                    else:
-                        yield name, self.prepare_hook(name, new_doc)
-
-            def descriptor(self, doc):
-                if self.stream_name:
-                    if doc.get('name', 'primary') == stream_name:
-                        self._descriptors.add(doc['uid'])
-                else:
-                    self._descriptors.add(doc['uid'])
-                return doc
-
-            def event(self, doc):
-                return (merge_config_into_event(doc) if doc['descriptor']
-                                          in self._descriptors else None)
-
-            def event_page(self, doc):
-                return doc if doc['descriptor'] in self._descriptors else None
-
-
         if handler_registry is not None:
             raise NotImplementedError("The handler_registry must be set when "
                                        "the Broker is initialized, usually specified "
@@ -446,6 +410,8 @@ class Broker:
                     continue
 
             def merge_config_into_event(event):
+                # Mutate event in place, adding in data and timestamps from the
+                # descriptor's 'configuration' key.
                 event_data = doc['data']  # cache for perf
                 desc = doc['descriptor']
                 event_timestamps = doc['timestamps']
@@ -456,8 +422,9 @@ class Broker:
                     del event_data[field]
                     del event_timestamps[field]
 
-            get_documents_router = GetDocumentsRouter(self.prepare_hook,
-                                                      stream_name=stream_name)
+            get_documents_router = _GetDocumentsRouter(self.prepare_hook,
+                                                       merge_config_into_event,
+                                                       stream_name=stream_name)
             for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
                 yield from get_documents_router(name, doc)
 
@@ -1639,3 +1606,40 @@ def _get_mongo_client(host, port):
         client = pymongo.MongoClient(host, port)
         _mongo_clients[(host, port)] = client
     return client
+
+
+class _GetDocumentsRouter(event_model.DocumentRouter):
+    "This is used by Broker.get_documents."
+    def __init__(self, prepare_hook, merge_config_into_event, stream_name):
+        self.prepare_hook = prepare_hook
+        self.merge_config_into_event = merge_config_into_event
+        self.stream_name = stream_name
+        self._descriptors = set()
+
+    def __call__(self, name, doc, validate=False):
+        new_doc = super().__call__(name, doc, validate=validate)
+        if new_doc:
+            if name == 'datum_page':
+                for doc in event_model.unpack_datum_page(new_doc):
+                    yield name, self.prepare_hook('datum', doc)
+            elif name == 'event_page':
+                for doc in event_model.unpack_event_page(new_doc):
+                    yield name, self.prepare_hook('event',
+                                            merge_config_into_event(doc))
+            else:
+                yield name, self.prepare_hook(name, new_doc)
+
+    def descriptor(self, doc):
+        if self.stream_name:
+            if doc.get('name', 'primary') == stream_name:
+                self._descriptors.add(doc['uid'])
+        else:
+            self._descriptors.add(doc['uid'])
+        return doc
+
+    def event(self, doc):
+        return (merge_config_into_event(doc) if doc['descriptor']
+                                    in self._descriptors else None)
+
+    def event_page(self, doc):
+        return doc if doc['descriptor'] in self._descriptors else None
