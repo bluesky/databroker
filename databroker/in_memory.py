@@ -103,7 +103,9 @@ class BlueskyInMemoryCatalog(Broker):
 
     def __getitem__(self, name):
         # If this came from a client, we might be getting '-1'.
-        if not isinstance(name, int):
+        try:
+            N = int(name)
+        except (ValueError, TypeError):
             if name in self._uid_to_run_start_doc:
                 uid = name
             else:
@@ -125,22 +127,22 @@ class BlueskyInMemoryCatalog(Broker):
             # Sort in reverse chronological order (most recent first).
             time_sorted = sorted(self._uid_to_run_start_doc.values(),
                                  key=lambda doc: -doc['time'])
-            if name < 0:
-                # Interpret negative name as "the Nth from last entry".
-                if -name > len(time_sorted):
+            if N < 0:
+                # Interpret negative N as "the Nth from last entry".
+                if -N > len(time_sorted):
                     raise IndexError(
                         f"Catalog only contains {len(time_sorted)} "
                         f"runs.")
-                uid = time_sorted[-name - 1]['uid']
+                uid = time_sorted[-N - 1]['uid']
             else:
-                # Interpret positive name as
-                # "most recent entry with scan_id == name".
+                # Interpret positive N as
+                # "most recent entry with scan_id == N".
                 for run_start_doc in time_sorted:
-                    if run_start_doc.get('scan_id') == name:
+                    if run_start_doc.get('scan_id') == N:
                         uid = run_start_doc['uid']
                         break
                 else:
-                    raise KeyError(f"No run with scan_id={name}")
+                    raise KeyError(f"No run with scan_id={N}")
         return self._entries[uid]
 
     def __len__(self):

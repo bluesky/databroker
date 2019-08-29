@@ -65,7 +65,9 @@ class _Entries(collections.abc.Mapping):
     def __getitem__(self, name):
         # If this came from a client, we might be getting '-1'.
         collection = self.catalog._run_start_collection
-        if not isinstance(name, int):
+        try:
+            N = int(name)
+        except ValueError:
             query = {'$and': [self.catalog._query, {'uid': name}]}
             run_start_doc = collection.find_one(query)
             if run_start_doc is None:
@@ -84,12 +86,12 @@ class _Entries(collections.abc.Mapping):
                         f"Up to 10 listed here:\n"
                         f"{match_list}")
         else:
-            if name < 0:
-                # Interpret negative name as "the Nth from last entry".
+            if N < 0:
+                # Interpret negative N as "the Nth from last entry".
                 query = self.catalog._query
                 cursor = (collection.find(query)
                           .sort('time', pymongo.DESCENDING)
-                          .skip(-name - 1)
+                          .skip(-N - 1)
                           .limit(1))
                 try:
                     run_start_doc, = cursor
@@ -98,16 +100,16 @@ class _Entries(collections.abc.Mapping):
                         f"Catalog only contains {len(self.catalog)} "
                         f"runs.")
             else:
-                # Interpret positive name as
-                # "most recent entry with scan_id == name".
-                query = {'$and': [self.catalog._query, {'scan_id': name}]}
+                # Interpret positive N as
+                # "most recent entry with scan_id == N".
+                query = {'$and': [self.catalog._query, {'scan_id': N}]}
                 cursor = (collection.find(query)
                           .sort('time', pymongo.DESCENDING)
                           .limit(1))
                 try:
                     run_start_doc, = cursor
                 except ValueError:
-                    raise KeyError(f"No run with scan_id={name}")
+                    raise KeyError(f"No run with scan_id={N}")
         if run_start_doc is None:
             raise KeyError(name)
         return self._doc_to_entry(run_start_doc)
