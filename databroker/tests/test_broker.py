@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import collections
 import tempfile
 import os
 import logging
@@ -1207,18 +1208,13 @@ def test_res_datum(db, RE, hw):
 
     uid, = RE(count([hw.img], num=7, delay=0.1))
 
-    names = set()
-    for (n1, d1), (n2, d2) in zip(db[uid].documents(), L):
-        names.add(n1)
-        assert n1 == n2
-        # It seems that some of the documents don't have key parity
-        if n1 == 'resource':
-            d1.pop('id', None)
-        if n1 == 'stop':
-            d2.pop('reason')
-        # don't run direct equality because db changes tuple to list
-        assert set(d1.keys()) == set(d2.keys())
-    assert names == set(DOCT_NAMES.keys())
+    unique_names = set(name for name, _ in db[uid].documents())
+    assert unique_names == set(DOCT_NAMES.keys())
+    # This is a way of comparing collections where duplicates do matter (i.e.
+    # it's not a `set`) but order does not.
+    actual = collections.Counter(name for name, _ in db[uid].documents())
+    expected = collections.Counter(name for name, _ in L)
+    assert actual == expected
 
 
 def test_filtering_fields(db, RE, hw):
