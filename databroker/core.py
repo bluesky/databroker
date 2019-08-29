@@ -709,9 +709,11 @@ class BlueskyRun(intake.catalog.Catalog):
         files.extend(handler.get_file_list(datum_kwarg_gen()))
         return files
 
-    def read_partition_unfilled(self, i):
+    def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
+        i = partition['index']
+        fill = partition['fill']
         self._load()
         payload = []
         start = i * self.PARTITION_SIZE
@@ -734,60 +736,29 @@ class BlueskyRun(intake.catalog.Catalog):
             events = itertools.islice(interlace_event_pages(
                     *(self._get_event_pages(descriptor_uid=descriptor_uid)
                       for descriptor_uid in descriptor_uids)), skip, limit)
-
-            for event in events:
-                for key, is_filled in event['filled'].items():
-                    if not is_filled:
-                        datum_id = event['data'][key]
-                        if datum_id not in datum_ids:
-                            if '/' in datum_id:
-                                resource_uid, _ = datum_id.split('/', 1)
-                            else:
-                                resource_uid = self._lookup_resource_for_datum(datum_id)
-                            resource = self._get_resource(uid=resource_uid)
-                            payload.append(('resource', resource))
-                            for datum_page in self._get_datum_pages(resource_uid):
-                                # TODO Greedily cache but lazily emit.
-                                payload.append(('datum_page', datum_page))
-                                datum_ids |= set(datum_page['datum_id'])
-                payload.append(('event', event))
-            if i == self.npartitions - 1 and self._run_stop_doc is not None:
-                payload.append(('stop', self._run_stop_doc))
-        for _, doc in payload:
-            doc.pop('_id', None)
-        return payload
-
-    def read_partition(self, partition):
-        """Fetch one chunk of documents.
-        """
-        i = partition['index']
-        if partition['fill'] == 'no':
-            return self.read_partition_unfilled(i)
-        self._load()
-        payload = []
-        start = i * self.PARTITION_SIZE
-        stop = (1 + i) * self.PARTITION_SIZE
-        if start < self._offset:
-            payload.extend(
-                itertools.islice(
-                    itertools.chain(
-                        (('start', self._get_run_start()),),
-                        (('descriptor', doc) for doc in self._descriptors)),
-                    start,
-                    stop))
-        descriptor_uids = [doc['uid'] for doc in self._descriptors]
-        skip = max(0, start - len(payload))
-        limit = stop - start - len(payload)
-        if limit > 0:
-
-            events = itertools.islice(interlace_event_pages(
-                    *(self._get_event_pages(descriptor_uid=descriptor_uid)
-                      for descriptor_uid in descriptor_uids)), skip, limit)
-
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
             for event in events:
-                self._fill(event)  # in place (for now)
+                for key, is_filled in event['filled'].items():
+                    if is_filled:
+                        # A filled Event has the datum_id rotated into 'filled'.
+                        datum_id = event['filled'][key]
+                    else:
+                        # A unfilled Event has the datum_id in 'data'.
+                        datum_id = event['data'][key]
+                    if datum_id not in datum_ids:
+                        if '/' in datum_id:
+                            resource_uid, _ = datum_id.split('/', 1)
+                        else:
+                            resource_uid = self._lookup_resource_for_datum(datum_id)
+                        resource = self._get_resource(uid=resource_uid)
+                        payload.append(('resource', resource))
+                        for datum_page in self._get_datum_pages(resource_uid):
+                            # TODO Greedily cache but lazily emit.
+                            payload.append(('datum_page', datum_page))
+                            datum_ids |= set(datum_page['datum_id'])
+                if fill == 'yes':
+                    self._fill(event)  # in place (for now)
                 payload.append(('event', event))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
