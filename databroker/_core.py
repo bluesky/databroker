@@ -5,7 +5,6 @@ from collections import defaultdict, deque
 from datetime import datetime
 from pims import FramesSequence, Frame
 import logging
-import attr
 from warnings import warn
 from importlib import import_module
 import itertools
@@ -15,7 +14,6 @@ import doct
 import pandas as pd
 import sys
 import os
-import yaml
 import glob
 import tempfile
 import copy
@@ -24,7 +22,9 @@ from .headersource import HeaderSourceShim, safe_get_stop
 import humanize
 import jinja2
 import time
-from .utils import ALL
+from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
+                    DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
+                    describe_configs, SPECIAL_NAME)
 
 try:
     from types import SimpleNamespace
@@ -63,28 +63,30 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-SPECIAL_NAME = '_legacy_config'
-if 'DATABROKER_TEST_MODE' in os.environ:
-    SPECIAL_NAME = '_test_legacy_config'
-
 
 class InvalidDocumentSequence(Exception):
     pass
 
 
-@attr.s(frozen=True)
 class Header(object):
     """
     A dictionary-like object summarizing metadata for a run.
     """
 
     _name = 'header'
-    db = attr.ib(cmp=False, hash=False)
-    start = attr.ib()
-    stop = attr.ib(default=attr.Factory(dict))
-    ext = attr.ib(default=attr.Factory(SimpleNamespace), cmp=False, hash=False)
-    _cache = attr.ib(default=attr.Factory(dict), cmp=False, hash=False,
-                     repr=False)
+    def __init__(self, db, start, stop, ext=None, _cache=None):
+        self.db = db
+        self.start = start
+        self.stop = stop
+        if ext is None:
+            ext = {}
+        self.ext = ext
+        if _cache is None:
+            _cache = {}
+        self._cache = _cache
+
+    def __eq__(self, other):
+        return self.start == other.start
 
     @classmethod
     def from_run_start(cls, db, run_start, run_stop=None):
@@ -147,11 +149,9 @@ class Header(object):
             yield k
 
     def to_name_dict_pair(self):
-        ret = attr.asdict(self)
-        ret.pop('db')
-        ret.pop('_cache')
-        ret['descriptors'] = self.descriptors
-        return self._name, ret
+        return self._name, {'start': self.start, 'stop': self.stop,
+                            'descriptors': self.descriptors,
+                            'ext': self.ext}
 
     def __len__(self):
         return 4
@@ -506,30 +506,6 @@ def register_builtin_handlers(reg):
                 reg.register_handler(spec, cls)
 
 
-def get_fields(header, name=None):
-    """
-    Return the set of all field names (a.k.a "data keys") in a header.
-
-    Parameters
-    ----------
-    header : Header
-    name : string, optional
-        Get field from only one "event stream" with this name. If None
-        (default) get fields from all event streams.
-
-    Returns
-    -------
-    fields : set
-    """
-    fields = set()
-    for descriptor in header['descriptors']:
-        if name is not None and name != descriptor.get('name', 'primary'):
-            continue
-        for field in descriptor['data_keys'].keys():
-            fields.add(field)
-    return fields
-
-
 def get_images(db, headers, name, handler_registry=None,
                handler_override=None, stream_name='primary'):
     """
@@ -786,8 +762,8 @@ def _(key, db):
         try:
             result = next(gen)  # most recent match
         except StopIteration:
-            raise ValueError("No such run found for key=%s which is "
-                             "being interpreted as a scan id." % key)
+            raise KeyError("No such run found for key=%s which is "
+                           "being interpreted as a scan id." % key)
     else:
         # Interpret key as the Nth last scan.
         gen = db.hs.find_last(-key)
@@ -820,7 +796,7 @@ def _(key, db):
         results = list(gen)
     if not results:
         # Still no dice? Bail out.
-        raise ValueError("No such run found for key=%r" % key)
+        raise KeyError("No such run found for key=%r" % key)
     if len(results) > 1:
         raise ValueError("key=%r matches %d runs. Provide "
                          "more characters." % (key, len(results)))
@@ -867,106 +843,6 @@ class Results(object):
                     if self._data_key in descriptor['data_keys']:
                         yield header
                         break
-
-# Search order is (for unix):
-#   ~/.config/databroker
-#   <sys.executable directory>/../etc/databroker
-#   /etc/databroker
-# And for Windows we only look in:
-#   %APPDATA%/databroker
-
-
-if os.name == 'nt':
-    _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
-    CONFIG_SEARCH_PATH = (_user_conf,)
-else:
-    _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
-    _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
-                              'etc', 'databroker')
-    _system_etc = os.path.join('/', 'etc', 'databroker')
-    CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
-
-if six.PY2:
-    FileNotFoundError = IOError
-
-
-def list_configs():
-    """
-    List the names of the available configuration files.
-
-    Returns
-    -------
-    names : list
-
-    See Also
-    --------
-    :func:`describe_configs`
-    """
-    names = set()
-    for path in CONFIG_SEARCH_PATH:
-        files = glob.glob(os.path.join(path, '*.yml'))
-        names.update([os.path.basename(f)[:-4] for f in files])
-
-    # Do not include _legacy_config.
-    names.discard(SPECIAL_NAME)
-
-    return sorted(names)
-
-
-def describe_configs():
-    """
-    Get the names and descriptions of available configuration files.
-
-    Returns
-    -------
-    configs : dict
-        map names to descriptions (if available)
-
-    See Also
-    --------
-    :func:`list_configs`
-    """
-    return {name: lookup_config(name).get('description')
-            for name in list_configs()}
-
-
-def lookup_config(name):
-    """
-    Search for a databroker configuration file with a given name.
-
-    For exmaple, the name 'example' will cause the function to search for:
-
-    * ``~/.config/databroker/example.yml``
-    * ``{python}/../etc/databroker/example.yml``
-    * ``/etc/databroker/example.yml``
-
-    where ``{python}`` is the location of the current Python binary, as
-    reported by ``sys.executable``. It will use the first match it finds.
-
-    Parameters
-    ----------
-    name : string
-
-    Returns
-    -------
-    config : dict
-    """
-    if not name.endswith('.yml'):
-        name += '.yml'
-    tried = []
-    for path in CONFIG_SEARCH_PATH:
-        filename = os.path.join(path, name)
-        tried.append(filename)
-        if os.path.isfile(filename):
-            with open(filename) as f:
-                return yaml.load(f,
-                                 Loader=getattr(yaml, 'FullLoader',
-                                                yaml.Loader)
-                                 )
-    else:
-        raise FileNotFoundError("No config file named {!r} could be found in "
-                                "the following locations:\n{}"
-                                "".format(name, '\n'.join(tried)))
 
 
 def load_cls(config):
@@ -1015,64 +891,6 @@ def temp_config():
         }
     }
     return config
-
-
-DOCT_NAMES = {'resource': 'Resource',
-              'datum': 'Datum',
-              'descriptor': 'Event Descriptor',
-              'event': 'Event',
-              'start': 'Run Start',
-              'stop': 'Run Stop'}
-
-
-def wrap_in_doct(name, doc):
-    """
-    Put document contents into a doct.Document object.
-
-    A ``doct.Document`` is a subclass of dict that:
-
-    * is immutable
-    * provides human-readable :meth:`__repr__` and :meth:`__str__`
-    * supports dot access (:meth:`__getattr__`) as a synonym for item access
-      (:meth:`__getitem__`) whenever possible
-    """
-    return doct.Document(DOCT_NAMES[name], doc)
-
-
-_STANDARD_DICT_ATTRS = dir(dict)
-
-
-class DeprecatedDoct(doct.Document):
-    "Subclass of doct.Document that warns that dot access may be removed."
-    # We must use __getattribute__ here, not the gentle __getattr__, in order
-    # to successfully override doct.Document. doct.Document aggressively edits
-    # its own __dict__, a subclass's __getattr__ would never be called.
-    def __getattribute__(self, key):
-        # Get the result first and let any errors be raised.
-        res = super(DeprecatedDoct, self).__getattribute__(key)
-        # Now warn before returning it.
-        if not (key in _STANDARD_DICT_ATTRS or key.startswith('_')):
-            # This is not a standard dict attribute.
-            # Warn that dot access is deprecated.
-            warnings.warn("Dot access may be removed in a future version. "
-                          "Use ['{0}'] instead of .{0}".format(key))
-        if key == '_name':
-            warnings.warn("In a future version of databroker, plain dicts "
-                          "without a '_name' attribute may be returned. "
-                          "Do not rely on '_name'.")
-        return res
-
-
-def wrap_in_deprecated_doct(name, doc):
-    """
-    Put document contents into a DeprecatedDoct object.
-
-    See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
-    and :class:`doct.Document` is a warning that dot access
-    (:meth:`__getattr__` as a synonym for :meth:`__getitem__`) may be removed
-    in the future.
-    """
-    return DeprecatedDoct(DOCT_NAMES[name], doc)
 
 
 class BrokerES(object):

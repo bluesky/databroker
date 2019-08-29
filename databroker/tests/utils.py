@@ -1,21 +1,108 @@
 import os
+from pathlib import Path
+from subprocess import Popen
 import shutil
 import tempfile
-import uuid
 import time
+import uuid
 
+import mongobox
+import ophyd.sim
 import tzlocal
 
-from databroker import Broker, BrokerES, temp_config
+from databroker import v0, v1
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-from subprocess import Popen
+from .._drivers import jsonl
+from .._drivers import mongo_normalized
+from .._drivers import mongo_embedded
+from .. import core
+import suitcase.jsonl
+import suitcase.mongo_normalized
+import suitcase.mongo_embedded
+
+
+def build_intake_jsonl_backed_broker(request):
+    tmp_dir = tempfile.TemporaryDirectory()
+
+    def teardown():
+        tmp_dir.cleanup()
+
+    request.addfinalizer(teardown)
+    broker = jsonl.BlueskyJSONLCatalog(
+        f"{tmp_dir.name}/*.jsonl",
+        name='test',
+        handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    return broker.v1
+
+
+def build_intake_mongo_backed_broker(request):
+    box = mongobox.MongoBox()
+    box.start()
+    client = box.client()
+
+    def teardown():
+        "Delete temporary MongoDB data directory."
+        box.stop()
+
+    request.addfinalizer(teardown)
+    broker = mongo_normalized.BlueskyMongoCatalog(
+        client['mds'],
+        client['assets'],
+        name='test',
+        handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
+    return broker.v1
+
+def build_intake_mongo_embedded_backed_broker(request):
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_path = tmp_dir.name
+    catalog_path = Path(tmp_path) / 'catalog.yml'
+    box = mongobox.MongoBox()
+    box.start()
+    client = box.client()
+    with open(catalog_path, 'w') as file:
+        file.write(f"""
+sources:
+  xyz:
+    description: Some imaginary beamline
+    driver: "bluesky-mongo-embedded-catalog"
+    container: catalog
+    args:
+      datastore_db: mongodb://{client.address[0]}:{client.address[1]}/permanent
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
+    metadata:
+      beamline: "00-ID"
+""")
+
+    def teardown():
+        "Delete temporary MongoDB data directory."
+        box.stop()
+        tmp_dir.cleanup()
+
+    request.addfinalizer(teardown)
+    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
+    serializer = None
+
+    def insert(name, doc):
+        nonlocal serializer
+        if name == 'start':
+            if serializer is not None:
+                # serializer.close()
+                ...
+            serializer = suitcase.mongo_embedded.Serializer(client['permanent'])
+        serializer(name, doc)
+        if name == 'stop':
+            db._catalog.reload()
+
+    db.insert = insert
+    return db
 
 
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
 
-    config = temp_config()
+    config = v0.temp_config()
     tempdir = config['metadatastore']['config']['directory']
 
     def cleanup():
@@ -23,7 +110,7 @@ def build_sqlite_backed_broker(request):
 
     request.addfinalizer(cleanup)
 
-    return Broker.from_config(config)
+    return v0.Broker.from_config(config)
 
 
 def build_hdf5_backed_broker(request):
@@ -53,9 +140,9 @@ def build_hdf5_backed_broker(request):
 
     request.addfinalizer(delete_fs)
 
-    return BrokerES(HeaderSourceShim(mds),
-                    [EventSourceShim(mds, fs)],
-                    {'': fs}, {}, name=None)
+    return v0.BrokerES(HeaderSourceShim(mds),
+                       [EventSourceShim(mds, fs)],
+                       {'': fs}, {}, name=None)
 
 
 def build_pymongo_backed_broker(request):
@@ -86,7 +173,7 @@ def build_pymongo_backed_broker(request):
 
     request.addfinalizer(delete_fs)
 
-    return Broker(mds, fs)
+    return v0.Broker(mds, fs)
 
 
 def start_md_server(testing_config):
@@ -162,4 +249,4 @@ def build_client_backend_broker(request):
             break
     print("Server is up!")
 
-    return Broker(tmds, fs)
+    return v0.Broker(tmds, fs)

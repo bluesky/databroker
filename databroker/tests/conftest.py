@@ -6,6 +6,9 @@ import ujson
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker,
                                     build_hdf5_backed_broker,
+                                    build_intake_jsonl_backed_broker,
+                                    build_intake_mongo_backed_broker,
+                                    build_intake_mongo_embedded_backed_broker,
                                     build_client_backend_broker,
                                     start_md_server,
                                     stop_md_server)
@@ -27,46 +30,34 @@ if sys.version_info >= (3, 5):
         from ophyd.sim import hw
         return hw()
 
+param_map = {'sqlite': build_sqlite_backed_broker,
+             'mongo': build_pymongo_backed_broker,
+             'hdf5': build_hdf5_backed_broker,
+             'intake_jsonl': build_intake_jsonl_backed_broker,
+             'intake_mongo': build_intake_mongo_backed_broker,
+             # 'intake_mongo_embedded': build_intake_mongo_embedded_backed_broker,
+             }
+if os.environ.get('INCLUDE_V0_SERVICE_TESTS') == '1':
+    param_map['client'] = build_client_backend_broker
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5',
-                        'client'
-                        ], scope='module')
+
+@pytest.fixture(params=list(param_map), scope='module')
 def db(request):
-    param_map = {'sqlite': build_sqlite_backed_broker,
-                 'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker,
-                 'client': build_client_backend_broker
-                 }
-
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5',
-                        'client'
-                        ], scope='function')
+@pytest.fixture(params=list(param_map), scope='function')
 def db_empty(request):
-    param_map = {'sqlite': build_sqlite_backed_broker,
-                 'mongo': build_pymongo_backed_broker,
-                 'hdf5': build_hdf5_backed_broker,
-                 'client': build_client_backend_broker}
     if ('array_data' in request.function.__name__ and
             request.param == 'sqlite'):
         pytest.xfail('can not put lists into sqlite columns')
-
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5',
-                        'client'
-                        ], scope='function')
+@pytest.fixture(params=list(param_map), scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
-    param_map = {'sqlite': lambda: build_sqlite_backed_broker(request),
-                 'mongo': lambda: build_pymongo_backed_broker(request),
-                 'hdf5': lambda: build_hdf5_backed_broker(request),
-                 'client': lambda: build_client_backend_broker(request)}
-
-    return param_map[request.param]
+    return {k: lambda: v(request) for k, v in param_map.items()}[request.param]
 
 
 AUTH = os.environ.get('MDSTESTWITHAUTH', False)
@@ -77,7 +68,10 @@ def mds_all(request, db):
     '''Provide a function level scoped Registry instance talking to
     temporary database on localhost:27017 with both v0 and v1.
     '''
-    return db.mds
+    try:
+        return db.mds
+    except AttributeError:
+        pytest.skip("mds tests do not apply to intake-backed Broker")
 
 
 @pytest.fixture(params=[mqmds,

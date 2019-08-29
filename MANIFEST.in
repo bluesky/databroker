@@ -1,5 +1,3 @@
-include databroker/_version.py
-include databroker/assets/schemas/*.json
 recursive-include doc/source *
 include doc/Makefile doc/make.bat
 include LICENSE
@@ -8,3 +6,13 @@ include README.md
 include requirements.txt
 include setup.py
 include versioneer.py
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+
+include versioneer.py
+include databroker/_version.py
+include databroker/assets/schemas/*.json
+
+# If including data files in the package, add them like:
+# include path/to/data_file

@@ -1,16 +1,26 @@
-attrs>=17.4.0
 boltons
+dask[bag]
 doct
+event-model >=1.11.1b1
 humanize
+intake >=0.5.2  # first release to use entrypoints
+intake-xarray >=0.3.1  # first release to use entrypoints
 jinja2
 jsonschema
 mongoquery
+msgpack
+msgpack-numpy  # to be split into extras or a separate package
 numpy
 pandas
 pims
+pymongo  # to be split into extras or a separate package
 pytz
 pyyaml
+requests
 six
+suitcase-mongo  # for back-compat to support insert()
+suitcase-msgpack  # for back-compat to support insert on Broker.named('temp')
 tifffile
 toolz
 tzlocal
+xarray

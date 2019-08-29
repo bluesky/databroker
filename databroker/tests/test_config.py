@@ -16,7 +16,6 @@ import yaml
 if six.PY2:
     FileNotFoundError = IOError
 
-py3 = pytest.mark.skipif(sys.version_info < (3, 5), reason="requires python 3")
 
 EXAMPLE = {
     'description': 'DESCRIPTION_PLACEHOLDER',
@@ -145,7 +144,6 @@ def test_legacy_config():
     os.remove(path)
 
 
-@py3
 def test_legacy_config_warnings(RE, hw):
     import bluesky.plans as bp
     name = databroker.databroker.SPECIAL_NAME

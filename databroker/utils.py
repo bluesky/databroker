@@ -1,9 +1,13 @@
 from datetime import datetime
-import numpy as np
+import glob
 import os
-import pytz
-import six
+import sys
 import warnings
+
+import doct
+import numpy as np
+import pytz
+import yaml
 
 
 class ALL:
@@ -11,19 +15,8 @@ class ALL:
     pass
 
 
-if six.PY2:
-    # http://stackoverflow.com/a/5032238/380231
-    def ensure_path_exists(path, exist_ok=True):
-        import errno
-        try:
-            os.makedirs(path)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST or not exist_ok:
-                raise
-else:
-    # technically, this won't work with py3.1, but no one uses that
-    def ensure_path_exists(path, exist_ok=True):
-        return os.makedirs(path, exist_ok=exist_ok)
+def ensure_path_exists(path, exist_ok=True):
+    return os.makedirs(path, exist_ok=exist_ok)
 
 
 def sanitize_np(val):
@@ -103,7 +96,7 @@ def normalize_human_friendly_time(val, tz):
     epoch = pytz.UTC.localize(datetime(1970, 1, 1))
     check = True
 
-    if isinstance(val, six.string_types):
+    if isinstance(val, str):
         # unix 'date' cmd format '%a %b %d %H:%M:%S %Z %Y' works but
         # doesn't get TZ?
 
@@ -148,3 +141,219 @@ def normalize_human_friendly_time(val, tz):
 normalize_human_friendly_time.__doc__ = (
     normalize_human_friendly_time.__doc__.format(_doc_ts_formats)
 )
+
+
+def get_fields(header, name=None):
+    """
+    Return the set of all field names (a.k.a "data keys") in a header.
+
+    Parameters
+    ----------
+    header : Header
+    name : string, optional
+        Get field from only one "event stream" with this name. If None
+        (default) get fields from all event streams.
+
+    Returns
+    -------
+    fields : set
+    """
+    fields = set()
+    for descriptor in header['descriptors']:
+        if name is not None and name != descriptor.get('name', 'primary'):
+            continue
+        for field in descriptor['data_keys'].keys():
+            fields.add(field)
+    return fields
+
+
+DOCT_NAMES = {'resource': 'Resource',
+              'datum': 'Datum',
+              'descriptor': 'Event Descriptor',
+              'event': 'Event',
+              'start': 'Run Start',
+              'stop': 'Run Stop'}
+
+
+def wrap_in_doct(name, doc):
+    """
+    Put document contents into a doct.Document object.
+
+    A ``doct.Document`` is a subclass of dict that:
+
+    * is immutable
+    * provides human-readable :meth:`__repr__` and :meth:`__str__`
+    * supports dot access (:meth:`__getattr__`) as a synonym for item access
+      (:meth:`__getitem__`) whenever possible
+    """
+    return doct.Document(DOCT_NAMES[name], doc)
+
+
+_STANDARD_DICT_ATTRS = dir(dict)
+
+
+class DeprecatedDoct(doct.Document):
+    "Subclass of doct.Document that warns that dot access may be removed."
+    # We must use __getattribute__ here, not the gentle __getattr__, in order
+    # to successfully override doct.Document. doct.Document aggressively edits
+    # its own __dict__, a subclass's __getattr__ would never be called.
+    def __getattribute__(self, key):
+        # Get the result first and let any errors be raised.
+        res = super(DeprecatedDoct, self).__getattribute__(key)
+        # Now warn before returning it.
+        if not (key in _STANDARD_DICT_ATTRS or key.startswith('_')):
+            # This is not a standard dict attribute.
+            # Warn that dot access is deprecated.
+            warnings.warn("Dot access may be removed in a future version. "
+                          "Use ['{0}'] instead of .{0}".format(key))
+        if key == '_name':
+            warnings.warn("In a future version of databroker, plain dicts "
+                          "without a '_name' attribute may be returned. "
+                          "Do not rely on '_name'.")
+        return res
+
+
+def wrap_in_deprecated_doct(name, doc):
+    """
+    Put document contents into a DeprecatedDoct object.
+
+    See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
+    and :class:`doct.Document` is a warning that dot access
+    (:meth:`__getattr__` as a synonym for :meth:`__getitem__`) may be removed
+    in the future.
+    """
+    return DeprecatedDoct(DOCT_NAMES[name], doc)
+
+
+class DuplicateHandler(RuntimeError):
+    pass
+
+
+# Search order is (for unix):
+#   ~/.config/databroker
+#   <sys.executable directory>/../etc/databroker
+#   /etc/databroker
+# And for Windows we only look in:
+#   %APPDATA%/databroker
+
+if os.name == 'nt':
+    _user_conf = os.path.join(os.environ['APPDATA'], 'databroker')
+    CONFIG_SEARCH_PATH = (_user_conf,)
+else:
+    _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'databroker')
+    _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
+                              'etc', 'databroker')
+    _system_etc = os.path.join('/', 'etc', 'databroker')
+    CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
+
+SPECIAL_NAME = '_legacy_config'
+if 'DATABROKER_TEST_MODE' in os.environ:
+    SPECIAL_NAME = '_test_legacy_config'
+
+
+def list_configs():
+    """
+    List the names of the available configuration files.
+
+    Returns
+    -------
+    names : list
+
+    See Also
+    --------
+    :func:`describe_configs`
+    """
+    names = set()
+    for path in CONFIG_SEARCH_PATH:
+        files = glob.glob(os.path.join(path, '*.yml'))
+        names.update([os.path.basename(f)[:-4] for f in files])
+
+    # Do not include _legacy_config.
+    names.discard(SPECIAL_NAME)
+
+    return sorted(names)
+
+
+def describe_configs():
+    """
+    Get the names and descriptions of available configuration files.
+
+    Returns
+    -------
+    configs : dict
+        map names to descriptions (if available)
+
+    See Also
+    --------
+    :func:`list_configs`
+    """
+    return {name: lookup_config(name).get('description')
+            for name in list_configs()}
+
+
+def lookup_config(name):
+    """
+    Search for a databroker configuration file with a given name.
+
+    For exmaple, the name 'example' will cause the function to search for:
+
+    * ``~/.config/databroker/example.yml``
+    * ``{python}/../etc/databroker/example.yml``
+    * ``/etc/databroker/example.yml``
+
+    where ``{python}`` is the location of the current Python binary, as
+    reported by ``sys.executable``. It will use the first match it finds.
+
+    Parameters
+    ----------
+    name : string
+
+    Returns
+    -------
+    config : dict
+    """
+    if not name.endswith('.yml'):
+        name += '.yml'
+    tried = []
+    for path in CONFIG_SEARCH_PATH:
+        filename = os.path.join(path, name)
+        tried.append(filename)
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                return yaml.load(f,
+                                 Loader=getattr(yaml, 'FullLoader',
+                                                yaml.Loader)
+                                 )
+    else:
+        raise FileNotFoundError("No config file named {!r} could be found in "
+                                "the following locations:\n{}"
+                                "".format(name, '\n'.join(tried)))
+
+
+def transpose(in_data, keys, field):
+    """Turn a list of dicts into dict of lists
+
+    Parameters
+    ----------
+    in_data : list
+        A list of dicts which contain at least one dict.
+        All of the inner dicts must have at least the keys
+        in `keys`
+
+    keys : list
+        The list of keys to extract
+
+    field : str
+        The field in the outer dict to use
+
+    Returns
+    -------
+    transpose : dict
+        The transpose of the data
+    """
+    out = {k: [None] * len(in_data) for k in keys}
+    for j, ev in enumerate(in_data):
+        dd = ev[field]
+        for k in keys:
+            out[k][j] = dd[k]
+    return out
