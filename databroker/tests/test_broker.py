@@ -540,105 +540,54 @@ def test_stream_name(db, RE, hw):
 
 
 def test_handler_options(db, RE, hw):
-    datum_id = str(uuid.uuid4())
-    datum_id2 = str(uuid.uuid4())
-    desc_uid = str(uuid.uuid4())
-    event_uid = str(uuid.uuid4())
-    event_uid2 = str(uuid.uuid4())
-    res_uid = str(uuid.uuid4())
-    res_uid2 = str(uuid.uuid4())
+    from ophyd.sim import NumpySeqHandler
 
-    # Side-band resource and datum documents.
-    res = db.insert('resource', {'spec': 'foo', 'resource_path': '',
-                                 'resource_kwargs': {'x': 1},
-                                 'uid': res_uid, 'path_semantics': 'posix'})
-
-    db.insert('datum', {'resource': res_uid, 'datum_id': datum_id,
-                        'datum_kwargs': {'y': 2}})
-
-    res2 = db.insert('resource', {'spec': 'foo', 'resource_path': '',
-                                 'resource_kwargs': {'x': 1},
-                                 'uid': res_uid2, 'path_semantics': 'posix'})
-
-    db.insert('datum', {'resource': res_uid2, 'datum_id': datum_id2,
-                        'datum_kwargs': {'y': 2}})
-
-    # Generate a normal run.
     RE.subscribe(db.insert)
-    rs_uid, = RE(count([hw.det]))
+    rs_uid, = RE(count([hw.img], 2))
 
-    # Side band an extra descriptor and event into this run.
-    data_keys = {'image': {'dtype': 'array', 'source': '', 'shape': [5, 5],
-                           'external': 'FILESTORE://simulated'}}
-
-    db.insert('descriptor', {'run_start': rs_uid, 'data_keys': data_keys,
-                             'time':ttime.time(), 'uid':desc_uid,
-                             'name': 'injected'})
-
-    db.insert('event', {'uid': event_uid, 'data': {'image': datum_id},
-                        'timestamps': {'image': ttime.time()},
-                        'time': ttime.time(), 'descriptor': desc_uid,
-                        'seq_num': 0 })
-
-    db.insert('event', {'uid': event_uid2, 'data': {'image': datum_id2},
-                        'timestamps': {'image': ttime.time()},
-                        'time': ttime.time(), 'descriptor': desc_uid,
-                        'seq_num': 0 })
     h = db[rs_uid]
 
+    # Clear the handler registry. We'll reinstate the relevant handler below.
+    db.reg.handler_reg.clear()
+
     # Get unfilled event.
-    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
-    assert ev['data']['image'] == datum_id
-    assert not ev['filled']['image']
+    ev, ev2 = db.get_events(h, fields=['img'])
+    assert isinstance(ev['data']['img'], str)
+    assert not ev['filled']['img']
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        ev, ev2 = db.get_events(h, stream_name='injected',
-                                fields=['image'], fill=True)
+        ev, ev2 = db.get_events(h, fields=['img'], fill=True)
 
     # Get filled event -- error because no handler is registered.
     with pytest.raises(KeyError):
-        list(db.get_images(h, 'image', stream_name='injected'))
-
-    class ImageHandler(object):
-        RESULT = np.zeros((5, 5))
-
-        def __init__(self, resource_path, **resource_kwargs):
-            self._res = resource_kwargs
-
-        def __call__(self, **datum_kwargs):
-            return self.RESULT
-
-    class DummyHandler(object):
-        def __init__(*args, **kwargs):
-            pass
-
-        def __call__(*args, **kwrags):
-            return 'dummy'
+        list(db.get_images(h, 'img'))
 
     # Use a one-off handler registry.
+    # This functionality used to be supported, but has been removed, so the
+    # test here just verifies that it raised the expected type of error.
     if hasattr(db, 'v1') or hasattr(db, 'v2'):
         with pytest.raises(NotImplementedError):
-            ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'],
-                                    fill=True,
-                                    handler_registry= {'foo': ImageHandler})
+            ev, ev2 = db.get_events(
+                h, fields=['img'], fill=True,
+                handler_registry={'NPY_SEQ': NumpySeqHandler})
 
     # Statefully register the handler.
-    db.reg.register_handler('foo', ImageHandler)
+    db.reg.register_handler('NPY_SEQ', NumpySeqHandler)
 
-    ev, ev2 = db.get_events(h,
-                            stream_name='injected', fields=['image'],
-                            fill=True)
-    assert ev['data']['image'].shape == ImageHandler.RESULT.shape
-    ims = db.get_images(h, 'image', stream_name='injected')[0]
-    assert ims.shape == ImageHandler.RESULT.shape
-    assert ev['filled']['image']
+    EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
 
-    ev, ev2 = db.get_events(h, stream_name='injected', fields=['image'])
+    ev, ev2 = db.get_events(h, fields=['img'], fill=True)
+    assert ev['data']['img'].shape == EXPECTED_SHAPE
+    ims = db.get_images(h, 'img')[0]
+    assert ims.shape == EXPECTED_SHAPE
+    assert ev['filled']['img']
+
+    ev, ev2 = db.get_events(h, fields=['img'])
     assert ev is not ev2
     assert ev['filled'] is not ev2['filled']
-    assert not ev['filled']['image']
-    datum = ev['data']['image']
+    assert not ev['filled']['img']
+    datum = ev['data']['img']
 
     if hasattr(db, 'v1') or hasattr(db, 'v2'):
         with pytest.raises(NotImplementedError):
@@ -649,43 +598,15 @@ def test_handler_options(db, RE, hw):
             ev2_filled = db.fill_event(ev2, inplace=False)
 
     # table with fill=False (default)
-    table = db.get_table(h, stream_name='injected', fields=['image'])
-    datum_id = table['image'].iloc[0]
+    table = db.get_table(h, fields=['img'])
+    datum_id = table['img'].iloc[0]
     assert isinstance(datum_id, str)
 
     # table with fill=True
-    table = db.get_table(h, stream_name='injected',
-                         fields=['image'], fill=True)
-    img = table['image'].iloc[0]
+    table = db.get_table(h, fields=['img'], fill=True)
+    img = table['img'].iloc[0]
     assert not isinstance(img, str)
-    assert img.shape == ImageHandler.RESULT.shape
-
-    # Override the stateful registry with a one-off handler.
-    # This maps onto the *data key*, not the resource spec.
-    # ev, ev2 = db.get_events(h, fields=['image'], fill=True,
-    #                         handler_overrides={'image': DummyHandler})
-    # assert ev['data']['image'] == 'dummy'
-    # assert ev['filled']['image']
-
-    # res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-    #                    handler_registry={'foo': DummyHandler})
-    # assert res['image'].iloc[0] == 'dummy'
-    # assert ev['filled']['image']
-
-    # res = db.get_table(h, fields=['image'], stream_name='injected', fill=True,
-    #                    handler_overrides={'image': DummyHandler})
-    # assert res['image'].iloc[0] == 'dummy'
-    # assert ev['filled']['image']
-
-    # # Register the DummyHandler statefully so we can test overriding with
-    # # ImageHandler for the get_images method below.
-    # db.reg.register_handler('foo', DummyHandler, overwrite=True)
-
-    # res = db.get_images(h, 'image', handler_registry={'foo': ImageHandler})
-    # assert res[0].shape == ImageHandler.RESULT.shape
-
-    # res = db.get_images(h, 'image', handler_override=ImageHandler)
-    # assert res[0].shape == ImageHandler.RESULT.shape
+    assert img.shape == EXPECTED_SHAPE
 
 
 def test_export(broker_factory, RE, hw):
