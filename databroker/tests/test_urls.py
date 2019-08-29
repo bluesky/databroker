@@ -5,6 +5,8 @@ import uuid
 from time import time
 import pytest
 
+pytestmark = pytest.mark.skipif(os.environ.get('INCLUDE_V0_SERVICE_TESTS') != '1',
+                    reason="depricated")
 
 @pytest.mark.parametrize('k,v',
                          [('run_start', 'find_run_starts'),
@@ -12,8 +14,6 @@ import pytest
                           ('event', 'find_events'),
                           ('event_descriptor', 'find_descriptors')])
 
-@pytest.mark.skipif(os.environ.get('INCLUDE_V0_SERVICE_TESTS') != '1',
-                    reason="depricated")
 def test_get_urls(k, v, md_server_url):
     base_url = md_server_url
     url = base_url + k
@@ -21,8 +21,6 @@ def test_get_urls(k, v, md_server_url):
     r = requests.get(url, params=ujson.dumps(message))
     r.raise_for_status()
 
-@pytest.mark.skipif(os.environ.get('INCLUDE_V0_SERVICE_TESTS') != '1',
-                    reason="depricated")
 def test_put_rs(md_server_url):
     base_url = md_server_url
     rs = dict(time=time(),
