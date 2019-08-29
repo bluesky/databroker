@@ -409,6 +409,17 @@ class Broker:
                 if not len(d['data_keys']) and not len(all_extra_data):
                     continue
 
+            def merge_config_into_event(event):
+                event_data = doc['data']  # cache for perf
+                desc = doc['descriptor']
+                event_timestamps = doc['timestamps']
+                event_data.update(per_desc_extra_data[desc])
+                event_timestamps.update(per_desc_extra_ts[desc])
+                discard_fields = per_desc_discards[desc]
+                for field in discard_fields:
+                    del event_data[field]
+                    del event_timestamps[field]
+
             if stream_name is not ALL:
                 for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
                     # Filter by stream_name.
@@ -421,16 +432,8 @@ class Broker:
                     elif name == 'event':
                         if doc['descriptor'] not in descriptors:
                             continue
-                        event_data = doc['data']  # cache for perf
-                        desc = doc['descriptor']
-                        event_timestamps = doc['timestamps']
-                        event_data.update(per_desc_extra_data[desc])
-                        event_timestamps.update(per_desc_extra_ts[desc])
-                        discard_fields = per_desc_discards[desc]
-                        for field in discard_fields:
-                            del event_data[field]
-                            del event_timestamps[field]
-                        if not event_data:
+                        merge_config_into_event(doc)
+                        if not doc['data']:
                             # Skip events that are now empty because they had no
                             # applicable fields.
                             continue
@@ -439,16 +442,8 @@ class Broker:
                         if doc['descriptor'] not in descriptors:
                             continue
                         for event in event_model.unpack_event_page(doc):
-                            event_data = event['data']  # cache for perf
-                            desc = event['descriptor']
-                            event_timestamps = event['timestamps']
-                            event_data.update(per_desc_extra_data[desc])
-                            event_timestamps.update(per_desc_extra_ts[desc])
-                            discard_fields = per_desc_discards[desc]
-                            for field in discard_fields:
-                                del event_data[field]
-                                del event_timestamps[field]
-                            if not event_data:
+                            merge_config_into_event(event)
+                            if not event['data']:
                                 # Skip events that are now empty because they had no
                                 # applicable fields.
                                 continue
@@ -464,7 +459,21 @@ class Broker:
                 for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
                     if name == 'event_page':
                         for event in event_model.unpack_event_page(doc):
+                            merge_config_into_event(event)
+                            if not event['data']:
+                                # Skip events that are now empty because they had no
+                                # applicable fields.
+                                continue
                             yield 'event', self.prepare_hook('event', event)
+                    elif name == 'event':
+                        if doc['descriptor'] not in descriptors:
+                            continue
+                        merge_config_into_event(doc)
+                        if not doc['data']:
+                            # Skip events that are now empty because they had no
+                            # applicable fields.
+                            continue
+                        yield name, self.prepare_hook(name, doc)
                     elif name == 'datum_page':
                         for datum in event_model.unpack_datum_page(doc):
                             yield 'datum', self.prepare_hook('datum', datum)
