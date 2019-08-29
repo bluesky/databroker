@@ -5,8 +5,10 @@ import uuid
 from time import time
 import pytest
 
-pytestmark = pytest.mark.skipif(os.environ.get('INCLUDE_V0_SERVICE_TESTS') != '1',
-                    reason="depricated")
+pytestmark = pytest.mark.skipif(
+    os.environ.get('INCLUDE_V0_SERVICE_TESTS') != '1',
+    reason="deprecated")
+
 
 @pytest.mark.parametrize('k,v',
                          [('run_start', 'find_run_starts'),
