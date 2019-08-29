@@ -1,0 +1,13 @@
+[Unit]
+Description=Metadata Service
+After=syslog.target network.target rh-mongodb32-mongod
+
+[Service]
+Type=simple
+User=broker
+ExecStart=/usr/bin/scl enable rh-python36 -- /opt/rh/rh-python36/root/usr/bin/start_md_server --mongo-host=localhost --mongo-port=27017 --database=datastore --service-port=7770 --timezone=US/Eastern
+LimitNOFILE=64000
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

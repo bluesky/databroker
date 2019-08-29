@@ -2,12 +2,16 @@ import os
 import pytest
 import sys
 import uuid
+import ujson
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_pymongo_backed_broker,
                                     build_hdf5_backed_broker,
                                     build_intake_jsonl_backed_broker,
                                     build_intake_mongo_backed_broker,
-                                    build_intake_mongo_embedded_backed_broker)
+                                    build_intake_mongo_embedded_backed_broker,
+                                    build_client_backend_broker,
+                                    start_md_server,
+                                    stop_md_server)
 import tempfile
 import time
 import requests.exceptions
@@ -47,7 +51,7 @@ def db_empty(request):
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=['sqlite', 'mongo', 'hdf5'], scope='function')
+@pytest.fixture(params=list(param_map), scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
     return {k: lambda: v(request) for k, v in param_map.items()}[request.param]
@@ -90,3 +94,41 @@ def mds_portable(request):
     request.addfinalizer(delete_dm)
 
     return mds
+
+
+@pytest.fixture(scope='module')
+def md_server_url(request):
+    from random import randint
+    port = randint(9000, 60000)
+    testing_config = dict(mongohost='localhost', mongoport=27017,
+                          database='mds_test'+str(uuid.uuid4()),
+                          serviceport=port, tzone='US/Eastern')
+
+    proc = start_md_server(testing_config)
+
+    def tear_down():
+        stop_md_server(proc, testing_config)
+
+    request.addfinalizer(tear_down)
+    base_url = 'http://{}:{}/'.format('localhost',
+                                      testing_config['serviceport'])
+
+    # Wait here until the server responds. Time out after 1 minute.
+    TIMEOUT = 60  # seconds
+    startup_time = time.time()
+    url = base_url + 'run_start'
+    message = dict(query={}, signature='find_run_starts')
+    print("Waiting up to 60 seconds for the server to start up....")
+    while True:
+        if time.time() - startup_time > TIMEOUT:
+            raise Exception("Server startup timed out.")
+        try:
+            requests.get(url, params=ujson.dumps(message))
+        except requests.exceptions.ConnectionError:
+            time.sleep(1)
+            continue
+        else:
+            break
+    print("Server is up!")
+
+    return base_url
