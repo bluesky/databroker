@@ -367,6 +367,42 @@ class Broker:
         ValueError if any key in `fields` is not in at least one descriptor
         pre header.
         """
+
+        class GetDocumentsRouter(event_model.DocumentRouter):
+            def __init__(self, prepare_hook, stream_name=None):
+                self.prepare_hook = prepare_hook
+                self._stream_name = stream_name
+                self._descriptors = set()
+
+            def __call__(self, name, doc, validate=False):
+                new_doc = super().__call__(name, doc, validate=validate)
+                if new_doc:
+                    if name == 'datum_page':
+                        for doc in event_model.unpack_datum_page(new_doc):
+                            yield name, self.prepare_hook('datum', doc)
+                    elif name == 'event_page':
+                        for doc in event_model.unpack_event_page(new_doc):
+                            yield name, self.prepare_hook('event',
+                                                  merge_config_into_event(doc))
+                    else:
+                        yield name, self.prepare_hook(name, new_doc)
+
+            def descriptor(self, doc):
+                if self.stream_name:
+                    if doc.get('name', 'primary') == stream_name:
+                        self._descriptors.add(doc['uid'])
+                else:
+                    self._descriptors.add(doc['uid'])
+                return doc
+
+            def event(self, doc):
+                return (merge_config_into_event(doc) if doc['descriptor']
+                                          in self._descriptors else None)
+
+            def event_page(self, doc):
+                return doc if doc['descriptor'] in self._descriptors else None
+
+
         if handler_registry is not None:
             raise NotImplementedError("The handler_registry must be set when "
                                        "the Broker is initialized, usually specified "
@@ -420,65 +456,11 @@ class Broker:
                     del event_data[field]
                     del event_timestamps[field]
 
-            if stream_name is not ALL:
-                for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
-                    # Filter by stream_name.
-                    if name == 'descriptor':
-                        if doc.get('name', 'primary') == stream_name:
-                            descriptors.add(doc['uid'])
-                            yield name, self.prepare_hook(name, doc)
-                        else:
-                            continue
-                    elif name == 'event':
-                        if doc['descriptor'] not in descriptors:
-                            continue
-                        merge_config_into_event(doc)
-                        if not doc['data']:
-                            # Skip events that are now empty because they had no
-                            # applicable fields.
-                            continue
-                        yield name, self.prepare_hook(name, doc)
-                    elif name == 'event_page':
-                        if doc['descriptor'] not in descriptors:
-                            continue
-                        for event in event_model.unpack_event_page(doc):
-                            merge_config_into_event(event)
-                            if not event['data']:
-                                # Skip events that are now empty because they had no
-                                # applicable fields.
-                                continue
-                            yield name, self.prepare_hook(name, event)
-                    elif name == 'datum_page':
-                        for datum in event_model.unpack_datum_page(doc):
-                            yield 'datum', self.prepare_hook('datum', datum)
-                    elif name == 'datum':
-                        yield 'datum', self.prepare_hook('datum', doc)
-                    else:
-                        yield name, self.prepare_hook(name, doc)
-            else:
-                for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
-                    if name == 'event_page':
-                        for event in event_model.unpack_event_page(doc):
-                            merge_config_into_event(event)
-                            if not event['data']:
-                                # Skip events that are now empty because they had no
-                                # applicable fields.
-                                continue
-                            yield 'event', self.prepare_hook('event', event)
-                    elif name == 'event':
-                        if doc['descriptor'] not in descriptors:
-                            continue
-                        merge_config_into_event(doc)
-                        if not doc['data']:
-                            # Skip events that are now empty because they had no
-                            # applicable fields.
-                            continue
-                        yield name, self.prepare_hook(name, doc)
-                    elif name == 'datum_page':
-                        for datum in event_model.unpack_datum_page(doc):
-                            yield 'datum', self.prepare_hook('datum', datum)
-                    else:
-                        yield name, self.prepare_hook(name, doc)
+            get_documents_router = GetDocumentsRouter(self.prepare_hook,
+                                                      stream_name=stream_name)
+            for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
+                yield from get_documents_router(name, doc)
+
 
     def get_events(self,
                    headers, stream_name='primary', fields=None, fill=False,
