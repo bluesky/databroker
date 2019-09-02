@@ -1725,12 +1725,14 @@ class BrokerES(object):
             db.mds.insert_run_stop(**_sanitize(header['stop']))
             # insert assets
             res_uids = self.get_resource_uids(header)
+
             for uid in res_uids:
                 fps = self.reg.copy_files(uid, new_root=new_root,
                                           **copy_kwargs)
                 file_pairs.extend(fps)
                 res = self.reg.resource_given_uid(uid)
                 r_path = res['resource_path']
+                out_root = new_root
                 if os.path.isabs(r_path):
                     if not res['root']:
                         r_path = os.path.relpath(r_path, os.path.sep)
