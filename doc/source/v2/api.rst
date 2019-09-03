@@ -33,25 +33,25 @@ Integration with BlueskyRun
 For each file format / backend (MongoDB, newline-delimited JSON, directory of
 TIFFs, etc.) one needs to write a single custom catalog. Its entries, created
 dynamically as described above, should be ``LocalCatalogEntry`` objects that
-identify ``intake_bluesky.core.BlueskyRun`` as their driver. See below for the
+identify ``databroker.core.BlueskyRun`` as their driver. See below for the
 arguments that they would provide to the entry so that it can instantiate the
 catalog when called upon.
 
 Core
 ====
 
-.. autoclass:: intake_bluesky.core.BlueskyRun
+.. autoclass:: databroker.core.BlueskyRun
    :members:
 
-.. autoclass:: intake_bluesky.core.RemoteBlueskyRun
+.. autoclass:: databroker.core.RemoteBlueskyRun
    :members:
 
-.. autoclass:: intake_bluesky.core.BlueskyEventStream
+.. autoclass:: databroker.core.BlueskyEventStream
    :members:
 
-.. autofunction:: intake_bluesky.core.documents_to_xarray
+.. autofunction:: databroker.core.documents_to_xarray
 
-.. autofunction:: intake_bluesky.core.parse_handler_registry
+.. autofunction:: databroker.core.parse_handler_registry
 
 Backend-Specific Catalogs
 =========================
@@ -63,8 +63,14 @@ Backend-Specific Catalogs
    dependencies and release cycles. This will be done once the interface with
    core is deemed stable.
 
-.. autoclass:: intake_bluesky.mongo_normalized.BlueskyMongoCatalog
+.. autoclass:: databroker._drivers.jsonl.BlueskyJSONLCatalog
    :members:
 
-.. autoclass:: intake_bluesky.jsonl.BlueskyJSONLCatalog
+.. autoclass:: databroker._drivers.mongo_embedded.BlueskyMongoCatalog
+   :members:
+
+.. autoclass:: databroker._drivers.mongo_normalized.BlueskyMongoCatalog
+   :members:
+
+.. autoclass:: databroker._drivers.msgpack.BlueskyMsgpackCatalog
    :members:

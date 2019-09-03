@@ -37,7 +37,7 @@ file system where the data files are stored.
 
 .. ipython:: python
 
-    from intake_bluesky.jsonl import BlueskyJSONLCatalog
+    from databroker._drivers.jsonl import BlueskyJSONLCatalog
     import glob
     catalog = BlueskyJSONLCatalog(glob.glob('data/*.jsonl'))
 
@@ -82,7 +82,7 @@ Read Data as Bluesky "Documents"
 
 .. ipython:: python
 
-   catalog[uid].canonical()
+   catalog[uid].canonical(fill='yes')
 
 This generator yields ``(name, doc)`` pairs and can be fed into streaming
 visualization, processing, and serialization tools that consume this
