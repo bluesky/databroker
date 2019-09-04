@@ -2,6 +2,11 @@
 DataBroker
 **********
 
+.. warning::
+
+   If you are at an NSLS-II beamline, the latest version of databroker available
+   does not support the "v2" interface documented below. See :doc:`v1/index`.
+
 If you are here to...
 
 * access data via databroker, see the :doc:`user/index`;
