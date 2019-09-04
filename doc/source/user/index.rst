@@ -15,7 +15,7 @@ User Documentation
    from bluesky import RunEngine
    RE = RunEngine()
    from bluesky.plans import scan
-   from ophyd.sim import det, motor, motor1, motor2
+   from ophyd.sim import img, motor, motor1, motor2
    from suitcase.jsonl import Serializer
    from bluesky.preprocessors import SupplementalData
    sd = SupplementalData(baseline=[motor1, motor2])
@@ -23,11 +23,11 @@ User Documentation
    RE.md['proposal_id'] = 12345
    for _ in range(5):
        with Serializer('data') as serializer:
-           uid, = RE(scan([det], motor, -1, 1, 3), serializer)
+           uid, = RE(scan([img], motor, -1, 1, 3), serializer)
    RE.md['proposal_id'] = 6789
    for _ in range(7):
        with Serializer('data') as serializer:
-           RE(scan([det], motor, -1, 1, 3), serializer)
+           RE(scan([img], motor, -1, 1, 3), serializer)
    serializer.close()
    from intake.catalog.local import YAMLFileCatalog
    csx = YAMLFileCatalog('source/_catalogs/csx.yml')
@@ -165,8 +165,8 @@ them individually or we can loop through them:
        # Do stuff
        ...
 
-Access Data as an Xarray
-------------------------
+Access Data
+-----------
 
 Suppose we have a run of interest.
 
@@ -181,7 +181,7 @@ their names varies by the particular experiment, but two common ones are
 * 'baseline', readings taken at the beginning and end of the run for alignment
   and sanity-check purposes
 
-To explore a run, we can open it by calling it like a function with no
+To explore a run, we can open its entry by calling it like a function with no
 arguments:
 
 .. ipython:: python
@@ -201,7 +201,7 @@ This is an xarray.Dataset. You can access specific columns
 
 .. ipython:: python
 
-   ds['det']
+   ds['img']
 
 do mathematical operations
 
@@ -218,8 +218,26 @@ make quick plots
 
 and much more. See the documentation on xarray_.
 
-Access Data as Bluesky Documents
---------------------------------
+If the data is large, it can be convenient to access it lazily, deferring the
+actual loading network or disk I/O. To do this, replace ``read()`` with
+``to_dask()``. You still get back an xarray.Dataset, but it contains
+placeholders that will fetch the data in chunks and only as needed, rather than
+greedily pulling all the data into memory from the start.
+
+.. ipython:: python
+
+   ds = entry['primary'].to_dask()
+   ds
+
+See the documentation on dask_.
+
+Replay Document Stream
+----------------------
+
+Bluesky is built around a streaming-friendly representation of data and
+metadata. (See event-model_.) To access the run---effectively replaying the
+chronological stream of documents that were emitted during data
+acquisition---use the ``canonical()`` method.
 
 .. ipython:: python
 
@@ -227,10 +245,9 @@ Access Data as Bluesky Documents
 
 This generator yields ``(name, doc)`` pairs and can be fed into streaming
 visualization, processing, and serialization tools that consume this
-representation, such as those provided by bluesky. This is the same
-representation that was emitted when the data was first acquired, so the user
-can apply the same streaming pipelines to data while it is being acquired and
-after it is saved.
+representation, such as those provided by bluesky.
 
 .. _MongoQuerySelectors: https://docs.mongodb.com/v3.2/reference/operator/query/#query-selectors
 .. _xarray: https://xarray.pydata.org/en/stable/
+.. _dask: https://docs.dask.org/en/latest/
+.. _event-model: https://blueskyproject.io/event-model/
