@@ -1,0 +1,5 @@
+sources:
+  raw:
+    driver: 'bluesky-jsonl-catalog'
+    args:
+      paths: 'data/*.jsonl'
