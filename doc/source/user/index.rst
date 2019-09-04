@@ -15,8 +15,11 @@ User Documentation
    from bluesky import RunEngine
    RE = RunEngine()
    from bluesky.plans import scan
-   from ophyd.sim import det, motor
+   from ophyd.sim import det, motor, motor1, motor2
    from suitcase.jsonl import Serializer
+   from bluesky.preprocessors import SupplementalData
+   sd = SupplementalData(baseline=[motor1, motor2])
+   RE.preprocessors.append(sd)
    RE.md['proposal_id'] = 12345
    for _ in range(5):
        with Serializer('data') as serializer:
@@ -153,8 +156,6 @@ where ``search()`` is passed a dictionary mapping search terms to values.
 
    See MongoQuerySelectors_ for more.
 
-.. _MongoQuerySelectors: https://docs.mongodb.com/v3.2/reference/operator/query/#query-selectors
-
 Once we have a result set that we are happy with we can list them and access
 them individually or we can loop through them:
 
@@ -193,7 +194,29 @@ tables of data. Finally, let's get one of these tables.
 
 .. ipython:: python
 
-   entry['primary'].read()
+   ds = entry['primary'].read()
+   ds
+
+This is an xarray.Dataset. You can access specific columns
+
+.. ipython:: python
+
+   ds['det']
+
+do mathematical operations
+
+.. ipython:: python
+
+   ds.mean()
+
+make quick plots
+
+.. ipython:: python
+
+   @savefig ds_motor_plot.png
+   ds['motor'].plot()
+
+and much more. See the documentation on xarray_.
 
 Access Data as Bluesky Documents
 --------------------------------
@@ -208,3 +231,6 @@ representation, such as those provided by bluesky. This is the same
 representation that was emitted when the data was first acquired, so the user
 can apply the same streaming pipelines to data while it is being acquired and
 after it is saved.
+
+.. _MongoQuerySelectors: https://docs.mongodb.com/v3.2/reference/operator/query/#query-selectors
+.. _xarray: https://xarray.pydata.org/en/stable/
