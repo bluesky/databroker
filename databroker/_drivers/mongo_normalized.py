@@ -129,7 +129,7 @@ class _Entries(collections.abc.Mapping):
 
 class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
-                 handler_registry=None, query=None, **kwargs):
+                 handler_registry=None, root_map=None, query=None, **kwargs):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
@@ -146,6 +146,8 @@ class BlueskyMongoCatalog(Broker):
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
             ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+        root_map : dict, optional
+            Maps resource root paths to different paths.
         query : dict, optional
             MongoDB query. Used internally by the ``search()`` method.
         **kwargs :
@@ -178,7 +180,8 @@ class BlueskyMongoCatalog(Broker):
         if handler_registry is None:
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(parsed_handler_registry, inplace=True)
+        self.filler = event_model.Filler(
+                parsed_handler_registry, root_map=root_map, inplace=True)
         super().__init__(**kwargs)
 
     def _get_run_stop(self, run_start_uid):
@@ -267,6 +270,7 @@ class BlueskyMongoCatalog(Broker):
             asset_registry_db=self._asset_registry_db,
             query=query,
             handler_registry=self.filler.handler_registry,
+            root_map=self.filler.root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

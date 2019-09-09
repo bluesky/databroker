@@ -22,7 +22,8 @@ class SafeLocalCatalogEntry(intake.catalog.local.LocalCatalogEntry):
 class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
-    def __init__(self, handler_registry=None, query=None, **kwargs):
+    def __init__(self, handler_registry=None, root_map=None, query=None,
+                 **kwargs):
         """
         This Catalog is backed by Python collections in memory.
 
@@ -36,6 +37,8 @@ class BlueskyInMemoryCatalog(Broker):
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
             ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+        root_map : dict, optional
+            Maps resource root paths to different paths.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
         **kwargs :
@@ -46,7 +49,8 @@ class BlueskyInMemoryCatalog(Broker):
         if handler_registry is None:
             handler_registry = {}
         parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(parsed_handler_registry, inplace=True)
+        self.filler = event_model.Filler(
+            parsed_handler_registry, root_map=root_map, inplace=True)
         self._uid_to_run_start_doc = {}
         super().__init__(**kwargs)
 
@@ -88,6 +92,7 @@ class BlueskyInMemoryCatalog(Broker):
         cat = type(self)(
             query=query,
             handler_registry=self.filler.handler_registry,
+            root_map=self.filler.root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

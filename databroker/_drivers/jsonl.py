@@ -55,7 +55,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-jsonl-catalog'  # noqa
 
     def __init__(self, paths, *,
-                 handler_registry=None, query=None, **kwargs):
+                 handler_registry=None, root_map=None, query=None, **kwargs):
         """
         This Catalog is backed by a newline-delimited JSON (jsonl) file.
 
@@ -71,6 +71,8 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
             ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+        root_map : dict, optional
+            Maps resource root paths to different paths.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
         **kwargs :
@@ -83,6 +85,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         self.paths = paths
         self._filename_to_mtime = {}
         super().__init__(handler_registry=handler_registry,
+                         root_map=root_map,
                          query=query,
                          **kwargs)
 
@@ -119,6 +122,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             paths=self.paths,
             query=query,
             handler_registry=self.filler.handler_registry,
+            root_map=self.filler.root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,
