@@ -1575,11 +1575,11 @@ def _from_v0_config(config):
         raise NotImplementedError(
             f"Unable to handle metadatastore.class {mds_class!r}")
     assets_module = config['assets']['module']
-    if assets_module != 'databroker.headersource.mongo':
+    if assets_module != 'databroker.assets.mongo':
         raise NotImplementedError(
             f"Unable to handle assets.module {assets_module!r}")
     assets_class = config['assets']['class']
-    if assets_class not in ('MDS', 'MDSRO'):
+    if assets_class not in ('Registry', 'RegistryRO'):
         raise NotImplementedError(
             f"Unable to handle assets.class {assets_class!r}")
 
