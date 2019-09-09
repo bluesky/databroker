@@ -18,6 +18,7 @@ import xarray
 
 import event_model
 import intake
+import pymongo
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
