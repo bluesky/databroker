@@ -1588,10 +1588,12 @@ def _from_v0_config(config):
 
     host = config['metadatastore']['config']['host']
     port = config['metadatastore']['config'].get('port')
-    metadatastore_db = _get_mongo_client(host, port)[config['database']]
+    database_name = config['metadatastore']['config']['database']
+    metadatastore_db = _get_mongo_client(host, port)[database_name]
     host = config['assets']['config']['host']
     port = config['assets']['config'].get('port')
-    asset_registry_db = _get_mongo_client(host, port)[config['database']]
+    database_name = config['assets']['config']['database']
+    asset_registry_db = _get_mongo_client(host, port)[database_name]
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
