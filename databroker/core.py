@@ -414,16 +414,25 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     name = 'bluesky-run'
 
     def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
-        super().__init__(url=url, http_args=http_args, name=name,
-                         metadata=metadata)
         self.url = url
         self.name = name
         self.parameters = parameters
         self.http_args = http_args
         self._source_id = None
         self.metadata = metadata or {}
-        self._get_source_id()
+        response = self._get_source_id()
         self.bag = None
+        self._source_id = response['source_id']
+        super().__init__(url=url, http_args=http_args, name=name,
+                         metadata=metadata,
+                         source_id=self._source_id)
+        self.npartitions = response['npartitions']
+        self.metadata = response['metadata']
+        self._schema = intake.source.base.Schema(
+            datashape=None, dtype=None,
+            shape=self.shape,
+            npartitions=self.npartitions,
+            metadata=self.metadata)
 
     def _get_source_id(self):
         if self._source_id is None:
@@ -434,17 +443,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
                                 **self.http_args)
             req.raise_for_status()
             response = msgpack.unpackb(req.content, **unpack_kwargs)
-            self._parse_open_response(response)
-
-    def _parse_open_response(self, response):
-        self.npartitions = response['npartitions']
-        self.metadata = response['metadata']
-        self._schema = intake.source.base.Schema(
-            datashape=None, dtype=None,
-            shape=self.shape,
-            npartitions=self.npartitions,
-            metadata=self.metadata)
-        self._source_id = response['source_id']
+            return response
 
     def _load_metadata(self):
         return self._schema
