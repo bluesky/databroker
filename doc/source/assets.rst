@@ -154,7 +154,7 @@ Dataset as a "datum".
 
    import h5py
    import numpy as np
-   f = h5py.File('example.h5')
+   f = h5py.File('example.h5', 'w')
    for key in list('ABC'):
        f.create_dataset(key, data=np.random.randint(0, 10, (5, 5)))
    f.close()
@@ -168,7 +168,7 @@ Write a Handler
 
    class HDF5DatasetHandler(object):
        def __init__(self, filename):
-           self.file = h5py.File(filename)
+           self.file = h5py.File(filename, 'r')
        def __call__(self, key):
            return self.file[key][()]
 
@@ -207,7 +207,7 @@ file. The Dataset is named ``'my-dataset-name``. We will make the file a
 
    import h5py
    import numpy as np
-   f = h5py.File('example.h5')
+   f = h5py.File('example.h5', 'w')
    f.create_dataset('my-dataset-name',
                     data=np.random.randint(0, 10, (5, 5, 3)))
    f.close()
@@ -221,7 +221,7 @@ Write a Handler
 
    class HDF5DatasetSliceHandler(object):
        def __init__(self, filename, dataset_name):
-           f = h5py.File(filename)
+           f = h5py.File(filename, 'r')
            self.data = f[dataset_name][()]
        def __call__(self, frame_no):
            return self.data[frame_no, :, :]
