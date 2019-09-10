@@ -2,6 +2,9 @@ from intake.catalog import Catalog
 from intake.catalog.entry import CatalogEntry
 import entrypoints
 import warnings
+import collections
+from databroker.utils import list_configs, lookup_config
+
 
 class Broker(Catalog):
     """
@@ -66,6 +69,35 @@ class EntrypointsCatalog(Catalog):
                 warings.warn(f"Failed to load {name}, {entrypoint}, {e!r}.")
 
 
+class V0Entry(CatalogEntry):
+
+    def __init__(self, name, *args, **kwargs):
+        self._name = name
+        super().__init__(*args, **kwargs)
+
+    def get(self):
+        # Hide this import here so that
+        # importing v2 doesn't import v1 unless we actually use it.
+        from databroker import v1
+        config = lookup_config(name)
+        catalog = v1.from_config(config)  # might return v0, v1, or v2 Broker
+        if not hasattr(catalog, 'v2'):
+            raise ValueError("The config file could not be parsed for v2-style access.")
+        return catalog.v2  # works if catalog is v1-style or v2-style
+
+
+class V0Catalog(Catalog):
+    """
+    Build v2.Brokers based on any v0-style configs we can find.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _load(self):
+        for name in list_configs():
+            self._entries[name] = V0Entry(name)
+
+
 class MergedCatalog(Catalog):
     def __init__(self, catalogs, *args, **kwargs):
         self._catalogs = catalogs
@@ -77,6 +109,3 @@ class MergedCatalog(Catalog):
 
     def _make_entries_container(self):
         return collections.ChainMap(*(catalog._entries for catalog in self._catalogs))
-
-
-catalog = EntrypointsCatalog()

@@ -14,6 +14,11 @@ from ._core import (Broker, BrokerES, Header, ALL,
                     wrap_in_doct,
                     DeprecatedDoct, wrap_in_deprecated_doct)
 
+from .v2 import MergedCatalog, EntrypointsCatalog, V0Catalog
+
+# A catalog created from discovered entrypoints and v0 catalogs.
+catalog = MergedCatalog([EntrypointsCatalog(), V0Catalog()])
+
 # set version string using versioneer
 from ._version import get_versions
 __version__ = get_versions()['version']
