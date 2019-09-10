@@ -67,8 +67,9 @@ class EntrypointsCatalog(Catalog):
 
 
 class MergedCatalog(Catalog):
-    def __init__(self, catalogs):
+    def __init__(self, catalogs, *args, **kwargs):
         self._catalogs = catalogs
+        super().__init__(*args, **kwargs)
 
     def _load(self):
         for catalog in self._catalogs:
