@@ -1,9 +1,4 @@
 from intake.catalog import Catalog
-from intake.catalog.entry import CatalogEntry
-import entrypoints
-import warnings
-import collections
-from databroker.utils import list_configs, lookup_config
 
 
 class Broker(Catalog):
