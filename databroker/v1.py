@@ -18,6 +18,7 @@ import xarray
 
 import event_model
 import intake
+import pymongo
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -1575,11 +1576,11 @@ def _from_v0_config(config):
         raise NotImplementedError(
             f"Unable to handle metadatastore.class {mds_class!r}")
     assets_module = config['assets']['module']
-    if assets_module != 'databroker.headersource.mongo':
+    if assets_module != 'databroker.assets.mongo':
         raise NotImplementedError(
             f"Unable to handle assets.module {assets_module!r}")
     assets_class = config['assets']['class']
-    if assets_class not in ('MDS', 'MDSRO'):
+    if assets_class not in ('Registry', 'RegistryRO'):
         raise NotImplementedError(
             f"Unable to handle assets.class {assets_class!r}")
 
@@ -1587,10 +1588,12 @@ def _from_v0_config(config):
 
     host = config['metadatastore']['config']['host']
     port = config['metadatastore']['config'].get('port')
-    metadatastore_db = _get_mongo_client(host, port)[config['database']]
+    database_name = config['metadatastore']['config']['database']
+    metadatastore_db = _get_mongo_client(host, port)[database_name]
     host = config['assets']['config']['host']
     port = config['assets']['config'].get('port')
-    asset_registry_db = _get_mongo_client(host, port)[config['database']]
+    database_name = config['assets']['config']['database']
+    asset_registry_db = _get_mongo_client(host, port)[database_name]
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances

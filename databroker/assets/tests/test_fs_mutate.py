@@ -30,6 +30,7 @@ def num_paths(start, stop):
                           for _ in range(start, stop)))
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 @pytest.mark.parametrize("step,sign", product([1, 3, 5, 7], [1, -1]))
 def test_root_shift(fs_v1, step, sign):
     fs = fs_v1
@@ -62,6 +63,7 @@ def test_root_shift(fs_v1, step, sign):
         last_res = new_res
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 @pytest.mark.parametrize("root", ['', '///', None])
 def test_pathological_root(fs_v1, root):
     fs = fs_v1
