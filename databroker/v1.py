@@ -1585,6 +1585,7 @@ def _from_v0_config(config):
             f"Unable to handle assets.class {assets_class!r}")
 
     from ._drivers.mongo_normalized import BlueskyMongoCatalog
+    from .core import discover_handlers
 
     host = config['metadatastore']['config']['host']
     port = config['metadatastore']['config'].get('port')
@@ -1594,7 +1595,13 @@ def _from_v0_config(config):
     port = config['assets']['config'].get('port')
     database_name = config['assets']['config']['database']
     asset_registry_db = _get_mongo_client(host, port)[database_name]
-    return BlueskyMongoCatalog(metadatastore_db, asset_registry_db)
+    # In v0, user-defined handlers are *added* to any default ones.
+    handler_registry = discover_handlers()
+    for spec, contents in config.get('handlers', {}).items():
+        dotted_object = '.'.join((contents['module'], contents['class']))
+        handler_registry[spec] = dotted_object
+    return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
+                               handler_registry=handler_registry)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
