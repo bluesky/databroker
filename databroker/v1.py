@@ -1551,7 +1551,7 @@ def from_config(config, auto_register=True, name=None):
         from . import v0
         return v0.Broker.from_config(config, auto_register, name)
     try:
-        catalog = _from_v0_config(config)
+        catalog = _from_v0_config(config, name)
     except Exception as exc:
         warnings.warn(
             f"Failed to load config. Falling back to v0."
@@ -1566,7 +1566,7 @@ def from_config(config, auto_register=True, name=None):
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
 
-def _from_v0_config(config):
+def _from_v0_config(config, name):
     mds_module = config['metadatastore']['module']
     if mds_module != 'databroker.headersource.mongo':
         raise NotImplementedError(
@@ -1601,7 +1601,8 @@ def _from_v0_config(config):
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
-                               handler_registry=handler_registry)
+                               handler_registry=handler_registry,
+                               name=name)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
