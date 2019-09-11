@@ -251,7 +251,7 @@ if 'DATABROKER_TEST_MODE' in os.environ:
     SPECIAL_NAME = '_test_legacy_config'
 
 
-def list_configs():
+def list_configs(paths=CONFIG_SEARCH_PATH):
     """
     List the names of the available configuration files.
 
@@ -264,7 +264,7 @@ def list_configs():
     :func:`describe_configs`
     """
     names = set()
-    for path in CONFIG_SEARCH_PATH:
+    for path in paths:
         files = glob.glob(os.path.join(path, '*.yml'))
         names.update([os.path.basename(f)[:-4] for f in files])
 

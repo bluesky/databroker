@@ -1,5 +1,5 @@
 import collections
-from databroker.utils import list_configs, lookup_config
+from databroker.utils import list_configs, lookup_config, CONFIG_SEARCH_PATH
 import entrypoints
 from intake.catalog import Catalog
 from intake.catalog.entry import CatalogEntry
@@ -81,11 +81,11 @@ class V0Catalog(Catalog):
     """
     Build v2.Brokers based on any v0-style configs we can find.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, paths=CONFIG_SEARCH_PATH, **kwargs):
         super().__init__(*args, **kwargs)
 
     def _load(self):
-        for name in list_configs():
+        for name in list_configs(paths=paths):
             self._entries[name] = V0Entry(name)
 
 
