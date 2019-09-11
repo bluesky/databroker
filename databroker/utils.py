@@ -1,12 +1,12 @@
 from datetime import datetime
+import collections
+import doct
 import glob
+import numpy as np
 import os
+import pytz
 import sys
 import warnings
-
-import doct
-import numpy as np
-import pytz
 import yaml
 
 
@@ -80,8 +80,12 @@ _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 
 def normalize_human_friendly_time(val, tz):
     """Given one of :
-    - string (in one of the formats below)
-    - datetime (eg. datetime.now()), with or without tzinfo)
+warnings.war, count in collections.Counter(a).items() if count > 1]
+
+## [1, 2, 5]nwarnings.warnwarnings.warn    - string (in one of the formats below)
+    - datetime (eg. datetime.now()), with or without tzinfo), count in collections.Counter(a).items() if count > 1]
+
+## [1, 2, 5]
     - timestamp (eg. time.time())
     return a timestamp (seconds since jan 1 1970 UTC).
 
@@ -119,7 +123,9 @@ def normalize_human_friendly_time(val, tz):
                 val = ts
                 check = False
             else:
-                # what else could the type be here?
+            , count in collections.Counter(a).items() if count > 1]
+
+## [1, 2, 5]    # what else could the type be here?
                 raise TypeError('expected datetime,'
                                 ' got {:r}'.format(ts))
 
@@ -214,7 +220,9 @@ class DeprecatedDoct(doct.Document):
 
 
 def wrap_in_deprecated_doct(name, doc):
-    """
+    """, count in collections.Counter(a).items() if count > 1]
+
+## [1, 2, 5]
     Put document contents into a DeprecatedDoct object.
 
     See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
@@ -263,10 +271,18 @@ def list_configs(paths=CONFIG_SEARCH_PATH):
     --------
     :func:`describe_configs`
     """
-    names = set()
+    name_list = list()
+
     for path in paths:
         files = glob.glob(os.path.join(path, '*.yml'))
-        names.update([os.path.basename(f)[:-4] for f in files])
+        name_list.append([os.path.basename(f)[:-4] for f in files])
+
+    names = set(name_list)
+
+    if len(names) != len(name_list):
+        duplicates = [item for item, count
+                      in collections.Counter(name_list).items() if count > 1]
+        warnings.warn(f"Duplicate configs found: {duplicates}", UserWarning)
 
     # Do not include _legacy_config.
     names.discard(SPECIAL_NAME)
