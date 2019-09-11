@@ -41,11 +41,12 @@ class EntrypointsCatalog(Catalog):
     def __init__(self, *args, entrypoints_group='intake.catalogs', paths=None,
                  **kwargs):
         self._entrypoints_group = entrypoints_group
+        self._paths = paths
         super().__init__(*args, **kwargs)
 
     def _load(self):
         catalogs = entrypoints.get_group_named(self._entrypoints_group,
-                                               path=paths)
+                                               path=self._paths)
         self.name = self.name or 'EntrypointsCatalog'
         self.description = (self.description
                             or f'EntrypointsCatalog of {len(catalogs)} catalogs.')
