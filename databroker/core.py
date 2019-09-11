@@ -1095,7 +1095,7 @@ def discover_handlers(entrypoint_group_name='databroker.handlers',
                 winner = group[name]
                 warnings.warn(
                     f"There are {len(matches)} entrypoints for the "
-                    f"databroker handler spec {name!r}."
+                    f"databroker handler spec {name!r}. "
                     f"They are {matches}. The match {winner} has won the race.")
     handler_registry = {}
     for name, entrypoint in group.items():
