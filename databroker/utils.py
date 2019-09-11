@@ -213,9 +213,7 @@ class DeprecatedDoct(doct.Document):
 
 
 def wrap_in_deprecated_doct(name, doc):
-    """, count in collections.Counter(a).items() if count > 1]
-
-## [1, 2, 5]
+    """
     Put document contents into a DeprecatedDoct object.
 
     See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`
