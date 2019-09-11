@@ -1,9 +1,9 @@
-from intake.catalog import Catalog
-from intake.catalog.entry import CatalogEntry
-import entrypoints
-import warnings
 import collections
 from databroker.utils import list_configs, lookup_config
+import entrypoints
+from intake.catalog import Catalog
+from intake.catalog.entry import CatalogEntry
+import warnings
 
 class EntrypointEntry(CatalogEntry):
     """
@@ -34,6 +34,9 @@ class EntrypointEntry(CatalogEntry):
 
 
 class EntrypointsCatalog(Catalog):
+    """
+    A catalog of discovered entrypoint catalogs.
+    """
 
     def __init__(self, *args, entrypoints_group='intake.catalogs', **kwargs):
         self._entrypoints_group = entrypoints_group
