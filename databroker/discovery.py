@@ -13,6 +13,9 @@ class EntrypointEntry(CatalogEntry):
         self._entrypoint = entrypoint
         self._name = entrypoint.name
 
+    def __repr__(self):
+        return f"<Entry containing Catalog named {self._name}>"
+
     @property
     def name(self):
         return self._name
@@ -54,11 +57,17 @@ class V0Entry(CatalogEntry):
         self._name = name
         super().__init__(*args, **kwargs)
 
+    def __repr__(self):
+        return f"<Entry containing Catalog named {self._name}>"
+
+    def describe(self):
+        return {"name": self._name}
+
     def get(self):
         # Hide this import here so that
         # importing v2 doesn't import v1 unless we actually use it.
         from databroker import v1
-        config = lookup_config(name)
+        config = lookup_config(self._name)
         catalog = v1.from_config(config)  # might return v0, v1, or v2 Broker
         if not hasattr(catalog, 'v2'):
             raise ValueError("The config file could not be parsed for v2-style access.")
