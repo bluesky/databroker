@@ -7,7 +7,7 @@ import intake.source.base
 from mongoquery import Query
 
 
-from .core import parse_handler_registry
+from .core import parse_handler_registry, discover_handlers
 from .v2 import Broker
 
 
@@ -36,7 +36,8 @@ class BlueskyInMemoryCatalog(Broker):
         handler_registry : dict, optional
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
-            ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+            ``{'SOME_SPEC': 'module.submodule.class_name'}``. If None, the
+            result of ``databroker.core.discover_handlers()`` is used.
         root_map : dict, optional
             Maps resource root paths to different paths.
         query : dict, optional
@@ -47,7 +48,7 @@ class BlueskyInMemoryCatalog(Broker):
         """
         self._query = query or {}
         if handler_registry is None:
-            handler_registry = {}
+            handler_registry = discover_handlers()
         parsed_handler_registry = parse_handler_registry(handler_registry)
         self.filler = event_model.Filler(
             parsed_handler_registry, root_map=root_map, inplace=True)

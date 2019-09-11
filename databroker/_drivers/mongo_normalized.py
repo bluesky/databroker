@@ -8,7 +8,7 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry
+from ..core import parse_handler_registry, discover_handlers
 from ..core import to_event_pages
 from ..core import to_datum_pages
 from ..v2 import Broker
@@ -145,7 +145,8 @@ class BlueskyMongoCatalog(Broker):
         handler_registry : dict, optional
             Maps each asset spec to a handler class or a string specifying the
             module name and class name, as in (for example)
-            ``{'SOME_SPEC': 'module.submodule.class_name'}``.
+            ``{'SOME_SPEC': 'module.submodule.class_name'}``. If None, the
+            result of ``databroker.core.discover_handlers()`` is used.
         root_map : dict, optional
             Maps resource root paths to different paths.
         query : dict, optional
@@ -178,7 +179,7 @@ class BlueskyMongoCatalog(Broker):
 
         self._query = query or {}
         if handler_registry is None:
-            handler_registry = {}
+            handler_registry = discover_handlers()
         parsed_handler_registry = parse_handler_registry(handler_registry)
         self.filler = event_model.Filler(
                 parsed_handler_registry, root_map=root_map, inplace=True)
