@@ -38,12 +38,14 @@ class EntrypointsCatalog(Catalog):
     A catalog of discovered entrypoint catalogs.
     """
 
-    def __init__(self, *args, entrypoints_group='intake.catalogs', **kwargs):
+    def __init__(self, *args, entrypoints_group='intake.catalogs', paths=None,
+                 **kwargs):
         self._entrypoints_group = entrypoints_group
         super().__init__(*args, **kwargs)
 
     def _load(self):
-        catalogs = entrypoints.get_group_named(self._entrypoints_group)
+        catalogs = entrypoints.get_group_named(self._entrypoints_group,
+                                               path=paths)
         self.name = self.name or 'EntrypointsCatalog'
         self.description = (self.description
                             or f'EntrypointsCatalog of {len(catalogs)} catalogs.')
@@ -82,10 +84,11 @@ class V0Catalog(Catalog):
     Build v2.Brokers based on any v0-style configs we can find.
     """
     def __init__(self, *args, paths=CONFIG_SEARCH_PATH, **kwargs):
+        self._paths = paths
         super().__init__(*args, **kwargs)
 
     def _load(self):
-        for name in list_configs(paths=paths):
+        for name in list_configs(paths=self._paths):
             self._entries[name] = V0Entry(name)
 
 
