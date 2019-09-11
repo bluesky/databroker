@@ -276,6 +276,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             keys = list(data_keys)
 
     # Collect a Dataset for each descriptor. Merge at the end.
+    dim_counter = itertools.count()
     datasets = []
     for descriptor in descriptor_docs:
         events = list(flatten_event_page_gen(get_event_pages(descriptor['uid'])))
@@ -324,7 +325,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                     ...
             if dims is None:
                 # Construct the same default dimension names xarray would.
-                dims = tuple(f'dim_{i}' for i in range(ndim))
+                dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
                 dims=('time',) + dims,
@@ -362,7 +363,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         ...
                 if dims is None:
                     # Construct the same default dimension names xarray would.
-                    dims = tuple(f'dim_{i}' for i in range(ndim))
+                    dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
                 data_arrays[scoped_key] = xarray.DataArray(
                     # TODO Once we know we have one Event Descriptor
                     # per stream we can be more efficient about this.
