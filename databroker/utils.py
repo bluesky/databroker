@@ -84,6 +84,7 @@ def normalize_human_friendly_time(val, tz):
     - datetime (eg. datetime.now()), with or without tzinfo)
     - timestamp (eg. time.time())
     return a timestamp (seconds since jan 1 1970 UTC).
+
     Non string/datetime values are returned unaltered.
     Leading/trailing whitespace is stripped.
     Supported formats:
