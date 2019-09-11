@@ -80,15 +80,10 @@ _doc_ts_formats = '\n'.join('\t- {}'.format(_) for _ in _TS_FORMATS)
 
 def normalize_human_friendly_time(val, tz):
     """Given one of :
-warnings.war, count in collections.Counter(a).items() if count > 1]
-
-## [1, 2, 5]nwarnings.warnwarnings.warn    - string (in one of the formats below)
-    - datetime (eg. datetime.now()), with or without tzinfo), count in collections.Counter(a).items() if count > 1]
-
-## [1, 2, 5]
+    - string (in one of the formats below)
+    - datetime (eg. datetime.now()), with or without tzinfo)
     - timestamp (eg. time.time())
     return a timestamp (seconds since jan 1 1970 UTC).
-
     Non string/datetime values are returned unaltered.
     Leading/trailing whitespace is stripped.
     Supported formats:
@@ -123,9 +118,7 @@ warnings.war, count in collections.Counter(a).items() if count > 1]
                 val = ts
                 check = False
             else:
-            , count in collections.Counter(a).items() if count > 1]
-
-## [1, 2, 5]    # what else could the type be here?
+                # what else could the type be here?
                 raise TypeError('expected datetime,'
                                 ' got {:r}'.format(ts))
 
@@ -275,7 +268,7 @@ def list_configs(paths=CONFIG_SEARCH_PATH):
 
     for path in paths:
         files = glob.glob(os.path.join(path, '*.yml'))
-        name_list.append([os.path.basename(f)[:-4] for f in files])
+        name_list.extend([os.path.basename(f)[:-4] for f in files])
 
     names = set(name_list)
 
