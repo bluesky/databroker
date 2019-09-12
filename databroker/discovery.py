@@ -11,7 +11,6 @@ class EntrypointEntry(CatalogEntry):
     """
     def __init__(self, entrypoint):
         self._entrypoint = entrypoint
-        self._name = entrypoint.name
 
     def __repr__(self):
         return f"<Entry containing Catalog named {self._name}>"
@@ -22,7 +21,7 @@ class EntrypointEntry(CatalogEntry):
 
     def describe(self):
         """Basic information about this entry"""
-        return {'name': self._name,
+        return {'name': self._entrypoint.name,
                 'module_name': self._entrypoint.module_name,
                 'object_name': self._entrypoint.object_name,
                 'distro': self._entrypoint.distro,

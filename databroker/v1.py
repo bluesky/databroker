@@ -15,8 +15,6 @@ import tempfile
 from types import SimpleNamespace
 import tzlocal
 import xarray
-import pymongo
-
 import event_model
 import intake
 import pymongo
