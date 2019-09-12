@@ -110,6 +110,7 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
         ----------
         query : dict
         """
+        query = dict(query)
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(

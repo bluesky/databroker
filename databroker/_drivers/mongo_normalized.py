@@ -264,6 +264,7 @@ class BlueskyMongoCatalog(Broker):
         query : dict
             MongoDB query.
         """
+        query = dict(query)
         if self._query:
             query = {'$and': [self._query, query]}
         cat = type(self)(

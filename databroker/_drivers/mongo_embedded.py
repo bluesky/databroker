@@ -257,6 +257,7 @@ class BlueskyMongoCatalog(Broker):
         query : dict
             MongoDB query.
         """
+        query = dict(query)
         if query:
             query = {f"start.{key}": val for key, val in query.items()}
         if self._query:
