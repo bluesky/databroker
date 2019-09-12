@@ -17,11 +17,11 @@ class EntrypointEntry(CatalogEntry):
 
     @property
     def name(self):
-        return self._name
+        return self._entrypoint.name
 
     def describe(self):
         """Basic information about this entry"""
-        return {'name': self._entrypoint.name,
+        return {'name': self.name,
                 'module_name': self._entrypoint.module_name,
                 'object_name': self._entrypoint.object_name,
                 'distro': self._entrypoint.distro,
