@@ -13,7 +13,7 @@ class EntrypointEntry(CatalogEntry):
         self._entrypoint = entrypoint
 
     def __repr__(self):
-        return f"<Entry containing Catalog named {self._name}>"
+        return f"<Entry containing Catalog named {self.name}>"
 
     @property
     def name(self):
