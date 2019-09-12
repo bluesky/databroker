@@ -1,12 +1,12 @@
 from datetime import datetime
+import collections
+import doct
 import glob
+import numpy as np
 import os
+import pytz
 import sys
 import warnings
-
-import doct
-import numpy as np
-import pytz
 import yaml
 
 
@@ -251,7 +251,7 @@ if 'DATABROKER_TEST_MODE' in os.environ:
     SPECIAL_NAME = '_test_legacy_config'
 
 
-def list_configs():
+def list_configs(paths=CONFIG_SEARCH_PATH):
     """
     List the names of the available configuration files.
 
@@ -263,10 +263,18 @@ def list_configs():
     --------
     :func:`describe_configs`
     """
-    names = set()
-    for path in CONFIG_SEARCH_PATH:
+    name_list = list()
+
+    for path in paths:
         files = glob.glob(os.path.join(path, '*.yml'))
-        names.update([os.path.basename(f)[:-4] for f in files])
+        name_list.extend([os.path.basename(f)[:-4] for f in files])
+
+    names = set(name_list)
+
+    if len(names) != len(name_list):
+        duplicates = [item for item, count
+                      in collections.Counter(name_list).items() if count > 1]
+        warnings.warn(f"Duplicate configs found: {duplicates}", UserWarning)
 
     # Do not include _legacy_config.
     names.discard(SPECIAL_NAME)
