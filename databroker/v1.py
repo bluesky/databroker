@@ -1548,7 +1548,7 @@ def from_config(config, auto_register=True, name=None):
         from . import v0
         return v0.Broker.from_config(config, auto_register, name)
     try:
-        catalog = _from_v0_config(config, name)
+        catalog = _from_v0_config(config, auto_register, name)
     except Exception as exc:
         warnings.warn(
             f"Failed to load config. Falling back to v0."
@@ -1564,7 +1564,7 @@ def from_config(config, auto_register=True, name=None):
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
 
-def _from_v0_config(config, name):
+def _from_v0_config(config, auto_register, name):
     mds_module = config['metadatastore']['module']
     if mds_module != 'databroker.headersource.mongo':
         raise NotImplementedError(
@@ -1593,8 +1593,10 @@ def _from_v0_config(config, name):
     port = config['assets']['config'].get('port')
     database_name = config['assets']['config']['database']
     asset_registry_db = _get_mongo_client(host, port)[database_name]
-    # In v0, user-defined handlers are *added* to any default ones.
-    handler_registry = discover_handlers()
+    handler_registry = {}
+    if auto_register:
+        handler_registry.update(discover_handlers())
+    # In v0, config-specified handlers are *added* to any default ones.
     for spec, contents in config.get('handlers', {}).items():
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
