@@ -11,7 +11,8 @@ import uuid
 from datetime import date, timedelta
 import itertools
 from databroker import (wrap_in_doct, wrap_in_deprecated_doct,
-                        DeprecatedDoct, Broker, temp_config, ALL)
+                        DeprecatedDoct, Broker, temp, ALL)
+from .test_config import EXAMPLE
 import doct
 import copy
 
@@ -979,10 +980,10 @@ def test_data_method(db, RE, hw):
 
 
 def test_auto_register():
-    db_auto = Broker.from_config(temp_config())
-    db_manual = Broker.from_config(temp_config(), auto_register=False)
-    assert db_auto.reg.handler_reg
-    assert not db_manual.reg.handler_reg
+    db_auto = Broker.from_config(EXAMPLE)
+    db_manual = Broker.from_config(EXAMPLE, auto_register=False)
+    assert 'AD_HDF5' in db_auto.reg.handler_reg
+    assert 'AD_HDF5' not in db_manual.reg.handler_reg
 
 
 def test_sanitize_does_not_modify_array_data_in_place(db_empty):

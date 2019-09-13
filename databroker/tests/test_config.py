@@ -1,6 +1,6 @@
 import copy
 
-from databroker import (lookup_config, Broker, temp_config, list_configs,
+from databroker import (lookup_config, Broker, temp, temp_config, list_configs,
                         describe_configs)
 
 import databroker.databroker
@@ -49,14 +49,7 @@ EXAMPLE = {
 def test_from_config():
     broker = Broker.from_config(EXAMPLE)
     config = broker.get_config()
-    print(config)
-
-    # we explicitly remove parts which we don't support
-    example_ish = copy.deepcopy(EXAMPLE)
-    example_ish.pop('description')
-    example_ish.pop('handlers')
-
-    assert example_ish == config
+    assert EXAMPLE == config
 
 
 def test_handler_registration():
@@ -170,8 +163,12 @@ def test_legacy_config_warnings(RE, hw):
 
 
 def test_temp_config():
-    c = temp_config()
-    db = Broker.from_config(c)
+    with pytest.raises(NotImplementedError):
+        temp_config()
+
+
+def test_temp():
+    db = temp()
     uid = str(uuid.uuid4())
     db.insert('start', {'uid': uid, 'time': 0})
     db.insert('stop', {'uid': str(uuid.uuid4()), 'time': 1, 'run_start': uid})
@@ -186,17 +183,4 @@ def test_named_temp():
     db[-1]
 
     db2 = Broker.named('temp')
-    assert db.mds.config != db2.mds.config
-
-
-def test_temp_round_trip():
-    db = Broker.named('temp')
-    uid = str(uuid.uuid4())
-    db.insert('start', {'uid': uid, 'time': 0})
-    db.insert('stop', {'uid': str(uuid.uuid4()), 'time': 1, 'run_start': uid})
-    db[-1]
-    config = db.get_config()
-
-    db2 = Broker.from_config(config)
-    assert db.mds.config == db2.mds.config
-    assert db[-1].start == db2[-1].start
+    assert db._catalog.paths != db2._catalog.paths
