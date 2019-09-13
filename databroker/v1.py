@@ -3,7 +3,6 @@ from collections import defaultdict
 import copy
 from datetime import datetime
 import pandas
-from pathlib import Path
 import re
 import warnings
 import time
@@ -11,7 +10,6 @@ import humanize
 import jinja2
 import os
 import shutil
-import tempfile
 from types import SimpleNamespace
 import tzlocal
 import xarray
@@ -35,23 +33,8 @@ _FILL = {True: 'yes', False: 'no'}
 
 
 def temp():
-    from databroker._drivers.msgpack import BlueskyMsgpackCatalog
-    handler_registry = {}
-    # Let ophyd be an optional dependency.
-    # If it is not installed, then we clearly do not need its handler for this
-    # temporary data store.
-    try:
-        import ophyd.sim
-    except ImportError:
-        pass
-    else:
-        handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
-    tmp_dir = tempfile.mkdtemp()
-    tmp_data_dir = Path(tmp_dir) / 'data'
-    catalog = BlueskyMsgpackCatalog(
-        f"{tmp_data_dir}/*.msgpack",
-        name='temp',
-        handler_registry=handler_registry)
+    from .v2 import temp
+    catalog = temp()
     return Broker(catalog)
 
 
