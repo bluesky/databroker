@@ -208,6 +208,13 @@ class Broker:
         return from_config(
             config=config, auto_register=auto_register, name=name)
 
+    def get_config(self):
+        """
+        Return the v0 config dict this was created from, or None if N/A.
+        """
+        if hasattr(self, '_config'):
+            return self._config
+
     @classmethod
     def named(cls, name, auto_register=True):
         """
@@ -1551,7 +1558,8 @@ def from_config(config, auto_register=True, name=None):
     if forced_version == 2:
         return catalog
     elif forced_version is None or forced_version == 1:
-        return Broker(catalog)
+        broker = Broker(catalog)
+        broker._config = config  # HACK to support Broker.get_config()
     else:
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
