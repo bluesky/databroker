@@ -1,3 +1,4 @@
+area-detector-handlers
 bluesky
 codecov
 coverage
