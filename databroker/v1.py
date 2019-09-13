@@ -1560,6 +1560,7 @@ def from_config(config, auto_register=True, name=None):
     elif forced_version is None or forced_version == 1:
         broker = Broker(catalog)
         broker._config = config  # HACK to support Broker.get_config()
+        return broker
     else:
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
