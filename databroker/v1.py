@@ -1605,8 +1605,10 @@ def _from_v0_config(config, auto_register, name):
     for spec, contents in config.get('handlers', {}).items():
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
+    root_map = config.get('root_map')
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
                                handler_registry=handler_registry,
+                               root_map=root_map,
                                name=name)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
