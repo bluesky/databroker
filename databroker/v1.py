@@ -32,6 +32,10 @@ from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
 _FILL = {True: 'yes', False: 'no'}
 
 
+def temp_config():
+    raise NotImplementedError("Use temp() instead, which returns a v1.Broker.")
+
+
 def temp():
     from .v2 import temp
     catalog = temp()
