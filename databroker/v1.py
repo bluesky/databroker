@@ -190,8 +190,13 @@ class Broker:
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
         self.filters = {}
-        self.reg = Registry(catalog)
         self.v2._Broker__v1 = self
+        self._reg = Registry(catalog)
+
+    @property
+    def reg(self):
+        "Registry of externally-stored data"
+        return self._reg
 
     @property
     def name(self):
