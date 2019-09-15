@@ -74,7 +74,7 @@ Registering Handlers
 
 Configuration files may optionally include a section specifying 'handlers',
 classes that load externally stored data. These may be registered at runtime or
-here in configuration. See :doc:`assets` for more on handlers.
+here in configuration.
 
 .. code-block:: yaml
 

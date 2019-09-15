@@ -186,6 +186,9 @@ attributes corresponding to the underlying documents:
    :toctree: generated
    :nosignatures:
 
+   Header.uid
+   Header.start
+   Header.stop
    Header.descriptors
 
 Measurements are organized into "streams" of asynchronously collected data. The
@@ -225,6 +228,8 @@ for convenience.
    Header.data
    Header.documents
    Header.events
+   Header.xarray
+   Header.xarray_dask
 
 All of the above accept an argument called ``stream_name``, which distinguishes
 concurrently-collected stream of data. (Typical names include 'primary' and
@@ -246,9 +251,18 @@ Configuration Utilities
    list_configs
    lookup_config
    temp
+   Broker.name
+   Broker.get_config
 
-See also the Broker methods :meth:`Broker.from_config` and
-:meth:`Broker.named`.
+Back- and Forward-Compat Accessors
+----------------------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Broker.v1
+   Broker.v2
 
 Internals
 ---------
@@ -270,3 +284,20 @@ Deprecated
    Broker.stream
    Header.stream
    Broker.fs
+   Header.get
+   Header.items
+   Header.keys
+   Header.values
+
+Removed
+-------
+
+These functions and methods now raise ``NotImplementedError`` if called.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Broker.fill_event
+   Broker.fill_events
+   temp_config

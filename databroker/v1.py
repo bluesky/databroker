@@ -1017,10 +1017,6 @@ class Header:
         return self.start == other.start
 
     @property
-    def _api_version_2(self):
-        return self._entry
-
-    @property
     def descriptors(self):
         descriptors = []
         for name, entry in self._data_source._entries.items():
