@@ -15,8 +15,7 @@ concurrent "streams" of data in an organized way.
 
     import os
     import yaml
-    from databroker import temp_config
-    config = temp_config()
+    from databroker.tests.test_config import EXAMPLE as config
     os.makedirs('~/.config/databroker', exist_ok=True)
     path = os.path.expanduser('~/.config/databroker/example.yml')
     with open(path, 'w') as f:

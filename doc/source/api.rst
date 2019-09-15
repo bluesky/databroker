@@ -33,16 +33,6 @@ configuration or by providing the name of a configuration file on disk.
 
 Click the links the table above for details and examples.
 
-You can also add *EventSource* instances to a *Broker* once it
-is constructed
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Broker.add_event_source
-   Broker.event_sources_by_name
-
 Searching
 =========
 
@@ -94,8 +84,6 @@ the new methods cannot do:
    Broker.get_images
    Broker.restream
    Broker.process
-   Broker.fill_events
-   Broker.fill_table
 
 
 The broker also has a number of methods to introspect headers:
@@ -142,7 +130,6 @@ Export Data to Another Broker
 
    Broker.export
    Broker.export_size
-   Broker.get_resource_uids
 
 
 .. _controlling_return_type:
@@ -247,43 +234,6 @@ attribute :class:`Header.stream_names`, a list.
 To request data from *all* event streams at once, use the special constant
 :data:`databroker.ALL`.
 
-
-``dict`` compatibility
-======================
-
-:class:`Header` objects duck-type as dictionaries to maintain back-compatibility.
-
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Header.items
-   Header.keys
-   Header.values
-   Header.get
-
-Additionally we maintain compatibility with :class:`~doct.Doct`
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Header.to_name_dict_pair
-
-Constructor
-===========
-
-There is a helper class method to build a :class:`Header` instance given
-a :class:`Broker` instance and a run start.
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Header.from_run_start
-
-
 .. _configuration_utilities:
 
 Configuration Utilities
@@ -295,8 +245,7 @@ Configuration Utilities
 
    list_configs
    lookup_config
-   temp_config
-   Broker.get_config
+   temp
 
 See also the Broker methods :meth:`Broker.from_config` and
 :meth:`Broker.named`.
@@ -320,6 +269,4 @@ Deprecated
 
    Broker.stream
    Header.stream
-   Broker.fill_event
    Broker.fs
-   Broker.mds
