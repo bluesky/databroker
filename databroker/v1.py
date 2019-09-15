@@ -275,6 +275,9 @@ class Broker:
         warnings.warn("fs is deprecated, use `db.reg` instead", stacklevel=2)
         return self.reg
 
+    def stream_names_given_header(self):
+        return list(self._catalog)
+
     def fetch_external(self, start, stop):
         return {k: func(start, stop) for
                 k, func in self.external_fetchers.items()}
@@ -1243,6 +1246,38 @@ class Header:
             if stream_name is ALL or descriptor.get('name') == stream_name:
                 fields.update(descriptor['data_keys'])
         return fields
+
+    def devices(self, stream_name=ALL):
+        """
+        Return the names of the devices in this run.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
+
+        Returns
+        -------
+        devices : set
+
+        Examples
+        --------
+        Load the most recent run and list its devices.
+
+        >>> h = db[-1]
+        >>> h.devices()
+        {'eiger'}
+
+        See Also
+        --------
+        :meth:`Header.fields`
+        """
+        result = set()
+        for d in self.descriptors:
+            if stream_name is ALL or stream_name == d.get('name', 'primary'):
+                result.update(d['object_keys'])
+        return result
 
     def config_data(self, device_name):
         """
