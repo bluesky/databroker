@@ -2,7 +2,7 @@ from importlib import import_module
 
 from databroker.eventsource.archiver import ArchiverEventSource
 from databroker.eventsource.shim import EventSourceShim
-from databroker import Broker
+from databroker.v0 import Broker
 
 arch_csx_url = 'http://localhost:17668'
 arch_csx_pv = 'XF:23ID-ID{BPM}Val:PosXS-I'

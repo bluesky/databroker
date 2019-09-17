@@ -33,16 +33,6 @@ configuration or by providing the name of a configuration file on disk.
 
 Click the links the table above for details and examples.
 
-You can also add *EventSource* instances to a *Broker* once it
-is constructed
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Broker.add_event_source
-   Broker.event_sources_by_name
-
 Searching
 =========
 
@@ -94,8 +84,6 @@ the new methods cannot do:
    Broker.get_images
    Broker.restream
    Broker.process
-   Broker.fill_events
-   Broker.fill_table
 
 
 The broker also has a number of methods to introspect headers:
@@ -142,7 +130,6 @@ Export Data to Another Broker
 
    Broker.export
    Broker.export_size
-   Broker.get_resource_uids
 
 
 .. _controlling_return_type:
@@ -199,6 +186,9 @@ attributes corresponding to the underlying documents:
    :toctree: generated
    :nosignatures:
 
+   Header.uid
+   Header.start
+   Header.stop
    Header.descriptors
 
 Measurements are organized into "streams" of asynchronously collected data. The
@@ -238,6 +228,8 @@ for convenience.
    Header.data
    Header.documents
    Header.events
+   Header.xarray
+   Header.xarray_dask
 
 All of the above accept an argument called ``stream_name``, which distinguishes
 concurrently-collected stream of data. (Typical names include 'primary' and
@@ -246,43 +238,6 @@ attribute :class:`Header.stream_names`, a list.
 
 To request data from *all* event streams at once, use the special constant
 :data:`databroker.ALL`.
-
-
-``dict`` compatibility
-======================
-
-:class:`Header` objects duck-type as dictionaries to maintain back-compatibility.
-
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Header.items
-   Header.keys
-   Header.values
-   Header.get
-
-Additionally we maintain compatibility with :class:`~doct.Doct`
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Header.to_name_dict_pair
-
-Constructor
-===========
-
-There is a helper class method to build a :class:`Header` instance given
-a :class:`Broker` instance and a run start.
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   Header.from_run_start
-
 
 .. _configuration_utilities:
 
@@ -295,11 +250,19 @@ Configuration Utilities
 
    list_configs
    lookup_config
-   temp_config
+   temp
+   Broker.name
    Broker.get_config
 
-See also the Broker methods :meth:`Broker.from_config` and
-:meth:`Broker.named`.
+Back- and Forward-Compat Accessors
+----------------------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Broker.v1
+   Broker.v2
 
 Internals
 ---------
@@ -320,6 +283,21 @@ Deprecated
 
    Broker.stream
    Header.stream
-   Broker.fill_event
    Broker.fs
-   Broker.mds
+   Header.get
+   Header.items
+   Header.keys
+   Header.values
+
+Removed
+-------
+
+These functions and methods now raise ``NotImplementedError`` if called.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Broker.fill_event
+   Broker.fill_events
+   temp_config

@@ -3,7 +3,6 @@ from collections import defaultdict
 import copy
 from datetime import datetime
 import pandas
-from pathlib import Path
 import re
 import warnings
 import time
@@ -11,7 +10,6 @@ import humanize
 import jinja2
 import os
 import shutil
-import tempfile
 from types import SimpleNamespace
 import tzlocal
 import xarray
@@ -34,24 +32,13 @@ from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
 _FILL = {True: 'yes', False: 'no'}
 
 
+def temp_config():
+    raise NotImplementedError("Use temp() instead, which returns a v1.Broker.")
+
+
 def temp():
-    from databroker._drivers.msgpack import BlueskyMsgpackCatalog
-    handler_registry = {}
-    # Let ophyd be an optional dependency.
-    # If it is not installed, then we clearly do not need its handler for this
-    # temporary data store.
-    try:
-        import ophyd.sim
-    except ImportError:
-        pass
-    else:
-        handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
-    tmp_dir = tempfile.mkdtemp()
-    tmp_data_dir = Path(tmp_dir) / 'data'
-    catalog = BlueskyMsgpackCatalog(
-        f"{tmp_data_dir}/*.msgpack",
-        name='temp',
-        handler_registry=handler_registry)
+    from .v2 import temp
+    catalog = temp()
     return Broker(catalog)
 
 
@@ -65,6 +52,10 @@ class Registry:
     @property
     def handler_reg(self):
         return self._catalog.filler.handler_registry
+
+    @property
+    def root_map(self):
+        return self._catalog.filler.root_map
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
@@ -199,8 +190,17 @@ class Broker:
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
         self.filters = {}
-        self.reg = Registry(catalog)
         self.v2._Broker__v1 = self
+        self._reg = Registry(catalog)
+
+    @property
+    def reg(self):
+        "Registry of externally-stored data"
+        return self._reg
+
+    @property
+    def name(self):
+        return self._catalog.name
 
     @property
     def v1(self):
@@ -216,6 +216,13 @@ class Broker:
     def from_config(cls, config, auto_register=True, name=None):
         return from_config(
             config=config, auto_register=auto_register, name=name)
+
+    def get_config(self):
+        """
+        Return the v0 config dict this was created from, or None if N/A.
+        """
+        if hasattr(self, '_config'):
+            return self._config
 
     @classmethod
     def named(cls, name, auto_register=True):
@@ -267,6 +274,9 @@ class Broker:
     def fs(self):
         warnings.warn("fs is deprecated, use `db.reg` instead", stacklevel=2)
         return self.reg
+
+    def stream_names_given_header(self):
+        return list(self._catalog)
 
     def fetch_external(self, start, stop):
         return {k: func(start, stop) for
@@ -1007,10 +1017,6 @@ class Header:
         return self.start == other.start
 
     @property
-    def _api_version_2(self):
-        return self._entry
-
-    @property
     def descriptors(self):
         descriptors = []
         for name, entry in self._data_source._entries.items():
@@ -1236,6 +1242,38 @@ class Header:
             if stream_name is ALL or descriptor.get('name') == stream_name:
                 fields.update(descriptor['data_keys'])
         return fields
+
+    def devices(self, stream_name=ALL):
+        """
+        Return the names of the devices in this run.
+
+        Parameters
+        ----------
+        stream_name : string or ``ALL``, optional
+            Filter results by stream name (e.g., 'primary', 'baseline'). The
+            default, ``ALL``, combines results from all streams.
+
+        Returns
+        -------
+        devices : set
+
+        Examples
+        --------
+        Load the most recent run and list its devices.
+
+        >>> h = db[-1]
+        >>> h.devices()
+        {'eiger'}
+
+        See Also
+        --------
+        :meth:`Header.fields`
+        """
+        result = set()
+        for d in self.descriptors:
+            if stream_name is ALL or stream_name == d.get('name', 'primary'):
+                result.update(d['object_keys'])
+        return result
 
     def config_data(self, device_name):
         """
@@ -1550,7 +1588,7 @@ def from_config(config, auto_register=True, name=None):
         from . import v0
         return v0.Broker.from_config(config, auto_register, name)
     try:
-        catalog = _from_v0_config(config, name)
+        catalog = _from_v0_config(config, auto_register, name)
     except Exception as exc:
         warnings.warn(
             f"Failed to load config. Falling back to v0."
@@ -1560,12 +1598,14 @@ def from_config(config, auto_register=True, name=None):
     if forced_version == 2:
         return catalog
     elif forced_version is None or forced_version == 1:
-        return Broker(catalog)
+        broker = Broker(catalog)
+        broker._config = config  # HACK to support Broker.get_config()
+        return broker
     else:
         raise ValueError(f"Cannot handle api_version {forced_version}")
 
 
-def _from_v0_config(config, name):
+def _from_v0_config(config, auto_register, name):
     mds_module = config['metadatastore']['module']
     if mds_module != 'databroker.headersource.mongo':
         raise NotImplementedError(
@@ -1594,13 +1634,17 @@ def _from_v0_config(config, name):
     port = config['assets']['config'].get('port')
     database_name = config['assets']['config']['database']
     asset_registry_db = _get_mongo_client(host, port)[database_name]
-    # In v0, user-defined handlers are *added* to any default ones.
-    handler_registry = discover_handlers()
+    handler_registry = {}
+    if auto_register:
+        handler_registry.update(discover_handlers())
+    # In v0, config-specified handlers are *added* to any default ones.
     for spec, contents in config.get('handlers', {}).items():
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
+    root_map = config.get('root_map')
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
                                handler_registry=handler_registry,
+                               root_map=root_map,
                                name=name)
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances

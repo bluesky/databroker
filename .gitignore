@@ -97,7 +97,7 @@ __enamlcache__/
 target/
 
 # sphinx docs
-generated/
+doc/source/generated/
 
 # ctags
 .tags*

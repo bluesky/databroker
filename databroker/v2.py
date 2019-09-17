@@ -1,3 +1,6 @@
+from pathlib import Path
+import tempfile
+
 from intake.catalog import Catalog
 
 
@@ -19,3 +22,27 @@ class Broker(Catalog):
     def v2(self):
         "A self-reference. This makes v1.Broker and v2.Broker symmetric."
         return self
+
+
+def temp():
+    """
+    Generate a Catalog backed by a temporary directory of msgpack-encoded files.
+    """
+    from databroker._drivers.msgpack import BlueskyMsgpackCatalog
+    handler_registry = {}
+    # Let ophyd be an optional dependency.
+    # If it is not installed, then we clearly do not need its handler for this
+    # temporary data store.
+    try:
+        import ophyd.sim
+    except ImportError:
+        pass
+    else:
+        handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
+    tmp_dir = tempfile.mkdtemp()
+    tmp_data_dir = Path(tmp_dir) / 'data'
+    catalog = BlueskyMsgpackCatalog(
+        f"{tmp_data_dir}/*.msgpack",
+        name='temp',
+        handler_registry=handler_registry)
+    return catalog

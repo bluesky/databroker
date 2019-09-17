@@ -18,7 +18,6 @@ Index
     tutorial
     api
     configuration
-    assets
     creating
     archiver
     whats_new
