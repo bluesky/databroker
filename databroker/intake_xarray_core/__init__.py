@@ -3,5 +3,5 @@ from .xarray_container import RemoteXarray
 
 import intake.container
 
-intake.registry['remote-xarray'] = RemoteXarray
-intake.container.container_map['xarray'] = RemoteXarray
+intake.registry['databroker-remote-xarray'] = RemoteXarray
+intake.container.container_map['databroker-xarray'] = RemoteXarray

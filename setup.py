@@ -78,6 +78,7 @@ setup(
              'databroker._drivers.mongo_normalized:BlueskyMongoCatalog'),
             'bluesky-msgpack-catalog = databroker._drivers.msgpack:BlueskyMsgpackCatalog',
             'bluesky-run = databroker.core:BlueskyRun',
+            'databroker-remote-xarray = databroker.intake_xarray_core.xarray_container:RemoteXarray',
         ]
     },
 

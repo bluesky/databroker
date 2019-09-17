@@ -4,7 +4,6 @@ doct
 event-model >=1.11.1b1
 humanize
 intake >=0.5.2  # first release to use entrypoints
-intake-xarray >=0.3.1  # first release to use entrypoints
 jinja2
 jsonschema
 mongoquery

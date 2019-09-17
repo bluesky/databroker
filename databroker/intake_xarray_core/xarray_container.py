@@ -68,8 +68,8 @@ class RemoteXarray(RemoteSource):
     """
     An xarray data source on the server
     """
-    name = 'remote-xarray'
-    container = 'xarray'
+    name = 'databroker-remote-xarray'
+    container = 'databroker-xarray'
 
     def __init__(self, url, headers, **kwargs):
         """

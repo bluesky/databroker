@@ -13,7 +13,6 @@ import itertools
 import intake.catalog.base
 import errno
 import intake.container.base
-import intake_xarray.base
 from intake.compat import unpack_kwargs
 import msgpack
 import requests
@@ -23,6 +22,7 @@ import os
 import warnings
 import xarray
 
+from .intake_xarray_core.base import DataSourceMixin
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -812,7 +812,7 @@ class BlueskyRun(intake.catalog.Catalog):
             "also help, if available.")
 
 
-class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
+class BlueskyEventStream(DataSourceMixin):
     """
     Catalog representing one Event Stream from one Run.
 
@@ -850,7 +850,7 @@ class BlueskyEventStream(intake_xarray.base.DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
-    container = 'xarray'
+    container = 'databroker-xarray'
     name = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
