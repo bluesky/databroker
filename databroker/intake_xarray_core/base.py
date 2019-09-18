@@ -2,14 +2,12 @@ import json
 
 import dask.array
 
-from . import __version__
 from intake.source.base import DataSource, Schema
 
 
 class DataSourceMixin(DataSource):
     """Common behaviours for plugins in this repo"""
-    version = __version__
-    container = 'xarray'
+    container = 'databroker-xarray'
     partition_access = True
 
     def _get_schema(self):
