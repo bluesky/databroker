@@ -1,6 +1,5 @@
 # Import intake to run driver discovery first and avoid circular import issues.
 import intake
-del intake
 
 import warnings
 import logging
@@ -15,8 +14,8 @@ from .utils import (lookup_config, list_configs, describe_configs,
 
 from .discovery import MergedCatalog, EntrypointsCatalog, V0Catalog
 
-# A catalog created from discovered entrypoints and v0 catalogs.
-catalog = MergedCatalog([EntrypointsCatalog(), V0Catalog()])
+# A catalog created from discovered entrypoints, v0, and intake YAML catalogs.
+catalog = MergedCatalog([EntrypointsCatalog(), V0Catalog(), intake.cat])
 
 # set version string using versioneer
 from ._version import get_versions
