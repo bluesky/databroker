@@ -158,8 +158,8 @@ databases with documents inserted by
 
 The driver's name, ``bluesky-mongo-normalized-catalog``, differentiates it from
 the ``bluesky-mongo-embedded-catalog``, an experimental alternative way of
-encoding bluesky documents into MongoDB documents. It is still under evaluation
-and not yet recommended for use in production.
+original bluesky documents into MongoDB documents and collections. It is still
+under evaluation and not yet recommended for use in production.
 
 Python packages
 ===============
