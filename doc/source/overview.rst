@@ -73,7 +73,8 @@ Roadmap Beyond 1.0
 * When the v1 implementation is proven reliable, v0 will be removed, greatly
   reducing the amount of code in databroker. This should not have an effect on
   users, as v1 provides the same interface as v0. The only differences are
-  intenral: v1 is using intake internally instead of custom databroker code.
+  internal: v1 uses intake internally instead of its own separate
+  implementation to achieve the same end.
 * If and when the v2 interface is shown to meet users' needs as well or better
   than v1, it will become the default. To support existing user code, the v1
   interface will continue to be available in ``databroker.v1``.

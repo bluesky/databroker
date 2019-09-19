@@ -4,9 +4,13 @@ User Documentation
 
 .. important::
 
-   This documentation covers databroker's new "v2" usage. If you are working
-   with older databroker code, see :ref:`v1_index`. see :ref:`transition_plan`
-   for more information.
+   DataBroker release 1.0 includes support for old-style "v1" usage and
+   new-style "v2" usage.  This section addresses databroker's new "v2" usage.
+   It is still under development and subject to change in response to user
+   feedback.
+
+   For the stable usage "v1" usage, see :ref:`v1_index`. See
+   :ref:`transition_plan` for more information.
 
 .. ipython:: python
    :suppress:
@@ -178,7 +182,7 @@ Suppose we have a run of interest.
 A given run contains multiple logical tables. The number of these tables and
 their names varies by the particular experiment, but two common ones are
 
-* 'primary', the main data of interest, such an a time series of images
+* 'primary', the main data of interest, such as a time series of images
 * 'baseline', readings taken at the beginning and end of the run for alignment
   and sanity-check purposes
 
