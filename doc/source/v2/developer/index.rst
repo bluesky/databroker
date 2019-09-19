@@ -74,14 +74,21 @@ occur transparently.
 Scaling Intake Catalogs
 -----------------------
 
+To make Catalogs scale to tens of thousands of entries, override the methods:
+
+* ``__iter__``
+* ``__getitem__``
+* ``__contains__``
+* ``__len__``
+
 A simple intake Catalog populates an internal dictionary, ``Catalog._entries``,
 mapping entry names to :class:`LocalCatalogEntry` objects. This approach does
 not scale to catalogs with large number of entries, where merely populating the
-keys of the ``Catalog._entries`` dict is expensive. Instead, we override
-:meth:`Catalog._make_entries_container` and return a dict-*like* object. This
-object must support iteration (looping through part of all of the catalog in
-order) and random access (requesting a specific entry by name) by implementing
-``__iter__`` and ``__getitem__`` respectively.
+keys of the ``Catalog._entries`` dict is expensive. To customize the type of
+``_entries`` override :meth:`Catalog._make_entries_container` and return a
+dict-*like* object. This object must support iteration (looping through part of
+all of the catalog in order) and random access (requesting a specific entry by
+name) by implementing ``__iter__`` and ``__getitem__`` respectively.
 
 It should also implement ``__contains__`` because, similarly, if
 ``__contains__`` is specifically implemented, Python will iterate through all the
