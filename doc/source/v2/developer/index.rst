@@ -2,6 +2,32 @@
 Developer Documentation
 ***********************
 
+When databroker is imported, it discovers catalogs available on the system.
+User can list the discovered catalogs by importing a special global ``catalog``
+object and listing its entries.
+
+.. code:: python
+
+   from databroker import catalog
+   list(catalog)
+
+Catalogs can also be opened by the user.
+
+.. code:: python
+
+   from databroker import open_catalog
+   local_catalog = open_catalog('catalog.yml')  # a local file
+   remote_catalog = open_catalog('intake://example.com')  # an intake server
+
+Finally, catalogs can be directly instantiated, though this should usually be
+necessary.
+
+.. code:: python
+
+   from databroker._drivers.msgpack import BlueskyMsgpackCatalog
+   catalog = BlueskyMsgpackCatalog('path/to/files/*.msgpack')
+
+
 Search for data, and retrieve it as SciPy/PyData data structures for
 interactive data exploration or in
 `a representation suitable for streaming applications <https://nsls-ii.github.io/event-model>`_ .

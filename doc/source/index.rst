@@ -14,6 +14,7 @@ If you are here to...
 .. toctree::
    :maxdepth: 2
 
+   overview
    installation
    v2/index
    v1/index
