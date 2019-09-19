@@ -38,12 +38,14 @@ sqlite or HDF5 to msgpack like so:
 
 .. code-block:: python
 
-   import databroker.v0
+   from databroker import Broker
    import suitcase.msgpack
 
-   old = databroker.v0.Broker.named(YOUR_BROKER_NAMED)
+   # If the config file associated with YOUR_BROKER_NAME specifies sqlite or
+   # HDF5 storage, then this will return a databroker.v0.Broker instance.
+   db = Broker.named(YOUR_BROKER_NAME)
    # Loop through every run in the old Broker.
-   for run in old():
+   for run in ():
        # Load all the documents out of this run from their existing format and
        # write them into one file located at
        # `<DESTINATION_DIRECTORY>/<uid>.msgpack`.
