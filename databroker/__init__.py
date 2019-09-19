@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 from .v1 import Broker, Header, ALL, temp, temp_config
 from .utils import (lookup_config, list_configs, describe_configs,
-                    wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct)
+                    wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct,
+                    catalog_search_path)
 
 from .discovery import MergedCatalog, EntrypointsCatalog, V0Catalog
 

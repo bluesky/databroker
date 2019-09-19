@@ -365,3 +365,18 @@ def transpose(in_data, keys, field):
         for k in keys:
             out[k][j] = dd[k]
     return out
+
+
+def catalog_search_path():
+    """
+    List directories that will be searched for catalog YAML files.
+
+    This is a convenience wrapper around functions used by intake to determine
+    its search path.
+
+    Returns
+    -------
+    directories: tuple
+    """
+    from intake.catalog.default import user_data_dir, global_data_dir
+    return (user_data_dir(), global_data_dir())

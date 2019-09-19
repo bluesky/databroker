@@ -49,15 +49,16 @@ sqlite or HDF5 to msgpack like so:
        # `<DESTINATION_DIRECTORY>/<uid>.msgpack`.
        suitcase.msgpack.export(run.documents(), DESTINATION_DIRECTORY)
 
-Create a configuration file somewhere in intake's search path, either at a
-system location or user location. Identify these like so:
+Create an intake catalog file somewhere in intake's search path, either at a
+system ("global") location or a user location. You can list these locations
+using the convenience function :func:`catalog_search_path`.
 
 .. code:: python
 
-   from intake.catalog.default import user_data_dir, global_data_dir 
+   from databroker import catalog_search_path
+   catalog_search_path()
 
-   user_data_dir()
-   global_data_dir()
+The file should look like:
 
 .. code:: yaml
 
@@ -68,6 +69,8 @@ system location or user location. Identify these like so:
          - "DESTINATION_DIRECTORY/*.msgpack"
 
 Now ``list(databroker.catalog)`` should include an entry ``YOUR_BROKER_NAME``.
+Additional sources can be added to the same file or in separate files. They
+will all appear as top-level entries in ``databroker.catalog``.
 
 Python packages
 ===============
