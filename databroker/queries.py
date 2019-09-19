@@ -54,6 +54,31 @@ class TimeRange(Query):
     since, until: dates gives as timestamp, datetime, or human-friendly string, optional
     timezone : string
         As in, 'US/Eastern'. If None is given, tzlocal is used.
+
+    Examples
+    --------
+    Any granularity (year, month, date, hour, minute, second) is accepted.
+
+    >>> TimeRange(since='2014')
+
+    >>> TimeRange(until='2019-07')
+
+    >>> TimeRange(since='2014-07-04', until='2020-07-04')
+
+    >>> TimeRange(since='2014-07-04 05:00')
+
+    Create a copy replacing some parameter. This leaves the original unchanged.
+
+    >>> tr = TimeRange(since='2014-07-04 05:00')
+    >>> tr.replace(until='2015')
+    TimeRange(since='2014-07-04 05:00', until='2015')
+    >>> tr
+    TimeRange(since='2014-07-04 05:00')
+
+    Access the raw query that this generates.
+
+    >>> TimeRange(since='2014').query
+    {'time': {'$gte': 1388552400.0}}
     """
     def __init__(self, since=None, until=None, timezone=None):
         if timezone is None:

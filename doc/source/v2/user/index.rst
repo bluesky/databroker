@@ -37,11 +37,14 @@ User Documentation
    from intake.catalog.local import YAMLFileCatalog
    csx = YAMLFileCatalog('source/_catalogs/csx.yml')
    import databroker
+   # Monkey-patch to override databroker.catalog so we can directly
+   # add examples instead of taking the trouble to create and then clean up
+   # config files or Python packages of catalogs.
    from intake.catalog.base import Catalog
-   databroker.cat = Catalog()
-   databroker.cat._entries['csx'] = csx
+   databroker.catalog = Catalog()
+   databroker.catalog._entries['csx'] = csx
    for name in ('chx', 'isr', 'xpd', 'sst', 'bmm', 'lix'):
-       databroker.cat._entries[name] = Catalog()
+       databroker.catalog._entries[name] = Catalog()
 
 Walkthrough
 ===========
@@ -50,35 +53,35 @@ Find a Catalog
 --------------
 
 When databroker is first imported, it searches for Catalogs on your system,
-typically provided by a Python package that you or an administrator
-installed. List the available Catalogs.
+typically provided by a Python package or configuartion file that you or an
+administrator installed.
 
 .. ipython:: python
 
-   from databroker import cat
-   list(cat)
+   from databroker import catalog
+   list(catalog)
 
-Each entry is a Catalog that databroker found on our system. In this example,
-we find Catalogs corresponding to different instruments/beamlines. We can
-access a subcatalog with square brackets, like accessing an item in a
+Each entry is a Catalog that databroker discovered on our system. In this
+example, we find Catalogs corresponding to different instruments/beamlines. We
+can access a subcatalog with square brackets, like accessing an item in a
 dictionary.
 
 .. ipython:: python
 
-   cat['csx']
+   catalog['csx']
 
 List the entries in the 'csx' Catalog.
 
 .. ipython:: python
 
-   list(cat['csx'])
+   list(catalog['csx'])
 
 We see Catalogs for raw data and processed data. Let's access the raw one
 and assign it to a variable for convenience.
 
 .. ipython:: python
 
-   raw = cat['csx']['raw']
+   raw = catalog['csx']['raw']
 
 This Catalog contains all the raw data taken at CSX. It contains many entries,
 as we can see by checking ``len(raw)`` so listing it would take awhile.
@@ -87,16 +90,16 @@ Instead, we'll look up entries by name or by search.
 .. note::
 
    As an alternative to ``list(...)``, try using tab-completion to view your
-   options. Typing ``cat['<TAB>`` will list the available entries.
+   options. Typing ``catalog['<TAB>`` will list the available entries.
 
    Also, these shortcuts can save a little typing.
 
    .. code:: python
 
       # These three lines are equivalent.
-      cat['csx']['raw']
-      cat['csx', 'raw']
-      cat.csx.raw  # only works if the entry names are valid Python identifiers
+      catalog['csx']['raw']
+      catalog['csx', 'raw']
+      catalog.csx.raw  # only works if the entry names are valid Python identifiers
 
 Look up a Run by ID
 -------------------
@@ -125,11 +128,16 @@ Suppose you want to sift through multiple runs to examine a range of datasets.
 
 .. ipython:: python
 
-   from databroker.queries import TimeRange
+   query = {'proposal_id': 12345}  # or, equivalently, dict(proposal_id=12345)
+   search_results = raw.search(query)
 
-   search_results = raw.search(TimeRange(since='2019-09-01', until='2019-09-07'))
+The result, ``search_results``, is itself a Catalog.
 
-We can quickly check how many results that returned
+.. ipython:: python
+
+   search_results
+
+We can quickly check how many results it contains
 
 .. ipython:: python
 
@@ -141,32 +149,32 @@ and, if we want, list them.
 
    list(search_results)
 
-Notice that ``search_results`` is itself a Catalog. We can search on the search
-results to narrow them further.
+Because seraching on a Catalog returns another Catalog, we refine our search
+by seraching ``search_results``. In this example we'll use a helper,
+:class:`~databroker.queries.TimeRange`, to build our query.
 
 .. ipython:: python
 
-   search_results2 = search_results.search({'proposal_id': 12345})
+   from databroker.queries import TimeRange
 
-where ``search()`` is passed a dictionary mapping search terms to values.
+   query = TimeRange(since='2019-09-01', until='2040')
+   search_results.search(query)
 
-.. note:: 
+Other sophisticated queries are possible, such as filtering for scans that
+include *greater than* 50 points.
 
-   Sophisticated queries are possible, such as filtering for scans that include
-   *greater than* 50 points.
+.. code:: python
 
-   .. code:: python
+    search_results.search({'num_points': {'$gt': 50}})
 
-      search_results.search({'num_points': {'$gt': 50}})
+See MongoQuerySelectors_ for more.
 
-   See MongoQuerySelectors_ for more.
-
-Once we have a result set that we are happy with we can list them and access
-them individually or we can loop through them:
+Once we have a result catalog that we are happy with we can list the entries,
+and access them individually by name, or loop through them:
 
 .. ipython:: python
 
-   for uid, entry in search_results2.items():
+   for uid, entry in search_results.items():
        # Do stuff
        ...
 
