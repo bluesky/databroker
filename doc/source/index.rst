@@ -9,11 +9,11 @@ interactive data exploration or in
 If you are here to...
 
 * use the legacy "Version 1" user interace to databroker, see :doc:`v1/index`;
-* try the new "Version 2" user interace to databroker, see the :doc:`user/index`;
+* try the new "Version 2" user interace to databroker, see the :doc:`v2/user/index`;
 * configure or administrate data sources using databroker, see
-  the :doc:`administrator/index`;
+  the :doc:`v2/administrator/index`;
 * develop support for new storage formats or understand databroker's internal
-  workings, see the :doc:`developer/index`.
+  workings, see the :doc:`v2/developer/index`.
 
 .. toctree::
    :maxdepth: 2

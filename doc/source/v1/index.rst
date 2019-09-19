@@ -1,3 +1,5 @@
+.. _v1_index:
+
 ******************
 Version 1 (Legacy)
 ******************
@@ -8,6 +10,5 @@ Version 1 (Legacy)
    tutorial
    api
    configuration
-   assets
    creating
    archiver

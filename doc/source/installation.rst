@@ -15,8 +15,8 @@ Facility-Specific Distributions
 
 *We plan for facilities that rely on databroker to provide software
 distributions that bundle databroker itself and specific Catalogs for their
-users. We will list those distributions here. For users, this will their
-one-stop stop, and they need read no futher.*
+users. We will list those distributions here. For users, this will be their
+one-stop stop; they need read no futher.*
 
 TO DO
 

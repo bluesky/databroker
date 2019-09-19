@@ -14,6 +14,8 @@ scientific Python ecosystem in particular.
 
 DataBroker applies Intake to Bluesky.
 
+.. _transition_plan:
+
 Transition Plan
 ===============
 

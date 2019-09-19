@@ -5,7 +5,8 @@ User Documentation
 .. important::
 
    This documentation covers databroker's new "v2" usage. If you are working
-   with older databroker code, see :doc:`../v1/index`.
+   with older databroker code, see :ref:`v1_index`. see :ref:`transition_plan`
+   for more information.
 
 .. ipython:: python
    :suppress:

@@ -23,7 +23,7 @@ Old-style databroker config
 ===========================
 
 DataBroker v0.x used a custom YAML-based configuration file structure. See
-:doc:`v1/configuration`. For backward-compatibility, configuration files
+:ref:`v0_configuration`. For backward-compatibility, configuration files
 specifying MongoDB storage will be discovered and included in
 ``databroker.catalog``.
 
