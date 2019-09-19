@@ -1,8 +1,8 @@
 .. _v1_index:
 
-******************
-Version 1 (Legacy)
-******************
+*******************
+Version 1 Interface
+*******************
 
 .. toctree::
    :maxdepth: 1

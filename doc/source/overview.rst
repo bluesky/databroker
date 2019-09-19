@@ -45,6 +45,9 @@ transition for users.
   ``from databroker.v1 ...``.
 * The module ``databroker.v2`` is a *very* thin shim around intake.
 
+The :doc:`v1/index` documentation applies to ``databroker.v0`` and
+``databroker.v1``. The :doc:`v2/index` documentation applies to
+``databroker.v2``.
 
 Both ``databroker.v1.Broker`` and ``databroker.v2.Broker`` have accessor
 attributes, ``v1`` and ``v2``, that support usage of the other's interface,
