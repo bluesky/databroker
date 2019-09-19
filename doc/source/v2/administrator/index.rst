@@ -44,7 +44,7 @@ sqlite or HDF5 to msgpack like so:
    # HDF5 storage, then this will return a databroker.v0.Broker instance.
    db = Broker.named(YOUR_BROKER_NAME)
    # Loop through every run in the old Broker.
-   for run in ():
+   for run in db():
        # Load all the documents out of this run from their existing format and
        # write them into one file located at
        # `<DESTINATION_DIRECTORY>/<uid>.msgpack`.
