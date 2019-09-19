@@ -2,6 +2,10 @@
 DataBroker
 **********
 
+Search for data, and retrieve it as SciPy/PyData data structures for
+interactive data exploration or in
+`a representation suitable for streaming applications <https://nsls-ii.github.io/event-model>`_ .
+
 If you are here to...
 
 * use the legacy "Version 1" user interace to databroker, see :doc:`v1/index`;
