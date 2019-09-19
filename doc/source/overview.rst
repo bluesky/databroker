@@ -48,17 +48,24 @@ transition for users.
 
 Both ``databroker.v1.Broker`` and ``databroker.v2.Broker`` have accessor
 attributes, ``v1`` and ``v2``, that support usage of the other's interface,
-making it easy to switch between them. Example:
+making it easy to switch between them.
+
+Here we make a v1-style Broker but the ``v2`` accessor to try v2-style
+features.
 
 .. code:: python
 
-   # Try v2 features from v1.
    from databroker import Broker
    db = Broker.named('MY_CATALOG')  # a databroker.v1.Broker instance
    query = dict(plan_name='count')
    db(**query)  # v1-style search
    db.v1(**query)  # a synonym for the above
-   db.v2.serach(query)  # v2-style search
+   db.v2.search(query)  # v2-style search
+
+Here we make a v2-style Broker but the ``v1`` accessor to fall back to v1-style
+usage.
+
+.. code:: python
 
    # Retreat to v1 from v2.
    from databroker import catalog 

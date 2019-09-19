@@ -19,8 +19,8 @@ which can be accessed like
 
 DataBroker assembles this list of catalogs by looking for:
 
-1. Old-style "databroker v0.x" configuration files, for backward-compatibility
-2. Intake-style catalog YAML files
+1. Old-style "databroker v0.x" YAML configuration files, for backward-compatibility
+2. Intake-style catalog YAML files, which have different fields
 3. Python packages that advertise catalogs via the ``intake.catalogs``
    entrypoint
 
@@ -78,7 +78,7 @@ turn, by databroker.
 Structure
 ---------
 
-The general structure of a a catalog YAML file is a nested dictionary of
+The general structure of a catalog YAML file is a nested dictionary of
 data "sources". Each source name is mapped to information for accessing that
 data, which includes a type of "driver" and some keyword arguments to pass to
 it. A "driver" is generally associated with a particular storage format.
@@ -112,7 +112,7 @@ Msgpack_ is a binary file format.
      ENTRY_NAME:
        driver: bluesky-msgpack-catalog
        args:
-        paths:
+         paths:
           - "DESTINATION_DIRECTORY/*.msgpack"
 
 where ``ENTRY_NAME`` is a name of the entry that will appear in
@@ -137,7 +137,7 @@ much slower than message-pack, but the format is human-readable.
      ENTRY_NAME:
        driver: bluesky-jsonl-catalog
        args:
-        paths:
+         paths:
           - "DESTINATION_DIRECTORY/*.jsonl"
 
 where ``ENTRY_NAME`` is a name of the entry that will appear in

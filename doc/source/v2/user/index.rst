@@ -90,7 +90,8 @@ Instead, we'll look up entries by name or by search.
 .. note::
 
    As an alternative to ``list(...)``, try using tab-completion to view your
-   options. Typing ``catalog['<TAB>`` will list the available entries.
+   options. Typing ``catalog['`` and then hitting the TAB key will list the
+   available entries.
 
    Also, these shortcuts can save a little typing.
 
@@ -106,11 +107,11 @@ Look up a Run by ID
 
 Suppose know the unique ID of a run (a.k.a "scan") that we want to access. Note
 that the first several characters will do; usually 6-8 are enough to uniquely
-identify a given entry.
+identify a given run.
 
 .. ipython:: python
 
-   entry = raw[uid]  # where uid is some string like '17531ace'
+   run = raw[uid]  # where uid is some string like '17531ace'
 
 Each run also has a ``scan_id``. The ``scan_id`` is usually easier to remember
 (it's a counting number, not a random string) but it may not be globally
@@ -119,7 +120,7 @@ unique ID is better as a long-term reference.
 
 .. ipython:: python
 
-   entry = raw[1]
+   run = raw[1]
 
 Search for Runs
 ---------------
@@ -149,8 +150,8 @@ and, if we want, list them.
 
    list(search_results)
 
-Because seraching on a Catalog returns another Catalog, we refine our search
-by seraching ``search_results``. In this example we'll use a helper,
+Because searching on a Catalog returns another Catalog, we refine our search
+by searching ``search_results``. In this example we'll use a helper,
 :class:`~databroker.queries.TimeRange`, to build our query.
 
 .. ipython:: python
@@ -169,12 +170,13 @@ include *greater than* 50 points.
 
 See MongoQuerySelectors_ for more.
 
-Once we have a result catalog that we are happy with we can list the entries,
-and access them individually by name, or loop through them:
+Once we have a result catalog that we are happy with we can list the entries
+via ``list(search_results)``, access them individually by names as in
+``search_results[SOME_UID]`` or loop through them:
 
 .. ipython:: python
 
-   for uid, entry in search_results.items():
+   for uid, run in search_results.items():
        # Do stuff
        ...
 
@@ -185,7 +187,7 @@ Suppose we have a run of interest.
 
 .. ipython:: python
 
-   entry = raw[uid]
+   run = raw[uid]
 
 A given run contains multiple logical tables. The number of these tables and
 their names varies by the particular experiment, but two common ones are
@@ -199,15 +201,15 @@ arguments:
 
 .. ipython:: python
 
-    entry()  # or, equivalently, entry.get()
+    run()  # or, equivalently, run.get()
 
-We can also use tab-completion, as in ``entry['<TAB>``, to see the contents.
+We can also use tab-completion, as in ``entry['`` TAB, to see the contents.
 That is, the Run is yet another Catalog, and its contents are the logical
 tables of data. Finally, let's get one of these tables.
 
 .. ipython:: python
 
-   ds = entry['primary'].read()
+   ds = run.primary.read()
    ds
 
 This is an xarray.Dataset. You can access specific columns
@@ -239,10 +241,13 @@ greedily pulling all the data into memory from the start.
 
 .. ipython:: python
 
-   ds = entry['primary'].to_dask()
+   ds = run.primary.to_dask()
    ds
 
 See the documentation on dask_.
+
+TODO: This is displaying numpy arrays, not dask. Illustrating dask here might
+requires standing up a server.
 
 Replay Document Stream
 ----------------------
@@ -254,11 +259,15 @@ acquisition---use the ``canonical()`` method.
 
 .. ipython:: python
 
-   entry.canonical(fill='yes')
+   run.canonical(fill='yes')
 
 This generator yields ``(name, doc)`` pairs and can be fed into streaming
 visualization, processing, and serialization tools that consume this
 representation, such as those provided by bluesky.
+
+The keyword argument ``fill`` is required. Its allowed values are ``'yes'``
+(numpy arrays)`, ``'no'`` (Datum IDs), and ``'delayed'`` (dask arrays, still
+under development).
 
 .. _MongoQuerySelectors: https://docs.mongodb.com/v3.2/reference/operator/query/#query-selectors
 .. _xarray: https://xarray.pydata.org/en/stable/
