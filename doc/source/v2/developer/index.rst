@@ -1,91 +1,93 @@
+.. currentmodule:: databroker.core
+
 ***********************
 Developer Documentation
 ***********************
 
-When databroker is imported, it discovers catalogs available on the system.
-User can list the discovered catalogs by importing a special global ``catalog``
-object and listing its entries.
+Design
+======
+
+Intake Concepts
+---------------
+
+Intake has a notion of Catalogs. Catalogs are roughly dict-like. Iterating over
+a Catalog yields the names of its entries, which are strings. Iterating over
+``catalog.items()`` yields ``(name, Entry)`` pairs. An Entry is roughly like
+a ``functools.partial`` with metadata and intake-specific semantics. When an
+Entry is opened, by calling it ``entry.get()`` or, equivalently and more
+succinctly, ``entry()``, it returns its content. The content could be another
+Catalog or a DataSource.
+
+Calling ``.read()`` on a DataSource returns some in-memory representation, such
+as a numpy array, pandas DataFrame, or xarray.Dataset. Calling ``.to_dask()``
+return the "lazy" dask-backed equivalent structure.
+
+DataBroker Concepts
+-------------------
+
+DataBroker represents a Bluesky "Event Stream", a logical table of data, as a
+DataSource, :class:`BlueskyEventStream`. Calling
+:meth:`BlueskyEventStream.read` returns an xarray Dataset backed by numpy
+arrays; calling :meth:`BlueskyEventStream.to_dask` returns an xarray Dataset
+backed by dask arrays.
+
+DataBroker represents a Bluesky Run, sometimes loosely referred to as a "scan",
+as a Catalog of Event Streams, :class:`BlueskyRun`. For example, the entries in
+a :class:`BlueskyRun` might have the names ``'primary'`` and ``'baseline'``.
+The entries always contain instances of :class:`BlueskyEventStream`.
+
+:class:`BlueskyEventStream` and :class:`BlueskyRun` should never be
+instantiated by the user. They have complex signatures, and they are agnostic
+to the storage mechanism; they could be backed by objects in memory, files, or
+databases.
+
+Continuing to move up the hierarchy, we get to catalogs whose Entries contain
+:class:`BlueskyRun` instances. Each entry's name is the corresponding RunStart
+``uid``. The Catalogs at this level of the hierarchy include:
+
+.. currentmodule:: databroker
+
+* :class:`_drivers.jsonl.BlueskyJSONLCatalog`
+* :class:`_drivers.msgpack.BlueskyMsgpackCatalog`
+* :class:`_drivers.mongo_normalized.BlueskyMongoCatalog`
+* :class:`_drivers.mongo_embedded.BlueskyMongoCatalog`
+
+Notice that these are located in an internal module.  Except for testing
+purposes, they should never be directly imported. They should be accessed by
+their name from intake's driver registry as in:
 
 .. code:: python
 
-   from databroker import catalog
-   list(catalog)
+   import intake
+   cls = intake.registry['bluesky-jsonl-catalog']
 
-Catalogs can also be opened by the user.
+At some point in the future, once the internal APIs stabilize, these classes
+and their specific dependencies (msgpack, pymongo, etc.) will be moved out of
+databroker into separate packages. By avoiding direct imports, this change can
+occur transparently.
 
-.. code:: python
+Scaling Intake Catalogs
+-----------------------
 
-   from databroker import open_catalog
-   local_catalog = open_catalog('catalog.yml')  # a local file
-   remote_catalog = open_catalog('intake://example.com')  # an intake server
+A simple intake Catalog populates an internal dictionary, ``Catalog._entries``,
+mapping entry names to :class:`LocalCatalogEntry` objects. This approach does
+not scale to catalogs with large number of entries, where merely populating the
+keys of the ``Catalog._entries`` dict is expensive. Instead, we override
+:meth:`Catalog._make_entries_container` and return a dict-*like* object. This
+object must support iteration (looping through part of all of the catalog in
+order) and random access (requesting a specific entry by name) by implementing
+``__iter__`` and ``__getitem__`` respectively.
 
-Finally, catalogs can be directly instantiated, though this should usually be
-necessary.
+It should also implement ``__contains__`` because, similarly, if
+``__contains__`` is specifically implemented, Python will iterate through all the
+entries and check each in turn. In this case, it is likely more efficient to
+implement a ``__contains__`` method that uses ``__getitem__`` to determine
+whether a given key is contained.
 
-.. code:: python
-
-   from databroker._drivers.msgpack import BlueskyMsgpackCatalog
-   catalog = BlueskyMsgpackCatalog('path/to/files/*.msgpack')
-
-
-Search for data, and retrieve it as SciPy/PyData data structures for
-interactive data exploration or in
-`a representation suitable for streaming applications <https://nsls-ii.github.io/event-model>`_ .
-
-`Intake <https://intake.readthedocs.io>`_ loads data from a growing variety of
-formats into familiar Scipy/PyData data structures.
-`Bluesky <https://nsls-ii.github.io/bluesky>`_ is a suite of co-developed
-Python packages for data acquisition and management designed to drive
-experiments and capture data and metadata from experiments and simulations in a
-way that interfaces naturally with open-source software in general and the
-scientific Python ecosystem in particular. Intake-Bluesky applies intake to
-bluesky.
-
-* Its Catalogs' search functionality leverages the MongoDB query language
-  instead of performing plain-text search.
-* Intake-Bluesky ships Catalogs that embody the semantics of bluesky's data
-  model. A bluesky "run" (e.g. one scan) is represented by a
-  :class:`~intake_bluesky.core.BlueskyRun`.  Each logical table of data within
-  a given run is represented by a
-  :class:`~intake_bluesky.core.BlueskyEventStream`.
-* The methods :meth:`~intake_bluesky.core.BlueskyEventStream.read()` and
-  :meth:`~intake_bluesky.core.BlueskyEventStream.to_dask()` provide the data in
-  SciPy/PyData structures and their "lazy" dask-backed counterparts, as with
-  any other intake data source.
-* The additional method :meth:`~intake_bluesky.core.BlueskyRun.read_canonical`
-  returns a generator suitable for streaming. Its elements satisfy
-  `bluesky's data model <https://nsls-ii.github.io/event-model>`_ and can be
-  fed into streaming visualization, processing, and serialization tools that
-  consume this representation.
-
-Bluesky is unopinionated about file formats. It provides a `variety of
-serializers <https://nsls-ii.github.io/suitcase>`_ for encoding the stream of
-acquired data to persistent storage. (Note that large detectors may write
-directly to disk, in which case bluesky records, in effect, a pointer.)
-Different formats and storage may be appropriate for different scientific
-domains and scales. A single graduate student might dump their data into local
-files, whereas a lab or facility might use a MongoDB instance. Intake-Bluesky
-will address the range of possible use cases by implementing an intake driver
-for each serializer. Currently supported:
-
-* :class:`~intake_bluesky.mongo_normalized.BlueskyMongoCatalog` --- Backed by
-  MongoDB
-* :class:`~intake_bluesky.jsonl.BlueskyJSONLCatalog` --- Backed by a set of
-  newline-delimited JSON files, illustrating "minimal deployment overhead" use
-  case
-
-Intake-Bluesky will also address the use case of reading files *not* produced
-by bluesky, retrofitting the semantics of its data model. Thus, a "bucket
-of files" such as a directory of TIFFs could be fed through tools that consume
-the representation returned by
-:meth:`~intake_bluesky.core.BlueskyRun.read_canonical`.
-
-.. note::
-
-   These drivers are currently being developed in intake-bluesky itself, but
-   will eventually be split out into separate repositories to isolate
-   dependencies and release cycles. This will be done once the interface with
-   core is deemed stable.
+Finally, the Catalog itself should implement ``__len__``. If it is not
+implemented, intake may obtain a Catalog's length by iterating through it
+entirely, which may be costly. If a more efficient approach is possible (e.g. a
+COUNT query) it should be implemented.
 
 .. toctree::
 

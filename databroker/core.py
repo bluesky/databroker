@@ -915,6 +915,23 @@ class BlueskyEventStream(DataSourceMixin):
             include=self.include,
             exclude=self.exclude)
 
+    def read(self):
+        """
+        Return data from this Event Stream as an xarray.Dataset.
+
+        This loads all of the data into memory. For delayed ("lazy"), chunked
+        access to the data, see :meth:`to_dask`.
+        """
+        # Implemented just so we can put in a docstring
+        return super().read()
+
+    def to_dask(self):
+        """
+        Return data from this Event Stream as an xarray.Dataset backed by dask.
+        """
+        # Implemented just so we can put in a docstring
+        return super().to_dask()
+
 
 class DocumentCache(event_model.DocumentRouter):
     def __init__(self):
