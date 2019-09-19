@@ -2,6 +2,9 @@
 Overview
 ********
 
+DataBroker provides access to saved data from Bluesky. It does this by applying
+Intake to Bluesky.
+
 `Intake <https://intake.readthedocs.io>`_ takes the pain out of data access.
 It loads data from a growing variety of formats into familiar Scipy/PyData data
 structures.
@@ -11,8 +14,6 @@ Python packages for data acquisition and management designed to drive
 experiments and capture data and metadata from experiments and simulations in a
 way that interfaces naturally with open-source software in general and the
 scientific Python ecosystem in particular.
-
-DataBroker applies Intake to Bluesky.
 
 .. _transition_plan:
 
