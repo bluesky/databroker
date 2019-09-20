@@ -16,7 +16,12 @@ from .utils import (lookup_config, list_configs, describe_configs,
 from .discovery import MergedCatalog, EntrypointsCatalog, V0Catalog
 
 # A catalog created from discovered entrypoints, v0, and intake YAML catalogs.
-catalog = MergedCatalog([EntrypointsCatalog(), V0Catalog(), intake.cat])
+from intake.catalog.default import load_combo_catalog
+yaml_catalogs = load_combo_catalog()
+catalog = MergedCatalog([
+    EntrypointsCatalog(),
+    V0Catalog(),
+    load_combo_catalog()])
 
 # set version string using versioneer
 from ._version import get_versions
