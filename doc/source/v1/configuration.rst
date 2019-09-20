@@ -1,3 +1,5 @@
+.. _v0_configuration:
+
 *************
 Configuration
 *************

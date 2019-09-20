@@ -50,9 +50,10 @@ extensions = [
     'numpydoc',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
+    'matplotlib.sphinxext.plot_directive',
 ]
 
-extlinks = {'issue': ('https://github.com/NSLS-II/{0}/issues/%s'.format(repo_name),
+extlinks = {'issue': ('https://github.com/bluesky/{0}/issues/%s'.format(repo_name),
                       'GH')}
 
 # Generate the API documentation when building
@@ -297,6 +298,6 @@ if six.PY3:
     import queue
     sys.modules['Queue'] = queue
 
-ipython_savefig_dir = ''
+ipython_savefig_dir = "_generated_images"
 html_static_path = ["_static"]
 templates_path = ['_templates']

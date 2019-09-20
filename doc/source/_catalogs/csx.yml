@@ -1,0 +1,7 @@
+sources:
+  raw:
+    driver: 'bluesky-jsonl-catalog'
+    args:
+      paths: 'data/*.jsonl'
+      handler_registry:
+        NPY_SEQ: 'ophyd.sim.NumpySeqHandler'

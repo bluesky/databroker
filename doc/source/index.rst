@@ -1,34 +1,36 @@
-Data Broker
-===========
+**********
+DataBroker
+**********
 
-The databroker Python package provides a simple, user-friendly interface
-for retrieving stored data and metadata from multiple sources. It loads the
-data into memory as built-in Python data types and numpy arrays.
+Search for data, and retrieve it as SciPy/PyData data structures for
+interactive data exploration or in
+`a representation suitable for streaming applications <https://blueskyproject.io/event-model>`_ .
 
-It is intended to be used in conjunction with the
-`bluesky <https://nsls-ii.github.io/bluesky>`_ data collection framework, but
-it is an independent project that can be used separately if desired.
+If you are here to...
 
-Index
------
+* use the legacy "Version 1" user interace to databroker, see :doc:`v1/index`;
+* try the new "Version 2" user interace to databroker, see the :doc:`v2/user/index`;
+* configure or administrate data sources using databroker, see
+  the :doc:`v2/administrator/index`;
+* develop support for new storage formats or understand databroker's internal
+  workings, see the :doc:`v2/developer/index`.
 
 .. toctree::
-    :maxdepth: 1
+   :maxdepth: 2
 
-    tutorial
-    api
-    configuration
-    creating
-    archiver
-    whats_new
-    DBEP/index
+   overview
+   installation
+   v2/index
+   v1/index
+   whats_new
+   DBEP/index
 
 .. toctree::
    :hidden:
    :caption: Bluesky Project
 
-   Bluesky Project <https://blueskyproject.io>
-   Bluesky Project Repositories <https://github.com/bluesky>
+   Homepage <https://blueskyproject.io>
+   GitHub <https://github.com/bluesky>
 
 .. toctree::
    :hidden:
