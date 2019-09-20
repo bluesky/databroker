@@ -86,7 +86,7 @@ mapping entry names to :class:`LocalCatalogEntry` objects. This approach does
 not scale to catalogs with large number of entries, where merely populating the
 keys of the ``Catalog._entries`` dict is expensive. To customize the type of
 ``_entries`` override :meth:`Catalog._make_entries_container` and return a
-dict-*like* object. This object must support iteration (looping through part of
+dict-*like* object. This object must support iteration (looping through part or
 all of the catalog in order) and random access (requesting a specific entry by
 name) by implementing ``__iter__`` and ``__getitem__`` respectively.
 

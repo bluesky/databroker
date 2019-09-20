@@ -36,7 +36,7 @@ Migrating sqlite or HDF5 storage
 --------------------------------
 
 The implementation in ``databroker.v0`` interfaces with storage in MongoDB,
-sqlite, and HDF5.  The implementations in ``databroker.v1`` and
+sqlite, or HDF5.  The implementations in ``databroker.v1`` and
 ``databroker.v2`` drop support for sqlite and HDF5 and add support for JSONL_
 (newline-delimited JSON) and msgpack_. For binary file-based storage, we
 recommend using msgpack. Data can be migrated from sqlite or HDF5 to msgpack
@@ -113,7 +113,7 @@ Msgpack_ is a binary file format.
        driver: bluesky-msgpack-catalog
        args:
          paths:
-          - "DESTINATION_DIRECTORY/*.msgpack"
+           - "DESTINATION_DIRECTORY/*.msgpack"
 
 where ``ENTRY_NAME`` is a name of the entry that will appear in
 ``databroker.catalog``, and ``DESTINATION_DIRECTORY`` is a directory of
@@ -129,7 +129,7 @@ JSONL (Newline-delimited JSON) Example
 
 JSONL_ is a text-based format in which each line is a
 valid JSON. Unlike ordinary JSON, it is suitable for streaming. This storage is
-much slower than message-pack, but the format is human-readable.
+much slower than msgpack, but the format is human-readable.
 
 .. code:: yaml
 
@@ -138,7 +138,7 @@ much slower than message-pack, but the format is human-readable.
        driver: bluesky-jsonl-catalog
        args:
          paths:
-          - "DESTINATION_DIRECTORY/*.jsonl"
+           - "DESTINATION_DIRECTORY/*.jsonl"
 
 where ``ENTRY_NAME`` is a name of the entry that will appear in
 ``databroker.catalog`` and ``DESTINATION_DIRECTORY`` is a directory of
@@ -234,6 +234,6 @@ accessed. Thus, the overhead of this discovery process is low.
 .. _jsonl: http://jsonlines.org/
 .. _msgpack: https://msgpack.org/index.html
 .. _suitcase-mongo: https://github.com/bluesky/suitcase-mongo
-.. _suitcase-jsonl: https://github.com/bluesky/suitcase-mongo
-.. _suitcase-msgpack: https://github.com/bluesky/suitcase-mongo
+.. _suitcase-jsonl: https://github.com/bluesky/suitcase-jsonl
+.. _suitcase-msgpack: https://github.com/bluesky/suitcase-msgpack
 .. _MongoDB: https://www.mongodb.com/

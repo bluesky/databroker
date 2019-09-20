@@ -32,7 +32,7 @@ Backend-Specific Catalogs
 
 .. note::
 
-   These drivers are currently being developed in intake-bluesky itself, but
+   These drivers are currently being developed in databroker itself, but
    will eventually be split out into separate repositories to isolate
    dependencies and release cycles. This will be done once the internal
    interfaces are stable.

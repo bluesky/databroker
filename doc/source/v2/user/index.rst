@@ -53,7 +53,7 @@ Find a Catalog
 --------------
 
 When databroker is first imported, it searches for Catalogs on your system,
-typically provided by a Python package or configuartion file that you or an
+typically provided by a Python package or configuration file that you or an
 administrator installed.
 
 .. ipython:: python
@@ -105,7 +105,7 @@ Instead, we'll look up entries by name or by search.
 Look up a Run by ID
 -------------------
 
-Suppose know the unique ID of a run (a.k.a "scan") that we want to access. Note
+Suppose you know the unique ID of a run (a.k.a "scan") that we want to access. Note
 that the first several characters will do; usually 6-8 are enough to uniquely
 identify a given run.
 
@@ -247,7 +247,7 @@ greedily pulling all the data into memory from the start.
 See the documentation on dask_.
 
 TODO: This is displaying numpy arrays, not dask. Illustrating dask here might
-requires standing up a server.
+require standing up a server.
 
 Replay Document Stream
 ----------------------

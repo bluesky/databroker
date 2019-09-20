@@ -70,7 +70,6 @@ usage.
 
 .. code:: python
 
-   # Retreat to v1 from v2.
    from databroker import catalog 
    db = catalog.SOMETHING()  # a databroker.v2.Broker instance
    query = dict(plan_name='count')
