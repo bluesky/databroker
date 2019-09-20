@@ -13,7 +13,7 @@ The Broker object
 -----------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker
@@ -25,7 +25,7 @@ You can instantiate a :class:`Broker` by passing it a dictionary of
 configuration or by providing the name of a configuration file on disk.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.from_config
@@ -37,7 +37,7 @@ Searching
 =========
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.__call__
@@ -75,7 +75,7 @@ the new methods cannot do:
    db.get_table(headers)
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.get_documents
@@ -89,7 +89,7 @@ the new methods cannot do:
 The broker also has a number of methods to introspect headers:
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.get_fields
@@ -100,7 +100,7 @@ Saving Data
 ===========
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.insert
@@ -109,7 +109,7 @@ Configuring Filters and Aliases
 ===============================
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.add_filter
@@ -125,7 +125,7 @@ Export Data to Another Broker
 =============================
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.export
@@ -155,7 +155,7 @@ In a future release of databroker, the default return type may be changed to
 plain dictionaries for simplicity and improved performance.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
     wrap_in_deprecated_doct
@@ -167,7 +167,7 @@ The Header object
 -----------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Header
@@ -183,7 +183,7 @@ attributes corresponding to the underlying documents:
 * :class:`Header.stop`
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Header.uid
@@ -205,7 +205,7 @@ The information in these documents is a lot to navigate. Convenience methods
 make it easier to extract some key information:
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Header.fields
@@ -221,7 +221,7 @@ which may be large. They all access the same data, presented in various ways
 for convenience.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Header.table
@@ -245,7 +245,7 @@ Configuration Utilities
 -----------------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    list_configs
@@ -258,7 +258,7 @@ Back- and Forward-Compat Accessors
 ----------------------------------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.v1
@@ -268,7 +268,7 @@ Internals
 ---------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.reg
@@ -278,7 +278,7 @@ Deprecated
 ----------
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.stream
@@ -295,7 +295,7 @@ Removed
 These functions and methods now raise ``NotImplementedError`` if called.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
    :nosignatures:
 
    Broker.fill_event
