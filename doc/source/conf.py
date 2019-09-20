@@ -53,7 +53,7 @@ extensions = [
     'matplotlib.sphinxext.plot_directive',
 ]
 
-extlinks = {'issue': ('https://github.com/NSLS-II/{0}/issues/%s'.format(repo_name),
+extlinks = {'issue': ('https://github.com/bluesky/{0}/issues/%s'.format(repo_name),
                       'GH')}
 
 # Generate the API documentation when building
