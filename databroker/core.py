@@ -760,7 +760,8 @@ class BlueskyRun(intake.catalog.Catalog):
                             datum_ids |= set(datum_page['datum_id'])
                 if fill == 'yes':
                     self._fill(event)  # in place (for now)
-                payload.append(('event', event))
+                event_page = event_model.pack_event_page(event)
+                payload.append(('event_page', event_page))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
         for _, doc in payload:
