@@ -191,6 +191,12 @@ def test_read(bundle):
     entry().to_dask().load()
 
 
+def test_dot_access(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]()
+    entry = run['primary']
+    entry = getattr(run, 'primary')
+
+
 def test_include_and_exclude(bundle):
     run = bundle.cat['xyz']()[bundle.uid]()
     entry = run['primary']

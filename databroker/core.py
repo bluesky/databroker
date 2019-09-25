@@ -687,7 +687,14 @@ class BlueskyRun(intake.catalog.Catalog):
         return self.get()
 
     def __getattr__(self, key):
-        return getattr(self._entry, key)
+        try:
+            # Let the base classes try to handle it first. This will handle,
+            # for example, accessing subcatalogs using dot-access.
+            return super().__getattr__(key)
+        except AttributeError:
+            # The user might be trying to access an Entry method. Try that
+            # before giving up.
+            return getattr(self._entry, key)
 
     def canonical(self, *, fill):
         """
