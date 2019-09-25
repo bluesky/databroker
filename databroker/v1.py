@@ -1688,7 +1688,7 @@ class _GetDocumentsRouter:
     def event_page(self, doc):
         "Unpack into events and pass them to event method for more processing."
         if doc['descriptor'] in self._descriptors:
-            for event in event_model.unpack_event_page(event):
+            for event in event_model.unpack_event_page(doc):
                 yield from self.event(event)
 
     def event(self, doc):
