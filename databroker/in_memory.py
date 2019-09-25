@@ -11,14 +11,6 @@ from .core import parse_handler_registry, discover_handlers, Entry
 from .v2 import Broker
 
 
-class SafeLocalCatalogEntry(intake.catalog.local.LocalCatalogEntry):
-    # For compat with intake 0.5.1.
-    # Not necessary after https://github.com/intake/intake/pull/362
-    # is released.
-    def describe(self):
-        return copy.deepcopy(super().describe())
-
-
 class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
