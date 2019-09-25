@@ -923,7 +923,10 @@ class Broker:
 
         for header in headers:
             for name, doc in self._catalog[header.start['uid']].canonical(fill='no'):
-                if name == 'resource' and new_root:
+                if name == 'event_page':
+                    for event in event_model.unpack_event_page(doc):
+                        db.insert('event', event)
+                elif name == 'resource' and new_root:
                     file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = copy.deepcopy(doc)
                     new_resource['root'] = new_root
