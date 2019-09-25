@@ -422,9 +422,9 @@ class Broker:
             def merge_config_into_event(event):
                 # Mutate event in place, adding in data and timestamps from the
                 # descriptor's 'configuration' key.
-                event_data = doc['data']  # cache for perf
-                desc = doc['descriptor']
-                event_timestamps = doc['timestamps']
+                event_data = event['data']  # cache for perf
+                desc = event['descriptor']
+                event_timestamps = event['timestamps']
                 event_data.update(per_desc_extra_data[desc])
                 event_timestamps.update(per_desc_extra_ts[desc])
                 discard_fields = per_desc_discards[desc]
