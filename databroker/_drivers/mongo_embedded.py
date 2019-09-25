@@ -152,7 +152,13 @@ class _Entries(collections.abc.Mapping):
                     raise KeyError(f"No run with scan_id={N}")
         if header_doc is None:
             raise KeyError(name)
-        return self._doc_to_entry(header_doc['start'][0])
+        entry = self._doc_to_entry(header_doc['start'][0])
+        # The user has requested one specific Entry. In order to give them a
+        # more useful object, 'get' the Entry for them. Note that if they are
+        # expecting an Entry and try to call ``()`` or ``.get()``, that will
+        # still work because BlueskyRun supports those methods and will just
+        # return itself.
+        return entry.get()  # an instance of BlueskyRun
 
     def __contains__(self, key):
         # Avoid iterating through all entries.

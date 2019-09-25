@@ -666,6 +666,28 @@ class BlueskyRun(intake.catalog.Catalog):
                 getshell=True,
                 catalog=self)
 
+    def get(self):
+        """
+        Return self.
+
+        This is here so that the user does not have to remember whether a given
+        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
+        case, ``obj.get()`` will return a BlueskyRun.
+        """
+        return self
+
+    def __call__(self):
+        """
+        Return self.
+
+        This is here so that the user does not have to remember whether a given
+        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
+        case, ``obj()`` will return a BlueskyRun.
+        """
+        return self.get()
+
+    def __getattr__(self, key):
+        return getattr(self._entry, key)
 
     def canonical(self, *, fill):
         """
