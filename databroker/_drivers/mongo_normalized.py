@@ -8,9 +8,9 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry, discover_handlers
-from ..core import to_event_pages
-from ..core import to_datum_pages
+from ..core import (
+    parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
+    Entry)
 from ..v2 import Broker
 
 
@@ -42,7 +42,7 @@ class _Entries(collections.abc.Mapping):
             # benchmarks.
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
             filler=self.catalog.filler)
-        return intake.catalog.local.LocalCatalogEntry(
+        return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
             driver='databroker.core.BlueskyRun',

@@ -9,7 +9,7 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry, discover_handlers
+from ..core import parse_handler_registry, discover_handlers, Entry
 from ..v2 import Broker
 
 
@@ -79,7 +79,7 @@ class _Entries(collections.abc.Mapping):
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
             filler=self.catalog.filler)
-        return intake.catalog.local.LocalCatalogEntry(
+        return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
             driver='databroker.core.BlueskyRun',
