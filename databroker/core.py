@@ -497,7 +497,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         try:
             start = self.metadata['start']
             stop = self.metadata['stop']
-            out = (f"Run Catalog\n"
+            out = (f"BlueskyRun\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
                    f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
