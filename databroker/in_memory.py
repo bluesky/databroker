@@ -5,7 +5,7 @@ import intake.catalog
 import intake.catalog.local
 import intake.source.base
 
-from .core import parse_handler_registry, discover_handlers, Entry
+from .core import parse_handler_registry, discover_handlers, Entry, DaskFiller
 from .v2 import Broker
 from mongoquery import Query
 
@@ -14,7 +14,9 @@ class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
     def __init__(self, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler, query=None, **kwargs):
+                 filler_class=event_model.Filler,
+                 delayed_filler_class=DaskFiller,
+                 query=None, **kwargs):
         """
         This Catalog is backed by Python collections in memory.
 
@@ -68,6 +70,14 @@ class BlueskyInMemoryCatalog(Broker):
                          root_map=root_map,
                          filler_class=filler_class,
                          **kwargs)
+
+    def _get_filler(self):
+        return self._filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=False)
+
+    def _get_delayed_filler(self):
+        return self._delayed_filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=False)
 
     def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
         if not Query(self._query).match(start_doc):

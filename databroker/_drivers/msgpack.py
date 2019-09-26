@@ -6,6 +6,7 @@ import os
 import pathlib
 
 from ..in_memory import BlueskyInMemoryCatalog
+from ..core import DaskFiller
 
 
 UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,

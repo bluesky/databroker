@@ -10,7 +10,7 @@ import pymongo.errors
 
 from ..core import (
     parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry)
+    Entry, DaskFiller)
 from ..v2 import Broker
 
 
@@ -43,18 +43,18 @@ class _Entries(collections.abc.Mapping):
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
             get_filler=self.catalog._get_filler)
         return Entry(
-            name=run_start_doc['uid'],
-            description={},  # TODO
-            driver='databroker.core.BlueskyRun',
-            direct_access='forbid',  # ???
-            args=args,
-            cache=None,  # ???
-            parameters=[],
-            metadata=entry_metadata,
-            catalog_dir=None,
-            getenv=True,
-            getshell=True,
-            catalog=self.catalog)
+                name=run_start_doc['uid'],
+                description={},  # TODO
+                driver='databroker.core.BlueskyRun',
+                direct_access='forbid',  # ???
+                args=args,
+                cache=None,  # ???
+                parameters=[],
+                metadata=entry_metadata,
+                catalog_dir=None,
+                getenv=True,
+                getshell=True,
+                catalog=self.catalog)
 
     def __iter__(self):
         cursor = self.catalog._run_start_collection.find(
@@ -119,7 +119,6 @@ class _Entries(collections.abc.Mapping):
         # still work because BlueskyRun supports those methods and will just
         # return itself.
         return entry.get()  # an instance of BlueskyRun
-
 
     def __contains__(self, key):
         # Avoid iterating through all entries.
@@ -210,6 +209,14 @@ class BlueskyMongoCatalog(Broker):
                          filler_class=filler_class,
                          **kwargs)
 
+    def _get_filler(self):
+        return self._filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=False)
+
+    def _get_delayed_filler(self):
+        return self._delayed_filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=False)
+
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
             {'run_start': run_start_uid})
@@ -247,6 +254,10 @@ class BlueskyMongoCatalog(Broker):
     def _get_event_count(self, descriptor_uid):
         return self._event_collection.count_documents(
             {'descriptor': descriptor_uid})
+
+    def _get_resources(self, run_start_uid):
+        return list(self._resource_collection.find({'run_start': run_start_uid},
+                                              {'_id': False}))
 
     def _get_resource(self, uid):
         doc = self._resource_collection.find_one(

@@ -5,7 +5,7 @@ import pathlib
 import event_model
 
 from ..in_memory import BlueskyInMemoryCatalog
-from ..core import tail
+from ..core import tail, DaskFiller
 
 
 def gen(filename):

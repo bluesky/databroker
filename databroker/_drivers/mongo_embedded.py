@@ -9,7 +9,7 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry, discover_handlers, Entry
+from ..core import parse_handler_registry, discover_handlers, Entry, DaskFiller
 from ..v2 import Broker
 
 
@@ -76,6 +76,7 @@ class _Entries(collections.abc.Mapping):
             get_event_pages=self.catalog._get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
+            get_resources=partial(get_header_field, 'resources'),
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
             get_filler=self.catalog._get_filler)
@@ -225,11 +226,22 @@ class BlueskyMongoCatalog(Broker):
         else:
             self._db = datastore_db
         self._query = query or {}
+        self._root_map = root_map
+        self._filler_class = filler_class
+        self._delayed_filler_class = delayed_filler_class
 
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,
                          filler_class=filler_class,
                          **kwargs)
+
+    def _get_filler(self):
+        return self._filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=False)
+
+    def _get_delayed_filler(self):
+        return self._delayed_filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=False)
 
     def _get_event_pages(self, descriptor_uid, skip=0, limit=None):
         if limit is None:
