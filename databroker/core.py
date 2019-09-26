@@ -612,7 +612,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._run_stop_doc = self._get_run_stop()
         self._run_start_doc = self._get_run_start()
         self._descriptors = self._get_event_descriptors()
-        self._offset = len(self._descriptors) + 1
+        self._resources = self._get_resources()
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -763,13 +763,21 @@ class BlueskyRun(intake.catalog.Catalog):
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
+        self._load()
+
+        # Unpack partition
         i = partition['index']
         fill = partition['fill']
-        self._load()
-        payload = []
+        chunk_size = partition['chunk_size']
+
+        # Calculate begining and end of partition.
         start = i * self.PARTITION_SIZE
         stop = (1 + i) * self.PARTITION_SIZE
-        if start < self._offset:
+
+        # Partition to return.
+        payload = []
+
+        if start < len(self._descriptors) + 1:
             payload.extend(
                 itertools.islice(
                     itertools.chain(
@@ -777,21 +785,23 @@ class BlueskyRun(intake.catalog.Catalog):
                         (('descriptor', doc) for doc in self._descriptors)),
                     start,
                     stop))
-        descriptor_uids = [doc['uid'] for doc in self._descriptors]
         skip = max(0, start - len(payload))
         limit = stop - start - len(payload)
-        # print('start, stop, skip, limit', start, stop, skip, limit)
         datum_ids = set()
+
         if limit > 0:
 
-            events = itertools.islice(interlace_event_pages(
-                    *(self._get_event_pages(descriptor_uid=descriptor_uid)
-                      for descriptor_uid in descriptor_uids)), skip, limit)
+            descriptor_uids = [doc['uid'] for doc in self._descriptors]
+            event_pages = itertools.islice(interlace_event_page_chunks(
+                                *(self._get_event_pages(descriptor_uid=descriptor_uid)
+                                  for descriptor_uid in descriptor_uids),
+                                chunk_size), skip, limit)
+
             for descriptor in self._descriptors:
                 self.filler('descriptor', descriptor)
-            for event in events:
-                for key, is_filled in event['filled'].items():
-                    if is_filled:
+            for event_page in event_pages:
+                for key, filled in event['filled'].items():
+                    if filled:
                         # A filled Event has the datum_id rotated into 'filled'.
                         datum_id = event['filled'][key]
                     else:

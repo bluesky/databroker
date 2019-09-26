@@ -76,6 +76,7 @@ class _Entries(collections.abc.Mapping):
             get_event_pages=self.catalog._get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
+            get_resources=partial(get_header_field, 'resources'),
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
             filler=self.catalog.filler)
