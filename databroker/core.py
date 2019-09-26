@@ -11,6 +11,7 @@ import heapq
 import importlib
 import itertools
 import intake.catalog.base
+import intake.catalog.local
 import errno
 import intake.container.base
 from intake.compat import unpack_kwargs
@@ -23,6 +24,22 @@ import warnings
 import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
+
+
+class Entry(intake.catalog.local.LocalCatalogEntry):
+    def __init__(self, **kwargs):
+        # This might never come up, but just to be safe....
+        if 'entry' in kwargs['args']:
+            raise TypeError("The args cannot contain 'entry'. It is reserved.")
+        super().__init__(**kwargs)
+
+    def _create_open_args(self, user_parameters):
+        plugin, open_args = super()._create_open_args(user_parameters)
+        # Inject self into arguments passed to instanitate the driver. This
+        # enables the driver instance to know which Entry created it.
+        open_args['entry'] = self
+        return plugin, open_args
+
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -497,7 +514,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         try:
             start = self.metadata['start']
             stop = self.metadata['stop']
-            out = (f"Run Catalog\n"
+            out = (f"BlueskyRun\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
                    f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
@@ -556,6 +573,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  lookup_resource_for_datum,
                  get_datum_pages,
                  filler,
+                 entry,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
@@ -570,6 +588,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.filler = filler
+        self._entry = entry
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -647,6 +666,35 @@ class BlueskyRun(intake.catalog.Catalog):
                 getshell=True,
                 catalog=self)
 
+    def get(self, *args, **kwargs):
+        """
+        Return self or, if args are provided, some new instance of type(self).
+
+        This is here so that the user does not have to remember whether a given
+        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
+        case, ``obj.get()`` will return a BlueskyRun.
+        """
+        return self._entry.get(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        """
+        Return self or, if args are provided, some new instance of type(self).
+
+        This is here so that the user does not have to remember whether a given
+        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
+        case, ``obj()`` will return a BlueskyRun.
+        """
+        return self.get(*args, **kwargs)
+
+    def __getattr__(self, key):
+        try:
+            # Let the base classes try to handle it first. This will handle,
+            # for example, accessing subcatalogs using dot-access.
+            return super().__getattr__(key)
+        except AttributeError:
+            # The user might be trying to access an Entry method. Try that
+            # before giving up.
+            return getattr(self._entry, key)
 
     def canonical(self, *, fill):
         """

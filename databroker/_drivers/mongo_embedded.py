@@ -9,7 +9,7 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry, discover_handlers
+from ..core import parse_handler_registry, discover_handlers, Entry
 from ..v2 import Broker
 
 
@@ -79,7 +79,7 @@ class _Entries(collections.abc.Mapping):
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
             filler=self.catalog.filler)
-        return intake.catalog.local.LocalCatalogEntry(
+        return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
             driver='databroker.core.BlueskyRun',
@@ -152,7 +152,13 @@ class _Entries(collections.abc.Mapping):
                     raise KeyError(f"No run with scan_id={N}")
         if header_doc is None:
             raise KeyError(name)
-        return self._doc_to_entry(header_doc['start'][0])
+        entry = self._doc_to_entry(header_doc['start'][0])
+        # The user has requested one specific Entry. In order to give them a
+        # more useful object, 'get' the Entry for them. Note that if they are
+        # expecting an Entry and try to call ``()`` or ``.get()``, that will
+        # still work because BlueskyRun supports those methods and will just
+        # return itself.
+        return entry.get()  # an instance of BlueskyRun
 
     def __contains__(self, key):
         # Avoid iterating through all entries.

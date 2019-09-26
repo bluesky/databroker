@@ -7,16 +7,8 @@ import intake.source.base
 from mongoquery import Query
 
 
-from .core import parse_handler_registry, discover_handlers
+from .core import parse_handler_registry, discover_handlers, Entry
 from .v2 import Broker
-
-
-class SafeLocalCatalogEntry(intake.catalog.local.LocalCatalogEntry):
-    # For compat with intake 0.5.1.
-    # Not necessary after https://github.com/intake/intake/pull/362
-    # is released.
-    def describe(self):
-        return copy.deepcopy(super().describe())
 
 
 class BlueskyInMemoryCatalog(Broker):
@@ -62,7 +54,7 @@ class BlueskyInMemoryCatalog(Broker):
         uid = start_doc['uid']
         self._uid_to_run_start_doc[uid] = start_doc
 
-        entry = SafeLocalCatalogEntry(
+        entry = Entry(
             name=start_doc['uid'],
             description={},  # TODO
             driver='databroker.core.BlueskyRunFromGenerator',
@@ -149,7 +141,13 @@ class BlueskyInMemoryCatalog(Broker):
                         break
                 else:
                     raise KeyError(f"No run with scan_id={N}")
-        return self._entries[uid]
+        entry = self._entries[uid]
+        # The user has requested one specific Entry. In order to give them a
+        # more useful object, 'get' the Entry for them. Note that if they are
+        # expecting an Entry and try to call ``()`` or ``.get()``, that will
+        # still work because BlueskyRun supports those methods and will just
+        # return itself.
+        return entry.get()  # an instance of BlueskyRun
 
     def __len__(self):
         return len(self._uid_to_run_start_doc)
