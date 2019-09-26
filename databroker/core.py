@@ -484,7 +484,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self, *, fill):
+    def canonical(self, *, fill, chunk_size=1):
         """
         Yields documents from this Run in chronological order.
 
@@ -500,7 +500,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
         """
         for i in range(self.npartitions):
-            for name, doc in self._get_partition({'index': i, 'fill': fill}):
+            for name, doc in self._get_partition({'index': i, 'fill': fill,
+                                                  'chunk_size': chunk_size}):
                 yield name, doc
 
     def read_canonical(self):
@@ -696,7 +697,7 @@ class BlueskyRun(intake.catalog.Catalog):
             # before giving up.
             return getattr(self._entry, key)
 
-    def canonical(self, *, fill):
+    def canonical(self, *, fill, chunk_size=1):
         """
         Yields documents from this Run in chronological order.
 
@@ -712,7 +713,8 @@ class BlueskyRun(intake.catalog.Catalog):
 
         """
         for i in range(self.npartitions):
-            for name, doc in self.read_partition({'index': i, 'fill': fill}):
+            for name, doc in self.read_partition({'index': i, 'fill': fill,
+                                                  'chunk_size': chunk_size}):
                 yield name, doc
 
     def read_canonical(self):
