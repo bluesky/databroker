@@ -284,8 +284,9 @@ def unfilled_partitions(start, descriptors, resources, stop, *datum_gens,
         partition.append(('event_page', event_page))
         count += 1
         if count == chunk_per_partition:
-            count = 0
             yield partition
+            count = 0
+            partition = []
 
     # Add the stop document onto the last partition.
     partition.append(('stop', stop))
