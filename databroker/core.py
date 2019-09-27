@@ -15,6 +15,7 @@ import intake.catalog.local
 import errno
 import intake.container.base
 from intake.compat import unpack_kwargs
+import math
 import msgpack
 import requests
 from requests.compat import urljoin
@@ -235,6 +236,61 @@ def interlace_event_page_chunks(*gens, chunk_size):
         _, indx, val = heapq.heappop(heap)
         yield val
 
+def unfilled_partitions(start, descriptors, resources, stop, *datum_gens,
+                        *event_gens, partition_size, chunk_size):
+    """
+    Return a Bluesky run, in order, packed into partitions.
+
+    Parameters
+    ----------
+    start : dict
+        Bluesky run_start document
+    descriptors: list
+        List of Bluesky descriptor documents
+    resources: list
+        List of Bluesky resource documents
+    stop: dict
+        Bluesky run_stop document
+    datum_gens : generators
+        Generators of datum_pages.
+    event_gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    partition_size : integer
+        Size of partitions to yield
+    chunk_size : integer
+        Size of pages to yield
+
+    Yields
+    ------
+    partition : list
+        List of lists of (name, dict) pair in time order
+    """
+    # The first partition is the "header"
+    yield [('start', self._run_start_doc)]
+          + [('descriptor', doc) for doc in descrself._descriptors]
+          + [('resource', doc) for doc in self.resources]
+
+    # Use rechunk datum pages to make them into pages of size "partition_size"
+    # and yield one page per partition.
+    for datum_gen in datum_gens:
+        yield from event_model.rechunk_datum_pages(datum_gen, partition_size)
+
+    # Rechunk the event pages and interlace them in timestamp order, then pack
+    # them into a partition.
+    chunks_per_partition = math.ceil(partition_size/chunk_size)
+    count = 0
+    partition = []
+    for event_page in interlace_event_page_chunks(event_gens, chunk_size):
+        partition.append(('event_page', event_page))
+        count += 1
+        if count == chunk_per_partition:
+            count = 0
+            yield partition
+
+    # Add the stop document onto the last partition.
+    partition.append(('stop', stop))
+    yield partition
+
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
@@ -280,7 +336,6 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     if include and exclude:
         raise ValueError(
             "The parameters `include` and `exclude` are mutually exclusive.")
-
     # Data keys must not change within one stream, so we can safely sample
     # just the first Event Descriptor.
     if descriptor_docs:
@@ -405,7 +460,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         datasets.append(xarray.Dataset(data_vars=data_arrays))
     # Merge Datasets from all Event Descriptors into one representing the
     # whole stream. (In the future we may simplify to one Event Descriptor
-    # per stream, but as of this writing we must account for the
+    # per stream, but as of this writing we muhttps://github.com/bluesky/databroker/pull/458st account for the
     # possibility of multiple.)
     return xarray.merge(datasets)
 
@@ -569,7 +624,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_run_stop,
                  get_event_descriptors,
                  get_event_pages,
-                 get_event_count,
+                 get_event_count,https://github.com/bluesky/databroker/pull/457
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
@@ -586,6 +641,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
+        self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.filler = filler
@@ -598,7 +654,7 @@ class BlueskyRun(intake.catalog.Catalog):
             stop = self._run_stop_doc or {}
             out = (f"Run Catalog\n"
                    f"  uid={start['uid']!r}\n"
-                   f"  exit_status={stop.get('exit_status')!r}\n"
+https://github.com/bluesky/databroker/pull/458                   f"  exit_status={stop.get('exit_status')!r}\n"
                    f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
                    f"  Streams:\n")
             for stream_name in self:
@@ -609,10 +665,11 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_stop_doc = self._get_run_stop()
         self._run_start_doc = self._get_run_start()
+        self._run_stop_doc = self._get_run_stop()
         self._descriptors = self._get_event_descriptors()
         self._resources = self._get_resources()
+
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -623,6 +680,9 @@ class BlueskyRun(intake.catalog.Catalog):
             count += self._get_event_count(doc['uid'])
         count += (self._run_stop_doc is not None)
         self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
+
+
+
 
         self._schema = intake.source.base.Schema(
             datashape=None,
@@ -763,30 +823,40 @@ class BlueskyRun(intake.catalog.Catalog):
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
-        self._load()
-
         # Unpack partition
         i = partition['index']
         fill = partition['fill']
         chunk_size = partition['chunk_size']
 
+
+        for doc in self._header:
+            self._filler(*doc)
+
+        if i == 0:  # Return self._header for the first partition.
+            self._load()
+            self._run = {'start': self._run_start_doc,
+                         'descriptors': self._descriptors
+            return self._header
+        elif 0 < i < len(self._resources):
+            self._get_datum_pages(self._resources[i-1])
+
+
+
         # Calculate begining and end of partition.
         start = i * self.PARTITION_SIZE
         stop = (1 + i) * self.PARTITION_SIZE
 
-        # Partition to return.
-        payload = []
-
+        # First read from the header.
         if start < len(self._descriptors) + 1:
-            payload.extend(
-                itertools.islice(
-                    itertools.chain(
-                        (('start', self._get_run_start()),),
-                        (('descriptor', doc) for doc in self._descriptors)),
-                    start,
-                    stop))
+            payload = self._header[start: stop]
+        else:
+            payload = []
+
         skip = max(0, start - len(payload))
         limit = stop - start - len(payload)
+
+
+        # maybe use the filler cache?
         datum_ids = set()
 
         if limit > 0:
