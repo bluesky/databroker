@@ -624,7 +624,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_run_stop,
                  get_event_descriptors,
                  get_event_pages,
-                 get_event_count,https://github.com/bluesky/databroker/pull/457
+                 get_event_count,
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
