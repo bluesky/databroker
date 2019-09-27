@@ -815,19 +815,18 @@ class BlueskyRun(intake.catalog.Catalog):
         fill = partition['fill']
         chunk_size = partition['chunk_size']
 
-        datum_gens = [self._get_datum_pages(resource['uid']
-                      for resource in self._resources]
-
-        event_gens = [self._get_event_pages(descriptor['uid'])
-                      for descriptor in self._descriptors]
-
         if i == 0:
             self._load()
+            datum_gens = [self._get_datum_pages(resource['uid']
+                          for resource in self._resources]
+            event_gens = [self._get_event_pages(descriptor['uid'])
+                          for descriptor in self._descriptors]
             self._partitions = list(
                 unfilled_partitions(self._run_start_doc, self._run_stop_doc,
                                     self._descriptors, self._resources,
                                     datum_gens, event_gens,
                                     self.PARTITION_SIZE, chunk_size))
+
         return [self.filler(name, doc) for name, doc in self._partitions[i]]
 
     def _fill(self, event, last_datum_id=None):
