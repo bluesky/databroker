@@ -460,7 +460,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         datasets.append(xarray.Dataset(data_vars=data_arrays))
     # Merge Datasets from all Event Descriptors into one representing the
     # whole stream. (In the future we may simplify to one Event Descriptor
-    # per stream, but as of this writing we muhttps://github.com/bluesky/databroker/pull/458st account for the
+    # per stream, but as of this writing we must account for the
     # possibility of multiple.)
     return xarray.merge(datasets)
 
