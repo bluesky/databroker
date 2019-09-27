@@ -817,7 +817,7 @@ class BlueskyRun(intake.catalog.Catalog):
 
         if i == 0:
             self._load()
-            datum_gens = [self._get_datum_pages(resource['uid']
+            datum_gens = [self._get_datum_pages(resource['uid'])
                           for resource in self._resources]
             event_gens = [self._get_event_pages(descriptor['uid'])
                           for descriptor in self._descriptors]
