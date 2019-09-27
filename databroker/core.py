@@ -826,8 +826,10 @@ class BlueskyRun(intake.catalog.Catalog):
                                     self._descriptors, self._resources,
                                     datum_gens, event_gens,
                                     self.PARTITION_SIZE, chunk_size))
-
-        return [self.filler(name, doc) for name, doc in self._partitions[i]]
+        if fill = 'yes':
+            return [self.filler(name, doc) for name, doc in self._partitions[i]]
+        else:
+            return self._partitions[i]
 
     def _fill(self, event, last_datum_id=None):
         try:
