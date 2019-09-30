@@ -628,6 +628,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_event_pages,
                  get_event_count,
                  get_resource,
+                 get_resources,
                  lookup_resource_for_datum,
                  get_datum_pages,
                  filler,
@@ -643,6 +644,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
+        self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.filler = filler
