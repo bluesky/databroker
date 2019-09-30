@@ -675,6 +675,13 @@ class BlueskyRun(intake.catalog.Catalog):
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
+        count = 1
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        count += len(descriptor_uids)
+        for doc in self._descriptors:
+            count += self._get_event_count(doc['uid'])
+        count += (self._run_stop_doc is not None)
+
         self._schema = intake.source.base.Schema(
             datashape=None,
             dtype=None,
@@ -843,9 +850,6 @@ class BlueskyRun(intake.catalog.Catalog):
                 self._partitions.insert(i, _missing_datum(err.key, self.PARTITION_SIZE))
                 return [self.filler(name, doc) for name, doc in self._partitions[i]]
         else:
-E       lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
-E                               ^
-E   SyntaxError: invalid syntax
             # This path won't find resources that don't have a run_start key
             # yet.
             return self._partitions[i]
@@ -1078,6 +1082,9 @@ class BlueskyRunFromGenerator(BlueskyRun):
         def get_resource(uid):
             return document_cache.resources[uid]
 
+        def get_resources():
+            return list(document_cache.resources.values())
+
         def lookup_resource_for_datum(datum_id):
             return document_cache.resource_uid_by_datum_id[datum_id]
 
@@ -1093,6 +1100,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_event_pages=get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
+            get_resources=get_resources,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
             filler=filler,
