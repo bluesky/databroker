@@ -827,40 +827,39 @@ class BlueskyRun(intake.catalog.Catalog):
                                     self._descriptors, self._resources,
                                     datum_gens, event_gens,
                                     self.PARTITION_SIZE, chunk_size))
+            self.npartitions = len(self._partitions)
+
         if fill = 'yes':
-            return [self.filler(name, doc) for name, doc in self._partitions[i]]
+            try:
+                return [self.filler(name, doc) for name, doc in self._partitions[i]]
+            except event_model.UnresolvableForeignKeyError as err:
+                # Slow path: This error should only happen if there is an old style
+                # resource document that doesn't have a run_start_uid.
+                self._partitions.insert(i, _missing_datum(err.key, self.PARTITION_SIZE))
+                return [self.filler(name, doc) for name, doc in self._partitions[i]]
         else:
             return self._partitions[i]
 
-    def _fill(self, event, last_datum_id=None):
-        try:
-            self.filler('event', event)
-        except event_model.UnresolvableForeignKeyError as err:
-            datum_id = err.key
-            if datum_id == last_datum_id:
-                # We tried to fetch this Datum on the last trip
-                # trip through this method, and apparently it did not
-                # work. We are in an infinite loop. Bail!
-                raise
-
-            if '/' in datum_id:
-                resource_uid, _ = datum_id.split('/', 1)
-            else:
-                resource_uid = self._lookup_resource_for_datum(datum_id)
-
+    def _missing_datum(self, datum_id, partition_size, last_datum_id=None):
+        if datum_id == last_datum_id:
+            # We tried to fetch this Datum on the last trip
+            # trip through this method, and apparently it did not
+            # work. We are in an infinite loop. Bail!
+            raise
+        if '/' in datum_id:
+            resource_uid, _ = datum_id.split('/', 1)
+        else:
+            resource_uid = self._lookup_resource_for_datum(datum_id)
             resource = self._get_resource(uid=resource_uid)
-            self.filler('resource', resource)
-            # Pre-fetch all datum for this resource.
-            for datum_page in self._get_datum_pages(
-                    resource_uid=resource_uid):
-                self.filler('datum_page', datum_page)
-            # TODO -- When to clear the datum cache in filler?
 
-            # Re-enter and try again now that the Filler has consumed the
-            # missing Datum. There might be another missing Datum in this same
-            # Event document (hence this re-entrant structure) or might be good
-            # to go.
-            self._fill(event, last_datum_id=datum_id)
+        # Use rechunk datum pages to make them into pages of size "partition_size"
+        # and yield one page per partition.
+        datum_gen = self._get_datum_pages(resource['uid'])
+        partitions = [[('datum_page', datum_page)] for datum_page in
+                      event_model.rechunk_datum_pages(datum_gen, partition_size)]
+        partitions[0] = [('resource', resource)] + partitions[0]
+        self.npartitions += len(partitions)
+        return partitions
 
     def read(self):
         raise NotImplementedError(
