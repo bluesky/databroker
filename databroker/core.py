@@ -236,8 +236,8 @@ def interlace_event_page_chunks(*gens, chunk_size):
         _, indx, val = heapq.heappop(heap)
         yield val
 
-def unfilled_partitions(start, descriptors, resources, stop, *datum_gens,
-                        *event_gens, partition_size, chunk_size):
+def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
+                        event_gens, partition_size, chunk_size):
     """
     Return a Bluesky run, in order, packed into partitions.
 
@@ -266,14 +266,15 @@ def unfilled_partitions(start, descriptors, resources, stop, *datum_gens,
         List of lists of (name, dict) pair in time order
     """
     # The first partition is the "header"
-    yield [('start', self._run_start_doc)]
+    yield ([('start', self._run_start_doc)]
           + [('descriptor', doc) for doc in descrself._descriptors]
-          + [('resource', doc) for doc in self.resources]
+          + [('resource', doc) for doc in self.resources])
 
     # Use rechunk datum pages to make them into pages of size "partition_size"
     # and yield one page per partition.
     for datum_gen in datum_gens:
-        yield from event_model.rechunk_datum_pages(datum_gen, partition_size)
+        yield [[('datum_page', datum_page)] for datum_page in
+               event_model.rechunk_datum_pages(datum_gen, partition_size)]
 
     # Rechunk the event pages and interlace them in timestamp order, then pack
     # them into a partition.
@@ -392,7 +393,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 # but they could in the future.
                 reported_ndim = len(field_metadata['dims'])
                 if reported_ndim == ndim:
-                    dims = tuple(field_metadata['dims'])
+                     dims = tuple(field_metadata['dims'])
                 else:
                     # TODO Warn
                     ...
@@ -461,7 +462,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         datasets.append(xarray.Dataset(data_vars=data_arrays))
     # Merge Datasets from all Event Descriptors into one representing the
     # whole stream. (In the future we may simplify to one Event Descriptor
-    # per stream, but as of this writing we must account for the
+    # per stream, but as of this writing we must account for the adds a given element to a set if the element is not present
     # possibility of multiple.)
     return xarray.merge(datasets)
 
@@ -642,7 +643,6 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
-        self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.filler = filler
@@ -655,6 +655,7 @@ class BlueskyRun(intake.catalog.Catalog):
             stop = self._run_stop_doc or {}
             out = (f"Run Catalog\n"
                    f"  uid={start['uid']!r}\n"
+                   f"  exit_status={stop.get('exit_status')!r}\n"
                    f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
                    f"  Streams:\n")
             for stream_name in self:
@@ -818,6 +819,8 @@ class BlueskyRun(intake.catalog.Catalog):
 
         if i == 0:
             self._load()
+            # This line wont work well with multiple clients.
+            self._missing_datum = set()
             datum_gens = [self._get_datum_pages(resource['uid'])
                           for resource in self._resources]
             event_gens = [self._get_event_pages(descriptor['uid'])
@@ -829,34 +832,41 @@ class BlueskyRun(intake.catalog.Catalog):
                                     self.PARTITION_SIZE, chunk_size))
             self.npartitions = len(self._partitions)
 
-        if fill = 'yes':
+        if fill == 'yes':
             try:
                 return [self.filler(name, doc) for name, doc in self._partitions[i]]
             except event_model.UnresolvableForeignKeyError as err:
                 # Slow path: This error should only happen if there is an old style
-                # resource document that doesn't have a run_start_uid.
+                # resource document that doesn't have a run_start key.
                 self._partitions.insert(i, _missing_datum(err.key, self.PARTITION_SIZE))
                 return [self.filler(name, doc) for name, doc in self._partitions[i]]
         else:
+            # This path won't find resources that don't have a run_start key
+            # yet.
             return self._partitions[i]
 
-    def _missing_datum(self, datum_id, partition_size, last_datum_id=None):
-        if datum_id == last_datum_id:
+    def _missing_datum(self, datum_id, partition_size):
+        if datum_id in self._missing_datum:
             # We tried to fetch this Datum on the last trip
             # trip through this method, and apparently it did not
             # work. We are in an infinite loop. Bail!
             raise
+        self._missed_datum.add(datum_id)
+
+        # Get the resource from the datum_id.
         if '/' in datum_id:
             resource_uid, _ = datum_id.split('/', 1)
         else:
             resource_uid = self._lookup_resource_for_datum(datum_id)
-            resource = self._get_resource(uid=resource_uid)
+        resource = self._get_resource(uid=resource_uid)
 
         # Use rechunk datum pages to make them into pages of size "partition_size"
         # and yield one page per partition.
         datum_gen = self._get_datum_pages(resource['uid'])
         partitions = [[('datum_page', datum_page)] for datum_page in
                       event_model.rechunk_datum_pages(datum_gen, partition_size)]
+
+        # Add the resource to the begining of the first partition.
         partitions[0] = [('resource', resource)] + partitions[0]
         self.npartitions += len(partitions)
         return partitions
