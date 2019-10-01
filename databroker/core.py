@@ -649,6 +649,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_datum_pages = get_datum_pages
         self.filler = filler
         self._entry = entry
+        self.no_filler = event_model.DocumentRouter()
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -826,10 +827,10 @@ class BlueskyRun(intake.catalog.Catalog):
         fill = partition['fill']
         chunk_size = partition['chunk_size']
 
+        filler = self.filler if fill == 'yes' else event_model.DocumentRouter()
+
         if i == 0:
             self._load()
-            # This line wont work well with multiple clients.
-            self._missing_datum = set()
             datum_gens = [self._get_datum_pages(resource['uid'])
                           for resource in self._resources]
             event_gens = [self._get_event_pages(descriptor['uid'])
@@ -841,26 +842,15 @@ class BlueskyRun(intake.catalog.Catalog):
                                     self.PARTITION_SIZE, chunk_size))
             self.npartitions = len(self._partitions)
 
-        if fill == 'yes':
-            try:
-                return [self.filler(name, doc) for name, doc in self._partitions[i]]
-            except event_model.UnresolvableForeignKeyError as err:
-                # Slow path: This error should only happen if there is an old style
-                # resource document that doesn't have a run_start key.
-                self._partitions.insert(i, _missing_datum(err.key, self.PARTITION_SIZE))
-                return [self.filler(name, doc) for name, doc in self._partitions[i]]
-        else:
-            # This path won't find resources that don't have a run_start key
-            # yet.
-            return self._partitions[i]
+        try:
+            return [filler(name, doc) for name, doc in self._partitions[i]]
+        except event_model.UnresolvableForeignKeyError as err:
+            # Slow path: This error should only happen if there is an old style
+            # resource document that doesn't have a run_start key.
+            self._partitions[i:i] = _missing_datum(err.key, self.PARTITION_SIZE)
+            return [filler(name, doc) for name, doc in self._partitions[i]]
 
     def _missing_datum(self, datum_id, partition_size):
-        if datum_id in self._missing_datum:
-            # We tried to fetch this Datum on the last trip
-            # trip through this method, and apparently it did not
-            # work. We are in an infinite loop. Bail!
-            raise
-        self._missed_datum.add(datum_id)
 
         # Get the resource from the datum_id.
         if '/' in datum_id:
@@ -874,6 +864,14 @@ class BlueskyRun(intake.catalog.Catalog):
         datum_gen = self._get_datum_pages(resource['uid'])
         partitions = [[('datum_page', datum_page)] for datum_page in
                       event_model.rechunk_datum_pages(datum_gen, partition_size)]
+
+        # Datum not found.
+        for partition in partitions:
+            for name, datum_page in partition:
+                if datum_id in datum_page['datum_id']:
+                    found = True
+        if not found:
+            raise
 
         # Add the resource to the begining of the first partition.
         partitions[0] = [('resource', resource)] + partitions[0]
