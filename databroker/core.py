@@ -857,7 +857,7 @@ class BlueskyRun(intake.catalog.Catalog):
         resource = self._get_resource(uid=resource_uid)
 
         # Use rechunk datum pages to make them into pages of size "partition_size"
-        # and yield one page per partition.
+        # and yield one page per partition.  Rechunk might be slow.
         datum_gen = self._get_datum_pages(resource['uid'])
         partitions = [[('datum_page', datum_page)] for datum_page in
                       event_model.rechunk_datum_pages(datum_gen, partition_size)]
@@ -1343,6 +1343,7 @@ def dataarray_page_to_dataset_page(dataarray_page):
 
 class NoFiller(event_model.Filler):
 
+    # Overloading the function so that changes event_model wont break it.
     def fill_event_page(self, doc, include=None, exclude=None):
         filled_events = []
         for event_doc in unpack_event_page(doc):
@@ -1387,8 +1388,6 @@ class NoFiller(event_model.Filler):
                         f"Datum with id {datum_id} refers to unknown Resource "
                         f"uid {resource_uid}") from err
         return doc
-
-
 
 
 class DaskFiller(event_model.Filler):
