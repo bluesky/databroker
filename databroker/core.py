@@ -611,7 +611,6 @@ class BlueskyRun(intake.catalog.Catalog):
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
-    filler : event_model.Filler
     **kwargs :
         Additional keyword arguments are passed through to the base class,
         Catalog.
@@ -631,7 +630,6 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_resources,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 filler,
                  entry,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
@@ -647,9 +645,10 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self.fillers = {'yes': event_model.Filler(),
+                        'no': NoFiller(),
+                        'lazy': DaskFiller()}
         self._entry = entry
-        self.no_filler = event_model.DocumentRouter()
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -795,7 +794,7 @@ class BlueskyRun(intake.catalog.Catalog):
         files = []
         # TODO Once event_model.Filler has a get_handler method, use that.
         try:
-            handler_class = self.filler.handler_registry[resource['spec']]
+            handler_class = self.fillers['yes'].handler_registry[resource['spec']]
         except KeyError as err:
             raise event_model.UndefinedAssetSpecification(
                 f"Resource document with uid {resource['uid']} "
@@ -805,7 +804,7 @@ class BlueskyRun(intake.catalog.Catalog):
         # Apply root_map.
         resource_path = resource['resource_path']
         root = resource.get('root', '')
-        root = self.filler.root_map.get(root, root)
+        root = self.fillers['yes'].root_map.get(root, root)
         if root:
             resource_path = os.path.join(root, resource_path)
 
@@ -824,10 +823,8 @@ class BlueskyRun(intake.catalog.Catalog):
         """
         # Unpack partition
         i = partition['index']
-        fill = partition['fill']
+        filler = self.fillers[partition['fill']]
         chunk_size = partition['chunk_size']
-
-        filler = self.filler if fill == 'yes' else event_model.DocumentRouter()
 
         if i == 0:
             self._load()
@@ -865,7 +862,7 @@ class BlueskyRun(intake.catalog.Catalog):
         partitions = [[('datum_page', datum_page)] for datum_page in
                       event_model.rechunk_datum_pages(datum_gen, partition_size)]
 
-        # Datum not found.
+        # Datum not found.  There is probably a nicer way to write this.
         for partition in partitions:
             for name, datum_page in partition:
                 if datum_id in datum_page['datum_id']:
@@ -1342,6 +1339,56 @@ def dataarray_page_to_dataset_page(dataarray_page):
             'data': xarray.merge(dataarray_page['data'].values()),
             'timestamps': xarray.merge(dataarray_page['timestamps'].values()),
             'filled': xarray.merge(dataarray_page['filled'].values())}
+
+
+class NoFiller(event_model.Filler):
+
+    def fill_event_page(self, doc, include=None, exclude=None):
+        filled_events = []
+        for event_doc in unpack_event_page(doc):
+            filled_events.append(self.fill_event(event_doc,
+                                                 include=include,
+                                                 exclude=exclude,
+                                                 inplace=True))
+        filled_doc = pack_event_page(*filled_events)
+        return filled_doc
+
+    def fill_event(self, doc, include=None, exclude=None, inplace=None):
+        try:
+            filled = doc['filled']
+        except KeyError:
+            # This document is not telling us which, if any, keys are filled.
+            # Infer that none of the external data is filled.
+            descriptor = self._descriptor_cache[doc['descriptor']]
+            filled = {key: 'external' in val
+                      for key, val in descriptor['data_keys'].items()}
+        for key, is_filled in filled.items():
+            if exclude is not None and key in exclude:
+                continue
+            if include is not None and key not in include:
+                continue
+            if not is_filled:
+                datum_id = doc['data'][key]
+                # Look up the cached Datum doc.
+                try:
+                    datum_doc = self._datum_cache[datum_id]
+                except KeyError as err:
+                    err_with_key = UnresolvableForeignKeyError(
+                        f"Event with uid {doc['uid']} refers to unknown Datum "
+                        f"datum_id {datum_id}")
+                    err_with_key.key = datum_id
+                    raise err_with_key from err
+                resource_uid = datum_doc['resource']
+                # Look up the cached Resource.
+                try:
+                    resource = self._resource_cache[resource_uid]
+                except KeyError as err:
+                    raise UnresolvableForeignKeyError(
+                        f"Datum with id {datum_id} refers to unknown Resource "
+                        f"uid {resource_uid}") from err
+        return doc
+
+
 
 
 class DaskFiller(event_model.Filler):
