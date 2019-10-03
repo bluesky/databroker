@@ -645,9 +645,10 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.fillers = {'yes': event_model.Filler(),
-                        'no': NoFiller(),
-                        'lazy': DaskFiller()}
+        self._handlers = parse_handler_registry(discover_handlers())
+        self.fillers = {'yes': event_model.Filler(self._handlers),
+                        'no': NoFiller(self._handlers),
+                        'lazy': DaskFiller(self._handlers)}
         self._entry = entry
         super().__init__(**kwargs)
 
