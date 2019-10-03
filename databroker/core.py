@@ -862,12 +862,15 @@ class BlueskyRun(intake.catalog.Catalog):
         partitions = [[('datum_page', datum_page)] for datum_page in
                       event_model.rechunk_datum_pages(datum_gen, partition_size)]
 
-        # Datum not found.  There is probably a nicer way to write this.
-        for partition in partitions:
-            for name, datum_page in partition:
-                if datum_id in datum_page['datum_id']:
-                    found = True
-        if not found:
+        # Check that the datum_id from the exception has been added.
+        def check():
+            for partition in partitions:
+                for name, datum_page in partition:
+                    if datum_id in datum_page['datum_id']:
+                        return True
+            return False
+
+        if not check():
             raise
 
         # Add the resource to the begining of the first partition.
