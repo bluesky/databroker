@@ -554,7 +554,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-
+databroker/assets/tests/test
         """
         for i in range(self.npartitions):
             for name, doc in self._get_partition({'index': i, 'fill': fill,
@@ -630,7 +630,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_resources,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 entry,
+                 entry,databroker/assets/tests/test
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
@@ -645,11 +645,8 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self._handlers = parse_handler_registry(discover_handlers())
-        self.fillers = {'yes': event_model.Filler(self._handlers),
-                        'no': NoFiller(self._handlers),
-                        'lazy': DaskFiller(self._handlers)}
         self._entry = entry
+        self.fillers = discover_fillers()
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -711,7 +708,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_resource=self._get_resource,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
-                filler=self.filler,
+                fillers=self.fillers,
                 metadata={'descriptors': descriptors})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
@@ -947,9 +944,9 @@ class BlueskyEventStream(DataSourceMixin):
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 filler,
+                 fillers,
                  metadata,
-                 include=None,
+                 include=None,databroker/assets/tests/test
                  exclude=None,
                  **kwargs):
         # self._partition_size = 10
@@ -963,7 +960,7 @@ class BlueskyEventStream(DataSourceMixin):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self.fillers = fillers
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         self.include = include
@@ -990,7 +987,7 @@ class BlueskyEventStream(DataSourceMixin):
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
             get_event_pages=self._get_event_pages,
-            filler=self.filler,
+            fillers=self.fillers,
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
@@ -1051,7 +1048,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
     def __init__(self, gen_func, gen_args, gen_kwargs, filler=None, **kwargs):
 
         if filler is None:
-            filler = event_model.Filler({}, inplace=True)
+            filler = event_model.Fidatabroker/assets/tests/testller({}, inplace=True)
 
         document_cache = DocumentCache()
 
@@ -1102,7 +1099,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_resources=get_resources,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
-            filler=filler,
+            fillers=fillers,
             **kwargs)
 
 
@@ -1126,7 +1123,7 @@ def _transpose(in_data, keys, field):
     -------
     transpose : dict
         The transpose of the data
-    """
+    """databroker/assets/tests/test
     out = {k: [None] * len(in_data) for k in keys}
     for j, ev in enumerate(in_data):
         dd = ev[field]
@@ -1231,7 +1228,7 @@ def parse_handler_registry(handler_registry):
     Pass in name; get back actual class.
 
     >>> parse_handler_registry({'my_spec': 'package.module.ClassName'})
-    {'my_spec': <package.module.ClassName>}
+databroker/assets/tests/test    {'my_spec': <package.module.ClassName>}
 
     """
     result = {}
@@ -1243,6 +1240,14 @@ def parse_handler_registry(handler_registry):
             class_ = handler_str
         result[spec] = class_
     return result
+
+
+def discover_fillers():
+    handlers = parse_handler_registry(discover_handlers())
+    fillers = {'yes': event_model.Filler(self._handlers),
+                    'no': NoFiller(self._handlers),
+                    'lazy': DaskFiller(self._handlers)}
+    return fillers
 
 
 # TODO Do we actually need this?

@@ -79,7 +79,7 @@ class _Entries(collections.abc.Mapping):
             get_resources=partial(get_header_field, 'resources'),
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
-            filler=self.catalog.filler)
+            fillers=self.catalog.fillers)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
