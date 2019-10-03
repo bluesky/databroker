@@ -645,7 +645,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self._entry = entry
-        self.fillers = discover_fillers({})
+        self.fillers = discover_fillers()
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -916,7 +916,7 @@ class BlueskyEventStream(DataSourceMixin):
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
-    filler : event_model.Filler
+    fillers : dict of Fillers
     metadata : dict
         passed through to base class
     include : list, optional
@@ -1044,10 +1044,7 @@ class DocumentCache(event_model.DocumentRouter):
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
-    def __init__(self, gen_func, gen_args, gen_kwargs, fillers=None, **kwargs):
-
-        if fillers is None:
-            self.fillers = discover_fillers({})
+    def __init__(self, gen_func, gen_args, gen_kwargs, **kwargs):
 
         document_cache = DocumentCache()
 
@@ -1098,7 +1095,6 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_resources=get_resources,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
-            fillers=fillers,
             **kwargs)
 
 
