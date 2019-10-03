@@ -554,7 +554,6 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-databroker/assets/tests/test
         """
         for i in range(self.npartitions):
             for name, doc in self._get_partition({'index': i, 'fill': fill,
@@ -630,7 +629,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_resources,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 entry,databroker/assets/tests/test
+                 entry,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
@@ -646,7 +645,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self._entry = entry
-        self.fillers = discover_fillers()
+        self.fillers = discover_fillers({})
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -946,7 +945,7 @@ class BlueskyEventStream(DataSourceMixin):
                  get_datum_pages,
                  fillers,
                  metadata,
-                 include=None,databroker/assets/tests/test
+                 include=None,
                  exclude=None,
                  **kwargs):
         # self._partition_size = 10
@@ -987,7 +986,7 @@ class BlueskyEventStream(DataSourceMixin):
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
             get_event_pages=self._get_event_pages,
-            fillers=self.fillers,
+            filler=self.fillers['yes']
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
@@ -1045,10 +1044,10 @@ class DocumentCache(event_model.DocumentRouter):
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
-    def __init__(self, gen_func, gen_args, gen_kwargs, filler=None, **kwargs):
+    def __init__(self, gen_func, gen_args, gen_kwargs, fillers=None, **kwargs):
 
-        if filler is None:
-            filler = event_model.Fidatabroker/assets/tests/testller({}, inplace=True)
+        if fillers is None:
+            self.fillers = discover_fillers({})
 
         document_cache = DocumentCache()
 
@@ -1123,7 +1122,7 @@ def _transpose(in_data, keys, field):
     -------
     transpose : dict
         The transpose of the data
-    """databroker/assets/tests/test
+    """
     out = {k: [None] * len(in_data) for k in keys}
     for j, ev in enumerate(in_data):
         dd = ev[field]
@@ -1228,7 +1227,7 @@ def parse_handler_registry(handler_registry):
     Pass in name; get back actual class.
 
     >>> parse_handler_registry({'my_spec': 'package.module.ClassName'})
-databroker/assets/tests/test    {'my_spec': <package.module.ClassName>}
+    {'my_spec': <package.module.ClassName>}
 
     """
     result = {}
@@ -1242,11 +1241,11 @@ databroker/assets/tests/test    {'my_spec': <package.module.ClassName>}
     return result
 
 
-def discover_fillers():
+def discover_fillers(**kwargs):
     handlers = parse_handler_registry(discover_handlers())
-    fillers = {'yes': event_model.Filler(self._handlers),
-                    'no': NoFiller(self._handlers),
-                    'lazy': DaskFiller(self._handlers)}
+    fillers = {'yes': event_model.Filler(handlers, **kwargs),
+               'no': NoFiller(handlers, **kwargs),
+               'lazy': DaskFiller(handlers, **kwargs)}
     return fillers
 
 

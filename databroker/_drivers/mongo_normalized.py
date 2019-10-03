@@ -10,7 +10,7 @@ import pymongo.errors
 
 from ..core import (
     parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry)
+    Entry, discover_fillers)
 from ..v2 import Broker
 
 
@@ -42,7 +42,7 @@ class _Entries(collections.abc.Mapping):
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-            filler=self.catalog.filler)
+            fillers=self.catalog.fillers)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -141,7 +141,7 @@ class BlueskyMongoCatalog(Broker):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
-        This layout uses a separate Mongo collection per document type and a
+        This layout uses a separate Mongo collection per docutment type and a
         separate Mongo document for each logical document.
 
         Parameters
@@ -173,7 +173,6 @@ class BlueskyMongoCatalog(Broker):
             assets_db = _get_database(asset_registry_db)
         else:
             assets_db = asset_registry_db
-
         self._run_start_collection = mds_db.get_collection('run_start')
         self._run_stop_collection = mds_db.get_collection('run_stop')
         self._event_descriptor_collection = mds_db.get_collection('event_descriptor')
@@ -186,11 +185,9 @@ class BlueskyMongoCatalog(Broker):
         self._asset_registry_db = assets_db
 
         self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
+        self.fillers = discover_fillers(root_map=root_map, inplace=True)
+        self._root_map = root_map
+        self._
         super().__init__(**kwargs)
 
     def _get_run_stop(self, run_start_uid):
