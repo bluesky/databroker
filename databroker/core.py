@@ -91,13 +91,7 @@ def tail(filename, n=1, bsize=2048):
                     linecount += hfile.read(bsize).count(sep.encode())
                     break
                 raise  # Some other I/O exception, re-raise
-            pos = hfile.tell()        self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
-        super().__init__(**kwargs)
+            pos = hfile.tell()
 
     # Re-open in text mode
     with open(filename, 'r') as hfile:
@@ -124,13 +118,7 @@ def to_event_pages(get_event_cursor, page_size):
     Returns
     -------
     get_event_pages : function
-    """        self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
-        super().__init__(**kwargs)
+    """
     @functools.wraps(get_event_cursor)
     def get_event_pages(*args, **kwargs):
         event_cursor = get_event_cursor(*args, **kwargs)
@@ -260,13 +248,7 @@ def interlace(*gens, strict_order=False):
     Parameters
     ----------
     gens : generators
-        Generators o        self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
-        super().__init__(**kwargs)f (name, dict) pairs where the dict contains a 'time' key.
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
     strict_order : bool
         documents are strictly yielded in ascending time order.
     Yields
@@ -513,13 +495,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
 
         # Finally, make DataArrays for 'seq_num' and 'uid'.
         data_arrays['seq_num'] = xarray.DataArray(
-                   self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
-        super().__init__(**kwargs) data=seq_nums,
+            data=seq_nums,
             dims=('time',),
             coords={'time': times},
             name='seq_num')
@@ -631,7 +607,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             while True:
                 try:
                     yield from entry._get_partition({'index': i, 'fill': fill,
-                                                   'chunk_size': chunk_size})
+                                                   'page_size': 'auto'})
                 except PartitionIndexError:
                     break
 
@@ -963,13 +939,7 @@ class BlueskyEventStream(DataSourceMixin):
     Catalog representing one Event Stream from one Run.
 
     Parameters
-    ----------        self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
-        super().__init__(**kwargs)
+    ----------
     get_run_start: callable
         Expected signature ``get_run_start() -> RunStart``
     stream_name : string
@@ -1052,7 +1022,7 @@ class BlueskyEventStream(DataSourceMixin):
         self._run_stop_doc = self._get_run_stop()
         self._run_start_doc = self._get_run_start()
         self._descriptors =  [descriptor for descriptor in metadata['descriptors']
-                              if descriptor['stream_name'] = self._stream_name]
+                              if descriptor['stream_name'] == self._stream_name]
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         descriptor_docs = [doc for doc in self._get_event_descriptors()
@@ -1062,7 +1032,7 @@ class BlueskyEventStream(DataSourceMixin):
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
             get_event_pages=self._get_event_pages,
-            filler=self.fillers['yes']
+            filler=self.fillers['yes'],
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
@@ -1102,7 +1072,7 @@ class BlueskyEventStream(DataSourceMixin):
         elif isinstance(partition['chunk_size'], int):
             chunk_size = partition['chunk_size']
         else:
-            raise ValueError(f"Invalid chunk_size {partition['chunk_size']"}
+            raise ValueError(f"Invalid chunk_size {partition['chunk_size']}")
 
         if i == 0:
             datum_gens = [self._get_datum_pages(resource['uid'])

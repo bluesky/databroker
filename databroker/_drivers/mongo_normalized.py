@@ -25,38 +25,38 @@ class _Entries(collections.abc.Mapping):
         entry_metadata = {'start': run_start_doc,
             'stop': self.catalog._get_run_stop(uid)}
 
-            def get_run_start():
-                return run_start_doc
+        def get_run_start():
+            return run_start_doc
 
-                args = dict(
-                        get_run_start=get_run_start,
-                        get_run_stop=partial(self.catalog._get_run_stop, uid),
-                        get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
-                        # 2500 was selected as the page_size because it worked well durring
-                        # benchmarks, for HXN data a full page had roughly 3500 events.
-                        get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
-                        get_event_count=self.catalog._get_event_count,
-                        get_resource=self.catalog._get_resource,
-                        get_resources=partial(self.catalog._get_resources, uid),
-                        lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
-                        # 2500 was selected as the page_size because it worked well durring
-                        # benchmarks.
-                        get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-                        filler=self.catalog._get_filler(),
-                        delayed_filler=self.catalog._get_delayed_filler())
-    return Entry(
-            name=run_start_doc['uid'],
-            description={},  # TODO
-            driver='databroker.core.BlueskyRun',
-            direct_access='forbid',  # ???
-            args=args,
-            cache=None,  # ???
-            parameters=[],
-            metadata=entry_metadata,
-            catalog_dir=None,
-            getenv=True,
-            getshell=True,
-            catalog=self.catalog)
+        args = dict(
+            get_run_start=get_run_start,
+                get_run_stop=partial(self.catalog._get_run_stop, uid),
+                get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
+                # 2500 was selected as the page_size because it worked well durring
+                # benchmarks, for HXN data a full page had roughly 3500 events.
+                get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
+                get_event_count=self.catalog._get_event_count,
+                get_resource=self.catalog._get_resource,
+                get_resources=partial(self.catalog._get_resources, uid),
+                lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
+                # 2500 was selected as the page_size because it worked well durring
+                # benchmarks.
+                get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
+                filler=self.catalog._get_filler(),
+                delayed_filler=self.catalog._get_delayed_filler())
+        return Entry(
+                name=run_start_doc['uid'],
+                description={},  # TODO
+                driver='databroker.core.BlueskyRun',
+                direct_access='forbid',  # ???
+                args=args,
+                cache=None,  # ???
+                parameters=[],
+                metadata=entry_metadata,
+                catalog_dir=None,
+                getenv=True,
+                getshell=True,
+                catalog=self.catalog)
 
     def __iter__(self):
         cursor = self.catalog._run_start_collection.find(
@@ -123,6 +123,9 @@ class _Entries(collections.abc.Mapping):
         return entry.get()  # an instance of BlueskyRun
 
 
+
+        def get_run_start():
+            return run_start_doc
     def __contains__(self, key):
         # Avoid iterating through all entries.
         try:
@@ -214,13 +217,7 @@ class BlueskyMongoCatalog(Broker):
         self._datum_collection = assets_db.get_collection('datum')
 
         self._metadatastore_db = mds_db
-        self._asset_registry_db = assets_db        self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
-        super().__init__(**kwargs)
+        self._asset_registry_db = assets_db
 
         self._query = query or {}
         self._root_map = root_map
