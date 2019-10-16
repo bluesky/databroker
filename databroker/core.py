@@ -312,9 +312,9 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
         List of lists of (name, dict) pair in time order
     """
     # The first partition is the "header"
-    yield ([('start', self._run_start_doc)]
-          + [('descriptor', doc) for doc in descrself._descriptors]
-          + [('resource', doc) for doc in self.resources])
+    yield ([('start', start)]
+          + [('descriptor', doc) for doc in descriptors]
+          + [('resource', doc) for doc in resources])
 
     # Use rechunk datum pages to make them into pages of size "partition_size"
     # and yield one page per partition.
@@ -327,7 +327,7 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     chunks_per_partition = math.ceil(partition_size/chunk_size)
     count = 0
     partition = []
-    for event_page in interlace_event_page_chunks(event_gens, chunk_size):
+    for event_page in interlace_event_page_chunks(event_gens, chunk_size=chunk_size):
         partition.append(('event_page', event_page))
         count += 1
         if count == chunk_per_partition:
@@ -587,7 +587,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self, *, fill, chunk_size=1):
+    def canonical(self, *, fill, strict_order=False):
         """
         Yields documents from this Run in chronological order.
 
@@ -600,7 +600,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-
+        strict_order : bool
+            documents are strictly yielded in ascending time order.
         """
         def stream_gen(entry):
             i = 0
@@ -608,13 +609,14 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
                 try:
                     yield from entry._get_partition({'index': i, 'fill': fill,
                                                    'page_size': 'auto'})
+                    i += 1
                 except PartitionIndexError:
                     break
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
         yield ('start', self.metadata['start'])
-        yield from interlace(streams)
+        yield from interlace(streams, strict_order=strict_order)
         yield ('stop', self.metadata['stop'])
 
     def read_canonical(self):
@@ -799,8 +801,9 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_resource=self._get_resource,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
-                fillers=self.fillers,
-                metadata={'descriptors': descriptors})
+                fillers=self._fillers,
+                metadata={'descriptors': descriptors,
+                          'resources': self._resources})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -808,7 +811,8 @@ class BlueskyRun(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # ???
-                metadata={'descriptors': descriptors},
+                metadata={'descriptors': descriptors,
+                          'resources': self._resources},
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
@@ -857,6 +861,8 @@ class BlueskyRun(intake.catalog.Catalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
+        strict_order : bool
+            Documents are strictly yielded in ascending time order.
 
         """
         def stream_gen(entry):
@@ -865,13 +871,14 @@ class BlueskyRun(intake.catalog.Catalog):
                 try:
                     yield from entry.read_partition({'index': i, 'fill': fill,
                                                    'page_size': 'auto'})
+                    i += 1
                 except PartitionIndexError:
                     break
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
         yield ('start', self.metadata['start'])
-        yield from interlace(streams)
+        yield from interlace(streams, strict_order=strict_order)
         yield ('stop', self.metadata['stop'])
 
 
@@ -1008,7 +1015,16 @@ class BlueskyEventStream(DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
+
         super().__init__(metadata=metadata)
+
+        self._run_stop_doc = self._get_run_stop()
+        self._run_start_doc = self._get_run_start()
+        self._descriptors =  [descriptor for descriptor in metadata['descriptors']
+                              if descriptor.get('name') == self._stream_name]
+        self._resources = metadata.get('resources')
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': self._run_stop_doc})
 
     def __repr__(self):
         try:
@@ -1019,18 +1035,10 @@ class BlueskyEventStream(DataSourceMixin):
         return out
 
     def _open_dataset(self):
-        self._run_stop_doc = self._get_run_stop()
-        self._run_start_doc = self._get_run_start()
-        self._descriptors =  [descriptor for descriptor in metadata['descriptors']
-                              if descriptor['stream_name'] == self._stream_name]
-        self.metadata.update({'start': self._run_start_doc})
-        self.metadata.update({'stop': self._run_stop_doc})
-        descriptor_docs = [doc for doc in self._get_event_descriptors()
-                           if doc.get('name') == self._stream_name]
         self._ds = documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
-            descriptor_docs=descriptor_docs,
+            descriptor_docs=self._descriptors,
             get_event_pages=self._get_event_pages,
             filler=self.fillers['yes'],
             get_resource=self._get_resource,
@@ -1061,18 +1069,20 @@ class BlueskyEventStream(DataSourceMixin):
         """
         # Unpack partition
         i = partition['index']
+        if i == 0:
+           self._open_dataset()
 
         if isinstance(partition['fill'], str):
             filler = self.fillers[partition['fill']]
         else:
             filler = partition['fill']
 
-        if partition['chunk_size'] == 'auto':
-            chunk_size = 100
-        elif isinstance(partition['chunk_size'], int):
-            chunk_size = partition['chunk_size']
+        if partition['page_size'] == 'auto':
+            page_size = 100
+        elif isinstance(partition['page_size'], int):
+            page_size = partition['page_size']
         else:
-            raise ValueError(f"Invalid chunk_size {partition['chunk_size']}")
+            raise ValueError(f"Invalid page_size {partition['page_size']}")
 
         if i == 0:
             datum_gens = [self._get_datum_pages(resource['uid'])
@@ -1083,7 +1093,7 @@ class BlueskyEventStream(DataSourceMixin):
                 unfilled_partitions(self._run_start_doc, self._run_stop_doc,
                                     self._descriptors, self._resources,
                                     datum_gens, event_gens,
-                                    self.PARTITION_SIZE, chunk_size))
+                                    page_size*5, page_size))
 
             self.npartitions = len(self._partitions)
 
