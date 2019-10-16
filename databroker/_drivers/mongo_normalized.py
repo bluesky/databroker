@@ -10,7 +10,7 @@ import pymongo.errors
 
 from ..core import (
     parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry, discover_fillers)
+    Entry, DaskFiller)
 from ..v2 import Broker
 
 
@@ -23,27 +23,28 @@ class _Entries(collections.abc.Mapping):
         uid = run_start_doc['uid']
         run_start_doc.pop('_id')
         entry_metadata = {'start': run_start_doc,
-                          'stop': self.catalog._get_run_stop(uid)}
+            'stop': self.catalog._get_run_stop(uid)}
 
-        def get_run_start():
-            return run_start_doc
+            def get_run_start():
+                return run_start_doc
 
-        args = dict(
-            get_run_start=get_run_start,
-            get_run_stop=partial(self.catalog._get_run_stop, uid),
-            get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
-            # 2500 was selected as the page_size because it worked well durring
-            # benchmarks, for HXN data a full page had roughly 3500 events.
-            get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
-            get_event_count=self.catalog._get_event_count,
-            get_resource=self.catalog._get_resource,
-            get_resources=partial(self.catalog._get_resources, uid),
-            lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
-            # 2500 was selected as the page_size because it worked well durring
-            # benchmarks.
-            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-            fillers=self.catalog.fillers)
-        return Entry(
+                args = dict(
+                        get_run_start=get_run_start,
+                        get_run_stop=partial(self.catalog._get_run_stop, uid),
+                        get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
+                        # 2500 was selected as the page_size because it worked well durring
+                        # benchmarks, for HXN data a full page had roughly 3500 events.
+                        get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
+                        get_event_count=self.catalog._get_event_count,
+                        get_resource=self.catalog._get_resource,
+                        get_resources=partial(self.catalog._get_resources, uid),
+                        lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
+                        # 2500 was selected as the page_size because it worked well durring
+                        # benchmarks.
+                        get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
+                        filler=self.catalog._get_filler(),
+                        delayed_filler=self.catalog._get_delayed_filler())
+    return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
             driver='databroker.core.BlueskyRun',
@@ -137,7 +138,10 @@ class _Entries(collections.abc.Mapping):
 
 class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
-                 handler_registry=None, root_map=None, query=None, **kwargs):
+                 handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler,
+                 delayed_filler_class=DaskFiller,
+                 query=None, **kwargs):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
@@ -151,12 +155,40 @@ class BlueskyMongoCatalog(Broker):
         asset_registry_db : pymongo.database.Database or string
             Must be a Database or a URI string that includes a database name.
         handler_registry : dict, optional
-            Maps each asset spec to a handler class or a string specifying the
-            module name and class name, as in (for example)
-            ``{'SOME_SPEC': 'module.submodule.class_name'}``. If None, the
-            result of ``databroker.core.discover_handlers()`` is used.
-        root_map : dict, optional
-            Maps resource root paths to different paths.
+            This is passed to the Filler or whatever class is given in the
+            filler_class parametr below.
+
+            Maps each 'spec' (a string identifying a given type or external
+            resource) to a handler class.
+
+            A 'handler class' may be any callable with the signature::
+
+                handler_class(resource_path, root, **resource_kwargs)
+
+            It is expected to return an object, a 'handler instance', which is also
+            callable and has the following signature::
+
+            handler_instance(**datum_kwargs)
+
+            As the names 'handler class' and 'handler instance' suggest, this is
+            typically implemented using a class that implements ``__init__`` and
+            ``__call__``, with the respective signatures. But in general it may be
+            any callable-that-returns-a-callable.
+        root_map: dict, optional
+            This is passed to Filler or whatever class is given in the filler_class
+            parameter below.
+
+            str -> str mapping to account for temporarily moved/copied/remounted
+            files.  Any resources which have a ``root`` in ``root_map`` will be
+            loaded using the mapped ``root``.
+        filler_class: type, optional
+            This is Filler by default. It can be a Filler subclass,
+            ``functools.partial(Filler, ...)``, or any class that provides the
+            same methods as ``DocumentRouter``.
+        delayed_filler_class: type, optional
+            This is DaskFiller by default. It can be a Filler subclass,
+            ``functools.partial(DaskFiller, ...)``, or any class that provides the
+            same methods as ``DocumentRouter``.
         query : dict, optional
             MongoDB query. Used internally by the ``search()`` method.
         **kwargs :
@@ -182,13 +214,34 @@ class BlueskyMongoCatalog(Broker):
         self._datum_collection = assets_db.get_collection('datum')
 
         self._metadatastore_db = mds_db
-        self._asset_registry_db = assets_db
+        self._asset_registry_db = assets_db        self._query = query or {}
+        if handler_registry is None:
+            handler_registry = discover_handlers()
+        parsed_handler_registry = parse_handler_registry(handler_registry)
+        self.filler = event_model.Filler(
+                parsed_handler_registry, root_map=root_map, inplace=True)
+        super().__init__(**kwargs)
 
         self._query = query or {}
-        self.fillers = discover_fillers(root_map=root_map, inplace=True)
         self._root_map = root_map
-        self._
+
+        self._filler_class = filler_class
+        self._delayed_filler_class = delayed_filler_class
+
+        self._query = query or {}
+        if handler_registry is None:
+            handler_registry = discover_handlers()
+        self._handler_registry = parse_handler_registry(handler_registry)
+
         super().__init__(**kwargs)
+
+    def _get_filler(self):
+        return self._filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=True)
+
+    def _get_delayed_filler(self):
+        return self._delayed_filler_class(
+                self._handler_registry, root_map=self._root_map, inplace=True)
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
