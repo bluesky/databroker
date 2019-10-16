@@ -551,7 +551,8 @@ def test_handler_options(db, RE, hw):
     h = db[rs_uid]
 
     # Clear the handler registry. We'll reinstate the relevant handler below.
-    db.reg.handler_reg.clear()
+    for spec in list(db.reg.handler_reg):
+        db.reg.deregister_handler(spec)
 
     # Get unfilled event.
     ev, ev2 = db.get_events(h, fields=['img'])

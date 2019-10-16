@@ -58,20 +58,11 @@ class Registry:
         return self._catalog.filler.root_map
 
     def register_handler(self, key, handler, overwrite=False):
-        if (not overwrite) and (key in self.handler_reg):
-            if self.handler_reg[key] is handler:
-                return
-            raise self.DuplicateHandler(
-                "You are trying to register a second handler "
-                "for spec {}, {}".format(key, self))
-
-        self.deregister_handler(key)
-        self.handler_reg[key] = handler
+        return self._catalog.filler.register_handler(
+            key, handler, overwrite=overwrite)
 
     def deregister_handler(self, key):
-        handler = self.handler_reg.pop(key, None)
-        # TODO Filler should support explicit de-registration that clears
-        # the relevant caches.
+        return self._catalog.filler.deregister_handler(key)
 
     def copy_files(self, resource, new_root,
                    verify=False, file_rename_hook=None):
