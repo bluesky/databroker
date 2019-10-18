@@ -9,7 +9,7 @@ import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry, discover_handlers, Entry
+from ..core import parse_handler_registry, discover_handlers, Entry, DaskFiller
 from ..v2 import Broker
 
 

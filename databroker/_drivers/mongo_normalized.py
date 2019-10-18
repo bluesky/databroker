@@ -23,13 +23,13 @@ class _Entries(collections.abc.Mapping):
         uid = run_start_doc['uid']
         run_start_doc.pop('_id')
         entry_metadata = {'start': run_start_doc,
-            'stop': self.catalog._get_run_stop(uid)}
+                          'stop': self.catalog._get_run_stop(uid)}
 
         def get_run_start():
             return run_start_doc
 
         args = dict(
-            get_run_start=get_run_start,
+                get_run_start=get_run_start,
                 get_run_stop=partial(self.catalog._get_run_stop, uid),
                 get_event_descriptors=partial(self.catalog._get_event_descriptors, uid),
                 # 2500 was selected as the page_size because it worked well durring
@@ -122,10 +122,6 @@ class _Entries(collections.abc.Mapping):
         # return itself.
         return entry.get()  # an instance of BlueskyRun
 
-
-
-        def get_run_start():
-            return run_start_doc
     def __contains__(self, key):
         # Avoid iterating through all entries.
         try:
@@ -234,11 +230,11 @@ class BlueskyMongoCatalog(Broker):
 
     def _get_filler(self):
         return self._filler_class(
-                self._handler_registry, root_map=self._root_map, inplace=True)
+                self._handler_registry, root_map=self._root_map, inplace=False)
 
     def _get_delayed_filler(self):
         return self._delayed_filler_class(
-                self._handler_registry, root_map=self._root_map)
+                self._handler_registry, root_map=self._root_map, inplace=False)
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
@@ -330,8 +326,8 @@ class BlueskyMongoCatalog(Broker):
             metadatastore_db=self._metadatastore_db,
             asset_registry_db=self._asset_registry_db,
             query=query,
-            handler_registry=self.filler.handler_registry,
-            root_map=self.filler.root_map,
+            handler_registry=self._handler_registry,
+            root_map=self._root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

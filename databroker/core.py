@@ -344,7 +344,7 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     # Use rechunk datum pages to make them into pages of size "partition_size"
     # and yield one page per partition.
     for datum_gen in datum_gens:
-        yield [[('datum_page', datum_page)] for datum_page in
+        yield [('datum_page', datum_page) for datum_page in
                event_model.rechunk_datum_pages(datum_gen, partition_size)]
 
     # Rechunk the event pages and interlace them in timestamp order, then pack
