@@ -53,7 +53,7 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
 
     def __init__(self, paths, *,
                  handler_registry=None, root_map=None,
-                 filler_class=event_model.filler,
+                 filler_class=event_model.Filler,
                  delayed_filler_class=DaskFiller,
                  query=None, **kwargs):
         """

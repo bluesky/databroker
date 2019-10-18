@@ -7,7 +7,7 @@ import intake.source.base
 from mongoquery import Query
 
 
-from .core import parse_handler_registry, discover_handlers, Entry
+from .core import parse_handler_registry, discover_handlers, Entry, DaskFiller
 from .v2 import Broker
 
 
@@ -103,7 +103,8 @@ class BlueskyInMemoryCatalog(Broker):
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
-                  'filler': self.filler},
+                  'filler': self._get_filler(),
+                  'delayed_filler': self._get_delayed_filler()},
             cache=None,  # ???
             parameters=[],
             metadata={'start': start_doc, 'stop': stop_doc},
