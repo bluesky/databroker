@@ -2,9 +2,10 @@ import glob
 import json
 import os
 import pathlib
+import event_model
 
 from ..in_memory import BlueskyInMemoryCatalog
-from ..core import tail
+from ..core import tail, DaskFiller
 
 
 def gen(filename):
@@ -54,8 +55,9 @@ def get_stop(filename):
 class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-jsonl-catalog'  # noqa
 
-    def __init__(self, paths, *,
-                 handler_registry=None, root_map=None, query=None, **kwargs):
+    def __init__(self, paths, *, handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler,
+                 delayed_filler_class=DaskFiller, query=None, **kwargs):
         """
         This Catalog is backed by a newline-delimited JSON (jsonl) file.
 
@@ -68,11 +70,40 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         paths : list
             list of filepaths
         handler_registry : dict, optional
-            Maps each asset spec to a handler class or a string specifying the
-            module name and class name, as in (for example)
-            ``{'SOME_SPEC': 'module.submodule.class_name'}``.
-        root_map : dict, optional
-            Maps resource root paths to different paths.
+            This is passed to the Filler or whatever class is given in the
+            filler_class parametr below.
+
+            Maps each 'spec' (a string identifying a given type or external
+            resource) to a handler class.
+
+            A 'handler class' may be any callable with the signature::
+
+                handler_class(resource_path, root, **resource_kwargs)
+
+            It is expected to return an object, a 'handler instance', which is also
+            callable and has the following signature::
+
+            handler_instance(**datum_kwargs)
+
+            As the names 'handler class' and 'handler instance' suggest, this is
+            typically implemented using a class that implements ``__init__`` and
+            ``__call__``, with the respective signatures. But in general it may be
+            any callable-that-returns-a-callable.
+        root_map: dict, optional
+            This is passed to Filler or whatever class is given in the filler_class
+            parameter below.
+
+            str -> str mapping to account for temporarily moved/copied/remounted
+            files.  Any resources which have a ``root`` in ``root_map`` will be
+            loaded using the mapped ``root``.
+        filler_class: type, optional
+            This is Filler by default. It can be a Filler subclass,
+            ``functools.partial(Filler, ...)``, or any class that provides the
+            same methods as ``DocumentRouter``.
+        delayed_filler_class: type, optional
+            This is DaskFiller by default. It can be a Filler subclass,
+            ``functools.partial(DaskFiller, ...)``, or any class that provides the
+            same methods as ``DocumentRouter``.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
         **kwargs :
@@ -86,8 +117,9 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         self._filename_to_mtime = {}
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,
-                         query=query,
-                         **kwargs)
+                         filler_class=filler_class,
+                         delayed_filler_class=delayed_filler_class,
+                         query=query, **kwargs)
 
     def _load(self):
         for path in self.paths:
@@ -122,8 +154,8 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         cat = type(self)(
             paths=self.paths,
             query=query,
-            handler_registry=self.filler.handler_registry,
-            root_map=self.filler.root_map,
+            handler_registry=self._handler_registry,
+            root_map=self._root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,
