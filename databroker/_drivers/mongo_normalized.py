@@ -144,7 +144,7 @@ class BlueskyMongoCatalog(Broker):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
-        This layout uses a separate Mongo collection per docutment type and a
+        This layout uses a separate Mongo collection per document type and a
         separate Mongo document for each logical document.
 
         Parameters
@@ -204,24 +204,20 @@ class BlueskyMongoCatalog(Broker):
             assets_db = _get_database(asset_registry_db)
         else:
             assets_db = asset_registry_db
+
         self._run_start_collection = mds_db.get_collection('run_start')
         self._run_stop_collection = mds_db.get_collection('run_stop')
         self._event_descriptor_collection = mds_db.get_collection('event_descriptor')
         self._event_collection = mds_db.get_collection('event')
-
         self._resource_collection = assets_db.get_collection('resource')
         self._datum_collection = assets_db.get_collection('datum')
-
         self._metadatastore_db = mds_db
         self._asset_registry_db = assets_db
-
         self._query = query or {}
         self._root_map = root_map
-
         self._filler_class = filler_class
         self._delayed_filler_class = delayed_filler_class
 
-        self._query = query or {}
         if handler_registry is None:
             handler_registry = discover_handlers()
         self._handler_registry = parse_handler_registry(handler_registry)
