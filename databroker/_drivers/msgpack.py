@@ -1,3 +1,4 @@
+import event_model
 import glob
 import msgpack
 import msgpack_numpy
@@ -5,6 +6,7 @@ import os
 import pathlib
 
 from ..in_memory import BlueskyInMemoryCatalog
+from ..core import DaskFiller
 
 
 UNPACK_OPTIONS = dict(object_hook=msgpack_numpy.decode,
@@ -50,7 +52,10 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-msgpack-catalog'  # noqa
 
     def __init__(self, paths, *,
-                 handler_registry=None, root_map=None, query=None, **kwargs):
+                 handler_registry=None, root_map=None,
+                 filler_class=event_model.filler,
+                 delayed_filler_class=DaskFiller,
+                 query=None, **kwargs):
         """
         This Catalog is backed by msgpack files.
 
@@ -81,6 +86,8 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
         self._filename_to_mtime = {}
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,
+                         filler_class=filler_class,
+                         delayed_filler_class=delayed_filler_class,
                          query=query,
                          **kwargs)
 
@@ -116,8 +123,8 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
         cat = type(self)(
             paths=self.paths,
             query=query,
-            handler_registry=self.filler.handler_registry,
-            root_map=self.filler.root_map,
+            handler_registry=self._handler_registry,
+            root_map=self._root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,
