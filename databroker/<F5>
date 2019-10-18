@@ -25,7 +25,6 @@ import warnings
 import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
-from collections import deque
 
 class PartitionIndexError(IndexError):
     ...
@@ -260,51 +259,26 @@ def interlace(*gens, strict_order=False):
     """
     iters = [iter(g) for g in gens]
     heap = []
-    fifo = deque()
 
-    # Gets the next event/event_page from the iterator iters[index], while
-    # appending documents that are not events/event_pages to the other_docs
-    # deque.
-    def get_next(index):
-        while True:
-            try:
-                name, doc = next(iters[index])
-            except StopIteration:
-                return
-            if name == 'event':
-                heapq.heappush(heap, (event['time'], index, ('event', event)))
-                return
-            if name == 'event_page':
-                if strict_order:
-                    for event in event_model.unpack_event_page(doc):
-                        heapq.heappush(heap, (event['time'], index, ('event', event)))
-                    return
-                else:
-                    heapq.heappush(heap, (doc['time'][0], index, (name, doc)))
-                    return
+    def safe_next(i):
+        try:
+            name, doc = next(iters[i])
+        except StopIteration:
+            return
+        if name == 'event_page':
+            if strict_order:
+                for event in event_model.unpack_event_page(doc):
+                    heapq.heappush(heap, (event['time'], i, ('event', event)))
             else:
-                if name not in ['start', 'stop']:
-                   fifo.append((name, doc))
+                heapq.heappush(heap, (doc['time'][0], i, (name, doc)))
+        else:
+            yield name, doc
 
-    # Put the next event/event_page from each generator in the heap.
     for i in range(len(iters)):
-        get_next(i)
-
-    # First yield docs that are not events or event pages from the fifo queue,
-    # and then yield from the heap.  We can improve this by keeping a count of
-    # the number of documents from each stream in the heap, and only calling
-    # get_next when the count is 0. As is the heap could potentially get very
-    # large.
+        safe_next(i)
     while heap:
-        while fifo:
-            yield fifo.popleft()
-        _, index, doc = heapq.heappop(heap)
-        yield doc
-        get_next(index)
-
-    # Yield any remaining items in the fifo queue.
-    while fifo:
-        yield fifo.popleft()
+        _, index, val = heapq.heappop(heap)
+        yield val
 
 
 def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
@@ -471,7 +445,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 # Construct the same default dimension names xarray would.
                 dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
             data_arrays[key] = xarray.DataArray(
-                data=data_table[key],
+                data=data_table[key]list(catalog['test']()[-1].canonical(fill='yes'))  ,
                 dims=('time',) + dims,
                 coords={'time': times},
                 name=key)
@@ -640,7 +614,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
         yield ('start', self.metadata['start'])
-        yield from interlace(*streams, strict_order=strict_order)
+        yield from interlace(streams, strict_order=strict_order)
         yield ('stop', self.metadata['stop'])
 
     def read_canonical(self):
@@ -762,7 +736,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_datum_pages = get_datum_pages
         self._entry = entry
         self._fillers = {'yes': filler,
-                         'no': NoFiller(filler.handler_registry, inplace=True),
+                         'no': NoFiller(filler.handler_registry),
                          'delayed': delayed_filler}
         super().__init__(**kwargs)
 
@@ -902,7 +876,7 @@ class BlueskyRun(intake.catalog.Catalog):
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
         yield ('start', self.metadata['start'])
-        yield from interlace(*streams, strict_order=strict_order)
+        yield from interlace(streams, strict_order=strict_order)
         yield ('stop', self.metadata['stop'])
 
 
@@ -1108,7 +1082,7 @@ class BlueskyEventStream(DataSourceMixin):
         elif isinstance(partition['partition_size'], int):
             partition_size = partition['partition_size']
         else:
-            raise ValueError(f"Invalid partition_size {partition['partition_size']}")
+            raise ValueError(f"Invalid page_size {partition['partition_size']}")
 
         if i == 0:
             datum_gens = [self._get_datum_pages(resource['uid'])
@@ -1388,6 +1362,14 @@ def parse_handler_registry(handler_registry):
             class_ = handler_str
         result[spec] = class_
     return result
+
+
+def discover_fillers(**kwargs):
+    handlers = parse_handler_registry(discover_handlers())
+    fillers = {'yes': event_model.Filler(handlers, **kwargs),
+               'no': NoFiller(handlers, **kwargs),
+               'lazy': DaskFiller(handlers, **kwargs)}
+    return fillers
 
 
 # TODO Do we actually need this?
