@@ -41,7 +41,7 @@ class _Entries(collections.abc.Mapping):
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-            filler=self.catalog.filler)
+            filler=self.catalog._get_filler())
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -136,7 +136,8 @@ class _Entries(collections.abc.Mapping):
 
 class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
-                 handler_registry=None, root_map=None, query=None, **kwargs):
+                 handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler, query=None, **kwargs):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
@@ -150,12 +151,33 @@ class BlueskyMongoCatalog(Broker):
         asset_registry_db : pymongo.database.Database or string
             Must be a Database or a URI string that includes a database name.
         handler_registry : dict, optional
-            Maps each asset spec to a handler class or a string specifying the
-            module name and class name, as in (for example)
-            ``{'SOME_SPEC': 'module.submodule.class_name'}``. If None, the
-            result of ``databroker.core.discover_handlers()`` is used.
-        root_map : dict, optional
-            Maps resource root paths to different paths.
+            This is passed to the Filler or whatever class is given in the
+            filler_class parameter below.
+            Maps each 'spec' (a string identifying a given type or external
+            resource) to a handler class.
+            A 'handler class' may be any callable with the signature::
+
+                handler_class(resource_path, root, **resource_kwargs)
+
+            It is expected to return an object, a 'handler instance', which is also
+            callable and has the following signature::
+
+                handler_instance(**datum_kwargs)
+
+            As the names 'handler class' and 'handler instance' suggest, this is
+            typically implemented using a class that implements ``__init__`` and
+            ``__call__``, with the respective signatures. But in general it may be
+            any callable-that-returns-a-callable.
+        root_map: dict, optional
+            This is passed to Filler or whatever class is given in the
+            filler_class parameter below. 
+            str -> str mapping to account for temporarily
+            moved/copied/remounted files.  Any resources which have a ``root``
+            in ``root_map`` will be loaded using the mapped ``root``.
+        filler_class: type, optional
+            This is Filler by default. It can be a Filler subclass,
+            ``functools.partial(Filler, ...)``, or any class that provides the
+            same methods as ``DocumentRouter``.
         query : dict, optional
             MongoDB query. Used internally by the ``search()`` method.
         **kwargs :
@@ -177,21 +199,24 @@ class BlueskyMongoCatalog(Broker):
         self._run_stop_collection = mds_db.get_collection('run_stop')
         self._event_descriptor_collection = mds_db.get_collection('event_descriptor')
         self._event_collection = mds_db.get_collection('event')
-
         self._resource_collection = assets_db.get_collection('resource')
         self._datum_collection = assets_db.get_collection('datum')
-
         self._metadatastore_db = mds_db
         self._asset_registry_db = assets_db
-
         self._query = query or {}
+        self._root_map = root_map
+        self._filler_class = filler_class
         if handler_registry is None:
             handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, coerce='delayed',
-                inplace=True)
+        self._handler_registry = parse_handler_registry(handler_registry)
         super().__init__(**kwargs)
+
+
+    def _get_filler(self):
+        return self._filler_class(
+            handler_registry=self._handler_registry,
+            root_map=self._root_map,
+            inplace=False)
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
@@ -279,8 +304,9 @@ class BlueskyMongoCatalog(Broker):
             metadatastore_db=self._metadatastore_db,
             asset_registry_db=self._asset_registry_db,
             query=query,
-            handler_registry=self.filler.handler_registry,
-            root_map=self.filler.root_map,
+            handler_registry=self._handler_registry,
+            root_map=self._root_map,
+            filler_class=self._filler_class,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

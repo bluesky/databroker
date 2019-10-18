@@ -487,6 +487,15 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             copies of the documents.
 
         """
+        # Special case for 'delayed' since it *is* supported in the local mode
+        # of usage.
+        if fill == 'delayed':
+            raise NotImplementedError(
+                "Delayed access is not yet supported via the client--server "
+                "usage.")
+        FILL_OPTIONS = {'yes', 'no'}
+        if fill not in FILL_OPTIONS:
+            raise ValueError(f"Options for 'fill' are {FILL_OPTIONS}")
         for i in range(self.npartitions):
             for name, doc in self._get_partition({'index': i, 'fill': fill}):
                 yield name, doc
@@ -575,7 +584,8 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self.filler = filler.clone(coerce='force_numpy')
+        self.delayed_filler = filler.clone(coerce='delayed')
         self._entry = entry
         super().__init__(**kwargs)
 
@@ -693,12 +703,18 @@ class BlueskyRun(intake.catalog.Catalog):
         fill: {'yes', 'no'}
             If fill is 'yes', any external data referenced by Event documents
             will be filled in (e.g. images as numpy arrays). This is typically
-            the desired option for *using* the data.
+            the desired option for accessing small data.
+            If fill is 'delayed', external data will be filled in as dask
+            arrays, meaning that the I/O can be deferred until the data is
+            actually needed.
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
 
         """
+        FILL_OPTIONS = {'yes', 'no', 'delayed'}
+        if fill not in FILL_OPTIONS:
+            raise ValueError(f"Options for 'fill' are {FILL_OPTIONS}")
         for i in range(self.npartitions):
             for name, doc in self.read_partition({'index': i, 'fill': fill}):
                 yield name, doc
