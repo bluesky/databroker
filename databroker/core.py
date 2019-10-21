@@ -394,7 +394,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         Fields ('data keys') to include. By default all are included. This
         parameter is mutually exclusive with ``exclude``.
     exclude : list, optional
-        Fields ('data keys') to exclude. By default none are excluded. This
+ test_export_size_smoke[mongo]        Fields ('data keys') to exclude. By default none are excluded. This
         parameter is mutually exclusive with ``include``.
 
     Returns
@@ -786,7 +786,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._run_start_doc = self._get_run_start()
         self._run_stop_doc = self._get_run_stop()
         self._descriptors = self._get_event_descriptors()
-        self._resources = self._get_resources()
+        self._resources = self._get_resources() or []
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -925,7 +925,7 @@ class BlueskyRun(intake.catalog.Catalog):
         files = []
         # TODO Once event_model.Filler has a get_handler method, use that.
         try:
-            handler_class = self.fillers['yes'].handler_registry[resource['spec']]
+            handler_class = self._fillers['yes'].handler_registry[resource['spec']]
         except KeyError as err:
             raise event_model.UndefinedAssetSpecification(
                 f"Resource document with uid {resource['uid']} "
@@ -935,7 +935,7 @@ class BlueskyRun(intake.catalog.Catalog):
         # Apply root_map.
         resource_path = resource['resource_path']
         root = resource.get('root', '')
-        root = self.fillers['yes'].root_map.get(root, root)
+        root = self._fillers['yes'].root_map.get(root, root)
         if root:
             resource_path = os.path.join(root, resource_path)
 
@@ -1034,7 +1034,7 @@ class BlueskyEventStream(DataSourceMixin):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.fillers = fillers
+        self._fillers = fillers
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         self.include = include
@@ -1044,9 +1044,12 @@ class BlueskyEventStream(DataSourceMixin):
 
         self._run_stop_doc = self._get_run_stop()
         self._run_start_doc = self._get_run_start()
-        self._descriptors =  [descriptor for descriptor in metadata['descriptors']
+        self._descriptors =  [descriptor for descriptor in
+                              metadata.get('descriptors', [])
                               if descriptor.get('name') == self._stream_name]
-        self._resources = metadata.get('resources')
+        # Should figure out a way so that self._resources doesn't have to be
+        # all of the Run's resources.
+        self._resources = metadata.get('resources', [])
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         self._partitions = None
@@ -1065,7 +1068,7 @@ class BlueskyEventStream(DataSourceMixin):
             stop_doc=self._run_stop_doc,
             descriptor_docs=self._descriptors,
             get_event_pages=self._get_event_pages,
-            filler=self.fillers['yes'],
+            filler=self._fillers['yes'],
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
@@ -1098,7 +1101,7 @@ class BlueskyEventStream(DataSourceMixin):
            self._open_dataset()
 
         if isinstance(partition['fill'], str):
-            filler = self.fillers[partition['fill']]
+            filler = self._fillers[partition['fill']]
         else:
             filler = partition['fill']
 

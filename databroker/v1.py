@@ -51,11 +51,11 @@ class Registry:
 
     @property
     def handler_reg(self):
-        return self._catalog.filler.handler_registry
+        return self._catalog._handler_registry
 
     @property
     def root_map(self):
-        return self._catalog.filler.root_map
+        return self._catalog._root_map
 
     def register_handler(self, key, handler, overwrite=False):
         if (not overwrite) and (key in self.handler_reg):
