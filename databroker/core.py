@@ -394,7 +394,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         Fields ('data keys') to include. By default all are included. This
         parameter is mutually exclusive with ``exclude``.
     exclude : list, optional
- test_export_size_smoke[mongo]        Fields ('data keys') to exclude. By default none are excluded. This
+        Fields ('data keys') to exclude. By default none are excluded. This
         parameter is mutually exclusive with ``include``.
 
     Returns
@@ -630,12 +630,12 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         def stream_gen(entry):
             i = 0
             while True:
-                try:
-                    yield from entry._get_partition({'index': i, 'fill': fill,
+                parition = entry.read_partition({'index': i, 'fill': fill,
                                                    'partition_size': 'auto'})
-                    i += 1
-                except PartitionIndexError:
+                if not partition:
                     break
+                i += 1
+
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
@@ -892,12 +892,11 @@ class BlueskyRun(intake.catalog.Catalog):
         def stream_gen(entry):
             i = 0
             while True:
-                try:
-                    yield from entry.read_partition({'index': i, 'fill': fill,
+                parition = entry.read_partition({'index': i, 'fill': fill,
                                                    'partition_size': 'auto'})
-                    i += 1
-                except PartitionIndexError:
+                if not partition:
                     break
+                i += 1
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
@@ -949,7 +948,6 @@ class BlueskyRun(intake.catalog.Catalog):
         files.extend(handler.get_file_list(datum_kwarg_gen()))
         return files
 
-
     def read(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
@@ -963,6 +961,138 @@ class BlueskyRun(intake.catalog.Catalog):
             "its entries, representing individual Event Streams. You can see "
             "the entries using list(YOUR_VARIABLE_HERE). Tab completion may "
             "also help, if available.")
+
+
+class RemoteBlueskyEventStream(intake.catalog.base.RemoteCatalog):
+    """
+    Catalog representing one Run.
+
+    This is a client-side proxy to a BlueskyRun stored on a remote server.
+
+    Parameters
+    ----------
+    url: str
+        Address of the server
+    headers: dict
+        HTTP headers to sue in calls
+    name: str
+        handle to reference this data
+    parameters: dict
+        To pass to the server when it instantiates the data source
+    metadata: dict
+        Additional info
+    kwargs: ignored
+    """
+    name = 'bluesky-run'
+
+    def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
+        self.url = url
+        self.name = name
+        self.parameters = parameters
+        self.http_args = http_args
+        self._source_id = None
+        self.metadata = metadata or {}
+        response = self._get_source_id()
+        self.bag = None
+        self._source_id = response['source_id']
+        super().__init__(url=url, http_args=http_args, name=name,
+                         metadata=metadata,
+                         source_id=self._source_id)
+        self.npartitions = response['npartitions']
+        self.metadata = response['metadata']
+        self._schema = intake.source.base.Schema(
+            datashape=None, dtype=None,
+            shape=self.shape,
+            npartitions=self.npartitions,
+            metadata=self.metadata)
+
+    def _get_source_id(self):
+        if self._source_id is None:
+            payload = dict(action='open', name=self.name,
+                           parameters=self.parameters)
+            req = requests.post(urljoin(self.url, '/v1/source'),
+                                data=msgpack.packb(payload, use_bin_type=True),
+                                **self.http_args)
+            req.raise_for_status()
+            response = msgpack.unpackb(req.content, **unpack_kwargs)
+            return response
+
+    def _load_metadata(self):
+        return self._schema
+
+    def _get_partition(self, partition):
+        return intake.container.base.get_partition(self.url, self.http_args,
+                                             self._source_id, self.container,
+                                             partition)
+    def read(self):
+        raise NotImplementedError(
+            "Reading the BlueskyRun itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
+
+    def to_dask(self):
+        raise NotImplementedError(
+            "Reading the BlueskyRun itself is not supported. Instead read one "
+            "its entries, representing individual Event Streams.")
+
+    def _close(self):
+        self.bag = None
+
+    def canonical(self, *, fill, strict_order=False):
+        """
+        Yields documents from this Run in chronological order.
+
+        Parameters
+        ----------
+        fill: {'yes', 'no'}
+            If fill is 'yes', any external data referenced by Event documents
+            will be filled in (e.g. images as numpy arrays). This is typically
+            the desired option for *using* the data.
+            If fill is 'no', the Event documents will contain foreign keys as
+            placeholders for the data. This option is useful for exporting
+            copies of the documents.
+        strict_order : bool
+            documents are strictly yielded in ascending time order.
+        """
+        def stream_gen(entry):
+            i = 0
+            while True:
+                parition = entry.read_partition({'index': i, 'fill': fill,
+                                                   'partition_size': 'auto'})
+                if not partition:
+                    break
+                i += 1
+
+
+        streams = [stream_gen(entry) for entry in self._entries.values()]
+
+        yield ('start', self.metadata['start'])
+        yield from interlace(*streams, strict_order=strict_order)
+        yield ('stop', self.metadata['stop'])
+
+    def read_canonical(self):
+        warnings.warn(
+            "The method read_canonical has been renamed canonical. This alias "
+            "may be removed in a future release.")
+        yield from self.canonical(fill='yes')
+
+    def __repr__(self):
+        self._load()
+        try:
+            start = self.metadata['start']
+            stop = self.metadata['stop']
+            out = (f"BlueskyRun\n"
+                   f"  uid={start['uid']!r}\n"
+                   f"  exit_status={stop.get('exit_status')!r}\n"
+                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
+                   f"  Streams:\n")
+            for stream_name in self:
+                out += f"    * {stream_name}\n"
+        except Exception as exc:
+            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
+        return out
+
+    def search(self):
+        raise NotImplementedError("Cannot search within one run.")
 
 
 class BlueskyEventStream(DataSourceMixin):
@@ -1095,8 +1225,12 @@ class BlueskyEventStream(DataSourceMixin):
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
+        if isinstance(partition, (tuple,list)):
+            return super().read_partition(partition)
+
         # Unpack partition
         i = partition['index']
+
         if i == 0:
            self._open_dataset()
 
@@ -1124,16 +1258,16 @@ class BlueskyEventStream(DataSourceMixin):
                                     datum_gens, event_gens, partition_size))
 
             self.npartitions = len(self._partitions)
-
         try:
-            return [filler(name, doc) for name, doc in self._partitions[i]]
-        except event_model.UnresolvableForeignKeyError as err:
-            # Slow path: This error should only happen if there is an old style
-            # resource document that doesn't have a run_start key.
-            self._partitions[i:i] = self._missing_datum(err.key, self.PARTITION_SIZE)
-            return [filler(name, doc) for name, doc in self._partitions[i]]
+            try:
+                return [filler(name, doc) for name, doc in self._partitions[i]]
+            except event_model.UnresolvableForeignKeyError as err:
+                # Slow path: This error should only happen if there is an old style
+                # resource document that doesn't have a run_start key.
+                self._partitions[i:i] = self._missing_datum(err.key, self.PARTITION_SIZE)
+                return [filler(name, doc) for name, doc in self._partitions[i]]
         except IndexError as e:
-            raise PartitionIndexError from e
+            return []
 
     def _missing_datum(self, datum_id, partition_size):
 
@@ -1166,6 +1300,10 @@ class BlueskyEventStream(DataSourceMixin):
         self.npartitions += len(partitions)
         return partitions
 
+    def _get_partition(self, partition):
+        return intake.container.base.get_partition(self.url, self.http_args,
+                                             self._source_id, self.container,
+                                             partition)
 
 class DocumentCache(event_model.DocumentRouter):
     def __init__(self):
