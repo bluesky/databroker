@@ -10,7 +10,7 @@ import pymongo.errors
 
 from ..core import (
     parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry)
+    Entry, DaskFiller)
 from ..v2 import Broker
 
 
@@ -188,8 +188,8 @@ class BlueskyMongoCatalog(Broker):
         if handler_registry is None:
             handler_registry = discover_handlers()
         parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-                parsed_handler_registry, root_map=root_map, inplace=True)
+        self.filler = DaskFiller(
+                parsed_handler_registry, root_map=root_map)
         super().__init__(**kwargs)
 
     def _get_run_stop(self, run_start_uid):

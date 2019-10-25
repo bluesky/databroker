@@ -301,9 +301,10 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             continue
         if any(data_keys[key].get('external') for key in keys):
             filler('descriptor', descriptor)
+            filled_events = []
             for event in events:
                 try:
-                    filler('event', event)
+                    filled_events.append(filler('event', event)[1])
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
                     resource_uid = lookup_resource_for_datum(datum_id)
@@ -313,11 +314,11 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                     for datum_page in get_datum_pages(resource_uid):
                         filler('datum_page', datum_page)
                     # TODO -- When to clear the datum cache in filler?
-                    filler('event', event)
+                    filled_events.append(filler('event', event)[1])
         times = [ev['time'] for ev in events]
         seq_nums = [ev['seq_num'] for ev in events]
         uids = [ev['uid'] for ev in events]
-        data_table = _transpose(events, keys, 'data')
+        data_table = _transpose(filled_events, keys, 'data')
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
 
         # Collect a DataArray for each field in Event, each field in
@@ -1334,6 +1335,11 @@ class DaskFiller(event_model.Filler):
         for key in needs_filling:
             shape = extract_shape(descriptor, key)
             dtype = extract_dtype(descriptor, key)
+            try:
+                self._datum_cache[doc['data'][key]]
+            except KeyError:
+                raise event_model.UnresolvableForeignKeyError(doc['data'][key], "")
+
             filled_doc['data'][key] = array.from_delayed(
                 delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
         return filled_doc
@@ -1353,6 +1359,10 @@ class DaskFiller(event_model.Filler):
         for key in needs_filling:
             shape = extract_shape(descriptor, key)
             dtype = extract_dtype(descriptor, key)
+            try:
+                self._datum_cache[doc['data'][key]]
+            except KeyError:
+                raise event_model.UnresolvableForeignKeyError(doc['data'][key], "")
             filled_doc['data'][key] = array.from_delayed(
                 delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
         return filled_doc
