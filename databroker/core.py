@@ -329,21 +329,13 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         # Make DataArrays for Event data.
         for key in keys:
             field_metadata = data_keys[key]
-            # Verify the actual ndim by looking at the data.
-            ndim = numpy.asarray(data_table[key][0]).ndim
-            dims = None
-            if 'dims' in field_metadata:
-                # As of this writing no Devices report dimension names ('dims')
-                # but they could in the future.
-                reported_ndim = len(field_metadata['dims'])
-                if reported_ndim == ndim:
-                    dims = tuple(field_metadata['dims'])
-                else:
-                    # TODO Warn
-                    ...
-            if dims is None:
-                # Construct the same default dimension names xarray would.
-                dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
+            ndim = len(field_metadata['shape'])
+            # if the EventDescriptor doesn't provide names for the
+            # dimensions (it's optional) use the same default dimension
+            # names that xarray would.
+            dims = field_metadata.get(
+                'dims',
+                tuple(f'dim_{next(dim_counter)}' for _ in range(ndim)))
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
                 dims=('time',) + dims,
@@ -367,21 +359,14 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 keys = scoped_data_keys
             for key, scoped_key in keys.items():
                 field_metadata = data_keys[key]
-                # Verify the actual ndim by looking at the data.
-                ndim = numpy.asarray(config['data'][key]).ndim
-                dims = None
-                if 'dims' in field_metadata:
-                    # As of this writing no Devices report dimension names ('dims')
-                    # but they could in the future.
-                    reported_ndim = len(field_metadata['dims'])
-                    if reported_ndim == ndim:
-                        dims = tuple(field_metadata['dims'])
-                    else:
-                        # TODO Warn
-                        ...
-                if dims is None:
-                    # Construct the same default dimension names xarray would.
-                    dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
+                field_metadata = data_keys[key]
+                ndim = len(field_metadata['shape'])
+                # if the EventDescriptor doesn't provide names for the
+                # dimensions (it's optional) use the same default dimension
+                # names that xarray would.
+                dims = field_metadata.get(
+                    'dims',
+                    tuple(f'dim_{next(dim_counter)}' for _ in range(ndim)))
                 data_arrays[scoped_key] = xarray.DataArray(
                     # TODO Once we know we have one Event Descriptor
                     # per stream we can be more efficient about this.
