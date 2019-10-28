@@ -1372,7 +1372,12 @@ def extract_shape(descriptor, key):
                 break
         else:
             raise RuntimeError(f"Could not figure out shape of {key}")
-        num_images = descriptor['configuration'][object_name]['data'].get('num_images', -1)
+        for k, v in descriptor['configuration'][object_name]['data'].items():
+            if k.endswith('num_images'):
+                num_images = v
+                break
+        else:
+            num_images = -1
         x, y, _ = data_key['shape']
         shape = (num_images, y, x)
     else:
