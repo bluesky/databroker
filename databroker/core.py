@@ -1312,7 +1312,7 @@ class DaskFiller(event_model.Filler):
         @dask.delayed
         def delayed_fill(event_page, key):
             self.fill_event_page(event_page, include=key)
-            return numpy.asarray(event_page['data'][key])
+            return event_page['data'][key]
 
         descriptor = self._descriptor_cache[doc['descriptor']]
         needs_filling = {key for key, val in descriptor['data_keys'].items()
@@ -1336,7 +1336,7 @@ class DaskFiller(event_model.Filler):
         @dask.delayed
         def delayed_fill(event, key):
             self.fill_event(event, include=key)
-            return numpy.asarray(event['data'][key])
+            return event['data'][key]
 
         descriptor = self._descriptor_cache[doc['descriptor']]
         needs_filling = {key for key, val in descriptor['data_keys'].items()
