@@ -371,7 +371,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                     # TODO Once we know we have one Event Descriptor
                     # per stream we can be more efficient about this.
                     data=numpy.tile(config['data'][key],
-                                    (len(times),) + ndim * (1,)),
+                                    (len(times),) + ndim * (1,) or 1),
                     dims=('time',) + dims,
                     coords={'time': times},
                     name=key)
