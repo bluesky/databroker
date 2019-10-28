@@ -1081,6 +1081,8 @@ def _transpose(in_data, keys, field):
         dd = ev[field]
         for k in keys:
             out[k][j] = dd[k]
+    for k in keys:
+        out[k] = dask.array.stack(out[k])
     return out
 
 
