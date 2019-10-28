@@ -1326,9 +1326,12 @@ class DaskFiller(event_model.Filler):
                 self._datum_cache[doc['data'][key]]
             except KeyError:
                 raise event_model.UnresolvableForeignKeyError(doc['data'][key], "")
-
-            filled_doc['data'][key] = array.from_delayed(
-                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
+            try:
+                filled_doc['data'][key] = self.fill_event_page(
+                    event_page, include=key, delayed=True)['data'][key]
+            except event_model.NoDelayedSupport:
+                filled_doc['data'][key] = array.from_delayed(
+                    delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
         return filled_doc
 
     def event(self, doc):
@@ -1350,8 +1353,12 @@ class DaskFiller(event_model.Filler):
                 self._datum_cache[doc['data'][key]]
             except KeyError:
                 raise event_model.UnresolvableForeignKeyError(doc['data'][key], "")
-            filled_doc['data'][key] = array.from_delayed(
-                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
+            try:
+                filled_doc['data'][key] = self.fill_event(
+                    doc, include=key, delayed=True)['data'][key]
+            except event_model.NoDelayedSupport:
+                filled_doc['data'][key] = array.from_delayed(
+                    delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
         return filled_doc
 
 
