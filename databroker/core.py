@@ -636,13 +636,11 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         """
 
         def stream_gen(entry):
-            i = 0
-            while True:
+            for i in itertools.count():
                 partition = entry.read_partition({'index': i, 'fill': fill,
                                                   'partition_size': 'auto'})
                 if not partition:
                     break
-                i += 1
                 yield from partition
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
@@ -898,13 +896,11 @@ class BlueskyRun(intake.catalog.Catalog):
 
         """
         def stream_gen(entry):
-            i = 0
-            while True:
+            for i in itertools.count():
                 partition = entry.read_partition({'index': i, 'fill': fill,
                                                   'partition_size': 'auto'})
                 if not partition:
                     break
-                i += 1
                 yield from partition
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
@@ -1062,14 +1058,12 @@ class RemoteBlueskyEventStream(intake.catalog.base.RemoteCatalog):
             documents are strictly yielded in ascending time order.
         """
         def stream_gen(entry):
-            i = 0
-            while True:
-                parition = entry.read_partition({'index': i, 'fill': fill,
-                                                   'partition_size': 'auto'})
+            for i in itertools.count():
+                partition = entry.read_partition({'index': i, 'fill': fill,
+                                                  'partition_size': 'auto'})
                 if not partition:
                     break
-                i += 1
-
+                yield from partition
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
