@@ -1296,70 +1296,34 @@ def dataarray_page_to_dataset_page(dataarray_page):
             'filled': xarray.merge(dataarray_page['filled'].values())}
 
 
-class DaskFiller(event_model.Filler):
+def coerce_dask(handler_class, filler_state):
+    # If the handler has its own delayed logic, defer to that.
+    if hasattr(handler_class, 'return_type'):
+        if handler_class.return_type['delayed']:
+            return handler_class
 
-    def __init__(self, *args, inplace=False, **kwargs):
-        if inplace:
-            raise NotImplementedError("DaskFiller inplace is not supported.")
-        # The DaskFiller will not mutate documents pass in by the user, but it
-        # will ask the base class to mutate *internal* copies in place, so we
-        # set inplace=True here, even though the user documents will never be
-        # modified in place.
-        super().__init__(*args, inplace=True, **kwargs)
+    # Otherwise, provide best-effort dask support by wrapping each datum
+    # payload in dask.array.from_delayed. This means that each datum will be
+    # one dask task---it cannot be rechunked into multiple tasks---but that
+    # may be sufficient for many handlers.
+    class Subclass(handler_class):
 
-    def event_page(self, doc):
-
-        @dask.delayed
-        def delayed_fill(event_page, key):
-            self.fill_event_page(event_page, include=key)
-            return event_page['data'][key]
-
-        descriptor = self._descriptor_cache[doc['descriptor']]
-        needs_filling = {key for key, val in descriptor['data_keys'].items()
-                         if 'external' in val}
-        filled_doc = copy.deepcopy(doc)
-
-        for key in needs_filling:
+        def __call__(self, *args, **kwargs):
+            descriptor = filler_state.descriptor
+            key = filler_state.key
             shape = extract_shape(descriptor, key)
             dtype = extract_dtype(descriptor, key)
-            try:
-                self._datum_cache[doc['data'][key]]
-            except KeyError:
-                raise event_model.UnresolvableForeignKeyError(doc['data'][key], "")
-            try:
-                filled_doc['data'][key] = self.fill_event_page(
-                    event_page, include=key, delayed=True)['data'][key]
-            except event_model.NoDelayedSupport:
-                filled_doc['data'][key] = array.from_delayed(
-                    delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
-        return filled_doc
+            load_chunk = dask.delayed(super().__call__)(*args, **kwargs)
+            return dask.array.from_delayed(load_chunk, shape=shape, dtype=dtype)
 
-    def event(self, doc):
+    return Subclass
 
-        @dask.delayed
-        def delayed_fill(event, key):
-            self.fill_event(event, include=key)
-            return event['data'][key]
 
-        descriptor = self._descriptor_cache[doc['descriptor']]
-        needs_filling = {key for key, val in descriptor['data_keys'].items()
-                         if 'external' in val}
-        filled_doc = copy.deepcopy(doc)
-
-        for key in needs_filling:
-            shape = extract_shape(descriptor, key)
-            dtype = extract_dtype(descriptor, key)
-            try:
-                self._datum_cache[doc['data'][key]]
-            except KeyError:
-                raise event_model.UnresolvableForeignKeyError(doc['data'][key], "")
-            try:
-                filled_doc['data'][key] = self.fill_event(
-                    doc, include=key, delayed=True)['data'][key]
-            except event_model.NoDelayedSupport:
-                filled_doc['data'][key] = array.from_delayed(
-                    delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
-        return filled_doc
+# This adds a 'delayed' option to event_model.Filler's `coerce` parameter.
+# By adding it via plugin, we avoid adding a dask.array dependency to
+# event_model and we keep the fiddly hacks into extract_shape here in
+# databroker, a faster-moving and less fundamental library than event-model.
+event_model.register_coersion('delayed', coerce_dask)
 
 
 def extract_shape(descriptor, key):
