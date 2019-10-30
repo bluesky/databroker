@@ -1232,9 +1232,6 @@ class BlueskyEventStream(DataSourceMixin):
         # Unpack partition
         i = partition['index']
 
-        if i == 0:
-           self._open_dataset()
-
         if isinstance(partition['fill'], str):
             filler = self._fillers[partition['fill']]
         else:
