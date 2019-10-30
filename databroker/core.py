@@ -892,8 +892,8 @@ class BlueskyRun(intake.catalog.Catalog):
         def stream_gen(entry):
             i = 0
             while True:
-                parition = entry.read_partition({'index': i, 'fill': fill,
-                                                   'partition_size': 'auto'})
+                partition = entry.read_partition({'index': i, 'fill': fill,
+                                                  'partition_size': 'auto'})
                 if not partition:
                     break
                 i += 1
