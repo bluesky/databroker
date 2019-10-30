@@ -289,7 +289,7 @@ def interlace(*gens, strict_order=False):
                     return
             else:
                 if name not in ['start', 'stop']:
-                   fifo.append((name, doc))
+                    fifo.append((name, doc))
 
     # Put the next event/event_page from each generator in the heap.
     for i in range(len(iters)):
