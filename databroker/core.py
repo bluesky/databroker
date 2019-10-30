@@ -27,8 +27,10 @@ import xarray
 from .intake_xarray_core.base import DataSourceMixin
 from collections import deque
 
+
 class PartitionIndexError(IndexError):
     ...
+
 
 class Entry(intake.catalog.local.LocalCatalogEntry):
     def __init__(self, **kwargs):
@@ -120,6 +122,7 @@ def to_event_pages(get_event_cursor, page_size):
     -------
     get_event_pages : function
     """
+
     @functools.wraps(get_event_cursor)
     def get_event_pages(*args, **kwargs):
         event_cursor = get_event_cursor(*args, **kwargs)
@@ -129,6 +132,7 @@ def to_event_pages(get_event_cursor, page_size):
                 yield event_model.pack_event_page(*result)
             else:
                 break
+
     return get_event_pages
 
 
@@ -146,6 +150,7 @@ def to_datum_pages(get_datum_cursor, page_size):
     -------
     get_datum_pages : function
     """
+
     @functools.wraps(get_datum_cursor)
     def get_datum_pages(*args, **kwargs):
         datum_cursor = get_datum_cursor(*args, **kwargs)
@@ -155,6 +160,7 @@ def to_datum_pages(get_datum_cursor, page_size):
                 yield event_model.pack_datum_page(*result)
             else:
                 break
+
     return get_datum_pages
 
 
@@ -627,6 +633,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         strict_order : bool
             documents are strictly yielded in ascending time order.
         """
+
         def stream_gen(entry):
             i = 0
             while True:
@@ -904,7 +911,6 @@ class BlueskyRun(intake.catalog.Catalog):
         yield ('start', self.metadata['start'])
         yield from interlace(*streams, strict_order=strict_order)
         yield ('stop', self.metadata['stop'])
-
 
     def read_canonical(self):
         warnings.warn(
@@ -1226,7 +1232,7 @@ class BlueskyEventStream(DataSourceMixin):
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
-        if isinstance(partition, (tuple,list)):
+        if isinstance(partition, (tuple, list)):
             return super().read_partition(partition)
 
         # Unpack partition
