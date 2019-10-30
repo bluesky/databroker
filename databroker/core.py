@@ -602,8 +602,9 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
     def _get_partition(self, partition):
         return intake.container.base.get_partition(self.url, self.http_args,
-                                             self._source_id, self.container,
-                                             partition)
+                                                   self._source_id, self.container,
+                                                   partition)
+
     def read(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
@@ -637,12 +638,12 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         def stream_gen(entry):
             i = 0
             while True:
-                parition = entry.read_partition({'index': i, 'fill': fill,
-                                                   'partition_size': 'auto'})
+                partition = entry.read_partition({'index': i, 'fill': fill,
+                                                  'partition_size': 'auto'})
                 if not partition:
                     break
                 i += 1
-
+                yield from partition
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
