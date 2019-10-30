@@ -897,6 +897,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 if not partition:
                     break
                 i += 1
+                yield from partition
 
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
