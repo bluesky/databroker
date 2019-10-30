@@ -15,7 +15,6 @@ import intake.catalog.local
 import errno
 import intake.container.base
 from intake.compat import unpack_kwargs
-import math
 import msgpack
 import requests
 from requests.compat import urljoin
