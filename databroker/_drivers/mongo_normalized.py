@@ -73,7 +73,7 @@ class _Entries(collections.abc.Mapping):
             if run_start_doc is None:
                 regex_query = {
                     '$and': [self.catalog._query,
-                             {'uid': {'$regex': f'{name}.*'}}]}
+                             {'uid': {'$regex': f'^{name}'}}]}
                 matches = list(collection.find(regex_query).limit(10))
                 if not matches:
                     raise KeyError(name)

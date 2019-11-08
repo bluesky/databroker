@@ -19,6 +19,8 @@ import copy
 import pytest
 import six
 import numpy as np
+import event_model
+
 from databroker._core import DOCT_NAMES
 
 if sys.version_info >= (3, 5):
@@ -242,6 +244,23 @@ def test_partial_uid_lookup(db, RE, hw):
         # Some letter will happen to be the first letter of more than one uid.
         for first_letter in string.ascii_lowercase:
             db[first_letter]
+
+
+def test_partial_uid_lookup2(db):
+    key_parts = ['a'*6, 'b'*6]
+
+    run_bundle_A = event_model.compose_run(uid=''.join(key_parts))
+    db.insert('start', run_bundle_A.start_doc)
+    db.insert('stop', run_bundle_A.compose_stop())
+    run_bundle_B = event_model.compose_run(uid=''.join(key_parts[::-1]))
+    db.insert('start', run_bundle_B.start_doc)
+    db.insert('stop', run_bundle_B.compose_stop())
+
+    hA = db[key_parts[0]]
+    assert dict(hA.start) == run_bundle_A.start_doc
+
+    hB = db[key_parts[1]]
+    assert dict(hB.start) == run_bundle_B.start_doc
 
 
 def test_find_by_float_time(db_empty, RE, hw):
