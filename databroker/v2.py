@@ -47,16 +47,16 @@ class Broker(Catalog):
         return self
 
     def register_handler(self, spec, handler, overwrite=False):
-        if overwrite:
-            self._handler_registry[spec] = handler
-        elif not overwrite and (spec not in self._handler_registry):
-            self._handler_registry[spec] = handler
-        else:
+        if (not overwrite) and (spec in self._handler_registry):
+            original = self._handler_registry[spec]
+            if original is handler:
+                return
             raise DuplicateHandler(
                 f"There is already a handler registered for the spec {spec!r}. "
                 f"Use overwrite=True to deregister the original.\n"
                 f"Original: {original}\n"
                 f"New: {handler}")
+        self._handler_registry[spec] = handler
 
     def deregister_handler(self, spec):
         self._handler_registry.pop(spec, None)
