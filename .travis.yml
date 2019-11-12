@@ -46,6 +46,7 @@ before_install:
 install:
   - pip install --upgrade cython
   - pip install --quiet --upgrade --global-option='--without-libyaml' pyyaml
+  - pip install --upgrade git+https://github.com/bluesky/event-model@master
   - pip install .[all]
   - pip install -r requirements-test.txt
   # Install intake master branch if build settings indicate to do so.
