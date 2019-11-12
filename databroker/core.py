@@ -315,6 +315,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         filler('datum_page', datum_page)
                     # TODO -- When to clear the datum cache in filler?
                     filled_events.append(filler('event', event)[1])
+        else:
+            filled_events = events
         times = [ev['time'] for ev in events]
         seq_nums = [ev['seq_num'] for ev in events]
         uids = [ev['uid'] for ev in events]
