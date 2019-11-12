@@ -5,8 +5,7 @@ import shutil
 import tempfile
 import time
 import uuid
-
-import mongobox
+import pytest
 import ophyd.sim
 import tzlocal
 
@@ -37,6 +36,7 @@ def build_intake_jsonl_backed_broker(request):
 
 
 def build_intake_mongo_backed_broker(request):
+    mongobox = pytest.importorskip('mongobox')
     box = mongobox.MongoBox()
     box.start()
     client = box.client()
@@ -53,7 +53,9 @@ def build_intake_mongo_backed_broker(request):
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
     return broker.v1
 
+
 def build_intake_mongo_embedded_backed_broker(request):
+    mongobox = pytest.importorskip('mongobox')
     tmp_dir = tempfile.TemporaryDirectory()
     tmp_path = tmp_dir.name
     catalog_path = Path(tmp_path) / 'catalog.yml'
