@@ -1,7 +1,10 @@
+import event_model
 from pathlib import Path
 import tempfile
 
+from .core import parse_handler_registry, discover_handlers
 from intake.catalog import Catalog
+from event_model import DuplicateHandler
 
 
 class Broker(Catalog):
@@ -10,6 +13,16 @@ class Broker(Catalog):
 
     It includes an accessor the databroker API version 1.
     """
+
+    def __init__(self, *, handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler,**kwargs):
+
+        self._root_map = root_map
+        self._filler_class = filler_class
+        if handler_registry is None:
+            handler_registry = discover_handlers()
+        self._handler_registry = parse_handler_registry(handler_registry)
+
     @property
     def v1(self):
         "Accessor to the version 1 API."
@@ -23,6 +36,20 @@ class Broker(Catalog):
         "A self-reference. This makes v1.Broker and v2.Broker symmetric."
         return self
 
+    def register_handler(self, spec, handler, overwrite=False):
+        if overwrite:
+            self._handler_registry[spec] = handler
+        elif not overwrite and (spec not in self._handler_registry):
+            self._handler_registry[spec] = handler
+        else:
+            raise DuplicateHandler(
+                f"There is already a handler registered for the spec {spec!r}. "
+                f"Use overwrite=True to deregister the original.\n"
+                f"Original: {original}\n"
+                f"New: {handler}")
+
+    def deregister_handler(self, spec):
+        self._handler_registry.pop(spec, None)
 
 def temp():
     """

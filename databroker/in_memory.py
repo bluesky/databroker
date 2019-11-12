@@ -14,9 +14,7 @@ from .v2 import Broker
 class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
-    def __init__(self, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler,
-                 query=None, **kwargs):
+    def __init__(self, *, query=None, **kwargs):
         """
         This Catalog is backed by Python collections in memory.
 
@@ -64,12 +62,6 @@ class BlueskyInMemoryCatalog(Broker):
             Catalog.
         """
         self._query = query or {}
-        self._root_map = root_map
-        self._filler_class = filler_class
-
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        self._handler_registry = parse_handler_registry(handler_registry)
         self._uid_to_run_start_doc = {}
 
         super().__init__(**kwargs)

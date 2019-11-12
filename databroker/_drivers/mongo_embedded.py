@@ -174,9 +174,7 @@ class _Entries(collections.abc.Mapping):
 
 
 class BlueskyMongoCatalog(Broker):
-    def __init__(self, datastore_db, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler,
-                 query=None, **kwargs):
+    def __init__(self, datastore_db, *, query=None, **kwargs):
         """
         This Catalog is backed by a MongoDB with an embedded data model.
 
@@ -225,15 +223,7 @@ class BlueskyMongoCatalog(Broker):
             self._db = _get_database(datastore_db)
         else:
             self._db = datastore_db
-
         self._query = query or {}
-        self._root_map = root_map
-        self._filler_class = filler_class
-
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        self._handler_registry = parse_handler_registry(handler_registry)
-
         super().__init__(**kwargs)
 
     def _get_filler(self):
