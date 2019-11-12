@@ -58,11 +58,11 @@ class Registry:
         return self._catalog._root_map
 
     def register_handler(self, key, handler, overwrite=False):
-        return self._catalog._register_handler(
+        return self._catalog.register_handler(
             key, handler, overwrite=overwrite)
 
     def deregister_handler(self, key):
-        return self._catalog._deregister_handler(key)
+        return self._catalog.deregister_handler(key)
 
     def copy_files(self, resource, new_root,
                    verify=False, file_rename_hook=None):
