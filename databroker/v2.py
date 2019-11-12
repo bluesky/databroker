@@ -22,6 +22,15 @@ class Broker(Catalog):
         if handler_registry is None:
             handler_registry = discover_handlers()
         self._handler_registry = parse_handler_registry(handler_registry)
+        self.handler_registry = event_model.HandlerRegistryView(
+            self._handler_registry)
+
+    @property
+    def root_map(self):
+        # This is mutable, so be advised that users *can* mutate it under us.
+        # The property just prohibits them from setting it to an entirely
+        # different dict instance.
+        return self._root_map
 
     @property
     def v1(self):
