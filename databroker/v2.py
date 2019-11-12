@@ -24,6 +24,7 @@ class Broker(Catalog):
         self._handler_registry = parse_handler_registry(handler_registry)
         self.handler_registry = event_model.HandlerRegistryView(
             self._handler_registry)
+        super().__init__(**kwargs)
 
     @property
     def root_map(self):
