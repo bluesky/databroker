@@ -584,8 +584,9 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler.clone(coerce='force_numpy')
-        self.delayed_filler = filler.clone(coerce='delayed')
+        self.fillers = {}
+        self.fillers['yes'] = filler.clone(coerce='force_numpy')
+        self.fillers['delayed'] = filler.clone(coerce='delayed')
         self._entry = entry
         super().__init__(**kwargs)
 
@@ -649,7 +650,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_resource=self._get_resource,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
-                filler=self.filler,
+                fillers=self.fillers,
                 metadata={'descriptors': descriptors})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
@@ -738,7 +739,7 @@ class BlueskyRun(intake.catalog.Catalog):
         files = []
         # TODO Once event_model.Filler has a get_handler method, use that.
         try:
-            handler_class = self.filler.handler_registry[resource['spec']]
+            handler_class = self.fillers['yes'].handler_registry[resource['spec']]
         except KeyError as err:
             raise event_model.UndefinedAssetSpecification(
                 f"Resource document with uid {resource['uid']} "
@@ -748,7 +749,7 @@ class BlueskyRun(intake.catalog.Catalog):
         # Apply root_map.
         resource_path = resource['resource_path']
         root = resource.get('root', '')
-        root = self.filler.root_map.get(root, root)
+        root = self.fillers['yes'].root_map.get(root, root)
         if root:
             resource_path = os.path.join(root, resource_path)
 
@@ -767,6 +768,7 @@ class BlueskyRun(intake.catalog.Catalog):
         """
         i = partition['index']
         fill = partition['fill']
+        filler = self.fillers[fill]
         self._load()
         payload = []
         start = i * self.PARTITION_SIZE
@@ -790,7 +792,7 @@ class BlueskyRun(intake.catalog.Catalog):
                     *(self._get_event_pages(descriptor_uid=descriptor_uid)
                       for descriptor_uid in descriptor_uids)), skip, limit)
             for descriptor in self._descriptors:
-                self.filler('descriptor', descriptor)
+                filler('descriptor', descriptor)
             for event in events:
                 for key, is_filled in event['filled'].items():
                     if is_filled:
@@ -811,7 +813,7 @@ class BlueskyRun(intake.catalog.Catalog):
                             payload.append(('datum_page', datum_page))
                             datum_ids |= set(datum_page['datum_id'])
                 if fill == 'yes':
-                    self._fill(event)  # in place (for now)
+                    self._fill(filler, event)  # in place (for now)
                 event_page = event_model.pack_event_page(event)
                 payload.append(('event_page', event_page))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
@@ -820,9 +822,9 @@ class BlueskyRun(intake.catalog.Catalog):
             doc.pop('_id', None)
         return payload
 
-    def _fill(self, event, last_datum_id=None):
+    def _fill(self, filler, event, last_datum_id=None):
         try:
-            self.filler('event', event)
+            filler('event', event)
         except event_model.UnresolvableForeignKeyError as err:
             datum_id = err.key
             if datum_id == last_datum_id:
@@ -837,18 +839,18 @@ class BlueskyRun(intake.catalog.Catalog):
                 resource_uid = self._lookup_resource_for_datum(datum_id)
 
             resource = self._get_resource(uid=resource_uid)
-            self.filler('resource', resource)
+            filler('resource', resource)
             # Pre-fetch all datum for this resource.
             for datum_page in self._get_datum_pages(
                     resource_uid=resource_uid):
-                self.filler('datum_page', datum_page)
+                filler('datum_page', datum_page)
             # TODO -- When to clear the datum cache in filler?
 
             # Re-enter and try again now that the Filler has consumed the
             # missing Datum. There might be another missing Datum in this same
             # Event document (hence this re-entrant structure) or might be good
             # to go.
-            self._fill(event, last_datum_id=datum_id)
+            self._fill(filler, event, last_datum_id=datum_id)
 
     def read(self):
         raise NotImplementedError(
@@ -918,7 +920,7 @@ class BlueskyEventStream(DataSourceMixin):
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 filler,
+                 fillers,
                  metadata,
                  include=None,
                  exclude=None,
@@ -934,7 +936,7 @@ class BlueskyEventStream(DataSourceMixin):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self.fillers = fillers
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         self.include = include
@@ -961,7 +963,7 @@ class BlueskyEventStream(DataSourceMixin):
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
             get_event_pages=self._get_event_pages,
-            filler=self.filler,
+            filler=self.fillers['delayed'],
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
