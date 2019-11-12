@@ -43,6 +43,6 @@ def test_fill_event_page(RE, hw):
     for name, doc in docs:
         filled_docs.append(dask_filler(name, doc))
     _, dask_filled_event_page = filled_docs[-2]
-    arr = dask_filled_event_page['data']['img'].compute()
-    assert arr.shape == (1, 10, 10)
+    arr = dask_filled_event_page['data']['img'][0].compute()
+    assert arr.shape == (10, 10)
     assert isinstance(arr, numpy.ndarray)
