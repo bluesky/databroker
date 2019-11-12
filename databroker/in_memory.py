@@ -87,7 +87,7 @@ class BlueskyInMemoryCatalog(Broker):
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
-                  'get_filler': self._get_filler},
+                  'get_filler': get_filler},
             cache=None,  # ???
             parameters=[],
             metadata={'start': start_doc, 'stop': stop_doc},
