@@ -61,6 +61,7 @@ class Broker(Catalog):
     def deregister_handler(self, spec):
         self._handler_registry.pop(spec, None)
 
+
 def temp():
     """
     Generate a Catalog backed by a temporary directory of msgpack-encoded files.

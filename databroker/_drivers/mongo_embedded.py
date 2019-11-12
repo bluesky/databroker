@@ -78,7 +78,7 @@ class _Entries(collections.abc.Mapping):
             get_resource=get_resource,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
-            filler=self.catalog._get_filler())
+            get_filler=self.catalog._get_filler)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -227,7 +227,8 @@ class BlueskyMongoCatalog(Broker):
         super().__init__(**kwargs)
 
     def _get_filler(self):
-        return self._filler_class(
+        return partial(
+            self._filler_class,
             handler_registry=self._handler_registry,
             root_map=self._root_map,
             inplace=False)

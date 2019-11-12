@@ -1,4 +1,6 @@
 import copy
+import functools
+
 import event_model
 import intake
 import intake.catalog
@@ -66,9 +68,9 @@ class BlueskyInMemoryCatalog(Broker):
 
         super().__init__(**kwargs)
 
-    def _get_filler(self):
-        return self._filler_class(
-                self._handler_registry, root_map=self._root_map, inplace=False)
+        return functools.partial(
+            self._filler_class,
+            self._handler_registry, root_map=self._root_map, inplace=False)
 
     def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
         if not Query(self._query).match(start_doc):
@@ -85,7 +87,7 @@ class BlueskyInMemoryCatalog(Broker):
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
-                  'filler': self._get_filler()},
+                  'get_filler': self._get_filler},
             cache=None,  # ???
             parameters=[],
             metadata={'start': start_doc, 'stop': stop_doc},

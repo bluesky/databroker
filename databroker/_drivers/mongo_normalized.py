@@ -41,7 +41,7 @@ class _Entries(collections.abc.Mapping):
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-            filler=self.catalog._get_filler())
+            get_filler=self.catalog._get_filler)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -207,7 +207,8 @@ class BlueskyMongoCatalog(Broker):
 
 
     def _get_filler(self):
-        return self._filler_class(
+        return partial(
+            self._filler_class,
             handler_registry=self._handler_registry,
             root_map=self._root_map,
             inplace=False)
