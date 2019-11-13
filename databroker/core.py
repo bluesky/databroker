@@ -584,12 +584,10 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        filler = get_filler()
         self.fillers = {}
-        print("HRHR", filler.handler_registry)
-        self.fillers['no'] = NoFiller(filler.handler_registry, inplace=True)
-        self.fillers['yes'] = filler.clone(coerce='force_numpy')
-        self.fillers['delayed'] = filler.clone(coerce='delayed')
+        self.fillers['yes'] = get_filler(coerce='force_numpy')
+        self.fillers['no'] = NoFiller(self.fillers['yes'].handler_registry, inplace=True)
+        self.fillers['delayed'] = get_filler(coerce='delayed')
         self._entry = entry
         super().__init__(**kwargs)
 
