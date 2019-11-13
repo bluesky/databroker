@@ -26,10 +26,11 @@ class Broker(Catalog):
         self.handler_registry = event_model.HandlerRegistryView(
             self._handler_registry)
 
-        self._get_filler = partial(self._filler_class,
-                              handler_registry=self.handler_registry,
-                              root_map=self._root_map,
-                              inplace=False)
+        self._get_filler = partial(
+            self._filler_class,
+            handler_registry=self.handler_registry,
+            root_map=self._root_map,
+            inplace=False)
 
         super().__init__(**kwargs)
 
