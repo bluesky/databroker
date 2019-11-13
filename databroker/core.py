@@ -813,9 +813,8 @@ class BlueskyRun(intake.catalog.Catalog):
                             # TODO Greedily cache but lazily emit.
                             payload.append(('datum_page', datum_page))
                             datum_ids |= set(datum_page['datum_id'])
-                if fill == 'yes':
-                    self._fill(filler, event)  # in place (for now)
-                event_page = event_model.pack_event_page(event)
+                filled_event = self._fill(filler, event)
+                event_page = event_model.pack_event_page(filled_event)
                 payload.append(('event_page', event_page))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
@@ -825,7 +824,8 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _fill(self, filler, event, last_datum_id=None):
         try:
-            filler('event', event)
+            _, filled_event = filler('event', event)
+            return filled_event
         except event_model.UnresolvableForeignKeyError as err:
             datum_id = err.key
             if datum_id == last_datum_id:
@@ -851,7 +851,7 @@ class BlueskyRun(intake.catalog.Catalog):
             # missing Datum. There might be another missing Datum in this same
             # Event document (hence this re-entrant structure) or might be good
             # to go.
-            self._fill(filler, event, last_datum_id=datum_id)
+            return self._fill(filler, event, last_datum_id=datum_id)
 
     def read(self):
         raise NotImplementedError(
@@ -1421,7 +1421,8 @@ class NoFiller(event_model.Filler):
                 try:
                     datum_doc = self._datum_cache[datum_id]
                 except KeyError as err:
-                    err_with_key = UnresolvableForeignKeyError(
+                    err_with_key = event_model.UnresolvableForeignKeyError(
+                        datum_id,
                         f"Event with uid {doc['uid']} refers to unknown Datum "
                         f"datum_id {datum_id}")
                     err_with_key.key = datum_id
@@ -1431,7 +1432,8 @@ class NoFiller(event_model.Filler):
                 try:
                     resource = self._resource_cache[resource_uid]
                 except KeyError as err:
-                    raise UnresolvableForeignKeyError(
+                    raise event_model.UnresolvableForeignKeyError(
+                        datum_id,
                         f"Datum with id {datum_id} refers to unknown Resource "
                         f"uid {resource_uid}") from err
         return doc
