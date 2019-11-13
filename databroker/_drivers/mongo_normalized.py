@@ -40,7 +40,8 @@ class _Entries(collections.abc.Mapping):
             lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
-            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500))
+            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
+            get_filler=self.catalog._get_filler)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO

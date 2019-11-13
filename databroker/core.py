@@ -1070,7 +1070,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_resource=get_resource,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
-            get_filler=get_filler
+            get_filler=get_filler,
             **kwargs)
 
 
