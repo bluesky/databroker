@@ -587,7 +587,7 @@ class BlueskyRun(intake.catalog.Catalog):
         filler = get_filler()
         self.fillers = {}
         print("HRHR", filler.handler_registry)
-        self.fillers['no'] = NoFiller(filler.handler_registry)
+        self.fillers['no'] = NoFiller(filler.handler_registry, inplace=True)
         self.fillers['yes'] = filler.clone(coerce='force_numpy')
         self.fillers['delayed'] = filler.clone(coerce='delayed')
         self._entry = entry
