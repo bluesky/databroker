@@ -542,7 +542,7 @@ def test_stream_name(db, RE, hw):
     assert h.fields(stream_name='secondary') == {'det2'}
 
 
-def test_handler_options(db, RE, hw):
+def test_register_handler(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
 
     RE.subscribe(db.insert)
@@ -586,6 +586,19 @@ def test_handler_options(db, RE, hw):
     ims = db.get_images(h, 'img')[0]
     assert ims.shape == EXPECTED_SHAPE
     assert ev['filled']['img']
+
+
+def test_handler_options(db, RE, hw):
+    from ophyd.sim import NumpySeqHandler
+
+    RE.subscribe(db.insert)
+    rs_uid, = RE(count([hw.img], 2))
+
+    h = db[rs_uid]
+
+    # Statefully register the handler.
+    db.reg.register_handler('NPY_SEQ', NumpySeqHandler)
+    EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
 
     ev, ev2 = db.get_events(h, fields=['img'])
     assert ev is not ev2

@@ -576,7 +576,7 @@ class Images(FramesSequence):
         self._len = len(self._datum_ids)
         first_uid = self._datum_ids[0]
         if handler_override is None:
-            self.handler_registry = handler_registry
+            self.handler_registry = self.reg._catalog._handler_registry
         else:
             # mock a handler registry
             self.handler_registry = defaultdict(lambda: handler_override)
