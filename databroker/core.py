@@ -586,7 +586,8 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_datum_pages = get_datum_pages
         self.fillers = {}
         self.fillers['yes'] = get_filler(coerce='force_numpy')
-        self.fillers['no'] = NoFiller(self.fillers['yes'].handler_registry, inplace=True)
+        self.fillers['no'] = event_model.NoFiller(
+            self.fillers['yes'].handler_registry, inplace=True)
         self.fillers['delayed'] = get_filler(coerce='delayed')
         self._entry = entry
         super().__init__(**kwargs)
@@ -1383,60 +1384,6 @@ def extract_dtype(descriptor, key):
         return float  # guess!
     else:
         return reported
-
-
-class NoFiller(event_model.Filler):
-    """
-    This does not modify the documents; it merely validates them.
-
-    It checks that all the references between the documents are resolvable.
-    """
-    def fill_event_page(self, doc, include=None, exclude=None):
-        filled_events = []
-        for event_doc in unpack_event_page(doc):
-            filled_events.append(self.fill_event(event_doc,
-                                                 include=include,
-                                                 exclude=exclude,
-                                                 inplace=True))
-        filled_doc = pack_event_page(*filled_events)
-        return filled_doc
-
-    def fill_event(self, doc, include=None, exclude=None, inplace=None):
-        try:
-            filled = doc['filled']
-        except KeyError:
-            # This document is not telling us which, if any, keys are filled.
-            # Infer that none of the external data is filled.
-            descriptor = self._descriptor_cache[doc['descriptor']]
-            filled = {key: 'external' in val
-                      for key, val in descriptor['data_keys'].items()}
-        for key, is_filled in filled.items():
-            if exclude is not None and key in exclude:
-                continue
-            if include is not None and key not in include:
-                continue
-            if not is_filled:
-                datum_id = doc['data'][key]
-                # Look up the cached Datum doc.
-                try:
-                    datum_doc = self._datum_cache[datum_id]
-                except KeyError as err:
-                    err_with_key = event_model.UnresolvableForeignKeyError(
-                        datum_id,
-                        f"Event with uid {doc['uid']} refers to unknown Datum "
-                        f"datum_id {datum_id}")
-                    err_with_key.key = datum_id
-                    raise err_with_key from err
-                resource_uid = datum_doc['resource']
-                # Look up the cached Resource.
-                try:
-                    resource = self._resource_cache[resource_uid]
-                except KeyError as err:
-                    raise event_model.UnresolvableForeignKeyError(
-                        datum_id,
-                        f"Datum with id {datum_id} refers to unknown Resource "
-                        f"uid {resource_uid}") from err
-        return doc
 
 
 # This comes from the old databroker.core from before intake-bluesky was merged
