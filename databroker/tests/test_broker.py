@@ -579,14 +579,6 @@ def test_register_handler(db, RE, hw):
     # Statefully register the handler.
     db.reg.register_handler('NPY_SEQ', NumpySeqHandler)
 
-    EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
-
- #   ev, ev2 = db.get_events(h, fields=['img'], fill=True)
- #   assert ev['data']['img'].shape == EXPECTED_SHAPE
- #   ims = db.get_images(h, 'img')[0]
- #   assert ims.shape == EXPECTED_SHAPE
- #   assert ev['filled']['img']
-
 
 def test_handler_options(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
