@@ -1,7 +1,7 @@
 boltons
 dask[array,bag]
 doct
-event-model >=1.13.0b1
+event-model >=1.13.0b3
 humanize
 intake >=0.5.2  # first release to use entrypoints
 jinja2
