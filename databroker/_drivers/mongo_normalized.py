@@ -40,8 +40,7 @@ class _Entries(collections.abc.Mapping):
             lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
-            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-            get_filler=self.catalog._get_filler)
+            get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500))
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -204,14 +203,6 @@ class BlueskyMongoCatalog(Broker):
         self._asset_registry_db = assets_db
         self._query = query or {}
         super().__init__(**kwargs)
-
-
-    def _get_filler(self):
-        return partial(
-            self._filler_class,
-            handler_registry=self._handler_registry,
-            root_map=self._root_map,
-            inplace=False)
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(

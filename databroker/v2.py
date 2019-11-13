@@ -1,10 +1,11 @@
 import event_model
-from pathlib import Path
 import tempfile
 
 from .core import parse_handler_registry, discover_handlers
 from intake.catalog import Catalog
 from event_model import DuplicateHandler
+from functools import partial
+from pathlib import Path
 
 
 class Broker(Catalog):
@@ -24,6 +25,12 @@ class Broker(Catalog):
         self._handler_registry = parse_handler_registry(handler_registry)
         self.handler_registry = event_model.HandlerRegistryView(
             self._handler_registry)
+
+        self._get_filler = partial(self._filler_class,
+                              handler_registry=self.handler_registry,
+                              root_map=self._root_map,
+                              inplace=False)
+
         super().__init__(**kwargs)
 
     @property

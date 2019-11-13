@@ -584,7 +584,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        filler = get_filler()()
+        filler = get_filler()
         self.fillers = {}
         self.fillers['no'] = NoFiller(filler.handler_registry)
         self.fillers['yes'] = filler.clone(coerce='force_numpy')
@@ -1023,7 +1023,7 @@ class DocumentCache(event_model.DocumentRouter):
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
-    def __init__(self, gen_func, gen_args, gen_kwargs, **kwargs):
+    def __init__(self, gen_func, gen_args, gen_kwargs, get_filler, **kwargs):
 
         document_cache = DocumentCache()
 
@@ -1070,6 +1070,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_resource=get_resource,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
+            get_filler=get_filler
             **kwargs)
 
 

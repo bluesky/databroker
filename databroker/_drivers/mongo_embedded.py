@@ -77,8 +77,7 @@ class _Entries(collections.abc.Mapping):
             get_event_count=get_event_count,
             get_resource=get_resource,
             lookup_resource_for_datum=lookup_resource_for_datum,
-            get_datum_pages=self.catalog._get_datum_pages,
-            get_filler=self.catalog._get_filler)
+            get_datum_pages=self.catalog._get_datum_pages)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -225,13 +224,6 @@ class BlueskyMongoCatalog(Broker):
             self._db = datastore_db
         self._query = query or {}
         super().__init__(**kwargs)
-
-    def _get_filler(self):
-        return partial(
-            self._filler_class,
-            handler_registry=self._handler_registry,
-            root_map=self._root_map,
-            inplace=False)
 
     def _get_event_pages(self, descriptor_uid, skip=0, limit=None):
         if limit is None:
