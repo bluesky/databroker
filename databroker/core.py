@@ -304,6 +304,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             filled_events = []
             for event in events:
                 try:
+                    # we have the [1] here because the filler returns a
+                    # name, doc pair, and we only want the doc.
                     filled_events.append(filler('event', event)[1])
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
@@ -495,7 +497,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
                 "usage.")
         FILL_OPTIONS = {'yes', 'no'}
         if fill not in FILL_OPTIONS:
-            raise ValueError(f"Options for 'fill' are {FILL_OPTIONS}")
+            raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
         for i in range(self.npartitions):
             for name, doc in self._get_partition({'index': i, 'fill': fill}):
                 yield name, doc
@@ -717,7 +719,7 @@ class BlueskyRun(intake.catalog.Catalog):
         """
         FILL_OPTIONS = {'yes', 'no', 'delayed'}
         if fill not in FILL_OPTIONS:
-            raise ValueError(f"Options for 'fill' are {FILL_OPTIONS}")
+            raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
         for i in range(self.npartitions):
             for name, doc in self.read_partition({'index': i, 'fill': fill}):
                 yield name, doc
