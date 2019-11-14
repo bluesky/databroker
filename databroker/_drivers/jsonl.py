@@ -71,7 +71,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             list of filepaths
         handler_registry : dict, optional
             This is passed to the Filler or whatever class is given in the
-            filler_class parametr below.
+            ``filler_class`` parameter below.
 
             Maps each 'spec' (a string identifying a given type or external
             resource) to a handler class.
@@ -90,8 +90,8 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             ``__call__``, with the respective signatures. But in general it may be
             any callable-that-returns-a-callable.
         root_map: dict, optional
-            This is passed to Filler or whatever class is given in the filler_class
-            parameter below.
+            This is passed to Filler or whatever class is given in the
+            ``filler_class`` parameter below.
 
             str -> str mapping to account for temporarily moved/copied/remounted
             files.  Any resources which have a ``root`` in ``root_map`` will be
@@ -111,6 +111,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             paths = [paths]
         self.paths = paths
         self._filename_to_mtime = {}
+
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,
                          filler_class=filler_class,

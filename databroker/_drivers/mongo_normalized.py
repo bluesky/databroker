@@ -136,7 +136,8 @@ class _Entries(collections.abc.Mapping):
 
 class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
-                 query=None, **kwargs):
+                 handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler, query=None, **kwargs):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
@@ -151,7 +152,7 @@ class BlueskyMongoCatalog(Broker):
             Must be a Database or a URI string that includes a database name.
         handler_registry : dict, optional
             This is passed to the Filler or whatever class is given in the
-            filler_class parameter below.
+            ``filler_class`` parameter below.
             Maps each 'spec' (a string identifying a given type or external
             resource) to a handler class.
             A 'handler class' may be any callable with the signature::
@@ -169,7 +170,7 @@ class BlueskyMongoCatalog(Broker):
             any callable-that-returns-a-callable.
         root_map: dict, optional
             This is passed to Filler or whatever class is given in the
-            filler_class parameter below. 
+            ``filler_class`` parameter below.
             str -> str mapping to account for temporarily
             moved/copied/remounted files.  Any resources which have a ``root``
             in ``root_map`` will be loaded using the mapped ``root``.
@@ -203,7 +204,11 @@ class BlueskyMongoCatalog(Broker):
         self._metadatastore_db = mds_db
         self._asset_registry_db = assets_db
         self._query = query or {}
-        super().__init__(**kwargs)
+
+        super().__init__(handler_registry=handler_registry,
+                         root_map=root_map,
+                         filler_class=filler_class,
+                         **kwargs)
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
