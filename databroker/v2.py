@@ -16,7 +16,7 @@ class Broker(Catalog):
     """
 
     def __init__(self, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler,**kwargs):
+                 filler_class=event_model.Filler, **kwargs):
 
         self._root_map = root_map
         self._filler_class = filler_class
@@ -26,11 +26,10 @@ class Broker(Catalog):
         self.handler_registry = event_model.HandlerRegistryView(
             self._handler_registry)
 
-        self._get_filler = partial(
-            self._filler_class,
-            handler_registry=self.handler_registry,
-            root_map=self._root_map,
-            inplace=False)
+        self._get_filler = partial(self._filler_class,
+                                   handler_registry=self.handler_registry,
+                                   root_map=self._root_map,
+                                   inplace=False)
 
         super().__init__(**kwargs)
 

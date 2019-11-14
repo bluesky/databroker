@@ -585,7 +585,7 @@ def test_external_access_with_handler(db, RE, hw):
 
     h = db[rs_uid]
 
-    # For some db fixtures, this is a already registered and is therefore a
+    # For some db fixtures, this is already registered and is therefore a
     # no-op.
     db.reg.register_handler('NPY_SEQ', NumpySeqHandler)
 
