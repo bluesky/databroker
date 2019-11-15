@@ -304,9 +304,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             filled_events = []
             for event in events:
                 try:
-                    # we have the [1] here because the filler returns a
-                    # name, doc pair, and we only want the doc.
-                    filled_events.append(filler('event', event)[1])
+                    _, filled_event = filler('event', event)
+                    filled_events.append(filled_event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
                     resource_uid = lookup_resource_for_datum(datum_id)
@@ -316,7 +315,8 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                     for datum_page in get_datum_pages(resource_uid):
                         filler('datum_page', datum_page)
                     # TODO -- When to clear the datum cache in filler?
-                    filled_events.append(filler('event', event)[1])
+                    _, filled_event = filler('event', event)
+                    filled_events.append(filled_event)
         else:
             filled_events = events
         times = [ev['time'] for ev in events]
