@@ -333,13 +333,14 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         # Make DataArrays for Event data.
         for key in keys:
             field_metadata = data_keys[key]
-            ndim = len(field_metadata['shape'])
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
             # names that xarray would.
-            dims = field_metadata.get(
-                'dims',
-                tuple(f'dim_{next(dim_counter)}' for _ in range(ndim)))
+            try:
+                dims = tuple(field_metadata['dims'])
+            except KeyError:
+                ndim = len(field_metadata['shape'])
+                dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
                 dims=('time',) + dims,
@@ -368,9 +369,10 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 # if the EventDescriptor doesn't provide names for the
                 # dimensions (it's optional) use the same default dimension
                 # names that xarray would.
-                dims = field_metadata.get(
-                    'dims',
-                    tuple(f'dim_{next(dim_counter)}' for _ in range(ndim)))
+                try:
+                    dims = tuple(field_metadata['dims'])
+                except KeyError:
+                    dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
                 data_arrays[scoped_key] = xarray.DataArray(
                     # TODO Once we know we have one Event Descriptor
                     # per stream we can be more efficient about this.
