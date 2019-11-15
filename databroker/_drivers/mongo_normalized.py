@@ -10,7 +10,7 @@ import pymongo.errors
 
 from ..core import (
     parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry, DaskFiller)
+    Entry)
 from ..v2 import Broker
 
 
