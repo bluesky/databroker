@@ -4,18 +4,17 @@ import intake
 import intake.catalog
 import intake.catalog.local
 import intake.source.base
-from mongoquery import Query
-
 
 from .core import parse_handler_registry, discover_handlers, Entry
 from .v2 import Broker
+from mongoquery import Query
 
 
 class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
-    def __init__(self, handler_registry=None, root_map=None, query=None,
-                 **kwargs):
+    def __init__(self, *, handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler, query=None, **kwargs):
         """
         This Catalog is backed by Python collections in memory.
 
@@ -26,12 +25,36 @@ class BlueskyInMemoryCatalog(Broker):
         Parameters
         ----------
         handler_registry : dict, optional
-            Maps each asset spec to a handler class or a string specifying the
-            module name and class name, as in (for example)
-            ``{'SOME_SPEC': 'module.submodule.class_name'}``. If None, the
-            result of ``databroker.core.discover_handlers()`` is used.
-        root_map : dict, optional
-            Maps resource root paths to different paths.
+            This is passed to the Filler or whatever class is given in the
+            ``filler_class`` parameter below.
+
+            Maps each 'spec' (a string identifying a given type or external
+            resource) to a handler class.
+
+            A 'handler class' may be any callable with the signature::
+
+                handler_class(resource_path, root, **resource_kwargs)
+
+            It is expected to return an object, a 'handler instance', which is also
+            callable and has the following signature::
+
+            handler_instance(**datum_kwargs)
+
+            As the names 'handler class' and 'handler instance' suggest, this is
+            typically implemented using a class that implements ``__init__`` and
+            ``__call__``, with the respective signatures. But in general it may be
+            any callable-that-returns-a-callable.
+        root_map: dict, optional
+            This is passed to Filler or whatever class is given in the
+            ``filler_class`` parameter below.
+
+            str -> str mapping to account for temporarily moved/copied/remounted
+            files.  Any resources which have a ``root`` in ``root_map`` will be
+            loaded using the mapped ``root``.
+        filler_class: type, optional
+            This is Filler by default. It can be a Filler subclass,
+            ``functools.partial(Filler, ...)``, or any class that provides the
+            same methods as ``DocumentRouter``.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
         **kwargs :
@@ -39,13 +62,12 @@ class BlueskyInMemoryCatalog(Broker):
             Catalog.
         """
         self._query = query or {}
-        if handler_registry is None:
-            handler_registry = discover_handlers()
-        parsed_handler_registry = parse_handler_registry(handler_registry)
-        self.filler = event_model.Filler(
-            parsed_handler_registry, root_map=root_map, inplace=True)
         self._uid_to_run_start_doc = {}
-        super().__init__(**kwargs)
+
+        super().__init__(handler_registry=handler_registry,
+                         root_map=root_map,
+                         filler_class=filler_class,
+                         **kwargs)
 
     def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
         if not Query(self._query).match(start_doc):
@@ -62,7 +84,7 @@ class BlueskyInMemoryCatalog(Broker):
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
-                  'filler': self.filler},
+                  'get_filler': self._get_filler},
             cache=None,  # ???
             parameters=[],
             metadata={'start': start_doc, 'stop': stop_doc},
@@ -84,8 +106,8 @@ class BlueskyInMemoryCatalog(Broker):
             query = {'$and': [self._query, query]}
         cat = type(self)(
             query=query,
-            handler_registry=self.filler.handler_registry,
-            root_map=self.filler.root_map,
+            handler_registry=self._handler_registry,
+            root_map=self._root_map,
             name='search results',
             getenv=self.getenv,
             getshell=self.getshell,

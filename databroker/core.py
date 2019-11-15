@@ -301,9 +301,11 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             continue
         if any(data_keys[key].get('external') for key in keys):
             filler('descriptor', descriptor)
+            filled_events = []
             for event in events:
                 try:
-                    filler('event', event)
+                    _, filled_event = filler('event', event)
+                    filled_events.append(filled_event)
                 except event_model.UnresolvableForeignKeyError as err:
                     datum_id = err.key
                     resource_uid = lookup_resource_for_datum(datum_id)
@@ -313,11 +315,14 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                     for datum_page in get_datum_pages(resource_uid):
                         filler('datum_page', datum_page)
                     # TODO -- When to clear the datum cache in filler?
-                    filler('event', event)
+                    _, filled_event = filler('event', event)
+                    filled_events.append(filled_event)
+        else:
+            filled_events = events
         times = [ev['time'] for ev in events]
         seq_nums = [ev['seq_num'] for ev in events]
         uids = [ev['uid'] for ev in events]
-        data_table = _transpose(events, keys, 'data')
+        data_table = _transpose(filled_events, keys, 'data')
         # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
 
         # Collect a DataArray for each field in Event, each field in
@@ -328,20 +333,13 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
         # Make DataArrays for Event data.
         for key in keys:
             field_metadata = data_keys[key]
-            # Verify the actual ndim by looking at the data.
-            ndim = numpy.asarray(data_table[key][0]).ndim
-            dims = None
-            if 'dims' in field_metadata:
-                # As of this writing no Devices report dimension names ('dims')
-                # but they could in the future.
-                reported_ndim = len(field_metadata['dims'])
-                if reported_ndim == ndim:
-                    dims = tuple(field_metadata['dims'])
-                else:
-                    # TODO Warn
-                    ...
-            if dims is None:
-                # Construct the same default dimension names xarray would.
+            # if the EventDescriptor doesn't provide names for the
+            # dimensions (it's optional) use the same default dimension
+            # names that xarray would.
+            try:
+                dims = tuple(field_metadata['dims'])
+            except KeyError:
+                ndim = len(field_metadata['shape'])
                 dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
@@ -366,26 +364,20 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 keys = scoped_data_keys
             for key, scoped_key in keys.items():
                 field_metadata = data_keys[key]
-                # Verify the actual ndim by looking at the data.
-                ndim = numpy.asarray(config['data'][key]).ndim
-                dims = None
-                if 'dims' in field_metadata:
-                    # As of this writing no Devices report dimension names ('dims')
-                    # but they could in the future.
-                    reported_ndim = len(field_metadata['dims'])
-                    if reported_ndim == ndim:
-                        dims = tuple(field_metadata['dims'])
-                    else:
-                        # TODO Warn
-                        ...
-                if dims is None:
-                    # Construct the same default dimension names xarray would.
+                field_metadata = data_keys[key]
+                ndim = len(field_metadata['shape'])
+                # if the EventDescriptor doesn't provide names for the
+                # dimensions (it's optional) use the same default dimension
+                # names that xarray would.
+                try:
+                    dims = tuple(field_metadata['dims'])
+                except KeyError:
                     dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
                 data_arrays[scoped_key] = xarray.DataArray(
                     # TODO Once we know we have one Event Descriptor
                     # per stream we can be more efficient about this.
                     data=numpy.tile(config['data'][key],
-                                    (len(times),) + ndim * (1,)),
+                                    (len(times),) + ndim * (1,) or 1),
                     dims=('time',) + dims,
                     coords={'time': times},
                     name=key)
@@ -499,6 +491,15 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             copies of the documents.
 
         """
+        # Special case for 'delayed' since it *is* supported in the local mode
+        # of usage.
+        if fill == 'delayed':
+            raise NotImplementedError(
+                "Delayed access is not yet supported via the client--server "
+                "usage.")
+        FILL_OPTIONS = {'yes', 'no'}
+        if fill not in FILL_OPTIONS:
+            raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
         for i in range(self.npartitions):
             for name, doc in self._get_partition({'index': i, 'fill': fill}):
                 yield name, doc
@@ -572,7 +573,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 filler,
+                 get_filler,
                  entry,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
@@ -587,7 +588,11 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self.fillers = {}
+        self.fillers['yes'] = get_filler(coerce='force_numpy')
+        self.fillers['no'] = event_model.NoFiller(
+            self.fillers['yes'].handler_registry, inplace=True)
+        self.fillers['delayed'] = get_filler(coerce='delayed')
         self._entry = entry
         super().__init__(**kwargs)
 
@@ -651,7 +656,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_resource=self._get_resource,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
-                filler=self.filler,
+                fillers=self.fillers,
                 metadata={'descriptors': descriptors})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
@@ -705,12 +710,18 @@ class BlueskyRun(intake.catalog.Catalog):
         fill: {'yes', 'no'}
             If fill is 'yes', any external data referenced by Event documents
             will be filled in (e.g. images as numpy arrays). This is typically
-            the desired option for *using* the data.
+            the desired option for accessing small data.
+            If fill is 'delayed', external data will be filled in as dask
+            arrays, meaning that the I/O can be deferred until the data is
+            actually needed.
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
 
         """
+        FILL_OPTIONS = {'yes', 'no', 'delayed'}
+        if fill not in FILL_OPTIONS:
+            raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
         for i in range(self.npartitions):
             for name, doc in self.read_partition({'index': i, 'fill': fill}):
                 yield name, doc
@@ -734,7 +745,7 @@ class BlueskyRun(intake.catalog.Catalog):
         files = []
         # TODO Once event_model.Filler has a get_handler method, use that.
         try:
-            handler_class = self.filler.handler_registry[resource['spec']]
+            handler_class = self.fillers['yes'].handler_registry[resource['spec']]
         except KeyError as err:
             raise event_model.UndefinedAssetSpecification(
                 f"Resource document with uid {resource['uid']} "
@@ -744,7 +755,7 @@ class BlueskyRun(intake.catalog.Catalog):
         # Apply root_map.
         resource_path = resource['resource_path']
         root = resource.get('root', '')
-        root = self.filler.root_map.get(root, root)
+        root = self.fillers['yes'].root_map.get(root, root)
         if root:
             resource_path = os.path.join(root, resource_path)
 
@@ -763,6 +774,7 @@ class BlueskyRun(intake.catalog.Catalog):
         """
         i = partition['index']
         fill = partition['fill']
+        filler = self.fillers[fill]
         self._load()
         payload = []
         start = i * self.PARTITION_SIZE
@@ -786,7 +798,7 @@ class BlueskyRun(intake.catalog.Catalog):
                     *(self._get_event_pages(descriptor_uid=descriptor_uid)
                       for descriptor_uid in descriptor_uids)), skip, limit)
             for descriptor in self._descriptors:
-                self.filler('descriptor', descriptor)
+                filler('descriptor', descriptor)
             for event in events:
                 for key, is_filled in event['filled'].items():
                     if is_filled:
@@ -806,9 +818,8 @@ class BlueskyRun(intake.catalog.Catalog):
                             # TODO Greedily cache but lazily emit.
                             payload.append(('datum_page', datum_page))
                             datum_ids |= set(datum_page['datum_id'])
-                if fill == 'yes':
-                    self._fill(event)  # in place (for now)
-                event_page = event_model.pack_event_page(event)
+                filled_event = self._fill(filler, event)
+                event_page = event_model.pack_event_page(filled_event)
                 payload.append(('event_page', event_page))
             if i == self.npartitions - 1 and self._run_stop_doc is not None:
                 payload.append(('stop', self._run_stop_doc))
@@ -816,9 +827,10 @@ class BlueskyRun(intake.catalog.Catalog):
             doc.pop('_id', None)
         return payload
 
-    def _fill(self, event, last_datum_id=None):
+    def _fill(self, filler, event, last_datum_id=None):
         try:
-            self.filler('event', event)
+            _, filled_event = filler('event', event)
+            return filled_event
         except event_model.UnresolvableForeignKeyError as err:
             datum_id = err.key
             if datum_id == last_datum_id:
@@ -833,18 +845,18 @@ class BlueskyRun(intake.catalog.Catalog):
                 resource_uid = self._lookup_resource_for_datum(datum_id)
 
             resource = self._get_resource(uid=resource_uid)
-            self.filler('resource', resource)
+            filler('resource', resource)
             # Pre-fetch all datum for this resource.
             for datum_page in self._get_datum_pages(
                     resource_uid=resource_uid):
-                self.filler('datum_page', datum_page)
+                filler('datum_page', datum_page)
             # TODO -- When to clear the datum cache in filler?
 
             # Re-enter and try again now that the Filler has consumed the
             # missing Datum. There might be another missing Datum in this same
             # Event document (hence this re-entrant structure) or might be good
             # to go.
-            self._fill(event, last_datum_id=datum_id)
+            return self._fill(filler, event, last_datum_id=datum_id)
 
     def read(self):
         raise NotImplementedError(
@@ -914,7 +926,7 @@ class BlueskyEventStream(DataSourceMixin):
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
-                 filler,
+                 fillers,
                  metadata,
                  include=None,
                  exclude=None,
@@ -930,7 +942,7 @@ class BlueskyEventStream(DataSourceMixin):
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
-        self.filler = filler
+        self.fillers = fillers
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         self.include = include
@@ -957,7 +969,7 @@ class BlueskyEventStream(DataSourceMixin):
             stop_doc=self._run_stop_doc,
             descriptor_docs=descriptor_docs,
             get_event_pages=self._get_event_pages,
-            filler=self.filler,
+            filler=self.fillers['delayed'],
             get_resource=self._get_resource,
             lookup_resource_for_datum=self._lookup_resource_for_datum,
             get_datum_pages=self._get_datum_pages,
@@ -1015,10 +1027,7 @@ class DocumentCache(event_model.DocumentRouter):
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
-    def __init__(self, gen_func, gen_args, gen_kwargs, filler=None, **kwargs):
-
-        if filler is None:
-            filler = event_model.Filler({}, inplace=True)
+    def __init__(self, gen_func, gen_args, gen_kwargs, get_filler, **kwargs):
 
         document_cache = DocumentCache()
 
@@ -1065,7 +1074,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_resource=get_resource,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
-            filler=filler,
+            get_filler=get_filler,
             **kwargs)
 
 
@@ -1095,6 +1104,8 @@ def _transpose(in_data, keys, field):
         dd = ev[field]
         for k in keys:
             out[k][j] = dd[k]
+    for k in keys:
+        out[k] = dask.array.stack(out[k])
     return out
 
 
@@ -1308,54 +1319,34 @@ def dataarray_page_to_dataset_page(dataarray_page):
             'filled': xarray.merge(dataarray_page['filled'].values())}
 
 
-class DaskFiller(event_model.Filler):
+def coerce_dask(handler_class, filler_state):
+    # If the handler has its own delayed logic, defer to that.
+    if hasattr(handler_class, 'return_type'):
+        if handler_class.return_type['delayed']:
+            return handler_class
 
-    def __init__(self, *args, inplace=False, **kwargs):
-        if inplace:
-            raise NotImplementedError("DaskFiller inplace is not supported.")
-        # The DaskFiller will not mutate documents pass in by the user, but it
-        # will ask the base class to mutate *internal* copies in place, so we
-        # set inplace=True here, even though the user documents will never be
-        # modified in place.
-        super().__init__(*args, inplace=True, **kwargs)
+    # Otherwise, provide best-effort dask support by wrapping each datum
+    # payload in dask.array.from_delayed. This means that each datum will be
+    # one dask task---it cannot be rechunked into multiple tasks---but that
+    # may be sufficient for many handlers.
+    class Subclass(handler_class):
 
-    def event_page(self, doc):
-
-        @dask.delayed
-        def delayed_fill(event_page, key):
-            self.fill_event_page(event_page, include=key)
-            return numpy.asarray(event_page['data'][key])
-
-        descriptor = self._descriptor_cache[doc['descriptor']]
-        needs_filling = {key for key, val in descriptor['data_keys'].items()
-                         if 'external' in val}
-        filled_doc = copy.deepcopy(doc)
-
-        for key in needs_filling:
+        def __call__(self, *args, **kwargs):
+            descriptor = filler_state.descriptor
+            key = filler_state.key
             shape = extract_shape(descriptor, key)
             dtype = extract_dtype(descriptor, key)
-            filled_doc['data'][key] = array.from_delayed(
-                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
-        return filled_doc
+            load_chunk = dask.delayed(super().__call__)(*args, **kwargs)
+            return dask.array.from_delayed(load_chunk, shape=shape, dtype=dtype)
 
-    def event(self, doc):
+    return Subclass
 
-        @dask.delayed
-        def delayed_fill(event, key):
-            self.fill_event(event, include=key)
-            return numpy.asarray(event['data'][key])
 
-        descriptor = self._descriptor_cache[doc['descriptor']]
-        needs_filling = {key for key, val in descriptor['data_keys'].items()
-                         if 'external' in val}
-        filled_doc = copy.deepcopy(doc)
-
-        for key in needs_filling:
-            shape = extract_shape(descriptor, key)
-            dtype = extract_dtype(descriptor, key)
-            filled_doc['data'][key] = array.from_delayed(
-                delayed_fill(filled_doc, key), shape=shape, dtype=dtype)
-        return filled_doc
+# This adds a 'delayed' option to event_model.Filler's `coerce` parameter.
+# By adding it via plugin, we avoid adding a dask.array dependency to
+# event-model and we keep the fiddly hacks into extract_shape here in
+# databroker, a faster-moving and less fundamental library than event-model.
+event_model.register_coersion('delayed', coerce_dask)
 
 
 def extract_shape(descriptor, key):
@@ -1375,7 +1366,12 @@ def extract_shape(descriptor, key):
                 break
         else:
             raise RuntimeError(f"Could not figure out shape of {key}")
-        num_images = descriptor['configuration'][object_name]['data'].get('num_images', -1)
+        for k, v in descriptor['configuration'][object_name]['data'].items():
+            if k.endswith('num_images'):
+                num_images = v
+                break
+        else:
+            num_images = -1
         x, y, _ = data_key['shape']
         shape = (num_images, y, x)
     else:

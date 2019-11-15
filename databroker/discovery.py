@@ -53,7 +53,7 @@ class EntrypointsCatalog(Catalog):
             try:
                 self._entries[name] = EntrypointEntry(entrypoint)
             except Exception as e:
-                warings.warn(f"Failed to load {name}, {entrypoint}, {e!r}.")
+                warnings.warn(f"Failed to load {name}, {entrypoint}, {e!r}.")
 
 
 class V0Entry(CatalogEntry):

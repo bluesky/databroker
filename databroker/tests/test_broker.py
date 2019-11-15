@@ -561,7 +561,7 @@ def test_stream_name(db, RE, hw):
     assert h.fields(stream_name='secondary') == {'det2'}
 
 
-def test_handler_options(db, RE, hw):
+def test_external_access_without_handler(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
 
     RE.subscribe(db.insert)
@@ -595,7 +595,17 @@ def test_handler_options(db, RE, hw):
                 h, fields=['img'], fill=True,
                 handler_registry={'NPY_SEQ': NumpySeqHandler})
 
-    # Statefully register the handler.
+
+def test_external_access_with_handler(db, RE, hw):
+    from ophyd.sim import NumpySeqHandler
+
+    RE.subscribe(db.insert)
+    rs_uid, = RE(count([hw.img], 2))
+
+    h = db[rs_uid]
+
+    # For some db fixtures, this is already registered and is therefore a
+    # no-op.
     db.reg.register_handler('NPY_SEQ', NumpySeqHandler)
 
     EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
