@@ -5,7 +5,7 @@ import intake.catalog
 import intake.catalog.local
 import intake.source.base
 
-from .core import parse_handler_registry, discover_handlers, Entry, DaskFiller
+from .core import parse_handler_registry, discover_handlers, Entry
 from .v2 import Broker
 from mongoquery import Query
 
@@ -15,7 +15,6 @@ class BlueskyInMemoryCatalog(Broker):
 
     def __init__(self, *, handler_registry=None, root_map=None,
                  filler_class=event_model.Filler,
-                 delayed_filler_class=DaskFiller,
                  query=None, **kwargs):
         """
         This Catalog is backed by Python collections in memory.
