@@ -24,6 +24,7 @@ import warnings
 import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
+from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
 
 
@@ -637,7 +638,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
         def stream_gen(entry):
             for i in itertools.count():
-                partition = entry.read_partition({'index': i, 'fill': fill,
+                partition = entry().read_partition({'index': i, 'fill': fill,
                                                   'partition_size': 'auto'})
                 if not partition:
                     break
@@ -1013,8 +1014,8 @@ class BlueskyEventStream(DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
-    container = 'databroker-xarray'
-    name = 'bluesky-event-stream'
+   # container = 'databroker-xarray'
+    container = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
 
@@ -1181,6 +1182,12 @@ class BlueskyEventStream(DataSourceMixin):
         return intake.container.base.get_partition(self.url, self.http_args,
                                              self._source_id, self.container,
                                              partition)
+
+class RemoteBlueskyEventStream(RemoteXarray):
+    def read_partition(self, partition):
+        self._load_metadata()
+        return self._get_partition(partition)
+
 
 class DocumentCache(event_model.DocumentRouter):
     def __init__(self):
@@ -1414,6 +1421,7 @@ def parse_handler_registry(handler_registry):
 # This is needed. It determines the type of the class that you get on the
 # client side.
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
+intake.container.container_map['bluesky-event-stream'] = RemoteBlueskyEventStream
 
 
 def concat_dataarray_pages(dataarray_pages):
