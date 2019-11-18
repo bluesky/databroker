@@ -37,6 +37,7 @@ class _Entries(collections.abc.Mapping):
             get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
+            get_resources=partial(self.catalog._get_resources,uid),
             lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.

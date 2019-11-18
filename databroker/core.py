@@ -975,134 +975,134 @@ class BlueskyRun(intake.catalog.Catalog):
             "also help, if available.")
 
 
-class RemoteBlueskyEventStream(intake.catalog.base.RemoteCatalog):
-    """
-    Catalog representing one Run.
-
-    This is a client-side proxy to a BlueskyRun stored on a remote server.
-
-    Parameters
-    ----------
-    url: str
-        Address of the server
-    headers: dict
-        HTTP headers to sue in calls
-    name: str
-        handle to reference this data
-    parameters: dict
-        To pass to the server when it instantiates the data source
-    metadata: dict
-        Additional info
-    kwargs: ignored
-    """
-    name = 'bluesky-run'
-
-    def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
-        self.url = url
-        self.name = name
-        self.parameters = parameters
-        self.http_args = http_args
-        self._source_id = None
-        self.metadata = metadata or {}
-        response = self._get_source_id()
-        self.bag = None
-        self._source_id = response['source_id']
-        super().__init__(url=url, http_args=http_args, name=name,
-                         metadata=metadata,
-                         source_id=self._source_id)
-        self.npartitions = response['npartitions']
-        self.metadata = response['metadata']
-        self._schema = intake.source.base.Schema(
-            datashape=None, dtype=None,
-            shape=self.shape,
-            npartitions=self.npartitions,
-            metadata=self.metadata)
-
-    def _get_source_id(self):
-        if self._source_id is None:
-            payload = dict(action='open', name=self.name,
-                           parameters=self.parameters)
-            req = requests.post(urljoin(self.url, '/v1/source'),
-                                data=msgpack.packb(payload, use_bin_type=True),
-                                **self.http_args)
-            req.raise_for_status()
-            response = msgpack.unpackb(req.content, **unpack_kwargs)
-            return response
-
-    def _load_metadata(self):
-        return self._schema
-
-    def _get_partition(self, partition):
-        return intake.container.base.get_partition(self.url, self.http_args,
-                                             self._source_id, self.container,
-                                             partition)
-    def read(self):
-        raise NotImplementedError(
-            "Reading the BlueskyRun itself is not supported. Instead read one "
-            "its entries, representing individual Event Streams.")
-
-    def to_dask(self):
-        raise NotImplementedError(
-            "Reading the BlueskyRun itself is not supported. Instead read one "
-            "its entries, representing individual Event Streams.")
-
-    def _close(self):
-        self.bag = None
-
-    def canonical(self, *, fill, strict_order=False):
-        """
-        Yields documents from this Run in chronological order.
-
-        Parameters
-        ----------
-        fill: {'yes', 'no'}
-            If fill is 'yes', any external data referenced by Event documents
-            will be filled in (e.g. images as numpy arrays). This is typically
-            the desired option for *using* the data.
-            If fill is 'no', the Event documents will contain foreign keys as
-            placeholders for the data. This option is useful for exporting
-            copies of the documents.
-        strict_order : bool
-            documents are strictly yielded in ascending time order.
-        """
-        def stream_gen(entry):
-            for i in itertools.count():
-                partition = entry.read_partition({'index': i, 'fill': fill,
-                                                  'partition_size': 'auto'})
-                if not partition:
-                    break
-                yield from partition
-
-        streams = [stream_gen(entry) for entry in self._entries.values()]
-
-        yield ('start', self.metadata['start'])
-        yield from interlace(*streams, strict_order=strict_order)
-        yield ('stop', self.metadata['stop'])
-
-    def read_canonical(self):
-        warnings.warn(
-            "The method read_canonical has been renamed canonical. This alias "
-            "may be removed in a future release.")
-        yield from self.canonical(fill='yes')
-
-    def __repr__(self):
-        self._load()
-        try:
-            start = self.metadata['start']
-            stop = self.metadata['stop']
-            out = (f"BlueskyRun\n"
-                   f"  uid={start['uid']!r}\n"
-                   f"  exit_status={stop.get('exit_status')!r}\n"
-                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
-                   f"  Streams:\n")
-            for stream_name in self:
-                out += f"    * {stream_name}\n"
-        except Exception as exc:
-            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
-        return out
-
-    def search(self):
-        raise NotImplementedError("Cannot search within one run.")
+#class RemoteBlueskyEventStream(intake.catalog.base.RemoteCatalog):
+#    """
+#    Catalog representing one Run.
+#
+#    This is a client-side proxy to a BlueskyRun stored on a remote server.
+#
+#    Parameters
+#    ----------
+#    url: str
+#        Address of the server
+#    headers: dict
+#        HTTP headers to sue in calls
+#    name: str
+#        handle to reference this data
+#    parameters: dict
+#        To pass to the server when it instantiates the data source
+#    metadata: dict
+#        Additional info
+#    kwargs: ignored
+#    """
+#    name = 'bluesky-run'
+#
+#    def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
+#        self.url = url
+#        self.name = name
+#        self.parameters = parameters
+#        self.http_args = http_args
+#        self._source_id = None
+#        self.metadata = metadata or {}
+#        response = self._get_source_id()
+#        self.bag = None
+#        self._source_id = response['source_id']
+#        super().__init__(url=url, http_args=http_args, name=name,
+#                         metadata=metadata,
+#                         source_id=self._source_id)
+#        self.npartitions = response['npartitions']
+#        self.metadata = response['metadata']
+#        self._schema = intake.source.base.Schema(
+#            datashape=None, dtype=None,
+#            shape=self.shape,
+#            npartitions=self.npartitions,
+#            metadata=self.metadata)
+#
+#    def _get_source_id(self):
+#        if self._source_id is None:
+#            payload = dict(action='open', name=self.name,
+#                           parameters=self.parameters)
+#            req = requests.post(urljoin(self.url, '/v1/source'),
+#                                data=msgpack.packb(payload, use_bin_type=True),
+#                                **self.http_args)
+#            req.raise_for_status()
+#            response = msgpack.unpackb(req.content, **unpack_kwargs)
+#            return response
+#
+#    def _load_metadata(self):
+#        return self._schema
+#
+#    def _get_partition(self, partition):
+#        return intake.container.base.get_partition(self.url, self.http_args,
+#                                             self._source_id, self.container,
+#                                             partition)
+#    def read(self):
+#        raise NotImplementedError(
+#            "Reading the BlueskyRun itself is not supported. Instead read one "
+#            "its entries, representing individual Event Streams.")
+#
+#    def to_dask(self):
+#        raise NotImplementedError(
+#            "Reading the BlueskyRun itself is not supported. Instead read one "
+#            "its entries, representing individual Event Streams.")
+#
+#    def _close(self):
+#        self.bag = None
+#
+#    def canonical(self, *, fill, strict_order=False):
+#        """
+#        Yields documents from this Run in chronological order.
+#
+#        Parameters
+#        ----------
+#        fill: {'yes', 'no'}
+#            If fill is 'yes', any external data referenced by Event documents
+#            will be filled in (e.g. images as numpy arrays). This is typically
+#            the desired option for *using* the data.
+#            If fill is 'no', the Event documents will contain foreign keys as
+#            placeholders for the data. This option is useful for exporting
+#            copies of the documents.
+#        strict_order : bool
+#            documents are strictly yielded in ascending time order.
+#        """
+#        def stream_gen(entry):
+#            for i in itertools.count():
+#                partition = entry.read_partition({'index': i, 'fill': fill,
+#                                                  'partition_size': 'auto'})
+#                if not partition:
+#                    break
+#                yield from partition
+#
+#        streams = [stream_gen(entry) for entry in self._entries.values()]
+#
+#        yield ('start', self.metadata['start'])
+#        yield from interlace(*streams, strict_order=strict_order)
+#        yield ('stop', self.metadata['stop'])
+#
+#    def read_canonical(self):
+#        warnings.warn(
+#            "The method read_canonical has been renamed canonical. This alias "
+#            "may be removed in a future release.")
+#        yield from self.canonical(fill='yes')
+#
+#    def __repr__(self):
+#        self._load()
+#        try:
+#            start = self.metadata['start']
+#            stop = self.metadata['stop']
+#            out = (f"BlueskyRun\n"
+#                   f"  uid={start['uid']!r}\n"
+#                   f"  exit_status={stop.get('exit_status')!r}\n"
+#                   f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
+#                   f"  Streams:\n")
+#            for stream_name in self:
+#                out += f"    * {stream_name}\n"
+#        except Exception as exc:
+#            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
+#        return out
+#
+#    def search(self):
+#        raise NotImplementedError("Cannot search within one run.")
 
 
 class BlueskyEventStream(DataSourceMixin):
@@ -1541,7 +1541,8 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-# TODO Do we actually need this?
+# This is needed. It determines the type of the class that you get on the
+# client side.
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 
 

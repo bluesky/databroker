@@ -228,7 +228,6 @@ class BlueskyMongoCatalog(Broker):
         self._query = query or {}
         self._root_map = root_map
         self._filler_class = filler_class
-        self._delayed_filler_class = delayed_filler_class
 
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,
