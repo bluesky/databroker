@@ -146,6 +146,7 @@ class PartitionIndexError(IndexError):
 class Entry(intake.catalog.local.LocalCatalogEntry):
     def __init__(self, **kwargs):
         # This might never come up, but just to be safe....
+        print('new entry')
         if 'entry' in kwargs['args']:
             raise TypeError("The args cannot contain 'entry'. It is reserved.")
         super().__init__(**kwargs)
@@ -161,21 +162,17 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         open_args['entry'] = self
         return plugin, open_args
 
-    def cache_clear(self):
-        self.__cache.clear()
+    def _get_cached(self, **kwargs):
+        return super().get(**kwargs)
 
     def get(self, **kwargs):
-        token = tokenize(OrderedDict(kwargs))
         try:
-            datasource = self.__cache[token]
-            logger.debug(
-                "Entry cache found %s named %r",
-                datasource.__class__.__name__,
-                datasource.name)
-        except KeyError:
-            datasource = super().get(**kwargs)
-            self.__cache[token] = datasource
-        return datasource
+            return self._get_cached(**kwargs)
+        except TypeError:
+            # The lru_cache cannot help us if one of the user parameters
+            # is not hashable.
+            return self.get(**kwargs)
+        return super().get(**kwargs)
 
 
 class StreamEntry(intake.catalog.local.LocalCatalogEntry):
