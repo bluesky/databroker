@@ -10,7 +10,7 @@ mongobox
 ophyd
 pathlib
 pyqt5
-pytest >=3.9
+pytest >=4.4
 pytest-rerunfailures
 pytest-env
 sphinx
