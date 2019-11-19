@@ -27,6 +27,12 @@ from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
 
+import logging
+logger = logging.getLogger('intake')
+logging.basicConfig(level=logging.DEBUG,
+                    filename='/home/gbischof/intake.log',
+                    filemode='w')
+
 
 class PartitionIndexError(IndexError):
     ...
@@ -45,7 +51,6 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # enables the driver instance to know which Entry created it.
         open_args['entry'] = self
         return plugin, open_args
-
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -842,7 +847,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 driver='databroker.core.BlueskyEventStream',
                 direct_access='forbid',
                 args=args,
-                cache=None,  # ???
+                cache=[self._cache],  # This doesn't seem to do anything
                 metadata={'descriptors': descriptors,
                           'resources': self._resources},
                 catalog_dir=None,
@@ -1051,7 +1056,7 @@ class BlueskyEventStream(DataSourceMixin):
         self.include = include
         self.exclude = exclude
 
-        super().__init__(metadata=metadata)
+        super().__init__(metadata=metadata, **kwargs)
 
         self._run_stop_doc = self._get_run_stop()
         self._run_start_doc = self._get_run_start()
@@ -1103,6 +1108,17 @@ class BlueskyEventStream(DataSourceMixin):
         # Implemented just so we can put in a docstring
         return super().to_dask()
 
+    def _load_partitions(self, partition_size):
+        datum_gens = [self._get_datum_pages(resource['uid'])
+                      for resource in self._resources]
+        event_gens = [list(self._get_event_pages(descriptor['uid']))
+                      for descriptor in self._descriptors]
+        self._partitions = list(
+            unfilled_partitions(self._run_start_doc, self._descriptors,
+                                self._resources, self._run_stop_doc,
+                                datum_gens, event_gens, partition_size))
+        self.npartitions = len(self._partitions)
+
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
@@ -1125,19 +1141,12 @@ class BlueskyEventStream(DataSourceMixin):
         else:
             raise ValueError(f"Invalid partition_size {partition['partition_size']}")
 
-        if i == 0:
-            datum_gens = [self._get_datum_pages(resource['uid'])
-                          for resource in self._resources]
-            event_gens = [list(self._get_event_pages(descriptor['uid']))
-                          for descriptor in self._descriptors]
-            self._partitions = list(
-                unfilled_partitions(self._run_start_doc, self._descriptors,
-                                    self._resources, self._run_stop_doc,
-                                    datum_gens, event_gens, partition_size))
-
-            self.npartitions = len(self._partitions)
+        if self._partitions is None:
+            self._load_partitions(partition_size)
+            logger.info(f"partition loading {id(self)}")
         try:
             try:
+                logger.info(f"partition: {partition}")
                 return [filler(name, doc) for name, doc in self._partitions[i]]
             except event_model.UnresolvableForeignKeyError as err:
                 # Slow path: This error should only happen if there is an old style
