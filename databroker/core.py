@@ -27,12 +27,6 @@ from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
 
-import logging
-logger = logging.getLogger('intake')
-logging.basicConfig(level=logging.DEBUG,
-                    filename='/home/gbischof/intake.log',
-                    filemode='w')
-
 
 class PartitionIndexError(IndexError):
     ...
@@ -1143,10 +1137,8 @@ class BlueskyEventStream(DataSourceMixin):
 
         if self._partitions is None:
             self._load_partitions(partition_size)
-            logger.info(f"partition loading {id(self)}")
         try:
             try:
-                logger.info(f"partition: {partition}")
                 return [filler(name, doc) for name, doc in self._partitions[i]]
             except event_model.UnresolvableForeignKeyError as err:
                 # Slow path: This error should only happen if there is an old style
