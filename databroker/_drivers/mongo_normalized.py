@@ -1,4 +1,5 @@
 import collections.abc
+import functools
 import event_model
 from functools import partial
 import intake
@@ -18,6 +19,7 @@ class _Entries(collections.abc.Mapping):
     "Mock the dict interface around a MongoDB query result."
     def __init__(self, catalog):
         self.catalog = catalog
+        self._cache = {}
 
     def _doc_to_entry(self, run_start_doc):
         uid = run_start_doc['uid']
@@ -116,7 +118,14 @@ class _Entries(collections.abc.Mapping):
                     raise KeyError(f"No run with scan_id={N}")
         if run_start_doc is None:
             raise KeyError(name)
-        entry = self._doc_to_entry(run_start_doc)
+        uid = run_start_doc['uid']
+        try:
+            entry = self._cache[uid]
+            print('cache hit')
+        except KeyError:
+            entry = self._doc_to_entry(run_start_doc)
+            self._cache[uid] = entry
+            print('doc to entry hit')
         # The user has requested one specific Entry. In order to give them a
         # more useful object, 'get' the Entry for them. Note that if they are
         # expecting an Entry and try to call ``()`` or ``.get()``, that will

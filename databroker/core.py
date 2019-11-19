@@ -85,6 +85,7 @@ class PartitionIndexError(IndexError):
 class Entry(intake.catalog.local.LocalCatalogEntry):
     def __init__(self, **kwargs):
         # This might never come up, but just to be safe....
+        print('new entry')
         if 'entry' in kwargs['args']:
             raise TypeError("The args cannot contain 'entry'. It is reserved.")
         super().__init__(**kwargs)
@@ -95,6 +96,19 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # enables the driver instance to know which Entry created it.
         open_args['entry'] = self
         return plugin, open_args
+
+    @functools.lru_cache()
+    def _get_cached(self, **kwargs):
+        return super().get(**kwargs)
+
+    def get(self, **kwargs):
+        try:
+            return self._get_cached(**kwargs)
+        except TypeError:
+            # The lru_cache cannot help us if one of the user parameters
+            # is not hashable.
+            return self.get(**kwargs)
+        return super().get(**kwargs)
 
 
 class StreamEntry(intake.catalog.local.LocalCatalogEntry):
@@ -889,6 +903,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  entry,
                  transforms,
                  **kwargs):
+        print('BlueskyRun.__init__')
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self.urlpath = ''  # TODO Not sure why I had to add this.
