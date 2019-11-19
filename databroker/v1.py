@@ -325,6 +325,7 @@ class Broker:
     def get_documents(self,
                       headers, stream_name=ALL, fields=None, fill=False,
                       handler_registry=None):
+        print("DOCCCCCC", handler_registry)
         """
         Get all documents from one or more runs.
 
@@ -434,6 +435,7 @@ class Broker:
     def get_events(self,
                    headers, stream_name='primary', fields=None, fill=False,
                    handler_registry=None):
+        print("HHHHHHHH", handler_registry)
         """
         Get Event documents from one or more runs.
 

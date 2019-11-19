@@ -74,10 +74,6 @@ class BlueskyInMemoryCatalog(Broker):
         return self._filler_class(
                 self._handler_registry, root_map=self._root_map, inplace=False)
 
-    def _get_delayed_filler(self):
-        return self._delayed_filler_class(
-                self._handler_registry, root_map=self._root_map, inplace=False)
-
     def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
         if not Query(self._query).match(start_doc):
             return
