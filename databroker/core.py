@@ -245,7 +245,7 @@ def interlace_event_page_chunks(*gens, chunk_size):
         yield val
 
 
-def interlace(*gens, strict_order=False):
+def interlace(*gens, strict_order=True):
     """
     Take event_page generators and interlace their results by timestamp.
 
@@ -255,8 +255,9 @@ def interlace(*gens, strict_order=False):
     ----------
     gens : generators
         Generators of (name, dict) pairs where the dict contains a 'time' key.
-    strict_order : bool
-        documents are strictly yielded in ascending time order.
+    strict_order : bool, optional
+        documents are strictly yielded in ascending time order. Defaults to
+        True.
     Yields
     ------
     val : tuple
@@ -694,6 +695,8 @@ class BlueskyRun(intake.catalog.Catalog):
         Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
+    get_resources: callable
+        Expected signature ``get_resources() -> Resources``
     lookup_resource_for_datum : callable
         Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
@@ -841,7 +844,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 driver='databroker.core.BlueskyEventStream',
                 direct_access='forbid',
                 args=args,
-                cache=[self._cache],  # This doesn't seem to do anything
+                cache=None,  # What does this do?
                 metadata={'descriptors': descriptors,
                           'resources': self._resources},
                 catalog_dir=None,

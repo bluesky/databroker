@@ -238,10 +238,6 @@ class BlueskyMongoCatalog(Broker):
         return self._filler_class(
                 self._handler_registry, root_map=self._root_map, inplace=False)
 
-    def _get_delayed_filler(self):
-        return self._delayed_filler_class(
-                self._handler_registry, root_map=self._root_map, inplace=False)
-
     def _get_event_pages(self, descriptor_uid, skip=0, limit=None):
         if limit is None:
             limit = maxsize
