@@ -44,18 +44,18 @@ class _Entries(collections.abc.Mapping):
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
             get_filler=self.catalog._get_filler)
         return Entry(
-                name=run_start_doc['uid'],
-                description={},  # TODO
-                driver='databroker.core.BlueskyRun',
-                direct_access='forbid',  # ???
-                args=args,
-                cache=None,  # ???
-                parameters=[],
-                metadata=entry_metadata,
-                catalog_dir=None,
-                getenv=True,
-                getshell=True,
-                catalog=self.catalog)
+            name=run_start_doc['uid'],
+            description={},  # TODO
+            driver='databroker.core.BlueskyRun',
+            direct_access='forbid',  # ???
+            args=args,
+            cache=None,  # ???
+            parameters=[],
+            metadata=entry_metadata,
+            catalog_dir=None,
+            getenv=True,
+            getshell=True,
+            catalog=self.catalog)
 
     def __iter__(self):
         cursor = self.catalog._run_start_collection.find(
