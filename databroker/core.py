@@ -622,7 +622,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-        strict_order : bool
+        strict_order : bool, optional
             documents are strictly yielded in ascending time order.
         """
         # Special case for 'delayed' since it *is* supported in the local mode
