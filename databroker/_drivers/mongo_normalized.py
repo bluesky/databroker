@@ -210,10 +210,6 @@ class BlueskyMongoCatalog(Broker):
                          filler_class=filler_class,
                          **kwargs)
 
-    def _get_filler(self):
-        return self._filler_class(
-                self._handler_registry, root_map=self._root_map, inplace=False)
-
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
             {'run_start': run_start_uid})
