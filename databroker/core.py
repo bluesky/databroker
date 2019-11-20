@@ -609,7 +609,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self, *, fill, strict_order=False):
+    def canonical(self, *, fill, strict_order=True):
         """
         Yields documents from this Run in chronological order.
 
@@ -879,7 +879,7 @@ class BlueskyRun(intake.catalog.Catalog):
             # before giving up.
             return getattr(self._entry, key)
 
-    def canonical(self, *, fill, strict_order=False):
+    def canonical(self, *, fill, strict_order=True):
         """
         Yields documents from this Run in chronological order.
 
@@ -895,9 +895,9 @@ class BlueskyRun(intake.catalog.Catalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-        strict_order : bool
-            Documents are strictly yielded in ascending time order.
-
+        strict_order : bool, optional
+            Documents are strictly yielded in ascending time order. This
+            defaults to True.
         """
         FILL_OPTIONS = {'yes', 'no', 'delayed'}
         if fill not in FILL_OPTIONS:
@@ -1013,7 +1013,6 @@ class BlueskyEventStream(DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
-   # container = 'databroker-xarray'
     container = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
@@ -1185,6 +1184,13 @@ class BlueskyEventStream(DataSourceMixin):
                                              partition)
 
 class RemoteBlueskyEventStream(RemoteXarray):
+    # Because of the container_map, when working in remote mode, when accessing
+    # a BlueskyRun or BlueskyEventStream, you will get a RemoteBlueskyRun or a
+    # RemoteBlueskyEventStream on the client side. Canonical of the RemoteBlueskyRun,
+    # calls read_partition of the RemoteBlueskyEventStream, where there
+    # partition argument is a dict. The inherited read_partition method only
+    # accepts an integer for the partition argument, so read_partition needs to
+    # be overridden.
     def read_partition(self, partition):
         self._load_metadata()
         return self._get_partition(partition)
