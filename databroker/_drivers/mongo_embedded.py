@@ -76,6 +76,7 @@ class _Entries(collections.abc.Mapping):
             get_event_pages=self.catalog._get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
+            get_resources=partial(get_header_field, 'resources'),
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
             get_filler=self.catalog._get_filler)
@@ -225,6 +226,8 @@ class BlueskyMongoCatalog(Broker):
         else:
             self._db = datastore_db
         self._query = query or {}
+        self._root_map = root_map
+        self._filler_class = filler_class
 
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,

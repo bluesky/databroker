@@ -24,6 +24,12 @@ import warnings
 import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
+from .intake_xarray_core.xarray_container import RemoteXarray
+from collections import deque
+
+
+class PartitionIndexError(IndexError):
+    ...
 
 
 class Entry(intake.catalog.local.LocalCatalogEntry):
@@ -39,7 +45,6 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # enables the driver instance to know which Entry created it.
         open_args['entry'] = self
         return plugin, open_args
-
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -116,6 +121,7 @@ def to_event_pages(get_event_cursor, page_size):
     -------
     get_event_pages : function
     """
+
     @functools.wraps(get_event_cursor)
     def get_event_pages(*args, **kwargs):
         event_cursor = get_event_cursor(*args, **kwargs)
@@ -125,6 +131,7 @@ def to_event_pages(get_event_cursor, page_size):
                 yield event_model.pack_event_page(*result)
             else:
                 break
+
     return get_event_pages
 
 
@@ -142,6 +149,7 @@ def to_datum_pages(get_datum_cursor, page_size):
     -------
     get_datum_pages : function
     """
+
     @functools.wraps(get_datum_cursor)
     def get_datum_pages(*args, **kwargs):
         datum_cursor = get_datum_cursor(*args, **kwargs)
@@ -151,6 +159,7 @@ def to_datum_pages(get_datum_cursor, page_size):
                 yield event_model.pack_datum_page(*result)
             else:
                 break
+
     return get_datum_pages
 
 
@@ -185,7 +194,7 @@ def interlace_event_pages(*gens):
         The next (name, dict) pair in time order
 
     """
-    iters = [iter(flatten_event_page_gen(g)) for g in gens]
+    iters = [iter(g) for g in gens]
     heap = []
 
     def safe_next(indx):
@@ -193,7 +202,7 @@ def interlace_event_pages(*gens):
             val = next(iters[indx])
         except StopIteration:
             return
-        heapq.heappush(heap, (val['time'], indx, val))
+        heapq.heappush(heap, (val['time'][0], indx, val))
     for i in range(len(iters)):
         safe_next(i)
     while heap:
@@ -234,6 +243,131 @@ def interlace_event_page_chunks(*gens, chunk_size):
     while heap:
         _, indx, val = heapq.heappop(heap)
         yield val
+
+
+def interlace(*gens, strict_order=True):
+    """
+    Take event_page generators and interlace their results by timestamp.
+
+    This is a modification of https://github.com/bluesky/databroker/pull/378/
+
+    Parameters
+    ----------
+    gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    strict_order : bool, optional
+        documents are strictly yielded in ascending time order. Defaults to
+        True.
+    Yields
+    ------
+    val : tuple
+        The next (name, dict) pair in time order
+
+    """
+    iters = [iter(g) for g in gens]
+    heap = []
+    fifo = deque()
+
+    # Gets the next event/event_page from the iterator iters[index], while
+    # appending documents that are not events/event_pages to the other_docs
+    # deque.
+    def get_next(index):
+        while True:
+            try:
+                name, doc = next(iters[index])
+            except StopIteration:
+                return
+            if name == 'event':
+                heapq.heappush(heap, (doc['time'], index, ('event', doc)))
+                return
+            if name == 'event_page':
+                if strict_order:
+                    for event in event_model.unpack_event_page(doc):
+                        heapq.heappush(heap, (event['time'], index, ('event', event)))
+                    return
+                else:
+                    heapq.heappush(heap, (doc['time'][0], index, (name, doc)))
+                    return
+            else:
+                if name not in ['start', 'stop']:
+                    fifo.append((name, doc))
+
+    # Put the next event/event_page from each generator in the heap.
+    for i in range(len(iters)):
+        get_next(i)
+
+    # First yield docs that are not events or event pages from the fifo queue,
+    # and then yield from the heap.  We can improve this by keeping a count of
+    # the number of documents from each stream in the heap, and only calling
+    # get_next when the count is 0. As is the heap could potentially get very
+    # large.
+    while heap:
+        while fifo:
+            yield fifo.popleft()
+        _, index, doc = heapq.heappop(heap)
+        yield doc
+        get_next(index)
+
+    # Yield any remaining items in the fifo queue.
+    while fifo:
+        yield fifo.popleft()
+
+
+def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
+                        event_gens, partition_size):
+    """
+    Return a Bluesky run, in order, packed into partitions.
+
+    Parameters
+    ----------
+    start : dict
+        Bluesky run_start document
+    descriptors: list
+        List of Bluesky descriptor documents
+    resources: list
+        List of Bluesky resource documents
+    stop: dict
+        Bluesky run_stop document
+    datum_gens : generators
+        Generators of datum_pages.
+    event_gens : generators
+        Generators of (name, dict) pairs where the dict contains a 'time' key.
+    partition_size : integer
+        Size of partitions to yield
+    chunk_size : integer
+        Size of pages to yield
+
+    Yields
+    ------
+    partition : list
+        List of lists of (name, dict) pair in time order
+    """
+    # The first partition is the "header"
+    yield ([('start', start)]
+          + [('descriptor', doc) for doc in descriptors]
+          + [('resource', doc) for doc in resources])
+
+    # Use rechunk datum pages to make them into pages of size "partition_size"
+    # and yield one page per partition.
+    for datum_gen in datum_gens:
+        yield [('datum_page', datum_page) for datum_page in
+               event_model.rechunk_datum_pages(datum_gen, partition_size)]
+
+    # Rechunk the event pages and interlace them in timestamp order, then pack
+    # them into a partition.
+    count = 0
+    partition = []
+    for event_page in interlace_event_pages(*event_gens):
+        partition.append(('event_page', event_page))
+        count += 1
+        if count == partition_size:
+            yield partition
+            count = 0
+            partition = []
+
+    # Add the stop document onto the last partition.
+    partition.append(('stop', stop))
+    yield partition
 
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
@@ -280,7 +414,6 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     if include and exclude:
         raise ValueError(
             "The parameters `include` and `exclude` are mutually exclusive.")
-
     # Data keys must not change within one stream, so we can safely sample
     # just the first Event Descriptor.
     if descriptor_docs:
@@ -461,8 +594,9 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
     def _get_partition(self, partition):
         return intake.container.base.get_partition(self.url, self.http_args,
-                                             self._source_id, self.container,
-                                             partition)
+                                                   self._source_id, self.container,
+                                                   partition)
+
     def read(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
@@ -476,7 +610,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self, *, fill):
+    def canonical(self, *, fill, strict_order=True):
         """
         Yields documents from this Run in chronological order.
 
@@ -489,7 +623,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-
+        strict_order : bool, optional
+            documents are strictly yielded in ascending time order.
         """
         # Special case for 'delayed' since it *is* supported in the local mode
         # of usage.
@@ -500,9 +635,20 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         FILL_OPTIONS = {'yes', 'no'}
         if fill not in FILL_OPTIONS:
             raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
-        for i in range(self.npartitions):
-            for name, doc in self._get_partition({'index': i, 'fill': fill}):
-                yield name, doc
+
+        def stream_gen(entry):
+            for i in itertools.count():
+                partition = entry().read_partition({'index': i, 'fill': fill,
+                                                  'partition_size': 'auto'})
+                if not partition:
+                    break
+                yield from partition
+
+        streams = [stream_gen(entry) for entry in self._entries.values()]
+
+        yield ('start', self.metadata['start'])
+        yield from interlace(*streams, strict_order=strict_order)
+        yield ('stop', self.metadata['stop'])
 
     def read_canonical(self):
         warnings.warn(
@@ -549,15 +695,47 @@ class BlueskyRun(intake.catalog.Catalog):
         Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
+    get_resources: callable
+        Expected signature ``get_resources() -> Resources``
     lookup_resource_for_datum : callable
         Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
-    filler : event_model.Filler
     **kwargs :
         Additional keyword arguments are passed through to the base class,
         Catalog.
+    handler_registry : dict, optional
+        This is passed to the Filler or whatever class is given in the
+        filler_class parametr below.
+
+        Maps each 'spec' (a string identifying a given type or external
+        resource) to a handler class.
+
+        A 'handler class' may be any callable with the signature::
+
+            handler_class(resource_path, root, **resource_kwargs)
+
+        It is expected to return an object, a 'handler instance', which is also
+        callable and has the following signature::
+
+            handler_instance(**datum_kwargs)
+
+        As the names 'handler class' and 'handler instance' suggest, this is
+        typically implemented using a class that implements ``__init__`` and
+        ``__call__``, with the respective signatures. But in general it may be
+        any callable-that-returns-a-callable.
+    root_map: dict, optional
+        This is passed to Filler or whatever class is given in the filler_class
+        parameter below.
+
+        str -> str mapping to account for temporarily moved/copied/remounted
+        files.  Any resources which have a ``root`` in ``root_map`` will be
+        loaded using the mapped ``root``.
+    filler_class: type
+        This is Filler by default. It can be a Filler subclass,
+        ``functools.partial(Filler, ...)``, or any class that provides the same
+        methods as ``DocumentRouter``.
     """
     container = 'bluesky-run'
     version = '0.0.1'
@@ -571,6 +749,7 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_event_pages,
                  get_event_count,
                  get_resource,
+                 get_resources,
                  lookup_resource_for_datum,
                  get_datum_pages,
                  get_filler,
@@ -586,6 +765,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
         self._get_resource = get_resource
+        self._get_resources = get_resources
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.fillers = {}
@@ -613,10 +793,10 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_stop_doc = self._get_run_stop()
         self._run_start_doc = self._get_run_start()
+        self._run_stop_doc = self._get_run_stop()
         self._descriptors = self._get_event_descriptors()
-        self._offset = len(self._descriptors) + 1
+        self._resources = self._get_resources() or []
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -626,7 +806,6 @@ class BlueskyRun(intake.catalog.Catalog):
         for doc in self._descriptors:
             count += self._get_event_count(doc['uid'])
         count += (self._run_stop_doc is not None)
-        self.npartitions = int(numpy.ceil(count / self.PARTITION_SIZE))
 
         self._schema = intake.source.base.Schema(
             datashape=None,
@@ -657,15 +836,17 @@ class BlueskyRun(intake.catalog.Catalog):
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
                 fillers=self.fillers,
-                metadata={'descriptors': descriptors})
+                metadata={'descriptors': descriptors,
+                          'resources': self._resources})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
                 driver='databroker.core.BlueskyEventStream',
                 direct_access='forbid',
                 args=args,
-                cache=None,  # ???
-                metadata={'descriptors': descriptors},
+                cache=None,  # What does this do?
+                metadata={'descriptors': descriptors,
+                          'resources': self._resources},
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
@@ -701,7 +882,7 @@ class BlueskyRun(intake.catalog.Catalog):
             # before giving up.
             return getattr(self._entry, key)
 
-    def canonical(self, *, fill):
+    def canonical(self, *, fill, strict_order=True):
         """
         Yields documents from this Run in chronological order.
 
@@ -717,14 +898,27 @@ class BlueskyRun(intake.catalog.Catalog):
             If fill is 'no', the Event documents will contain foreign keys as
             placeholders for the data. This option is useful for exporting
             copies of the documents.
-
+        strict_order : bool, optional
+            Documents are strictly yielded in ascending time order. This
+            defaults to True.
         """
         FILL_OPTIONS = {'yes', 'no', 'delayed'}
         if fill not in FILL_OPTIONS:
             raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
-        for i in range(self.npartitions):
-            for name, doc in self.read_partition({'index': i, 'fill': fill}):
-                yield name, doc
+
+        def stream_gen(entry):
+            for i in itertools.count():
+                partition = entry.read_partition({'index': i, 'fill': fill,
+                                                  'partition_size': 'auto'})
+                if not partition:
+                    break
+                yield from partition
+
+        streams = [stream_gen(entry) for entry in self._entries.values()]
+
+        yield ('start', self.metadata['start'])
+        yield from interlace(*streams, strict_order=strict_order)
+        yield ('stop', self.metadata['stop'])
 
     def read_canonical(self):
         warnings.warn(
@@ -769,95 +963,6 @@ class BlueskyRun(intake.catalog.Catalog):
         files.extend(handler.get_file_list(datum_kwarg_gen()))
         return files
 
-    def read_partition(self, partition):
-        """Fetch one chunk of documents.
-        """
-        i = partition['index']
-        fill = partition['fill']
-        filler = self.fillers[fill]
-        self._load()
-        payload = []
-        start = i * self.PARTITION_SIZE
-        stop = (1 + i) * self.PARTITION_SIZE
-        if start < self._offset:
-            payload.extend(
-                itertools.islice(
-                    itertools.chain(
-                        (('start', self._get_run_start()),),
-                        (('descriptor', doc) for doc in self._descriptors)),
-                    start,
-                    stop))
-        descriptor_uids = [doc['uid'] for doc in self._descriptors]
-        skip = max(0, start - len(payload))
-        limit = stop - start - len(payload)
-        # print('start, stop, skip, limit', start, stop, skip, limit)
-        datum_ids = set()
-        if limit > 0:
-
-            events = itertools.islice(interlace_event_pages(
-                    *(self._get_event_pages(descriptor_uid=descriptor_uid)
-                      for descriptor_uid in descriptor_uids)), skip, limit)
-            for descriptor in self._descriptors:
-                filler('descriptor', descriptor)
-            for event in events:
-                for key, is_filled in event['filled'].items():
-                    if is_filled:
-                        # A filled Event has the datum_id rotated into 'filled'.
-                        datum_id = event['filled'][key]
-                    else:
-                        # A unfilled Event has the datum_id in 'data'.
-                        datum_id = event['data'][key]
-                    if datum_id not in datum_ids:
-                        if '/' in datum_id:
-                            resource_uid, _ = datum_id.split('/', 1)
-                        else:
-                            resource_uid = self._lookup_resource_for_datum(datum_id)
-                        resource = self._get_resource(uid=resource_uid)
-                        payload.append(('resource', resource))
-                        for datum_page in self._get_datum_pages(resource_uid):
-                            # TODO Greedily cache but lazily emit.
-                            payload.append(('datum_page', datum_page))
-                            datum_ids |= set(datum_page['datum_id'])
-                filled_event = self._fill(filler, event)
-                event_page = event_model.pack_event_page(filled_event)
-                payload.append(('event_page', event_page))
-            if i == self.npartitions - 1 and self._run_stop_doc is not None:
-                payload.append(('stop', self._run_stop_doc))
-        for _, doc in payload:
-            doc.pop('_id', None)
-        return payload
-
-    def _fill(self, filler, event, last_datum_id=None):
-        try:
-            _, filled_event = filler('event', event)
-            return filled_event
-        except event_model.UnresolvableForeignKeyError as err:
-            datum_id = err.key
-            if datum_id == last_datum_id:
-                # We tried to fetch this Datum on the last trip
-                # trip through this method, and apparently it did not
-                # work. We are in an infinite loop. Bail!
-                raise
-
-            if '/' in datum_id:
-                resource_uid, _ = datum_id.split('/', 1)
-            else:
-                resource_uid = self._lookup_resource_for_datum(datum_id)
-
-            resource = self._get_resource(uid=resource_uid)
-            filler('resource', resource)
-            # Pre-fetch all datum for this resource.
-            for datum_page in self._get_datum_pages(
-                    resource_uid=resource_uid):
-                filler('datum_page', datum_page)
-            # TODO -- When to clear the datum cache in filler?
-
-            # Re-enter and try again now that the Filler has consumed the
-            # missing Datum. There might be another missing Datum in this same
-            # Event document (hence this re-entrant structure) or might be good
-            # to go.
-            return self._fill(filler, event, last_datum_id=datum_id)
-
     def read(self):
         raise NotImplementedError(
             "Reading the BlueskyRun itself is not supported. Instead read one "
@@ -899,7 +1004,7 @@ class BlueskyEventStream(DataSourceMixin):
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
-    filler : event_model.Filler
+    fillers : dict of Fillers
     metadata : dict
         passed through to base class
     include : list, optional
@@ -911,8 +1016,7 @@ class BlueskyEventStream(DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
-    container = 'databroker-xarray'
-    name = 'bluesky-event-stream'
+    container = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
 
@@ -947,7 +1051,20 @@ class BlueskyEventStream(DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
-        super().__init__(metadata=metadata)
+
+        super().__init__(metadata=metadata, **kwargs)
+
+        self._run_stop_doc = self._get_run_stop()
+        self._run_start_doc = self._get_run_start()
+        self._descriptors =  [descriptor for descriptor in
+                              metadata.get('descriptors', [])
+                              if descriptor.get('name') == self._stream_name]
+        # Should figure out a way so that self._resources doesn't have to be
+        # all of the Run's resources.
+        self._resources = metadata.get('resources', [])
+        self.metadata.update({'start': self._run_start_doc})
+        self.metadata.update({'stop': self._run_stop_doc})
+        self._partitions = None
 
     def __repr__(self):
         try:
@@ -958,16 +1075,10 @@ class BlueskyEventStream(DataSourceMixin):
         return out
 
     def _open_dataset(self):
-        self._run_stop_doc = self._get_run_stop()
-        self._run_start_doc = self._get_run_start()
-        self.metadata.update({'start': self._run_start_doc})
-        self.metadata.update({'stop': self._run_stop_doc})
-        descriptor_docs = [doc for doc in self._get_event_descriptors()
-                           if doc.get('name') == self._stream_name]
         self._ds = documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
-            descriptor_docs=descriptor_docs,
+            descriptor_docs=self._descriptors,
             get_event_pages=self._get_event_pages,
             filler=self.fillers['delayed'],
             get_resource=self._get_resource,
@@ -992,6 +1103,100 @@ class BlueskyEventStream(DataSourceMixin):
         """
         # Implemented just so we can put in a docstring
         return super().to_dask()
+
+    def _load_partitions(self, partition_size):
+        datum_gens = [self._get_datum_pages(resource['uid'])
+                      for resource in self._resources]
+        event_gens = [list(self._get_event_pages(descriptor['uid']))
+                      for descriptor in self._descriptors]
+        self._partitions = list(
+            unfilled_partitions(self._run_start_doc, self._descriptors,
+                                self._resources, self._run_stop_doc,
+                                datum_gens, event_gens, partition_size))
+        self.npartitions = len(self._partitions)
+
+    def read_partition(self, partition):
+        """Fetch one chunk of documents.
+        """
+        if isinstance(partition, (tuple, list)):
+            return super().read_partition(partition)
+
+        # Unpack partition
+        i = partition['index']
+
+        if isinstance(partition['fill'], str):
+            filler = self.fillers[partition['fill']]
+        else:
+            filler = partition['fill']
+
+        # Partition size is the number of pages in the partition.
+        if partition['partition_size'] == 'auto':
+            partition_size = 5
+        elif isinstance(partition['partition_size'], int):
+            partition_size = partition['partition_size']
+        else:
+            raise ValueError(f"Invalid partition_size {partition['partition_size']}")
+
+        if self._partitions is None:
+            self._load_partitions(partition_size)
+        try:
+            try:
+                return [filler(name, doc) for name, doc in self._partitions[i]]
+            except event_model.UnresolvableForeignKeyError as err:
+                # Slow path: This error should only happen if there is an old style
+                # resource document that doesn't have a run_start key.
+                self._partitions[i:i] = self._missing_datum(err.key, self.PARTITION_SIZE)
+                return [filler(name, doc) for name, doc in self._partitions[i]]
+        except IndexError as e:
+            return []
+
+    def _missing_datum(self, datum_id, partition_size):
+
+        # Get the resource from the datum_id.
+        if '/' in datum_id:
+            resource_uid, _ = datum_id.split('/', 1)
+        else:
+            resource_uid = self._lookup_resource_for_datum(datum_id)
+        resource = self._get_resource(uid=resource_uid)
+
+        # Use rechunk datum pages to make them into pages of size "partition_size"
+        # and yield one page per partition.  Rechunk might be slow.
+        datum_gen = self._get_datum_pages(resource['uid'])
+        partitions = [[('datum_page', datum_page)] for datum_page in
+                      event_model.rechunk_datum_pages(datum_gen, partition_size)]
+
+        # Check that the datum_id from the exception has been added.
+        def check():
+            for partition in partitions:
+                for name, datum_page in partition:
+                    if datum_id in datum_page['datum_id']:
+                        return True
+            return False
+
+        if not check():
+            raise
+
+        # Add the resource to the begining of the first partition.
+        partitions[0] = [('resource', resource)] + partitions[0]
+        self.npartitions += len(partitions)
+        return partitions
+
+    def _get_partition(self, partition):
+        return intake.container.base.get_partition(self.url, self.http_args,
+                                             self._source_id, self.container,
+                                             partition)
+
+class RemoteBlueskyEventStream(RemoteXarray):
+    # Because of the container_map, when working in remote mode, when accessing
+    # a BlueskyRun or BlueskyEventStream, you will get a RemoteBlueskyRun or a
+    # RemoteBlueskyEventStream on the client side. Canonical of the RemoteBlueskyRun,
+    # calls read_partition of the RemoteBlueskyEventStream, where there
+    # partition argument is a dict. The inherited read_partition method only
+    # accepts an integer for the partition argument, so read_partition needs to
+    # be overridden.
+    def read_partition(self, partition):
+        self._load_metadata()
+        return self._get_partition(partition)
 
 
 class DocumentCache(event_model.DocumentRouter):
@@ -1057,6 +1262,9 @@ class BlueskyRunFromGenerator(BlueskyRun):
         def get_resource(uid):
             return document_cache.resources[uid]
 
+        def get_resources():
+            return list(document_cache.resources.values())
+
         def lookup_resource_for_datum(datum_id):
             return document_cache.resource_uid_by_datum_id[datum_id]
 
@@ -1072,6 +1280,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             get_event_pages=get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
+            get_resources=get_resources,
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
             get_filler=get_filler,
@@ -1219,8 +1428,10 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-# TODO Do we actually need this?
+# This determines the type of the class that you get on the
+# client side.
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
+intake.container.container_map['bluesky-event-stream'] = RemoteBlueskyEventStream
 
 
 def concat_dataarray_pages(dataarray_pages):

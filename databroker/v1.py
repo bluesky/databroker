@@ -426,7 +426,8 @@ class Broker:
             get_documents_router = _GetDocumentsRouter(self.prepare_hook,
                                                        merge_config_into_event,
                                                        stream_name=stream_name)
-            for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)]):
+            for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)],
+                                                          strict_order=True):
                 yield from get_documents_router(name, doc)
 
 

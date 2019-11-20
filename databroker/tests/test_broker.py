@@ -567,11 +567,12 @@ def test_external_access_without_handler(db, RE, hw):
     RE.subscribe(db.insert)
     rs_uid, = RE(count([hw.img], 2))
 
-    h = db[rs_uid]
 
     # Clear the handler registry. We'll reinstate the relevant handler below.
     for spec in list(db.reg.handler_reg):
         db.reg.deregister_handler(spec)
+
+    h = db[rs_uid]
 
     # Get unfilled event.
     ev, ev2 = db.get_events(h, fields=['img'])
@@ -602,11 +603,12 @@ def test_external_access_with_handler(db, RE, hw):
     RE.subscribe(db.insert)
     rs_uid, = RE(count([hw.img], 2))
 
-    h = db[rs_uid]
 
     # For some db fixtures, this is already registered and is therefore a
     # no-op.
     db.reg.register_handler('NPY_SEQ', NumpySeqHandler)
+
+    h = db[rs_uid]
 
     EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
 
