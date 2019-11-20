@@ -1419,7 +1419,7 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-# This is needed. It determines the type of the class that you get on the
+# This determines the type of the class that you get on the
 # client side.
 intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-event-stream'] = RemoteBlueskyEventStream
