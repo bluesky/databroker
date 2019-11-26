@@ -65,7 +65,8 @@ class Registry:
         return self._catalog.deregister_handler(key)
 
     def copy_files(self, resource, new_root,
-                   verify=False, file_rename_hook=None):
+                   verify=False, file_rename_hook=None,
+                   run_start_uid=None):
         """
         Copy files associated with a resource to a new directory.
 
@@ -127,10 +128,11 @@ class Registry:
 
         file_rename_hook = rename_hook_wrapper(file_rename_hook)
 
-        run_start_uid = resource.get('run_start')
+        run_start_uid = resource.get('run_start', run_start_uid)
         if run_start_uid is None:
-            raise NotImplementError(
-                "File copying does not work on Resources with no 'run_start'.")
+            raise ValueError(
+                "If the Resource document has no `run_start` key, the "
+                "caller must provide run_start_uid.")
         file_list = self._catalog[run_start_uid].get_file_list(resource)
 
         # check that all files share the same root
@@ -919,6 +921,7 @@ class Broker:
                     for event in event_model.unpack_event_page(doc):
                         db.insert('event', event)
                 elif name == 'resource' and new_root:
+                    copy_kwargs.setdefault('run_start_uid', header.start['uid'])
                     file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = copy.deepcopy(doc)
                     new_resource['root'] = new_root
