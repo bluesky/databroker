@@ -1339,19 +1339,26 @@ class BlueskyEventStream(DataSourceMixin):
             out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
+    def _to_xarray(self, fill='yes'):
+
+        def stream_gen():
+            for i in itertools.count():
+                partition = self.read_partition({'index': i, 'fill': fill,
+                                                  'partition_size': 'auto'})
+                if not partition:
+                    break
+                yield from partition
+
+        stream = stream_gen()
+
+        arraypages = [eventpage_to_arraypage(doc) for name, doc
+                      in stream if name == 'event_page']
+        arraypage = concat_arraypages(array_pages)
+        datasetpage = arraypage_to_datasetpage(array_page)
+        return datasetpage
+
     def _open_dataset(self):
-        self._load_header()
-        self._ds = documents_to_xarray(
-            start_doc=self._run_start_doc,
-            stop_doc=self._run_stop_doc,
-            descriptor_docs=self._descriptors,
-            get_event_pages=self._get_event_pages,
-            filler=self.fillers['delayed'],
-            get_resource=self._get_resource,
-            lookup_resource_for_datum=self._lookup_resource_for_datum,
-            get_datum_pages=self._get_datum_pages,
-            include=self.include,
-            exclude=self.exclude)
+        self._ds = _to_xarray()['data']
 
     def read(self):
         """
@@ -1756,7 +1763,7 @@ intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-event-stream'] = RemoteBlueskyEventStream
 
 
-def concat_dataarray_pages(dataarray_pages):
+def concat_arraypages(dataarray_pages):
     """
     Combines a iterable of dataarray_pages to a single dataarray_page.
 
@@ -1792,7 +1799,7 @@ def concat_dataarray_pages(dataarray_pages):
                        for key in data_keys}}
 
 
-def event_page_to_dataarray_page(event_page, dims=None, coords=None):
+def eventpage_to_arraypage(event_page, dims=None, coords=None):
     """
     Converts the event_page's data, timestamps, and filled to xarray.DataArray.
 
@@ -1831,7 +1838,7 @@ def event_page_to_dataarray_page(event_page, dims=None, coords=None):
                        for key in data_keys}}
 
 
-def dataarray_page_to_dataset_page(dataarray_page):
+def arraypage_to_datasetpage(dataarray_page):
 
     """
     Converts the dataarray_page's data, timestamps, and filled to xarray.DataSet.
