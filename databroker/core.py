@@ -350,8 +350,10 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     # Use rechunk datum pages to make them into pages of size "partition_size"
     # and yield one page per partition.
     for datum_gen in datum_gens:
-        yield [('datum_page', datum_page) for datum_page in
-               event_model.rechunk_datum_pages(datum_gen, partition_size)]
+        partition = [('datum_page', datum_page) for datum_page in
+                     event_model.rechunk_datum_pages(datum_gen, partition_size)]
+        if partition:
+            yield partition
 
     # Rechunk the event pages and interlace them in timestamp order, then pack
     # them into a partition.
@@ -1145,7 +1147,7 @@ class BlueskyEventStream(DataSourceMixin):
             except event_model.UnresolvableForeignKeyError as err:
                 # Slow path: This error should only happen if there is an old style
                 # resource document that doesn't have a run_start key.
-                self._partitions[i:i] = self._missing_datum(err.key, self.PARTITION_SIZE)
+                self._partitions[i:i] = self._missing_datum(err.key, partition_size)
                 return [filler(name, doc) for name, doc in self._partitions[i]]
         except IndexError as e:
             return []
