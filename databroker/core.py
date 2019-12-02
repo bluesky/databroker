@@ -651,6 +651,11 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
 
         yield ('start', self.metadata['start'])
 
+        # This following code filters out duplicate documents.
+        # This is needed because we dont know which EventStream, that resource
+        # or datum documents belong to, so each stream has these documents.
+        # Without this filter we would get multiple of the same resource and
+        # datum documents.
         for name, doc in interlace(*streams, strict_order=strict_order):
 
             if name == 'datum':
@@ -940,6 +945,11 @@ class BlueskyRun(intake.catalog.Catalog):
 
         yield ('start', self.metadata['start'])
 
+        # This following code filters out duplicate documents.
+        # This is needed because we dont know which EventStream, that resource
+        # or datum documents belong to, so each stream has these documents.
+        # Without this filter we would get multiple of the same resource and
+        # datum documents.
         for name, doc in interlace(*streams, strict_order=strict_order):
 
             if name == 'datum':
