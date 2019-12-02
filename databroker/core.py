@@ -1043,7 +1043,7 @@ class BlueskyEventStream(DataSourceMixin):
     get_event_pages : callable
         Expected signature ``get_event_pages(descriptor_uid) -> generator``
         where ``generator`` yields event_page documents
-    get_event_count : callable "uid",
+    get_event_count : callable
         Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
