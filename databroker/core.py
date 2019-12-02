@@ -626,6 +626,9 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         strict_order : bool, optional
             documents are strictly yielded in ascending time order.
         """
+        run_start_uid = self.metadata['start']['uid']
+        document_filter = set()
+
         # Special case for 'delayed' since it *is* supported in the local mode
         # of usage.
         if fill == 'delayed':
@@ -647,7 +650,23 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
         yield ('start', self.metadata['start'])
-        yield from interlace(*streams, strict_order=strict_order)
+
+        for name, doc in interlace(*streams, strict_order=strict_order):
+
+            if name == 'datum':
+                if doc['datum_id'] not in document_filter:
+                    yield (name, doc)
+                    document_filter.add(doc['datum_id'])
+
+            elif name == 'resource':
+                if doc['uid'] not in document_filter:
+                    if doc.get('run_start', run_start_uid) == run_start_uid:
+                        yield (name, doc)
+                        document_filter.add(doc['uid'])
+
+            else:
+                yield (name, doc)
+
         yield ('stop', self.metadata['stop'])
 
     def read_canonical(self):
@@ -902,6 +921,9 @@ class BlueskyRun(intake.catalog.Catalog):
             Documents are strictly yielded in ascending time order. This
             defaults to True.
         """
+        run_start_uid = self.metadata['start']['uid']
+        document_filter = set()
+
         FILL_OPTIONS = {'yes', 'no', 'delayed'}
         if fill not in FILL_OPTIONS:
             raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
@@ -917,7 +939,23 @@ class BlueskyRun(intake.catalog.Catalog):
         streams = [stream_gen(entry) for entry in self._entries.values()]
 
         yield ('start', self.metadata['start'])
-        yield from interlace(*streams, strict_order=strict_order)
+
+        for name, doc in interlace(*streams, strict_order=strict_order):
+
+            if name == 'datum':
+                if doc['datum_id'] not in document_filter:
+                    yield (name, doc)
+                    document_filter.add(doc['datum_id'])
+
+            elif name == 'resource':
+                if doc['uid'] not in document_filter:
+                    if doc.get('run_start', run_start_uid) == run_start_uid:
+                        yield (name, doc)
+                        document_filter.add(doc['uid'])
+
+            else:
+                yield (name, doc)
+
         yield ('stop', self.metadata['stop'])
 
     def read_canonical(self):
@@ -995,7 +1033,7 @@ class BlueskyEventStream(DataSourceMixin):
     get_event_pages : callable
         Expected signature ``get_event_pages(descriptor_uid) -> generator``
         where ``generator`` yields event_page documents
-    get_event_count : callable
+    get_event_count : callable "uid",
         Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
