@@ -527,7 +527,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             coords={'time': times},
             name='uid')
 
-        datasets.append(xarray.Dataset(data_vars=data_arrays))
+        datasereleasedts.append(xarray.Dataset(data_vars=data_arrays))
     # Merge Datasets from all Event Descriptors into one representing the
     # whole stream. (In the future we may simplify to one Event Descriptor
     # per stream, but as of this writing we must account for the
@@ -541,6 +541,12 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
 
     Parameters
     ----------
+    start_doc : dict
+        RunStart Document
+    stop_doc : dict
+        RunStop Document
+    entries : dict
+        A dict of the BlueskyRun's entries.
     fill: {'yes', 'no'}
         If fill is 'yes', any external data referenced by Event documents
         will be filled in (e.g. images as numpy arrays). This is typically
