@@ -535,6 +535,71 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     return xarray.merge(datasets)
 
 
+def canonical(*, start, stop, entries, fill, strict_order=True):
+    """
+    Yields documents from this Run in chronological order.
+
+    Parameters
+    ----------
+    fill: {'yes', 'no'}
+        If fill is 'yes', any external data referenced by Event documents
+        will be filled in (e.g. images as numpy arrays). This is typically
+        the desired option for *using* the data.
+        If fill is 'no', the Event documents will contain foreign keys as
+        placeholders for the data. This option is useful for exporting
+        copies of the documents.
+    strict_order : bool, optional
+        documents are strictly yielded in ascending time order.
+    """
+    run_start_uid = start['uid']
+    document_filter = set()
+
+    # Special case for 'delayed' since it *is* supported in the local mode
+    # of usage.
+    if fill == 'delayed':
+        raise NotImplementedError(
+            "Delayed access is not yet supported via the client--server "
+            "usage.")
+    FILL_OPTIONS = {'yes', 'no'}
+    if fill not in FILL_OPTIONS:
+        raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
+
+    def stream_gen(entry):
+        for i in itertools.count():
+            partition = entry().read_partition({'index': i, 'fill': fill,
+                                              'partition_size': 'auto'})
+            if not partition:
+                break
+            yield from partition
+
+    streams = [stream_gen(entry) for entry in entries.values()]
+
+    yield ('start', start)
+
+    # This following code filters out duplicate documents.
+    # This is needed because we dont know which EventStream, that resource
+    # or datum documents belong to, so each stream has these documents.
+    # Without this filter we would get multiple of the same resource and
+    # datum documents.
+    for name, doc in interlace(*streams, strict_order=strict_order):
+
+        if name == 'datum':
+            if doc['datum_id'] not in document_filter:
+                yield (name, doc)
+                document_filter.add(doc['datum_id'])
+
+        elif name == 'resource':
+            if doc['uid'] not in document_filter:
+                if doc.get('run_start', run_start_uid) == run_start_uid:
+                    yield (name, doc)
+                    document_filter.add(doc['uid'])
+
+        else:
+            yield (name, doc)
+
+    yield ('stop', stop)
+
+
 class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     """
     Catalog representing one Run.
@@ -611,68 +676,11 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         self.bag = None
 
     def canonical(self, *, fill, strict_order=True):
-        """
-        Yields documents from this Run in chronological order.
-
-        Parameters
-        ----------
-        fill: {'yes', 'no'}
-            If fill is 'yes', any external data referenced by Event documents
-            will be filled in (e.g. images as numpy arrays). This is typically
-            the desired option for *using* the data.
-            If fill is 'no', the Event documents will contain foreign keys as
-            placeholders for the data. This option is useful for exporting
-            copies of the documents.
-        strict_order : bool, optional
-            documents are strictly yielded in ascending time order.
-        """
-        run_start_uid = self.metadata['start']['uid']
-        document_filter = set()
-
-        # Special case for 'delayed' since it *is* supported in the local mode
-        # of usage.
-        if fill == 'delayed':
-            raise NotImplementedError(
-                "Delayed access is not yet supported via the client--server "
-                "usage.")
-        FILL_OPTIONS = {'yes', 'no'}
-        if fill not in FILL_OPTIONS:
-            raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
-
-        def stream_gen(entry):
-            for i in itertools.count():
-                partition = entry().read_partition({'index': i, 'fill': fill,
-                                                  'partition_size': 'auto'})
-                if not partition:
-                    break
-                yield from partition
-
-        streams = [stream_gen(entry) for entry in self._entries.values()]
-
-        yield ('start', self.metadata['start'])
-
-        # This following code filters out duplicate documents.
-        # This is needed because we dont know which EventStream, that resource
-        # or datum documents belong to, so each stream has these documents.
-        # Without this filter we would get multiple of the same resource and
-        # datum documents.
-        for name, doc in interlace(*streams, strict_order=strict_order):
-
-            if name == 'datum':
-                if doc['datum_id'] not in document_filter:
-                    yield (name, doc)
-                    document_filter.add(doc['datum_id'])
-
-            elif name == 'resource':
-                if doc['uid'] not in document_filter:
-                    if doc.get('run_start', run_start_uid) == run_start_uid:
-                        yield (name, doc)
-                        document_filter.add(doc['uid'])
-
-            else:
-                yield (name, doc)
-
-        yield ('stop', self.metadata['stop'])
+        yield from canonical(start=self.metadata['start'],
+                             stop=self.metadata['stop'],
+                             entries=self._entries,
+                             fill=fill,
+                             strict_order=strict_order)
 
     def read_canonical(self):
         warnings.warn(
@@ -907,66 +915,11 @@ class BlueskyRun(intake.catalog.Catalog):
             return getattr(self._entry, key)
 
     def canonical(self, *, fill, strict_order=True):
-        """
-        Yields documents from this Run in chronological order.
-
-        Parameters
-        ----------
-        fill: {'yes', 'no'}
-            If fill is 'yes', any external data referenced by Event documents
-            will be filled in (e.g. images as numpy arrays). This is typically
-            the desired option for accessing small data.
-            If fill is 'delayed', external data will be filled in as dask
-            arrays, meaning that the I/O can be deferred until the data is
-            actually needed.
-            If fill is 'no', the Event documents will contain foreign keys as
-            placeholders for the data. This option is useful for exporting
-            copies of the documents.
-        strict_order : bool, optional
-            Documents are strictly yielded in ascending time order. This
-            defaults to True.
-        """
-        run_start_uid = self.metadata['start']['uid']
-        document_filter = set()
-
-        FILL_OPTIONS = {'yes', 'no', 'delayed'}
-        if fill not in FILL_OPTIONS:
-            raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
-
-        def stream_gen(entry):
-            for i in itertools.count():
-                partition = entry.read_partition({'index': i, 'fill': fill,
-                                                  'partition_size': 'auto'})
-                if not partition:
-                    break
-                yield from partition
-
-        streams = [stream_gen(entry) for entry in self._entries.values()]
-
-        yield ('start', self.metadata['start'])
-
-        # This following code filters out duplicate documents.
-        # This is needed because we dont know which EventStream, that resource
-        # or datum documents belong to, so each stream has these documents.
-        # Without this filter we would get multiple of the same resource and
-        # datum documents.
-        for name, doc in interlace(*streams, strict_order=strict_order):
-
-            if name == 'datum':
-                if doc['datum_id'] not in document_filter:
-                    yield (name, doc)
-                    document_filter.add(doc['datum_id'])
-
-            elif name == 'resource':
-                if doc['uid'] not in document_filter:
-                    if doc.get('run_start', run_start_uid) == run_start_uid:
-                        yield (name, doc)
-                        document_filter.add(doc['uid'])
-
-            else:
-                yield (name, doc)
-
-        yield ('stop', self.metadata['stop'])
+        yield from canonical(start=self.metadata['start'],
+                             stop=self.metadata['stop'],
+                             entries=self._entries,
+                             fill=fill,
+                             strict_order=strict_order)
 
     def read_canonical(self):
         warnings.warn(
