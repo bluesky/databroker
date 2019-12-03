@@ -527,7 +527,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             coords={'time': times},
             name='uid')
 
-        datasereleasedts.append(xarray.Dataset(data_vars=data_arrays))
+        datasets.append(xarray.Dataset(data_vars=data_arrays))
     # Merge Datasets from all Event Descriptors into one representing the
     # whole stream. (In the future we may simplify to one Event Descriptor
     # per stream, but as of this writing we must account for the
