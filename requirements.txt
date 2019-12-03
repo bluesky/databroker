@@ -19,7 +19,7 @@ requests
 six
 suitcase-mongo  # for back-compat to support insert()
 suitcase-msgpack  # for back-compat to support insert on Broker.named('temp')
-tifffile
+tifffile !=2019.7.26.2
 toolz
 tzlocal
 xarray
