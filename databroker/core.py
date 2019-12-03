@@ -552,7 +552,7 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
         documents are strictly yielded in ascending time order.
     """
     run_start_uid = start['uid']
-    document_filter = set()
+    history = set()
 
     # Special case for 'delayed' since it *is* supported in the local mode
     # of usage.
@@ -584,15 +584,20 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
     for name, doc in interlace(*streams, strict_order=strict_order):
 
         if name == 'datum':
-            if doc['datum_id'] not in document_filter:
+            if doc['datum_id'] not in history:
                 yield (name, doc)
-                document_filter.add(doc['datum_id'])
+                history .add(doc['datum_id'])
+
+        if name == 'datum_page':
+            if tuple(doc['datum_id']) not in history:
+                yield (name, doc)
+                history.add(tuple(doc['datum_id']))
 
         elif name == 'resource':
-            if doc['uid'] not in document_filter:
+            if doc['uid'] not in history:
                 if doc.get('run_start', run_start_uid) == run_start_uid:
                     yield (name, doc)
-                    document_filter.add(doc['uid'])
+                    history.add(doc['uid'])
 
         else:
             yield (name, doc)

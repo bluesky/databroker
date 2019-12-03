@@ -183,6 +183,33 @@ def test_canonical_unfilled(bundle):
         filler(name, doc)
 
 
+def test_canonical_duplicates(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]
+    history = set()
+    run_start_uid = None
+
+    for name, doc in run.canonical(fill='no'):
+        if name == 'start':
+            run_start_uid = doc['uid']
+        elif name == 'datum':
+            assert doc['datum_id'] not in history
+            history .add(doc['datum_id'])
+        elif name == 'datum_page':
+            assert tuple(doc['datum_id']) not in history
+            history.add(tuple(doc['datum_id']))
+        elif name == 'event_page':
+            for uid in doc['uid']:
+                assert uid not in history
+                history .add(uid)
+        elif name == 'resource':
+            assert doc.get('run_start', run_start_uid) == run_start_uid
+            assert doc['uid'] not in history
+            history.add(doc['uid'])
+        else:
+            assert doc['uid'] not in history
+            history.add(doc['uid'])
+
+
 def test_read(bundle):
     run = bundle.cat['xyz']()[bundle.uid]()
     entry = run['primary']
