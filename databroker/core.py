@@ -560,13 +560,7 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
     run_start_uid = start['uid']
     history = set()
 
-    # Special case for 'delayed' since it *is* supported in the local mode
-    # of usage.
-    if fill == 'delayed':
-        raise NotImplementedError(
-            "Delayed access is not yet supported via the client--server "
-            "usage.")
-    FILL_OPTIONS = {'yes', 'no'}
+    FILL_OPTIONS = {'yes', 'no', 'delayed'}
     if fill not in FILL_OPTIONS:
         raise ValueError(f"Invalid fill option: {fill}, fill must be: {FILL_OPTIONS}")
 
@@ -687,6 +681,13 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         self.bag = None
 
     def canonical(self, *, fill, strict_order=True):
+        # Special case for 'delayed' since it *is* supported in the local mode
+        # of usage.
+        if fill == 'delayed':
+            raise NotImplementedError(
+                "Delayed access is not yet supported via the client--server "
+                "usage.")
+
         yield from canonical(start=self.metadata['start'],
                              stop=self.metadata['stop'],
                              entries=self._entries,
