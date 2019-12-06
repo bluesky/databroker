@@ -33,7 +33,6 @@ def bundle(request, intake_server, example_data):  # noqa
     for name, doc in docs:
         serializer(name, doc)
     serializer.close()
-
     fullname = os.path.join(tmp_dir, YAML_FILENAME)
     with open(fullname, 'w') as f:
         f.write(f'''
@@ -51,6 +50,7 @@ sources:
         ''')
 
     time.sleep(2)
+    remote = request.param == 'remote'
 
     if request.param == 'local':
         cat = intake.Catalog(os.path.join(tmp_dir, YAML_FILENAME))
@@ -60,4 +60,5 @@ sources:
         raise ValueError
     return types.SimpleNamespace(cat=cat,
                                  uid=uid,
-                                 docs=docs)
+                                 docs=docs,
+                                 remote=remote)

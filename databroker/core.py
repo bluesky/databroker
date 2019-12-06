@@ -683,6 +683,7 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def canonical(self, *, fill, strict_order=True):
         # Special case for 'delayed' since it *is* supported in the local mode
         # of usage.
+        print("CANONICAL", fill)
         if fill == 'delayed':
             raise NotImplementedError(
                 "Delayed access is not yet supported via the client--server "

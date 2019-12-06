@@ -52,6 +52,7 @@ sources:
         ''')
 
     time.sleep(2)
+    remote = request.param == 'remote'
 
     if request.param == 'local':
         cat = intake.Catalog(os.path.join(TMP_DIR, YAML_FILENAME))
@@ -61,4 +62,5 @@ sources:
         raise ValueError
     return types.SimpleNamespace(cat=cat,
                                  uid=uid,
-                                 docs=docs)
+                                 docs=docs,
+                                 remote=remote)
