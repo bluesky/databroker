@@ -183,6 +183,47 @@ def test_canonical_unfilled(bundle):
         filler(name, doc)
 
 
+def test_canonical_delayed(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]
+
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
+                                inplace=False)
+
+    if bundle.remote:
+        with pytest.raises(NotImplementedError):
+            next(run.canonical(fill='delayed'))
+    else:
+        compare(run.canonical(fill='delayed'),
+                (filler(name, doc) for name, doc in bundle.docs))
+
+
+def test_canonical_duplicates(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]
+    history = set()
+    run_start_uid = None
+
+    for name, doc in run.canonical(fill='no'):
+        if name == 'start':
+            run_start_uid = doc['uid']
+        elif name == 'datum':
+            assert doc['datum_id'] not in history
+            history .add(doc['datum_id'])
+        elif name == 'datum_page':
+            assert tuple(doc['datum_id']) not in history
+            history.add(tuple(doc['datum_id']))
+        elif name == 'event_page':
+            for uid in doc['uid']:
+                assert uid not in history
+                history .add(uid)
+        elif name == 'resource':
+            assert doc.get('run_start', run_start_uid) == run_start_uid
+            assert doc['uid'] not in history
+            history.add(doc['uid'])
+        else:
+            assert doc['uid'] not in history
+            history.add(doc['uid'])
+
+
 def test_read(bundle):
     run = bundle.cat['xyz']()[bundle.uid]()
     entry = run['primary']
