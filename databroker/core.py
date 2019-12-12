@@ -474,7 +474,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             try:
                 dims = tuple(field_metadata['dims'])
             except KeyError:
-                ndim = len(field_metadata['shape'])
+                ndim = len([dim for dim in field_metadata['shape'] if dim != 0])
                 dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
@@ -500,7 +500,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             for key, scoped_key in keys.items():
                 field_metadata = data_keys[key]
                 field_metadata = data_keys[key]
-                ndim = len(field_metadata['shape'])
+                ndim = len([dim for dim in field_metadata['shape'] if dim != 0])
                 # if the EventDescriptor doesn't provide names for the
                 # dimensions (it's optional) use the same default dimension
                 # names that xarray would.
@@ -1584,6 +1584,7 @@ def extract_shape(descriptor, key):
     # but we have to do some heuristics to make up for errors in the reporting.
 
     # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
+    #import pdb; pdb.set_trace()
     data_key = descriptor['data_keys'][key]
     if len(data_key['shape']) == 3 and data_key['shape'][-1] == 0:
         object_keys = descriptor.get('object_keys', {})
@@ -1597,9 +1598,11 @@ def extract_shape(descriptor, key):
                 num_images = v
                 break
         else:
-            num_images = -1
+            x, y, _ = data_key['shape']
+            shape = (x,y)
+            return shape
         x, y, _ = data_key['shape']
-        shape = (num_images, y, x)
+        shape = (num_images, x, y)
     else:
         shape = descriptor['data_keys'][key]['shape']
     return shape
