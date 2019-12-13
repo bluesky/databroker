@@ -371,6 +371,44 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     partition.append(('stop', stop))
     yield partition
 
+def fill(
+    filler,
+    event,
+    lookup_resource_for_datum,
+    get_resource,
+    get_datum_pages,
+    last_datum_id=None):
+    try:
+        _, filled_event = filler('event', event)
+        return filled_event
+    except event_model.UnresolvableForeignKeyError as err:
+        datum_id = err.key
+        if datum_id == last_datum_id:
+            # We tried to fetch this Datum on the last trip
+            # trip through this method, and apparently it did not
+            # work. We are in an infinite loop. Bail!
+            raise
+
+        if '/' in datum_id:
+            resource_uid, _ = datum_id.split('/', 1)
+        else:
+            resource_uid = lookup_resource_for_datum(datum_id)
+
+        resource = get_resource(uid=resource_uid)
+        filler('resource', resource)
+        # Pre-fetch all datum for this resource.
+        for datum_page in get_datum_pages(resource_uid=resource_uid):
+            filler('datum_page', datum_page)
+        # TODO -- When to clear the datum cache in filler?
+
+        # Re-enter and try again now that the Filler has consumed the
+        # missing Datum. There might be another missing Datum in this same
+        # Event document (hence this re-entrant structure) or might be good
+        # to go.
+        return fill(
+            filler, event, lookup_resource_for_datum, get_resource,
+            get_datum_pages, last_datum_id=datum_id)
+
 
 def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
@@ -438,20 +476,10 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             filler('descriptor', descriptor)
             filled_events = []
             for event in events:
-                try:
-                    _, filled_event = filler('event', event)
-                    filled_events.append(filled_event)
-                except event_model.UnresolvableForeignKeyError as err:
-                    datum_id = err.key
-                    resource_uid = lookup_resource_for_datum(datum_id)
-                    resource = get_resource(resource_uid)
-                    filler('resource', resource)
-                    # Pre-fetch all datum for this resource.
-                    for datum_page in get_datum_pages(resource_uid):
-                        filler('datum_page', datum_page)
-                    # TODO -- When to clear the datum cache in filler?
-                    _, filled_event = filler('event', event)
-                    filled_events.append(filled_event)
+                filled_event = fill(
+                    filler, event, lookup_resource_for_datum, get_resource,
+                    get_datum_pages)
+                filled_events.append(filled_event)
         else:
             filled_events = events
         times = [ev['time'] for ev in events]
