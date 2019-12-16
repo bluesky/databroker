@@ -58,8 +58,10 @@ class _Entries(collections.abc.Mapping):
             catalog=self.catalog)
 
     def __iter__(self):
+        find_kwargs = {'sort': [('time', pymongo.DESCENDING)]}
+        find_kwargs.update(self.catalog._find_kwargs)
         cursor = self.catalog._run_start_collection.find(
-            self.catalog._query, sort=[('time', pymongo.DESCENDING)])
+            self.catalog._query, **find_kwargs)
         for run_start_doc in cursor:
             yield run_start_doc['uid']
 
@@ -137,7 +139,8 @@ class _Entries(collections.abc.Mapping):
 class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
                  handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler, query=None, **kwargs):
+                 filler_class=event_model.Filler, query=None,
+                 find_kwargs=None, **kwargs):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
@@ -180,6 +183,8 @@ class BlueskyMongoCatalog(Broker):
             same methods as ``DocumentRouter``.
         query : dict, optional
             MongoDB query. Used internally by the ``search()`` method.
+        find_kwargs : dict, optional
+            Options passed to pymongo ``find``.
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
@@ -204,6 +209,7 @@ class BlueskyMongoCatalog(Broker):
         self._metadatastore_db = mds_db
         self._asset_registry_db = assets_db
         self._query = query or {}
+        self._find_kwargs = find_kwargs or {}
 
         super().__init__(handler_registry=handler_registry,
                          root_map=root_map,
@@ -284,7 +290,7 @@ class BlueskyMongoCatalog(Broker):
     def _close(self):
         self._client.close()
 
-    def search(self, query):
+    def search(self, query, **kwargs):
         """
         Return a new Catalog with a subset of the entries in this Catalog.
 
@@ -292,6 +298,8 @@ class BlueskyMongoCatalog(Broker):
         ----------
         query : dict
             MongoDB query.
+        **kwargs :
+            Options passed through to the pymongo ``find()`` method
         """
         query = dict(query)
         if self._query:
@@ -300,6 +308,7 @@ class BlueskyMongoCatalog(Broker):
             metadatastore_db=self._metadatastore_db,
             asset_registry_db=self._asset_registry_db,
             query=query,
+            find_kwargs=kwargs,
             handler_registry=self._handler_registry,
             root_map=self._root_map,
             filler_class=self._filler_class,
