@@ -56,8 +56,8 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
     name = 'bluesky-jsonl-catalog'  # noqa
 
     def __init__(self, paths, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler,
-                 query=None, **kwargs):
+                 filler_class=event_model.Filler, query=None,
+                 transforms=None, **kwargs):
         """
         This Catalog is backed by a newline-delimited JSON (jsonl) file.
 
@@ -102,6 +102,10 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             same methods as ``DocumentRouter``.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
+        transforms : dict
+            A dict that maps (``start``, ``stop``, ``resource``, ``descriptor``)
+            to a function that accepts a document of the corresponding type. This function
+            will transform each document of the corresponding type that is read.
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
@@ -113,9 +117,8 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
         self._filename_to_mtime = {}
 
         super().__init__(handler_registry=handler_registry,
-                         root_map=root_map,
-                         filler_class=filler_class,
-                         query=query, **kwargs)
+                         root_map=root_map, filler_class=filler_class,
+                         query=query, transforms=transforms, **kwargs)
 
     def _load(self):
         for path in self.paths:
@@ -151,6 +154,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
             paths=self.paths,
             query=query,
             handler_registry=self._handler_registry,
+            transforms=self._transforms,
             root_map=self._root_map,
             name='search results',
             getenv=self.getenv,

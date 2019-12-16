@@ -42,7 +42,8 @@ class _Entries(collections.abc.Mapping):
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
             get_datum_pages=to_datum_pages(self.catalog._get_datum_cursor, 2500),
-            get_filler=self.catalog._get_filler)
+            get_filler=self.catalog._get_filler,
+            transforms=self.catalog._transforms)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -140,7 +141,7 @@ class BlueskyMongoCatalog(Broker):
     def __init__(self, metadatastore_db, asset_registry_db, *,
                  handler_registry=None, root_map=None,
                  filler_class=event_model.Filler, query=None,
-                 find_kwargs=None, **kwargs):
+                 find_kwargs=None, transforms=None, **kwargs):
         """
         This Catalog is backed by a pair of MongoDBs with "layout 1".
 
@@ -185,6 +186,10 @@ class BlueskyMongoCatalog(Broker):
             MongoDB query. Used internally by the ``search()`` method.
         find_kwargs : dict, optional
             Options passed to pymongo ``find``.
+        transforms : dict
+            A dict that maps (``start``, ``stop``, ``resource``, ``descriptor``)
+            to a function that accepts a document of the corresponding type. This function
+            will transform each document of the corresponding type that is read.
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
@@ -212,9 +217,8 @@ class BlueskyMongoCatalog(Broker):
         self._find_kwargs = find_kwargs or {}
 
         super().__init__(handler_registry=handler_registry,
-                         root_map=root_map,
-                         filler_class=filler_class,
-                         **kwargs)
+                         root_map=root_map, filler_class=filler_class,
+                         transforms=transforms, **kwargs)
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
@@ -310,6 +314,7 @@ class BlueskyMongoCatalog(Broker):
             query=query,
             find_kwargs=kwargs,
             handler_registry=self._handler_registry,
+            transforms=self._transforms,
             root_map=self._root_map,
             filler_class=self._filler_class,
             name='search results',

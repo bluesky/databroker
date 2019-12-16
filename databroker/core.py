@@ -846,11 +846,11 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_datum_pages,
                  get_filler,
                  entry,
+                 transforms,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self.urlpath = ''  # TODO Not sure why I had to add this.
-
         self._get_run_start = get_run_start
         self._get_run_stop = get_run_stop
         self._get_event_descriptors = get_event_descriptors
@@ -866,6 +866,10 @@ class BlueskyRun(intake.catalog.Catalog):
             self.fillers['yes'].handler_registry, inplace=True)
         self.fillers['delayed'] = get_filler(coerce='delayed')
         self._entry = entry
+        self._transforms = transforms
+
+        assert transforms is not None
+
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -885,10 +889,12 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = self._get_run_start()
-        self._run_stop_doc = self._get_run_stop()
-        self._descriptors = self._get_event_descriptors()
-        self._resources = self._get_resources() or []
+        self._run_start_doc = self._transforms['start'](self._get_run_start())
+        self._run_stop_doc = self._transforms['stop'](self._get_run_stop())
+        self._descriptors = [self._transforms['descriptor'](descriptor)
+                             for descriptor in self._get_event_descriptors()]
+        self._resources = [self._transforms['resource'](resource)
+                           for resource in self._get_resources() or []]
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -928,6 +934,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
                 fillers=self.fillers,
+                transforms=self._transforms,
                 metadata={'descriptors': descriptors,
                           'resources': self._resources})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
@@ -1029,6 +1036,7 @@ class BlueskyRun(intake.catalog.Catalog):
             "Reading the BlueskyRun itself is not supported. Instead read one "
             "its entries, representing individual Event Streams. You can see "
             "the entries using list(YOUR_VARIABLE_HERE). Tab completion may "
+
             "also help, if available.")
 
     def to_dask(self):
@@ -1066,6 +1074,11 @@ class BlueskyEventStream(DataSourceMixin):
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
     fillers : dict of Fillers
+    transforms : dict
+        A dict that maps (``start``, ``stop``, ``resource``, ``descriptor``)
+        to a function that accepts a document of the corresponding type. This function
+        will transform each document of the corresponding type that is read. Transforms
+        are defined in the catalog file.
     metadata : dict
         passed through to base class
     include : list, optional
@@ -1092,6 +1105,7 @@ class BlueskyEventStream(DataSourceMixin):
                  lookup_resource_for_datum,
                  get_datum_pages,
                  fillers,
+                 transforms,
                  metadata,
                  include=None,
                  exclude=None,
@@ -1115,14 +1129,15 @@ class BlueskyEventStream(DataSourceMixin):
 
         super().__init__(metadata=metadata, **kwargs)
 
-        self._run_stop_doc = self._get_run_stop()
-        self._run_start_doc = self._get_run_start()
-        self._descriptors =  [descriptor for descriptor in
-                              metadata.get('descriptors', [])
+        self._run_stop_doc = transforms['stop'](self._get_run_stop())
+        self._run_start_doc = transforms['start'](self._get_run_start())
+        self._descriptors =  [transforms['descriptor'](descriptor)
+                              for descriptor in metadata.get('descriptors', [])
                               if descriptor.get('name') == self._stream_name]
         # Should figure out a way so that self._resources doesn't have to be
         # all of the Run's resources.
-        self._resources = metadata.get('resources', [])
+        self._resources = [transforms['resource'](resource)
+                           for resource in metadata.get('resources', [])]
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         self._partitions = None
@@ -1293,7 +1308,8 @@ class DocumentCache(event_model.DocumentRouter):
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
-    def __init__(self, gen_func, gen_args, gen_kwargs, get_filler, **kwargs):
+    def __init__(self, gen_func, gen_args, gen_kwargs, get_filler,
+                 transforms, **kwargs):
 
         document_cache = DocumentCache()
 
@@ -1345,6 +1361,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
             get_filler=get_filler,
+            transforms=transforms,
             **kwargs)
 
 
@@ -1491,6 +1508,50 @@ def parse_handler_registry(handler_registry):
             class_ = handler_str
         result[spec] = class_
     return result
+
+
+def load_transforms(transforms):
+    """
+    Parse mapping of spec name to 'import path' into mapping to class itself.
+
+    Parameters
+    ----------
+    transforms : dict or None
+        Values may be string 'import paths' to classes or actual classes.
+
+    Examples
+    --------
+    Pass in name; get back actual class.
+
+    >>> load_transforms({'descriptor': 'package.module.ClassName'})
+    {'descriptor': <package.module.ClassName>}
+
+    """
+    transformable = {'start', 'stop', 'resource', 'descriptor'}
+
+    if transforms is None:
+        result = {key: lambda doc: doc for key in transformable}
+        return result
+    elif isinstance(transforms, dict):
+        if len(transforms.keys() - transformable) > 0:
+            raise NotImplementedError(f"Transforms for {transforms.keys() - transformable} "
+                                      f"are not supported.")
+        result = {}
+        for name in transformable:
+            transform = transforms.get(name)
+            if isinstance(transform, str):
+                module_name, _, class_name = transform.rpartition('.')
+                function = getattr(importlib.import_module(module_name), class_name)
+            elif transform is None:
+                function = lambda doc: doc
+            else:
+                function = transform
+                #raise ValueError(f"The transform {transform} must be of type string.")
+            result[name] = function
+        return result
+    else:
+        raise ValueError(f"Invalid transforms argument {transforms}. "
+                         f"transforms but be None or a dictionary. ")
 
 
 # This determines the type of the class that you get on the

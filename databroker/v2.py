@@ -1,7 +1,7 @@
 import event_model
 import tempfile
 
-from .core import parse_handler_registry, discover_handlers
+from .core import parse_handler_registry, discover_handlers, load_transforms
 from intake.catalog import Catalog
 from event_model import DuplicateHandler
 from functools import partial
@@ -16,10 +16,11 @@ class Broker(Catalog):
     """
 
     def __init__(self, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler, **kwargs):
+                 filler_class=event_model.Filler, transforms=None, **kwargs):
 
         self._root_map = root_map
         self._filler_class = filler_class
+        self._transforms = load_transforms(transforms)
         if handler_registry is None:
             handler_registry = discover_handlers()
         self._handler_registry = parse_handler_registry(handler_registry)

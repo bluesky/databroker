@@ -71,15 +71,15 @@ class _Entries(collections.abc.Mapping):
         args = dict(
             get_run_start=get_run_start,
             get_run_stop=partial(get_header_field, 'stop'),
-            get_event_descriptors=partial(
-                            get_header_field, 'descriptors'),
+            get_event_descriptors=partial(get_header_field, 'descriptors'),
             get_event_pages=self.catalog._get_event_pages,
             get_event_count=get_event_count,
             get_resource=get_resource,
             get_resources=partial(get_header_field, 'resources'),
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=self.catalog._get_datum_pages,
-            get_filler=self.catalog._get_filler)
+            get_filler=self.catalog._get_filler,
+            transforms=self.catalog._transforms)
         return Entry(
             name=run_start_doc['uid'],
             description={},  # TODO
@@ -176,7 +176,8 @@ class _Entries(collections.abc.Mapping):
 
 class BlueskyMongoCatalog(Broker):
     def __init__(self, datastore_db, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler, query=None, **kwargs):
+                 filler_class=event_model.Filler, query=None,
+                 transforms=None, **kwargs):
         """
         This Catalog is backed by a MongoDB with an embedded data model.
 
@@ -215,6 +216,10 @@ class BlueskyMongoCatalog(Broker):
             same methods as ``DocumentRouter``.
         query : dict, optional
             MongoDB query. Used internally by the ``search()`` method.
+        transforms : dict
+            A dict that maps (``start``, ``stop``, ``resource``, ``descriptor``)
+            to a function that accepts a document of the corresponding type. This function
+            will transform each document of the corresponding type that is read.
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
@@ -230,9 +235,8 @@ class BlueskyMongoCatalog(Broker):
         self._filler_class = filler_class
 
         super().__init__(handler_registry=handler_registry,
-                         root_map=root_map,
-                         filler_class=filler_class,
-                         **kwargs)
+                         root_map=root_map, filler_class=filler_class,
+                         transforms=transforms, **kwargs)
 
     def _get_event_pages(self, descriptor_uid, skip=0, limit=None):
         if limit is None:
@@ -289,6 +293,7 @@ class BlueskyMongoCatalog(Broker):
             datastore_db=self._db,
             query=query,
             handler_registry=self._handler_registry,
+            transforms=self._transforms,
             root_map=self._root_map,
             filler_class=self._filler_class,
             name='search results',
