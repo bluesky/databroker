@@ -993,15 +993,7 @@ class BlueskyRun(intake.catalog.Catalog):
         root = self.fillers['yes'].root_map.get(root, root)
         if root:
             resource_path = os.path.join(root, resource_path)
-import time
-def timeit(f):
-    def wrap(*args):
-        time1 = time.time()
-        ret = f(*args)
-        time2 = time.time()
-        print('{:s} function took {:.3f} ms'.format(f.__name__, (time2-time1)*1000.0))
-        return ret
-    return wrap
+
         handler = handler_class(resource_path,
                                 **resource['resource_kwargs'])
         def datum_kwarg_gen():
