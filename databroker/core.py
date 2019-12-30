@@ -607,6 +607,22 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
     yield ('stop', stop)
 
 
+class ArgsDict(dict):
+    ...
+
+from dask.base import tokenize, normalize_token
+@normalize_token.register(ArgsDict)
+def tokenize_dict(args):
+    return (descriptor['uid'] for descriptor in args['metadata']['descriptors'])
+
+class MetaDict(dict):
+    ...
+
+@normalize_token.register(MetaDict)
+def tokenize_dict(meta):
+    return (descriptor['uid'] for descriptor in meta['descriptors'])
+
+
 class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     """
     Catalog representing one Run.
@@ -871,7 +887,7 @@ class BlueskyRun(intake.catalog.Catalog):
         for doc in self._descriptors:
             descriptors_by_name[doc.get('name', 'primary')].append(doc)
         for stream_name, descriptors in descriptors_by_name.items():
-            args = dict(
+            args = ArgsDict(
                 get_run_start=self._get_run_start,
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
@@ -891,8 +907,8 @@ class BlueskyRun(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # What does this do?
-                metadata={'descriptors': descriptors,
-                          'resources': self._resources},
+                metadata=MetaDict({'descriptors': descriptors,
+                                   'resources': self._resources}),
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
