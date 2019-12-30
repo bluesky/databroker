@@ -26,6 +26,7 @@ import xarray
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
+from dask.base import normalize_token
 
 
 class PartitionIndexError(IndexError):
@@ -608,16 +609,25 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
 
 
 class ArgsDict(dict):
+    """
+    This class is made so that we can define our own tokenize method, which
+    greatly speeds up the time to load a BlueskyRun.
+    """
     ...
 
-from dask.base import tokenize, normalize_token
+# Register a tokenize method for ArgsDict
 @normalize_token.register(ArgsDict)
 def tokenize_dict(args):
     return (descriptor['uid'] for descriptor in args['metadata']['descriptors'])
 
 class MetaDict(dict):
+    """
+    This class is made so that we can define our own tokenize method, which
+    greatly speeds up the time to load a BlueskyRun.
+    """
     ...
 
+# Register a tokenize method for MetaDict
 @normalize_token.register(MetaDict)
 def tokenize_dict(meta):
     return (descriptor['uid'] for descriptor in meta['descriptors'])
@@ -983,7 +993,15 @@ class BlueskyRun(intake.catalog.Catalog):
         root = self.fillers['yes'].root_map.get(root, root)
         if root:
             resource_path = os.path.join(root, resource_path)
-
+import time
+def timeit(f):
+    def wrap(*args):
+        time1 = time.time()
+        ret = f(*args)
+        time2 = time.time()
+        print('{:s} function took {:.3f} ms'.format(f.__name__, (time2-time1)*1000.0))
+        return ret
+    return wrap
         handler = handler_class(resource_path,
                                 **resource['resource_kwargs'])
         def datum_kwarg_gen():
