@@ -9,7 +9,7 @@ jsonschema
 mongoquery
 msgpack
 msgpack-numpy  # to be split into extras or a separate package
-numpy
+numpy >=1.16.0
 pandas
 pims
 pymongo  # to be split into extras or a separate package
