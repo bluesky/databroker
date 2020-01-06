@@ -37,16 +37,25 @@ param_map = {'sqlite': build_sqlite_backed_broker,
              'intake_mongo': build_intake_mongo_backed_broker,
              # 'intake_mongo_embedded': build_intake_mongo_embedded_backed_broker,
              }
+params = [
+    # Apply the mark pytest.mark.flaky to a *fixture* as shown in
+    # https://github.com/pytest-dev/pytest/issues/3969#issuecomment-420511822
+    pytest.param('sqlite', marks=pytest.mark.flaky(reruns=5, reruns_delay=2)),
+    'mongo',
+    'hdf5',
+    'intake_jsonl',
+    'intake_mongo']
 if os.environ.get('INCLUDE_V0_SERVICE_TESTS') == '1':
     param_map['client'] = build_client_backend_broker
+    params.append('client')
 
 
-@pytest.fixture(params=list(param_map), scope='module')
+@pytest.fixture(params=params, scope='module')
 def db(request):
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=list(param_map), scope='function')
+@pytest.fixture(params=params, scope='function')
 def db_empty(request):
     if ('array_data' in request.function.__name__ and
             request.param == 'sqlite'):
@@ -54,7 +63,7 @@ def db_empty(request):
     return param_map[request.param](request)
 
 
-@pytest.fixture(params=list(param_map), scope='function')
+@pytest.fixture(params=params, scope='function')
 def broker_factory(request):
     "Use this to get more than one broker in a test."
     return {k: lambda: v(request) for k, v in param_map.items()}[request.param]
