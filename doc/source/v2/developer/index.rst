@@ -57,9 +57,9 @@ Continuing to move up the hierarchy, we get to catalogs whose Entries contain
 * :class:`_drivers.mongo_normalized.BlueskyMongoCatalog`
 * :class:`_drivers.mongo_embedded.BlueskyMongoCatalog`
 
-Notice that these are located in an internal module.  Except for testing
-purposes, they should never be directly imported. They should be accessed by
-their name from intake's driver registry as in:
+Notice that these are located in an internal package, ``_drivers``.  Except for
+testing purposes, they should never be directly imported. They should be
+accessed by their name from intake's driver registry as in:
 
 .. code:: python
 
@@ -68,8 +68,8 @@ their name from intake's driver registry as in:
 
 At some point in the future, once the internal APIs stabilize, these classes
 and their specific dependencies (msgpack, pymongo, etc.) will be moved out of
-databroker into separate packages. By avoiding direct imports, this change can
-occur transparently.
+databroker into separate packages. Avoid directly importing from ``_drivers``
+so that this change will not break your code.
 
 Scaling Intake Catalogs
 -----------------------
