@@ -67,6 +67,7 @@ def _data_dec(func):
                                     np.ones(15), dd.astype(int)])(func)
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 @_data_dec
 @pytest.mark.parametrize('base_path', [None, BASE_PATH],
                          ids=['None', 'tmpdir'])
