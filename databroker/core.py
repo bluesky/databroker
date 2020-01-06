@@ -1375,7 +1375,11 @@ def _transpose(in_data, keys, field):
         for k in keys:
             out[k][j] = dd[k]
     for k in keys:
-        out[k] = dask.array.stack(out[k])
+        # compatibility with dask < 2
+        if hasattr(out[k][0], 'shape'):
+            out[k] = dask.array.stack(out[k])
+        else:
+            out[k] = dask.array.array(out[k])
     return out
 
 
