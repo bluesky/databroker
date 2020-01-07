@@ -53,7 +53,7 @@ class Broker(Catalog):
         returns it, potentially modified. This feature is for patching up
         erroneous metadata. It is intended for quick, temporary fixes that
         may later be applied permanently to the data at rest
-        (e.g via a database migration).
+        (e.g., via a database migration).
     **kwargs :
         Additional keyword arguments are passed through to the base class,
         Catalog.
