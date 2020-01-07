@@ -18,7 +18,7 @@ class Broker(Catalog):
     ----------
     handler_registry : dict, optional
         This is passed to the Filler or whatever class is given in the
-        filler_class parametr below.
+        filler_class parameter below.
 
         Maps each 'spec' (a string identifying a given type or external
         resource) to a handler class.
