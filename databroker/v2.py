@@ -47,7 +47,7 @@ class Broker(Catalog):
         This is Filler by default. It can be a Filler subclass,
         ``functools.partial(Filler, ...)``, or any class that provides the same
         methods as ``DocumentRouter``.
-    transforms : dict
+    transforms: dict
         A dict that maps any subset of the keys {start, stop, resource, descriptor}
         to a function that accepts a document of the corresponding type and
         returns it, potentially modified. This feature is for patching up
