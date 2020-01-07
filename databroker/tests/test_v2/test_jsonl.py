@@ -13,8 +13,7 @@ from .generic import *  # noqa
 from ...v1 import from_config
 from ...v2 import Broker
 
-TMP_DIRS = {param: tempfile.mkdtemp() for param in ['local', 'remote',
-                                    'transform_local', 'transform_remote']}
+TMP_DIRS = {param: tempfile.mkdtemp() for param in ['local', 'remote']}
 TEST_CATALOG_PATH = TMP_DIRS['remote']  # used by intake_server fixture
 
 YAML_FILENAME = 'intake_test_catalog.yml'
@@ -52,37 +51,7 @@ sources:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
       beamline: "00-ID"
-        ''')
-
-    time.sleep(2)
-    remote = request.param == 'remote'
-
-    if request.param == 'local':
-        cat = intake.open_catalog(os.path.join(tmp_dir, YAML_FILENAME))
-    elif request.param == 'remote':
-        cat = intake.open_catalog(intake_server, page_size=10)
-    else:
-        raise ValueError
-    return types.SimpleNamespace(cat=cat,
-                                 uid=uid,
-                                 docs=docs,
-                                 remote=remote)
-
-
-@pytest.fixture(params=['local', 'remote'], scope='module')
-def transform_bundle(request, intake_server, example_data):  # noqa
-    tmp_dir = TMP_DIRS['transform_' + request.param]
-    tmp_data_dir = Path(tmp_dir) / 'data'
-    serializer = Serializer(tmp_data_dir)
-    uid, docs = example_data
-    for name, doc in docs:
-        serializer(name, doc)
-    serializer.close()
-    fullname = os.path.join(tmp_dir, YAML_FILENAME)
-    with open(fullname, 'w') as f:
-        f.write(f'''
-sources:
-  xyz:
+  xyz_with_transforms:
     description: Some imaginary beamline
     driver: "bluesky-jsonl-catalog"
     container: catalog
@@ -99,14 +68,11 @@ sources:
       beamline: "00-ID"
         ''')
 
-    with open(fullname) as f:
-        config = yaml.load(f, Loader=getattr(yaml, 'FullLoader', yaml.Loader))
-
     time.sleep(2)
     remote = request.param == 'remote'
 
     if request.param == 'local':
-        cat = intake.open_catalog(fullname)
+        cat = intake.open_catalog(os.path.join(tmp_dir, YAML_FILENAME))
     elif request.param == 'remote':
         cat = intake.open_catalog(intake_server, page_size=10)
     else:

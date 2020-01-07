@@ -48,38 +48,7 @@ sources:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
       beamline: "00-ID"
-        ''')
-
-    time.sleep(2)
-    remote = request.param == 'remote'
-
-    if request.param == 'local':
-        cat = intake.open_catalog(os.path.join(TMP_DIR, YAML_FILENAME))
-    elif request.param == 'remote':
-        cat = intake.open_catalog(intake_server, page_size=10)
-    else:
-        raise ValueError
-    return types.SimpleNamespace(cat=cat,
-                                 uid=uid,
-                                 docs=docs,
-                                 remote=remote)
-
-@pytest.fixture(params=['local', 'remote'], scope='module')
-def transform_bundle(request, intake_server, example_data, db_factory):  # noqa
-    fullname = os.path.join(TMP_DIR, YAML_FILENAME)
-    permanent_db = db_factory()
-    serializer = Serializer(permanent_db)
-    uid, docs = example_data
-    for name, doc in docs:
-        serializer(name, doc)
-
-    def extract_uri(db):
-        return f'mongodb://{db.client.address[0]}:{db.client.address[1]}/{db.name}'
-
-    with open(fullname, 'w') as f:
-        f.write(f'''
-sources:
-  xyz:
+  xyz_with_transforms:
     description: Some imaginary beamline
     driver: "bluesky-mongo-embedded-catalog"
     container: catalog
@@ -100,7 +69,7 @@ sources:
     remote = request.param == 'remote'
 
     if request.param == 'local':
-        cat = intake.open_catalog(fullname)
+        cat = intake.open_catalog(os.path.join(TMP_DIR, YAML_FILENAME))
     elif request.param == 'remote':
         cat = intake.open_catalog(intake_server, page_size=10)
     else:

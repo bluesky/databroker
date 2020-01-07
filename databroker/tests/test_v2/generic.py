@@ -250,8 +250,8 @@ def test_include_and_exclude(bundle):
     assert set(entry(include=['motor:motor_velocity']).read().variables) == expected
 
 
-def test_transforms(transform_bundle):
-    run = transform_bundle.cat['xyz']()[transform_bundle.uid]
+def test_transforms(bundle):
+    run = bundle.cat['xyz_with_transforms']()[bundle.uid]
     for name, doc in run.canonical(fill='no'):
         if name in {'start', 'stop', 'resource', 'descriptor'}:
             assert 'test_key' in doc.keys()
