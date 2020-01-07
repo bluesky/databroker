@@ -16,7 +16,7 @@ class Broker(Catalog):
 
     Parameters
     ----------
-    handler_registry : dict, optional
+    handler_registry: dict, optional
         This is passed to the Filler or whatever class is given in the
         filler_class parameter below.
 
