@@ -796,7 +796,7 @@ class BlueskyRun(intake.catalog.Catalog):
         where ``generator`` yields Datum documents
     get_filler : callable
         Expected signature ``get_filler() -> event_model.Filler``
-    transforms : Dict[str, Chttps://gist.github.com/gwbischof/6efafc15b620166a1492a5a610bc0ebfallable]
+    transforms : Dict[str, Callable]
         A dict that maps any subset of the keys {start, stop, resource, descriptor}
         to a function that accepts a document of the corresponding type and
         returns it, potentially modified. This feature is for patching up
