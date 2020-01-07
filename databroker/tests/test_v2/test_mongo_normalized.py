@@ -1,4 +1,5 @@
 import intake
+from intake.catalog.utils import RemoteCatalogError
 from suitcase.mongo_normalized import Serializer
 import os
 import pytest
@@ -64,3 +65,25 @@ sources:
                                  uid=uid,
                                  docs=docs,
                                  remote=remote)
+
+
+# Driver-specific tests
+
+def test_find_kwargs(bundle):
+    "Test that options for search and passed through to pymongo."
+    cat = bundle.cat
+
+    # Pass in a valid argument.
+    results = cat['xyz'].search({'plan_name': 'scan'},
+                                no_cursor_timeout=True)
+    list(results)  # needed to trigger Cursor instantiation in local case
+
+    # Pass in an invalid argument and verify that it raises.
+    if bundle.remote:
+        expected_error = RemoteCatalogError
+    else:
+        expected_error = TypeError
+    with pytest.raises(expected_error):
+        results = cat['xyz'].search({'plan_name': 'scan'},
+                                    NOT_A_VALID_PARAMETER=None)
+        list(results)  # needed to trigger Cursor instantiation in local case
