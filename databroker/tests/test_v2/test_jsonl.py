@@ -7,11 +7,8 @@ import shutil
 import tempfile
 import time
 import types
-import yaml
 
 from .generic import *  # noqa
-from ...v1 import from_config
-from ...v2 import Broker
 
 TMP_DIRS = {param: tempfile.mkdtemp() for param in ['local', 'remote']}
 TEST_CATALOG_PATH = TMP_DIRS['remote']  # used by intake_server fixture

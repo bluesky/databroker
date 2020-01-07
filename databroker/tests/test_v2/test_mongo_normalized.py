@@ -9,7 +9,6 @@ import time
 import types
 
 from .generic import *  # noqa
-from ...v1 import from_config
 
 TMP_DIR = tempfile.mkdtemp()
 TEST_CATALOG_PATH = [TMP_DIR]

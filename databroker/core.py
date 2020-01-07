@@ -794,40 +794,18 @@ class BlueskyRun(intake.catalog.Catalog):
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
+    get_filler : callable
+        Expected signature ``get_filler() -> event_model.Filler``
+    transforms : Dict[str, Chttps://gist.github.com/gwbischof/6efafc15b620166a1492a5a610bc0ebfallable]
+        A dict that maps any subset of the keys {start, stop, resource, descriptor}
+        to a function that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest
+        (e.g via a database migration).
     **kwargs :
         Additional keyword arguments are passed through to the base class,
         Catalog.
-    handler_registry : dict, optional
-        This is passed to the Filler or whatever class is given in the
-        filler_class parametr below.
-
-        Maps each 'spec' (a string identifying a given type or external
-        resource) to a handler class.
-
-        A 'handler class' may be any callable with the signature::
-
-            handler_class(resource_path, root, **resource_kwargs)
-
-        It is expected to return an object, a 'handler instance', which is also
-        callable and has the following signature::
-
-            handler_instance(**datum_kwargs)
-
-        As the names 'handler class' and 'handler instance' suggest, this is
-        typically implemented using a class that implements ``__init__`` and
-        ``__call__``, with the respective signatures. But in general it may be
-        any callable-that-returns-a-callable.
-    root_map: dict, optional
-        This is passed to Filler or whatever class is given in the filler_class
-        parameter below.
-
-        str -> str mapping to account for temporarily moved/copied/remounted
-        files.  Any resources which have a ``root`` in ``root_map`` will be
-        loaded using the mapped ``root``.
-    filler_class: type
-        This is Filler by default. It can be a Filler subclass,
-        ``functools.partial(Filler, ...)``, or any class that provides the same
-        methods as ``DocumentRouter``.
     """
     container = 'bluesky-run'
     version = '0.0.1'
@@ -1074,11 +1052,13 @@ class BlueskyEventStream(DataSourceMixin):
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
     fillers : dict of Fillers
-    transforms : dict
-        A dict that maps (``start``, ``stop``, ``resource``, ``descriptor``)
-        to a function that accepts a document of the corresponding type. This function
-        will transform each document of the corresponding type that is read. Transforms
-        are defined in the catalog file.
+    transforms : Dict[str, Callable]
+        A dict that maps any subset of the keys {start, stop, resource, descriptor}
+        to a function that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest
+        (e.g via a database migration).
     metadata : dict
         passed through to base class
     include : list, optional
@@ -1510,7 +1490,7 @@ def parse_handler_registry(handler_registry):
     return result
 
 
-def load_transforms(transforms):
+def parse_transforms(transforms):
     """
     Parse mapping of spec name to 'import path' into mapping to class itself.
 
@@ -1523,7 +1503,7 @@ def load_transforms(transforms):
     --------
     Pass in name; get back actual class.
 
-    >>> load_transforms({'descriptor': 'package.module.ClassName'})
+    >>> parse_transforms({'descriptor': 'package.module.ClassName'})
     {'descriptor': <package.module.ClassName>}
 
     """
@@ -1532,7 +1512,7 @@ def load_transforms(transforms):
     if transforms is None:
         result = {key: lambda doc: doc for key in transformable}
         return result
-    elif isinstance(transforms, dict):
+    elif isinstance(transforms, collections.abc.Mapping):
         if len(transforms.keys() - transformable) > 0:
             raise NotImplementedError(f"Transforms for {transforms.keys() - transformable} "
                                       f"are not supported.")

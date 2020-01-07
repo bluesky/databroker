@@ -254,4 +254,4 @@ def test_transforms(bundle):
     run = bundle.cat['xyz_with_transforms']()[bundle.uid]
     for name, doc in run.canonical(fill='no'):
         if name in {'start', 'stop', 'resource', 'descriptor'}:
-            assert 'test_key' in doc.keys()
+            assert doc.get('test_key') == 'test_value'

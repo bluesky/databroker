@@ -1,7 +1,7 @@
 import event_model
 import tempfile
 
-from .core import parse_handler_registry, discover_handlers, load_transforms
+from .core import parse_handler_registry, discover_handlers, parse_transforms
 from intake.catalog import Catalog
 from event_model import DuplicateHandler
 from functools import partial
@@ -13,6 +13,50 @@ class Broker(Catalog):
     This is a thin wrapper around intake.Catalog.
 
     It includes an accessor the databroker API version 1.
+
+    Parameters
+    ----------
+    handler_registry : dict, optional
+        This is passed to the Filler or whatever class is given in the
+        filler_class parametr below.
+
+        Maps each 'spec' (a string identifying a given type or external
+        resource) to a handler class.
+
+        A 'handler class' may be any callable with the signature::
+
+            handler_class(resource_path, root, **resource_kwargs)
+
+        It is expected to return an object, a 'handler instance', which is also
+        callable and has the following signature::
+
+            handler_instance(**datum_kwargs)
+
+        As the names 'handler class' and 'handler instance' suggest, this is
+        typically implemented using a class that implements ``__init__`` and
+        ``__call__``, with the respective signatures. But in general it may be
+        any callable-that-returns-a-callable.
+    root_map: dict, optional
+        This is passed to Filler or whatever class is given in the filler_class
+        parameter below.
+
+        str -> str mapping to account for temporarily moved/copied/remounted
+        files.  Any resources which have a ``root`` in ``root_map`` will be
+        loaded using the mapped ``root``.
+    filler_class: type
+        This is Filler by default. It can be a Filler subclass,
+        ``functools.partial(Filler, ...)``, or any class that provides the same
+        methods as ``DocumentRouter``.
+    transforms : dict
+        A dict that maps any subset of the keys {start, stop, resource, descriptor}
+        to a function that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest
+        (e.g via a database migration).
+    **kwargs :
+        Additional keyword arguments are passed through to the base class,
+        Catalog.
     """
 
     def __init__(self, *, handler_registry=None, root_map=None,
@@ -20,7 +64,7 @@ class Broker(Catalog):
 
         self._root_map = root_map
         self._filler_class = filler_class
-        self._transforms = load_transforms(transforms)
+        self._transforms = parse_transforms(transforms)
         if handler_registry is None:
             handler_registry = discover_handlers()
         self._handler_registry = parse_handler_registry(handler_registry)

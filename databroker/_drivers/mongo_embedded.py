@@ -216,10 +216,13 @@ class BlueskyMongoCatalog(Broker):
             same methods as ``DocumentRouter``.
         query : dict, optional
             MongoDB query. Used internally by the ``search()`` method.
-        transforms : dict
-            A dict that maps (``start``, ``stop``, ``resource``, ``descriptor``)
-            to a function that accepts a document of the corresponding type. This function
-            will transform each document of the corresponding type that is read.
+        transforms : Dict[str, Callable]
+            A dict that maps any subset of the keys {start, stop, resource, descriptor}
+            to a function that accepts a document of the corresponding type and
+            returns it, potentially modified. This feature is for patching up
+            erroneous metadata. It is intended for quick, temporary fixes that
+            may later be applied permanently to the data at rest
+            (e.g via a database migration).
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
