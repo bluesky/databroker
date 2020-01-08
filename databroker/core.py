@@ -846,8 +846,6 @@ class BlueskyRun(intake.catalog.Catalog):
         self._entry = entry
         self._transforms = transforms
 
-        assert transforms is not None
-
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -1496,8 +1494,14 @@ def parse_transforms(transforms):
 
     Parameters
     ----------
-    transforms : dict or None
-        Values may be string 'import paths' to classes or actual classes.
+    transforms : collections.abc.Mapping or None
+        A collections.abc.Mapping or subclass, that maps any subset of the
+        keys {start, stop, resource, descriptor} to a function (or a string
+        import path) that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest (e.g via a
+        database migration).
 
     Examples
     --------
@@ -1526,12 +1530,11 @@ def parse_transforms(transforms):
                 function = lambda doc: doc
             else:
                 function = transform
-                #raise ValueError(f"The transform {transform} must be of type string.")
             result[name] = function
         return result
     else:
         raise ValueError(f"Invalid transforms argument {transforms}. "
-                         f"transforms but be None or a dictionary. ")
+                         f"transforms but be None or a dictionary.")
 
 
 # This determines the type of the class that you get on the
