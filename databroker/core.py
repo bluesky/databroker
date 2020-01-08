@@ -1534,7 +1534,7 @@ def parse_transforms(transforms):
         return result
     else:
         raise ValueError(f"Invalid transforms argument {transforms}. "
-                         f"transforms but be None or a dictionary.")
+                         f"transforms must be None or a dictionary.")
 
 
 # This determines the type of the class that you get on the
