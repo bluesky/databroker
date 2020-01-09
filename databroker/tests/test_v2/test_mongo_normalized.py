@@ -50,15 +50,31 @@ sources:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
       beamline: "00-ID"
+  xyz_with_transforms:
+    description: Some imaginary beamline
+    driver: "bluesky-mongo-normalized-catalog"
+    container: catalog
+    args:
+      metadatastore_db: {extract_uri(mds_db)}
+      asset_registry_db: {extract_uri(assets_db)}
+      handler_registry:
+        NPY_SEQ: ophyd.sim.NumpySeqHandler
+      transforms:
+        start: databroker.tests.test_v2.transform.transform
+        stop: databroker.tests.test_v2.transform.transform
+        resource: databroker.tests.test_v2.transform.transform
+        descriptor: databroker.tests.test_v2.transform.transform
+    metadata:
+      beamline: "00-ID"
         ''')
 
     time.sleep(2)
     remote = request.param == 'remote'
 
     if request.param == 'local':
-        cat = intake.Catalog(os.path.join(TMP_DIR, YAML_FILENAME))
+        cat = intake.open_catalog(os.path.join(TMP_DIR, YAML_FILENAME))
     elif request.param == 'remote':
-        cat = intake.Catalog(intake_server, page_size=10)
+        cat = intake.open_catalog(intake_server, page_size=10)
     else:
         raise ValueError
     return types.SimpleNamespace(cat=cat,

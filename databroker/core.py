@@ -794,40 +794,18 @@ class BlueskyRun(intake.catalog.Catalog):
     get_datum_pages : callable
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields Datum documents
+    get_filler : callable
+        Expected signature ``get_filler() -> event_model.Filler``
+    transforms : Dict[str, Callable]
+        A dict that maps any subset of the keys {start, stop, resource, descriptor}
+        to a function that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest
+        (e.g., via a database migration).
     **kwargs :
         Additional keyword arguments are passed through to the base class,
         Catalog.
-    handler_registry : dict, optional
-        This is passed to the Filler or whatever class is given in the
-        filler_class parametr below.
-
-        Maps each 'spec' (a string identifying a given type or external
-        resource) to a handler class.
-
-        A 'handler class' may be any callable with the signature::
-
-            handler_class(resource_path, root, **resource_kwargs)
-
-        It is expected to return an object, a 'handler instance', which is also
-        callable and has the following signature::
-
-            handler_instance(**datum_kwargs)
-
-        As the names 'handler class' and 'handler instance' suggest, this is
-        typically implemented using a class that implements ``__init__`` and
-        ``__call__``, with the respective signatures. But in general it may be
-        any callable-that-returns-a-callable.
-    root_map: dict, optional
-        This is passed to Filler or whatever class is given in the filler_class
-        parameter below.
-
-        str -> str mapping to account for temporarily moved/copied/remounted
-        files.  Any resources which have a ``root`` in ``root_map`` will be
-        loaded using the mapped ``root``.
-    filler_class: type
-        This is Filler by default. It can be a Filler subclass,
-        ``functools.partial(Filler, ...)``, or any class that provides the same
-        methods as ``DocumentRouter``.
     """
     container = 'bluesky-run'
     version = '0.0.1'
@@ -846,11 +824,11 @@ class BlueskyRun(intake.catalog.Catalog):
                  get_datum_pages,
                  get_filler,
                  entry,
+                 transforms,
                  **kwargs):
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self.urlpath = ''  # TODO Not sure why I had to add this.
-
         self._get_run_start = get_run_start
         self._get_run_stop = get_run_stop
         self._get_event_descriptors = get_event_descriptors
@@ -866,6 +844,8 @@ class BlueskyRun(intake.catalog.Catalog):
             self.fillers['yes'].handler_registry, inplace=True)
         self.fillers['delayed'] = get_filler(coerce='delayed')
         self._entry = entry
+        self._transforms = transforms
+
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -885,10 +865,12 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = self._get_run_start()
-        self._run_stop_doc = self._get_run_stop()
-        self._descriptors = self._get_event_descriptors()
-        self._resources = self._get_resources() or []
+        self._run_start_doc = self._transforms['start'](self._get_run_start())
+        self._run_stop_doc = self._transforms['stop'](self._get_run_stop())
+        self._descriptors = [self._transforms['descriptor'](descriptor)
+                             for descriptor in self._get_event_descriptors()]
+        self._resources = [self._transforms['resource'](resource)
+                           for resource in self._get_resources() or []]
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -928,6 +910,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
                 fillers=self.fillers,
+                transforms=self._transforms,
                 metadata={'descriptors': descriptors,
                           'resources': self._resources})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
@@ -1029,6 +1012,7 @@ class BlueskyRun(intake.catalog.Catalog):
             "Reading the BlueskyRun itself is not supported. Instead read one "
             "its entries, representing individual Event Streams. You can see "
             "the entries using list(YOUR_VARIABLE_HERE). Tab completion may "
+
             "also help, if available.")
 
     def to_dask(self):
@@ -1066,6 +1050,13 @@ class BlueskyEventStream(DataSourceMixin):
         Expected signature ``get_datum_pages(resource_uid) -> generator``
         where ``generator`` yields datum_page documents
     fillers : dict of Fillers
+    transforms : Dict[str, Callable]
+        A dict that maps any subset of the keys {start, stop, resource, descriptor}
+        to a function that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest
+        (e.g., via a database migration).
     metadata : dict
         passed through to base class
     include : list, optional
@@ -1092,6 +1083,7 @@ class BlueskyEventStream(DataSourceMixin):
                  lookup_resource_for_datum,
                  get_datum_pages,
                  fillers,
+                 transforms,
                  metadata,
                  include=None,
                  exclude=None,
@@ -1115,14 +1107,15 @@ class BlueskyEventStream(DataSourceMixin):
 
         super().__init__(metadata=metadata, **kwargs)
 
-        self._run_stop_doc = self._get_run_stop()
-        self._run_start_doc = self._get_run_start()
-        self._descriptors =  [descriptor for descriptor in
-                              metadata.get('descriptors', [])
+        self._run_stop_doc = transforms['stop'](self._get_run_stop())
+        self._run_start_doc = transforms['start'](self._get_run_start())
+        self._descriptors =  [transforms['descriptor'](descriptor)
+                              for descriptor in metadata.get('descriptors', [])
                               if descriptor.get('name') == self._stream_name]
         # Should figure out a way so that self._resources doesn't have to be
         # all of the Run's resources.
-        self._resources = metadata.get('resources', [])
+        self._resources = [transforms['resource'](resource)
+                           for resource in metadata.get('resources', [])]
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         self._partitions = None
@@ -1293,7 +1286,8 @@ class DocumentCache(event_model.DocumentRouter):
 
 class BlueskyRunFromGenerator(BlueskyRun):
 
-    def __init__(self, gen_func, gen_args, gen_kwargs, get_filler, **kwargs):
+    def __init__(self, gen_func, gen_args, gen_kwargs, get_filler,
+                 transforms, **kwargs):
 
         document_cache = DocumentCache()
 
@@ -1345,6 +1339,7 @@ class BlueskyRunFromGenerator(BlueskyRun):
             lookup_resource_for_datum=lookup_resource_for_datum,
             get_datum_pages=get_datum_pages,
             get_filler=get_filler,
+            transforms=transforms,
             **kwargs)
 
 
@@ -1491,6 +1486,55 @@ def parse_handler_registry(handler_registry):
             class_ = handler_str
         result[spec] = class_
     return result
+
+
+def parse_transforms(transforms):
+    """
+    Parse mapping of spec name to 'import path' into mapping to class itself.
+
+    Parameters
+    ----------
+    transforms : collections.abc.Mapping or None
+        A collections.abc.Mapping or subclass, that maps any subset of the
+        keys {start, stop, resource, descriptor} to a function (or a string
+        import path) that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest (e.g via a
+        database migration).
+
+    Examples
+    --------
+    Pass in name; get back actual class.
+
+    >>> parse_transforms({'descriptor': 'package.module.ClassName'})
+    {'descriptor': <package.module.ClassName>}
+
+    """
+    transformable = {'start', 'stop', 'resource', 'descriptor'}
+
+    if transforms is None:
+        result = {key: lambda doc: doc for key in transformable}
+        return result
+    elif isinstance(transforms, collections.abc.Mapping):
+        if len(transforms.keys() - transformable) > 0:
+            raise NotImplementedError(f"Transforms for {transforms.keys() - transformable} "
+                                      f"are not supported.")
+        result = {}
+        for name in transformable:
+            transform = transforms.get(name)
+            if isinstance(transform, str):
+                module_name, _, class_name = transform.rpartition('.')
+                function = getattr(importlib.import_module(module_name), class_name)
+            elif transform is None:
+                function = lambda doc: doc
+            else:
+                function = transform
+            result[name] = function
+        return result
+    else:
+        raise ValueError(f"Invalid transforms argument {transforms}. "
+                         f"transforms must be None or a dictionary.")
 
 
 # This determines the type of the class that you get on the

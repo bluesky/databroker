@@ -1572,6 +1572,8 @@ def from_config(config, auto_register=True, name=None):
     """
     Build (some version of) a Broker instance from a v0 configuration dict.
 
+    This method accepts v1 config files.
+
     This can return a ``v0.Broker``, ``v1.Broker``, or ``v2.Broker`` depending
     on the contents of ``config``.
 
@@ -1640,10 +1642,15 @@ def _from_v0_config(config, auto_register, name):
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
     root_map = config.get('root_map')
+
+    transforms = config.get('transforms')
+
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
                                handler_registry=handler_registry,
                                root_map=root_map,
-                               name=name)
+                               name=name,
+                               transforms=transforms)
+
 
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 

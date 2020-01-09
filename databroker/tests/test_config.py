@@ -1,5 +1,6 @@
 import copy
 
+from bluesky.plans import count
 from databroker import (lookup_config, Broker, temp, temp_config, list_configs,
                         describe_configs)
 
@@ -123,7 +124,7 @@ def test_legacy_config():
     from databroker import db, DataBroker, get_table, get_images
 
     # now make a broken legacy config file.
-    broken_example = EXAMPLE.copy()
+    broken_example = copy.deepcopy(EXAMPLE)
     broken_example['metadatastore'].pop('module')
     with open(path, 'w') as f:
         yaml.dump(broken_example, f)
@@ -184,3 +185,21 @@ def test_named_temp():
 
     db2 = Broker.named('temp')
     assert db._catalog.paths != db2._catalog.paths
+
+
+def test_transforms(RE, hw):
+    transforms = {'transforms':
+                    {'start': 'databroker.tests.test_v2.transform.transform',
+                     'stop': 'databroker.tests.test_v2.transform.transform',
+                     'resource': 'databroker.tests.test_v2.transform.transform',
+                     'descriptor': 'databroker.tests.test_v2.transform.transform'}}
+
+    config = {**EXAMPLE, **transforms}
+    broker = Broker.from_config(config)
+    RE.subscribe(broker.insert)
+    uid, = RE(count([hw.det]))
+    run = broker[uid]
+
+    for name, doc in run.documents(fill='false'):
+        if name in {'start', 'stop', 'resource', 'descriptor'}:
+            assert doc.get('test_key') == 'test_value'

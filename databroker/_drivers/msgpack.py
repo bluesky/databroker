@@ -52,8 +52,8 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
 
     def __init__(self, paths, *,
                  handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler,
-                 query=None, **kwargs):
+                 filler_class=event_model.Filler, query=None,
+                 transforms=None, **kwargs):
         """
         This Catalog is backed by msgpack files.
 
@@ -97,6 +97,13 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
             same methods as ``DocumentRouter``.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
+        transforms : Dict[str, Callable]
+            A dict that maps any subset of the keys {start, stop, resource, descriptor}
+            to a function that accepts a document of the corresponding type and
+            returns it, potentially modified. This feature is for patching up
+            erroneous metadata. It is intended for quick, temporary fixes that
+            may later be applied permanently to the data at rest
+            (e.g., via a database migration).
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
@@ -107,10 +114,8 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
         self.paths = paths
         self._filename_to_mtime = {}
         super().__init__(handler_registry=handler_registry,
-                         root_map=root_map,
-                         filler_class=filler_class,
-                         query=query,
-                         **kwargs)
+                         root_map=root_map, filler_class=filler_class,
+                         query=query, transforms=transforms, **kwargs)
 
     def _load(self):
         for path in self.paths:
@@ -145,6 +150,7 @@ class BlueskyMsgpackCatalog(BlueskyInMemoryCatalog):
             paths=self.paths,
             query=query,
             handler_registry=self._handler_registry,
+            transforms=self._transforms,
             root_map=self._root_map,
             name='search results',
             getenv=self.getenv,

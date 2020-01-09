@@ -14,8 +14,8 @@ class BlueskyInMemoryCatalog(Broker):
     name = 'bluesky-run-catalog'  # noqa
 
     def __init__(self, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler,
-                 query=None, **kwargs):
+                 filler_class=event_model.Filler, query=None,
+                 transforms=None, **kwargs):
         """
         This Catalog is backed by Python collections in memory.
 
@@ -58,6 +58,13 @@ class BlueskyInMemoryCatalog(Broker):
             same methods as ``DocumentRouter``.
         query : dict, optional
             Mongo query that filters entries' RunStart documents
+        transforms : Dict[str, Callable]
+            A dict that maps any subset of the keys {start, stop, resource, descriptor}
+            to a function that accepts a document of the corresponding type and
+            returns it, potentially modified. This feature is for patching up
+            erroneous metadata. It is intended for quick, temporary fixes that
+            may later be applied permanently to the data at rest
+            (e.g., via a database migration).
         **kwargs :
             Additional keyword arguments are passed through to the base class,
             Catalog.
@@ -66,9 +73,8 @@ class BlueskyInMemoryCatalog(Broker):
         self._uid_to_run_start_doc = {}
 
         super().__init__(handler_registry=handler_registry,
-                         root_map=root_map,
-                         filler_class=filler_class,
-                         **kwargs)
+                         root_map=root_map, filler_class=filler_class,
+                         transforms=transforms, **kwargs)
 
     def upsert(self, start_doc, stop_doc, gen_func, gen_args, gen_kwargs):
         if not Query(self._query).match(start_doc):
@@ -85,7 +91,8 @@ class BlueskyInMemoryCatalog(Broker):
             args={'gen_func': gen_func,
                   'gen_args': gen_args,
                   'gen_kwargs': gen_kwargs,
-                  'get_filler': self._get_filler},
+                  'get_filler': self._get_filler,
+                  'transforms': self._transforms},
             cache=None,  # ???
             parameters=[],
             metadata={'start': start_doc, 'stop': stop_doc},
@@ -108,6 +115,7 @@ class BlueskyInMemoryCatalog(Broker):
         cat = type(self)(
             query=query,
             handler_registry=self._handler_registry,
+            transforms=self._transforms,
             root_map=self._root_map,
             name='search results',
             getenv=self.getenv,
