@@ -865,11 +865,11 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = self._transforms['start'](self._get_run_start())
-        self._run_stop_doc = self._transforms['stop'](self._get_run_stop())
-        self._descriptors = [self._transforms['descriptor'](descriptor)
+        self._run_start_doc = self._transforms['start'](copy.deepcopy(self._get_run_start()))
+        self._run_stop_doc = self._transforms['stop'](copy.deepcopy(self._get_run_stop()))
+        self._descriptors = [self._transforms['descriptor'](copy.deepcopy(descriptor))
                              for descriptor in self._get_event_descriptors()]
-        self._resources = [self._transforms['resource'](resource)
+        self._resources = [self._transforms['resource'](copy.deepcopy(resource))
                            for resource in self._get_resources() or []]
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
@@ -1107,8 +1107,8 @@ class BlueskyEventStream(DataSourceMixin):
 
         super().__init__(metadata=metadata, **kwargs)
 
-        self._run_stop_doc = transforms['stop'](self._get_run_stop())
-        self._run_start_doc = transforms['start'](self._get_run_start())
+        self._run_stop_doc = transforms['stop'](copy.deepcopy(self._get_run_stop()))
+        self._run_start_doc = transforms['start'](copy.deepcopy(self._get_run_start()))
         self._descriptors =  [descriptor for descriptor
                               in metadata.get('descriptors', [])
                               if descriptor.get('name') == self._stream_name]
@@ -1296,13 +1296,13 @@ class BlueskyRunFromGenerator(BlueskyRun):
         assert document_cache.start_doc is not None
 
         def get_run_start():
-            return copy.deepcopy(document_cache.start_doc)
+            return document_cache.start_doc
 
         def get_run_stop():
-            return copy.deepcopy(document_cache.stop_doc)
+            return document_cache.stop_doc
 
         def get_event_descriptors():
-            return copy.deepcopy(list(document_cache.descriptors.values()))
+            return list(document_cache.descriptors.values())
 
         def get_event_pages(descriptor_uid, skip=0, limit=None):
             if skip != 0 and limit is not None:
@@ -1314,10 +1314,10 @@ class BlueskyRunFromGenerator(BlueskyRun):
                        for page in (document_cache.event_pages[descriptor_uid]))
 
         def get_resource(uid):
-            return copy.deepcopy(document_cache.resources[uid])
+            return document_cache.resources[uid]
 
         def get_resources():
-            return copy.deepcopy(list(document_cache.resources.values()))
+            return list(document_cache.resources.values())
 
         def lookup_resource_for_datum(datum_id):
             return document_cache.resource_uid_by_datum_id[datum_id]
