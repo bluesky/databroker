@@ -1296,13 +1296,13 @@ class BlueskyRunFromGenerator(BlueskyRun):
         assert document_cache.start_doc is not None
 
         def get_run_start():
-            return document_cache.start_doc
+            return copy.deepcopy(document_cache.start_doc)
 
         def get_run_stop():
-            return document_cache.stop_doc
+            return copy.deepcopy(document_cache.stop_doc)
 
         def get_event_descriptors():
-            return document_cache.descriptors.values()
+            return copy.deepcopy(list(document_cache.descriptors.values()))
 
         def get_event_pages(descriptor_uid, skip=0, limit=None):
             if skip != 0 and limit is not None:
@@ -1314,10 +1314,10 @@ class BlueskyRunFromGenerator(BlueskyRun):
                        for page in (document_cache.event_pages[descriptor_uid]))
 
         def get_resource(uid):
-            return document_cache.resources[uid]
+            return copy.deepcopy(document_cache.resources[uid])
 
         def get_resources():
-            return list(document_cache.resources.values())
+            return copy.deepcopy(list(document_cache.resources.values()))
 
         def lookup_resource_for_datum(datum_id):
             return document_cache.resource_uid_by_datum_id[datum_id]
