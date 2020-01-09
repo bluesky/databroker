@@ -1109,13 +1109,12 @@ class BlueskyEventStream(DataSourceMixin):
 
         self._run_stop_doc = transforms['stop'](self._get_run_stop())
         self._run_start_doc = transforms['start'](self._get_run_start())
-        self._descriptors =  [transforms['descriptor'](descriptor)
-                              for descriptor in metadata.get('descriptors', [])
+        self._descriptors =  [descriptor for descriptor
+                              in metadata.get('descriptors', [])
                               if descriptor.get('name') == self._stream_name]
         # Should figure out a way so that self._resources doesn't have to be
         # all of the Run's resources.
-        self._resources = [transforms['resource'](resource)
-                           for resource in metadata.get('resources', [])]
+        self._resources = metadata.get('resources', [])
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
         self._partitions = None
