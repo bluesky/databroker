@@ -1033,8 +1033,6 @@ class BlueskyEventStream(DataSourceMixin):
 
     Parameters
     ----------
-    get_run_start: callable
-        Expected signature ``get_run_start() -> RunStart``
     stream_name : string
         Stream name, such as 'primary'.
     get_run_stop : callable
