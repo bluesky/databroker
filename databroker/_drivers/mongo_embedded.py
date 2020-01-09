@@ -1,5 +1,4 @@
 import collections.abc
-import copy
 import event_model
 from sys import maxsize
 from functools import partial
