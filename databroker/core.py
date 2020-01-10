@@ -871,6 +871,7 @@ class BlueskyRun(intake.catalog.Catalog):
                              for descriptor in self._get_event_descriptors()]
         self._resources = [self._transforms['resource'](copy.deepcopy(resource))
                            for resource in self._get_resources() or []]
+
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
@@ -900,7 +901,6 @@ class BlueskyRun(intake.catalog.Catalog):
             descriptors_by_name[doc.get('name', 'primary')].append(doc)
         for stream_name, descriptors in descriptors_by_name.items():
             args = dict(
-                get_run_start=self._get_run_start,
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
                 get_event_descriptors=self._get_event_descriptors,
@@ -911,7 +911,9 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_datum_pages=self._get_datum_pages,
                 fillers=self.fillers,
                 transforms=self._transforms,
-                metadata={'descriptors': descriptors,
+                metadata={'start': self.metadata['start'],
+                          'stop': self.metadata['stop'],
+                          'descriptors': descriptors,
                           'resources': self._resources})
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
@@ -920,7 +922,9 @@ class BlueskyRun(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # What does this do?
-                metadata={'descriptors': descriptors,
+                metadata={'start': self.metadata['start'],
+                          'stop': self.metadata['stop'],
+                          'descriptors': descriptors,
                           'resources': self._resources},
                 catalog_dir=None,
                 getenv=True,
@@ -1029,8 +1033,6 @@ class BlueskyEventStream(DataSourceMixin):
 
     Parameters
     ----------
-    get_run_start: callable
-        Expected signature ``get_run_start() -> RunStart``
     stream_name : string
         Stream name, such as 'primary'.
     get_run_stop : callable
@@ -1073,7 +1075,6 @@ class BlueskyEventStream(DataSourceMixin):
     partition_access = True
 
     def __init__(self,
-                 get_run_start,
                  stream_name,
                  get_run_stop,
                  get_event_descriptors,
@@ -1088,9 +1089,7 @@ class BlueskyEventStream(DataSourceMixin):
                  include=None,
                  exclude=None,
                  **kwargs):
-        # self._partition_size = 10
-        # self._default_chunks = 10
-        self._get_run_start = get_run_start
+
         self._stream_name = stream_name
         self._get_event_descriptors = get_event_descriptors
         self._get_run_stop = get_run_stop
@@ -1107,16 +1106,13 @@ class BlueskyEventStream(DataSourceMixin):
 
         super().__init__(metadata=metadata, **kwargs)
 
-        self._run_stop_doc = transforms['stop'](copy.deepcopy(self._get_run_stop()))
-        self._run_start_doc = transforms['start'](copy.deepcopy(self._get_run_start()))
-        self._descriptors =  [descriptor for descriptor
-                              in metadata.get('descriptors', [])
+        self._run_stop_doc = metadata['stop']
+        self._run_start_doc = metadata['start']
+        self._descriptors =  [descriptor for descriptor in metadata['descriptors']
                               if descriptor.get('name') == self._stream_name]
         # Should figure out a way so that self._resources doesn't have to be
         # all of the Run's resources.
-        self._resources = metadata.get('resources', [])
-        self.metadata.update({'start': self._run_start_doc})
-        self.metadata.update({'stop': self._run_stop_doc})
+        self._resources = metadata['resources']
         self._partitions = None
 
     def __repr__(self):
