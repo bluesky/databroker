@@ -27,10 +27,6 @@ from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
 from dask.base import normalize_token
-from typing import Iterator, Mapping, TypeVar
-
-K = TypeVar("K")
-V = TypeVar("V")
 
 
 class NotMutable(Exception):
@@ -106,6 +102,7 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # enables the driver instance to know which Entry created it.
         open_args['entry'] = self
         return plugin, open_args
+
 
 def tail(filename, n=1, bsize=2048):
     """d V might as w
@@ -433,14 +430,12 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     yield partition
 
 
-def fill(
-    filler,
-    event,
-    lookup_resource_for_datum,
-    get_resource,
-    get_datum_pages,
-    last_datum_id=None,
-):
+def fill(filler,
+         event,
+         lookup_resource_for_datum,
+         get_resource,
+         get_datum_pages,
+         last_datum_id=None):
     try:
         _, filled_event = filler("event", event)
         return filled_event
