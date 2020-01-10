@@ -94,7 +94,7 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
 
 
 def tail(filename, n=1, bsize=2048):
-    """d V might as w
+    """
     Returns a generator with the last n lines of a file.
 
     Thanks to Martijn Pieters for this solution:
@@ -589,7 +589,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             else:
                 keys = scoped_data_keys
             for key, scoped_key in keys.items():
-                field_metadescriptorata = data_keys[key]
+                field_metadata = data_keys[key]
                 field_metadata = data_keys[key]
                 ndim = len(field_metadata['shape'])
                 # if the EventDescriptor doesn't provide names for the
@@ -908,7 +908,6 @@ class BlueskyRun(intake.catalog.Catalog):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
-    @timeit
     def _load(self):
         # Count the total number of documents in this run.
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
