@@ -25,8 +25,9 @@ import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
-from collections import deque
+from collections import deque, OrderedDict
 from dask.base import normalize_token
+from intake.utils import DictSerialiseMixin
 
 import time
 
@@ -96,18 +97,13 @@ class PartitionIndexError(IndexError):
 
 
 class Entry(intake.catalog.local.LocalCatalogEntry):
-    def __init__(self, **kwargs):
-        # This might never come up, but just to be safe....
-        if 'entry' in kwargs['args']:
-            raise TypeError("The args cannot contain 'entry'. It is reserved.")
-        super().__init__(**kwargs)
-
-    def _create_open_args(self, user_parameters):
-        plugin, open_args = super()._create_open_args(user_parameters)
-        # Inject self into arguments passed to instanitate the driver. This
-        # enables the driver instance to know which Entry created it.
-        open_args['entry'] = self
-        return plugin, open_args
+    def __getstate__(self):
+        args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
+                else arg for arg in self._captured_init_args]
+        kwargs = OrderedDict({k: arg.__getstate__()
+                              if isinstance(arg, DictSerialiseMixin) else arg
+                              for k, arg in self._captured_init_kwargs.items()})
+        return OrderedDict(cls=self.classname, args=args, kwargs=kwargs)
 
 
 def tail(filename, n=1, bsize=2048):
@@ -963,11 +959,11 @@ class BlueskyRun(intake.catalog.Catalog):
         for doc in self._descriptors:
             descriptors_by_name[doc.get('name', 'primary')].append(doc)
         for stream_name, descriptors in descriptors_by_name.items():
-            meta={'start': self.metadata['start'],
-                  'stop': self.metadata['stop'],
-                  'descriptors': descriptors,
-                  'resources': self._resources}
-            args = dict(
+            meta=OrderedDict({'start': self.metadata['start'],
+                              'stop': self.metadata['stop'],
+                              'descriptors': descriptors,
+                              'resources': self._resources})
+            args = OrderedDict(
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
                 get_event_descriptors=self._get_event_descriptors,
@@ -976,10 +972,10 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_resource=self._get_resource,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
-                fillers=self.fillers,
-                transforms=self._transforms,
+                fillers=OrderedDict(self.fillers),
+                transforms=OrderedDict(self._transforms),
                 metadata=meta)
-            self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
+            self._entries[stream_name] = Entry(
                 name=stream_name,
                 description={},  # TODO
                 driver='databroker.core.BlueskyEventStream',
