@@ -26,6 +26,69 @@ import xarray
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
+from typing import Iterator, Mapping, TypeVar
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+class Frozen(Mapping[K, V]):
+    """Wrapper around an object implementing the mapping interface to make it
+    immutable. If you really want to modify the mapping, the mutable version is
+    saved under the `mapping` attribute.
+
+    Got this from xarray.
+    """
+
+    __slots__ = ("mapping",)
+
+    def __init__(self, mapping: Mapping[K, V]):
+        self.mapping = mapping
+
+    def __getitem__(self, key: K) -> V:
+        return self.mapping[key]
+
+    def __iter__(self) -> Iterator[K]:
+        return iter(self.mapping)
+
+    def __len__(self) -> int:
+        return len(self.mapping)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.mapping
+
+    def __repr__(self) -> str:
+        return "{}({!r})".format(type(self).__name__, self.mapping)
+
+
+class FrozenStart(Frozen):
+    def __dask_tokenize__(self):
+        return ('start', self['uid'])
+
+
+class FrozenStop(Frozen):
+    def __dask_tokenize__(self):
+        return ('stop', self['uid'])
+
+
+class FrozenResource(Frozen):
+    def __dask_tokenize__(self):
+        return ('resource', self['uid'])
+
+
+class FrozenDescriptor(Frozen):
+    def __dask_tokenize__(self):
+        return ('descriptor', self['uid'])
+
+
+class FrozenEvent(Frozen):
+    def __dask_tokenize__(self):
+        return ('event', self['uid'])
+
+
+class FrozenDatum(Frozen):
+    def __dask_tokenize__(self):
+        return ('datum', self['datum_id'])
 
 
 class PartitionIndexError(IndexError):
@@ -865,11 +928,15 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = self._transforms['start'](copy.deepcopy(self._get_run_start()))
-        self._run_stop_doc = self._transforms['stop'](copy.deepcopy(self._get_run_stop()))
-        self._descriptors = [self._transforms['descriptor'](copy.deepcopy(descriptor))
+        self._run_start_doc = FrozenStart(
+                self._transforms['start'](copy.deepcopy(self._get_run_start())))
+        self._run_stop_doc = FrozenStop(
+                self._transforms['stop'](copy.deepcopy(self._get_run_stop())))
+        self._descriptors = [FrozenDescriptor(
+                                    self._transforms['descriptor'](copy.deepcopy(descriptor)))
                              for descriptor in self._get_event_descriptors()]
-        self._resources = [self._transforms['resource'](copy.deepcopy(resource))
+        self._resources = [FrozenResource(
+                                self._transforms['resource'](copy.deepcopy(resource)))
                            for resource in self._get_resources() or []]
 
         self.metadata.update({'start': self._run_start_doc})
