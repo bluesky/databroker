@@ -28,17 +28,23 @@ from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
 from dask.base import normalize_token
 
+import time
+
+def timeit(f):
+    def wrap(*args):
+        time1 = time.time()
+        ret = f(*args)
+        time2 = time.time()
+        print('{:s} function took {:.3f} ms'.format(f.__name__, (time2-time1)*1000.0))
+        return ret
+    return wrap
 
 class NotMutable(Exception):
      ...
 
 
 class Document(dict):
-    def __setitem__(self, k, v):
-        raise NotMutable
-    def __delitem__(self, k):
-        raise NotMutable
-
+    ...
 
 @normalize_token.register(Document)
 def tokenize_dict(instance):
@@ -600,7 +606,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             else:
                 keys = scoped_data_keys
             for key, scoped_key in keys.items():
-                field_metadata = data_keys[key]
+                field_metadescriptorata = data_keys[key]
                 field_metadata = data_keys[key]
                 ndim = len(field_metadata['shape'])
                 # if the EventDescriptor doesn't provide names for the
@@ -919,17 +925,14 @@ class BlueskyRun(intake.catalog.Catalog):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
+    @timeit
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = Start(
-                self._transforms['start'](copy.deepcopy(self._get_run_start())))
-        self._run_stop_doc = Stop(
-                self._transforms['stop'](copy.deepcopy(self._get_run_stop())))
-        self._descriptors = [Descriptor(
-                                    self._transforms['descriptor'](copy.deepcopy(descriptor)))
+        self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
+        self._run_stop_doc = Stop(self._transforms['stop'](self._get_run_stop()))
+        self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
                              for descriptor in self._get_event_descriptors()]
-        self._resources = [Resource(
-                                self._transforms['resource'](copy.deepcopy(resource)))
+        self._resources = [Resource(self._transforms['resource'](resource))
                            for resource in self._get_resources() or []]
 
         self.metadata.update({'start': self._run_start_doc})
@@ -960,6 +963,10 @@ class BlueskyRun(intake.catalog.Catalog):
         for doc in self._descriptors:
             descriptors_by_name[doc.get('name', 'primary')].append(doc)
         for stream_name, descriptors in descriptors_by_name.items():
+            meta={'start': self.metadata['start'],
+                  'stop': self.metadata['stop'],
+                  'descriptors': descriptors,
+                  'resources': self._resources}
             args = dict(
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
@@ -971,10 +978,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_datum_pages=self._get_datum_pages,
                 fillers=self.fillers,
                 transforms=self._transforms,
-                metadata={'start': self.metadata['start'],
-                          'stop': self.metadata['stop'],
-                          'descriptors': descriptors,
-                          'resources': self._resources})
+                metadata=meta)
             self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -982,10 +986,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # What does this do?
-                metadata={'start': self.metadata['start'],
-                          'stop': self.metadata['stop'],
-                          'descriptors': descriptors,
-                          'resources': self._resources},
+                metadata=meta,
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
