@@ -26,69 +26,67 @@ import xarray
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque
+from dask.base import normalize_token
 from typing import Iterator, Mapping, TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")
 
 
-class Frozen(Mapping[K, V]):
-    """Wrapper around an object implementing the mapping interface to make it
-    immutable. If you really want to modify the mapping, the mutable version is
-    saved under the `mapping` attribute.
-
-    Got this from xarray.
-    """
-
-    __slots__ = ("mapping",)
-
-    def __init__(self, mapping: Mapping[K, V]):
-        self.mapping = mapping
-
-    def __getitem__(self, key: K) -> V:
-        return self.mapping[key]
-
-    def __iter__(self) -> Iterator[K]:
-        return iter(self.mapping)
-
-    def __len__(self) -> int:
-        return len(self.mapping)
-
-    def __contains__(self, key: object) -> bool:
-        return key in self.mapping
-
-    def __repr__(self) -> str:
-        return "{}({!r})".format(type(self).__name__, self.mapping)
+class NotMutable(Exception):
+     ...
 
 
-class FrozenStart(Frozen):
+class Document(dict):
+    def __setitem__(self, k, v):
+        raise NotMutable
+    def __delitem__(self, k):
+        raise NotMutable
+
+
+@normalize_token.register(Document)
+def tokenize_dict(instance):
+        return instance.__dask_tokenize__()
+
+
+class Start(Document):
     def __dask_tokenize__(self):
         return ('start', self['uid'])
 
 
-class FrozenStop(Frozen):
+class Stop(Document):
     def __dask_tokenize__(self):
         return ('stop', self['uid'])
 
 
-class FrozenResource(Frozen):
+class Resource(Document):
     def __dask_tokenize__(self):
         return ('resource', self['uid'])
 
 
-class FrozenDescriptor(Frozen):
+class Descriptor(Document):
     def __dask_tokenize__(self):
         return ('descriptor', self['uid'])
 
 
-class FrozenEvent(Frozen):
+class Event(Document):
     def __dask_tokenize__(self):
         return ('event', self['uid'])
 
 
-class FrozenDatum(Frozen):
+class EventPage(Document):
+    def __dask_tokenize__(self):
+        return ('event_page', self['uid'])
+
+
+class Datum(Document):
     def __dask_tokenize__(self):
         return ('datum', self['datum_id'])
+
+
+class DatumPage(Document):
+    def __dask_tokenize__(self):
+        return ('datum_page', self['uid'])
 
 
 class PartitionIndexError(IndexError):
@@ -110,7 +108,7 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         return plugin, open_args
 
 def tail(filename, n=1, bsize=2048):
-    """
+    """d V might as w
     Returns a generator with the last n lines of a file.
 
     Thanks to Martijn Pieters for this solution:
@@ -928,14 +926,14 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = FrozenStart(
+        self._run_start_doc = Start(
                 self._transforms['start'](copy.deepcopy(self._get_run_start())))
-        self._run_stop_doc = FrozenStop(
+        self._run_stop_doc = Stop(
                 self._transforms['stop'](copy.deepcopy(self._get_run_stop())))
-        self._descriptors = [FrozenDescriptor(
+        self._descriptors = [Descriptor(
                                     self._transforms['descriptor'](copy.deepcopy(descriptor)))
                              for descriptor in self._get_event_descriptors()]
-        self._resources = [FrozenResource(
+        self._resources = [Resource(
                                 self._transforms['resource'](copy.deepcopy(resource)))
                            for resource in self._get_resources() or []]
 
