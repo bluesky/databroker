@@ -82,8 +82,26 @@ class DatumPage(Document):
 class PartitionIndexError(IndexError):
     ...
 
-
 class Entry(intake.catalog.local.LocalCatalogEntry):
+    def __init__(self, **kwargs):
+        # This might never come up, but just to be safe....
+        if 'entry' in kwargs['args']:
+            raise TypeError("The args cannot contain 'entry'. It is reserved.")
+        super().__init__(**kwargs)
+
+    def _create_open_args(self, user_parameters):
+        plugin, open_args = super()._create_open_args(user_parameters)
+        # Inject self into arguments passed to instanitate the driver. This
+        # enables the driver instance to know which Entry created it.
+        open_args['entry'] = self
+        return plugin, open_args
+
+
+class StreamEntry(intake.catalog.local.LocalCatalogEntry):
+    """
+    This is a temporary fix that is being proposed to include in intake.
+    """
+
     def __getstate__(self):
         args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
                 else arg for arg in self._captured_init_args]
@@ -961,7 +979,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 fillers=OrderedDict(self.fillers),
                 transforms=OrderedDict(self._transforms),
                 metadata=meta)
-            self._entries[stream_name] = Entry(
+            self._entries[stream_name] = StreamEntry(
                 name=stream_name,
                 description={},  # TODO
                 driver='databroker.core.BlueskyEventStream',
