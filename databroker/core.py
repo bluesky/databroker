@@ -968,10 +968,10 @@ class BlueskyRun(intake.catalog.Catalog):
         # dominates the call time, even for very small dicts. Using an
         # OrderedDict steers dask toward a different and faster tokenization.
         for stream_name, descriptors in descriptors_by_name.items():
-            meta=OrderedDict({'start': self.metadata['start'],
-                              'stop': self.metadata['stop'],
-                              'descriptors': descriptors,
-                              'resources': self._resources})
+            metadata = OrderedDict({'start': self.metadata['start'],
+                                    'stop': self.metadata['stop'],
+                                    'descriptors': descriptors,
+                                    'resources': self._resources})
             args = OrderedDict(
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
@@ -983,7 +983,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_datum_pages=self._get_datum_pages,
                 fillers=OrderedDict(self.fillers),
                 transforms=OrderedDict(self._transforms),
-                metadata=meta)
+                metadata=metadata)
             self._entries[stream_name] = StreamEntry(
                 name=stream_name,
                 description={},  # TODO
@@ -991,7 +991,7 @@ class BlueskyRun(intake.catalog.Catalog):
                 direct_access='forbid',
                 args=args,
                 cache=None,  # What does this do?
-                metadata=meta,
+                metadata=metadata,
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
