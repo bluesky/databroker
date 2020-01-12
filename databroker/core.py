@@ -1,5 +1,4 @@
 import collections
-import copy
 import entrypoints
 import event_model
 from datetime import datetime
@@ -36,7 +35,7 @@ class Document(dict):
 
 @normalize_token.register(Document)
 def tokenize_dict(instance):
-        return instance.__dask_tokenize__()
+    return instance.__dask_tokenize__()
 
 
 class Start(Document):
@@ -81,6 +80,7 @@ class DatumPage(Document):
 
 class PartitionIndexError(IndexError):
     ...
+
 
 class Entry(intake.catalog.local.LocalCatalogEntry):
     def __init__(self, **kwargs):
@@ -1169,8 +1169,8 @@ class BlueskyEventStream(DataSourceMixin):
 
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
-        self._descriptors =  [descriptor for descriptor in metadata['descriptors']
-                              if descriptor.get('name') == self._stream_name]
+        self._descriptors = [descriptor for descriptor in metadata['descriptors']
+                             if descriptor.get('name') == self._stream_name]
         # Should figure out a way so that self._resources doesn't have to be
         # all of the Run's resources.
         self._resources = metadata['resources']
