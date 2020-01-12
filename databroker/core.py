@@ -1,5 +1,4 @@
 import collections
-import copy
 import entrypoints
 import event_model
 from datetime import datetime
@@ -25,7 +24,58 @@ import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
-from collections import deque
+from collections import deque, OrderedDict
+from dask.base import normalize_token
+from intake.utils import DictSerialiseMixin
+
+
+class Document(dict):
+    ...
+
+
+@normalize_token.register(Document)
+def tokenize_dict(instance):
+    return instance.__dask_tokenize__()
+
+
+class Start(Document):
+    def __dask_tokenize__(self):
+        return ('start', self['uid'])
+
+
+class Stop(Document):
+    def __dask_tokenize__(self):
+        return ('stop', self['uid'])
+
+
+class Resource(Document):
+    def __dask_tokenize__(self):
+        return ('resource', self['uid'])
+
+
+class Descriptor(Document):
+    def __dask_tokenize__(self):
+        return ('descriptor', self['uid'])
+
+
+class Event(Document):
+    def __dask_tokenize__(self):
+        return ('event', self['uid'])
+
+
+class EventPage(Document):
+    def __dask_tokenize__(self):
+        return ('event_page', self['uid'])
+
+
+class Datum(Document):
+    def __dask_tokenize__(self):
+        return ('datum', self['datum_id'])
+
+
+class DatumPage(Document):
+    def __dask_tokenize__(self):
+        return ('datum_page', self['uid'])
 
 
 class PartitionIndexError(IndexError):
@@ -45,6 +95,21 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # enables the driver instance to know which Entry created it.
         open_args['entry'] = self
         return plugin, open_args
+
+
+class StreamEntry(intake.catalog.local.LocalCatalogEntry):
+    """
+    This is a temporary fix that is being proposed to include in intake.
+    """
+
+    def __getstate__(self):
+        args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
+                else arg for arg in self._captured_init_args]
+        kwargs = OrderedDict({k: arg.__getstate__()
+                              if isinstance(arg, DictSerialiseMixin) else arg
+                              for k, arg in self._captured_init_kwargs.items()})
+        return OrderedDict(cls=self.classname, args=args, kwargs=kwargs)
+
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -372,14 +437,12 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     yield partition
 
 
-def fill(
-    filler,
-    event,
-    lookup_resource_for_datum,
-    get_resource,
-    get_datum_pages,
-    last_datum_id=None,
-):
+def fill(filler,
+         event,
+         lookup_resource_for_datum,
+         get_resource,
+         get_datum_pages,
+         last_datum_id=None):
     try:
         _, filled_event = filler("event", event)
         return filled_event
@@ -865,11 +928,11 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         # Count the total number of documents in this run.
-        self._run_start_doc = self._transforms['start'](copy.deepcopy(self._get_run_start()))
-        self._run_stop_doc = self._transforms['stop'](copy.deepcopy(self._get_run_stop()))
-        self._descriptors = [self._transforms['descriptor'](copy.deepcopy(descriptor))
+        self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
+        self._run_stop_doc = Stop(self._transforms['stop'](self._get_run_stop()))
+        self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
                              for descriptor in self._get_event_descriptors()]
-        self._resources = [self._transforms['resource'](copy.deepcopy(resource))
+        self._resources = [Resource(self._transforms['resource'](resource))
                            for resource in self._get_resources() or []]
 
         self.metadata.update({'start': self._run_start_doc})
@@ -899,8 +962,17 @@ class BlueskyRun(intake.catalog.Catalog):
         descriptors_by_name = collections.defaultdict(list)
         for doc in self._descriptors:
             descriptors_by_name[doc.get('name', 'primary')].append(doc)
+        # We employ OrderedDict in several places in this loop. The motivation
+        # is to speed up dask tokenization. When dask tokenizes a plain dict,
+        # it sorts the keys, and it turns out that this sort operation
+        # dominates the call time, even for very small dicts. Using an
+        # OrderedDict steers dask toward a different and faster tokenization.
         for stream_name, descriptors in descriptors_by_name.items():
-            args = dict(
+            metadata = OrderedDict({'start': self.metadata['start'],
+                                    'stop': self.metadata['stop'],
+                                    'descriptors': descriptors,
+                                    'resources': self._resources})
+            args = OrderedDict(
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
                 get_event_descriptors=self._get_event_descriptors,
@@ -909,23 +981,17 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_resource=self._get_resource,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
-                fillers=self.fillers,
-                transforms=self._transforms,
-                metadata={'start': self.metadata['start'],
-                          'stop': self.metadata['stop'],
-                          'descriptors': descriptors,
-                          'resources': self._resources})
-            self._entries[stream_name] = intake.catalog.local.LocalCatalogEntry(
+                fillers=OrderedDict(self.fillers),
+                transforms=OrderedDict(self._transforms),
+                metadata=metadata)
+            self._entries[stream_name] = StreamEntry(
                 name=stream_name,
                 description={},  # TODO
                 driver='databroker.core.BlueskyEventStream',
                 direct_access='forbid',
                 args=args,
                 cache=None,  # What does this do?
-                metadata={'start': self.metadata['start'],
-                          'stop': self.metadata['stop'],
-                          'descriptors': descriptors,
-                          'resources': self._resources},
+                metadata=metadata,
                 catalog_dir=None,
                 getenv=True,
                 getshell=True,
@@ -1108,8 +1174,8 @@ class BlueskyEventStream(DataSourceMixin):
 
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
-        self._descriptors =  [descriptor for descriptor in metadata['descriptors']
-                              if descriptor.get('name') == self._stream_name]
+        self._descriptors = [descriptor for descriptor in metadata['descriptors']
+                             if descriptor.get('name') == self._stream_name]
         # Should figure out a way so that self._resources doesn't have to be
         # all of the Run's resources.
         self._resources = metadata['resources']
