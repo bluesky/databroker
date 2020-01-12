@@ -963,8 +963,8 @@ class BlueskyRun(intake.catalog.Catalog):
         for doc in self._descriptors:
             descriptors_by_name[doc.get('name', 'primary')].append(doc)
         # We employ OrderedDict in several places in this loop. The motivation
-        # is to speed up dask tokenization. When task tokenizes a plain dict,
-        # it sorted the keys, and it turns out that this sort operation
+        # is to speed up dask tokenization. When dask tokenizes a plain dict,
+        # it sorts the keys, and it turns out that this sort operation
         # dominates the call time, even for very small dicts. Using an
         # OrderedDict steers dask toward a different and faster tokenization.
         for stream_name, descriptors in descriptors_by_name.items():
