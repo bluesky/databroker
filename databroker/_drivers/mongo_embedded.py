@@ -34,7 +34,9 @@ class _Entries(collections.abc.Mapping):
                 else:
                     return header_doc[field]
             else:
-                if field[0:6] == 'count_':
+                if field == 'resources':
+                    return []
+                elif field[0:6] == 'count_':
                     return 0
                 else:
                     return None
