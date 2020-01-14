@@ -929,11 +929,16 @@ class BlueskyRun(intake.catalog.Catalog):
     def _load(self):
         # Count the total number of documents in this run.
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
-        self._run_stop_doc = Stop(self._transforms['stop'](self._get_run_stop()))
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
                              for descriptor in self._get_event_descriptors()]
         self._resources = [Resource(self._transforms['resource'](resource))
-                           for resource in self._get_resources() or []]
+                           for resource in self._get_resources()]
+
+        stop = self._get_run_stop()
+        if stop is None:
+            self._run_stop_doc = stop
+        else:
+            self._run_stop_doc = Stop(self._transforms['stop'](stop))
 
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
