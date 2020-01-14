@@ -942,6 +942,7 @@ class BlueskyRun(intake.catalog.Catalog):
         return out
 
     def _load(self):
+        print('BlueskyRun._load')
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
                              for descriptor in self._get_event_descriptors()]
