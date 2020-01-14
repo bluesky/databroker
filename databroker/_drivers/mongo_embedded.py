@@ -36,7 +36,7 @@ class _Entries(collections.abc.Mapping):
             else:
                 if field == 'resources':
                     return []
-                if field[0:6] == 'count_':
+                elif field[0:6] == 'count_':
                     return 0
                 else:
                     return None
