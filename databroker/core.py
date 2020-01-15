@@ -146,7 +146,6 @@ class PartitionIndexError(IndexError):
 class Entry(intake.catalog.local.LocalCatalogEntry):
     def __init__(self, **kwargs):
         # This might never come up, but just to be safe....
-        print('new entry')
         if 'entry' in kwargs['args']:
             raise TypeError("The args cannot contain 'entry'. It is reserved.")
         super().__init__(**kwargs)
@@ -166,12 +165,17 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         return super().get(**kwargs)
 
     def get(self, **kwargs):
+        token = tokenize(kwargs)
         try:
-            return self._get_cached(**kwargs)
-        except TypeError:
-            # The lru_cache cannot help us if one of the user parameters
-            # is not hashable.
-            return super().get(**kwargs)
+            datasource = self.__cache[token]
+            logger.debug(
+                "Entry cache found %s named %r",
+                datasource.__class__.__name__,
+                datasource.name)
+        except KeyError:
+            datasource = super().get(**kwargs)
+            self.__cache[token] = datasource
+        return datasource
 
 
 class StreamEntry(intake.catalog.local.LocalCatalogEntry):
@@ -1010,7 +1014,6 @@ class BlueskyRun(intake.catalog.Catalog):
         return out
 
     def _load(self):
-        print('BlueskyRun._load')
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
                              for descriptor in self._get_event_descriptors()]
