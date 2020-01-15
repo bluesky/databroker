@@ -386,11 +386,7 @@ def catalog_search_path():
 class LazyMap(collections.abc.Mapping):
     __slots__ = ('__mapping', '__lock')
 
-    class __Wrapper:
-        __slots__ = ('func', )
-
-        def __init__(self, func):
-            self.func = func
+    __Wrapper = collections.namedtuple('__Wrapper', ('func', ))
 
     def __init__(self, **kwargs):
         wrap = self.__Wrapper
