@@ -380,3 +380,35 @@ def catalog_search_path():
     """
     from intake.catalog.default import user_data_dir, global_data_dir
     return (user_data_dir(), global_data_dir())
+
+
+class LazyMap(collections.abc.Mapping):
+    __slots__ = ('__mapping', )
+
+    class __Wrapper:
+        __slots__ = ('func', )
+
+        def __init__(self, func):
+            self.func = func
+
+    def __init__(self, **kwargs):
+        wrap = self.__Wrapper
+        # TODO type validation?
+        self.__mapping = {k: wrap(v) for k, v in kwargs.items()}
+
+    def __getitem__(self, key):
+        v = self.__mapping[key]
+        if isinstance(v, self.__Wrapper):
+            # TODO handle exceptions?
+            v = self.__mapping[key] = v.func()
+        return v
+
+    def __len__(self):
+        return len(self.__mapping)
+
+    def __iter__(self):
+        return iter(self.__mapping)
+
+    def __contains__(self, k):
+        # make sure checking 'in' does not trigger evaluation
+        return k in self.__mapping
