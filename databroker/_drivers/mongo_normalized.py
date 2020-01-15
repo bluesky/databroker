@@ -77,6 +77,22 @@ class _Entries(collections.abc.Mapping):
             yield run_start_doc['uid']
 
     def __getitem__(self, name):
+        run_start_doc = self._find_run_start_doc(name)
+        uid = run_start_doc['uid']
+        try:
+            entry = self.__cache[uid]
+            logger.debug('Mongo Entries cache found %r', uid)
+        except KeyError:
+            entry = self._doc_to_entry(run_start_doc)
+            self.__cache[uid] = entry
+        # The user has requested one specific Entry. In order to give them a
+        # more useful object, 'get' the Entry for them. Note that if they are
+        # expecting an Entry and try to call ``()`` or ``.get()``, that will
+        # still work because BlueskyRun supports those methods and will just
+        # return itself.
+        return entry.get()  # an instance of BlueskyRun
+
+    def _find_run_start_doc(self, name):
         # If this came from a client, we might be getting '-1'.
         collection = self.catalog._run_start_collection
         try:
@@ -126,24 +142,16 @@ class _Entries(collections.abc.Mapping):
                     raise KeyError(f"No run with scan_id={N}")
         if run_start_doc is None:
             raise KeyError(name)
-        uid = run_start_doc['uid']
-        try:
-            entry = self.__cache[uid]
-            logger.debug('Mongo Entries cache found %r', uid)
-        except KeyError:
-            entry = self._doc_to_entry(run_start_doc)
-            self.__cache[uid] = entry
-        # The user has requested one specific Entry. In order to give them a
-        # more useful object, 'get' the Entry for them. Note that if they are
-        # expecting an Entry and try to call ``()`` or ``.get()``, that will
-        # still work because BlueskyRun supports those methods and will just
-        # return itself.
-        return entry.get()  # an instance of BlueskyRun
+        return run_start_doc
 
     def __contains__(self, key):
-        # Avoid iterating through all entries.
+        # Try the fast path first.
+        if key in self.__cache:
+            return True
+        # Avoid paying for creating the Entry yet. Do just enough work decide
+        # if we *can* create such an Entry.
         try:
-            self[key]
+            self._find_run_start_doc(key)
         except KeyError:
             return False
         else:
