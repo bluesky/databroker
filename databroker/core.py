@@ -28,6 +28,7 @@ import xarray
 
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
+from .utils import LazyMap
 from collections import deque, OrderedDict
 from dask.base import normalize_token
 from intake.utils import DictSerialiseMixin
@@ -1062,6 +1063,7 @@ class BlueskyRun(intake.catalog.Catalog):
         # it sorts the keys, and it turns out that this sort operation
         # dominates the call time, even for very small dicts. Using an
         # OrderedDict steers dask toward a different and faster tokenization.
+        entries = {}
         for stream_name, descriptors in descriptors_by_name.items():
             metadata = OrderedDict({'start': self.metadata['start'],
                                     'stop': self.metadata['stop'],
@@ -1079,22 +1081,30 @@ class BlueskyRun(intake.catalog.Catalog):
                 fillers=OrderedDict(self.fillers),
                 transforms=OrderedDict(self._transforms),
                 metadata=metadata)
-            self._entries[stream_name] = StreamEntry(
-                name=stream_name,
-                description={},  # TODO
-                driver='databroker.core.BlueskyEventStream',
-                direct_access='forbid',
-                args=args,
-                cache=None,  # What does this do?
-                metadata=metadata,
-                catalog_dir=None,
-                getenv=True,
-                getshell=True,
-                catalog=self)
+
+            def wrapper(stream_name=stream_name, descriptors=descriptors, 
+                        metadata=metadata, args=args):
+                return StreamEntry(name=stream_name,
+                                   description={},  # TODO
+                                   driver='databroker.core.BlueskyEventStream',
+                                   direct_access='forbid',
+                                   args=args,
+                                   cache=None,  # What does this do?
+                                   metadata=metadata,
+                                   catalog_dir=None,
+                                   getenv=True,
+                                   getshell=True,
+                                   catalog=self)
+
+            entries[stream_name] = wrapper
+        
+        self._entries = LazyMap(entries)
+        
         logger.debug(
             "Loaded %s named %r",
             self.__class__.__name__,
             self._entry.name)
+
 
     def get(self, *args, **kwargs):
         """
