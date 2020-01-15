@@ -2,25 +2,31 @@ from ..utils import LazyMap
 
 def test_lazymap():
 
-    loaded = {'A': False, 'B': False}
+    loaded = {'A': 0, 'B': 0}
 
     class TestClass():
         def __init__(self, value):
             self.value = value
-            loaded[value] = True
+            loaded[value] += 1
 
     lazy_map = LazyMap({'A': lambda: TestClass('A'),
                         'B': lambda: TestClass('B')})
 
-    assert loaded['A'] is False
-    assert loaded['B'] is False
+    assert loaded['A'] is 0
+    assert loaded['B'] is 0
 
     assert isinstance(lazy_map['A'], TestClass)
 
-    assert loaded['A'] is True
-    assert loaded['B'] is False
+    assert loaded['A'] is 1
+    assert loaded['B'] is 0
 
     assert isinstance(lazy_map['B'], TestClass)
 
-    assert loaded['A'] is True
-    assert loaded['B'] is True
+    assert loaded['A'] is 1
+    assert loaded['B'] is 1
+
+    lazy_map['A']
+    lazy_map['B']
+
+    assert loaded['A'] is 1
+    assert loaded['B'] is 1
