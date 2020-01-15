@@ -172,7 +172,6 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
             # The lru_cache cannot help us if one of the user parameters
             # is not hashable.
             return self.get(**kwargs)
-        return super().get(**kwargs)
 
 
 class StreamEntry(intake.catalog.local.LocalCatalogEntry):
