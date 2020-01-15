@@ -6,6 +6,7 @@ import numpy as np
 import os
 import pytz
 import sys
+import threading
 import warnings
 import yaml
 
@@ -383,7 +384,7 @@ def catalog_search_path():
 
 
 class LazyMap(collections.abc.Mapping):
-    __slots__ = ('__mapping', )
+    __slots__ = ('__mapping', '__lock')
 
     class __Wrapper:
         __slots__ = ('func', )
@@ -393,14 +394,18 @@ class LazyMap(collections.abc.Mapping):
 
     def __init__(self, **kwargs):
         wrap = self.__Wrapper
+        # TODO should be recursive lock?
+        self.__lock = threading.Lock()
         # TODO type validation?
         self.__mapping = {k: wrap(v) for k, v in kwargs.items()}
 
     def __getitem__(self, key):
-        v = self.__mapping[key]
-        if isinstance(v, self.__Wrapper):
-            # TODO handle exceptions?
-            v = self.__mapping[key] = v.func()
+        # TODO per-key locking?
+        with self.__lock:
+            v = self.__mapping[key]
+            if isinstance(v, self.__Wrapper):
+                # TODO handle exceptions?
+                v = self.__mapping[key] = v.func()
         return v
 
     def __len__(self):
