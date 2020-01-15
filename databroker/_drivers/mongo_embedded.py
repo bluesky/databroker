@@ -2,6 +2,8 @@ import collections.abc
 import event_model
 from sys import maxsize
 from functools import partial
+import logging
+import cachetools
 import intake
 import intake.catalog
 import intake.catalog.local
@@ -13,10 +15,17 @@ from ..core import parse_handler_registry, discover_handlers, Entry
 from ..v2 import Broker
 
 
+logger = logging.getLogger(__name__)
+
+
 class _Entries(collections.abc.Mapping):
     "Mock the dict interface around a MongoDB query result."
     def __init__(self, catalog):
         self.catalog = catalog
+        self.__cache = cachetools.LRUCache(1024)
+
+    def cache_clear(self):
+        self.__cache.clear()
 
     def _doc_to_entry(self, run_start_doc):
 
@@ -105,7 +114,7 @@ class _Entries(collections.abc.Mapping):
         for doc in cursor:
             yield doc['start'][0]['uid']
 
-    def __getitem__(self, name):
+    def _find_header_doc(self, name):
         # If this came from a client, we might be getting '-1'.
         try:
             N = int(name)
@@ -155,7 +164,17 @@ class _Entries(collections.abc.Mapping):
                     raise KeyError(f"No run with scan_id={N}")
         if header_doc is None:
             raise KeyError(name)
-        entry = self._doc_to_entry(header_doc['start'][0])
+        return header_doc
+
+    def __getitem__(self, name):
+        header_doc = self._find_header_doc(name)
+        uid = header_doc['start'][0]['uid']
+        try:
+            entry = self.__cache[uid]
+            logger.debug('Mongo Entries cache found %r', uid)
+        except KeyError:
+            entry = self._doc_to_entry(header_doc['start'][0])
+            self.__cache[uid] = entry
         # The user has requested one specific Entry. In order to give them a
         # more useful object, 'get' the Entry for them. Note that if they are
         # expecting an Entry and try to call ``()`` or ``.get()``, that will
@@ -164,9 +183,13 @@ class _Entries(collections.abc.Mapping):
         return entry.get()  # an instance of BlueskyRun
 
     def __contains__(self, key):
-        # Avoid iterating through all entries.
+        # Try the fast path first.
+        if key in self.__cache:
+            return True
+        # Avoid paying for creating the Entry yet. Do just enough work decide
+        # if we *can* create such an Entry.
         try:
-            self[key]
+            self._find_header_doc(key)
         except KeyError:
             return False
         else:
