@@ -2,6 +2,8 @@ import collections.abc
 import functools
 import event_model
 from functools import partial
+import logging
+import cachetools
 import intake
 import intake.catalog
 import intake.catalog.local
@@ -15,11 +17,17 @@ from ..core import (
 from ..v2 import Broker
 
 
+logger = logging.getLogger(__name__)
+
+
 class _Entries(collections.abc.Mapping):
     "Mock the dict interface around a MongoDB query result."
     def __init__(self, catalog):
         self.catalog = catalog
-        self._cache = {}
+        self.__cache = cachetools.LRUCache(1024)
+
+    def cache_clear(self):
+        self.__cache.clear()
 
     def _doc_to_entry(self, run_start_doc):
         uid = run_start_doc['uid']
@@ -120,12 +128,11 @@ class _Entries(collections.abc.Mapping):
             raise KeyError(name)
         uid = run_start_doc['uid']
         try:
-            entry = self._cache[uid]
-            print('cache hit')
+            entry = self.__cache[uid]
+            logger.debug('Mongo Entries cache found %r', uid)
         except KeyError:
             entry = self._doc_to_entry(run_start_doc)
-            self._cache[uid] = entry
-            print('doc to entry hit')
+            self.__cache[uid] = entry
         # The user has requested one specific Entry. In order to give them a
         # more useful object, 'get' the Entry for them. Note that if they are
         # expecting an Entry and try to call ``()`` or ``.get()``, that will
