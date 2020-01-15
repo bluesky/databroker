@@ -1,4 +1,5 @@
 boltons
+cachetools
 dask[array,bag]
 doct
 event-model >=1.13.0b4
