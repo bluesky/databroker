@@ -388,12 +388,13 @@ class LazyMap(collections.abc.Mapping):
 
     __Wrapper = collections.namedtuple('__Wrapper', ('func', ))
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        dictionary = dict(*args, **kwargs)
         wrap = self.__Wrapper
         # TODO should be recursive lock?
         self.__lock = threading.Lock()
         # TODO type validation?
-        self.__mapping = {k: wrap(v) for k, v in kwargs.items()}
+        self.__mapping = {k: wrap(v) for k, v in dictionary.items()}
 
     def __getitem__(self, key):
         # TODO per-key locking?
