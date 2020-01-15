@@ -6,6 +6,7 @@ import numpy as np
 import os
 import pytz
 import sys
+import threading
 import warnings
 import yaml
 
@@ -380,3 +381,36 @@ def catalog_search_path():
     """
     from intake.catalog.default import user_data_dir, global_data_dir
     return (user_data_dir(), global_data_dir())
+
+
+class LazyMap(collections.abc.Mapping):
+    __slots__ = ('__mapping', '__lock')
+
+    __Wrapper = collections.namedtuple('__Wrapper', ('func', ))
+
+    def __init__(self, *args, **kwargs):
+        dictionary = dict(*args, **kwargs)
+        wrap = self.__Wrapper
+        # TODO should be recursive lock?
+        self.__lock = threading.Lock()
+        # TODO type validation?
+        self.__mapping = {k: wrap(v) for k, v in dictionary.items()}
+
+    def __getitem__(self, key):
+        # TODO per-key locking?
+        with self.__lock:
+            v = self.__mapping[key]
+            if isinstance(v, self.__Wrapper):
+                # TODO handle exceptions?
+                v = self.__mapping[key] = v.func()
+        return v
+
+    def __len__(self):
+        return len(self.__mapping)
+
+    def __iter__(self):
+        return iter(self.__mapping)
+
+    def __contains__(self, k):
+        # make sure checking 'in' does not trigger evaluation
+        return k in self.__mapping
