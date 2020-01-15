@@ -9,6 +9,9 @@ import functools
 import heapq
 import importlib
 import itertools
+import logging
+import cachetools
+from dask.base import tokenize
 import intake.catalog.base
 import intake.catalog.local
 import errno
@@ -27,6 +30,9 @@ from .intake_xarray_core.xarray_container import RemoteXarray
 from collections import deque, OrderedDict
 from dask.base import normalize_token
 from intake.utils import DictSerialiseMixin
+
+
+logger = logging.getLogger(__name__)
 
 
 class Document(dict):
@@ -88,6 +94,10 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         if 'entry' in kwargs['args']:
             raise TypeError("The args cannot contain 'entry'. It is reserved.")
         super().__init__(**kwargs)
+        # This cache holds datasources, the result of calling super().get(...)
+        # with potentially different arguments.
+        self.__cache = cachetools.LRUCache(10)
+        logger.debug("Created Entry named %r", self.name)
 
     def _create_open_args(self, user_parameters):
         plugin, open_args = super()._create_open_args(user_parameters)
@@ -95,6 +105,22 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # enables the driver instance to know which Entry created it.
         open_args['entry'] = self
         return plugin, open_args
+
+    def cache_clear(self):
+        self.__cache.clear()
+
+    def get(self, **kwargs):
+        token = tokenize(OrderedDict(kwargs))
+        try:
+            datasource = self.__cache[token]
+            logger.debug(
+                "Entry cache found %s named %r",
+                datasource.__class__.__name__,
+                datasource.name)
+        except KeyError:
+            datasource = super().get(**kwargs)
+            self.__cache[token] = datasource
+        return datasource
 
 
 class StreamEntry(intake.catalog.local.LocalCatalogEntry):
@@ -889,6 +915,8 @@ class BlueskyRun(intake.catalog.Catalog):
                  entry,
                  transforms,
                  **kwargs):
+        # Set the name here, earlier than the base class does, so that the log
+        # message in self._load has access to it.
         # All **kwargs are passed up to base class. TODO: spell them out
         # explicitly.
         self.urlpath = ''  # TODO Not sure why I had to add this.
@@ -910,6 +938,10 @@ class BlueskyRun(intake.catalog.Catalog):
         self._transforms = transforms
 
         super().__init__(**kwargs)
+        logger.debug(
+            "Created %s named %r",
+            self.__class__.__name__,
+            entry.name)
 
     def __repr__(self):
         try:
@@ -1004,6 +1036,10 @@ class BlueskyRun(intake.catalog.Catalog):
                 getenv=True,
                 getshell=True,
                 catalog=self)
+        logger.debug(
+            "Loaded %s named %r",
+            self.__class__.__name__,
+            self._entry.name)
 
     def get(self, *args, **kwargs):
         """
