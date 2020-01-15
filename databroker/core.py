@@ -110,7 +110,7 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         self.__cache.clear()
 
     def get(self, **kwargs):
-        token = tokenize(kwargs)
+        token = tokenize(OrderedDict(kwargs))
         try:
             datasource = self.__cache[token]
             logger.debug(
