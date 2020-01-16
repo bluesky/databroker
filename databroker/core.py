@@ -1,4 +1,5 @@
 import collections
+import copy
 import entrypoints
 import event_model
 from datetime import datetime
@@ -35,12 +36,66 @@ from intake.utils import DictSerialiseMixin
 logger = logging.getLogger(__name__)
 
 
-class Document(dict):
+class NotMutable(Exception):
     ...
 
 
+class Document(dict):
+    """
+    Document is an immutable dict subclass.
+
+    It is immutable to help consumer code avoid accidentally corrupting data
+    that another part of the cosumer code was expected to use unchanged.
+
+    Subclasses of Document must define __dask_tokenize__. The tokenization
+    schemes typically uniquely identify the document based on only a subset of
+    its contents, and mutating the contents can thereby create situations where
+    two unequal objects have colliding tokens. Immutability helps guard against
+    this too.
+
+    Note that Documents are not *recursively* immutable. Just as it is possible
+    create a tuple (immutable) of lists (mutable) and mutate the lists, it is
+    possible to mutate the internal contents of a Document, but this should not
+    be done. It is safer to use the to_dict() method to create a mutable deep
+    copy.
+
+    This is implemented as a dict subclass in order to satisfy certain
+    consumers that expect an object that satisfies isinstance(obj, dict).
+    This implementation detail may change in the future.
+    """
+    _NOT_MUTABLE_MSG = (
+        "Documents are not mutable. Call the method to_dict() to make a "
+        "fully independent and mutable copy.")
+
+    def __setitem__(self, k, v):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def __delitem__(self, k, v):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def pop(self, k):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def to_dict(self):
+        """
+        Create a mutable deep copy.
+        """
+        # Convert to dict and then make a deep copy to ensure that if the user
+        # mutates any internally nested dicts there is no spooky action at a
+        # distance.
+        return copy.deepcopy(dict(self))
+
+    def __dask_tokenize__(self):
+        raise NotImplementedError
+
+# We must use dask's registration mechanism to tell it to treat Document
+# specially. Dask's tokenization dispatch mechanism discovers that Docuemnt is
+# a dict subclass and treats it as a dict, ignoring its __dask_tokenize__
+# method. To force it to respect our cutsom tokenization, we must explicitly
+# register it.
+
 @normalize_token.register(Document)
-def tokenize_dict(instance):
+def tokenize_document(instance):
     return instance.__dask_tokenize__()
 
 

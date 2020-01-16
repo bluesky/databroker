@@ -884,7 +884,7 @@ def test_prepare_hook_old_style(db, RE, hw):
 
 def test_prepare_hook_deep_copy(db, RE, hw):
     # configure to return plain dicts
-    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+    db.prepare_hook = lambda name, doc: copy.deepcopy(dict(doc))
 
     RE.subscribe(db.insert)
     uid, = RE(count([hw.det]))
@@ -1155,7 +1155,7 @@ def test_order(db, RE, hw):
 def test_res_datum(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
     import copy
-    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+    db.prepare_hook = lambda name, doc: copy.deepcopy(dict(doc))
     for spec in NumpySeqHandler.specs:
         db.reg.register_handler(spec, NumpySeqHandler)
     L = []
@@ -1207,7 +1207,7 @@ def resource_roundtrip(broker_factory, RE, hw):
     db2 = broker_factory()
     from ophyd.sim import NumpySeqHandler
     import copy
-    db.prepare_hook = lambda name, doc: copy.deepcopy(doc)
+    db.prepare_hook = lambda name, doc: copy.deepcopy(dict(doc))
     for spec in NumpySeqHandler.specs:
         db.reg.register_handler(spec, NumpySeqHandler)
     RE.subscribe(db.insert)
