@@ -1105,7 +1105,6 @@ class BlueskyRun(intake.catalog.Catalog):
             self.__class__.__name__,
             self._entry.name)
 
-
     def get(self, *args, **kwargs):
         """
         Return self or, if args are provided, some new instance of type(self).
