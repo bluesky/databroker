@@ -414,3 +414,10 @@ class LazyMap(collections.abc.Mapping):
     def __contains__(self, k):
         # make sure checking 'in' does not trigger evaluation
         return k in self.__mapping
+
+    def add(self, key, value):
+        if key in self.__mapping:
+            raise RuntimeError(f"Cannot change the value of existing keys in a"
+                               f" LazyMap.  key: {key} already exists.")
+        else:
+            self.__mapping[key] = value
