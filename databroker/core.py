@@ -912,15 +912,6 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def search(self):
         raise NotImplementedError("Cannot search within one run.")
 
-import time
-def timeit(f):
-    def wrap(*args):
-        time1 = time.time()
-        ret = f(*args)
-        time2 = time.time()
-        print('{:s} function took {:.3f} ms'.format(f.__name__, (time2-time1)*1000.0))
-        return ret
-    return wrap
 
 class BlueskyRun(intake.catalog.Catalog):
     """
@@ -1023,7 +1014,6 @@ class BlueskyRun(intake.catalog.Catalog):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
-    @timeit
     def _load(self):
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
