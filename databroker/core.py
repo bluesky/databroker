@@ -1058,16 +1058,16 @@ class BlueskyRun(intake.catalog.Catalog):
                     f"EventDescriptor {doc['uid']!r} has no 'name', likely "
                     f"because it was generated using an old version of "
                     f"bluesky. The name 'primary' will be used.")
-        descriptors_by_name = collections.defaultdict(list)
-        for doc in self._descriptors:
-            descriptors_by_name[doc.get('name', 'primary')].append(doc)
+        stream_names = set(
+            doc.get('name', 'primary') for doc in self._descriptors)
+        new_stream_names = stream_names - set(self._entries)
         # We employ OrderedDict in several places in this loop. The motivation
         # is to speed up dask tokenization. When dask tokenizes a plain dict,
         # it sorts the keys, and it turns out that this sort operation
         # dominates the call time, even for very small dicts. Using an
         # OrderedDict steers dask toward a different and faster tokenization.
-        entries = {}
-        def wrapper(stream_name, descriptors, metadata, args):
+
+        def wrapper(stream_name, metadata, args):
             return StreamEntry(name=stream_name,
                                description={},  # TODO
                                driver='databroker.core.BlueskyEventStream',
@@ -1080,11 +1080,9 @@ class BlueskyRun(intake.catalog.Catalog):
                                getshell=True,
                                catalog=self)
 
-        for stream_name, descriptors in descriptors_by_name.items():
+        for stream_name in new_stream_names:
             metadata = OrderedDict({'start': self.metadata['start'],
-                                    'stop': self.metadata['stop'],
-                                    'descriptors': descriptors,
-                                    'resources': self._resources})
+                                    'stop': self.metadata['stop']})
             args = OrderedDict(
                 stream_name=stream_name,
                 get_run_stop=self._get_run_stop,
@@ -1098,10 +1096,10 @@ class BlueskyRun(intake.catalog.Catalog):
                 transforms=OrderedDict(self._transforms),
                 metadata=metadata)
 
-            entries[stream_name] = functools.partial(wrapper, stream_name,
-                                                     descriptors, metadata, args)
+            make_entry = functools.partial(wrapper, stream_name,
+                                           descriptors, metadata, args)
 
-        self._entries = LazyMap(entries)
+            self._entries.add(stream_name, make_entry)
 
         logger.debug(
             "Loaded %s named %r",
@@ -1291,6 +1289,9 @@ class BlueskyEventStream(DataSourceMixin):
         # all of the Run's resources.
         self._resources = metadata['resources']
         self._partitions = None
+
+    def _load(self):
+        ...
 
     def __repr__(self):
         try:
