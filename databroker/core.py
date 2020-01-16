@@ -44,9 +44,8 @@ class Document(dict):
     """
     Document is an immutable dict subclass.
 
-    It is immutable to ensure to help consumer code avoid accidentally
-    corrupting data that another part of the cosumer code was expected to use
-    unchanged.
+    It is immutable to help consumer code avoid accidentally corrupting data
+    that another part of the cosumer code was expected to use unchanged.
 
     Subclasses of Document must define __dask_tokenize__. The tokenization
     schemes typically uniquely identify the document based on only a subset of
@@ -57,7 +56,8 @@ class Document(dict):
     Note that Documents are not *recursively* immutable. Just as it is possible
     create a tuple (immutable) of lists (mutable) and mutate the lists, it is
     possible to mutate the internal contents of a Document, but this should not
-    be done. It is safer to use the to_dict() method to create a mutable copy.
+    be done. It is safer to use the to_dict() method to create a mutable deep
+    copy.
 
     This is implemented as a dict subclass in order to satisfy certain
     consumers that expect an object that satisfies isinstance(obj, dict).
@@ -77,6 +77,9 @@ class Document(dict):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
     def to_dict(self):
+        """
+        Create a mutable deep copy.
+        """
         # Convert to dict and then make a deep copy to ensure that if the user
         # mutates any internally nested dicts there is no spooky action at a
         # distance.
