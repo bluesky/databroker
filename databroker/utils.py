@@ -415,9 +415,13 @@ class LazyMap(collections.abc.Mapping):
         # make sure checking 'in' does not trigger evaluation
         return k in self.__mapping
 
-    def add(self, key, value):
-        if key in self.__mapping:
-            raise RuntimeError(f"Cannot change the value of existing keys in a"
-                               f" LazyMap.  key: {key} already exists.")
-        else:
-            self.__mapping[key] = value
+    def add(self, *args, **kwargs):
+        dictionary = dict(*args, **kwargs)
+        wrap = self.__Wrapper
+        with self.__lock:
+            for key in dictionary:
+                if key in self.__mapping:
+                    raise TypeError(f"Cannot change the value of existing "
+                                    f"keys in a LazyMap. "
+                                    f"key: {key} already exists.")
+            self.__mapping.update({k: wrap(v) for k, v in dictionary.items()})
