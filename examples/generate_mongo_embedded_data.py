@@ -28,4 +28,4 @@ handler.setLevel('DEBUG')
 logger.addHandler(handler)
 
 from databroker._drivers.mongo_embedded import BlueskyMongoCatalog
-catalog = BlueskyMsgpackCatalog(f'{directory}/*.msgpack')
+catalog = BlueskyMongoCatalog(f'{directory}/*.msgpack')
