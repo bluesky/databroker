@@ -1014,6 +1014,9 @@ class BlueskyRun(intake.catalog.Catalog):
             out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
+    def _make_entries_container(self):
+        return LazyMap()
+
     def _load(self):
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
