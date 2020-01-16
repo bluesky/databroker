@@ -779,7 +779,7 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
         if name == 'datum':
             if doc['datum_id'] not in history:
                 yield (name, doc)
-                history .add(doc['datum_id'])
+                history.add(doc['datum_id'])
 
         if name == 'datum_page':
             if tuple(doc['datum_id']) not in history:
@@ -1019,10 +1019,6 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def _load(self):
         self._run_start_doc = Start(self._transforms['start'](self._get_run_start()))
-        self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
-                             for descriptor in self._get_event_descriptors()]
-        self._resources = [Resource(self._transforms['resource'](resource))
-                           for resource in self._get_resources()]
 
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
@@ -1036,11 +1032,16 @@ class BlueskyRun(intake.catalog.Catalog):
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
 
+        # TODO Add driver API to allow us to fetch just the stream names not
+        # all the descriptors. We don't need them until BlueskyEventStream.
+        descriptors = [self._transforms['descriptor'](descriptor)
+                       for descriptor in self._get_event_descriptors()]
+
         # Count the total number of documents in this run.
         count = 1
-        descriptor_uids = [doc['uid'] for doc in self._descriptors]
+        descriptor_uids = [doc['uid'] for doc in descriptors]
         count += len(descriptor_uids)
-        for doc in self._descriptors:
+        for doc in descriptors:
             count += self._get_event_count(doc['uid'])
         count += (self._run_stop_doc is not None)
 
@@ -1052,14 +1053,14 @@ class BlueskyRun(intake.catalog.Catalog):
             metadata=self.metadata)
 
         # Make a BlueskyEventStream for each stream_name.
-        for doc in self._descriptors:
+        for doc in descriptors:
             if 'name' not in doc:
                 warnings.warn(
                     f"EventDescriptor {doc['uid']!r} has no 'name', likely "
                     f"because it was generated using an old version of "
                     f"bluesky. The name 'primary' will be used.")
         stream_names = set(
-            doc.get('name', 'primary') for doc in self._descriptors)
+            doc.get('name', 'primary') for doc in descriptors)
         new_stream_names = stream_names - set(self._entries)
         # We employ OrderedDict in several places in this loop. The motivation
         # is to speed up dask tokenization. When dask tokenizes a plain dict,
@@ -1080,6 +1081,7 @@ class BlueskyRun(intake.catalog.Catalog):
                                getshell=True,
                                catalog=self)
 
+        new_entries = {}
         for stream_name in new_stream_names:
             metadata = OrderedDict({'start': self.metadata['start'],
                                     'stop': self.metadata['stop']})
@@ -1090,17 +1092,16 @@ class BlueskyRun(intake.catalog.Catalog):
                 get_event_pages=self._get_event_pages,
                 get_event_count=self._get_event_count,
                 get_resource=self._get_resource,
+                get_resources=self._get_resources,
                 lookup_resource_for_datum=self._lookup_resource_for_datum,
                 get_datum_pages=self._get_datum_pages,
                 fillers=OrderedDict(self.fillers),
                 transforms=OrderedDict(self._transforms),
                 metadata=metadata)
 
-            make_entry = functools.partial(wrapper, stream_name,
-                                           descriptors, metadata, args)
-
-            self._entries.add(stream_name, make_entry)
-
+            new_entries[stream_name] = functools.partial(wrapper, stream_name,
+                                                         metadata, args)
+        self._entries.add(new_entries)
         logger.debug(
             "Loaded %s named %r",
             self.__class__.__name__,
@@ -1221,6 +1222,8 @@ class BlueskyEventStream(DataSourceMixin):
         Expected signature ``get_event_count(descriptor_uid) -> int``
     get_resource : callable
         Expected signature ``get_resource(resource_uid) -> Resource``
+    get_resources: callable
+        Expected signature ``get_resources() -> Resources``
     lookup_resource_for_datum : callable
         Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
     get_datum_pages : callable
@@ -1255,6 +1258,7 @@ class BlueskyEventStream(DataSourceMixin):
                  get_event_descriptors,
                  get_event_pages,
                  get_event_count,
+                 get_resources,
                  get_resource,
                  lookup_resource_for_datum,
                  get_datum_pages,
@@ -1270,10 +1274,12 @@ class BlueskyEventStream(DataSourceMixin):
         self._get_run_stop = get_run_stop
         self._get_event_pages = get_event_pages
         self._get_event_count = get_event_count
+        self._get_resources = get_resources
         self._get_resource = get_resource
         self._lookup_resource_for_datum = lookup_resource_for_datum
         self._get_datum_pages = get_datum_pages
         self.fillers = fillers
+        self._transforms = transforms
         self.urlpath = ''  # TODO Not sure why I had to add this.
         self._ds = None  # set by _open_dataset below
         self.include = include
@@ -1283,15 +1289,19 @@ class BlueskyEventStream(DataSourceMixin):
 
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
-        self._descriptors = [descriptor for descriptor in metadata['descriptors']
-                             if descriptor.get('name') == self._stream_name]
-        # Should figure out a way so that self._resources doesn't have to be
-        # all of the Run's resources.
-        self._resources = metadata['resources']
         self._partitions = None
+        self._load()
 
     def _load(self):
-        ...
+        # TODO Add driver API to fetch only the descriptors of interest instead
+        # of fetching all of them and then filtering.
+        self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
+                             for descriptor in self._get_event_descriptors()
+                             if descriptor.get('name') == self._stream_name]
+        # TODO Should figure out a way so that self._resources doesn't have to
+        # be all of the Run's resources.
+        self._resources = [Resource(self._transforms['resource'](resource))
+                           for resource in self._get_resources()]
 
     def __repr__(self):
         try:
