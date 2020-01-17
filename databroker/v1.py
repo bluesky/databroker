@@ -1016,9 +1016,7 @@ class Header:
 
     @property
     def descriptors(self):
-        descriptors = []
-        for name, entry in self._data_source._entries.items():
-            descriptors.extend(entry.describe()['metadata']['descriptors'])
+        descriptors = self._data_source._descriptors
         return [self.db.prepare_hook('descriptor', doc)
                 for doc in descriptors]
 

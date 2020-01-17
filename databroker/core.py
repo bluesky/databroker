@@ -1034,14 +1034,14 @@ class BlueskyRun(intake.catalog.Catalog):
 
         # TODO Add driver API to allow us to fetch just the stream names not
         # all the descriptors. We don't need them until BlueskyEventStream.
-        descriptors = [self._transforms['descriptor'](descriptor)
-                       for descriptor in self._get_event_descriptors()]
+        self._descriptors = [self._transforms['descriptor'](descriptor)
+                             for descriptor in self._get_event_descriptors()]
 
         # Count the total number of documents in this run.
         count = 1
-        descriptor_uids = [doc['uid'] for doc in descriptors]
+        descriptor_uids = [doc['uid'] for doc in self._descriptors]
         count += len(descriptor_uids)
-        for doc in descriptors:
+        for doc in self._descriptors:
             count += self._get_event_count(doc['uid'])
         count += (self._run_stop_doc is not None)
 
@@ -1053,20 +1053,14 @@ class BlueskyRun(intake.catalog.Catalog):
             metadata=self.metadata)
 
         # Make a BlueskyEventStream for each stream_name.
-        for doc in descriptors:
+        for doc in self._descriptors:
             if 'name' not in doc:
                 warnings.warn(
                     f"EventDescriptor {doc['uid']!r} has no 'name', likely "
                     f"because it was generated using an old version of "
                     f"bluesky. The name 'primary' will be used.")
-        stream_names = set(
-            doc.get('name', 'primary') for doc in descriptors)
+        stream_names = set(doc.get('name', 'primary') for doc in self._descriptors)
         new_stream_names = stream_names - set(self._entries)
-        # We employ OrderedDict in several places in this loop. The motivation
-        # is to speed up dask tokenization. When dask tokenizes a plain dict,
-        # it sorts the keys, and it turns out that this sort operation
-        # dominates the call time, even for very small dicts. Using an
-        # OrderedDict steers dask toward a different and faster tokenization.
 
         def wrapper(stream_name, metadata, args):
             return StreamEntry(name=stream_name,
@@ -1081,6 +1075,11 @@ class BlueskyRun(intake.catalog.Catalog):
                                getshell=True,
                                catalog=self)
 
+        # We employ OrderedDict in several places in this loop. The motivation
+        # is to speed up dask tokenization. When dask tokenizes a plain dict,
+        # it sorts the keys, and it turns out that this sort operation
+        # dominates the call time, even for very small dicts. Using an
+        # OrderedDict steers dask toward a different and faster tokenization.
         new_entries = {}
         for stream_name in new_stream_names:
             metadata = OrderedDict({'start': self.metadata['start'],
