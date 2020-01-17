@@ -1291,6 +1291,10 @@ class BlueskyEventStream(DataSourceMixin):
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
         self._partitions = None
+        logger.debug(
+            "Created %s for stream name %r",
+            self.__class__.__name__,
+            self._stream_name)
 
     def _load(self):
         # TODO Add driver API to fetch only the descriptors of interest instead
@@ -1312,8 +1316,11 @@ class BlueskyEventStream(DataSourceMixin):
                 self._run_stop_doc = stop
             else:
                 self._run_stop_doc = Stop(self._transforms['stop'](stop))
+        logger.debug(
+            "Loaded %s for stream name %r",
+            self.__class__.__name__,
+            self._stream_name)
 
-        
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
