@@ -923,7 +923,7 @@ class Broker:
                 elif name == 'resource' and new_root:
                     copy_kwargs.setdefault('run_start_uid', header.start['uid'])
                     file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
-                    new_resource = copy.deepcopy(doc)
+                    new_resource = doc.to_dict()
                     new_resource['root'] = new_root
                     db.insert(name, new_resource)
                 else:
