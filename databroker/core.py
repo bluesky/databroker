@@ -162,8 +162,8 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         open_args['entry'] = self
         return plugin, open_args
 
-    def _get_cached(self, **kwargs):
-        return super().get(**kwargs)
+    def cache_clear(self):
+        self.__cache.clear()
 
     def get(self, **kwargs):
         token = tokenize(OrderedDict(kwargs))
