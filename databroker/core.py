@@ -1291,7 +1291,6 @@ class BlueskyEventStream(DataSourceMixin):
         self._partitions = None
 
     def _load(self):
-        print("LOAD")
         # TODO Add driver API to fetch only the descriptors of interest instead
         # of fetching all of them and then filtering.
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
