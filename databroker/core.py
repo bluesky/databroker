@@ -1301,7 +1301,17 @@ class BlueskyEventStream(DataSourceMixin):
         # be all of the Run's resources.
         self._resources = [Resource(self._transforms['resource'](resource))
                            for resource in self._get_resources()]
+        
+        # get_run_stop() may return None if the document was never created due
+        # to a critical failure or simply not yet emitted during a Run that is
+        # still in progress. If it returns None, pass that through.
+        stop = self._get_run_stop()
+        if stop is None:
+            self._run_stop_doc = stop
+        else:
+            self._run_stop_doc = Stop(self._transforms['stop'](stop))
 
+        
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
