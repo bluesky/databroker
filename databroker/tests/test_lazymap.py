@@ -1,4 +1,6 @@
+import pytest
 from ..utils import LazyMap
+
 
 def test_lazymap():
 
@@ -52,3 +54,20 @@ def test_lazymap_contains():
     assert loaded['A'] == 0
     assert loaded['B'] == 0
 
+def test_lazymap_add():
+
+    class TestClass():
+        def __init__(self, value):
+            self.value = value
+
+    lazy_map = LazyMap({'A': lambda: TestClass('A'),
+                        'B': lambda: TestClass('B')})
+
+    with pytest.raises(TypeError):
+        lazy_map.add({'A': lambda: TestClass('A')})
+
+    with pytest.raises(TypeError):
+        lazy_map.add({'B': lambda: TestClass('B')})
+
+    lazy_map.add({'C': lambda: TestClass('C')})
+    assert 'C' in lazy_map

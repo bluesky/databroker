@@ -414,3 +414,14 @@ class LazyMap(collections.abc.Mapping):
     def __contains__(self, k):
         # make sure checking 'in' does not trigger evaluation
         return k in self.__mapping
+
+    def add(self, *args, **kwargs):
+        dictionary = dict(*args, **kwargs)
+        wrap = self.__Wrapper
+        with self.__lock:
+            intersection = set(dictionary).intersection(self.__mapping)
+            if intersection:
+                raise TypeError(f"Cannot change the value of existing "
+                                f"keys in a LazyMap. "
+                                f"keys: {intersection} already exists.")
+            self.__mapping.update({k: wrap(v) for k, v in dictionary.items()})
