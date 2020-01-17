@@ -1289,9 +1289,9 @@ class BlueskyEventStream(DataSourceMixin):
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
         self._partitions = None
-        self._load()
 
     def _load(self):
+        print("LOAD")
         # TODO Add driver API to fetch only the descriptors of interest instead
         # of fetching all of them and then filtering.
         self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
@@ -1321,6 +1321,7 @@ class BlueskyEventStream(DataSourceMixin):
         return out
 
     def _open_dataset(self):
+        self._load()
         self._ds = documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
@@ -1351,6 +1352,7 @@ class BlueskyEventStream(DataSourceMixin):
         return super().to_dask()
 
     def _load_partitions(self, partition_size):
+        self._load()
         datum_gens = [self._get_datum_pages(resource['uid'])
                       for resource in self._resources]
         event_gens = [list(self._get_event_pages(descriptor['uid']))
