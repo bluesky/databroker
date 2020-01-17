@@ -14,7 +14,8 @@ def test_fill_event(RE, hw):
 
     RE(count([hw.img]), callback)
     docs
-    dask_filler = Filler({'NPY_SEQ': NumpySeqHandler}, coerce='delayed')
+    dask_filler = Filler({'NPY_SEQ': NumpySeqHandler}, coerce='delayed',
+                         inplace=False)
     filled_docs = []
     for name, doc in docs:
         filled_docs.append(dask_filler(name, doc))
@@ -33,12 +34,14 @@ def test_fill_event_page(RE, hw):
 
     RE(count([hw.img]), callback)
     docs
-    dask_filler = Filler({'NPY_SEQ': NumpySeqHandler}, coerce='delayed')
+    dask_filler = Filler({'NPY_SEQ': NumpySeqHandler}, coerce='delayed',
+                         inplace=False)
     filled_docs = []
     _, event = docs[-2]
     event_page = event_model.pack_event_page(event)
     docs[-2] = ('event_page', event_page)
-    dask_filler = Filler({'NPY_SEQ': NumpySeqHandler}, coerce='delayed')
+    dask_filler = Filler({'NPY_SEQ': NumpySeqHandler}, coerce='delayed',
+                         inplace=False)
     filled_docs = []
     for name, doc in docs:
         filled_docs.append(dask_filler(name, doc))
