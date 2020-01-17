@@ -1023,7 +1023,7 @@ class BlueskyRun(intake.catalog.Catalog):
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
-        if self._get_run_stop is None:
+        if self._run_stop_doc is None:
             stop = self._get_run_stop()
             if stop is None:
                 self._run_stop_doc = stop
@@ -1305,7 +1305,7 @@ class BlueskyEventStream(DataSourceMixin):
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
-        if self._get_run_stop is None:
+        if self.run_stop_doc is None:
             stop = self._get_run_stop()
             if stop is None:
                 self._run_stop_doc = stop
