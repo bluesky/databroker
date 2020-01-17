@@ -1023,11 +1023,12 @@ class BlueskyRun(intake.catalog.Catalog):
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
-        stop = self._get_run_stop()
-        if stop is None:
-            self._run_stop_doc = stop
-        else:
-            self._run_stop_doc = Stop(self._transforms['stop'](stop))
+        if self._get_run_stop is None:
+            stop = self._get_run_stop()
+            if stop is None:
+                self._run_stop_doc = stop
+            else:
+                self._run_stop_doc = Stop(self._transforms['stop'](stop))
 
         self.metadata.update({'start': self._run_start_doc})
         self.metadata.update({'stop': self._run_stop_doc})
@@ -1304,11 +1305,12 @@ class BlueskyEventStream(DataSourceMixin):
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
-        stop = self._get_run_stop()
-        if stop is None:
-            self._run_stop_doc = stop
-        else:
-            self._run_stop_doc = Stop(self._transforms['stop'](stop))
+        if self._get_run_stop is None:
+            stop = self._get_run_stop()
+            if stop is None:
+                self._run_stop_doc = stop
+            else:
+                self._run_stop_doc = Stop(self._transforms['stop'](stop))
 
         
     def __repr__(self):
