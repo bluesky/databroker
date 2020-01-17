@@ -419,7 +419,7 @@ class LazyMap(collections.abc.Mapping):
         dictionary = dict(*args, **kwargs)
         wrap = self.__Wrapper
         with self.__lock:
-            intersection = set(dictionary.keys()).intersection(self.__mapping.keys())
+            intersection = set(dictionary).intersection(self.__mapping)
             if intersection:
                 raise TypeError(f"Cannot change the value of existing "
                                 f"keys in a LazyMap. "
