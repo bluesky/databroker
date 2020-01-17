@@ -992,6 +992,7 @@ class BlueskyRun(intake.catalog.Catalog):
         self.fillers['delayed'] = get_filler(coerce='delayed')
         self._entry = entry
         self._transforms = transforms
+        self._run_stop_doc = None
 
         super().__init__(**kwargs)
         logger.debug(
@@ -1305,7 +1306,7 @@ class BlueskyEventStream(DataSourceMixin):
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
-        if self.run_stop_doc is None:
+        if self._run_stop_doc is None:
             stop = self._get_run_stop()
             if stop is None:
                 self._run_stop_doc = stop
