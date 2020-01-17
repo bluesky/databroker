@@ -419,9 +419,8 @@ class LazyMap(collections.abc.Mapping):
         dictionary = dict(*args, **kwargs)
         wrap = self.__Wrapper
         with self.__lock:
-            for key in dictionary:
-                if key in self.__mapping:
-                    raise TypeError(f"Cannot change the value of existing "
-                                    f"keys in a LazyMap. "
-                                    f"key: {key} already exists.")
+            if set(dictionary.keys()).intersection(self.__mapping.keys())
+                raise TypeError(f"Cannot change the value of existing "
+                                f"keys in a LazyMap. "
+                                f"key: {key} already exists.")
             self.__mapping.update({k: wrap(v) for k, v in dictionary.items()})
