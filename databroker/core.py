@@ -1295,6 +1295,7 @@ class BlueskyEventStream(DataSourceMixin):
             "Created %s for stream name %r",
             self.__class__.__name__,
             self._stream_name)
+        self._load()
 
     def _load(self):
         # TODO Add driver API to fetch only the descriptors of interest instead
