@@ -1299,11 +1299,15 @@ class BlueskyEventStream(DataSourceMixin):
     def _load(self):
         # TODO Add driver API to fetch only the descriptors of interest instead
         # of fetching all of them and then filtering.
-        self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
-                             for descriptor in self._get_event_descriptors()
-                             if descriptor.get('name') == self._stream_name]
+        self._descriptors = d = [Descriptor(self._transforms['descriptor'](descriptor))
+                                 for descriptor in self._get_event_descriptors()
+                                 if descriptor.get('name') == self._stream_name]
+        self.metadata.update({'descriptors': d})
         # TODO Should figure out a way so that self._resources doesn't have to
         # be all of the Run's resources.
+        # TDOO Should we expose this in metadata as well? Since
+        # _get_resources() only discovers new-style Resources that have a
+        # run_start in them, leave it private for now.
         self._resources = [Resource(self._transforms['resource'](resource))
                            for resource in self._get_resources()]
         
