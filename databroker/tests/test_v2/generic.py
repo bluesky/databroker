@@ -255,3 +255,14 @@ def test_transforms(bundle):
     for name, doc in run.canonical(fill='no'):
         if name in {'start', 'stop', 'resource', 'descriptor'}:
             assert doc.get('test_key') == 'test_value'
+
+
+def test_metadata_keys(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]()
+
+    run_metadata = run.metadata
+    assert 'start' in run_metadata
+    assert 'stop' in run_metadata
+
+    stream_metadata = run['primary']().metadata
+    assert 'descriptors' in stream_metadata
