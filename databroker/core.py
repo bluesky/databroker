@@ -1291,13 +1291,13 @@ class BlueskyEventStream(DataSourceMixin):
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
         self._partitions = None
-        self._load_descriptors()
+        self._load_header()
         logger.debug(
             "Created %s for stream name %r",
             self.__class__.__name__,
             self._stream_name)
 
-    def _load_descriptors(self):
+    def _load_header(self):
         # TODO Add driver API to fetch only the descriptors of interest instead
         # of fetching all of them and then filtering.
         self._descriptors = d = [Descriptor(self._transforms['descriptor'](descriptor))
@@ -1311,7 +1311,7 @@ class BlueskyEventStream(DataSourceMixin):
         # run_start in them, leave it private for now.
         self._resources = [Resource(self._transforms['resource'](resource))
                            for resource in self._get_resources()]
-        
+
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
@@ -1334,6 +1334,7 @@ class BlueskyEventStream(DataSourceMixin):
         return out
 
     def _open_dataset(self):
+        self._load_header()
         self._ds = documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
@@ -1364,7 +1365,7 @@ class BlueskyEventStream(DataSourceMixin):
         return super().to_dask()
 
     def _load_partitions(self, partition_size):
-        self._load_metadata()
+        self._load_header()
         datum_gens = [self._get_datum_pages(resource['uid'])
                       for resource in self._resources]
         event_gens = [list(self._get_event_pages(descriptor['uid']))
