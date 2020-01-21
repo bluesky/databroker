@@ -1316,10 +1316,9 @@ class BlueskyEventStream(DataSourceMixin):
         # still in progress. If it returns None, pass that through.
         if self._run_stop_doc is None:
             stop = self._get_run_stop()
-            if stop is None:
-                self._run_stop_doc = stop
-            else:
-                self._run_stop_doc = Stop(self._transforms['stop'](stop))
+            if stop is not None:
+                self._run_stop_doc = s = Stop(self._transforms['stop'](stop))
+                self.metadata.update({'stop': s})
         logger.debug(
             "Loaded %s for stream name %r",
             self.__class__.__name__,
