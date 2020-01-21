@@ -1328,7 +1328,7 @@ class BlueskyEventStream(DataSourceMixin):
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
-                   f"from Run {self._get_run_start()['uid'][:8]}...>")
+                   f"from Run {self._run_start_doc['uid'][:8]}...>")
         except Exception as exc:
             out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
