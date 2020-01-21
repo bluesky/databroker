@@ -1295,9 +1295,9 @@ class BlueskyEventStream(DataSourceMixin):
             "Created %s for stream name %r",
             self.__class__.__name__,
             self._stream_name)
-        self._load()
+        self._load_metadata()
 
-    def _load(self):
+    def _load_metadata(self):
         # TODO Add driver API to fetch only the descriptors of interest instead
         # of fetching all of them and then filtering.
         self._descriptors = d = [Descriptor(self._transforms['descriptor'](descriptor))
@@ -1365,7 +1365,7 @@ class BlueskyEventStream(DataSourceMixin):
         return super().to_dask()
 
     def _load_partitions(self, partition_size):
-        self._load()
+        self._load_metadata()
         datum_gens = [self._get_datum_pages(resource['uid'])
                       for resource in self._resources]
         event_gens = [list(self._get_event_pages(descriptor['uid']))
