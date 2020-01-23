@@ -64,6 +64,7 @@ class Document(dict):
     consumers that expect an object that satisfies isinstance(obj, dict).
     This implementation detail may change in the future.
     """
+    __slots__ = ()
     _NOT_MUTABLE_MSG = (
         "Documents are not mutable. Call the method to_dict() to make a "
         "fully independent and mutable copy.")
