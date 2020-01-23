@@ -62,7 +62,7 @@ class Broker(Catalog):
     def __init__(self, *, handler_registry=None, root_map=None,
                  filler_class=event_model.Filler, transforms=None, **kwargs):
 
-        self._root_map = root_map
+        self._root_map = root_map or {}
         self._filler_class = filler_class
         self._transforms = parse_transforms(transforms)
         if handler_registry is None:
