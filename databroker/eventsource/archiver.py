@@ -222,10 +222,10 @@ class ArchiverEventSource(object):
         ananos = np.asarray(nanos)
         times = asecs*1.0e+3 + ananos*1.0e-6
 
-        datetimes = pd.to_datetime(times, unit='ms')
+        datetimes = pd.to_datetime(times, unit='ms', utc=True)
 
         df = pd.DataFrame()
-        df['time'] = datetimes
+        df['time'] = datetimes.tz_convert(tz=self.tz)
         df['data'] = data
 
         return df
