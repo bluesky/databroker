@@ -1292,31 +1292,35 @@ class BlueskyEventStream(DataSourceMixin):
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
         self._partitions = None
+        self._load_header()
         logger.debug(
             "Created %s for stream name %r",
             self.__class__.__name__,
             self._stream_name)
 
-    def _load(self):
+    def _load_header(self):
         # TODO Add driver API to fetch only the descriptors of interest instead
         # of fetching all of them and then filtering.
-        self._descriptors = [Descriptor(self._transforms['descriptor'](descriptor))
-                             for descriptor in self._get_event_descriptors()
-                             if descriptor.get('name') == self._stream_name]
+        self._descriptors = d = [Descriptor(self._transforms['descriptor'](descriptor))
+                                 for descriptor in self._get_event_descriptors()
+                                 if descriptor.get('name') == self._stream_name]
+        self.metadata.update({'descriptors': d})
         # TODO Should figure out a way so that self._resources doesn't have to
         # be all of the Run's resources.
+        # TDOO Should we expose this in metadata as well? Since
+        # _get_resources() only discovers new-style Resources that have a
+        # run_start in them, leave it private for now.
         self._resources = [Resource(self._transforms['resource'](resource))
                            for resource in self._get_resources()]
-        
+
         # get_run_stop() may return None if the document was never created due
         # to a critical failure or simply not yet emitted during a Run that is
         # still in progress. If it returns None, pass that through.
         if self._run_stop_doc is None:
             stop = self._get_run_stop()
-            if stop is None:
-                self._run_stop_doc = stop
-            else:
-                self._run_stop_doc = Stop(self._transforms['stop'](stop))
+            if stop is not None:
+                self._run_stop_doc = s = Stop(self._transforms['stop'](stop))
+                self.metadata.update({'stop': s})
         logger.debug(
             "Loaded %s for stream name %r",
             self.__class__.__name__,
@@ -1325,13 +1329,13 @@ class BlueskyEventStream(DataSourceMixin):
     def __repr__(self):
         try:
             out = (f"<Intake catalog: Stream {self._stream_name!r} "
-                   f"from Run {self._get_run_start()['uid'][:8]}...>")
+                   f"from Run {self._run_start_doc['uid'][:8]}...>")
         except Exception as exc:
             out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
     def _open_dataset(self):
-        self._load()
+        self._load_header()
         self._ds = documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
@@ -1362,7 +1366,7 @@ class BlueskyEventStream(DataSourceMixin):
         return super().to_dask()
 
     def _load_partitions(self, partition_size):
-        self._load()
+        self._load_header()
         datum_gens = [self._get_datum_pages(resource['uid'])
                       for resource in self._resources]
         event_gens = [list(self._get_event_pages(descriptor['uid']))
