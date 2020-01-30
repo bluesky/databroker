@@ -1308,7 +1308,8 @@ class BlueskyEventStream(DataSourceMixin):
 
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
-        self._partitions = None
+        if not hasattr(self, '_partitions'):
+            self._partitions = None
         self._load_header()
         logger.debug(
             "Created %s for stream name %r",
