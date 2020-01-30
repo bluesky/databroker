@@ -779,7 +779,6 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
             partition = entry().read_partition({'index': i, 'fill': fill,
                                               'partition_size': 'auto'})
             if not partition:
-                print("Empty partition")
                 break
             yield from partition
 
@@ -1383,13 +1382,11 @@ class BlueskyEventStream(DataSourceMixin):
 
     def _load_partitions(self, partition_size):
         self._load_header()
-        #print("LOAD", [descriptor['name'] for descriptor in self._descriptors])
         datum_gens = [self._get_datum_pages(resource['uid'])
                       for resource in self._resources]
         event_gens = [list(self._get_event_pages(descriptor['uid']))
                       for descriptor in self._descriptors]
 
-        #print("PAGE SIZE", [len(ep['uid']) for gen in event_gens for ep in gen])
         event_gens = [list(self._get_event_pages(descriptor['uid']))
                       for descriptor in self._descriptors]
         self._partitions = list(
@@ -1402,7 +1399,6 @@ class BlueskyEventStream(DataSourceMixin):
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
-        print("read_partition", self._stream_name, partition)
         if isinstance(partition, (tuple, list)):
             return super().read_partition(partition)
 
@@ -1423,12 +1419,9 @@ class BlueskyEventStream(DataSourceMixin):
             raise ValueError(f"Invalid partition_size {partition['partition_size']}")
 
         if self._partitions is None:
-            print("None Partitions, loading now.")
             self._load_partitions(partition_size)
         try:
             try:
-                print("EVENTS in partition", [len(doc['uid']) for name, doc in self._partitions[i] 
-                                              if name=='event' or name=='event_page'])
                 return [filler(name, doc) for name, doc in self._partitions[i]]
             except event_model.UnresolvableForeignKeyError as err:
                 # Slow path: This error should only happen if there is an old style
