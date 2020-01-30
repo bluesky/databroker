@@ -1386,14 +1386,10 @@ class BlueskyEventStream(DataSourceMixin):
                       for resource in self._resources]
         event_gens = [list(self._get_event_pages(descriptor['uid']))
                       for descriptor in self._descriptors]
-
-        event_gens = [list(self._get_event_pages(descriptor['uid']))
-                      for descriptor in self._descriptors]
         self._partitions = list(
             unfilled_partitions(self._run_start_doc, self._descriptors,
                                 self._resources, self._run_stop_doc,
                                 datum_gens, event_gens, partition_size))
-
         self.npartitions = len(self._partitions)
 
     def read_partition(self, partition):
