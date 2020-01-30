@@ -208,6 +208,8 @@ class StreamEntry(intake.catalog.local.LocalCatalogEntry):
             self._data_source = data_source
             return data_source
         else:
+            _, open_args = self._create_open_args(user_parameters)
+            self._data_source.__init__(**open_args)
             return self._data_source
 
 def tail(filename, n=1, bsize=2048):
