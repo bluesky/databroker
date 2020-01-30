@@ -184,6 +184,9 @@ class StreamEntry(intake.catalog.local.LocalCatalogEntry):
     """
     This is a temporary fix that is being proposed to include in intake.
     """
+    def __init__(self, *args, **kwargs):
+        self._data_source = None
+        super().__init__(*args, **kwargs)
 
     def __getstate__(self):
         args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
@@ -193,6 +196,19 @@ class StreamEntry(intake.catalog.local.LocalCatalogEntry):
                               for k, arg in self._captured_init_kwargs.items()})
         return OrderedDict(cls=self.classname, args=args, kwargs=kwargs)
 
+    def get(self, **user_parameters):
+        if self._data_source is None:
+            """Instantiate the DataSource for the given parameters"""
+            plugin, open_args = self._create_open_args(user_parameters)
+            data_source = plugin(**open_args)
+            data_source.catalog_object = self._catalog
+            data_source.name = self.name
+            data_source.description = self._description
+            data_source.cat = self._catalog
+            self._data_source = data_source
+            return data_source
+        else:
+            return self._data_source
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -763,11 +779,11 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
             partition = entry().read_partition({'index': i, 'fill': fill,
                                               'partition_size': 'auto'})
             if not partition:
+                print("Empty partition")
                 break
             yield from partition
 
     streams = [stream_gen(entry) for entry in entries.values()]
-
     yield ('start', start)
 
     # This following code filters out duplicate documents.
@@ -1367,19 +1383,26 @@ class BlueskyEventStream(DataSourceMixin):
 
     def _load_partitions(self, partition_size):
         self._load_header()
+        #print("LOAD", [descriptor['name'] for descriptor in self._descriptors])
         datum_gens = [self._get_datum_pages(resource['uid'])
                       for resource in self._resources]
+        event_gens = [list(self._get_event_pages(descriptor['uid']))
+                      for descriptor in self._descriptors]
+
+        #print("PAGE SIZE", [len(ep['uid']) for gen in event_gens for ep in gen])
         event_gens = [list(self._get_event_pages(descriptor['uid']))
                       for descriptor in self._descriptors]
         self._partitions = list(
             unfilled_partitions(self._run_start_doc, self._descriptors,
                                 self._resources, self._run_stop_doc,
                                 datum_gens, event_gens, partition_size))
+
         self.npartitions = len(self._partitions)
 
     def read_partition(self, partition):
         """Fetch one chunk of documents.
         """
+        print("read_partition", self._stream_name, partition)
         if isinstance(partition, (tuple, list)):
             return super().read_partition(partition)
 
@@ -1400,9 +1423,12 @@ class BlueskyEventStream(DataSourceMixin):
             raise ValueError(f"Invalid partition_size {partition['partition_size']}")
 
         if self._partitions is None:
+            print("None Partitions, loading now.")
             self._load_partitions(partition_size)
         try:
             try:
+                print("EVENTS in partition", [len(doc['uid']) for name, doc in self._partitions[i] 
+                                              if name=='event' or name=='event_page'])
                 return [filler(name, doc) for name, doc in self._partitions[i]]
             except event_model.UnresolvableForeignKeyError as err:
                 # Slow path: This error should only happen if there is an old style
