@@ -153,8 +153,11 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         super().__init__(**kwargs)
         # This cache holds datasources, the result of calling super().get(...)
         # with potentially different arguments.
-        self.__cache = cachetools.LRUCache(10)
+        self.__cache = self._make_cache()
         logger.debug("Created Entry named %r", self.name)
+
+    def _make_cache(self):
+        return cachetools.LRUCache(10)
 
     def _create_open_args(self, user_parameters):
         plugin, open_args = super()._create_open_args(user_parameters)
@@ -180,10 +183,12 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         return datasource
 
 
-class StreamEntry(intake.catalog.local.LocalCatalogEntry):
+class StreamEntry(Entry):
     """
     This is a temporary fix that is being proposed to include in intake.
     """
+    def _make_cache(self):
+        return dict()
 
     def __getstate__(self):
         args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
@@ -767,7 +772,6 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
             yield from partition
 
     streams = [stream_gen(entry) for entry in entries.values()]
-
     yield ('start', start)
 
     # This following code filters out duplicate documents.
@@ -1267,6 +1271,7 @@ class BlueskyEventStream(DataSourceMixin):
                  fillers,
                  transforms,
                  metadata,
+                 entry,
                  include=None,
                  exclude=None,
                  **kwargs):
@@ -1286,12 +1291,12 @@ class BlueskyEventStream(DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
+        self._partitions = None
 
         super().__init__(metadata=metadata, **kwargs)
 
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
-        self._partitions = None
         self._load_header()
         logger.debug(
             "Created %s for stream name %r",
