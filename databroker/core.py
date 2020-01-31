@@ -153,8 +153,11 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         super().__init__(**kwargs)
         # This cache holds datasources, the result of calling super().get(...)
         # with potentially different arguments.
-        self.__cache = cachetools.LRUCache(10)
+        self.__cache = self._make_cache()
         logger.debug("Created Entry named %r", self.name)
+
+    def _make_cache(self):
+        return cachetools.LRUCache(10)
 
     def _create_open_args(self, user_parameters):
         plugin, open_args = super()._create_open_args(user_parameters)
@@ -180,13 +183,12 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         return datasource
 
 
-class StreamEntry(intake.catalog.local.LocalCatalogEntry):
+class StreamEntry(Entry):
     """
     This is a temporary fix that is being proposed to include in intake.
     """
-    def __init__(self, *args, **kwargs):
-        self._data_source = None
-        super().__init__(*args, **kwargs)
+    def _make_cache(self):
+        return dict()
 
     def __getstate__(self):
         args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
@@ -196,21 +198,6 @@ class StreamEntry(intake.catalog.local.LocalCatalogEntry):
                               for k, arg in self._captured_init_kwargs.items()})
         return OrderedDict(cls=self.classname, args=args, kwargs=kwargs)
 
-    def get(self, **user_parameters):
-        if self._data_source is None:
-            """Instantiate the DataSource for the given parameters"""
-            plugin, open_args = self._create_open_args(user_parameters)
-            data_source = plugin(**open_args)
-            data_source.catalog_object = self._catalog
-            data_source.name = self.name
-            data_source.description = self._description
-            data_source.cat = self._catalog
-            self._data_source = data_source
-            return data_source
-        else:
-            _, open_args = self._create_open_args(user_parameters)
-            self._data_source.__init__(**open_args)
-            return self._data_source
 
 def tail(filename, n=1, bsize=2048):
     """
@@ -1284,6 +1271,7 @@ class BlueskyEventStream(DataSourceMixin):
                  fillers,
                  transforms,
                  metadata,
+                 entry,
                  include=None,
                  exclude=None,
                  **kwargs):
@@ -1303,13 +1291,12 @@ class BlueskyEventStream(DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
+        self._partitions = None
 
         super().__init__(metadata=metadata, **kwargs)
 
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
-        if not hasattr(self, '_partitions'):
-            self._partitions = None
         self._load_header()
         logger.debug(
             "Created %s for stream name %r",
