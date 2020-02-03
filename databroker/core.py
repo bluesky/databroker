@@ -1351,14 +1351,14 @@ class BlueskyEventStream(DataSourceMixin):
 
         stream = stream_gen()
 
-        arraypages = [eventpage_to_arraypage(doc) for name, doc
+        array_pages = [eventpage_to_arraypage(doc) for name, doc
                       in stream if name == 'event_page']
-        arraypage = concat_arraypages(array_pages)
-        datasetpage = arraypage_to_datasetpage(array_page)
-        return datasetpage
+        array_page = concat_arraypages(array_pages)
+        dataset_page = arraypage_to_datasetpage(array_page)
+        return dataset_page
 
     def _open_dataset(self):
-        self._ds = _to_xarray()['data']
+        self._ds = self._to_xarray()['data']
 
     def read(self):
         """
@@ -1784,6 +1784,7 @@ def concat_arraypages(dataarray_pages):
 
     array_keys = ['seq_num', 'time', 'uid']
     data_keys = dataarray_pages[0]['data'].keys()
+    filled_keys = dataarray_pages[0]['filled'].keys()
 
     return {'descriptor': pages[0]['descriptor'],
             **{key: list(itertools.chain.from_iterable(
@@ -1796,7 +1797,7 @@ def concat_arraypages(dataarray_pages):
                            for key in data_keys},
             'filled': {key: xarray.concat([page['filled'][key]
                                           for page in pages], dim='concat_dim')
-                       for key in data_keys}}
+                       for key in filled_keys}}
 
 
 def eventpage_to_arraypage(event_page, dims=None, coords=None):
@@ -1824,18 +1825,19 @@ def eventpage_to_arraypage(event_page, dims=None, coords=None):
 
     array_keys = ['seq_num', 'time', 'uid']
     data_keys = event_page['data'].keys()
+    filled_keys = event_page['filled'].keys()
 
     return {'descriptor': event_page['descriptor'],
             **{key: event_page[key] for key in array_keys},
-            'data': {key: xarray.DataArray(
-                            event_page['data'][key], dims=dims, coords=coords, name=key)
+            'data': {key: xarray.DataArray(event_page['data'][key], dims=dims,
+                                           coords=coords, name=key)
                      for key in data_keys},
-            'timestamps': {key: xarray.DataArray(
-                            event_page['timestamps'][key], dims=dims, coords=coords, name=key)
+            'timestamps': {key: xarray.DataArray(event_page['timestamps'][key],
+                                                 dims=dims, coords=coords, name=key)
                            for key in data_keys},
-            'filled': {key: xarray.DataArray(
-                            event_page['filled'][key], dims=dims, coords=coords, name=key)
-                       for key in data_keys}}
+            'filled': {key: xarray.DataArray(event_page['filled'][key],
+                                             dims=dims, coords=coords, name=key)
+                       for key in filled_keys}}
 
 
 def arraypage_to_datasetpage(dataarray_page):
