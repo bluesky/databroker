@@ -1599,7 +1599,7 @@ def _transpose(in_data, keys, field):
                 out[k] = numpy.asarray(out[k])
                 warnings.warn(
                     f"Creating a dask array raised an error. Because the "
-                    f"environment variable DATABROKER_ARRAY_FALLBACK was set"
+                    f"environment variable DATABROKER_ARRAY_FALLBACK was set "
                     f"to {switch} we have caught the error and fallen "
                     f"back to returning a numpy array instead. This may be "
                     f"very slow. The underlying issue should be resolved. The "
