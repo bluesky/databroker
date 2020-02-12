@@ -1590,7 +1590,6 @@ def _transpose(in_data, keys, field):
             # out as plain numpy arrays. In the future we might make them dask
             # arrays with manual chunks.
             out[k] = numpy.asarray(out[k])
-            pass
     return out
 
 
