@@ -30,11 +30,17 @@ def compare(a, b):
     for name, doc in a:
         if name == 'datum':
             a_indexed[('datum', doc['datum_id'])] = doc
+        # v0 yields {'_name": 'RunStop'} is the stop doc is missing; v2 yields None.
+        elif name == 'stop' and doc is None or 'uid' not in doc:
+            a_indexed[(name, None)] = None
         else:
             a_indexed[(name, doc['uid'])] = doc
     for name, doc in b:
         if name == 'datum':
             b_indexed[('datum', doc['datum_id'])] = doc
+        # v0 yields {'_name": 'RunStop'} is the stop doc is missing; v2 yields None.
+        elif name == 'stop' and doc is None or 'uid' not in doc:
+            b_indexed[(name, None)] = None
         else:
             b_indexed[(name, doc['uid'])] = doc
     # Same total number of documents?
@@ -48,6 +54,10 @@ def compare(a, b):
     # Now delve into the documents themselves...
     for (name, unique_id), a_doc in a_indexed.items():
         b_doc = b_indexed[name, unique_id]
+        # Handle special case if 'stop' is None.
+        if name == 'stop' and unique_id is None:
+            assert b_doc is None or 'uid' not in b_doc
+            continue
         # Same top-level keys?
         assert set(a_doc) == set(b_doc)
         # Same contents?
