@@ -1578,11 +1578,19 @@ def _transpose(in_data, keys, field):
         for k in keys:
             out[k][j] = dd[k]
     for k in keys:
-        # compatibility with dask < 2
-        if hasattr(out[k][0], 'shape'):
-            out[k] = dask.array.stack(out[k])
-        else:
-            out[k] = dask.array.array(out[k])
+        try:
+            # compatibility with dask < 2
+            if hasattr(out[k][0], 'shape'):
+                out[k] = dask.array.stack(out[k])
+            else:
+                out[k] = dask.array.array(out[k])
+        except NotImplementedError:
+            # There are data structured that dask auto-chunking cannot handle,
+            # such as an list of list of variable length. For now, let these go
+            # out as plain numpy arrays. In the future we might make them dask
+            # arrays with manual chunks.
+            out[k] = numpy.asarray(out[k])
+            pass
     return out
 
 
