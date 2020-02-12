@@ -55,8 +55,6 @@ def compare(a, b):
             b_indexed[(name, None)] = None
         else:
             b_indexed[(name, doc['uid'])] = doc
-    # Same total number of documents?
-    assert len(a_indexed) == len(b_indexed)
     # Same number of each type of document?
     a_counter = collections.Counter(name for _, uid in a_indexed)
     b_counter = collections.Counter(name for _, uid in b_indexed)
