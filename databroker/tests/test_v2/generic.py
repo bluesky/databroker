@@ -28,6 +28,12 @@ def compare(a, b):
     a_indexed = {}
     b_indexed = {}
     for name, doc in a:
+        if name == 'resource':
+            # Check for an extraneous duplicate key in old documents.
+            if 'id' in doc:
+                assert doc['id'] == doc['uid']
+                doc = doc.copy()
+                doc.pop('id')
         if name == 'datum':
             a_indexed[('datum', doc['datum_id'])] = doc
         # v0 yields {'_name": 'RunStop'} is the stop doc is missing; v2 yields None.
@@ -36,6 +42,12 @@ def compare(a, b):
         else:
             a_indexed[(name, doc['uid'])] = doc
     for name, doc in b:
+        if name == 'resource':
+            # Check for an extraneous duplicate key in old documents.
+            if 'id' in doc:
+                assert doc['id'] == doc['uid']
+                doc = doc.copy()
+                doc.pop('id')
         if name == 'datum':
             b_indexed[('datum', doc['datum_id'])] = doc
         # v0 yields {'_name": 'RunStop'} is the stop doc is missing; v2 yields None.
