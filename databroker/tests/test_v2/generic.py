@@ -36,7 +36,7 @@ def compare(a, b):
                 doc.pop('id')
         if name == 'datum':
             a_indexed[('datum', doc['datum_id'])] = doc
-        # v0 yields {'_name": 'RunStop'} is the stop doc is missing; v2 yields None.
+        # v0 yields {'_name": 'RunStop'} if the stop doc is missing; v2 yields None.
         elif name == 'stop' and doc is None or 'uid' not in doc:
             a_indexed[(name, None)] = None
         else:
@@ -50,7 +50,7 @@ def compare(a, b):
                 doc.pop('id')
         if name == 'datum':
             b_indexed[('datum', doc['datum_id'])] = doc
-        # v0 yields {'_name": 'RunStop'} is the stop doc is missing; v2 yields None.
+        # v0 yields {'_name": 'RunStop'} if the stop doc is missing; v2 yields None.
         elif name == 'stop' and doc is None or 'uid' not in doc:
             b_indexed[(name, None)] = None
         else:
