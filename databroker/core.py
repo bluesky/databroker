@@ -355,11 +355,11 @@ def interlace_event_pages(*gens):
             val = next(iters[indx])
         except StopIteration:
             return
-        heapq.heappush(heap, (val['time'][0], indx, val))
+        heapq.heappush(heap, (val['time'][0], indx, val['uid'][0], val))
     for i in range(len(iters)):
         safe_next(i)
     while heap:
-        _, indx, val = heapq.heappop(heap)
+        _, indx, uid, val = heapq.heappop(heap)
         yield val
         safe_next(indx)
 
@@ -390,11 +390,11 @@ def interlace_event_page_chunks(*gens, chunk_size):
             val = next(iters[indx])
         except StopIteration:
             return
-        heapq.heappush(heap, (val['time'][0], indx, val))
+        heapq.heappush(heap, (val['time'][0], indx, val['uid'][0], val))
     for i in range(len(iters)):
         safe_next(i)
     while heap:
-        _, indx, val = heapq.heappop(heap)
+        _, indx, uid, val = heapq.heappop(heap)
         yield val
 
 
@@ -422,8 +422,7 @@ def interlace(*gens, strict_order=True):
     fifo = deque()
 
     # Gets the next event/event_page from the iterator iters[index], while
-    # appending documents that are not events/event_pages to the other_docs
-    # deque.
+    # appending documents that are not events/event_pages to the fifo.
     def get_next(index):
         while True:
             try:
@@ -431,15 +430,16 @@ def interlace(*gens, strict_order=True):
             except StopIteration:
                 return
             if name == 'event':
-                heapq.heappush(heap, (doc['time'], index, ('event', doc)))
+                heapq.heappush(heap, (doc['time'], index, doc['uid'], ('event', doc)))
                 return
             if name == 'event_page':
                 if strict_order:
                     for event in event_model.unpack_event_page(doc):
-                        heapq.heappush(heap, (event['time'], index, ('event', event)))
+                        heapq.heappush(heap, (event['time'], index,
+                                       event['uid'], ('event', event)))
                     return
                 else:
-                    heapq.heappush(heap, (doc['time'][0], index, (name, doc)))
+                    heapq.heappush(heap, (doc['time'][0], index, doc['uid'], (name, doc)))
                     return
             else:
                 if name not in ['start', 'stop']:
@@ -457,7 +457,7 @@ def interlace(*gens, strict_order=True):
     while heap:
         while fifo:
             yield fifo.popleft()
-        _, index, doc = heapq.heappop(heap)
+        _, index, uid, doc = heapq.heappop(heap)
         yield doc
         get_next(index)
 
