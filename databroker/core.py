@@ -432,7 +432,7 @@ def interlace(*gens, strict_order=True):
             if name == 'event':
                 heapq.heappush(heap, (doc['time'], index, doc['uid'], (name, doc)))
                 return
-            if name == 'event_page':
+            elif name == 'event_page':
                 if strict_order:
                     for event in event_model.unpack_event_page(doc):
                         heapq.heappush(heap, (event['time'], index,
