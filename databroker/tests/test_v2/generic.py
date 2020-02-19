@@ -34,7 +34,9 @@ def compare(a, b):
                 assert doc['id'] == doc['uid']
                 doc = doc.copy()
                 doc.pop('id')
-        if name == 'datum':
+            # For resource the "unique ID" is uid AND run_start as a pair.
+            a_indexed[('resource', (doc['uid'], doc.get('run_start'))] = doc
+        elif name == 'datum':
             a_indexed[('datum', doc['datum_id'])] = doc
         # v0 yields {'_name": 'RunStop'} if the stop doc is missing; v2 yields None.
         elif name == 'stop' and doc is None or 'uid' not in doc:
@@ -48,7 +50,9 @@ def compare(a, b):
                 assert doc['id'] == doc['uid']
                 doc = doc.copy()
                 doc.pop('id')
-        if name == 'datum':
+            # For resource the "unique ID" is uid AND run_start as a pair.
+            b_indexed[('resource', (doc['uid'], doc.get('run_start'))] = doc
+        elif name == 'datum':
             b_indexed[('datum', doc['datum_id'])] = doc
         # v0 yields {'_name": 'RunStop'} if the stop doc is missing; v2 yields None.
         elif name == 'stop' and doc is None or 'uid' not in doc:
