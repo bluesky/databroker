@@ -1679,6 +1679,10 @@ class _GetDocumentsRouter:
         self._descriptors = set()
 
     def __call__(self, name, doc):
+        # Special case when there is no Run Stop doc.
+        # In v0, we returned an empty dict here. We now think better of it.
+        if name == 'stop' and doc is None:
+            doc = {}
         for new_name, new_doc in getattr(self, name)(doc):
             yield new_name, self.prepare_hook(new_name, new_doc)
 

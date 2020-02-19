@@ -1583,11 +1583,35 @@ def _transpose(in_data, keys, field):
         for k in keys:
             out[k][j] = dd[k]
     for k in keys:
-        # compatibility with dask < 2
-        if hasattr(out[k][0], 'shape'):
-            out[k] = dask.array.stack(out[k])
-        else:
-            out[k] = dask.array.array(out[k])
+        try:
+            # compatibility with dask < 2
+            if hasattr(out[k][0], 'shape'):
+                out[k] = dask.array.stack(out[k])
+            else:
+                out[k] = dask.array.array(out[k])
+        except NotImplementedError:
+            # There are data structured that dask auto-chunking cannot handle,
+            # such as an list of list of variable length. For now, let these go
+            # out as plain numpy arrays. In the future we might make them dask
+            # arrays with manual chunks.
+            out[k] = numpy.asarray(out[k])
+        except ValueError as err:
+            # TEMPORARY EMERGENCY FALLBACK
+            # If environment variable is set to anything but 0, work around
+            # dask and return a numpy array.
+            switch = int(os.environ.get('DATABROKER_ARRAY_FALLBACK'))
+            if switch:
+                out[k] = numpy.asarray(out[k])
+                warnings.warn(
+                    f"Creating a dask array raised an error. Because the "
+                    f"environment variable DATABROKER_ARRAY_FALLBACK was set "
+                    f"to {switch} we have caught the error and fallen "
+                    f"back to returning a numpy array instead. This may be "
+                    f"very slow. The underlying issue should be resolved. The "
+                    f"error was {err!r}.")
+            else:
+                raise
+
     return out
 
 

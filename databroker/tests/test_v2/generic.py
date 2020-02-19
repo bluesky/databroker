@@ -28,26 +28,46 @@ def compare(a, b):
     a_indexed = {}
     b_indexed = {}
     for name, doc in a:
+        if name == 'resource':
+            # Check for an extraneous duplicate key in old documents.
+            if 'id' in doc:
+                assert doc['id'] == doc['uid']
+                doc = doc.copy()
+                doc.pop('id')
         if name == 'datum':
             a_indexed[('datum', doc['datum_id'])] = doc
+        # v0 yields {'_name": 'RunStop'} if the stop doc is missing; v2 yields None.
+        elif name == 'stop' and doc is None or 'uid' not in doc:
+            a_indexed[(name, None)] = None
         else:
             a_indexed[(name, doc['uid'])] = doc
     for name, doc in b:
+        if name == 'resource':
+            # Check for an extraneous duplicate key in old documents.
+            if 'id' in doc:
+                assert doc['id'] == doc['uid']
+                doc = doc.copy()
+                doc.pop('id')
         if name == 'datum':
             b_indexed[('datum', doc['datum_id'])] = doc
+        # v0 yields {'_name": 'RunStop'} if the stop doc is missing; v2 yields None.
+        elif name == 'stop' and doc is None or 'uid' not in doc:
+            b_indexed[(name, None)] = None
         else:
             b_indexed[(name, doc['uid'])] = doc
-    # Same total number of documents?
-    assert len(a_indexed) == len(b_indexed)
     # Same number of each type of document?
-    a_counter = collections.Counter(name for _, uid in a_indexed)
-    b_counter = collections.Counter(name for _, uid in b_indexed)
+    a_counter = collections.Counter(name for name, uid in a_indexed)
+    b_counter = collections.Counter(name for name, uid in b_indexed)
     assert a_counter == b_counter
     # Same uids and names?
     assert set(a_indexed) == set(b_indexed)
     # Now delve into the documents themselves...
     for (name, unique_id), a_doc in a_indexed.items():
         b_doc = b_indexed[name, unique_id]
+        # Handle special case if 'stop' is None.
+        if name == 'stop' and unique_id is None:
+            assert b_doc is None or 'uid' not in b_doc
+            continue
         # Same top-level keys?
         assert set(a_doc) == set(b_doc)
         # Same contents?
