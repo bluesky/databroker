@@ -430,7 +430,7 @@ def interlace(*gens, strict_order=True):
             except StopIteration:
                 return
             if name == 'event':
-                heapq.heappush(heap, (doc['time'], index, doc['uid'], ('event', doc)))
+                heapq.heappush(heap, (doc['time'], index, doc['uid'], (name, doc)))
                 return
             if name == 'event_page':
                 if strict_order:
