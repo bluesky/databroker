@@ -72,10 +72,22 @@ class Document(dict):
     def __setitem__(self, k, v):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
-    def __delitem__(self, k, v):
+    def __delitem__(self, k):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
     def pop(self, k):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def popitem(self):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def clear(self):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def setdefault(self, k, v):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def update(self, d=None, **kwargs):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
     def to_dict(self):
@@ -86,6 +98,13 @@ class Document(dict):
         # mutates any internally nested dicts there is no spooky action at a
         # distance.
         return copy.deepcopy(dict(self))
+
+    def __deepcopy__(self, memo):
+        # Without this, copy.deepcopy(Document(...)) fails because deepcopy
+        # creates a new, empty Document instance and then tries to add items to
+        # it.
+        return self.__class__({k: copy.deepcopy(v, memo)
+                              for k, v in self.items()})
 
     def __dask_tokenize__(self):
         raise NotImplementedError
