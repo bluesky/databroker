@@ -429,7 +429,7 @@ def interlace(*gens, strict_order=True):
                                               index, ('event', event)))
                     return
                 else:
-                    heapq.heappush(heap, (doc['time'][0], doc['uid'], index, (name, doc)))
+                    heapq.heappush(heap, (doc['time'][0], doc['uid'][0], index, (name, doc)))
                     return
             else:
                 if name not in ['start', 'stop']:
