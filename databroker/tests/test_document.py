@@ -39,3 +39,13 @@ def test_deep_copy():
     b['x']['y']['z'] = 2
     # Verify original is not modified.
     assert a['x']['y']['z'] == 1
+
+
+def test_to_dict():
+    a = Document({'x': {'y': {'z': 1}}})
+    b = a.to_dict()
+    assert not isinstance(b, Document)
+    assert isinstance(b, dict)
+    b['x']['y']['z'] = 2
+    # Verify original is not modified.
+    assert a['x']['y']['z'] == 1
