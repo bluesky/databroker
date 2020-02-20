@@ -72,7 +72,7 @@ class Document(dict):
     def __setitem__(self, k, v):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
-    def __delitem__(self, k, v):
+    def __delitem__(self, k):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
     def pop(self, k):
