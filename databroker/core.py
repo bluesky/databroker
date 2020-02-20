@@ -383,19 +383,7 @@ def interlace_event_page_chunks(*gens, chunk_size):
 
     """
     iters = [iter(event_model.rechunk_event_pages(g, chunk_size)) for g in gens]
-    heap = []
-
-    def safe_next(indx):
-        try:
-            val = next(iters[indx])
-        except StopIteration:
-            return
-        heapq.heappush(heap, (val['time'][0], indx, val['uid'][0], val))
-    for i in range(len(iters)):
-        safe_next(i)
-    while heap:
-        _, indx, uid, val = heapq.heappop(heap)
-        yield val
+    yield from interlace_event_pages(*iters)
 
 
 def interlace(*gens, strict_order=True):
