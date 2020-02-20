@@ -78,6 +78,18 @@ class Document(dict):
     def pop(self, k):
         raise NotMutable(self._NOT_MUTABLE_MSG)
 
+    def popitem(self):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def clear(self):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def setdefault(self, k, v):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
+    def update(self, d=None, **kwargs):
+        raise NotMutable(self._NOT_MUTABLE_MSG)
+
     def to_dict(self):
         """
         Create a mutable deep copy.
