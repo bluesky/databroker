@@ -80,8 +80,8 @@ def test_interlace_event_page_chunks():
         if t0:
             assert t1 >= t0
         t0 = t1
-    N = (50 // 3 + 1) * 3
-    assert j + 1 == N
+    expected_page_count = (50 // 3 + 1) * 3
+    assert j + 1 == expected_page_count
     assert 10*5*3 == total_events
 
 
