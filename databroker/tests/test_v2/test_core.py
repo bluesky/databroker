@@ -73,11 +73,16 @@ def test_interlace_event_page_chunks():
     interlaced = core.interlace_event_page_chunks(*page_gens, chunk_size=3)
 
     t0 = None
-    for chunk in interlaced:
+    total_events = 0
+    for j, chunk in enumerate(interlaced):
+        total_events += len(chunk['seq_num'])
         t1 = chunk['time'][0]
         if t0:
-            assert t1 > t0
+            assert t1 >= t0
         t0 = t1
+    N = (50 // 3 + 1) * 3
+    assert j + 1 == N
+    assert 10*5*3 == total_events
 
 
 def test_tail():
