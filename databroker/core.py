@@ -97,7 +97,14 @@ class Document(dict):
         # Convert to dict and then make a deep copy to ensure that if the user
         # mutates any internally nested dicts there is no spooky action at a
         # distance.
-        return copy.deepcopy(dict(self))
+        return copy.deepcopy(self)
+
+    def __deepcopy__(self, memo):
+        # Without this, copy.deepcopy(Document(...)) fails because deepcopy
+        # creates a new, empty Document instance and then tries to add items to
+        # it.
+        return self.__class__({k: copy.deepcopy(v, memo)
+                              for k, v in self.items()})
 
     def __dask_tokenize__(self):
         raise NotImplementedError
