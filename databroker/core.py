@@ -64,20 +64,21 @@ class Document(dict):
     consumers that expect an object that satisfies isinstance(obj, dict).
     This implementation detail may change in the future.
     """
-    __slots__ = ('__dict__',)
+    __slots__ = ('__not_a_real_dict',)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # This lets pickle recognize that this is not a literal dict and that
         # it should respect its custom __setstate__.
-        super().__setattr__('__dict__', self)
+        self.__not_a_real_dict = True
 
     def __getstate__(self):
-        return dict(self)
+        return dict(self), self.__not_a_real_dict
 
     def __setstate__(self, state):
-        super().__setattr__('__dict__', self)
+        state, flag = state
         dict.update(self, state)
+        self.__not_a_real_dict = flag
 
     def __readonly(self, *args, **kwargs):
         raise NotMutable(
@@ -85,11 +86,12 @@ class Document(dict):
             "fully independent and mutable deep copy.")
 
     def __setitem__(self, key, value):
-        if isinstance(self.__dict__, self.__class__):
+        try:
+            self.__not_a_real_dict
             self.__readonly()
-        else:
+        except AttributeError:
             # This path is necessary to support un-pickling.
-            return dict.__setitem__(self.__dict__, key, value)
+            return dict.__setitem__(self, key, value)
 
     __delitem__ = __readonly
     pop = __readonly
