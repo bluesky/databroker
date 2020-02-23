@@ -73,12 +73,11 @@ class Document(dict):
         self.__not_a_real_dict = True
 
     def __getstate__(self):
-        return dict(self), self.__not_a_real_dict
+        return dict(self)
 
     def __setstate__(self, state):
-        state, flag = state
         dict.update(self, state)
-        self.__not_a_real_dict = flag
+        self.__not_a_real_dict = True
 
     def __readonly(self, *args, **kwargs):
         raise NotMutable(
