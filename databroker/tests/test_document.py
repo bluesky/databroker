@@ -2,6 +2,7 @@ import copy
 import pickle
 
 import pytest
+import json
 
 from ..core import Document, NotMutable
 
@@ -57,3 +58,16 @@ def test_pickle_round_trip():
     actual = pickle.loads(serialized)
     assert type(actual) is Document
     assert actual == expected
+
+
+def test_json_roundtrip():
+    dd = Document({"x": {"y": {"z": 1}}})
+    dd2 = json.loads(json.dumps(dd))
+    assert dd == dd2
+
+
+def test_msgpack_roundtrip():
+    msgpack = pytest.importorskip("msgpack")
+    dd = Document({"x": {"y": {"z": 1}}})
+    dd2 = msgpack.loads(msgpack.dumps(dd), raw=False)
+    assert dd == dd2
