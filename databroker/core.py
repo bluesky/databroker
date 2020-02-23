@@ -87,10 +87,11 @@ class Document(dict):
     def __setitem__(self, key, value):
         try:
             self.__not_a_real_dict
-            self.__readonly()
         except AttributeError:
             # This path is necessary to support un-pickling.
             return dict.__setitem__(self, key, value)
+        else:
+            self.__readonly()
 
     __delitem__ = __readonly
     pop = __readonly
