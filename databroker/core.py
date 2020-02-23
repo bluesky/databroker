@@ -64,7 +64,8 @@ class Document(dict):
     consumers that expect an object that satisfies isinstance(obj, dict).
     This implementation detail may change in the future.
     """
-    __slots__ = ('__not_a_real_dict',)
+
+    __slots__ = ("__not_a_real_dict",)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -82,7 +83,8 @@ class Document(dict):
     def __readonly(self, *args, **kwargs):
         raise NotMutable(
             "Documents are not mutable. Call the method to_dict() to make a "
-            "fully independent and mutable deep copy.")
+            "fully independent and mutable deep copy."
+        )
 
     def __setitem__(self, key, value):
         try:
@@ -113,17 +115,18 @@ class Document(dict):
         # Without this, copy.deepcopy(Document(...)) fails because deepcopy
         # creates a new, empty Document instance and then tries to add items to
         # it.
-        return self.__class__({k: copy.deepcopy(v, memo)
-                              for k, v in self.items()})
+        return self.__class__({k: copy.deepcopy(v, memo) for k, v in self.items()})
 
     def __dask_tokenize__(self):
         raise NotImplementedError
+
 
 # We must use dask's registration mechanism to tell it to treat Document
 # specially. Dask's tokenization dispatch mechanism discovers that Docuemnt is
 # a dict subclass and treats it as a dict, ignoring its __dask_tokenize__
 # method. To force it to respect our cutsom tokenization, we must explicitly
 # register it.
+
 
 @normalize_token.register(Document)
 def tokenize_document(instance):
