@@ -64,13 +64,29 @@ class Document(dict):
     consumers that expect an object that satisfies isinstance(obj, dict).
     This implementation detail may change in the future.
     """
-    __slots__ = ()
+    __slots__ = ('__dict__',)
     _NOT_MUTABLE_MSG = (
         "Documents are not mutable. Call the method to_dict() to make a "
         "fully independent and mutable copy.")
 
-    def __setitem__(self, k, v):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # This lets pickle recognize that this is not a literal dict and that
+        # it should respect its custom __setstate__.
+        super().__setattr__('__dict__', self)
+
+    def __getstate__(self):
+        return dict(self)
+
+    def __setstate__(self, state):
+        super().__setattr__('__dict__', self)
+        dict.update(self, state)
+
+    def __setitem__(self, key, value):
+        if isinstance(self.__dict__, self.__class__):
+            raise NotMutable(self._NOT_MUTABLE_MSG)
+        else:
+            return dict.__setitem__(self.__dict__, key, value)
 
     def __delitem__(self, k):
         raise NotMutable(self._NOT_MUTABLE_MSG)
