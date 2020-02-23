@@ -65,9 +65,6 @@ class Document(dict):
     This implementation detail may change in the future.
     """
     __slots__ = ('__dict__',)
-    _NOT_MUTABLE_MSG = (
-        "Documents are not mutable. Call the method to_dict() to make a "
-        "fully independent and mutable copy.")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -82,30 +79,24 @@ class Document(dict):
         super().__setattr__('__dict__', self)
         dict.update(self, state)
 
+    def __readonly(self, *args, **kwargs):
+        raise NotMutable(
+            "Documents are not mutable. Call the method to_dict() to make a "
+            "fully independent and mutable deep copy.")
+
     def __setitem__(self, key, value):
         if isinstance(self.__dict__, self.__class__):
-            raise NotMutable(self._NOT_MUTABLE_MSG)
+            self.__readonly()
         else:
             # This path is necessary to support un-pickling.
             return dict.__setitem__(self.__dict__, key, value)
 
-    def __delitem__(self, k):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
-
-    def pop(self, k):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
-
-    def popitem(self):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
-
-    def clear(self):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
-
-    def setdefault(self, k, v):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
-
-    def update(self, d=None, **kwargs):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    __delitem__ = __readonly
+    pop = __readonly
+    popitem = __readonly
+    clear = __readonly
+    setdefault = __readonly
+    update = __readonly
 
     def to_dict(self):
         """
