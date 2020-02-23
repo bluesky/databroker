@@ -86,6 +86,7 @@ class Document(dict):
         if isinstance(self.__dict__, self.__class__):
             raise NotMutable(self._NOT_MUTABLE_MSG)
         else:
+            # This path is necessary to support un-pickling.
             return dict.__setitem__(self.__dict__, key, value)
 
     def __delitem__(self, k):
