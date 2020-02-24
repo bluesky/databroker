@@ -64,31 +64,43 @@ class Document(dict):
     consumers that expect an object that satisfies isinstance(obj, dict).
     This implementation detail may change in the future.
     """
-    __slots__ = ()
-    _NOT_MUTABLE_MSG = (
-        "Documents are not mutable. Call the method to_dict() to make a "
-        "fully independent and mutable copy.")
 
-    def __setitem__(self, k, v):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    __slots__ = ("__not_a_real_dict",)
 
-    def __delitem__(self, k):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # This lets pickle recognize that this is not a literal dict and that
+        # it should respect its custom __setstate__.
+        self.__not_a_real_dict = True
 
-    def pop(self, k):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    def __getstate__(self):
+        return dict(self)
 
-    def popitem(self):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    def __setstate__(self, state):
+        dict.update(self, state)
+        self.__not_a_real_dict = True
 
-    def clear(self):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    def __readonly(self, *args, **kwargs):
+        raise NotMutable(
+            "Documents are not mutable. Call the method to_dict() to make a "
+            "fully independent and mutable deep copy."
+        )
 
-    def setdefault(self, k, v):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    def __setitem__(self, key, value):
+        try:
+            self.__not_a_real_dict
+        except AttributeError:
+            # This path is necessary to support un-pickling.
+            return dict.__setitem__(self, key, value)
+        else:
+            self.__readonly()
 
-    def update(self, d=None, **kwargs):
-        raise NotMutable(self._NOT_MUTABLE_MSG)
+    __delitem__ = __readonly
+    pop = __readonly
+    popitem = __readonly
+    clear = __readonly
+    setdefault = __readonly
+    update = __readonly
 
     def to_dict(self):
         """
@@ -103,17 +115,18 @@ class Document(dict):
         # Without this, copy.deepcopy(Document(...)) fails because deepcopy
         # creates a new, empty Document instance and then tries to add items to
         # it.
-        return self.__class__({k: copy.deepcopy(v, memo)
-                              for k, v in self.items()})
+        return self.__class__({k: copy.deepcopy(v, memo) for k, v in self.items()})
 
     def __dask_tokenize__(self):
         raise NotImplementedError
+
 
 # We must use dask's registration mechanism to tell it to treat Document
 # specially. Dask's tokenization dispatch mechanism discovers that Docuemnt is
 # a dict subclass and treats it as a dict, ignoring its __dask_tokenize__
 # method. To force it to respect our cutsom tokenization, we must explicitly
 # register it.
+
 
 @normalize_token.register(Document)
 def tokenize_document(instance):

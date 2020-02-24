@@ -1,6 +1,8 @@
 import copy
+import pickle
 
 import pytest
+import json
 
 from ..core import Document, NotMutable
 
@@ -48,3 +50,24 @@ def test_to_dict():
     b['x']['y']['z'] = 2
     # Verify original is not modified.
     assert a['x']['y']['z'] == 1
+
+
+def test_pickle_round_trip():
+    expected = Document({'x': {'y': {'z': 1}}})
+    serialized = pickle.dumps(expected)
+    actual = pickle.loads(serialized)
+    assert type(actual) is Document
+    assert actual == expected
+
+
+def test_json_roundtrip():
+    dd = Document({"x": {"y": {"z": 1}}})
+    dd2 = json.loads(json.dumps(dd))
+    assert dd == dd2
+
+
+def test_msgpack_roundtrip():
+    msgpack = pytest.importorskip("msgpack")
+    dd = Document({"x": {"y": {"z": 1}}})
+    dd2 = msgpack.loads(msgpack.dumps(dd), raw=False)
+    assert dd == dd2
