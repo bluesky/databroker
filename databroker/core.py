@@ -73,6 +73,31 @@ class Document(dict):
         # it should respect its custom __setstate__.
         self.__not_a_real_dict = True
 
+    def __repr__(self):
+        # same as dict, but wrapped in the class name so the eval round-trips
+        return f"{self.__class__.__name__}({dict(self)})"
+
+    def _repr_pretty_(self, p, cycle):
+        """
+        A multi-line but eval-able text repr with readable indentation
+
+        This hooks into IPython/Jupyter's display mechanism
+        This is *not* invoked by print() or repr(), but it is invoked by
+        IPython.display.display() which is called in this common scenario::
+
+            In [1]: doc = Document(...)
+            In [2]: doc
+            <pretty representation will show here>
+        """
+        # Note: IPython's pretty-prettying mechanism is custom and complex.
+        # The `text` method used below is a direct and blunt way to engage it
+        # and seems widely used in the IPython code base. There are other
+        # specific mechanisms for displaying collections like dicts, but they
+        # can *truncate* which I think we want to avoid and they would require
+        # more investment to understand how to use.
+        from pprint import pformat
+        return p.text(f"{self.__class__.__name__}({pformat(dict(self))})")
+
     def __getstate__(self):
         return dict(self)
 
