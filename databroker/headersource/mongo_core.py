@@ -20,6 +20,7 @@ from .core import (doc_or_uid_to_uid,   # noqa
                    get_events_table, insert_run_start, insert_run_stop,
                    insert_descriptor, insert_event, BAD_KEYS_FMT)
 from ..utils import sanitize_np, apply_to_dict_recursively
+from event_model import MismatchedDataKeys
 
 logger = logging.getLogger(__name__)
 
