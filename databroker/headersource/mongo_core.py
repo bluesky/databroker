@@ -60,7 +60,18 @@ def get_events_generator(descriptor, event_col, descriptor_col,
         # replace descriptor with the defererenced descriptor
         ev['descriptor'] = descriptor_uid
         for k, v in ev['data'].items():
-            _dk = data_keys[k]
+            try:
+                _dk = data_keys[k]
+            except KeyError as err:
+                raise MismatchedDataKeys(
+                    "The documents are not valid.  Either because they "
+                    "were recorded incorrectly in the first place, "
+                    "corrupted since, or exercising a yet-undiscovered "
+                    "bug in a reader. event['data'].keys() "
+                    "must equal descriptor['data_keys'].keys(). "
+                    f"event['data'].keys(): {ev['data'].keys()}, "
+                    "descriptor['data_keys'].keys(): "
+                    f"{descriptor['data_keys'].keys()}") from err
             # convert any arrays stored directly in mds into ndarray
             if convert_arrays:
                 if _dk['dtype'] == 'array' and not _dk.get('external', False):
