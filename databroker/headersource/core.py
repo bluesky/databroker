@@ -8,6 +8,7 @@ import logging
 import numpy as np
 from ..utils import (apply_to_dict_recursively, sanitize_np,
                      format_time as _format_time, transpose as _transpose)
+from event_model import MismatchedDataKeys
 
 logger = logging.getLogger(__name__)
 
