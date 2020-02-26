@@ -373,13 +373,13 @@ def get_events_generator(descriptor, event_col, descriptor_col,
             except KeyError as err:
                 raise MismatchedDataKeys(
                     "The documents are not valid.  Either because they "
-    ￼               "were recorded incorrectly in the first place, "
-    ￼               "corrupted since, or exercising a yet-undiscovered"
-    ￼               "bug in a reader. event['data'].keys() "
-    ￼               "must equal descriptor['data_keys'].keys(). "
-    ￼               f"event['data'].keys(): {ev['data'].keys()}, "
-    ￼               "descriptor['data_keys'].keys(): "
-    ￼               f"{descriptor['data_keys'].keys()}") from err
+                    "were recorded incorrectly in the first place, "
+                    "corrupted since, or exercising a yet-undiscovered "
+                    "bug in a reader. event['data'].keys() "
+                    "must equal descriptor['data_keys'].keys(). "
+                    f"event['data'].keys(): {ev['data'].keys()}, "
+                    "descriptor['data_keys'].keys(): "
+                    f"{descriptor['data_keys'].keys()}") from err
             # convert any arrays stored directly in mds into ndarray
             if convert_arrays:
                 if _dk['dtype'] == 'array' and not _dk.get('external', False):
