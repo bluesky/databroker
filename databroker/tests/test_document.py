@@ -4,7 +4,7 @@ import pickle
 import pytest
 import json
 
-from ..core import Document, NotMutable, Descriptor
+from ..core import Document, NotMutable, Event
 
 
 def test_immutable():
@@ -73,7 +73,7 @@ def test_msgpack_roundtrip():
     assert dd == dd2
 
 
-REALISTIC_EXAMPLE = Descriptor({
+REALISTIC_EXAMPLE = Event({
     'descriptor': '007814d0-eb61-4f60-9a57-457e16be7427',
     'time': 1582483150.6633387,
     'data': {'det': 1.0},
