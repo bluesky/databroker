@@ -840,9 +840,8 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
 
         elif name == 'resource':
             if doc['uid'] not in history:
-                if doc.get('run_start', run_start_uid) == run_start_uid:
-                    yield (name, doc)
-                    history.add(doc['uid'])
+                yield (name, doc)
+                history.add(doc['uid'])
 
         else:
             yield (name, doc)
@@ -1465,7 +1464,6 @@ class BlueskyEventStream(DataSourceMixin):
             return []
 
     def _missing_datum(self, datum_id, partition_size):
-
         # Get the resource from the datum_id.
         if '/' in datum_id:
             resource_uid, _ = datum_id.split('/', 1)
