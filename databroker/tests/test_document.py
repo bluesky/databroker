@@ -4,7 +4,7 @@ import pickle
 import pytest
 import json
 
-from ..core import Document, NotMutable
+from ..core import Document, NotMutable, Event
 
 
 def test_immutable():
@@ -71,3 +71,30 @@ def test_msgpack_roundtrip():
     dd = Document({"x": {"y": {"z": 1}}})
     dd2 = msgpack.loads(msgpack.dumps(dd), raw=False)
     assert dd == dd2
+
+
+REALISTIC_EXAMPLE = Event({
+    'descriptor': '007814d0-eb61-4f60-9a57-457e16be7427',
+    'time': 1582483150.6633387,
+    'data': {'det': 1.0},
+    'timestamps': {'det': 1582483150.6561532},
+    'seq_num': 1,
+    'uid' : 'b1fb5021-303a-4c6d-8ffd-c3fe72f3a4d9',
+    'filled': {}})
+
+
+def test_repr():
+    # Eval-ing the repr round-trips
+    eval(repr(REALISTIC_EXAMPLE)) == REALISTIC_EXAMPLE
+    # No newlines in the repr
+    assert len(repr(REALISTIC_EXAMPLE).splitlines()) == 1
+
+
+def test_repr_pretty():
+    formatters = pytest.importorskip("IPython.core.formatters")
+    f = formatters.PlainTextFormatter()
+    display = f(REALISTIC_EXAMPLE)
+    # Eval-ing the display round-trips
+    eval(display) == REALISTIC_EXAMPLE
+    # Mutli-line display for large documents
+    assert len(display.splitlines()) > 1
