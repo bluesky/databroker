@@ -944,7 +944,16 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             "may be removed in a future release.")
         yield from self.canonical(fill='yes')
 
+
     def __repr__(self):
+        try:
+            self._load()
+            start = self.metadata['start']
+            return f"<{self.__class__.__name__} uid={start['uid']!r}>"
+        except Exception as exc:
+            return f"<{self.__class__.__name__} *REPR RENDERING FAILURE* {exc!r}>"
+
+    def _repr_pretty_(self, p, cycle):
         self._load()
         try:
             start = self.metadata['start']
@@ -957,8 +966,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             for stream_name in self:
                 out += f"    * {stream_name}\n"
         except Exception as exc:
-            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
-        return out
+            out = f"<{self.__class__.__name__} *REPR_RENDERING_FAILURE* {exc!r}>"
+        p.text(out)
 
     def search(self):
         raise NotImplementedError("Cannot search within one run.")
@@ -1053,9 +1062,18 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def __repr__(self):
         try:
-            start = self._run_start_doc
-            stop = self._run_stop_doc or {}
-            out = (f"Run Catalog\n"
+            self._load()
+            start = self.metadata['start']
+            return f"<{self.__class__.__name__} uid={start['uid']!r}>"
+        except Exception as exc:
+            return f"<{self.__class__.__name__} *REPR RENDERING FAILURE* {exc!r}>"
+
+    def _repr_pretty_(self, p, cycle):
+        self._load()
+        try:
+            start = self.metadata['start']
+            stop = self.metadata['stop']
+            out = (f"BlueskyRun\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
                    f"  {_ft(start['time'])} -- {_ft(stop.get('time', '?'))}\n"
@@ -1063,8 +1081,8 @@ class BlueskyRun(intake.catalog.Catalog):
             for stream_name in self:
                 out += f"    * {stream_name}\n"
         except Exception as exc:
-            out = f"<Intake catalog: Run *REPR_RENDERING_FAILURE* {exc!r}>"
-        return out
+            out = f"<{self.__class__.__name__} *REPR_RENDERING_FAILURE* {exc!r}>"
+        p.text(out)
 
     def _make_entries_container(self):
         return LazyMap()
@@ -1379,10 +1397,10 @@ class BlueskyEventStream(DataSourceMixin):
 
     def __repr__(self):
         try:
-            out = (f"<Intake catalog: Stream {self._stream_name!r} "
+            out = (f"<{self.__class__.__name__} {self._stream_name!r} "
                    f"from Run {self._run_start_doc['uid'][:8]}...>")
         except Exception as exc:
-            out = f"<Intake catalog: Stream *REPR_RENDERING_FAILURE* {exc!r}>"
+            out = f"<{self.__class__.__name__} *REPR_RENDERING_FAILURE* {exc!r}>"
         return out
 
     def _open_dataset(self):
@@ -1509,6 +1527,14 @@ class RemoteBlueskyEventStream(RemoteXarray):
     def read_partition(self, partition):
         self._load_metadata()
         return self._get_partition(partition)
+
+    def __repr__(self):
+        try:
+            out = (f"<{self.__class__.__name__} {self._stream_name!r} "
+                   f"from Run {self._run_start_doc['uid'][:8]}...>")
+        except Exception as exc:
+            out = f"<{self.__class__.__name__} *REPR_RENDERING_FAILURE* {exc!r}>"
+        return out
 
 
 class DocumentCache(event_model.DocumentRouter):
