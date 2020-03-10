@@ -120,15 +120,21 @@ def temp():
     """
     from databroker._drivers.msgpack import BlueskyMsgpackCatalog
     handler_registry = {}
-    # Let ophyd be an optional dependency.
-    # If it is not installed, then we clearly do not need its handler for this
-    # temporary data store.
+    # Let area-detector-handlers be an optional dependency.  If it is not
+    # installed, then we try to use the simulated handlers from ophyd (if it's
+    # installed)
     try:
-        import ophyd.sim
+        from area_detector_handlers import discover_handlers
+        handler_registry = discover_handlers()
     except ImportError:
-        pass
-    else:
-        handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
+        # Let ophyd be an optional dependency.  If it is not installed, then we
+        # clearly do not need its handler for this temporary data store.
+        try:
+            import ophyd.sim
+            handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
+        except ImportError:
+            pass
+
     tmp_dir = tempfile.mkdtemp()
     tmp_data_dir = Path(tmp_dir) / 'data'
     catalog = BlueskyMsgpackCatalog(
