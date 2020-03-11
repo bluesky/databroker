@@ -954,8 +954,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             return f"<{self.__class__.__name__} *REPR RENDERING FAILURE* {exc!r}>"
 
     def _repr_pretty_(self, p, cycle):
-        self._load()
         try:
+            self._load()
             start = self.metadata['start']
             stop = self.metadata['stop']
             out = (f"BlueskyRun\n"
@@ -1069,8 +1069,8 @@ class BlueskyRun(intake.catalog.Catalog):
             return f"<{self.__class__.__name__} *REPR RENDERING FAILURE* {exc!r}>"
 
     def _repr_pretty_(self, p, cycle):
-        self._load()
         try:
+            self._load()
             start = self.metadata['start']
             stop = self.metadata['stop']
             out = (f"BlueskyRun\n"
