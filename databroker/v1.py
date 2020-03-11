@@ -1566,6 +1566,11 @@ def _pretty_print_time(timestamp):
     return '{ago} ({date})'.format(ago=ago, date=dt)
 
 
+class InvalidConfig(Exception):
+    """Raised when the configuration file is invalid."""
+    ...
+
+
 def from_config(config, auto_register=True, name=None):
     """
     Build (some version of) a Broker instance from a v0 configuration dict.
@@ -1587,6 +1592,8 @@ def from_config(config, auto_register=True, name=None):
         return v0.Broker.from_config(config, auto_register, name)
     try:
         catalog = _from_v0_config(config, auto_register, name)
+    except InvalidConfig:
+        raise
     except Exception as exc:
         warnings.warn(
             f"Failed to load config. Falling back to v0."
@@ -1657,7 +1664,7 @@ def _get_mongo_database(config):
     """
     # Check that config contains either uri, or host/port, but not both.
     if {'uri', 'host'} <= set(config) or {'uri', 'port'} <= set(config):
-        raise NotImplementedError(
+        raise InvalidConfig(
             "The config file must define either uri, or host/port, but not both.")
 
     uri = config.get('uri')
