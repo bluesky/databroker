@@ -123,13 +123,21 @@ def temp():
 
     from databroker.core import discover_handlers
     handler_registry = discover_handlers()
-    # Let ophyd be an optional dependency.  If it is not installed, then we
-    # clearly do not need its handler for this temporary data store.
-    try:
-        import ophyd.sim
-        handler_registry.setdefault('NPY_SEQ', ophyd.sim.NumpySeqHandler)
-    except ImportError:
-        pass
+
+    # The temp databroker is often (but not exclusively) used in the context of
+    # a demo or tutorial with the simulated devices in ophyd.sim, some of which
+    # requirea handler registered for the spec 'NPY_SEQ'.
+    # With ophyd >= 1.4.0 this handler will be discovered in the normal way
+    # via discover_handlers() above. The following special case is here to
+    # support older versions of ophyd, which do not declare a
+    # 'databroker.handlers' entrypoint.
+    if 'NPY_SEQ' not in handler_registry:
+        try:
+            import ophyd.sim
+        except ImportError:
+            pass
+        else:
+            handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
 
     tmp_dir = tempfile.mkdtemp()
     tmp_data_dir = Path(tmp_dir) / 'data'
