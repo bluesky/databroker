@@ -1635,8 +1635,8 @@ def _from_v0_config(config, auto_register, name):
     for spec, contents in config.get('handlers', {}).items():
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
-    root_map = config.get('root_map')
 
+    root_map = config.get('root_map')
     transforms = config.get('transforms')
 
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
@@ -1659,8 +1659,6 @@ def _get_mongo_database(config):
             "The config file must define either uri, or host/port, but not both.")
 
     uri = config.get('uri')
-    host = config.get('host')
-    port = config.get('port')
     database = config['database']
 
     if uri:
@@ -1670,6 +1668,8 @@ def _get_mongo_database(config):
             client = pymongo.MongoClient(uri)
             _mongo_clients[uri] = client
     else:
+        host = config.get('host')
+        port = config.get('port')
         try:
             client = _mongo_clients[(host, port)]
         except KeyError:
