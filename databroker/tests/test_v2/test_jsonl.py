@@ -9,6 +9,8 @@ import time
 import types
 
 from .generic import *  # noqa
+from ..._drivers.jsonl import tail
+
 
 TMP_DIRS = {param: tempfile.mkdtemp() for param in ['local', 'remote']}
 TEST_CATALOG_PATH = TMP_DIRS['remote']  # used by intake_server fixture
@@ -78,3 +80,13 @@ sources:
                                  uid=uid,
                                  docs=docs,
                                  remote=remote)
+
+
+
+def test_tail():
+    with tempfile.TemporaryDirectory() as tempdir:
+        with open(os.path.join(tempdir, 'lastlines_test.txt'), 'w') as f:
+            for i in range(1000):
+                f.write(f'{i}\n')
+            filename = f.name
+        assert list(tail(filename, n=2)) == ['998', '999']

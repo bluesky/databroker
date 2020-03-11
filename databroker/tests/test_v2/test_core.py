@@ -83,12 +83,3 @@ def test_interlace_event_page_chunks():
     expected_page_count = (50 // 3 + 1) * 3
     assert j + 1 == expected_page_count
     assert 10*5*3 == total_events
-
-
-def test_tail():
-    with tempfile.TemporaryDirectory() as tempdir:
-        with open(os.path.join(tempdir, 'lastlines_test.txt'), 'w') as f:
-            for i in range(1000):
-                f.write(f'{i}\n')
-            filename = f.name
-        assert list(core.tail(filename, n=2)) == ['998', '999']
