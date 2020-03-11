@@ -97,14 +97,25 @@ def test_search(bundle):
 
 
 def test_repr(bundle):
-    "Test that custom repr (with run uid) appears."
-    print(bundle.uid)
+    "Test that custom repr (with run uid) appears and is one line only."
     entry = bundle.cat['xyz']()[bundle.uid]
     assert bundle.uid in repr(entry)
     run = entry()
-    print(repr(run))
     assert bundle.uid in repr(run)
-    assert 'primary' in repr(run)
+    assert len(repr(run).splitlines()) == 1
+
+
+def test_repr_pretty(bundle):
+    "Test the IPython _repr_pretty_ has uid and also stream names."
+    formatters = pytest.importorskip("IPython.core.formatters")
+    f = formatters.PlainTextFormatter()
+    entry = bundle.cat['xyz']()[bundle.uid]
+    assert bundle.uid in f(entry)
+    # Stream names should be displayed.
+    assert 'primary' in f(entry)
+    run = entry()
+    assert bundle.uid in f(run)
+    assert 'primary' in f(run)
 
 
 def test_iteration(bundle):
