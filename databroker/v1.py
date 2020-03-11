@@ -1604,9 +1604,6 @@ def from_config(config, auto_register=True, name=None):
 
 
 def _from_v0_config(config, auto_register, name):
-    from ._drivers.mongo_normalized import BlueskyMongoCatalog
-    from .core import discover_handlers
-
     mds_module = config['metadatastore']['module']
     if mds_module != 'databroker.headersource.mongo':
         raise NotImplementedError(
@@ -1628,6 +1625,9 @@ def _from_v0_config(config, auto_register, name):
     # Get the mongo databases.
     metadatastore_db = _get_mongo_database(config['metadatastore']['config'])
     asset_registry_db = _get_mongo_database(config['assets']['config'])
+
+    from ._drivers.mongo_normalized import BlueskyMongoCatalog
+    from .core import discover_handlers
 
     # Update the handler registry.
     handler_registry = {}
