@@ -311,7 +311,7 @@ def to_datum_pages(get_datum_cursor, page_size):
     return get_datum_pages
 
 
-def flatten_event_page_gen(gen):
+def _flatten_event_page_gen(gen):
     """
     Converts an event_page generator to an event generator.
 
@@ -327,7 +327,7 @@ def flatten_event_page_gen(gen):
         yield from event_model.unpack_event_page(page)
 
 
-def interlace_event_pages(*gens):
+def _interlace_event_pages(*gens):
     """
     Take event_page generators and interlace their results by timestamp.
     This is a modification of https://github.com/bluesky/databroker/pull/378/
@@ -361,7 +361,7 @@ def interlace_event_pages(*gens):
         safe_next(index)
 
 
-def interlace_event_page_chunks(*gens, chunk_size):
+def _interlace_event_page_chunks(*gens, chunk_size):
     """
     Take event_page generators and interlace their results by timestamp.
 
@@ -380,10 +380,10 @@ def interlace_event_page_chunks(*gens, chunk_size):
 
     """
     iters = [iter(event_model.rechunk_event_pages(g, chunk_size)) for g in gens]
-    yield from interlace_event_pages(*iters)
+    yield from _interlace_event_pages(*iters)
 
 
-def interlace(*gens, strict_order=True):
+def _interlace(*gens, strict_order=True):
     """
     Take event_page generators and interlace their results by timestamp.
 
@@ -451,7 +451,7 @@ def interlace(*gens, strict_order=True):
         yield fifo.popleft()
 
 
-def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
+def _unfilled_partitions(start, descriptors, resources, stop, datum_gens,
                         event_gens, partition_size):
     """
     Return a Bluesky run, in order, packed into partitions.
@@ -497,7 +497,7 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     # them into a partition.
     count = 0
     partition = []
-    for event_page in interlace_event_pages(*event_gens):
+    for event_page in _interlace_event_pages(*event_gens):
         partition.append(('event_page', event_page))
         count += 1
         if count == partition_size:
@@ -510,7 +510,7 @@ def unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     yield partition
 
 
-def fill(filler,
+def _fill(filler,
          event,
          lookup_resource_for_datum,
          get_resource,
@@ -554,7 +554,7 @@ def fill(filler,
         # missing Datum. There might be another missing Datum in this same
         # Event document (hence this re-entrant structure) or might be good
         # to go.
-        return fill(
+        return _fill(
             filler,
             event,
             lookup_resource_for_datum,
@@ -564,7 +564,7 @@ def fill(filler,
         )
 
 
-def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
+def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                         get_event_pages, filler, get_resource,
                         lookup_resource_for_datum, get_datum_pages,
                         include=None, exclude=None):
@@ -623,14 +623,14 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     dim_counter = itertools.count()
     datasets = []
     for descriptor in descriptor_docs:
-        events = list(flatten_event_page_gen(get_event_pages(descriptor['uid'])))
+        events = list(_flatten_event_page_gen(get_event_pages(descriptor['uid'])))
         if not events:
             continue
         if any(data_keys[key].get('external') for key in keys):
             filler('descriptor', descriptor)
             filled_events = []
             for event in events:
-                filled_event = fill(
+                filled_event = _fill(
                     filler, event, lookup_resource_for_datum, get_resource,
                     get_datum_pages)
                 filled_events.append(filled_event)
@@ -719,7 +719,7 @@ def documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     return xarray.merge(datasets)
 
 
-def canonical(*, start, stop, entries, fill, strict_order=True):
+def _canonical(*, start, stop, entries, fill, strict_order=True):
     """
     Yields documents from this Run in chronological order.
 
@@ -764,7 +764,7 @@ def canonical(*, start, stop, entries, fill, strict_order=True):
     # or datum documents belong to, so each stream has these documents.
     # Without this filter we would get multiple of the same resource and
     # datum documents.
-    for name, doc in interlace(*streams, strict_order=strict_order):
+    for name, doc in _interlace(*streams, strict_order=strict_order):
 
         if name == 'datum':
             if doc['datum_id'] not in history:
@@ -870,11 +870,11 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
                 "Delayed access is not yet supported via the client--server "
                 "usage.")
 
-        yield from canonical(start=self.metadata['start'],
-                             stop=self.metadata['stop'],
-                             entries=self._entries,
-                             fill=fill,
-                             strict_order=strict_order)
+        yield from _canonical(start=self.metadata['start'],
+                              stop=self.metadata['stop'],
+                              entries=self._entries,
+                              fill=fill,
+                              strict_order=strict_order)
 
     def read_canonical(self):
         warnings.warn(
@@ -1146,11 +1146,11 @@ class BlueskyRun(intake.catalog.Catalog):
             return getattr(self._entry, key)
 
     def canonical(self, *, fill, strict_order=True):
-        yield from canonical(start=self.metadata['start'],
-                             stop=self.metadata['stop'],
-                             entries=self._entries,
-                             fill=fill,
-                             strict_order=strict_order)
+        yield from _canonical(start=self.metadata['start'],
+                              stop=self.metadata['stop'],
+                              entries=self._entries,
+                              fill=fill,
+                              strict_order=strict_order)
 
     def read_canonical(self):
         warnings.warn(
@@ -1343,7 +1343,7 @@ class BlueskyEventStream(DataSourceMixin):
 
     def _open_dataset(self):
         self._load_header()
-        self._ds = documents_to_xarray(
+        self._ds = _documents_to_xarray(
             start_doc=self._run_start_doc,
             stop_doc=self._run_stop_doc,
             descriptor_docs=self._descriptors,
@@ -1379,7 +1379,7 @@ class BlueskyEventStream(DataSourceMixin):
         event_gens = [list(self._get_event_pages(descriptor['uid']))
                       for descriptor in self._descriptors]
         self._partitions = list(
-            unfilled_partitions(self._run_start_doc, self._descriptors,
+            _unfilled_partitions(self._run_start_doc, self._descriptors,
                                 self._resources, self._run_stop_doc,
                                 datum_gens, event_gens, partition_size))
         self.npartitions = len(self._partitions)
@@ -1633,7 +1633,7 @@ def _ft(timestamp):
             .strftime('%Y-%m-%d %H:%M:%S.%f'))[:-3]
 
 
-def xarray_to_event_gen(data_xarr, ts_xarr, page_size):
+def _xarray_to_event_gen(data_xarr, ts_xarr, page_size):
     for start_idx in range(0, len(data_xarr['time']), page_size):
         stop_idx = start_idx + page_size
         data = {name: variable.values
@@ -1789,7 +1789,7 @@ intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
 intake.container.container_map['bluesky-event-stream'] = RemoteBlueskyEventStream
 
 
-def concat_dataarray_pages(dataarray_pages):
+def _concat_dataarray_pages(dataarray_pages):
     """
     Combines a iterable of dataarray_pages to a single dataarray_page.
 
@@ -1825,7 +1825,7 @@ def concat_dataarray_pages(dataarray_pages):
                        for key in data_keys}}
 
 
-def event_page_to_dataarray_page(event_page, dims=None, coords=None):
+def _event_page_to_dataarray_page(event_page, dims=None, coords=None):
     """
     Converts the event_page's data, timestamps, and filled to xarray.DataArray.
 
@@ -1864,7 +1864,7 @@ def event_page_to_dataarray_page(event_page, dims=None, coords=None):
                        for key in data_keys}}
 
 
-def dataarray_page_to_dataset_page(dataarray_page):
+def _dataarray_page_to_dataset_page(dataarray_page):
 
     """
     Converts the dataarray_page's data, timestamps, and filled to xarray.DataSet.
