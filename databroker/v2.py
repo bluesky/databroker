@@ -127,8 +127,7 @@ def temp():
     # clearly do not need its handler for this temporary data store.
     try:
         import ophyd.sim
-        if not handler_registry:
-            handler_registry['NPY_SEQ'] = ophyd.sim.NumpySeqHandler
+        handler_registry.setdefault('NPY_SEQ', ophyd.sim.NumpySeqHandler)
     except ImportError:
         pass
 
