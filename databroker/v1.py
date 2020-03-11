@@ -1604,6 +1604,9 @@ def from_config(config, auto_register=True, name=None):
 
 
 def _from_v0_config(config, auto_register, name):
+    from ._drivers.mongo_normalized import BlueskyMongoCatalog
+    from .core import discover_handlers
+
     mds_module = config['metadatastore']['module']
     if mds_module != 'databroker.headersource.mongo':
         raise NotImplementedError(
@@ -1622,12 +1625,11 @@ def _from_v0_config(config, auto_register, name):
         raise NotImplementedError(
             f"Unable to handle assets.class {assets_class!r}")
 
-    from ._drivers.mongo_normalized import BlueskyMongoCatalog
-    from .core import discover_handlers
-
+    # Get the mongo databases.
     metadatastore_db = _get_mongo_database(config['metadatastore']['config'])
     asset_registry_db = _get_mongo_database(config['assets']['config'])
 
+    # Update the handler registry.
     handler_registry = {}
     if auto_register:
         handler_registry.update(discover_handlers())
