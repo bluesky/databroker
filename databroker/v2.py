@@ -126,7 +126,7 @@ def temp():
 
     # The temp databroker is often (but not exclusively) used in the context of
     # a demo or tutorial with the simulated devices in ophyd.sim, some of which
-    # requirea handler registered for the spec 'NPY_SEQ'.
+    # require a handler registered for the spec 'NPY_SEQ'.
     # With ophyd >= 1.4.0 this handler will be discovered in the normal way
     # via discover_handlers() above. The following special case is here to
     # support older versions of ophyd, which do not declare a
