@@ -1612,6 +1612,7 @@ def _from_v0_config(config, auto_register, name):
     if mds_class not in ('MDS', 'MDSRO'):
         raise NotImplementedError(
             f"Unable to handle metadatastore.class {mds_class!r}")
+
     assets_module = config['assets']['module']
     if assets_module != 'databroker.assets.mongo':
         raise NotImplementedError(
@@ -1653,16 +1654,34 @@ def _from_v0_config(config, auto_register, name):
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
 
-def _get_mongo_client(host, port):
+def _get_mongo_database(config):
     """
     Return a pymongo.MongoClient. Use a cache to make just one per address.
     """
-    try:
-        client = _mongo_clients[(host, port)]
-    except KeyError:
-        client = pymongo.MongoClient(host, port)
-        _mongo_clients[(host, port)] = client
-    return client
+    # Check that config contains either uri, or host/port, but not both.
+    if {'uri', 'host'} <= set(config) or {'uri', 'port'} <= set(config):
+        raise NotImplementedError(
+            "The config file must define either uri, or host/port, but not both.")
+
+    uri = config.get('uri')
+    host = config.get('host')
+    port = config.get('port')
+    database = config['database']
+
+    if uri:
+        try:
+            client = _mongo_clients[uri]
+        except KeyError:
+            client = pymongo.MongoClient(uri)
+            _mongo_clients[uri] = client
+    else:
+        try:
+            client = _mongo_clients[(host, port)]
+        except KeyError:
+            client = pymongo.MongoClient(host, port)
+            _mongo_clients[(host, port)] = client
+
+    return client[database]
 
 
 class _GetDocumentsRouter:
