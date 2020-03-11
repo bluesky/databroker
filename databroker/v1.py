@@ -1625,14 +1625,9 @@ def _from_v0_config(config, auto_register, name):
     from ._drivers.mongo_normalized import BlueskyMongoCatalog
     from .core import discover_handlers
 
-    host = config['metadatastore']['config']['host']
-    port = config['metadatastore']['config'].get('port')
-    database_name = config['metadatastore']['config']['database']
-    metadatastore_db = _get_mongo_client(host, port)[database_name]
-    host = config['assets']['config']['host']
-    port = config['assets']['config'].get('port')
-    database_name = config['assets']['config']['database']
-    asset_registry_db = _get_mongo_client(host, port)[database_name]
+    metadatastore_db = _get_mongo_database(config['metadatastore']['config'])
+    asset_registry_db = _get_mongo_database(config['assets']['config'])
+
     handler_registry = {}
     if auto_register:
         handler_registry.update(discover_handlers())
