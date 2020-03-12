@@ -1671,6 +1671,13 @@ def _get_mongo_database(config):
     uri = config.get('uri')
     database = config['database']
 
+    if {'mongo_user', 'mongo_pwd', 'host', 'port'} <= set(config):
+        uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(
+                self.config['mongo_user'],
+                self.config['mongo_pwd'],
+                self.config['host'],
+                self.config['port'])
+
     if uri:
         try:
             client = _mongo_clients[uri]
