@@ -100,12 +100,11 @@ class RegistryRO(BaseRegistryRO):
 
         return self.__datum_col
 
-    #@property
-    #def _connection(self):
-    #    if self.__conn is None:
-    #        self.__conn = MongoClient(self.config['host'],
-    #                                  self.config.get('port', None))
-    #    return self.__conn
+    @property
+    def _connection(self):
+        if self.__db is None:
+            self.__db = _get_mongo_database(self.config)
+        return self.__db.client
 
     @property
     def DuplicateKeyError(self):
