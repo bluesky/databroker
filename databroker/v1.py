@@ -1660,7 +1660,8 @@ _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
 def _get_mongo_database(config):
     """
-    Return a pymongo.MongoClient. Use a cache to make just one per address.
+    Return a MongoClient.database. Use a cache in order to reuse the
+    MongoClient.
     """
     # Check that config contains either uri, or host/port, but not both.
     if {'uri', 'host'} <= set(config) or {'uri', 'port'} <= set(config):
