@@ -36,7 +36,7 @@ class RegistryRO(BaseRegistryRO):
     '''
     _API_MAP = {1: mongo_core}
     REQ_CONFIG = ('database',)
-    OPT_CONFIG = ('port',)
+    OPT_CONFIG = ('port', 'uri')
 
     def __init__(self, config, handler_reg=None, root_map=None):
         super(RegistryRO, self).__init__(config,
