@@ -1671,6 +1671,8 @@ def _get_mongo_database(config):
     uri = config.get('uri')
     database = config['database']
 
+    # If this statement is True than uri does not exist in the config.
+    # If the config has username and password, turn it into a uri.
     if {'mongo_user', 'mongo_pwd', 'host', 'port'} <= set(config):
         uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(
                 self.config['mongo_user'],
