@@ -233,3 +233,6 @@ def test_uri(RE, hw):
     RE.subscribe(broker.insert)
     uid, = RE(count([hw.det]))
     run = broker[uid]
+
+    config['api_version'] = 0
+    broker = Broker.from_config(config)
