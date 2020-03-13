@@ -28,8 +28,8 @@ pivoting to become a distribution of Intake plugins.
 This change will proceed in a way that provides a slow and smooth transition
 for existing DataBroker users.
 
-DataBroker 1.0 (Pre-released)
------------------------------
+DataBroker 1.0
+--------------
 
 The 1.0 release of DataBroker supports multiple usages to enable a smooth
 transition for users.
