@@ -102,9 +102,7 @@ class RegistryRO(BaseRegistryRO):
 
     @property
     def _connection(self):
-        if self.__db is None:
-            self.__db = _get_mongo_database(self.config)
-        return self.__db.client
+        return self._db.client
 
     @property
     def DuplicateKeyError(self):
