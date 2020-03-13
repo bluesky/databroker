@@ -6,7 +6,7 @@ import pymongo
 from pymongo import MongoClient
 from . import mongo_core
 from .base import MDSROTemplate, MDSTemplate
-
+from databroker.v1 import _get_mongo_database
 
 class MDSRO(MDSROTemplate):
     _API_MAP = {1: mongo_core}
@@ -17,10 +17,7 @@ class MDSRO(MDSROTemplate):
         self.auth = auth
 
     def reset_connection(self):
-        self.__conn = None
-
         self.__db = None
-
         self.__event_col = None
         self.__descriptor_col = None
         self.__runstart_col = None
@@ -36,7 +33,6 @@ class MDSRO(MDSROTemplate):
         self.version, self.config = state
 
     def disconnect(self):
-        self.__conn = None
         self.__db = None
         self.__event_col = None
         self.__descriptor_col = None
@@ -49,24 +45,12 @@ class MDSRO(MDSROTemplate):
 
     @property
     def _connection(self):
-        if self.__conn is None:
-            if self.auth:
-                uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(
-                    self.config['mongo_user'],
-                    self.config['mongo_pwd'],
-                    self.config['host'],
-                    self.config['port'])
-                self.__conn = MongoClient(uri)
-            else:
-                self.__conn = MongoClient(self.config['host'],
-                                          self.config.get('port', None))
-        return self.__conn
+        return self._db.client
 
     @property
     def _db(self):
         if self.__db is None:
-            conn = self._connection
-            self.__db = conn.get_database(self.config['database'])
+            self.__db = _get_mongo_database(self.config)
         return self.__db
 
     @property

@@ -5,6 +5,7 @@ import logging
 import pymongo
 
 from pymongo import MongoClient
+from databroker.v1 import _get_mongo_database
 
 from . import mongo_core
 
@@ -34,30 +35,27 @@ class RegistryRO(BaseRegistryRO):
 
     '''
     _API_MAP = {1: mongo_core}
-    REQ_CONFIG = ('database', 'host')
-    OPT_CONFIG = ('port',)
+    REQ_CONFIG = ('database',)
+    OPT_CONFIG = ('port', 'uri')
 
     def __init__(self, config, handler_reg=None, root_map=None):
         super(RegistryRO, self).__init__(config,
                                          handler_reg=handler_reg,
                                          root_map=root_map)
         self.__db = None
-        self.__conn = None
         self.__datum_col = None
         self.__res_col = None
         self.__res_update_col = None
 
     def disconnect(self):
         self.__db = None
-        self.__conn = None
         self.__datum_col = None
         self.__res_col = None
 
     @property
     def _db(self):
         if self.__db is None:
-            conn = self._connection
-            self.__db = conn.get_database(self.config['database'])
+            self.__db = _get_mongo_database(self.config)
             if self.version > 0:
                 sentinel = self.__db.get_collection('sentinel')
                 versioned_collection = ['resource', 'datum']
@@ -104,10 +102,7 @@ class RegistryRO(BaseRegistryRO):
 
     @property
     def _connection(self):
-        if self.__conn is None:
-            self.__conn = MongoClient(self.config['host'],
-                                      self.config.get('port', None))
-        return self.__conn
+        return self._db.client
 
     @property
     def DuplicateKeyError(self):

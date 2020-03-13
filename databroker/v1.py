@@ -1566,6 +1566,11 @@ def _pretty_print_time(timestamp):
     return '{ago} ({date})'.format(ago=ago, date=dt)
 
 
+class InvalidConfig(Exception):
+    """Raised when the configuration file is invalid."""
+    ...
+
+
 def from_config(config, auto_register=True, name=None):
     """
     Build (some version of) a Broker instance from a v0 configuration dict.
@@ -1587,6 +1592,8 @@ def from_config(config, auto_register=True, name=None):
         return v0.Broker.from_config(config, auto_register, name)
     try:
         catalog = _from_v0_config(config, auto_register, name)
+    except InvalidConfig:
+        raise
     except Exception as exc:
         warnings.warn(
             f"Failed to load config. Falling back to v0."
@@ -1612,6 +1619,7 @@ def _from_v0_config(config, auto_register, name):
     if mds_class not in ('MDS', 'MDSRO'):
         raise NotImplementedError(
             f"Unable to handle metadatastore.class {mds_class!r}")
+
     assets_module = config['assets']['module']
     if assets_module != 'databroker.assets.mongo':
         raise NotImplementedError(
@@ -1621,17 +1629,14 @@ def _from_v0_config(config, auto_register, name):
         raise NotImplementedError(
             f"Unable to handle assets.class {assets_class!r}")
 
+    # Get the mongo databases.
+    metadatastore_db = _get_mongo_database(config['metadatastore']['config'])
+    asset_registry_db = _get_mongo_database(config['assets']['config'])
+
     from ._drivers.mongo_normalized import BlueskyMongoCatalog
     from .core import discover_handlers
 
-    host = config['metadatastore']['config']['host']
-    port = config['metadatastore']['config'].get('port')
-    database_name = config['metadatastore']['config']['database']
-    metadatastore_db = _get_mongo_client(host, port)[database_name]
-    host = config['assets']['config']['host']
-    port = config['assets']['config'].get('port')
-    database_name = config['assets']['config']['database']
-    asset_registry_db = _get_mongo_client(host, port)[database_name]
+    # Update the handler registry.
     handler_registry = {}
     if auto_register:
         handler_registry.update(discover_handlers())
@@ -1639,8 +1644,8 @@ def _from_v0_config(config, auto_register, name):
     for spec, contents in config.get('handlers', {}).items():
         dotted_object = '.'.join((contents['module'], contents['class']))
         handler_registry[spec] = dotted_object
-    root_map = config.get('root_map')
 
+    root_map = config.get('root_map')
     transforms = config.get('transforms')
 
     return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
@@ -1653,16 +1658,45 @@ def _from_v0_config(config, auto_register, name):
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
 
-def _get_mongo_client(host, port):
+def _get_mongo_database(config):
     """
-    Return a pymongo.MongoClient. Use a cache to make just one per address.
+    Return a MongoClient.database. Use a cache in order to reuse the
+    MongoClient.
     """
-    try:
-        client = _mongo_clients[(host, port)]
-    except KeyError:
-        client = pymongo.MongoClient(host, port)
-        _mongo_clients[(host, port)] = client
-    return client
+    # Check that config contains either uri, or host/port, but not both.
+    if {'uri', 'host'} <= set(config) or {'uri', 'port'} <= set(config):
+        raise InvalidConfig(
+            "The config file must define either uri, or host/port, but not both.")
+
+    uri = config.get('uri')
+    database = config['database']
+
+    # If this statement is True than uri does not exist in the config.
+    # If the config has username and password, turn it into a uri.
+    # This is only here for backward compatibility.
+    if {'mongo_user', 'mongo_pwd', 'host', 'port'} <= set(config):
+        uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(
+                self.config['mongo_user'],
+                self.config['mongo_pwd'],
+                self.config['host'],
+                self.config['port'])
+
+    if uri:
+        try:
+            client = _mongo_clients[uri]
+        except KeyError:
+            client = pymongo.MongoClient(uri)
+            _mongo_clients[uri] = client
+    else:
+        host = config.get('host')
+        port = config.get('port')
+        try:
+            client = _mongo_clients[(host, port)]
+        except KeyError:
+            client = pymongo.MongoClient(host, port)
+            _mongo_clients[(host, port)] = client
+
+    return client[database]
 
 
 class _GetDocumentsRouter:

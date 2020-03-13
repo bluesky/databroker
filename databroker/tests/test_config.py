@@ -1,11 +1,5 @@
 import copy
-
-from bluesky.plans import count
-from databroker import (lookup_config, Broker, temp, temp_config, list_configs,
-                        describe_configs)
-
 import databroker.databroker
-from databroker.utils import ensure_path_exists
 import imp
 import os
 import pytest
@@ -13,6 +7,12 @@ import six
 import sys
 import uuid
 import yaml
+
+from bluesky.plans import count
+from databroker.v1 import InvalidConfig
+from databroker.utils import ensure_path_exists
+from databroker import (lookup_config, Broker, temp, temp_config, list_configs,
+                        describe_configs)
 
 if six.PY2:
     FileNotFoundError = IOError
@@ -203,3 +203,36 @@ def test_transforms(RE, hw):
     for name, doc in run.documents(fill='false'):
         if name in {'start', 'stop', 'resource', 'descriptor'}:
             assert doc.get('test_key') == 'test_value'
+
+
+def test_uri(RE, hw):
+
+    bad_meta_config1 = {'uri': 'mongodb://localhost',
+                        'host': 'localhost',
+                        'database': 'mds_database_placholder'}
+    bad_meta_config2 = {'uri': 'mongodb://localhost',
+                        'port': 27017,
+                        'database': 'mds_database_placholder'}
+    meta_config = {'uri': 'mongodb://localhost',
+                   'database': 'mds_database_placholder'}
+    asset_config = {'uri': 'mongodb://localhost',
+                    'database': 'assets_database_placeholder'}
+
+    config = copy.deepcopy(EXAMPLE)
+    config['metadatastore']['config'] = bad_meta_config1
+    config['assets']['config'] = asset_config
+    with pytest.raises(InvalidConfig):
+        broker = Broker.from_config(config)
+
+    config['metadatastore']['config'] = bad_meta_config2
+    with pytest.raises(InvalidConfig):
+        broker = Broker.from_config(config)
+
+    config['metadatastore']['config'] = meta_config
+    broker = Broker.from_config(config)
+    RE.subscribe(broker.insert)
+    uid, = RE(count([hw.det]))
+    run = broker[uid]
+
+    config['api_version'] = 0
+    broker = Broker.from_config(config)
