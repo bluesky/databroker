@@ -2,7 +2,7 @@ boltons
 cachetools
 dask[array,bag]
 doct
-event-model >=1.13.3
+event-model >=1.14.0
 humanize
 intake >=0.5.2  # first release to use entrypoints
 jinja2

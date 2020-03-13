@@ -176,7 +176,6 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
 
         def factory(name, doc):
             serializer = Serializer(directory)
-            serializer(name, doc)
             return [serializer], []
 
         return RunRouter([factory])
