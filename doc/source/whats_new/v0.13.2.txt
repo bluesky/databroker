@@ -10,7 +10,7 @@ Bug Fixes
   class.
 
 Packaging
----------
++++++++++
 
 * Removed vestigial dependency on ``dask``, which is no longer used.
 
