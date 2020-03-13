@@ -9,12 +9,12 @@ Enhancements
 * Replaced deprecated unordered bulk write (requires ``pymongo >= 3.0``).
 
 Documentation
--------------
++++++++++++++
 
 * Update the links in the sidebar to point to the Bluesky Project.
 
 Packaging
----------
++++++++++
 
 * Added missing files in the source distribution for PyPI.
 

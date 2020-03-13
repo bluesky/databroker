@@ -101,6 +101,30 @@ As shown, multiple sources can be specified in one file. All sources found in
 all the YAML files in the search path will be included as top-level entries in
 ``databroker.catalog``.
 
+Arguments
+---------
+
+All databroker "drivers" accept the following arguments:
+
+* ``handler_registry`` ---
+  If ommitted or ``None``, the result of
+  :func:`~databroker.core.discover_handlers` is used. See
+  :doc:`event-model:external` for background on the role of "handlers".
+* ``root_map`` ---
+  This is passed to :func:`event_model.Filler` to account for temporarily
+  moved/copied/remounted files. Any resources which have a ``root`` matching a
+  key in ``root_map`` will be loaded using the mapped value in ``root_map``.
+* ``transforms`` ---
+  A dict that maps any subset of the keys {start, stop, resource, descriptor}
+  to a function that accepts a document of the corresponding type and
+  returns it, potentially modified. This feature is for patching up
+  erroneous metadata. It is intended for quick, temporary fixes that
+  may later be applied permanently to the data at rest
+  (e.g., via a database migration).
+
+Specific drivers require format-specific arguments, shown in the following
+subsections.
+
 Msgpack Example
 ---------------
 
