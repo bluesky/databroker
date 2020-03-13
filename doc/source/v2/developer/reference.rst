@@ -23,6 +23,9 @@ Core
 
 .. autofunction:: databroker.core.parse_transforms
 
+.. autoclass:: databroker.v2.Broker
+   :members:
+
 Utils
 =====
 
