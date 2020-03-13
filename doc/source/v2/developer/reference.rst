@@ -5,6 +5,9 @@ API Reference
 Core
 ====
 
+.. autoclass:: databroker.core.Document
+   :members:
+
 .. autoclass:: databroker.core.BlueskyRun
    :members:
 
@@ -14,9 +17,11 @@ Core
 .. autoclass:: databroker.core.BlueskyEventStream
    :members:
 
-.. autofunction:: databroker.core.documents_to_xarray
+.. autofunction:: databroker.core.discover_handlers
 
 .. autofunction:: databroker.core.parse_handler_registry
+
+.. autofunction:: databroker.core.parse_transforms
 
 Utils
 =====
