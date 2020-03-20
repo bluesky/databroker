@@ -5,7 +5,6 @@ import event_model
 from datetime import datetime
 import dask
 import dask.bag
-from dask import array
 import functools
 import heapq
 import importlib
@@ -453,7 +452,7 @@ def _interlace(*gens, strict_order=True):
 
 
 def _unfilled_partitions(start, descriptors, resources, stop, datum_gens,
-                        event_gens, partition_size):
+                         event_gens, partition_size):
     """
     Return a Bluesky run, in order, packed into partitions.
 
@@ -483,8 +482,8 @@ def _unfilled_partitions(start, descriptors, resources, stop, datum_gens,
     """
     # The first partition is the "header"
     yield ([('start', start)]
-          + [('descriptor', doc) for doc in descriptors]
-          + [('resource', doc) for doc in resources])
+           + [('descriptor', doc) for doc in descriptors]
+           + [('resource', doc) for doc in resources])
 
     # Use rechunk datum pages to make them into pages of size "partition_size"
     # and yield one page per partition.
@@ -512,11 +511,11 @@ def _unfilled_partitions(start, descriptors, resources, stop, datum_gens,
 
 
 def _fill(filler,
-         event,
-         lookup_resource_for_datum,
-         get_resource,
-         get_datum_pages,
-         last_datum_id=None):
+          event,
+          lookup_resource_for_datum,
+          get_resource,
+          get_datum_pages,
+          last_datum_id=None):
     try:
         _, filled_event = filler("event", event)
         return filled_event
@@ -566,9 +565,9 @@ def _fill(filler,
 
 
 def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
-                        get_event_pages, filler, get_resource,
-                        lookup_resource_for_datum, get_datum_pages,
-                        include=None, exclude=None):
+                         get_event_pages, filler, get_resource,
+                         lookup_resource_for_datum, get_datum_pages,
+                         include=None, exclude=None):
     """
     Represent the data in one Event stream as an xarray.
 
@@ -742,7 +741,6 @@ def _canonical(*, start, stop, entries, fill, strict_order=True):
     strict_order : bool, optional
         documents are strictly yielded in ascending time order.
     """
-    run_start_uid = start['uid']
     history = set()
 
     FILL_OPTIONS = {'yes', 'no', 'delayed'}
@@ -752,7 +750,7 @@ def _canonical(*, start, stop, entries, fill, strict_order=True):
     def stream_gen(entry):
         for i in itertools.count():
             partition = entry().read_partition({'index': i, 'fill': fill,
-                                              'partition_size': 'auto'})
+                                                'partition_size': 'auto'})
             if not partition:
                 break
             yield from partition
@@ -882,7 +880,6 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
             "The method read_canonical has been renamed canonical. This alias "
             "may be removed in a future release.")
         yield from self.canonical(fill='yes')
-
 
     def __repr__(self):
         try:
@@ -1188,6 +1185,7 @@ class BlueskyRun(intake.catalog.Catalog):
 
         handler = handler_class(resource_path,
                                 **resource['resource_kwargs'])
+
         def datum_kwarg_gen():
             for page in self._get_datum_pages(resource['uid']):
                 for datum in event_model.unpack_datum_page(page):
@@ -1381,8 +1379,8 @@ class BlueskyEventStream(DataSourceMixin):
                       for descriptor in self._descriptors]
         self._partitions = list(
             _unfilled_partitions(self._run_start_doc, self._descriptors,
-                                self._resources, self._run_stop_doc,
-                                datum_gens, event_gens, partition_size))
+                                 self._resources, self._run_stop_doc,
+                                 datum_gens, event_gens, partition_size))
         self.npartitions = len(self._partitions)
 
     def read_partition(self, partition):
@@ -1417,7 +1415,7 @@ class BlueskyEventStream(DataSourceMixin):
                 # resource document that doesn't have a run_start key.
                 self._partitions[i:i] = self._missing_datum(err.key, partition_size)
                 return [filler(name, doc) for name, doc in self._partitions[i]]
-        except IndexError as e:
+        except IndexError:
             return []
 
     def _missing_datum(self, datum_id, partition_size):
@@ -1451,9 +1449,11 @@ class BlueskyEventStream(DataSourceMixin):
         return partitions
 
     def _get_partition(self, partition):
-        return intake.container.base.get_partition(self.url, self.http_args,
-                                             self._source_id, self.container,
-                                             partition)
+        return intake.container.base.get_partition(
+            self.url, self.http_args,
+            self._source_id, self.container,
+            partition)
+
 
 class RemoteBlueskyEventStream(RemoteXarray):
     # Because of the container_map, when working in remote mode, when accessing
@@ -1697,12 +1697,12 @@ def discover_handlers(entrypoint_group_name='databroker.handlers',
             handler_class = entrypoint.load()
         except Exception as exc:
             if skip_failures:
-                warnings.warn("Skipping {entrypoint!r} which failed to load. "
-                              "Exception: {exc!r}")
+                warnings.warn(f"Skipping {entrypoint!r} which failed to load. "
+                              f"Exception: {exc!r}")
                 continue
             else:
                 raise
-        handler_registry[name] = entrypoint.load()
+        handler_registry[name] = handler_class
 
     return handler_registry
 
@@ -1768,13 +1768,17 @@ def parse_transforms(transforms):
             raise NotImplementedError(f"Transforms for {transforms.keys() - transformable} "
                                       f"are not supported.")
         result = {}
+
+        def no_op(doc):
+            return doc
+
         for name in transformable:
             transform = transforms.get(name)
             if isinstance(transform, str):
                 module_name, _, class_name = transform.rpartition('.')
                 function = getattr(importlib.import_module(module_name), class_name)
             elif transform is None:
-                function = lambda doc: doc
+                function = no_op
             else:
                 function = transform
             result[name] = function
@@ -1959,4 +1963,4 @@ def extract_dtype(descriptor, key):
 
 # This comes from the old databroker.core from before intake-bluesky was merged
 # in. It apparently was useful for back-compat at some point.
-from databroker._core import Header
+from databroker._core import Header  # noqa: 401, 402
