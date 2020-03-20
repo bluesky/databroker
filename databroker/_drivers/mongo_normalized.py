@@ -1,19 +1,12 @@
 import collections.abc
-import functools
 import event_model
 from functools import partial
 import logging
 import cachetools
-import intake
-import intake.catalog
-import intake.catalog.local
-import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import (
-    parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry)
+from ..core import to_event_pages, to_datum_pages, Entry
 from ..v2 import Broker
 
 
@@ -47,7 +40,7 @@ class _Entries(collections.abc.Mapping):
             get_event_pages=to_event_pages(self.catalog._get_event_cursor, 2500),
             get_event_count=self.catalog._get_event_count,
             get_resource=self.catalog._get_resource,
-            get_resources=partial(self.catalog._get_resources,uid),
+            get_resources=partial(self.catalog._get_resources, uid),
             lookup_resource_for_datum=self.catalog._lookup_resource_for_datum,
             # 2500 was selected as the page_size because it worked well durring
             # benchmarks.
@@ -286,8 +279,8 @@ class BlueskyMongoCatalog(Broker):
             {'descriptor': descriptor_uid})
 
     def _get_resources(self, run_start_uid):
-        return list(self._resource_collection.find({'run_start': run_start_uid},
-                                              {'_id': False}))
+        return list(self._resource_collection.find(
+            {'run_start': run_start_uid}, {'_id': False}))
 
     def _get_resource(self, uid):
         doc = self._resource_collection.find_one(
