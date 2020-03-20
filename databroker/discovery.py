@@ -5,6 +5,7 @@ from intake.catalog import Catalog
 from intake.catalog.entry import CatalogEntry
 import warnings
 
+
 class EntrypointEntry(CatalogEntry):
     """
     A catalog entry for an entrypoint.
