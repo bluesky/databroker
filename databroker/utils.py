@@ -383,14 +383,19 @@ def catalog_search_path():
     return (user_data_dir(), global_data_dir())
 
 
+
+# This object should never be directly instantiated by external code.
+# It is defined at module scope only so that it is pickleable, but it is for
+# the internal use of LazyMap only.
+_LazyMapWrapper = collections.namedtuple('_LazyMapWrapper', ('func', ))
+
+
 class LazyMap(collections.abc.Mapping):
     __slots__ = ('__mapping', '__lock')
 
-    __Wrapper = collections.namedtuple('__Wrapper', ('func', ))
-
     def __init__(self, *args, **kwargs):
         dictionary = dict(*args, **kwargs)
-        wrap = self.__Wrapper
+        wrap = _LazyMapWrapper
         # TODO should be recursive lock?
         self.__lock = threading.Lock()
         # TODO type validation?
@@ -400,7 +405,7 @@ class LazyMap(collections.abc.Mapping):
         # TODO per-key locking?
         with self.__lock:
             v = self.__mapping[key]
-            if isinstance(v, self.__Wrapper):
+            if isinstance(v, _LazyMapWrapper):
                 # TODO handle exceptions?
                 v = self.__mapping[key] = v.func()
         return v
@@ -417,7 +422,7 @@ class LazyMap(collections.abc.Mapping):
 
     def add(self, *args, **kwargs):
         dictionary = dict(*args, **kwargs)
-        wrap = self.__Wrapper
+        wrap = _LazyMapWrapper
         with self.__lock:
             intersection = set(dictionary).intersection(self.__mapping)
             if intersection:
@@ -425,3 +430,10 @@ class LazyMap(collections.abc.Mapping):
                                 f"keys in a LazyMap. "
                                 f"keys: {intersection} already exists.")
             self.__mapping.update({k: wrap(v) for k, v in dictionary.items()})
+
+    def __getstate__(self):
+        return self.__mapping
+
+    def __setstate__(self, mapping):
+        self.__mapping = mapping
+        self.__lock = threading.Lock()
