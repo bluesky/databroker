@@ -1,11 +1,12 @@
 # generate_data.py
 import logging
-import tempfile
 from suitcase.mongo_normalized import Serializer
 from bluesky import RunEngine
 from bluesky.plans import count
 from ophyd.sim import det
 import uuid
+
+from databroker._drivers.mongo_normalized import BlueskyMongoCatalog
 
 
 RE = RunEngine()
@@ -22,5 +23,4 @@ handler = logging.StreamHandler()
 handler.setLevel('DEBUG')
 logger.addHandler(handler)
 
-from databroker._drivers.mongo_normalized import BlueskyMongoCatalog
-catalog = BlueskyMongoCatalog(f'{directory}/*.msgpack')
+catalog = BlueskyMongoCatalog(mds, fs)

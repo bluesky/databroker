@@ -1,0 +1,33 @@
+[flake8]
+exclude =
+    .git,
+    __pycache__,
+    build,
+    databroker/assets,
+    databroker/broker.py,
+    databroker/_core.py,
+    databroker/databroker.py,
+    databroker/eventsource,
+    databroker/glue.py,
+    databroker/headersource,
+    databroker/service,
+    databroker/tests/test_broker.py
+    databroker/tests/test_config.py
+    databroker/tests/test_discovery.py
+    databroker/tests/test_document.py
+    databroker/tests/test_glue.py
+    databroker/tests/test_humantime_munging.py
+    databroker/tests/test_lazymap.py
+    databroker/tests/test_mds.py
+    databroker/tests/test_pivot.py
+    databroker/tests/test_urls.py
+    databroker/tests/test_v2
+    databroker/tests/utils.py
+    databroker/pivot.py,
+    databroker/v0.py,
+    databroker/_version.py,
+    dist,
+    doc/source,
+    migration,
+    versioneer.py,
+max-line-length = 115

@@ -4,14 +4,10 @@ from sys import maxsize
 from functools import partial
 import logging
 import cachetools
-import intake
-import intake.catalog
-import intake.catalog.local
-import intake.source.base
 import pymongo
 import pymongo.errors
 
-from ..core import parse_handler_registry, discover_handlers, Entry
+from ..core import Entry
 from ..v2 import Broker
 
 

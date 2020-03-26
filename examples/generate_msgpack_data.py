@@ -1,4 +1,3 @@
-# generate_data.py
 import logging
 import tempfile
 from suitcase.msgpack import Serializer
@@ -6,6 +5,7 @@ from bluesky import RunEngine
 from bluesky.plans import count
 from ophyd.sim import det
 
+from databroker._drivers.msgpack import BlueskyMsgpackCatalog
 
 RE = RunEngine()
 
@@ -21,5 +21,4 @@ handler = logging.StreamHandler()
 handler.setLevel('DEBUG')
 logger.addHandler(handler)
 
-from databroker._drivers.msgpack import BlueskyMsgpackCatalog
 catalog = BlueskyMsgpackCatalog(f'{directory}/*.msgpack')

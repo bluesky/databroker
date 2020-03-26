@@ -12,7 +12,7 @@ from .utils import normalize_human_friendly_time
 class Query(collections.abc.Mapping):
     """
     This represents a MongoDB query.
-    
+
     MongoDB queries are typically encoded as simple dicts. This object supports
     the dict interface in a read-only fashion. Subclassses add a nice __repr__
     and mutable attributes from which the contents of the dict are derived.
@@ -30,7 +30,7 @@ class Query(collections.abc.Mapping):
 
     def __getitem__(self, key):
         return self.query[key]
-    
+
     def __len__(self):
         return len(self.query)
 

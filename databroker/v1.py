@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 from collections import defaultdict
-import copy
 from datetime import datetime
 import pandas
 import re
@@ -23,7 +22,7 @@ except ImportError:
     from toolz.dicttoolz import merge
 
 from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
-                    wrap_in_doct, ensure_path_exists, lookup_config,
+                    ensure_path_exists, lookup_config,
                     transpose)
 
 
@@ -122,7 +121,7 @@ class Registry:
             def safe_hook(n, total, old_name, new_name):
                 try:
                     hook(n, total, old_name, new_name)
-                except:
+                except Exception:
                     pass
             return safe_hook
 
@@ -306,17 +305,17 @@ class Broker:
         if isinstance(key, slice):
             if key.start is not None and key.start > -1:
                 raise ValueError("slice.start must be negative. You gave me "
-                                "key=%s The offending part is key.start=%s"
-                                % (key, key.start))
+                                 "key=%s The offending part is key.start=%s"
+                                 % (key, key.start))
             if key.stop is not None and key.stop > 0:
                 raise ValueError("slice.stop must be <= 0. You gave me key=%s. "
-                                "The offending part is key.stop = %s"
-                                % (key, key.stop))
+                                 "The offending part is key.stop = %s"
+                                 % (key, key.stop))
             if key.start is None:
                 raise ValueError("slice.start cannot be None because we do not "
-                                "support slicing infinitely into the past; "
-                                "the size of the result is non-deterministic "
-                                "and could become too large.")
+                                 "support slicing infinitely into the past; "
+                                 "the size of the result is non-deterministic "
+                                 "and could become too large.")
             return [self[index]
                     for index in reversed(range(key.start, key.stop or 0, key.step or 1))]
         entry = self._catalog[key]
@@ -372,8 +371,8 @@ class Broker:
         """
         if handler_registry is not None:
             raise NotImplementedError("The handler_registry must be set when "
-                                       "the Broker is initialized, usually specified "
-                                       "in a configuration file.")
+                                      "the Broker is initialized, usually specified "
+                                      "in a configuration file.")
 
         headers = _ensure_list(headers)
 
@@ -389,15 +388,14 @@ class Broker:
             uid = header.start['uid']
             descs = header.descriptors
 
-            descriptors = set()
             per_desc_discards = {}
             per_desc_extra_data = {}
             per_desc_extra_ts = {}
             for d in descs:
                 (all_extra_dk, all_extra_data,
-                all_extra_ts, discard_fields) = _extract_extra_data(
-                    header.start, header.stop, d, fields, comp_re,
-                    no_fields_filter)
+                 all_extra_ts, discard_fields) = _extract_extra_data(
+                        header.start, header.stop, d, fields, comp_re,
+                        no_fields_filter)
 
                 per_desc_discards[d['uid']] = discard_fields
                 per_desc_extra_data[d['uid']] = all_extra_data
@@ -431,7 +429,6 @@ class Broker:
             for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)],
                                                           strict_order=True):
                 yield from get_documents_router(name, doc)
-
 
     def get_events(self,
                    headers, stream_name='primary', fields=None, fill=False,
@@ -479,9 +476,8 @@ class Broker:
 
         if handler_registry is not None:
             raise NotImplementedError("The handler_registry must be set when "
-                                       "the Broker is initialized, usually specified "
-                                       "in a configuration file.")
-
+                                      "the Broker is initialized, usually specified "
+                                      "in a configuration file.")
 
         for name, doc in self.get_documents(headers,
                                             fields=fields,
@@ -558,9 +554,10 @@ class Broker:
         """
 
         if handler_registry is not None:
-            raise NotImplementedError("The handler_registry must be set when "
-                                       "the Broker is initialized, usually specified "
-                                       "in a configuration file.")
+            raise NotImplementedError(
+                "The handler_registry must be set when "
+                "the Broker is initialized, usually specified "
+                "in a configuration file.")
 
         headers = _ensure_list(headers)
         # TODO --- Use local time I guess.
@@ -583,7 +580,7 @@ class Broker:
             descs = [desc for desc in descs if desc.get('name') == stream_name]
             for descriptor in descs:
                 (all_extra_dk, all_extra_data,
-                all_extra_ts, discard_fields) = _extract_extra_data(
+                 all_extra_ts, discard_fields) = _extract_extra_data(
                     start, stop, descriptor, fields, comp_re, no_fields_filter)
 
                 all_events = [
@@ -593,10 +590,9 @@ class Broker:
                     doc['descriptor'] == descriptor['uid']]
                 seq_nums = [ev['seq_num'] for ev in all_events]
                 times = [ev['time'] for ev in all_events]
-                uids = [ev['uid'] for ev in all_events]
                 keys = list(descriptor['data_keys'])
                 data = transpose(all_events, keys, 'data')
-                timestamps = transpose(all_events, keys, 'timestamps')
+                # timestamps = transpose(all_events, keys, 'timestamps')
 
                 df = pandas.DataFrame(index=seq_nums)
                 # if converting to datetime64 (in utc or 'local' tz)
@@ -608,10 +604,10 @@ class Broker:
                 # if localizing to 'local' time
                 if localize_times:
                     times = (times
-                            .dt.tz_localize('UTC')  # first make tz aware
-                            # .dt.tz_convert(timezone)  # convert to 'local'
-                            .dt.tz_localize(None)  # make naive again
-                            )
+                             .dt.tz_localize('UTC')  # first make tz aware
+                             # .dt.tz_convert(timezone)  # convert to 'local'
+                             .dt.tz_localize(None)  # make naive again
+                             )
 
                 df['time'] = times
                 for field, values in data.items():
@@ -664,7 +660,7 @@ class Broker:
         datasets = [header.xarray_dask(stream_name=stream_name)
                     for header in headers]
         if handler_registry is not None:
-            raise NotImplementError(
+            raise NotImplementedError(
                 "The handler_registry parameter is no longer supported "
                 "and must be None.")
         dataset = xarray.merge(datasets)
@@ -977,6 +973,8 @@ class Broker:
                                   "need this please contact the developers by "
                                   "opening an issue here: "
                                   "https://github.com/bluesky/databroker/issues/new ")
+
+
 class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
@@ -1141,7 +1139,6 @@ class Header:
                                  timezone=timezone,
                                  convert_times=convert_times,
                                  localize_times=localize_times)
-
 
     def documents(self, stream_name=ALL, fields=None, fill=False):
         """
@@ -1671,15 +1668,15 @@ def _get_mongo_database(config):
     uri = config.get('uri')
     database = config['database']
 
-    # If this statement is True than uri does not exist in the config.
+    # If this statement is True then uri does not exist in the config.
     # If the config has username and password, turn it into a uri.
     # This is only here for backward compatibility.
     if {'mongo_user', 'mongo_pwd', 'host', 'port'} <= set(config):
         uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(
-                self.config['mongo_user'],
-                self.config['mongo_pwd'],
-                self.config['host'],
-                self.config['port'])
+            config['mongo_user'],
+            config['mongo_pwd'],
+            config['host'],
+            config['port'])
 
     if uri:
         try:

@@ -8,7 +8,7 @@ from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_hdf5_backed_broker,
                                     build_intake_jsonl_backed_broker,
                                     build_intake_mongo_backed_broker,
-                                    build_intake_mongo_embedded_backed_broker,
+                                    # build_intake_mongo_embedded_backed_broker,
                                     build_client_backend_broker,
                                     start_md_server,
                                     stop_md_server)
@@ -23,7 +23,7 @@ from ..headersource import sqlite as sqlmds
 
 if sys.version_info >= (3, 5):
     # this is a pytest.fixture
-    from bluesky.tests.conftest import RE
+    from bluesky.tests.conftest import RE  # noqa: F401
 
     @pytest.fixture(scope='function')
     def hw(request):
