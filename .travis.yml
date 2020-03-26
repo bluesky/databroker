@@ -6,7 +6,7 @@ matrix:
   - python: 3.7  # Separate build to run flake8 check
     env:
       - INTAKE_MASTER=false
-      - FLAKE_8=true
+      - FLAKE8=true
   - python: 3.6
     env:
       - INTAKE_MASTER=false
@@ -54,7 +54,7 @@ env:
     - secure: "spb6HwGVvMPsQw9cEwJscmAlG7seL0svW8ouYlDr4OESJJJqC8bynEpAl7Zm/NuKiZ701IR9gEBFuwCRoEXNJ6AkqgBE0DOMj4Oezg4eUnaZz0aXJ+C6mz31vbcNmU6MrjSElw80cIXBpia3j//VMluMzJMsGx/ELPATu2nwyx1+KXljGpFe1/7HYcq/wFHi+sC02sZRVYJGqrb5Zms35hlk4xasWKlsgLh53kW+ss+4hY67vllL2iRkYiP+8z4e3dTOuDqJWx5lLT16wt0K+wJyP/QTyIP81tmMNoWRbdrfOrzyyVXZDbrlzpZDBRtvlMFMHOeEZOrFPIYuclEjT39Tge+T/OxR6SC8kvzqVItxyxLEKWpQu8DHRVEDAuirteuv4IKEnS80nbWn4v/sBOU+sC0/23dW9zZkMrNmRoSFcjudmy2PGIY8jxzOhGJJ+Rbi0xIaKwdLbDZoPHM3m9m2uWYfGNMBHDgnh/HDIq71zzYWaW4gChYgU0UeDM1RYnr1XRa44znlZ0YLnmEyxn/5LzH/hRDxqc5XH5OAiKLnTddZFYsvdRT1JMNSA5PRSm7E8BCvCOEwovjnvRUc0dktyd8+OC5+Eyf1neJ6M7F2sGxCi3yMKw3VmfCxINu6XO3GsPE7cKACEq0lriCxjNzFWbedOX9dTL1Uqdc3pQA="
 
 before_install:
-  - if [ ! -z "$FLAKE_8" ]; then
+  - if [ ! -z "$FLAKE8" ]; then
         pip install flake8;
         flake8 .;
         let res=$?;
