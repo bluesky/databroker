@@ -1761,7 +1761,7 @@ def parse_transforms(transforms):
     transformable = {'start', 'stop', 'resource', 'descriptor'}
 
     if transforms is None:
-        result = {key: lambda doc: doc for key in transformable}
+        result = {key: _no_op for key in transformable}
         return result
     elif isinstance(transforms, collections.abc.Mapping):
         if len(transforms.keys() - transformable) > 0:
@@ -1769,16 +1769,13 @@ def parse_transforms(transforms):
                                       f"are not supported.")
         result = {}
 
-        def no_op(doc):
-            return doc
-
         for name in transformable:
             transform = transforms.get(name)
             if isinstance(transform, str):
                 module_name, _, class_name = transform.rpartition('.')
                 function = getattr(importlib.import_module(module_name), class_name)
             elif transform is None:
-                function = no_op
+                function = _no_op
             else:
                 function = transform
             result[name] = function
@@ -1959,6 +1956,10 @@ def extract_dtype(descriptor, key):
         return float  # guess!
     else:
         return reported
+
+
+def _no_op(doc):
+    return doc
 
 
 # This comes from the old databroker.core from before intake-bluesky was merged
