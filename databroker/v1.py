@@ -1672,8 +1672,8 @@ def _get_mongo_database(config):
     # If the config has username and password, turn it into a uri.
     # This is only here for backward compatibility.
     if {'mongo_user', 'mongo_pwd', 'host', 'port'} <= set(config):
-        uri = ("mongodb://{config['mongo_user']}:{config['mongo_pwd']}@"
-               "{config['host']}:{config['port']}/")
+        uri = (f"mongodb://{config['mongo_user']}:{config['mongo_pwd']}@"
+               "f{config['host']}:{config['port']}/")
 
     if uri:
         try:
