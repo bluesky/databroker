@@ -383,7 +383,6 @@ def catalog_search_path():
     return (user_data_dir(), global_data_dir())
 
 
-
 # This object should never be directly instantiated by external code.
 # It is defined at module scope only so that it is pickleable, but it is for
 # the internal use of LazyMap only.
