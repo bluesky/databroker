@@ -1,4 +1,8 @@
+import functools
+import pickle
+
 import pytest
+
 from ..utils import LazyMap
 
 
@@ -71,3 +75,17 @@ def test_lazymap_add():
 
     lazy_map.add({'C': lambda: TestClass('C')})
     assert 'C' in lazy_map
+
+
+def f(x):
+    return x
+
+
+def test_lazymap_pickle():
+    lazy_map = LazyMap({'x': functools.partial(f, 1)})
+    serialized = pickle.dumps(lazy_map)
+    deserialized = pickle.loads(serialized)
+    assert lazy_map == deserialized
+    expected = {'x': 1}
+    assert dict(lazy_map) == expected
+    assert dict(deserialized) == expected
