@@ -111,4 +111,7 @@ class TimeRange(Query):
             query['time']['$gte'] = self._since_normalized
         if self._until_normalized is not None:
             query['time']['$lt'] = self._until_normalized
-        return query
+        if query['time']:
+            return query
+        else:
+            return {}
