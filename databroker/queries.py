@@ -102,7 +102,9 @@ class TimeRange(Query):
 
     @property
     def kwargs(self):
-        return {'since': self._since_raw, 'until': self._until_raw}
+        return {'since': self._since_raw,
+                'until': self._until_raw,
+                'timezone': self.timezone}
 
     @property
     def query(self):
