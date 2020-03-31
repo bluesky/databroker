@@ -404,7 +404,9 @@ class MDSTemplate(MDSROTemplate):
             uid of the inserted document.  Use `run_start_given_uid` to get
             the full document.
         '''
-        self._create_runstart_index()
+        if callable(getattr(self, "_create_runstart_index", None)):
+            self._create_runstart_index()
+
         return self._api.insert_run_start(self._runstart_col,
                                           self._RUNSTART_CACHE,
                                           time=time,
@@ -439,7 +441,9 @@ class MDSTemplate(MDSROTemplate):
         RuntimeError
             Only one RunStop per RunStart, raises if you try to insert a second
         """
-        self._create_runstop_index()
+        if callable(getattr(self, "_create_runstop_index", None)):
+            self._create_runstop_index()
+
         return self._api.insert_run_stop(self._runstop_col,
                                          self._RUNSTOP_CACHE,
                                          run_start=run_start,
@@ -470,7 +474,9 @@ class MDSTemplate(MDSROTemplate):
         descriptor : str
             uid of inserted Document
         """
-        self._create_descriptor_index()
+        if callable(getattr(self, "_create_descriptor_index", None)):
+            self._create_descriptor_index()
+
         return self._api.insert_descriptor(self._descriptor_col,
                                            self._DESCRIPTOR_CACHE,
                                            run_start=run_start,
@@ -511,7 +517,9 @@ class MDSTemplate(MDSROTemplate):
             Dictionary of `False` or datum_ids. Keys are a subset of the keys
             in `data` and `timestamps` above.
         """
-        self._create_event_index()
+        if callable(getattr(self, "_create_event_index", None)):
+            self._create_event_index()
+
         if filled is None:
             filled = {}
         return self._api.insert_event(self._event_col,
@@ -524,7 +532,8 @@ class MDSTemplate(MDSROTemplate):
                                       validate=validate)
 
     def bulk_insert_events(self, descriptor, events, validate=False):
-        self._create_event_index()
+        if callable(getattr(self, "_create_event_index", None)):
+            self._create_event_index()
         return self._api.bulk_insert_events(self._event_col,
                                             descriptor=descriptor,
                                             events=events,
