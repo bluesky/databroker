@@ -12,8 +12,8 @@ The bluesky ecosystem provides several modes for accessing data:
 * Portable DataBroker with Remote Data --- Let users use ``databroker`` on their
   laptops and/or on servers at their home institutions, pulling data from an
   HTTP server on demand, and optionally caching it locally.
-* Access Central DataBroker via a Generic Client --- This includes Remote
-  Desktop, Jupyter, and SSH.
+* Access Central DataBroker via a Generic Remote Client --- This includes
+  Remote Desktop, Jupyter, and SSH.
 
 Traditional File Export
 =======================
@@ -97,8 +97,8 @@ be repeatedly downloaded. This requires a stable URL and a reliable network
 connection. There are *no instances of this mode* known at this time, but all
 the software pieces to achieve it exist. It is on the project roadmap.
 
-Access Central DataBroker via a Generic Client
-==============================================
+Access Central DataBroker via a Generic Remote Client
+=====================================================
 
 In this mode, users do not install ``databroker`` locally. They use any remote
 client---such as Remote Desktop, Jupyter, or SSH---to access a Python
