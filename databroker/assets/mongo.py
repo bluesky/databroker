@@ -46,11 +46,33 @@ class RegistryRO(BaseRegistryRO):
         self.__datum_col = None
         self.__res_col = None
         self.__res_update_col = None
+        self._resource_index = False
+        self._resource_update_index = False
+        self._datum_index = False
 
     def disconnect(self):
         self.__db = None
         self.__datum_col = None
         self.__res_col = None
+
+    def _create_resource_index(self):
+        if not self._resource_index:
+            self._res_col.create_index('resource_id')
+            self._resource_index = True
+
+    def _create_resource_update_index(self):
+        if not self._resource_update_index:
+            self._res_update_col.create_index([
+                ('resource', pymongo.DESCENDING),
+                ('time', pymongo.DESCENDING)
+            ])
+            self._resource_update_index = True
+
+    def _create_datum_index(self):
+        if not self._datum_index:
+            self.__datum_col.create_index('datum_id', unique=True)
+            self.__datum_col.create_index('resource')
+            self._datum_index = True
 
     @property
     def _db(self):
@@ -76,28 +98,18 @@ class RegistryRO(BaseRegistryRO):
     def _resource_col(self):
         if self.__res_col is None:
             self.__res_col = self._db.get_collection('resource')
-            self.__res_col.create_index('resource_id')
-
         return self.__res_col
 
     @property
     def _resource_update_col(self):
         if self.__res_update_col is None:
             self.__res_update_col = self._db.get_collection('resource_update')
-            self.__res_update_col.create_index([
-                ('resource', pymongo.DESCENDING),
-                ('time', pymongo.DESCENDING)
-            ])
-
         return self.__res_update_col
 
     @property
     def _datum_col(self):
         if self.__datum_col is None:
             self.__datum_col = self._db.get_collection('datum')
-            self.__datum_col.create_index('datum_id', unique=True)
-            self.__datum_col.create_index('resource')
-
         return self.__datum_col
 
     @property
