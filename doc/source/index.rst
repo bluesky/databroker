@@ -18,6 +18,7 @@ If you are here to...
 .. toctree::
    :maxdepth: 2
 
+   data-access-overview
    overview
    installation
    v2/index
