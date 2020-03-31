@@ -185,10 +185,9 @@ class Broker:
             # The method _get_serializer is an optional method implememented on
             # some Broker subclasses to support the Broker.insert() method,
             # which is pending deprecation.
-            if hasattr(catalog, '_get_serializer'):
-                self.__serializer = catalog._get_serializer()
-        else:
-            return self.__serializer
+            if hasattr(self._catalog, '_get_serializer'):
+                self.__serializer = self._catalog._get_serializer()
+        return self.__serializer
 
     @property
     def reg(self):
