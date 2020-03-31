@@ -463,6 +463,7 @@ class RegistryTemplate(BaseRegistryRO):
             The uid of the created resource.
 
         '''
+        self._create_resource_index()
         if root is None:
             root = ''
 
@@ -504,6 +505,7 @@ class RegistryTemplate(BaseRegistryRO):
             Datum uid to put put into the Event data.
 
         '''
+        self._create_datum_index()
         if validate:
             raise RuntimeError('validate not implemented yet')
         col = self._datum_col
@@ -538,6 +540,7 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
+        self._create_datum_index()
         if validate:
             raise RuntimeError('validate not implemented yet')
         col = self._datum_col
@@ -572,6 +575,7 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
+        self._create_datum_index()
         if validate:
             raise RuntimeError('validate not implemented yet')
         return self._api.bulk_register_datum_table(
