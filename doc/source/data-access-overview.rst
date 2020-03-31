@@ -67,7 +67,7 @@ The process involves:
 #. Install the Python library ``databroker`` on the target machine using pip or
    conda.
 
-DataBroker can work on top of a directory of orindary files just fine; it even
+DataBroker can work on top of a directory of ordinary files just fine; it even
 supports the same queries that it would normally run on a database---just less
 efficiently. Optionally, ingest the documents into a local database to support
 more efficient queries.
