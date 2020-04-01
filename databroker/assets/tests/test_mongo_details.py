@@ -14,6 +14,7 @@ def test_double_sentinel(fs_mongo):
 
 def test_index(fs_mongo):
     fs = fs_mongo
+    fs._create_datum_index()
     indx = fs._datum_col.index_information()
 
     assert len(indx) == 3
