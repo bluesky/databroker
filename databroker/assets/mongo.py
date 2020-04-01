@@ -57,7 +57,7 @@ class RegistryRO(BaseRegistryRO):
 
     def _create_resource_index(self):
         if not self._resource_index:
-            self._res_col.create_index('resource_id')
+            self._resource_col.create_index('resource_id')
             self._resource_index = True
 
     def _create_resource_update_index(self):
@@ -70,8 +70,8 @@ class RegistryRO(BaseRegistryRO):
 
     def _create_datum_index(self):
         if not self._datum_index:
-            self.__datum_col.create_index('datum_id', unique=True)
-            self.__datum_col.create_index('resource')
+            self._datum_col.create_index('datum_id', unique=True)
+            self._datum_col.create_index('resource')
             self._datum_index = True
 
     @property
