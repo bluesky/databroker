@@ -1787,8 +1787,9 @@ def parse_transforms(transforms):
 
 # This determines the type of the class that you get on the
 # client side.
-intake.container.container_map['bluesky-run'] = RemoteBlueskyRun
-intake.container.container_map['bluesky-event-stream'] = RemoteBlueskyEventStream
+intake.container.register_container('bluesky-run', RemoteBlueskyRun)
+intake.container.register_container(
+    'bluesky-event-stream', RemoteBlueskyEventStream)
 
 
 def _concat_dataarray_pages(dataarray_pages):
