@@ -1,0 +1,27 @@
+.. currentmodule:: databroker
+
+v1.0.1 (2020-04-03)
+-------------------
+
+Added
++++++
+
+* When a :class:`~databroker.v2.Broker` is constructed from a YAML
+  configuration file, the ``root_map`` values may be given as *relative* paths
+  interpreted relative to the location of that configuration file.
+
+Changed
++++++++
+
+* The minimum version of the dependency ``intake`` has been increased to
+  ``v0.5.5`` and various internal changes have been made to adjust for changes
+  in ``intake``.
+
+Fixed
++++++
+
+* The object :class:`~databroker.utils.LazyMap` object now support pickling.
+* The query :class:`~databroker.queries.TimeRange` now properly propagates its
+  ``timezone`` parameter through :meth:`~databroker.queries.TimeRange.replace`.
+* If installation with ``python2`` is attempted, a helpful error message is
+  shown.
