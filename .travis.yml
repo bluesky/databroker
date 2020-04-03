@@ -60,6 +60,7 @@ before_install:
   - export TZ=US/Eastern
 
 install:
+  - pip install --upgrade pip
   - pip install --upgrade cython
   - pip install --quiet --upgrade --global-option='--without-libyaml' pyyaml
   - pip install .[all]
