@@ -102,7 +102,9 @@ class TimeRange(Query):
 
     @property
     def kwargs(self):
-        return {'since': self._since_raw, 'until': self._until_raw}
+        return {'since': self._since_raw,
+                'until': self._until_raw,
+                'timezone': self.timezone}
 
     @property
     def query(self):
@@ -111,4 +113,7 @@ class TimeRange(Query):
             query['time']['$gte'] = self._since_normalized
         if self._until_normalized is not None:
             query['time']['$lt'] = self._until_normalized
-        return query
+        if query['time']:
+            return query
+        else:
+            return {}
