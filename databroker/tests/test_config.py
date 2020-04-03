@@ -4,7 +4,6 @@ import imp
 import os
 import pytest
 import six
-import sys
 import uuid
 import yaml
 
@@ -19,31 +18,30 @@ if six.PY2:
 
 
 EXAMPLE = {
-    'description': 'DESCRIPTION_PLACEHOLDER',
-    'metadatastore': {
-        'module': 'databroker.headersource.mongo',
-        'class': 'MDS',
-        'config': {
-            'host': 'localhost',
-            'port': 27017,
-            'database': 'mds_database_placholder',
-            'timezone': 'US/Eastern'}
+    "description": "DESCRIPTION_PLACEHOLDER",
+    "metadatastore": {
+        "module": "databroker.headersource.mongo",
+        "class": "MDS",
+        "config": {
+            "host": "localhost",
+            "port": 27017,
+            "database": "mds_database_placholder",
+            "timezone": "US/Eastern",
+        },
     },
-    'assets': {
-        'module': 'databroker.assets.mongo',
-        'class': 'Registry',
-        'config': {
-            'host': 'localhost',
-            'port': 27017,
-            'database': 'assets_database_placeholder'}
+    "assets": {
+        "module": "databroker.assets.mongo",
+        "class": "Registry",
+        "config": {
+            "host": "localhost",
+            "port": 27017,
+            "database": "assets_database_placeholder",
+        },
     },
-    'handlers': {
-        'FOO': {
-            'module': 'databroker.assets.path_only_handlers',
-            'class': 'RawHandler'}
+    "handlers": {
+        "FOO": {"module": "databroker.assets.path_only_handlers", "class": "RawHandler"}
     },
-    'root_map' : {'foo' : 'bar',
-                  'boo' : 'far'}
+    "root_map": {"foo": "/bar", "boo": "/far"},
 }
 
 
@@ -66,8 +64,8 @@ def test_handler_registration():
 def test_root_map():
     db = Broker.from_config(EXAMPLE)
     assert 'foo' in db.reg.root_map
-    assert db.reg.root_map['foo'] == 'bar'
-    assert db.reg.root_map['boo'] == 'far'
+    assert db.reg.root_map['foo'] == EXAMPLE['root_map']['foo']
+    assert db.reg.root_map['boo'] == EXAMPLE['root_map']['boo']
 
 
 def test_lookup_config():
