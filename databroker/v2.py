@@ -77,6 +77,20 @@ class Broker(Catalog):
                                    inplace=False)
 
         super().__init__(**kwargs)
+        # The values in the root_map are allowed to be relative to the catalog
+        # file in order to facilitate portable archives. Not all catalogs comes
+        # from catalog files, so relative paths are only allowed in root_map if
+        # the the root_map originates from an actual file. If not, we raise.
+        for k, v in list(self._root_map.items()):
+            if not Path(v).is_absolute():
+                catalog_dir = self.metadata.get('catalog_dir')
+                if not catalog_dir:
+                    raise ValueError(
+                        "Found relative path {v} in root_map. "
+                        "Relative paths are only allowed when the catalog "
+                        "is backed by a YAML file, so that paths can be "
+                        "interpreted relative to the location of that file.")
+                self._root_map[k] = str(Path(catalog_dir, v))
 
     @property
     def root_map(self):
