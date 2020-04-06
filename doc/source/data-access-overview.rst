@@ -4,47 +4,26 @@ Data Access Overview
 
 The bluesky ecosystem provides several modes for accessing data:
 
-* Traditional File Export --- Export data to files for existing software that
-  expects files in a certain format named a certain way.
+* Access Central DataBroker via a Generic Remote Client --- This includes
+  Remote Desktop, Jupyter, and SSH.
 * Portable DataBroker with Local Data --- Let users use ``databroker`` on their
   laptops and/or on servers at their home institutions, with all the relevant
   data copied locally and no need for a network connection.
 * Portable DataBroker with Remote Data --- Let users use ``databroker`` on their
   laptops and/or on servers at their home institutions, pulling data from an
   HTTP server on demand, and optionally caching it locally.
-* Access Central DataBroker via a Generic Remote Client --- This includes
-  Remote Desktop, Jupyter, and SSH.
+* Traditional File Export --- Export data to files for existing software that
+  expects files in a certain format named a certain way.
 
-Traditional File Export
-=======================
 
-Export the data to files (e.g. TIFFs and/or CSVs) with the metadata of your
-choice encoded in filenames. This mode forfeits much of the power of databroker
-and the bluesky ecosystem generally, but it is important for supporting
-existing workflows and software that expects files in a certain format named a
-certain way.
+Access Central DataBroker via a Generic Remote Client
+=====================================================
 
-We expect this mode to become less useful as data sizes increase and scientific
-software literacy grows over time. It is a bridge.
+In this mode, users do not install ``databroker`` locally. They use any remote
+client---such as Remote Desktop, Jupyter, or SSH---to access a Python
+environment on the source machine, and use ``databroker`` there, which
+presumably has fast access to the data storage and some compute resources.
 
-Streaming Export
-----------------
-
-This means exporting the data during data acquisition such that partial results
-are available for reading. The bluesky
-`suitcase <https://blueskyproject.io/suitcase/>`_ project provides a pattern
-for doing this and ready-to-use implementations for popular formats.
-
-The streaming export tools may also be used after data acquisition.
-
-Prompt Export
--------------
-
-This means exporting the data at the end of data acquisition. (To be precise,
-at the end of each "Bluesky Run". The scope of a "Run" is up to the details of
-the data acquisition procedure.) This is typically much simpler than streaming
-export and can be implemented *ad hoc* by accessing the data from databroker
-and writing out a file using the relevant Python I/O library.
 
 Portable DataBroker with Local Data
 ===================================
@@ -97,10 +76,33 @@ be repeatedly downloaded. This requires a stable URL and a reliable network
 connection. There are *no instances of this mode* known at this time, but all
 the software pieces to achieve it exist. It is on the project roadmap.
 
-Access Central DataBroker via a Generic Remote Client
-=====================================================
+Traditional File Export
+=======================
 
-In this mode, users do not install ``databroker`` locally. They use any remote
-client---such as Remote Desktop, Jupyter, or SSH---to access a Python
-environment on the source machine, and use ``databroker`` there, which
-presumably has fast access to the data storage and some compute resources.
+Export the data to files (e.g. TIFFs and/or CSVs) with the metadata of your
+choice encoded in filenames. This mode forfeits much of the power of databroker
+and the bluesky ecosystem generally, but it is important for supporting
+existing workflows and software that expects files in a certain format named a
+certain way.
+
+We expect this mode to become less useful as data sizes increase and scientific
+software literacy grows over time. It is a bridge.
+
+Streaming Export
+----------------
+
+This means exporting the data during data acquisition such that partial results
+are available for reading. The bluesky
+`suitcase <https://blueskyproject.io/suitcase/>`_ project provides a pattern
+for doing this and ready-to-use implementations for popular formats.
+
+The streaming export tools may also be used after data acquisition.
+
+Prompt Export
+-------------
+
+This means exporting the data at the end of data acquisition. (To be precise,
+at the end of each "Bluesky Run". The scope of a "Run" is up to the details of
+the data acquisition procedure.) This is typically much simpler than streaming
+export and can be implemented *ad hoc* by accessing the data from databroker
+and writing out a file using the relevant Python I/O library.
