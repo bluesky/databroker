@@ -52,7 +52,7 @@ efficiently. Optionally, ingest the documents into a local database to support
 more efficient queries.
 
 The small utility
-`databroker-pack <https://blueskyproject.io/databroker-pack>_` streamlines the
+`databroker-pack <https://blueskyproject.io/databroker-pack>`_ streamlines the
 process of "packing" some data from data broker into portable files and
 "unpacking" them at their destination.
 
