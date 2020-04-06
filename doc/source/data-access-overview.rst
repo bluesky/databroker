@@ -72,10 +72,10 @@ supports the same queries that it would normally run on a database---just less
 efficiently. Optionally, ingest the documents into a local database to support
 more efficient queries.
 
-The process is documented in detail at
-https://gist.github.com/danielballan/a2391a5812ea5f72b646b2b19b5ed615. The
-process can and will be streamlined, at which time more detailed documentation
-will be incorporated here.
+The small utility
+`databroker-pack <https://blueskyproject.io/databroker-pack>_` streamlines the
+process of "packing" some data from data broker into portable files and
+"unpacking" them at their destination.
 
 Portable DataBroker with Remote Data
 ====================================
