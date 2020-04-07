@@ -1,0 +1,9 @@
+.. currentmodule:: databroker
+
+v1.0.2 (2020-04-07)
+-------------------
+
+Fixed
++++++
+
+* databroker now supports mongo backends with authentication.
