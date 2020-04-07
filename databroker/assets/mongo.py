@@ -125,7 +125,7 @@ class Registry(RegistryRO, RegistryTemplate):
                      ignore_duplicate_error=False):
         self._create_datum_index()
         return super().insert_datum(resource, datum_id, datum_kwargs,
-                             ignore_duplicate_error)
+                                    ignore_duplicate_error=ignore_duplicate_error)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         self._create_datum_index()
@@ -135,31 +135,33 @@ class Registry(RegistryRO, RegistryTemplate):
                                   validate=False):
         self._create_datum_index()
         return super().bulk_register_datum_table(resource_uid, dkwargs_table,
-                                                 validate=False)
+                                                 validate=validate)
 
     def bulk_register_datum_list(self, resource_uid, dkwargs_list,
                                  validate=False):
         self._create_datum_index()
         return super().bulk_register_datum_list(resource_uid, dkwargs_list,
-                                                validate=False)
+                                                validate=validate)
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
         self._create_datum_index()
-        return super().register_datum(resource_uid, datum_kwargs, validate=False)
+        return super().register_datum(resource_uid, datum_kwargs,
+                                      validate=validate)
 
     def register_resource(self, spec, root, rpath, rkwargs,
                           path_semantics='posix', run_start=None):
         self._create_resource_index()
         return super().register_resource(spec, root, rpath, rkwargs,
-                                         path_semantics='posix', run_start=None)
+                                         path_semantics=path_semantics,
+                                         run_start=run_start)
 
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
                         path_semantics='posix', uid=None, run_start=None,
                         id=None, ignore_duplicate_error=False):
         self._create_resource_index()
-        return super().insert_resource(spec, resource_path, resource_kwargs, root=None,
-                                       path_semantics='posix', uid=None, run_start=None,
-                                       id=None, ignore_duplicate_error=False)
+        return super().insert_resource(spec, resource_path, resource_kwargs, root=root,
+                                       path_semantics=path_semantics, uid=uid, run_start=run_start,
+                                       id=id, ignore_duplicate_error=ignore_duplicate_error)
 
 
 class RegistryMoving(Registry, RegistryMovingTemplate):
