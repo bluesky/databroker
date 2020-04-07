@@ -463,8 +463,6 @@ class RegistryTemplate(BaseRegistryRO):
             The uid of the created resource.
 
         '''
-        if callable(getattr(self, '_create_resource_index', None)):
-            self._create_resource_index()
         if root is None:
             root = ''
 
@@ -506,8 +504,6 @@ class RegistryTemplate(BaseRegistryRO):
             Datum uid to put put into the Event data.
 
         '''
-        if callable(getattr(self, '_create_datum_index', None)):
-            self._create_datum_index()
         if validate:
             raise RuntimeError('validate not implemented yet')
         col = self._datum_col
@@ -542,8 +538,6 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
-        if callable(getattr(self, '_create_datum_index', None)):
-            self._create_datum_index()
         if validate:
             raise RuntimeError('validate not implemented yet')
         col = self._datum_col
@@ -578,8 +572,6 @@ class RegistryTemplate(BaseRegistryRO):
             entry
 
         '''
-        if callable(getattr(self, '_create_datum_index', None)):
-            self._create_datum_index()
         if validate:
             raise RuntimeError('validate not implemented yet')
         return self._api.bulk_register_datum_table(
@@ -625,8 +617,6 @@ class RegistryTemplate(BaseRegistryRO):
         resource_object : dict
             The resource
         """
-        if callable(getattr(self, '_create_resource_index', None)):
-            self._create_resource_index()
         if root is None:
             root = ''
 
@@ -663,8 +653,6 @@ class RegistryTemplate(BaseRegistryRO):
             datum from the resource.
 
         '''
-        if callable(getattr(self, '_create_datum_index', None)):
-            self._create_datum_index()
         col = self._datum_col
 
         return self._api.insert_datum(
@@ -675,8 +663,6 @@ class RegistryTemplate(BaseRegistryRO):
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         col = self._datum_col
-        if callable(getattr(self, '_create_datum_index', None)):
-            self._create_datum_index()
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
 

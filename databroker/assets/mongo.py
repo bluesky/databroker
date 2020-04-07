@@ -47,7 +47,6 @@ class RegistryRO(BaseRegistryRO):
         self.__res_col = None
         self.__res_update_col = None
         self._resource_index = False
-        self._resource_update_index = False
         self._datum_index = False
 
     def disconnect(self):
@@ -58,15 +57,11 @@ class RegistryRO(BaseRegistryRO):
     def _create_resource_index(self):
         if not self._resource_index:
             self._resource_col.create_index('resource_id')
-            self._resource_index = True
-
-    def _create_resource_update_index(self):
-        if not self._resource_update_index:
             self._res_update_col.create_index([
                 ('resource', pymongo.DESCENDING),
                 ('time', pymongo.DESCENDING)
             ])
-            self._resource_update_index = True
+            self._resource_index = True
 
     def _create_datum_index(self):
         if not self._datum_index:
@@ -123,7 +118,46 @@ class RegistryRO(BaseRegistryRO):
 
 class Registry(RegistryRO, RegistryTemplate):
     '''Registry object that knows how to create new documents.'''
+    def insert_datum(self, resource, datum_id, datum_kwargs,
+                     ignore_duplicate_error=False):
+        self._create_datum_index()
+        super().insert_datum(resource, datum_id, datum_kwargs,
+                             ignore_duplicate_error)
 
+    def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
+        self._create_datum_index()
+        super().bulk_insert_datum(resource, datum_ids, datum_kwarg_list)
+
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=None
+                        path_semantics='posix', uid=None, run_start=None,
+                        id=None, ignore_duplicate_error=False):
+        self._create_resource_index()
+        super().insert_resource(spec, resource_path, resource_kwargs, root=None,
+                                path_semantics='posix', uid=None, run_start=None,
+                                id=None, ignore_duplicate_error=False)
+
+    def bulk_register_datum_table(self, resource_uid, dkwargs_table,
+                                      validate=False):
+        self._create_datum_index()
+        super().bulk_register_datum_table(resource_uid, dkwargs_table,
+                                          validate=False)
+
+    def bulk_register_datum_list(self, resource_uid, dkwargs_list,
+                                 validate=False):
+        self._create_datum_index()
+        super().bulk_register_datum_list(resource_uid, dkwargs_list,
+                                 validate=False)
+
+    def register_datum(self, resource_uid, datum_kwargs, validate=False):
+        self._create_datum_index()
+        super().register_datum(resource_uid, datum_kwargs, validate=False)
+
+    def register_resource(self, spec, root, rpath, rkwargs,
+                          path_semantics='posix',
+                          run_start=None):
+        self._create_resource_index()
+        super().register_resource(spec, root, rpath, rkwargs,
+                          path_semantics='posix', run_start=None)
 
 class RegistryMoving(Registry, RegistryMovingTemplate):
     '''Registry object that knows how to move files.'''
