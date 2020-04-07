@@ -57,10 +57,10 @@ class RegistryRO(BaseRegistryRO):
     def _create_resource_index(self):
         if not self._resource_index:
             self._resource_col.create_index('resource_id')
-            #self._resource_update_col.create_index([
-            #    ('resource', pymongo.DESCENDING),
-            #    ('time', pymongo.DESCENDING)
-            #])
+            self._resource_update_col.create_index([
+                ('resource', pymongo.DESCENDING),
+                ('time', pymongo.DESCENDING)
+            ])
             self._resource_index = True
 
     def _create_datum_index(self):
