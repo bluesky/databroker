@@ -15,6 +15,10 @@ class MDSRO(MDSROTemplate):
         super(MDSRO, self).__init__(config)
         self.reset_connection()
         self.auth = auth
+        self._runstart_index = False
+        self._runstop_index = False
+        self._descriptor_index = False
+        self._event_index = False
 
     def reset_connection(self):
         self.__db = None
@@ -43,6 +47,51 @@ class MDSRO(MDSROTemplate):
         self.disconnect()
         super(MDSRO, self).reconfigure(config)
 
+    def _create_runstart_index(self):
+        if not self._runstart_index:
+            self._runstart_col.create_index([('uid', pymongo.DESCENDING)],
+                                             unique=True)
+            self._runstart_col.create_index([('time', pymongo.DESCENDING),
+                                              ('scan_id', pymongo.DESCENDING)],
+                                             unique=False, background=True)
+            self._runstart_col.create_index([("$**", "text")])
+            self._runstart_index = True
+
+    def _create_runstop_index(self):
+        if not self._runstop_index:
+            self._runstop_col.create_index('run_start',
+                                            unique=True)
+            self._runstop_col.create_index('uid',
+                                            unique=True)
+            self._runstop_col.create_index([('time', pymongo.DESCENDING)],
+                                            unique=False, background=True)
+            self._runstop_col.create_index([("$**", "text")])
+            self._runstop_index = True
+
+    def _create_descriptor_index(self):
+        if not self._descriptor_index:
+            # The name of the reference to the run start changed from
+            # 'run_start_id' in v0 to 'run_start' in v1.
+            rs_name = 'run_start'
+            self._descriptor_col.create_index([('uid', pymongo.DESCENDING)],
+                                               unique=True)
+            self._descriptor_col.create_index([(rs_name, pymongo.DESCENDING),
+                                                ('time', pymongo.DESCENDING)],
+                                               unique=False, background=True)
+            self._descriptor_col.create_index([('time', pymongo.DESCENDING)],
+                                               unique=False, background=True)
+            self._descriptor_col.create_index([("$**", "text")])
+            self._descriptor_index = True
+
+    def _create_event_index(self):
+        if not self._event_index:
+            self._event_col.create_index([('uid', pymongo.DESCENDING)],
+                                          unique=True)
+            self._event_col.create_index([('descriptor', pymongo.DESCENDING),
+                                           ('time', pymongo.ASCENDING)],
+                                          unique=False, background=True)
+            self._event_index = True
+
     @property
     def _connection(self):
         return self._db.client
@@ -57,60 +106,24 @@ class MDSRO(MDSROTemplate):
     def _runstart_col(self):
         if self.__runstart_col is None:
             self.__runstart_col = self._db.get_collection('run_start')
-
-            self.__runstart_col.create_index([('uid', pymongo.DESCENDING)],
-                                             unique=True)
-            self.__runstart_col.create_index([('time', pymongo.DESCENDING),
-                                              ('scan_id', pymongo.DESCENDING)],
-                                             unique=False, background=True)
-            self.__runstart_col.create_index([("$**", "text")])
-
         return self.__runstart_col
 
     @property
     def _runstop_col(self):
         if self.__runstop_col is None:
             self.__runstop_col = self._db.get_collection('run_stop')
-            self.__runstop_col.create_index('run_start',
-                                            unique=True)
-            self.__runstop_col.create_index('uid',
-                                            unique=True)
-            self.__runstop_col.create_index([('time', pymongo.DESCENDING)],
-                                            unique=False, background=True)
-            self.__runstop_col.create_index([("$**", "text")])
-
         return self.__runstop_col
 
     @property
     def _descriptor_col(self):
         if self.__descriptor_col is None:
-            # The name of the reference to the run start changed from
-            # 'run_start_id' in v0 to 'run_start' in v1.
-            rs_name = 'run_start'
-
             self.__descriptor_col = self._db.get_collection('event_descriptor')
-
-            self.__descriptor_col.create_index([('uid', pymongo.DESCENDING)],
-                                               unique=True)
-            self.__descriptor_col.create_index([(rs_name, pymongo.DESCENDING),
-                                                ('time', pymongo.DESCENDING)],
-                                               unique=False, background=True)
-            self.__descriptor_col.create_index([('time', pymongo.DESCENDING)],
-                                               unique=False, background=True)
-            self.__descriptor_col.create_index([("$**", "text")])
-
         return self.__descriptor_col
 
     @property
     def _event_col(self):
         if self.__event_col is None:
             self.__event_col = self._db.get_collection('event')
-
-            self.__event_col.create_index([('uid', pymongo.DESCENDING)],
-                                          unique=True)
-            self.__event_col.create_index([('descriptor', pymongo.DESCENDING),
-                                           ('time', pymongo.ASCENDING)],
-                                          unique=False, background=True)
         return self.__event_col
 
     def db_disconnect(self):
@@ -172,6 +185,31 @@ class MDSRO(MDSROTemplate):
 
 
 class MDS(MDSRO, MDSTemplate):
+
+    def insert_run_start(self, time, uid, **kwargs):
+        self._create_runstart_index()
+        return super().insert_run_start(time, uid, **kwargs)
+
+    def insert_run_stop(self, run_start, time, uid, exit_status='success',
+                        reason='', **kwargs):
+        self._create_runstop_index()
+        return super().insert_run_stop(run_start, time, uid, exit_status=exit_status,
+                                       reason=reason, **kwargs)
+
+    def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
+        self._create_descriptor_index()
+        return super().insert_descriptor(run_start, data_keys, time, uid, **kwargs)
+
+    def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
+                     validate=False, filled=None):
+        self._create_event_index()
+        return super().insert_event(descriptor, time, seq_num, data, timestamps, uid,
+                                    validate=validate, filled=filled)
+
+    def bulk_insert_events(self, descriptor, events, validate=False):
+        self._create_event_index()
+        return super().bulk_insert_events(descriptor, events, validate=validate)
+
     _INS_METHODS = {'start': 'insert_run_start',
                     'stop': 'insert_run_stop',
                     'descriptor': 'insert_descriptor',

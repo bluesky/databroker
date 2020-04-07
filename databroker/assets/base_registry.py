@@ -663,7 +663,6 @@ class RegistryTemplate(BaseRegistryRO):
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         col = self._datum_col
-
         return self._api.bulk_insert_datum(col, resource, datum_ids,
                                            datum_kwarg_list)
 
