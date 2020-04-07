@@ -117,46 +117,49 @@ class RegistryRO(BaseRegistryRO):
 
 
 class Registry(RegistryRO, RegistryTemplate):
-    '''Registry object that knows how to create new documents.'''
+    """Registry object that knows how to create new documents.
+       Overriding base class methods to make index creation more lazy.
+       This allows databroker to work with a read only mongo account.
+    """
     def insert_datum(self, resource, datum_id, datum_kwargs,
                      ignore_duplicate_error=False):
         self._create_datum_index()
-        super().insert_datum(resource, datum_id, datum_kwargs,
+        return super().insert_datum(resource, datum_id, datum_kwargs,
                              ignore_duplicate_error)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
         self._create_datum_index()
-        super().bulk_insert_datum(resource, datum_ids, datum_kwarg_list)
+        return super().bulk_insert_datum(resource, datum_ids, datum_kwarg_list)
 
     def bulk_register_datum_table(self, resource_uid, dkwargs_table,
-                                      validate=False):
+                                  validate=False):
         self._create_datum_index()
-        super().bulk_register_datum_table(resource_uid, dkwargs_table,
-                                          validate=False)
+        return super().bulk_register_datum_table(resource_uid, dkwargs_table,
+                                                 validate=False)
 
     def bulk_register_datum_list(self, resource_uid, dkwargs_list,
                                  validate=False):
         self._create_datum_index()
-        super().bulk_register_datum_list(resource_uid, dkwargs_list,
-                                 validate=False)
+        return super().bulk_register_datum_list(resource_uid, dkwargs_list,
+                                                validate=False)
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
         self._create_datum_index()
-        super().register_datum(resource_uid, datum_kwargs, validate=False)
+        return super().register_datum(resource_uid, datum_kwargs, validate=False)
 
     def register_resource(self, spec, root, rpath, rkwargs,
-                          path_semantics='posix',run_start=None):
+                          path_semantics='posix', run_start=None):
         self._create_resource_index()
-        super().register_resource(spec, root, rpath, rkwargs,
-                          path_semantics='posix', run_start=None)
+        return super().register_resource(spec, root, rpath, rkwargs,
+                                         path_semantics='posix', run_start=None)
 
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
                         path_semantics='posix', uid=None, run_start=None,
                         id=None, ignore_duplicate_error=False):
         self._create_resource_index()
-        super().insert_resource(spec, resource_path, resource_kwargs, root=None,
-                                path_semantics='posix', uid=None, run_start=None,
-                                id=None, ignore_duplicate_error=False)
+        return super().insert_resource(spec, resource_path, resource_kwargs, root=None,
+                                       path_semantics='posix', uid=None, run_start=None,
+                                       id=None, ignore_duplicate_error=False)
 
 
 class RegistryMoving(Registry, RegistryMovingTemplate):
