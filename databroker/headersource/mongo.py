@@ -185,6 +185,31 @@ class MDSRO(MDSROTemplate):
 
 
 class MDS(MDSRO, MDSTemplate):
+
+    def insert_run_start(self, time, uid, **kwargs):
+        self._create_runstart_index()
+        super().insert_run_start(time, uid, **kwargs)
+
+    def insert_run_stop(self, run_start, time, uid, exit_status='success',
+                        reason='', **kwargs):
+        self._create_runstop_index()
+        super().insert_run_stop(run_start, time, uid, exit_status='success',
+                        reason='', **kwargs)
+
+    def insert_descriptor(self, run_start, data_keys, time, uid, **kwargs):
+        self._create_descriptor_index()
+        super().insert_descriptor(run_start, data_keys, time, uid, **kwargs)
+
+    def insert_event(self, descriptor, time, seq_num, data, timestamps, uid,
+                     validate=False, filled=None):
+        self._create_event_index()
+        super().insert_event(descriptor, time, seq_num, data, timestamps, uid,
+                     validate=False, filled=None)
+
+    def bulk_insert_events(self, descriptor, events, validate=False):
+        self._create_event_index()
+        super().bulk_insert_events(descriptor, events, validate=False)
+
     _INS_METHODS = {'start': 'insert_run_start',
                     'stop': 'insert_run_stop',
                     'descriptor': 'insert_descriptor',
