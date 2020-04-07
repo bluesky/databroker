@@ -57,10 +57,10 @@ class RegistryRO(BaseRegistryRO):
     def _create_resource_index(self):
         if not self._resource_index:
             self._resource_col.create_index('resource_id')
-            self._res_update_col.create_index([
-                ('resource', pymongo.DESCENDING),
-                ('time', pymongo.DESCENDING)
-            ])
+            #self._resource_update_col.create_index([
+            #    ('resource', pymongo.DESCENDING),
+            #    ('time', pymongo.DESCENDING)
+            #])
             self._resource_index = True
 
     def _create_datum_index(self):
@@ -128,14 +128,6 @@ class Registry(RegistryRO, RegistryTemplate):
         self._create_datum_index()
         super().bulk_insert_datum(resource, datum_ids, datum_kwarg_list)
 
-    def insert_resource(self, spec, resource_path, resource_kwargs, root=None
-                        path_semantics='posix', uid=None, run_start=None,
-                        id=None, ignore_duplicate_error=False):
-        self._create_resource_index()
-        super().insert_resource(spec, resource_path, resource_kwargs, root=None,
-                                path_semantics='posix', uid=None, run_start=None,
-                                id=None, ignore_duplicate_error=False)
-
     def bulk_register_datum_table(self, resource_uid, dkwargs_table,
                                       validate=False):
         self._create_datum_index()
@@ -153,11 +145,19 @@ class Registry(RegistryRO, RegistryTemplate):
         super().register_datum(resource_uid, datum_kwargs, validate=False)
 
     def register_resource(self, spec, root, rpath, rkwargs,
-                          path_semantics='posix',
-                          run_start=None):
+                          path_semantics='posix',run_start=None):
         self._create_resource_index()
         super().register_resource(spec, root, rpath, rkwargs,
                           path_semantics='posix', run_start=None)
+
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
+                        path_semantics='posix', uid=None, run_start=None,
+                        id=None, ignore_duplicate_error=False):
+        self._create_resource_index()
+        super().insert_resource(spec, resource_path, resource_kwargs, root=None,
+                                path_semantics='posix', uid=None, run_start=None,
+                                id=None, ignore_duplicate_error=False)
+
 
 class RegistryMoving(Registry, RegistryMovingTemplate):
     '''Registry object that knows how to move files.'''
