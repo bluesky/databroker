@@ -13,8 +13,6 @@ def multi_descriptor_doc_stream(request):
     streams = request.param
     def doc_gen(stream_names):
 
-        print('names:', stream_names)
-
         # Compose run start
         run_bundle = event_model.compose_run()  # type: event_model.ComposeRunBundle
         start_doc = run_bundle.start_doc
@@ -45,7 +43,6 @@ def multi_descriptor_doc_stream(request):
 def _test_ingest_to_xarray(stream):
     docs = list(stream)
     catalog = BlueskyInMemoryCatalog()
-    print(docs)
     start = docs[0][1]
     stop = docs[-1][1]
 
@@ -54,7 +51,6 @@ def _test_ingest_to_xarray(stream):
 
     catalog.upsert(start, stop, doc_gen, [], {})
 
-    print(list(catalog[-1]))
     assert catalog[-1]['primary'].to_dask()['raw'].compute().shape == (1, *data_shape)
 
 
