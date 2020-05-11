@@ -1507,6 +1507,133 @@ class DocumentCache(event_model.DocumentRouter):
         self.resources[doc['uid']] = doc
 
 
+class SingleRunCache:
+    """
+    Collect the document from one Run and, when complete, provide a BlueskyRun.
+
+    Parameters
+    ----------
+    handler_registry: dict, optional
+        This is passed to the Filler or whatever class is given in the
+        filler_class parameter below.
+
+        Maps each 'spec' (a string identifying a given type or external
+        resource) to a handler class.
+
+        A 'handler class' may be any callable with the signature::
+
+            handler_class(resource_path, root, **resource_kwargs)
+
+        It is expected to return an object, a 'handler instance', which is also
+        callable and has the following signature::
+
+            handler_instance(**datum_kwargs)
+
+        As the names 'handler class' and 'handler instance' suggest, this is
+        typically implemented using a class that implements ``__init__`` and
+        ``__call__``, with the respective signatures. But in general it may be
+        any callable-that-returns-a-callable.
+    root_map: dict, optional
+        This is passed to Filler or whatever class is given in the filler_class
+        parameter below.
+
+        str -> str mapping to account for temporarily moved/copied/remounted
+        files.  Any resources which have a ``root`` in ``root_map`` will be
+        loaded using the mapped ``root``.
+    filler_class: type
+        This is Filler by default. It can be a Filler subclass,
+        ``functools.partial(Filler, ...)``, or any class that provides the same
+        methods as ``DocumentRouter``.
+    transforms: dict
+        A dict that maps any subset of the keys {start, stop, resource, descriptor}
+        to a function that accepts a document of the corresponding type and
+        returns it, potentially modified. This feature is for patching up
+        erroneous metadata. It is intended for quick, temporary fixes that
+        may later be applied permanently to the data at rest
+        (e.g., via a database migration).
+    **kwargs :
+        Additional keyword arguments are passed through to the base class,
+        Catalog.
+
+    Examples
+    --------
+    Subscribe to a document stream from within a plan.
+    >>> def plan():
+    ...     src = SingleRunCache()
+    ...
+    ...     @bluesky.preprocessors.subs_decorator(src.callback)
+    ...     def inner_plan():
+    ...         yield from bluesky.plans.rel_scan(...)
+    ...         run = src.retrieve()
+    ...         table = run.primary.read().to_dataframe()
+    ...         ...
+    ...
+    ...     yield from inner_plan()
+
+    """
+    def __init__(self, *, handler_registry=None, root_map=None,
+                 filler_class=event_model.Filler, transforms=None, **kwargs):
+
+        self._root_map = root_map or {}
+        self._filler_class = filler_class
+        self._transforms = parse_transforms(transforms)
+        if handler_registry is None:
+            handler_registry = discover_handlers()
+        self._handler_registry = parse_handler_registry(handler_registry)
+        self.handler_registry = event_model.HandlerRegistryView(
+            self._handler_registry)
+
+        self._get_filler = partial(self._filler_class,
+                                   handler_registry=self.handler_registry,
+                                   root_map=self._root_map,
+                                   inplace=False)
+        self._collector = deque()  # will contain (name, doc) pairs
+        self._complete = False  # set to Run Start uid when stop doc is received
+        self._run = None  # Cache BlueskyRun instance here.
+
+    def callback(self, name, doc):
+        """
+        Subscribe to a document stream.
+        """
+        if self._complete:
+            raise ValueError(
+                "Already received 'stop' document. Expected one Run only.")
+        if name == "stop":
+            self._complete = doc["run_start"]
+        self._collector.append((name, doc))
+
+    def retrieve(self):
+        """
+        Return a BlueskyRun. If one is not ready, return None.
+        """
+        if not self._complete:
+            return None
+        if self._run is None:
+
+            def gen_func():
+                yield from self._collector
+            
+            # TODO in a future PR:
+            # We have to mock up an Entry.
+            # Can we avoid this after the Entry refactor?
+            from types import SimpleNamespace
+            _, start_doc = next(iter(self._collector))
+            entry = SimpleNamespace(name=start_doc["uid"])
+            
+            self._run = BlueskyRunFromGenerator(
+                gen_func, (), {}, get_filler=get_filler,
+                transforms=transforms, entry=entry)
+        return self._run
+
+    def __repr__(self):
+        # Either <SingleRunCache in progress>
+        # or <SingleRunCache uid="...">
+        if self._complete:
+            return f"<SingleRunCache uid={self._complete}>"
+        else:
+            return f"<SingleRunCache in progress>"
+
+
 class BlueskyRunFromGenerator(BlueskyRun):
 
     def __init__(self, gen_func, gen_args, gen_kwargs, get_filler,
