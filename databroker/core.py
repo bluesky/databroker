@@ -1583,10 +1583,11 @@ class SingleRunCache:
         self.handler_registry = event_model.HandlerRegistryView(
             self._handler_registry)
 
-        self._get_filler = partial(self._filler_class,
-                                   handler_registry=self.handler_registry,
-                                   root_map=self._root_map,
-                                   inplace=False)
+        self._get_filler = functools.partial(
+            self._filler_class,
+            handler_registry=self.handler_registry,
+            root_map=self._root_map,
+            inplace=False)
         self._collector = deque()  # will contain (name, doc) pairs
         self._complete = False  # set to Run Start uid when stop doc is received
         self._run = None  # Cache BlueskyRun instance here.
@@ -1612,17 +1613,17 @@ class SingleRunCache:
 
             def gen_func():
                 yield from self._collector
-            
+
             # TODO in a future PR:
             # We have to mock up an Entry.
             # Can we avoid this after the Entry refactor?
             from types import SimpleNamespace
             _, start_doc = next(iter(self._collector))
             entry = SimpleNamespace(name=start_doc["uid"])
-            
+
             self._run = BlueskyRunFromGenerator(
-                gen_func, (), {}, get_filler=get_filler,
-                transforms=transforms, entry=entry)
+                gen_func, (), {}, get_filler=self._get_filler,
+                transforms=self._transforms, entry=entry)
         return self._run
 
     def __repr__(self):
