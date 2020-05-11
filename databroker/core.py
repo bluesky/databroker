@@ -1632,7 +1632,7 @@ class SingleRunCache:
         if self._complete:
             return f"<SingleRunCache uid={self._complete}>"
         else:
-            return f"<SingleRunCache in progress>"
+            return "<SingleRunCache in progress>"
 
 
 class BlueskyRunFromGenerator(BlueskyRun):
