@@ -83,3 +83,22 @@ def test_interlace_event_page_chunks():
     expected_page_count = (50 // 3 + 1) * 3
     assert j + 1 == expected_page_count
     assert 10*5*3 == total_events
+
+
+def test_single_run_cache(hw, detector, RE):
+    import bluesky
+    from databroker.core import SingleRunCache
+
+    def plan():
+        src = SingleRunCache()
+
+        @bluesky.preprocessors.subs_decorator(src.callback)
+        def inner_plan():
+            yield from bluesky.plans.rel_scan([detector], hw.motor, -1, 1, 11)
+            run = src.retrieve()
+            table = run.primary.read().to_dataframe()
+            print(table)
+
+        yield from inner_plan()
+
+    RE(plan())
