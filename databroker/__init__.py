@@ -24,7 +24,7 @@ catalog = MergedCatalog([
     load_combo_catalog()])
 
 # set version string using versioneer
-from ._version import get_versions  # noqa: F402
+from ._version import get_versions  # noqa: F402, E402
 __version__ = get_versions()['version']
 del get_versions
 
