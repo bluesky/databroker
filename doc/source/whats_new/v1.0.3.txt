@@ -1,0 +1,9 @@
+.. currentmodule:: databroker
+
+v1.0.3 (2020-05-12)
+-------------------
+
+Fixed
++++++
+
+* added SingleRunCache which collects the documents from a single run, and when complete, provides a BlueskyRun.
