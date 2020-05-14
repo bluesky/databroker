@@ -1144,7 +1144,8 @@ class BlueskyRun(intake.catalog.Catalog):
             if key != "_entry" and self._entry.name != self.name:
                 return getattr(self._entry, key)
             else:
-                raise AttributeError("Aborted before recursing back to self.") from ex
+                # Aborted before recursing back to self.
+                raise AttributeError(self) from ex
 
     def canonical(self, *, fill, strict_order=True):
         yield from _canonical(start=self.metadata['start'],
