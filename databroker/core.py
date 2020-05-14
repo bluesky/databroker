@@ -1142,7 +1142,6 @@ class BlueskyRun(intake.catalog.Catalog):
             # The user might be trying to access an Entry method. Try that
             # before giving up.
             if key != "_entry" and self._entry.name != self.name:
-                print(self._entry.name, self.name)
                 return getattr(self._entry, key)
             else:
                 raise AttributeError("Aborted before recursing back to self.") from ex
