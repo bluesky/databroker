@@ -1138,10 +1138,14 @@ class BlueskyRun(intake.catalog.Catalog):
             # Let the base classes try to handle it first. This will handle,
             # for example, accessing subcatalogs using dot-access.
             return super().__getattr__(key)
-        except AttributeError:
+        except AttributeError as ex:
             # The user might be trying to access an Entry method. Try that
             # before giving up.
-            return getattr(self._entry, key)
+            if key != "_entry" and self._entry.name != self.name:
+                print(self._entry.name, self.name)
+                return getattr(self._entry, key)
+            else:
+                raise AttributeError("Aborted before recursing back to self.") from ex
 
     def canonical(self, *, fill, strict_order=True):
         yield from _canonical(start=self.metadata['start'],
