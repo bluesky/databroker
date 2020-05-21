@@ -986,10 +986,9 @@ class BlueskyRun(intake.catalog.Catalog):
         self.fillers['no'] = event_model.NoFiller(
             self.fillers['yes'].handler_registry, inplace=True)
         self.fillers['delayed'] = get_filler(coerce='delayed')
-        self._entry = entry
         self._transforms = transforms
         self._run_stop_doc = None
-
+        self.__entry = entry
         super().__init__(**kwargs)
         logger.debug(
             "Created %s named %r",
@@ -1111,7 +1110,7 @@ class BlueskyRun(intake.catalog.Catalog):
         logger.debug(
             "Loaded %s named %r",
             self.__class__.__name__,
-            self._entry.name)
+            self.__entry.name)
 
     def get(self, *args, **kwargs):
         """
@@ -1121,7 +1120,7 @@ class BlueskyRun(intake.catalog.Catalog):
         variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
         case, ``obj.get()`` will return a BlueskyRun.
         """
-        return self._entry.get(*args, **kwargs)
+        return self.__entry.get(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         """
@@ -1141,7 +1140,7 @@ class BlueskyRun(intake.catalog.Catalog):
         except AttributeError:
             # The user might be trying to access an Entry method. Try that
             # before giving up.
-            return getattr(self._entry, key)
+            return getattr(self.__entry, key)
 
     def canonical(self, *, fill, strict_order=True):
         yield from _canonical(start=self.metadata['start'],
