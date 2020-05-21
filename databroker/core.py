@@ -209,6 +209,7 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # This cache holds datasources, the result of calling super().get(...)
         # with potentially different arguments.
         self.__cache = self._make_cache()
+        self.entry = self
         logger.debug("Created Entry named %r", self.name)
 
     def _make_cache(self):
