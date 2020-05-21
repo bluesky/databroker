@@ -986,7 +986,7 @@ class Header:
     def __init__(self, entry):
         self._entry = entry
         self.__data_source = None
-        self.db = entry.catalog_object.v1
+        self.db = entry.catalog.v1
         self.ext = None  # TODO
         self._start = entry.describe()['metadata']['start']
         self._stop = entry.describe()['metadata']['stop']

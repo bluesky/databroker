@@ -212,6 +212,10 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         self.entry = self
         logger.debug("Created Entry named %r", self.name)
 
+    @property
+    def catalog(self):
+        return self._catalog
+
     def _make_cache(self):
         return cachetools.LRUCache(10)
 
