@@ -250,13 +250,6 @@ class StreamEntry(Entry):
     def _make_cache(self):
         return dict()
 
-    def __getstate__(self):
-        args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
-                else arg for arg in self._captured_init_args]
-        kwargs = OrderedDict({k: arg.__getstate__()
-                              if isinstance(arg, DictSerialiseMixin) else arg
-                              for k, arg in self._captured_init_kwargs.items()})
-        return OrderedDict(cls=self.classname, args=args, kwargs=kwargs)
 
 
 def to_event_pages(get_event_cursor, page_size):
