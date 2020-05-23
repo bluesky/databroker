@@ -1555,9 +1555,6 @@ class SingleRunCache:
         erroneous metadata. It is intended for quick, temporary fixes that
         may later be applied permanently to the data at rest
         (e.g., via a database migration).
-    **kwargs:
-        Additional keyword arguments are passed through to the base class,
-        Catalog.
 
     Examples
     --------
@@ -1576,7 +1573,7 @@ class SingleRunCache:
 
     """
     def __init__(self, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler, transforms=None, **kwargs):
+                 filler_class=event_model.Filler, transforms=None):
 
         self._root_map = root_map or {}
         self._filler_class = filler_class
