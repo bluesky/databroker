@@ -1,8 +1,8 @@
-import sys
 import pytest
 
 
 def test_glue(db, RE):
+    pytest.importorskip('glue')
     from databroker.glue import read_header
     from glue.qglue import parse_data
     import bluesky.plans as bp
