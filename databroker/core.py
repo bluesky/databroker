@@ -201,6 +201,15 @@ class PartitionIndexError(IndexError):
 
 
 class Entry(intake.catalog.local.LocalCatalogEntry):
+
+    @property
+    def _pmode(self):
+        return 'never'
+
+    @_pmode.setter
+    def _pmode(self, val):
+        ...
+
     def __init__(self, **kwargs):
         # This might never come up, but just to be safe....
         if 'entry' in kwargs['args']:
@@ -805,6 +814,28 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     kwargs: ignored
     """
     name = 'bluesky-run'
+    # opt-out of the persistence features of intake
+    @property
+    def has_been_persisted(self):
+        return False
+
+    @property
+    def is_persisted(self):
+        return False
+
+    def get_persisted(self):
+        raise KeyError("Does not support intake persistence")
+
+    def persist(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def pmode(self):
+        return 'never'
+
+    @pmode.setter
+    def pmode(self, val):
+        ...
 
     def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
         self.url = url
@@ -819,6 +850,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         super().__init__(url=url, http_args=http_args, name=name,
                          metadata=metadata,
                          source_id=self._source_id)
+        # turn off any attempts at persistence
+        self._pmode = "never"
         self.npartitions = response['npartitions']
         self.metadata = response['metadata']
         self._schema = intake.source.base.Schema(
@@ -946,6 +979,28 @@ class BlueskyRun(intake.catalog.Catalog):
         Additional keyword arguments are passed through to the base class,
         Catalog.
     """
+    # opt-out of the persistence features of intake
+    @property
+    def has_been_persisted(self):
+        return False
+
+    @property
+    def is_persisted(self):
+        return False
+
+    def get_persisted(self):
+        raise KeyError("Does not support intake persistence")
+
+    def persist(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def pmode(self):
+        return 'never'
+
+    @pmode.setter
+    def pmode(self, val):
+        ...
     container = 'bluesky-run'
     version = '0.0.1'
     partition_access = True
@@ -987,7 +1042,9 @@ class BlueskyRun(intake.catalog.Catalog):
         self._transforms = transforms
         self._run_stop_doc = None
         self.__entry = entry
-        super().__init__(**kwargs)
+        super().__init__(**{**kwargs, 'persist_mode': 'never'})
+        # turn off any attempts at persistence
+        self._pmode = "never"
         logger.debug(
             "Created %s named %r",
             self.__class__.__name__,
@@ -1252,6 +1309,28 @@ class BlueskyEventStream(DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
+    # opt-out of the persistence features of intake
+    @property
+    def has_been_persisted(self):
+        return False
+
+    @property
+    def is_persisted(self):
+        return False
+
+    def get_persisted(self):
+        raise KeyError("Does not support intake persistence")
+
+    def persist(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def _pmode(self):
+        return 'never'
+
+    @_pmode.setter
+    def _pmode(self, val):
+        ...
     container = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
@@ -1292,7 +1371,8 @@ class BlueskyEventStream(DataSourceMixin):
         self._partitions = None
 
         super().__init__(metadata=metadata, **kwargs)
-
+        # turn off any attempts at persistence
+        self._pmode = "never"
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
         self._load_header()
