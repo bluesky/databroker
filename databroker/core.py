@@ -251,6 +251,12 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
             self.__cache[token] = datasource
         return datasource
 
+    # def __dask_tokenize__(self):
+    #     print('bob')
+    #     metadata = self.describe()['metadata']
+    #     return ('Entry', metadata['start']['uid'])
+
+
 
 class StreamEntry(Entry):
     """
@@ -259,6 +265,11 @@ class StreamEntry(Entry):
     def _make_cache(self):
         return dict()
 
+    # def __dask_tokenize__(self):
+    #     print('bill')
+    #     metadata = self.describe()['metadata']
+    #     print(self.describe())
+    #     return ('Stream', metadata['start']['uid'], self.name)
 
 
 def to_event_pages(get_event_cursor, page_size):
@@ -837,6 +848,10 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     def pmode(self, val):
         ...
 
+    # def __dask_tokenize__(self):
+    #     print('baz')
+    #     return ('RemoteBlueskyRun', self.metadata['start']['uid'])
+
     def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
         self.url = url
         self.name = name
@@ -1001,6 +1016,11 @@ class BlueskyRun(intake.catalog.Catalog):
     @pmode.setter
     def pmode(self, val):
         ...
+
+    # def __dask_tokenize__(self):
+    #     print('baz')
+    #     return ('BlueksyRun', self.metadata['start']['uid'])
+
     container = 'bluesky-run'
     version = '0.0.1'
     partition_access = True
@@ -1309,6 +1329,11 @@ class BlueskyEventStream(DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
+
+    # def __dask_tokenize__(self):
+    #     print('bill')
+    #     intake_desc = self.describe()
+    #     return ('Stream', intake_desc['metadata']['start']['uid'], metadata['name'])
     # opt-out of the persistence features of intake
     @property
     def has_been_persisted(self):
@@ -1331,6 +1356,7 @@ class BlueskyEventStream(DataSourceMixin):
     @_pmode.setter
     def _pmode(self, val):
         ...
+
     container = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
