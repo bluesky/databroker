@@ -29,7 +29,6 @@ from .intake_xarray_core.xarray_container import RemoteXarray
 from .utils import LazyMap
 from collections import deque, OrderedDict
 from dask.base import normalize_token
-from intake.utils import DictSerialiseMixin
 
 
 logger = logging.getLogger(__name__)
@@ -255,7 +254,6 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
     #     print('bob')
     #     metadata = self.describe()['metadata']
     #     return ('Entry', metadata['start']['uid'])
-
 
 
 class StreamEntry(Entry):
@@ -825,7 +823,9 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     kwargs: ignored
     """
     name = 'bluesky-run'
+
     # opt-out of the persistence features of intake
+
     @property
     def has_been_persisted(self):
         return False
