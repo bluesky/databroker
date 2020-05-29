@@ -782,8 +782,8 @@ def _canonical(*, start, stop, entries, fill, strict_order=True):
 
         else:
             yield (name, doc)
-
-    yield ('stop', stop)
+    if stop is not None:
+        yield ('stop', stop)
 
 
 class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
