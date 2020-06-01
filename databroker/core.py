@@ -1190,17 +1190,7 @@ class BlueskyRun(intake.catalog.Catalog):
             self.__class__.__name__,
             self.__entry.name)
 
-    def get(self, *args, **kwargs):
-        """
-        Return self or, if args are provided, some new instance of type(self).
-
-        This is here so that the user does not have to remember whether a given
-        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
-        case, ``obj.get()`` will return a BlueskyRun.
-        """
-        return self.__entry.get(*args, **kwargs)
-
-    def __call__(self, *args, **kwargs):
+    def configure_new(self, **kwargs):
         """
         Return self or, if args are provided, some new instance of type(self).
 
@@ -1208,7 +1198,9 @@ class BlueskyRun(intake.catalog.Catalog):
         variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
         case, ``obj()`` will return a BlueskyRun.
         """
-        return self.get(*args, **kwargs)
+        return self.__entry.get(**kwargs)
+
+    get = __call__ = configure_new
 
     def __getattr__(self, key):
         try:
@@ -1985,8 +1977,8 @@ def parse_transforms(transforms):
     --------
     Pass in name; get back actual class.
 
-    >>> parse_transforms({'descriptor': 'package.module.ClassName'})
-    {'descriptor': <package.module.ClassName>}
+    >>> parse_transforms({'descriptor': 'package.module.function_name'})
+    {'descriptor': <package.module.function_name>}
 
     """
     transformable = {'start', 'stop', 'resource', 'descriptor'}
