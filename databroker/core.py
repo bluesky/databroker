@@ -1070,6 +1070,9 @@ class BlueskyRun(intake.catalog.Catalog):
             self.__class__.__name__,
             entry.name)
 
+    def describe(self):
+        return self.__entry.describe()
+
     def __repr__(self):
         try:
             self._load()
