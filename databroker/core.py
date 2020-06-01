@@ -1202,16 +1202,6 @@ class BlueskyRun(intake.catalog.Catalog):
 
     get = __call__ = configure_new
 
-    def __getattr__(self, key):
-        try:
-            # Let the base classes try to handle it first. This will handle,
-            # for example, accessing subcatalogs using dot-access.
-            return super().__getattr__(key)
-        except AttributeError:
-            # The user might be trying to access an Entry method. Try that
-            # before giving up.
-            return getattr(self.__entry, key)
-
     def canonical(self, *, fill, strict_order=True):
         yield from _canonical(start=self.metadata['start'],
                               stop=self.metadata['stop'],
