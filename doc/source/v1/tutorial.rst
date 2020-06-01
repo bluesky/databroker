@@ -98,7 +98,7 @@ DataFrames can be used to perform fast computations on labeled data, such as
 .. ipython:: python
 
     t = header.table()
-    t.mean()
+    t.mean(numeric_only=True)
     t['det'] / t['motor']
 
 or export to a file.
