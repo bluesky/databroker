@@ -322,8 +322,8 @@ class Broker:
                                  "and could become too large.")
             return [self[index]
                     for index in reversed(range(key.start, key.stop or 0, key.step or 1))]
-        entry = self._catalog[key]
-        return Header(entry)
+        datasource = self._catalog[key]
+        return Header(datasource)
 
     get_fields = staticmethod(get_fields)
 
@@ -983,20 +983,18 @@ class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
     """
-    def __init__(self, entry):
-        self._entry = entry
-        self.__data_source = None
-        self.db = entry.catalog_object.v1
+    def __init__(self, datasource):
+        self.__data_source = datasource
+        self.db = datasource.catalog_object.v1
         self.ext = None  # TODO
-        self._start = entry.describe()['metadata']['start']
-        self._stop = entry.describe()['metadata']['stop']
+        md = datasource.describe()['metadata']
+        self._start = md['start']
+        self._stop = md['stop']
         self.ext = SimpleNamespace(
             **self.db.fetch_external(self.start, self.stop))
 
     @property
     def _data_source(self):
-        if self.__data_source is None:
-            self.__data_source = self._entry.get()
         return self.__data_source
 
     @property
@@ -1010,7 +1008,7 @@ class Header:
     @property
     def stop(self):
         if self._stop is None:
-            self._stop = self._entry.describe()['metadata']['stop'] or {}
+            self._stop = self.__data_source.describe()['metadata']['stop'] or {}
         return self.db.prepare_hook('stop', self._stop)
 
     def __eq__(self, other):
@@ -1024,8 +1022,7 @@ class Header:
 
     @property
     def stream_names(self):
-        catalog = self._entry()
-        return list(catalog)
+        return list(self.__data_source)
 
     # These methods mock part of the dict interface. It has been proposed that
     # we might remove them for 1.0.
@@ -1403,7 +1400,7 @@ class Results:
     def __iter__(self):
         # TODO Catalog.walk() fails. We should probably support Catalog.items().
         for uid, entry in self._catalog._entries.items():
-            header = Header(entry)
+            header = Header(entry())
             if self._data_key is None:
                 yield header
             else:

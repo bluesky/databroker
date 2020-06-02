@@ -29,7 +29,6 @@ from .intake_xarray_core.xarray_container import RemoteXarray
 from .utils import LazyMap
 from collections import deque, OrderedDict
 from dask.base import normalize_token
-from intake.utils import DictSerialiseMixin
 
 
 logger = logging.getLogger(__name__)
@@ -201,6 +200,15 @@ class PartitionIndexError(IndexError):
 
 
 class Entry(intake.catalog.local.LocalCatalogEntry):
+
+    @property
+    def _pmode(self):
+        return 'never'
+
+    @_pmode.setter
+    def _pmode(self, val):
+        ...
+
     def __init__(self, **kwargs):
         # This might never come up, but just to be safe....
         if 'entry' in kwargs['args']:
@@ -209,7 +217,12 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         # This cache holds datasources, the result of calling super().get(...)
         # with potentially different arguments.
         self.__cache = self._make_cache()
+        self.entry = self
         logger.debug("Created Entry named %r", self.name)
+
+    @property
+    def catalog(self):
+        return self._catalog
 
     def _make_cache(self):
         return cachetools.LRUCache(10)
@@ -237,6 +250,11 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
             self.__cache[token] = datasource
         return datasource
 
+    # def __dask_tokenize__(self):
+    #     print('bob')
+    #     metadata = self.describe()['metadata']
+    #     return ('Entry', metadata['start']['uid'])
+
 
 class StreamEntry(Entry):
     """
@@ -245,13 +263,11 @@ class StreamEntry(Entry):
     def _make_cache(self):
         return dict()
 
-    def __getstate__(self):
-        args = [arg.__getstate__() if isinstance(arg, DictSerialiseMixin)
-                else arg for arg in self._captured_init_args]
-        kwargs = OrderedDict({k: arg.__getstate__()
-                              if isinstance(arg, DictSerialiseMixin) else arg
-                              for k, arg in self._captured_init_kwargs.items()})
-        return OrderedDict(cls=self.classname, args=args, kwargs=kwargs)
+    # def __dask_tokenize__(self):
+    #     print('bill')
+    #     metadata = self.describe()['metadata']
+    #     print(self.describe())
+    #     return ('Stream', metadata['start']['uid'], self.name)
 
 
 def to_event_pages(get_event_cursor, page_size):
@@ -808,6 +824,34 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
     """
     name = 'bluesky-run'
 
+    # opt-out of the persistence features of intake
+
+    @property
+    def has_been_persisted(self):
+        return False
+
+    @property
+    def is_persisted(self):
+        return False
+
+    def get_persisted(self):
+        raise KeyError("Does not support intake persistence")
+
+    def persist(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def pmode(self):
+        return 'never'
+
+    @pmode.setter
+    def pmode(self, val):
+        ...
+
+    # def __dask_tokenize__(self):
+    #     print('baz')
+    #     return ('RemoteBlueskyRun', self.metadata['start']['uid'])
+
     def __init__(self, url, http_args, name, parameters, metadata=None, **kwargs):
         self.url = url
         self.name = name
@@ -821,6 +865,8 @@ class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
         super().__init__(url=url, http_args=http_args, name=name,
                          metadata=metadata,
                          source_id=self._source_id)
+        # turn off any attempts at persistence
+        self._pmode = "never"
         self.npartitions = response['npartitions']
         self.metadata = response['metadata']
         self._schema = intake.source.base.Schema(
@@ -948,6 +994,33 @@ class BlueskyRun(intake.catalog.Catalog):
         Additional keyword arguments are passed through to the base class,
         Catalog.
     """
+    # opt-out of the persistence features of intake
+    @property
+    def has_been_persisted(self):
+        return False
+
+    @property
+    def is_persisted(self):
+        return False
+
+    def get_persisted(self):
+        raise KeyError("Does not support intake persistence")
+
+    def persist(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def pmode(self):
+        return 'never'
+
+    @pmode.setter
+    def pmode(self, val):
+        ...
+
+    # def __dask_tokenize__(self):
+    #     print('baz')
+    #     return ('BlueksyRun', self.metadata['start']['uid'])
+
     container = 'bluesky-run'
     version = '0.0.1'
     partition_access = True
@@ -986,15 +1059,19 @@ class BlueskyRun(intake.catalog.Catalog):
         self.fillers['no'] = event_model.NoFiller(
             self.fillers['yes'].handler_registry, inplace=True)
         self.fillers['delayed'] = get_filler(coerce='delayed')
-        self._entry = entry
         self._transforms = transforms
         self._run_stop_doc = None
-
-        super().__init__(**kwargs)
+        self.__entry = entry
+        super().__init__(**{**kwargs, 'persist_mode': 'never'})
+        # turn off any attempts at persistence
+        self._pmode = "never"
         logger.debug(
             "Created %s named %r",
             self.__class__.__name__,
             entry.name)
+
+    def describe(self):
+        return self.__entry.describe()
 
     def __repr__(self):
         try:
@@ -1111,19 +1188,9 @@ class BlueskyRun(intake.catalog.Catalog):
         logger.debug(
             "Loaded %s named %r",
             self.__class__.__name__,
-            self._entry.name)
+            self.__entry.name)
 
-    def get(self, *args, **kwargs):
-        """
-        Return self or, if args are provided, some new instance of type(self).
-
-        This is here so that the user does not have to remember whether a given
-        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
-        case, ``obj.get()`` will return a BlueskyRun.
-        """
-        return self._entry.get(*args, **kwargs)
-
-    def __call__(self, *args, **kwargs):
+    def configure_new(self, **kwargs):
         """
         Return self or, if args are provided, some new instance of type(self).
 
@@ -1131,17 +1198,9 @@ class BlueskyRun(intake.catalog.Catalog):
         variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
         case, ``obj()`` will return a BlueskyRun.
         """
-        return self.get(*args, **kwargs)
+        return self.__entry.get(**kwargs)
 
-    def __getattr__(self, key):
-        try:
-            # Let the base classes try to handle it first. This will handle,
-            # for example, accessing subcatalogs using dot-access.
-            return super().__getattr__(key)
-        except AttributeError:
-            # The user might be trying to access an Entry method. Try that
-            # before giving up.
-            return getattr(self._entry, key)
+    get = __call__ = configure_new
 
     def canonical(self, *, fill, strict_order=True):
         yield from _canonical(start=self.metadata['start'],
@@ -1255,6 +1314,34 @@ class BlueskyEventStream(DataSourceMixin):
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
+
+    # def __dask_tokenize__(self):
+    #     print('bill')
+    #     intake_desc = self.describe()
+    #     return ('Stream', intake_desc['metadata']['start']['uid'], metadata['name'])
+    # opt-out of the persistence features of intake
+    @property
+    def has_been_persisted(self):
+        return False
+
+    @property
+    def is_persisted(self):
+        return False
+
+    def get_persisted(self):
+        raise KeyError("Does not support intake persistence")
+
+    def persist(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @property
+    def _pmode(self):
+        return 'never'
+
+    @_pmode.setter
+    def _pmode(self, val):
+        ...
+
     container = 'bluesky-event-stream'
     version = '0.0.1'
     partition_access = True
@@ -1295,7 +1382,8 @@ class BlueskyEventStream(DataSourceMixin):
         self._partitions = None
 
         super().__init__(metadata=metadata, **kwargs)
-
+        # turn off any attempts at persistence
+        self._pmode = "never"
         self._run_stop_doc = metadata['stop']
         self._run_start_doc = metadata['start']
         self._load_header()
@@ -1551,9 +1639,6 @@ class SingleRunCache:
         erroneous metadata. It is intended for quick, temporary fixes that
         may later be applied permanently to the data at rest
         (e.g., via a database migration).
-    **kwargs:
-        Additional keyword arguments are passed through to the base class,
-        Catalog.
 
     Examples
     --------
@@ -1572,7 +1657,7 @@ class SingleRunCache:
 
     """
     def __init__(self, *, handler_registry=None, root_map=None,
-                 filler_class=event_model.Filler, transforms=None, **kwargs):
+                 filler_class=event_model.Filler, transforms=None):
 
         self._root_map = root_map or {}
         self._filler_class = filler_class
@@ -1882,8 +1967,8 @@ def parse_transforms(transforms):
     --------
     Pass in name; get back actual class.
 
-    >>> parse_transforms({'descriptor': 'package.module.ClassName'})
-    {'descriptor': <package.module.ClassName>}
+    >>> parse_transforms({'descriptor': 'package.module.function_name'})
+    {'descriptor': <package.module.function_name>}
 
     """
     transformable = {'start', 'stop', 'resource', 'descriptor'}
