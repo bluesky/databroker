@@ -7,8 +7,7 @@ Internals
 +++++++++
 
 * Adjust our usage of intake's Entry abstraction in preparation for changes in
- intake's upcoming release
-
+  intake's upcoming release
 
 Fixed
 +++++
