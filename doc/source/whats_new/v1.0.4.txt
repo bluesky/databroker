@@ -1,0 +1,16 @@
+.. currentmodule:: databroker
+
+v1.0.4 (2020-06-03)
+-------------------
+
+Internals
++++++++++
+
+* Adjust our usage of intake's Entry abstraction in preparation for changes in
+ intake's upcoming release
+
+
+Fixed
++++++
+
+* The canonical method now only yields a stop document if it is not None.
