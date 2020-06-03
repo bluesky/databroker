@@ -297,3 +297,10 @@ def test_metadata_keys(bundle):
 
     stream_metadata = run['primary']().metadata
     assert 'descriptors' in stream_metadata
+
+
+def test_infinite_recursion_bug(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]()
+    with pytest.raises(AttributeError):
+        # used to raise RecursionErrror
+        run.does_not_exist
