@@ -304,3 +304,10 @@ def test_infinite_recursion_bug(bundle):
     with pytest.raises(AttributeError):
         # used to raise RecursionErrror
         run.does_not_exist
+
+
+def test_items(bundle):
+    if bundle.remote:
+        pytest.xfail("Regression in intake 0.6.0 awaiting patch")
+    for uid, run in bundle.cat['xyz']().items():
+        assert hasattr(run, 'canonical')

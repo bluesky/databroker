@@ -127,6 +127,11 @@ class Broker(Catalog):
     def deregister_handler(self, spec):
         self._handler_registry.pop(spec, None)
 
+    def items(self):
+        # TEMP: Patch regression in intake 0.6.0.
+        for key, value in super().items():
+            yield key, value.get()
+
 
 def temp():
     """
