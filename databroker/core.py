@@ -1226,24 +1226,7 @@ class BlueskyRun(intake.catalog.Catalog):
         removed in a future release.
         """
         files = []
-        # TODO Once event_model.Filler has a get_handler method, use that.
-        try:
-            handler_class = self.fillers['yes'].handler_registry[resource['spec']]
-        except KeyError as err:
-            raise event_model.UndefinedAssetSpecification(
-                f"Resource document with uid {resource['uid']} "
-                f"refers to spec {resource['spec']!r} which is "
-                f"not defined in the Filler's "
-                f"handler registry.") from err
-        # Apply root_map.
-        resource_path = resource['resource_path']
-        root = resource.get('root', '')
-        root = self.fillers['yes'].root_map.get(root, root)
-        if root:
-            resource_path = os.path.join(root, resource_path)
-
-        handler = handler_class(resource_path,
-                                **resource['resource_kwargs'])
+        handler = self.fillers['yes'].get_handler(resource)
 
         def datum_kwarg_gen():
             for page in self._get_datum_pages(resource['uid']):
