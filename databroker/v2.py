@@ -1,4 +1,5 @@
 import event_model
+import importlib
 import tempfile
 
 from .core import parse_handler_registry, discover_handlers, parse_transforms
@@ -62,8 +63,13 @@ class Broker(Catalog):
     def __init__(self, *, handler_registry=None, root_map=None,
                  filler_class=event_model.Filler, transforms=None, **kwargs):
 
+
+        if isinstance(filler_class, str):
+            module_name, _, class_name = filler_class.rpartition('.')
+            self._filler_class = getattr(importlib.import_module(module_name), class_name)
+        else:
+            self._filler_class = filler_class
         self._root_map = root_map or {}
-        self._filler_class = filler_class
         self._transforms = parse_transforms(transforms)
         if handler_registry is None:
             handler_registry = discover_handlers()
