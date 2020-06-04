@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v1.0.5 (2020-06-04)
+-------------------
+
+Fixed
++++++
+
+* The latest release of intake, v0.6.0, introduced a regression which
+  databroker now works around.
