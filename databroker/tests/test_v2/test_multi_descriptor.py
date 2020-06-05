@@ -8,9 +8,10 @@ from databroker.in_memory import BlueskyInMemoryCatalog
 data_shape = (1000, 1000)
 
 
-@fixture
+@fixture(params=[(('primary', 'baseline'), True), (('primary', 'primary'), True),
+                 (('primary', 'baseline'), False), (('primary', 'primary'), False)])
 def multi_descriptor_doc_stream(request):
-    streams = request.param
+    streams, with_dims = request.param
 
     def doc_gen(stream_names):
 
@@ -26,14 +27,23 @@ def multi_descriptor_doc_stream(request):
 
             # Compose descriptor
             source = "NCEM"
-            frame_data_keys = {
-                "raw": {
-                    "source": source,
-                    "dtype": "array",
-                    "shape": data.shape,
-                    "dims": ("x", "y"),
+            if with_dims:
+                frame_data_keys = {
+                    "raw": {
+                        "source": source,
+                        "dtype": "array",
+                        "shape": data.shape,
+                        "dims": ("x", "y"),
+                    }
                 }
-            }
+            else:
+                frame_data_keys = {
+                    "raw": {
+                        "source": source,
+                        "dtype": "array",
+                        "shape": data.shape,
+                    }
+                }
             frame_stream_bundle = run_bundle.compose_descriptor(
                 data_keys=frame_data_keys, name=stream_name,
             )
@@ -48,8 +58,8 @@ def multi_descriptor_doc_stream(request):
     return doc_gen(streams)
 
 
-def _test_ingest_to_xarray(stream):
-    docs = list(stream)
+def test_multi_descriptors(multi_descriptor_doc_stream):
+    docs = list(multi_descriptor_doc_stream)
     catalog = BlueskyInMemoryCatalog()
     start = docs[0][1]
     stop = docs[-1][1]
@@ -63,17 +73,3 @@ def _test_ingest_to_xarray(stream):
         stop["num_events"]["primary"],
         *data_shape,
     )
-
-
-@pytest.mark.parametrize(
-    "multi_descriptor_doc_stream", (["primary", "baseline"],), indirect=True
-)
-def test_multi_descriptors_unique(multi_descriptor_doc_stream):
-    _test_ingest_to_xarray(multi_descriptor_doc_stream)
-
-
-@pytest.mark.parametrize(
-    "multi_descriptor_doc_stream", (["primary", "primary"],), indirect=True
-)
-def test_multi_descriptors_same(multi_descriptor_doc_stream):
-    _test_ingest_to_xarray(multi_descriptor_doc_stream)
