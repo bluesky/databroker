@@ -621,8 +621,9 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
 
     # Collect a Dataset for each descriptor. Merge at the end.
     datasets = []
+    dim_counter = itertools.count()
+    automatic_dim_labels = {}
     for descriptor in descriptor_docs:
-        dim_counter = itertools.count()
         events = list(_flatten_event_page_gen(get_event_pages(descriptor['uid'])))
         if not events:
             continue
@@ -657,7 +658,12 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 dims = tuple(field_metadata['dims'])
             except KeyError:
                 ndim = len(field_metadata['shape'])
-                dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
+                # Reuse dim labels.
+                try:
+                    dims = automatic_dim_labels[key]
+                except KeyError:
+                    dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
+                    automatic_dim_labels[key] = dims
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
                 dims=('time',) + dims,
