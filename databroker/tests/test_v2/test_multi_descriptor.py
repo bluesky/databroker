@@ -36,7 +36,7 @@ def multi_descriptor_doc_stream(request):
                 }
             }
             if not with_dims:
-                del frame_data_keys['dims']
+                del frame_data_keys['raw']['dims']
 
             frame_stream_bundle = run_bundle.compose_descriptor(
                 data_keys=frame_data_keys, name=stream_name,
