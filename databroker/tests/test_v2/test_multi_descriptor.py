@@ -27,23 +27,17 @@ def multi_descriptor_doc_stream(request):
 
             # Compose descriptor
             source = "NCEM"
-            if with_dims:
-                frame_data_keys = {
-                    "raw": {
-                        "source": source,
-                        "dtype": "array",
-                        "shape": data.shape,
-                        "dims": ("x", "y"),
-                    }
+            frame_data_keys = {
+                "raw": {
+                    "source": source,
+                    "dtype": "array",
+                    "shape": data.shape,
+                    "dims": ("x", "y"),
                 }
-            else:
-                frame_data_keys = {
-                    "raw": {
-                        "source": source,
-                        "dtype": "array",
-                        "shape": data.shape,
-                    }
-                }
+            }
+            if not with_dims:
+                del frame_data_keys['dims']
+
             frame_stream_bundle = run_bundle.compose_descriptor(
                 data_keys=frame_data_keys, name=stream_name,
             )
