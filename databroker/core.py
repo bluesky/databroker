@@ -620,9 +620,9 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
             keys = list(data_keys)
 
     # Collect a Dataset for each descriptor. Merge at the end.
-    dim_counter = itertools.count()
     datasets = []
     for descriptor in descriptor_docs:
+        dim_counter = itertools.count()
         events = list(_flatten_event_page_gen(get_event_pages(descriptor['uid'])))
         if not events:
             continue
