@@ -1,4 +1,5 @@
 import intake
+from functools import partial
 from suitcase.mongo_embedded import Serializer
 import os
 import pytest
@@ -26,7 +27,8 @@ def teardown_module(module):
 def bundle(request, intake_server, example_data, db_factory):  # noqa
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
     permanent_db = db_factory()
-    serializer = Serializer(permanent_db)
+    serializer_partial = partial(Serializer, permanent_db)
+    serializer = serializer_partial()
     uid, docs = example_data
     for name, doc in docs:
         serializer(name, doc)
@@ -76,4 +78,5 @@ sources:
     return types.SimpleNamespace(cat=cat,
                                  uid=uid,
                                  docs=docs,
-                                 remote=remote)
+                                 remote=remote,
+                                 serializer_partial=serializer_partial)

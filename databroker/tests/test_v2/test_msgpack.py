@@ -1,6 +1,6 @@
 import intake
-from suitcase.msgpack import Serializer
 from functools import partial
+from suitcase.msgpack import Serializer
 import os
 from pathlib import Path
 import pytest

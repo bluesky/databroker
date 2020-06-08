@@ -1,4 +1,5 @@
 import intake
+from functools import partial
 from intake.catalog.utils import RemoteCatalogError
 from suitcase.mongo_normalized import Serializer
 import os
@@ -28,7 +29,9 @@ def bundle(request, intake_server, example_data, db_factory):  # noqa
     fullname = os.path.join(TMP_DIR, YAML_FILENAME)
     mds_db = db_factory()
     assets_db = db_factory()
-    serializer = Serializer(mds_db, assets_db)
+    serializer_partial = partial(Serializer, mds_db, assets_db)
+    serializer = serializer_partial()
+
     uid, docs = example_data
     for name, doc in docs:
         serializer(name, doc)
@@ -80,7 +83,8 @@ sources:
     return types.SimpleNamespace(cat=cat,
                                  uid=uid,
                                  docs=docs,
-                                 remote=remote)
+                                 remote=remote,
+                                 serializer_partial=serializer_partial)
 
 
 # Driver-specific tests
