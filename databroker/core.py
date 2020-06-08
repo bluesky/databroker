@@ -622,7 +622,8 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
     # Collect a Dataset for each descriptor. Merge at the end.
     datasets = []
     dim_counter = itertools.count()
-    automatic_dim_labels = {}
+    event_dim_labels = {}
+    config_dim_labels = {}
     for descriptor in descriptor_docs:
         events = list(_flatten_event_page_gen(get_event_pages(descriptor['uid'])))
         if not events:
@@ -660,10 +661,10 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 ndim = len(field_metadata['shape'])
                 # Reuse dim labels.
                 try:
-                    dims = automatic_dim_labels[key]
+                    dims = event_dim_labels[key]
                 except KeyError:
                     dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
-                    automatic_dim_labels[key] = dims
+                    event_dim_labels[key] = dims
             data_arrays[key] = xarray.DataArray(
                 data=data_table[key],
                 dims=('time',) + dims,
@@ -687,7 +688,6 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 keys = scoped_data_keys
             for key, scoped_key in keys.items():
                 field_metadata = data_keys[key]
-                field_metadata = data_keys[key]
                 ndim = len(field_metadata['shape'])
                 # if the EventDescriptor doesn't provide names for the
                 # dimensions (it's optional) use the same default dimension
@@ -695,7 +695,11 @@ def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
                 try:
                     dims = tuple(field_metadata['dims'])
                 except KeyError:
-                    dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
+                    try:
+                        dims = config_dim_labels[key]
+                    except KeyError:
+                        dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
+                        config_dim_labels[key] = dims
                 data_arrays[scoped_key] = xarray.DataArray(
                     # TODO Once we know we have one Event Descriptor
                     # per stream we can be more efficient about this.
