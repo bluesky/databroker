@@ -314,5 +314,10 @@ def test_items(bundle):
 
 
 def test_catalog_update(bundle):
-    latest = repr(bundle.cat['xyz']()[-1])
     serializer = bundle.serializer_partial()
+    for name, doc in bundle.docs:
+        if name == 'start':
+            doc['uid'] = 'latest'
+        serializer(name, doc)
+    start_doc = next(bundle.cat['xyz']()[-1].canonical(fill='no'))
+    assert start_doc['uid'] = 'latest'
