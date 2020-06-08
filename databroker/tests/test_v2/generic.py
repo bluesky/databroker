@@ -314,6 +314,10 @@ def test_items(bundle):
 
 
 def test_catalog_update(bundle):
+    """
+    Check that a new run is accessable with -1 immediatly after it is
+    finished being serialized.
+    """
     serializer = bundle.serializer_partial()
     for name, doc in bundle.docs:
         if name == 'start':
