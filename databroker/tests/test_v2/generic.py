@@ -311,3 +311,8 @@ def test_items(bundle):
         pytest.xfail("Regression in intake 0.6.0 awaiting patch")
     for uid, run in bundle.cat['xyz']().items():
         assert hasattr(run, 'canonical')
+
+
+def test_catalog_update(bundle):
+    latest = repr(bundle.cat['xyz']()[-1])
+    print(type(serializer))

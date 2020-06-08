@@ -178,10 +178,12 @@ class BlueskyInMemoryCatalog(Broker):
             # still work because BlueskyRun supports those methods and will just
             # return itself.
             return entry.get()  # an instance of BlueskyRun
-        except Exception:
+        except Exception as err:
             if attempt == 0:
                 self.force_reload()
-                self.__getitem__(key, attempt=1)
+                self.__getitem__(name, attempt=1)
+            else:
+                raise err
 
     def __len__(self):
         return len(self._uid_to_run_start_doc)
