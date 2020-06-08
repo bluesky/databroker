@@ -315,4 +315,4 @@ def test_items(bundle):
 
 def test_catalog_update(bundle):
     latest = repr(bundle.cat['xyz']()[-1])
-    print(type(serializer))
+    serializer = bundle.serializer_partial()
