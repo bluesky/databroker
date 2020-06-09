@@ -6,6 +6,7 @@ from intake.catalog.utils import RemoteCatalogError
 import numpy
 import ophyd.sim
 import pytest
+import time
 import uuid
 
 
@@ -321,7 +322,17 @@ def test_catalog_update(bundle, RE, hw):
     finished being serialized.
     """
     serializer = bundle.serializer_partial()
+    docs = []
+
+    def callback(name, doc):
+        docs.append((name, doc))
+
     new_uid = RE(count([hw.img]), serializer)[0]
+
+    for name, doc in docs:
+        serializer(name, doc)
+    time.sleep(10)
     name, start_doc = next(bundle.cat['xyz']()[-1].canonical(fill='no'))
+
     assert start_doc['uid'] == new_uid
 
