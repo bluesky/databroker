@@ -8,6 +8,7 @@ import event_model
 from ..in_memory import BlueskyInMemoryCatalog
 from ..core import retry
 
+
 def gen(filename):
     """
     A JSONL file generator.

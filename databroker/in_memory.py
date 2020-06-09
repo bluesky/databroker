@@ -151,7 +151,7 @@ class BlueskyInMemoryCatalog(Broker):
         else:
             # Sort in reverse chronological order (most recent first).
             time_sorted = sorted(self._uid_to_run_start_doc.values(),
-                                key=lambda doc: -doc['time'])
+                                 key=lambda doc: -doc['time'])
             if N < 0:
                 # Force a reload because a stale cache is a big problem for
                 # recency-based lookups.
