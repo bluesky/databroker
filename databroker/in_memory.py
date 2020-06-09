@@ -1,6 +1,6 @@
 import event_model
 
-from .core import Entry
+from .core import Entry, retry
 from .v2 import Broker
 from mongoquery import Query
 
@@ -125,6 +125,7 @@ class BlueskyInMemoryCatalog(Broker):
                        args['gen_kwargs'])
         return cat
 
+    @retry
     def __getitem__(self, name):
         # If this came from a client, we might be getting '-1'.
         try:
@@ -152,6 +153,9 @@ class BlueskyInMemoryCatalog(Broker):
             time_sorted = sorted(self._uid_to_run_start_doc.values(),
                                  key=lambda doc: -doc['time'])
             if N < 0:
+                # Force a reload because a stale cache is a big problem for
+                # recency-based lookups.
+                self.force_reload()
                 # Interpret negative N as "the Nth from last entry".
                 if -N > len(time_sorted):
                     raise IndexError(

@@ -1,4 +1,5 @@
 import intake
+from functools import partial
 from suitcase.msgpack import Serializer
 import os
 from pathlib import Path
@@ -28,7 +29,8 @@ def teardown_module(module):
 def bundle(request, intake_server, example_data):  # noqa
     tmp_dir = TMP_DIRS[request.param]
     tmp_data_dir = Path(tmp_dir) / 'data'
-    serializer = Serializer(tmp_data_dir)
+    serializer_partial = partial(Serializer, tmp_data_dir)
+    serializer = serializer_partial()
     uid, docs = example_data
     for name, doc in docs:
         serializer(name, doc)
@@ -42,7 +44,7 @@ sources:
     driver: "bluesky-msgpack-catalog"
     container: catalog
     args:
-      paths: {[str(path) for path in serializer.artifacts['all']]}
+      paths: {tmp_data_dir / "*.msgpack"}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
@@ -52,7 +54,7 @@ sources:
     driver: "bluesky-msgpack-catalog"
     container: catalog
     args:
-      paths: {[str(path) for path in serializer.artifacts['all']]}
+      paths: {tmp_data_dir / "*.msgpack"}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
       transforms:
@@ -76,4 +78,5 @@ sources:
     return types.SimpleNamespace(cat=cat,
                                  uid=uid,
                                  docs=docs,
-                                 remote=remote)
+                                 remote=remote,
+                                 serializer_partial=serializer_partial)

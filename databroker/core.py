@@ -326,6 +326,30 @@ def to_datum_pages(get_datum_cursor, page_size):
     return get_datum_pages
 
 
+def retry(function):
+    """
+    Decorator that retries a Catalog function once.
+
+    Parameters
+    ----------
+    function: function
+
+    Returns
+    -------
+    new_function: function
+    """
+
+    @functools.wraps(function)
+    def new_function(self, *args, **kwargs):
+        try:
+            return function(self, *args, **kwargs)
+        except Exception:
+            self.force_reload()
+            return function(self, *args, **kwargs)
+
+    return new_function
+
+
 def _flatten_event_page_gen(gen):
     """
     Converts an event_page generator to an event generator.
