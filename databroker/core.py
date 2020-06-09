@@ -340,11 +340,12 @@ def retry(function):
     """
 
     @functools.wraps(function)
-    def new_function(*args, **kwargs):
+    def new_function(self, *args, **kwargs):
         try:
-            function(*args, **kwargs)
+            return function(self, *args, **kwargs)
         except Exception:
-            function(*args, **kwargs)
+            self.force_reload()
+            return function(self, *args, **kwargs)
 
     return new_function
 

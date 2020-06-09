@@ -1,6 +1,6 @@
 import event_model
 
-from .core import Entry
+from .core import Entry, retry
 from .v2 import Broker
 from mongoquery import Query
 
@@ -125,65 +125,59 @@ class BlueskyInMemoryCatalog(Broker):
                        args['gen_kwargs'])
         return cat
 
-    def __getitem__(self, name, attempt=0):
+    @retry
+    def __getitem__(self, name):
+        # If this came from a client, we might be getting '-1'.
         try:
-            # If this came from a client, we might be getting '-1'.
-            try:
-                N = int(name)
-            except (ValueError, TypeError):
-                if name in self._uid_to_run_start_doc:
-                    uid = name
-                else:
-                    # Try looking up by *partial* uid.
-                    matches = []
-                    for uid, run_start_doc in list(self._uid_to_run_start_doc.items()):
-                        if uid.startswith(name):
-                            matches.append(uid)
-                    if not matches:
-                        raise KeyError(name)
-                    elif len(matches) > 1:
-                        match_list = '\n'.join(matches)
-                        raise ValueError(
-                            f"Multiple matches to partial uid {name!r}:\n"
-                            f"{match_list}")
-                    else:
-                        uid, = matches
+            N = int(name)
+        except (ValueError, TypeError):
+            if name in self._uid_to_run_start_doc:
+                uid = name
             else:
-                # Sort in reverse chronological order (most recent first).
-                time_sorted = sorted(self._uid_to_run_start_doc.values(),
-                                    key=lambda doc: -doc['time'])
-                if N < 0:
-                    # Force a reload because a stale cache is a big problem for
-                    # recency-based lookups.
-                    self.force_reload()
-                    # Interpret negative N as "the Nth from last entry".
-                    if -N > len(time_sorted):
-                        raise IndexError(
-                            f"Catalog only contains {len(time_sorted)} "
-                            f"runs.")
-                    uid = time_sorted[-N - 1]['uid']
+                # Try looking up by *partial* uid.
+                matches = []
+                for uid, run_start_doc in list(self._uid_to_run_start_doc.items()):
+                    if uid.startswith(name):
+                        matches.append(uid)
+                if not matches:
+                    raise KeyError(name)
+                elif len(matches) > 1:
+                    match_list = '\n'.join(matches)
+                    raise ValueError(
+                        f"Multiple matches to partial uid {name!r}:\n"
+                        f"{match_list}")
                 else:
-                    # Interpret positive N as
-                    # "most recent entry with scan_id == N".
-                    for run_start_doc in time_sorted:
-                        if run_start_doc.get('scan_id') == N:
-                            uid = run_start_doc['uid']
-                            break
-                    else:
-                        raise KeyError(f"No run with scan_id={N}")
-            entry = self._entries[uid]
-            # The user has requested one specific Entry. In order to give them a
-            # more useful object, 'get' the Entry for them. Note that if they are
-            # expecting an Entry and try to call ``()`` or ``.get()``, that will
-            # still work because BlueskyRun supports those methods and will just
-            # return itself.
-            return entry.get()  # an instance of BlueskyRun
-        except Exception as err:
-            if attempt == 0:
+                    uid, = matches
+        else:
+            # Sort in reverse chronological order (most recent first).
+            time_sorted = sorted(self._uid_to_run_start_doc.values(),
+                                key=lambda doc: -doc['time'])
+            if N < 0:
+                # Force a reload because a stale cache is a big problem for
+                # recency-based lookups.
                 self.force_reload()
-                self.__getitem__(name, attempt=1)
+                # Interpret negative N as "the Nth from last entry".
+                if -N > len(time_sorted):
+                    raise IndexError(
+                        f"Catalog only contains {len(time_sorted)} "
+                        f"runs.")
+                uid = time_sorted[-N - 1]['uid']
             else:
-                raise err
+                # Interpret positive N as
+                # "most recent entry with scan_id == N".
+                for run_start_doc in time_sorted:
+                    if run_start_doc.get('scan_id') == N:
+                        uid = run_start_doc['uid']
+                        break
+                else:
+                    raise KeyError(f"No run with scan_id={N}")
+        entry = self._entries[uid]
+        # The user has requested one specific Entry. In order to give them a
+        # more useful object, 'get' the Entry for them. Note that if they are
+        # expecting an Entry and try to call ``()`` or ``.get()``, that will
+        # still work because BlueskyRun supports those methods and will just
+        # return itself.
+        return entry.get()  # an instance of BlueskyRun
 
     def __len__(self):
         return len(self._uid_to_run_start_doc)
