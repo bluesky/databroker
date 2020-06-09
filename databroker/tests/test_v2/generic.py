@@ -323,7 +323,6 @@ def test_catalog_update(bundle, RE, hw):
     """
     serializer = bundle.serializer_partial()
     new_uid = RE(count([hw.img]), serializer)[0]
-    time.sleep(10)
     name, start_doc = next(bundle.cat['xyz']()[-1].canonical(fill='no'))
 
     assert start_doc['uid'] == new_uid

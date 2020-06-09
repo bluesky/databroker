@@ -326,6 +326,29 @@ def to_datum_pages(get_datum_cursor, page_size):
     return get_datum_pages
 
 
+def retry(function):
+    """
+    Decorator that retries a function once.
+
+    Parameters
+    ----------
+    function: function
+
+    Returns
+    -------
+    new_function: function
+    """
+
+    @functools.wraps(function)
+    def new_function(*args, **kwargs):
+        try:
+            function(*args, **kwargs)
+        except Exception:
+            function(*args, **kwargs)
+
+    return new_function
+
+
 def _flatten_event_page_gen(gen):
     """
     Converts an event_page generator to an event generator.
