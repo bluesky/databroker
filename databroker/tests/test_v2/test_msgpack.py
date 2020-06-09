@@ -44,7 +44,7 @@ sources:
     driver: "bluesky-msgpack-catalog"
     container: catalog
     args:
-      paths: {[str(path) for path in serializer.artifacts['all']]}
+      paths: {tmp_data_dir / "*.msgpack"}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
@@ -54,7 +54,7 @@ sources:
     driver: "bluesky-msgpack-catalog"
     container: catalog
     args:
-      paths: {[str(path) for path in serializer.artifacts['all']]}
+      paths: {tmp_data_dir / "*.msgpack"}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
       transforms:
