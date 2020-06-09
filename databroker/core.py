@@ -328,7 +328,7 @@ def to_datum_pages(get_datum_cursor, page_size):
 
 def retry(function):
     """
-    Decorator that retries a function once.
+    Decorator that retries a Catalog function once.
 
     Parameters
     ----------
