@@ -1,10 +1,12 @@
 import collections
 import event_model
 import itertools
+from bluesky.plans import count
 from intake.catalog.utils import RemoteCatalogError
 import numpy
 import ophyd.sim
 import pytest
+import uuid
 
 
 def normalize(gen):
@@ -313,15 +315,13 @@ def test_items(bundle):
         assert hasattr(run, 'canonical')
 
 
-def test_catalog_update(bundle):
+def test_catalog_update(bundle, RE, hw):
     """
     Check that a new run is accessable with -1 immediatly after it is
     finished being serialized.
     """
     serializer = bundle.serializer_partial()
-    for name, doc in bundle.docs:
-        if name == 'start':
-            doc['uid'] = 'latest'
-        serializer(name, doc)
-    start_doc = next(bundle.cat['xyz']()[-1].canonical(fill='no'))
-    assert start_doc['uid'] = 'latest'
+    new_uid = RE(count([hw.img]), serializer)[0]
+    name, start_doc = next(bundle.cat['xyz']()[-1].canonical(fill='no'))
+    assert start_doc['uid'] == new_uid
+
