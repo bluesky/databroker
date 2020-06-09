@@ -6,7 +6,7 @@ import pathlib
 import event_model
 
 from ..in_memory import BlueskyInMemoryCatalog
-
+from ..core import retry
 
 def gen(filename):
     """
@@ -142,6 +142,7 @@ class BlueskyJSONLCatalog(BlueskyInMemoryCatalog):
                 stop_doc = get_stop(filename)
                 self.upsert(start_doc, stop_doc, gen, (filename,), {})
 
+    @retry
     def search(self, query):
         """
         Return a new Catalog with a subset of the entries in this Catalog.

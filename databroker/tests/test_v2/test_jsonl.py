@@ -47,7 +47,7 @@ sources:
     driver: "bluesky-jsonl-catalog"
     container: catalog
     args:
-      paths: {[str(path) for path in serializer.artifacts['all']]}
+      paths: {tmp_data_dir / "*.jsonl"}
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
     metadata:
@@ -57,7 +57,7 @@ sources:
     driver: "bluesky-jsonl-catalog"
     container: catalog
     args:
-      paths: {[str(path) for path in serializer.artifacts['all']]}
+      paths: [{tmp_data_dir / "*.jsonl"}]
       handler_registry:
         NPY_SEQ: ophyd.sim.NumpySeqHandler
       transforms:
