@@ -1,0 +1,11 @@
+.. currentmodule:: databroker
+
+v1.0.6 (2020-06-10)
+-------------------
+
+Fixed
++++++
+
+* Xarray shape is now correct when multiple streams have matching keys.
+* Msgpack and jsonl backed catalogs now find new entries correctly.
+* The order of descriptors in v1.Header.descriptors now matches v0.Header.descriptors.
