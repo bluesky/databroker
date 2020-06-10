@@ -1017,8 +1017,8 @@ class Header:
     @property
     def descriptors(self):
         descriptors = self._data_source._descriptors
-        return [self.db.prepare_hook('descriptor', doc)
-                for doc in descriptors]
+        return sorted([self.db.prepare_hook('descriptor', doc) for doc in descriptors],
+                      key=lambda d: d['time'], reverse=True)
 
     @property
     def stream_names(self):
