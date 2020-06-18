@@ -2134,9 +2134,14 @@ def coerce_dask(handler_class, filler_state):
             descriptor = filler_state.descriptor
             key = filler_state.key
             shape = extract_shape(descriptor, key)
-            dtype = extract_dtype(descriptor, key)
-            load_chunk = dask.delayed(super().__call__)(*args, **kwargs)
-            return dask.array.from_delayed(load_chunk, shape=shape, dtype=dtype)
+            # there is an un-determined size (-1) in the shape, abandon
+            # lazy as it will not work
+            if any(s <= 0 for s in shape):
+                return dask.array.from_array(super().__call__(*args, **kwargs))
+            else:
+                dtype = extract_dtype(descriptor, key)
+                load_chunk = dask.delayed(super().__call__)(*args, **kwargs)
+                return dask.array.from_delayed(load_chunk, shape=shape, dtype=dtype)
 
     return Subclass
 
