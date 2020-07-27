@@ -17,8 +17,7 @@ A unified interface to the various data sources at NSLS-II.
 
 ## Conda Recipes
 
-Install the most recent tagged build: `conda install databroker -c lightsource2-tag`
+Install the most recent build: `conda install databroker -c nsls2forge`
 
-Install the most recent dev build: `conda install databroker -c lightsource2-dev`
+Find the most recent recipe [here](https://github.com/nsls-ii-forge/databroker-feedstock).
 
-Find the tagged recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/databroker) and the dev recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/databroker)
