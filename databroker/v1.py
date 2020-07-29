@@ -979,7 +979,7 @@ class Broker:
                                   "https://github.com/bluesky/databroker/issues/new ")
 
     def stats(self):
-        "Access mongo ``db.collection.stats()`` method"
+        "Access MongoDB storage statistics for this database."
         return self.v2.stats()
 
 class Header:

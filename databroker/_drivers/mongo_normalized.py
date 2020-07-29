@@ -351,7 +351,7 @@ class BlueskyMongoCatalog(Broker):
         return Serializer(self._metadatastore_db, self._asset_registry_db)
 
     def stats(self):
-        "Access mongo ``db.collection.stats()`` method"
+        "Access MongoDB storage statistics for this database."
         return self._run_start_collection.database.command("dbstats")
 
 def _get_database(uri):
