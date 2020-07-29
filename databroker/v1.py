@@ -982,6 +982,7 @@ class Broker:
         "Access MongoDB storage statistics for this database."
         return self.v2.stats()
 
+
 class Header:
     """
     This supports the original Header API but implemented on intake's Entry.
