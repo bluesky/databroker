@@ -350,6 +350,9 @@ class BlueskyMongoCatalog(Broker):
         from suitcase.mongo_normalized import Serializer
         return Serializer(self._metadatastore_db, self._asset_registry_db)
 
+    def stats(self):
+        "Access MongoDB storage statistics for this database."
+        return self._run_start_collection.database.command("dbstats")
 
 def _get_database(uri):
     client = pymongo.MongoClient(uri)

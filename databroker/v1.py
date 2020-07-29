@@ -978,6 +978,9 @@ class Broker:
                                   "opening an issue here: "
                                   "https://github.com/bluesky/databroker/issues/new ")
 
+    def stats(self):
+        "Access MongoDB storage statistics for this database."
+        return self.v2.stats()
 
 class Header:
     """
