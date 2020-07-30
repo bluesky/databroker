@@ -51,9 +51,9 @@ def get_run_projection(run: BlueskyRun, projection_name: str = None):
 
 
 def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
-    """Calls and returns the callable method from the calculated projection mapping.
+    """Calls and returns the callable from the calculated projection mapping.
 
-    When using the project_xarray method, it is ancticipated that the return will be
+    It is ancticipated that the return will be
     and xarray.DataArray.
 
     This should be expressed in the familiar 'module:func' syntax borrowed from python entry-points.
