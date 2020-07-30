@@ -2,7 +2,7 @@ import pytest
 import xarray
 from databroker.core import BlueskyRun
 
-from ..projector import Projector, XarrayProjector, ProjectionError
+from ..projector import get_run_projection, project_xarray, ProjectionError
 
 NEX_IMAGE_FIELD = '/entry/instrument/detector/data'
 NEX_ENERGY_FIELD = '/entry/instrument/monochromator/energy'
@@ -112,7 +112,7 @@ def dont_panic(run: BlueskyRun, *args, **kwargs):
     return xarray.DataArray([42, 42, 42, 42, 42])
 
 
-def test_calculaulated_projections():
+def test_calculated_projections():
     calculated_projection = [{
         "name": "nxsas",
         "version": "2020.1",
@@ -126,38 +126,38 @@ def test_calculaulated_projections():
     }]
 
     mock_run = make_mock_run(calculated_projection, 'garggle_blaster')
-    dataset = XarrayProjector()(mock_run)
+    dataset = project_xarray(mock_run)
     comparison = dataset['/entry/event/computed'] == [42, 42, 42, 42, 42]
     assert comparison.all()
 
 
 def test_find_projection_in_run():
     mock_run = make_mock_run(good_projection, 'one_ring')
-    assert Projector.get_run_projection(mock_run, projection_name="nxsas") == good_projection[0]
-    assert Projector.get_run_projection(mock_run, projection_name="vogons") is None
-    assert Projector.get_run_projection(mock_run) == good_projection[0]  # only one projection in run so choose it
-    with pytest.raises(KeyError) as e:
+    assert get_run_projection(mock_run, projection_name="nxsas") == good_projection[0]
+    assert get_run_projection(mock_run, projection_name="vogons") is None
+    assert get_run_projection(mock_run) == good_projection[0]  # only one projection in run so choose it
+    with pytest.raises(KeyError):
         mock_run = make_mock_run(projections_same_name, 'one_ring')
-        Projector.get_run_projection(mock_run, projection_name="nxsas")
+        get_run_projection(mock_run, projection_name="nxsas")
 
 
 def test_unknown_location():
     mock_run = make_mock_run(bad_location, 'one_ring')
     with pytest.raises(ProjectionError):
-        projector = XarrayProjector()(mock_run)
+        projector = project_xarray(mock_run)
         projector.project(bad_location[0])
 
 
 def test_nonexistent_stream():
     mock_run = make_mock_run(bad_stream, 'one_ring')
     with pytest.raises(ProjectionError):
-        projector = XarrayProjector()(mock_run)
+        projector = project_xarray(mock_run)
         projector.project(bad_stream[0])
 
 
 def test_projector():
     mock_run = make_mock_run(good_projection, 'one_ring')
-    dataset = XarrayProjector()(mock_run)
+    dataset = project_xarray(mock_run)
     # Ensure that the to_dask function was called on both
     # energy and image datasets
     assert mock_run['primary'].to_dask_counter == 2
