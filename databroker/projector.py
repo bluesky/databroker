@@ -30,7 +30,7 @@ def get_run_projection(run: BlueskyRun, projection_name: str = None):
     Raises
     ------
     KeyError
-        If the a projection_name is specified and there is more than one 
+        If the a projection_name is specified and there is more than one
         projection in the run with that name
     """
 
@@ -51,6 +51,48 @@ def get_run_projection(run: BlueskyRun, projection_name: str = None):
 
 
 def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
+    """Calls and returns the callable method from the calculated projection mapping.
+
+    When using the project_xarray method, it is ancticipated that the return will be
+    and xarray.DataArray.
+
+    This should be expressed in the familiar 'module:func' syntax borrowed from python entry-points.
+
+    An example implementation of a calculated field projection entry:
+
+        '/projection/key': {
+            "type": "calculated",
+            "callable": "foo.bar:really_fun",
+            "args": ['arg1'], "kwargs": {"foo": "bar"}}
+
+    And a corresponding function implementation might be:
+
+        def really_fun(run, *args, **kwargs)"
+            # args will be ['arg1']
+            # kwargs will be {"foo": "bar"}
+            # for this calculated field
+            return xarray.DataArray[[1, 2, 3]]
+
+
+    Parameters
+    ----------
+    run : BlueskyRun
+        run which can be used for the calcuation
+    key : str
+        key name for this projection
+    mapping : dict
+        full contents of this projection
+
+    Returns
+    -------
+    any
+        result of calling the method specified in the calcated field in the projection
+
+    Raises
+    ------
+    ProjectionError
+        [description]
+    """
     callable_name = mapping['callable']
     try:
         module_name, function_name = callable_name.split(":")
@@ -66,7 +108,7 @@ def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
 
 def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None, **kwargs):
     """Produces an xarray Dataset by projecting the provided run. Selects projection based on
-    logic of Projector.get_run_projection(). 
+    logic of get_run_projection().
 
 
     Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
@@ -80,7 +122,7 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
     on projection key.
 
 
-    All projections with "location"="event" will look for 
+    All projections with "location"="event" will look for a field in a stream.
 
     Parameters
     ----------
@@ -95,8 +137,8 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
     -------
     xarray.Dataset
          The return Dataset will contain:
-        - single value data (typically from the run start) in the return Dataset's attrs dict, keyed 
-        on the projection key. These are projections marked  "location": "configuration" 
+        - single value data (typically from the run start) in the return Dataset's attrs dict, keyed
+        on the projection key. These are projections marked  "location": "configuration"
 
         - multi-value data (typically from a stream). Keys for the dict-like xarray.Dataset match keys
         in the passed-in projection. These are projections with "location": "linked"
@@ -104,9 +146,6 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
     Raises
     ------
     ProjectionError
-
-  
- 
     """
     try:
         if projection is None:
@@ -114,30 +153,31 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
         if projection is None:
             raise ProjectionError("Projection could not be found")
 
-        attrs = {}
-        data_vars = {}
+        attrs = {}  # will populate the return Dataset attrs field
+        data_vars = {}  # will populate the return Dataset DataArrays
         for field_key, mapping in projection['projection'].items():
-            # populate projection_field with calculated or  
+            # go through each projection
             projection_type = mapping['type']
             projection_location = mapping.get('location')
             projection_data = None
             projection_linked_field = mapping.get('field')
 
-            # single value data that will go in the top 
+            # single value data that will go in the top
             # dataset's attributes
             if projection_location == 'configuration':
                 attrs[field_key] = run.metadata['start'][projection_linked_field]
                 continue
 
-            # multi-dimensional data, added to return Dataset via data_vars dict
+            # added to return Dataset in data_vars dict
             if projection_type == "calculated":
                 data_vars[field_key] = get_calculated_value(run, field_key, mapping)
                 continue
 
+            # added to return Dataset in data_vars dict
             if projection_location == 'event':
                 projection_stream = mapping.get('stream')
                 if projection_stream is None:
-                    raise ProjectionError('stream missing for event projection: {field_key}')
+                    raise ProjectionError(f'stream missing for event projection: {field_key}')
                 data_vars[field_key] = run[projection_stream].to_dask()[projection_linked_field]
 
             elif projection_location == 'configuration':
@@ -148,6 +188,3 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
     except Exception as e:
         raise ProjectionError('Error projecting run') from e
     return xarray.Dataset(data_vars, attrs=attrs)
-
-
-

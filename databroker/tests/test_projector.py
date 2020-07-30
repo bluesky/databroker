@@ -9,7 +9,7 @@ NEX_ENERGY_FIELD = '/entry/instrument/monochromator/energy'
 NEX_SAMPLE_NAME_FIELD = '/entry/sample/name'
 MOCK_IMAGE = xarray.DataArray([[1, 2], [3, 4]])
 BEAMLINE_ENERGY_VALS = [1, 2, 3, 4, 5]
-I_ZERO_VALS = [-1, -2, -3, -4, -5]
+OTHER_VALS = [-1, -2, -3, -4, -5]
 CCD = [MOCK_IMAGE+1, MOCK_IMAGE+2, MOCK_IMAGE+3, MOCK_IMAGE+4, MOCK_IMAGE+5]
 good_projection = [{
         "name": "nxsas",
