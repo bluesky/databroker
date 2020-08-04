@@ -265,6 +265,16 @@ fail) is stored in ``run.metadata['stop']``.
 
     run.metadata['stop']
 
+The v1 API stored metadata about devices involved and their configuration,
+accessed using ``descriptors``, this is roughly equivalent to what is available
+in ``baseline``. It is returned as an xarray in a similar fashion to primary.
+
+.. ipython:: python
+
+    run.baseline.read()
+
+It is flatter than what was returned by the v1 API.
+
 Replay Document Stream
 ----------------------
 
