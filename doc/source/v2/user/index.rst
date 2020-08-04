@@ -249,6 +249,22 @@ See the documentation on dask_.
 TODO: This is displaying numpy arrays, not dask. Illustrating dask here might
 require standing up a server.
 
+Explore Metadata
+----------------
+
+Everything recorded at the start of the run is in ``run.metadata['start']``.
+
+.. ipython:: python
+
+    run.metadata['start']
+
+Information only knowable at the end, like the exit status (success, abort,
+fail) is stored in ``run.metadata['stop']``.
+
+.. ipython:: python
+
+    run.metadata['stop']
+
 Replay Document Stream
 ----------------------
 
