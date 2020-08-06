@@ -253,6 +253,7 @@ Configuration Utilities
    temp
    Broker.name
    Broker.get_config
+   Broker.stats
 
 Back- and Forward-Compat Accessors
 ----------------------------------
