@@ -107,3 +107,15 @@ def test_find_kwargs(bundle):
         results = cat['xyz'].search({'plan_name': 'scan'},
                                     NOT_A_VALID_PARAMETER=None)
         list(results)  # needed to trigger Cursor instantiation in local case
+
+
+def test_stats(bundle):
+    "Test the method stats which gives MongoDB database data usage info"
+    cat = bundle.cat['xyz']
+    if bundle.remote:
+        # Not supported on remote catalogs; remote users shouldn't be allowed
+        # to see this info.
+        assert not hasattr(cat, "stats")
+    else:
+        assert 'storageSize' in cat.stats()  # check an example key
+        assert 'storageSize' in cat.v1.stats()  # check an example key
