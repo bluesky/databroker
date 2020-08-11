@@ -36,7 +36,7 @@ def get_run_projection(run: BlueskyRun, projection_name: str = None):
 
     if projection_name is not None:
         projections = [projection for projection in run.metadata['start']['projections']
-                        if projection.get('name') == projection_name]
+                       if projection.get('name') == projection_name]
         if len(projections) > 1:
             raise KeyError("Multiple projections of name {projection_name} found")
         if len(projections) == 1:
