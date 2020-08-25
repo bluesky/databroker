@@ -155,7 +155,7 @@ class _Entries(collections.abc.Mapping):
 
 
 class BlueskyMongoCatalog(Broker):
-    def __init__(self, metadatastore_db, asset_registry_db, *,
+    def __init__(self, metadatastore_db, asset_registry_db=None, *,
                  handler_registry=None, root_map=None,
                  filler_class=event_model.Filler, query=None,
                  find_kwargs=None, transforms=None, **kwargs):
@@ -169,8 +169,11 @@ class BlueskyMongoCatalog(Broker):
         ----------
         metadatastore_db : pymongo.database.Database or string
             Must be a Database or a URI string that includes a database name.
-        asset_registry_db : pymongo.database.Database or string
+        asset_registry_db: pymongo.database.Database or string, optional
             Must be a Database or a URI string that includes a database name.
+            If None, use metadatastore_db. (This is encouraged. The databases
+            are allowed to be different for historical reasons, but there is no
+            good reason that they would need to be.)
         handler_registry : dict, optional
             This is passed to the Filler or whatever class is given in the
             ``filler_class`` parameter below.
@@ -215,7 +218,8 @@ class BlueskyMongoCatalog(Broker):
             Catalog.
         """
         name = 'bluesky-mongo-catalog'  # noqa
-
+        if asset_registry_db is None:
+            asset_registry_db = metadatastore_db
         if isinstance(metadatastore_db, str):
             mds_db = _get_database(metadatastore_db)
         else:
