@@ -244,6 +244,35 @@ class BlueskyMongoCatalog(Broker):
                          root_map=root_map, filler_class=filler_class,
                          transforms=transforms, **kwargs)
 
+    @property
+    def mongo_database(self):
+        """
+        The MongoDB database
+
+        For historical reasons, some legacy systems are configured with *two*
+        different databases. If that is the case, this raises ValueError
+        """
+        if self._metadatastore_db is not self._asset_registry_db:
+            raise ValueError(
+                "The database accessor is not supported on this instance "
+                "because there is more than one database. Try the mongo_client "
+                "accessor if you only need a reference to the client.")
+        return self._metadatastore_db
+
+    @property
+    def mongo_client(self):
+        """
+        The MongoDB client
+
+        For historical reasons, some legacy systems are configured with *two*
+        different clients. If that is the case, this raises ValueError.
+        """
+        if self._metadatastore_db.client is not self._asset_registry_db.client:
+            raise ValueError(
+                "The client accessor is not supported on this instance "
+                "because there is more than one client.")
+        return self._metadatastore_db.client
+
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
             {'run_start': run_start_uid})

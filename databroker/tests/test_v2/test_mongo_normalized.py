@@ -119,3 +119,21 @@ def test_stats(bundle):
     else:
         assert 'storageSize' in cat.stats()  # check an example key
         assert 'storageSize' in cat.v1.stats()  # check an example key
+
+
+def test_one_database(db_factory):
+    from databroker._drivers.mongo_normalized import BlueskyMongoCatalog
+    mds_db = db_factory()
+    catalog = BlueskyMongoCatalog(mds_db)
+    catalog.mongo_database
+    catalog.mongo_client
+
+
+def test_two_different_databases(db_factory):
+    from databroker._drivers.mongo_normalized import BlueskyMongoCatalog
+    mds_db = db_factory()
+    assets_db = db_factory()
+    catalog = BlueskyMongoCatalog(mds_db, assets_db)
+    with pytest.raises(ValueError):
+        catalog.mongo_database
+    catalog.mongo_client  # same client
