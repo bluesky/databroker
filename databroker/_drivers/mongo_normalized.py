@@ -290,6 +290,7 @@ class BlueskyMongoCatalog(Broker):
             doc = self._resource_collection.find_one({'uid': uid})
         else:
             doc = self._resource_collection.find_one({'_id': uid})
+            doc['uid'] = uid
 
         if doc is None:
             raise ValueError(f"Could not find Resource with uid={uid}")
