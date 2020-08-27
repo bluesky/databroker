@@ -6,7 +6,10 @@ import cachetools
 import pymongo
 import pymongo.errors
 
-from ..core import to_event_pages, to_datum_pages, Entry
+from bson.objectid import ObjectId, InvalidId
+from ..core import (
+    parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
+    Entry)
 from ..v2 import Broker
 
 
@@ -283,8 +286,13 @@ class BlueskyMongoCatalog(Broker):
             {'run_start': run_start_uid}, {'_id': False}))
 
     def _get_resource(self, uid):
-        doc = self._resource_collection.find_one(
-            {'uid': uid})
+        try:
+            uid = ObjectId(uid)
+        except InvalidId:
+            doc = self._resource_collection.find_one({'uid': uid})
+        else:
+            doc = self._resource_collection.find_one({'_id': uid})
+
         if doc is None:
             raise ValueError(f"Could not find Resource with uid={uid}")
         doc.pop('_id')
