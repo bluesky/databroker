@@ -7,9 +7,7 @@ import pymongo
 import pymongo.errors
 
 from bson.objectid import ObjectId, InvalidId
-from ..core import (
-    parse_handler_registry, discover_handlers, to_event_pages, to_datum_pages,
-    Entry)
+from ..core import to_event_pages, to_datum_pages, Entry
 from ..v2 import Broker
 
 
