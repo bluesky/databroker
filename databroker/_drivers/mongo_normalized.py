@@ -285,7 +285,7 @@ class BlueskyMongoCatalog(Broker):
         # referenced by '_id'.
         if doc is None:
             try:
-                uid = ObjectId(uid)
+                _id = ObjectId(uid)
             except InvalidId:
                 pass
             else:
