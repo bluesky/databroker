@@ -304,8 +304,8 @@ class BlueskyMongoCatalog(Broker):
         return doc['resource']
 
     def _get_datum_cursor(self, resource_uid):
-        cursor = self._datum_collection.find({'resource': resource_uid}, {'_id': False})
         self._schema = {}  # TODO This is cheating, I think.
+        return self._datum_collection.find({'resource': resource_uid}, {'_id': False})
 
     def _make_entries_container(self):
         return _Entries(self)
