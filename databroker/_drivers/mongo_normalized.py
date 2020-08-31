@@ -284,7 +284,7 @@ class BlueskyMongoCatalog(Broker):
         # Some old resource documents don't have a 'uid' and they are
         # referenced by '_id'.
         if doc is None:
-            doc = self._resource_collection.find_one({'_id': uid}, {'_id': False}))
+            doc = self._resource_collection.find_one({'_id': uid}, {'_id': False})
             doc['uid'] = uid
 
         if doc is None:
