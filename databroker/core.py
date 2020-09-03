@@ -2061,7 +2061,7 @@ def coerce_dask(handler_class, filler_state):
 # By adding it via plugin, we avoid adding a dask.array dependency to
 # event-model and we keep the fiddly hacks into extract_shape here in
 # databroker, a faster-moving and less fundamental library than event-model.
-event_model.register_coersion('delayed', coerce_dask)
+event_model.register_coercion('delayed', coerce_dask)
 
 
 def extract_shape(descriptor, key, resource=None):
