@@ -7,6 +7,7 @@ A catalog of new features, improvements, and bug-fixes in each release. Follow
 links to the relevant GitHub issue or pull request for specific code changes
 and any related discussion.
 
+.. include:: whats_new/v1.1.0.txt
 .. include:: whats_new/v1.0.6.txt
 .. include:: whats_new/v1.0.5.txt
 .. include:: whats_new/v1.0.4.txt
