@@ -2044,7 +2044,7 @@ def coerce_dask(handler_class, filler_state):
         def __call__(self, *args, **kwargs):
             descriptor = filler_state.descriptor
             key = filler_state.key
-            shape = extract_shape(descriptor, key)
+            shape = extract_shape(descriptor, key, filler_state.resource)
             # there is an un-determined size (-1) in the shape, abandon
             # lazy as it will not work
             if any(s <= 0 for s in shape):
@@ -2064,34 +2064,58 @@ def coerce_dask(handler_class, filler_state):
 event_model.register_coersion('delayed', coerce_dask)
 
 
-def extract_shape(descriptor, key):
+def extract_shape(descriptor, key, resource=None):
     """
-    Work around bug in https://github.com/bluesky/ophyd/pull/746
-    """
-    # Ideally this code would just be
-    # descriptor['data_keys'][key]['shape']
-    # but we have to do some heuristics to make up for errors in the reporting.
+    Patch up misreported 'shape' metadata in old documents.
 
-    # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
+    This uses heuristcs to guess if the shape looks wrong and determine the
+    right one. Once historical data has been fixed, this function will will be
+    reused to::
+
+    return descriptor['data_keys'][key]['shape']
+    """
     data_key = descriptor['data_keys'][key]
+    if resource is not None:
+        if "frame_per_point" in resource.get("resource_kwargs", {}):
+            # This is a strong signal that the correct num_images value is here.
+            num_images = resource["resource_kwargs"]["frame_per_point"]
+        else:
+            # Otherwise try to find something ending in 'num_images' in the
+            # configuration dict associated with this device.
+            object_keys = descriptor.get('object_keys', {})
+            for object_name, data_keys in object_keys.items():
+                if key in data_keys:
+                    break
+            else:
+                raise RuntimeError(f"Could not figure out shape of {key}")
+            for k, v in descriptor['configuration'][object_name]['data'].items():
+                if k.endswith('num_images'):
+                    num_images = v
+                    break
+            else:
+                num_images = -1
+    # Work around bug in https://github.com/bluesky/ophyd/pull/746
+    # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
     if len(data_key['shape']) == 3 and data_key['shape'][-1] == 0:
-        object_keys = descriptor.get('object_keys', {})
-        for object_name, data_keys in object_keys.items():
-            if key in data_keys:
-                break
-        else:
-            raise RuntimeError(f"Could not figure out shape of {key}")
-        for k, v in descriptor['configuration'][object_name]['data'].items():
-            if k.endswith('num_images'):
-                num_images = v
-                break
-        else:
-            num_images = -1
         x, y, _ = data_key['shape']
         shape = (num_images, y, x)
     else:
-        shape = descriptor['data_keys'][key]['shape']
-    return shape
+        shape = data_key['shape']
+    if num_images == -1:
+        # Along this path, we have no way to make dask work. The calling code
+        # will fall back to numpy.
+        return shape
+    else:
+        # Along this path, we have inferred that a -1 in here is num_images,
+        # extracted based on inspecting the resource or the descriptor,
+        # and we should replace -1 with that.
+        shape_ = []
+        for item in shape:
+            if item == -1:
+                shape_.append(num_images)
+            else:
+                shape_.append(item)
+        return shape_
 
 
 def extract_dtype(descriptor, key):
