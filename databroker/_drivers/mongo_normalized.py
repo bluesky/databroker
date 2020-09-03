@@ -6,6 +6,7 @@ import cachetools
 import pymongo
 import pymongo.errors
 
+from bson.objectid import ObjectId, InvalidId
 from ..core import to_event_pages, to_datum_pages, Entry
 from ..v2 import Broker
 
@@ -242,25 +243,21 @@ class BlueskyMongoCatalog(Broker):
 
     def _get_run_stop(self, run_start_uid):
         doc = self._run_stop_collection.find_one(
-            {'run_start': run_start_uid})
-        # It is acceptable to return None if the document does not exist.
-        if doc is not None:
-            doc.pop('_id')
+            {'run_start': run_start_uid},
+            {'_id': False})
         return doc
 
     def _get_event_descriptors(self, run_start_uid):
-        results = []
         cursor = self._event_descriptor_collection.find(
             {'run_start': run_start_uid},
+            {'_id': False},
             sort=[('time', pymongo.ASCENDING)])
-        for doc in cursor:
-            doc.pop('_id')
-            results.append(doc)
-        return results
+        return list(cursor)
 
     def _get_event_cursor(self, descriptor_uid, skip=0, limit=None):
         cursor = (self._event_collection
                   .find({'descriptor': descriptor_uid},
+                        {'_id': False},
                         sort=[('time', pymongo.ASCENDING)]))
         descriptor = self._event_descriptor_collection.find_one(
             {'uid': descriptor_uid})
@@ -271,7 +268,6 @@ class BlueskyMongoCatalog(Broker):
                          if 'external' in v}
         for doc in cursor:
             doc['filled'] = {k: False for k in external_keys}
-            doc.pop('_id')
             yield doc
 
     def _get_event_count(self, descriptor_uid):
@@ -283,11 +279,21 @@ class BlueskyMongoCatalog(Broker):
             {'run_start': run_start_uid}, {'_id': False}))
 
     def _get_resource(self, uid):
-        doc = self._resource_collection.find_one(
-            {'uid': uid})
+        doc = self._resource_collection.find_one({'uid': uid}, {'_id': False})
+
+        # Some old resource documents don't have a 'uid' and they are
+        # referenced by '_id'.
+        if doc is None:
+            try:
+                _id = ObjectId(uid)
+            except InvalidId:
+                pass
+            else:
+                doc = self._resource_collection.find_one({'_id': _id}, {'_id': False})
+                doc['uid'] = uid
+
         if doc is None:
             raise ValueError(f"Could not find Resource with uid={uid}")
-        doc.pop('_id')
         return doc
 
     def _lookup_resource_for_datum(self, datum_id):
@@ -298,12 +304,8 @@ class BlueskyMongoCatalog(Broker):
         return doc['resource']
 
     def _get_datum_cursor(self, resource_uid):
-        cursor = self._datum_collection.find({'resource': resource_uid})
-        for doc in cursor:
-            doc.pop('_id')
-            yield doc
-
         self._schema = {}  # TODO This is cheating, I think.
+        return self._datum_collection.find({'resource': resource_uid}, {'_id': False})
 
     def _make_entries_container(self):
         return _Entries(self)
