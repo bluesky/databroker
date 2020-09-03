@@ -1839,8 +1839,7 @@ def _transpose(in_data, keys, field):
             # TEMPORARY EMERGENCY FALLBACK
             # If environment variable is set to anything but 0, work around
             # dask and return a numpy array.
-            switch = int(os.environ.get('DATABROKER_ARRAY_FALLBACK'))
-            if switch:
+            if os.environ.get('DATABROKER_ARRAY_FALLBACK') != "0":
                 out[k] = numpy.asarray(out[k])
                 warnings.warn(
                     f"Creating a dask array raised an error. Because the "
