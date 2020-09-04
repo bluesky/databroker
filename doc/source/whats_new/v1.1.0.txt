@@ -13,5 +13,5 @@ Added
 Fixed
 +++++
 * Do more to try to recover from inaccurate ``shape`` metadata.
-* Tolerate old Resource doucments that rely on MongoDB ``_id`` and are missing
+* Tolerate old Resource documents that rely on MongoDB ``_id`` and are missing
   ``uid``.
