@@ -1,0 +1,17 @@
+.. currentmodule:: databroker
+
+v1.1.0 (2020-09-03)
+-------------------
+
+Added
++++++
+
+* Experimental ``databroker.projector`` module
+* A ``stats`` method on the ``BlueskyMongoCatalog`` to access MongoDB storage
+  info.
+
+Fixed
++++++
+* Do more to try to recover from inaccurate ``shape`` metadata.
+* Tolerate old Resource documents that rely on MongoDB ``_id`` and are missing
+  ``uid``.
