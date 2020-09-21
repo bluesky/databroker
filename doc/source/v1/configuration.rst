@@ -19,7 +19,7 @@ The databroker looks for configuration files in three locations, in this order:
   virtual environment.)
 * ``/etc/databroker/``
 
-NOTE: For Windows, we only look in: ``%APPDATA%/databroker``.
+NOTE: For Windows, we only look in: ``%APPDATA%\databroker``.
 
 A configuration file must be located in one of these directories, and it must
 be named with the extension ``.yml``. Configuration files are formatted as YAML
