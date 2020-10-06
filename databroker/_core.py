@@ -26,6 +26,9 @@ from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
                     DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
                     describe_configs, SPECIAL_NAME)
 
+from databroker.assets.core import DatumNotFound
+
+
 try:
     from types import SimpleNamespace
 except ImportError:
@@ -1413,15 +1416,23 @@ class BrokerES(object):
                             # for external keys get res/datum
                             for k, v in six.iteritems(doc['data']):
                                 if k in external_keys:
-                                    datum = self.reg.get_datum_from_datum_id(v)
-                                    if datum['resource'] not in resources:
-                                        res = self.reg.resource_given_datum_id(
-                                            v)
-                                        yield 'resource', self.prepare_hook(
-                                            name, res)
-                                        resources.add(res['uid'])
-                                    yield 'datum', self.prepare_hook(name,
-                                                                     datum)
+                                    try:
+                                        datum = self.reg.get_datum_from_datum_id(v)
+                                        if datum['resource'] not in resources:
+                                            res = self.reg.resource_given_datum_id(
+                                                v)
+                                            yield 'resource', self.prepare_hook(
+                                                name, res)
+                                            resources.add(res['uid'])
+                                        yield 'datum', self.prepare_hook(name,
+                                                                         datum)
+                                    except DatumNotFound as dnf:
+                                        logger.exception(
+                                            'Event %s references missing Datum %s',
+                                            doc["uid"],
+                                            v
+                                        )
+                                        raise dnf
 
                             doc = proc_gen.send(doc)
 
