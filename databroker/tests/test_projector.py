@@ -4,22 +4,23 @@ from databroker.core import BlueskyRun
 
 from ..projector import get_run_projection, project_xarray, ProjectionError
 
-NEX_IMAGE_FIELD = '/entry/instrument/detector/data'
-NEX_ENERGY_FIELD = '/entry/instrument/monochromator/energy'
-NEX_SAMPLE_NAME_FIELD = '/entry/sample/name'
+EVENT_FIELD = 'event_field_name'
+EVENT_CONFIGURATION_FIELD = 'event_configuration_name'
+START_DOC_FIELD = 'start_doc_metadata_name'
 MOCK_IMAGE = xarray.DataArray([[1, 2], [3, 4]])
 BEAMLINE_ENERGY_VALS = [1, 2, 3, 4, 5]
 OTHER_VALS = [-1, -2, -3, -4, -5]
 CCD = [MOCK_IMAGE+1, MOCK_IMAGE+2, MOCK_IMAGE+3, MOCK_IMAGE+4, MOCK_IMAGE+5]
+
 good_projection = [{
         "name": "nxsas",
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "start", "field": "sample"},
-            NEX_IMAGE_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "ccd"},
-            NEX_ENERGY_FIELD: {"type": "linked", "location": "event", "stream": "primary",
-                               "field": "beamline_energy"},
+            START_DOC_FIELD: {"type": "linked", "location": "start", "field": "sample"},
+            EVENT_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "ccd"},
+            EVENT_CONFIGURATION_FIELD: {"type": "linked", "location": "configuration", "stream": "primary",
+                                        "field": "beamline_energy"},
         }
     }]
 
@@ -28,7 +29,7 @@ bad_location = [{
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "i_dont_exist", "field": "sample"},
+            START_DOC_FIELD: {"type": "linked", "location": "i_dont_exist", "field": "sample"},
 
         }
     }]
@@ -38,8 +39,8 @@ bad_stream = [{
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "start", "field": "sample"},
-            NEX_IMAGE_FIELD: {"type": "linked", "location": "event", "stream": "i_dont_exist", "field": "ccd"},
+            START_DOC_FIELD: {"type": "linked", "location": "start", "field": "sample"},
+            EVENT_FIELD: {"type": "linked", "location": "event", "stream": "i_dont_exist", "field": "ccd"},
 
         }
     }]
@@ -49,8 +50,8 @@ bad_field = [{
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "start", "field": "sample"},
-            NEX_IMAGE_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "i_dont_exist"},
+            START_DOC_FIELD: {"type": "linked", "location": "start", "field": "sample"},
+            EVENT_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "i_dont_exist"},
 
         }
     }]
@@ -120,6 +121,9 @@ def test_calculated_projections():
         "projection": {
             '/entry/event/computed': {
                 "type": "calculated",
+                "location": "event",
+                "stream": "stream_name",
+                "field": "field_name",
                 "callable": "databroker.tests.test_projector:dont_panic",
                 "args": ['trillian'], "kwargs": {"ford": "prefect"}}
         }
@@ -161,9 +165,9 @@ def test_projector():
     # Ensure that the to_dask function was called on both
     # energy and image datasets
     assert mock_run['primary'].to_dask_counter == 2
-    assert dataset.attrs[NEX_SAMPLE_NAME_FIELD] == mock_run.metadata['start']['sample']
-    for idx, energy in enumerate(dataset[NEX_ENERGY_FIELD]):
+    assert dataset.attrs[START_DOC_FIELD] == mock_run.metadata['start']['sample']
+    for idx, energy in enumerate(dataset[EVENT_CONFIGURATION_FIELD]):
         assert energy == mock_run['primary'].dataset['beamline_energy'][idx]
-    for idx, image in enumerate(dataset[NEX_IMAGE_FIELD]):
+    for idx, image in enumerate(dataset[EVENT_FIELD]):
         comparison = image == mock_run['primary'].dataset['ccd'][idx]  # xarray of comparison results
         assert comparison.all()  # False if comparision does not contain all True

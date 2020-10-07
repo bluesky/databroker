@@ -1,7 +1,10 @@
+from typing import ValuesView
 import xarray
 from importlib import import_module
 
 from .core import BlueskyRun
+
+__all__ = ['Projector', 'project_xarray']
 
 
 class ProjectionError(Exception):
@@ -107,85 +110,132 @@ def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
 
 
 class Projector():
+    """Handles much of the inner workings of projecting a BlueskyRun by scanning the 
+    projection definition and providing callbacks for the different types of items
+    that can be projected.
+    """
 
-    def __init__(self, metadata_callback=None, event_configuration_callback=None, event_field_callback=None):
-        self._metadata_callback = metadata_callback
-        self._event_configuration_callback = event_configuration_callback
-        self._event_field_callback = event_field_callback
+    def __init__(self, metadata_cb=None, event_configuration_cb=None, event_field_cb=None):
+        """Pass optional callbacks for the various types of projected field defined in a projection
+
+        Parameters
+        ----------
+        metadata_cb : callable, optional
+            Receives a field name and a value for every field in the projection with
+            type=linked and location=start, by default None
+        event_configuration_cb : callable, optional
+            Receives a stream name, field name and a value for every field in the projection with
+            type=linked and location=configuration, by default None, by default None
+        event_field_cb : callable, optional
+            Receives a stream name, field name and a value for every field in the projection with
+            type=linked and location=event, by default None, by default None
+        """
+        self._metadata_cb = metadata_cb
+        self._event_configuration_cb = event_configuration_cb
+        self._event_field_cb = event_field_cb
+
+    def _get_field_and_stream(mapping):
+        projection_stream = mapping.get('stream')
+
+        if projection_stream is None:
+            raise ProjectionError(f'stream missing for event projection: {field_key}')
 
     def project(self, run: BlueskyRun, projection=None, projection_name=None):
-        try:
-            if projection is None:
-                projection = get_run_projection(run, projection_name)
-            if projection is None:
-                raise ProjectionError("Projection could not be found")
+        """Iterates a projection and communicates fields through callbacks.
 
-            # attrs = {}  # will populate the return Dataset attrs field
-            # data_vars = {}  # will populate the return Dataset DataArrays
-            for field_key, mapping in projection['projection'].items():
-                # go through each projection
-                projection_type = mapping['type']
-                projection_location = mapping.get('location')
-                projection_data = None
-                projection_linked_field = mapping.get('field')
-                # single value data that will go in the top
-                # dataset's attributes
-                if projection_location == 'start':
-                    if self._metadata_callback:
-                        self._metadata_callback(field_key, run.metadata['start'][projection_linked_field])
-                    continue
+        Selects projection based on logic of get_run_projection().
 
-                # added to return Dataset in data_vars dict
+        Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
+        in the data (not at the top-level attrs).
+
+        Calculated fields in projections schema contain a callable field. This should be expressed in
+        the familiar 'module:func' syntax.
+
+        All projection fields with "location"=="start" will look in the run_start
+        for metadata. Each field will be added to the return Dataset's attrs dictionary keyed
+        on projection key.
+
+        All projection fields with "location"=="configuration" will look in the event_descriptor.configuration
+        field for settings that appear once per stream. Each field will be added to the return Dataset's 
+        attrs dictionary keyed on projection key.
+
+        All projection fields with "location"=="event" will look for a field in a stream.
+
+        Parameters
+        ----------
+        run : BlueskyRun
+            run to project
+        projection_name : str, optional
+            name of a projection to select in the run, by default None
+        projection : dict, optional
+            projection not from the run to use, by default None
+
+        Returns
+        -------
+        xarray.Dataset
+            The return Dataset will contain:
+            - single value meta data (from the run start) in the return Dataset's attrs dict, keyed
+            on the projection key. These are projections marked  "location": "start"
+
+            - single value meata data (from a streams configuration field) in the return Dataset's xarray's dict, keyed
+            on the projection key. These are projections marked  "location": "start"
+
+            - multi-value data (from a stream). Keys for the dict-like xarray.Dataset match keys
+            in the passed-in projection. These are projections with "location": "linked"
+
+        Raises
+        ------
+        ProjectionError
+        """
+        if projection is None:
+            projection = get_run_projection(run, projection_name)
+        if projection is None:
+            raise ProjectionError("Projection could not be found")
+
+        for field_key, mapping in projection['projection'].items():
+            # go through each projection
+            projection_type = mapping['type']
+            projection_location = mapping.get('location')
+            projection_linked_field = mapping.get('field')
+
+            if projection_location == 'start':
+                if self._metadata_cb:
+                    self._metadata_cb(field_key, run.metadata['start'][projection_linked_field])
+                continue
+
+            if projection_location == 'event':
+                projection_stream = mapping.get('stream')
+
+                if projection_stream is None:
+                    raise ProjectionError(f'stream missing for event projection: {field_key}')
+
                 if projection_type == "calculated":
-                    if self._event_field_callback:
-                        self._event_field_callback(field_key, get_calculated_value(run, field_key, mapping))
+                    if self._event_field_cb:
+                        self._event_field_cb(projection_stream,
+                                             field_key,
+                                             get_calculated_value(run, field_key, mapping))
+                        continue
+
+                # TODO check if field exists in stream first
+                if self._event_field_cb:
+                    self._event_field_cb(projection_stream, field_key, run[projection_stream]
+                                            .to_dask()[projection_linked_field])
                     continue
-
-                # added to return Dataset in data_vars dict
-                if projection_location == 'event':
-                    projection_stream = mapping.get('stream')
-                    if projection_stream is None:
-                        raise ProjectionError(f'stream missing for event projection: {field_key}')
-                    try:
-                        # TODO check if field exists in stream first
-                        if self._event_field_callback:
-                            self._event_field_callback(field_key, run[projection_stream]
-                                                       .to_dask()[projection_linked_field])
-                    except Exception as e:
-                        raise ProjectionError(f'error projecting field: {field_key}') from e
-
-                elif projection_location == 'configuration':
-                    if self._event_configuration_callback:
-                        self._event_configuration_callback(field_key, projection_data)
-                else:
-                    raise KeyError(f'Unknown location: {projection_location} in projection.')
-
-        except ProjectionError as e:
-            raise e
-        except Exception as e:
-            raise ProjectionError('Error projecting run') from e
+              
+            if projection_location == 'configuration':
+                if self._event_configuration_cb:
+                    self._event_configuration_cb(field_key, run)
+            else:
+                raise KeyError(f'Unknown location: {projection_location} in projection.')
 
 
 def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None, **kwargs):
-    """Produces an xarray Dataset by projecting the provided run. Selects projection based on
-    logic of get_run_projection().
-
+    """Produces an xarray Dataset by projecting the provided run. 
 
     Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
     in the data (not at the top-level attrs).
 
-    Calculated fields in projections schema contain a callable field. This should be expressed in
-    the familiar 'module:func' syntax borrowed from python entry-points.
-
-    All projection fields with "location"=="start" will look in the run_start
-    for metadata. Each field will be added to the return Dataset's attrs dictionary keyed
-    on projection key.
-
-    All projection fields with "location"=="configuration" will look in the event_descriptor.configuration field
-    for settings that appear once per stream. Each field will be added to the return Dataset's attrs dictionary keyed
-    on projection key.
-
-    All projection fields with "location"=="event" will look for a field in a stream.
+    Projected fields will be inserted into the resulting xarray.Dataset
 
     Parameters
     ----------
@@ -203,41 +253,51 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
         - single value meta data (from the run start) in the return Dataset's attrs dict, keyed
         on the projection key. These are projections marked  "location": "start"
 
-        The return xarray.Dataset will contain 
-
-        - single value meata data (from a streams configuration field) in the return Dataset's xarray's dict, keyed
-        on the projection key. These are projections marked  "location": "start"
+        - single value meta data (from a streams configuration field) in the return Dataset's xarray's dict, keyed
+        on the projection key. These are projections marked  "location": "configuration"
 
         - multi-value data (from a stream). Keys for the dict-like xarray.Dataset match keys
-        in the passed-in projection. These are projections with "location": "linked"
+        in the passed-in projection. These are projections with "location": "linked"...note that 
+        every xarray for a field froma given stream will contain a reference to the same set of configuration attrs
+        for as all fields from the same stream
+
+        Dataset
+            |_attrs
+                |_'projection_start_field': value
+            |_data
+                |_ 'projection_event_field': xarray
+                                                |_ attrs
+                                                    |_'projection_configuration_field': value
 
     Raises
     ------
     ProjectionError
     """
-    try:
+    attrs = {}  # will populate the return Dataset attrs field
+    data_vars = {}  # will populate the return Dataset DataArrays
+    stream_configurations = {}
 
-        attrs = {}  # will populate the return Dataset attrs field
-        data_vars = {}  # will populate the return Dataset DataArrays
+    def metadata_cb(field, value):
+        attrs[field] = value
 
-        def metadata_callback(field, value):
-            attrs[field] = value
+    def event_configuration_cb(stream, field, value):
+        if stream not in stream_configurations:
+            stream_configurations[stream] = {}
+        stream_configurations[stream][field] = value
 
-        def event_configuration_callback(field, value):
-            ...
+    def event_field_cb(stream, field, xarray: xarray.DataArray):
+        if stream not in stream_configurations:
+            stream_configurations[stream] = {}
+        xarray.attrs['configuration'] = stream_configurations[stream]
+        data_vars[field] = xarray
 
-        def event_field_callback(field, value):
-            data_vars[field] = value
+    projector = Projector(
+        metadata_cb=metadata_cb,
+        event_configuration_cb=event_configuration_cb,
+        event_field_cb=event_field_cb)
 
-        projector = Projector(
-            metadata_callback=metadata_callback, 
-            event_configuration_callback=event_configuration_callback,
-            event_field_callback=event_field_callback)
+    projector.project(run, projection=projection, projection_name=projection_name)
+    dataset = xarray.Dataset(data_vars, attrs=attrs)
+    # configuraiton callback results in each field's xarray
 
-        projector.project(run, projection=projection, projection_name=projection_name)
-
-    except ProjectionError as e:
-        raise e
-    except Exception as e:
-        raise ProjectionError('Error projecting run') from e
-    return xarray.Dataset(data_vars, attrs=attrs)
+    return dataset
