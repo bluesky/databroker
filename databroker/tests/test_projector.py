@@ -16,7 +16,7 @@ good_projection = [{
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "configuration", "field": "sample"},
+            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "start", "field": "sample"},
             NEX_IMAGE_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "ccd"},
             NEX_ENERGY_FIELD: {"type": "linked", "location": "event", "stream": "primary",
                                "field": "beamline_energy"},
@@ -38,7 +38,7 @@ bad_stream = [{
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "configuration", "field": "sample"},
+            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "start", "field": "sample"},
             NEX_IMAGE_FIELD: {"type": "linked", "location": "event", "stream": "i_dont_exist", "field": "ccd"},
 
         }
@@ -49,7 +49,7 @@ bad_field = [{
         "version": "2020.1",
         "configuration": {"name": "RSoXS"},
         "projection": {
-            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "configuration", "field": "sample"},
+            NEX_SAMPLE_NAME_FIELD: {"type": "linked", "location": "start", "field": "sample"},
             NEX_IMAGE_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "i_dont_exist"},
 
         }
