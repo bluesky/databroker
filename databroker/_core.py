@@ -26,7 +26,7 @@ from .utils import (ALL, get_fields, wrap_in_deprecated_doct, wrap_in_doct,
                     DeprecatedDoct, DOCT_NAMES, lookup_config, list_configs,
                     describe_configs, SPECIAL_NAME)
 
-from databroker.assets.core import DatumNotFound
+from databroker.assets.core import DatumNotFound, EventDatumNotFound
 
 
 try:
@@ -1427,12 +1427,10 @@ class BrokerES(object):
                                         yield 'datum', self.prepare_hook(name,
                                                                          datum)
                                     except DatumNotFound as dnf:
-                                        logger.exception(
-                                            'Event %s references missing Datum %s',
-                                            doc["uid"],
-                                            v
-                                        )
-                                        raise dnf
+                                        raise EventDatumNotFound(
+                                            event_uid=doc["uid"],
+                                            datum_id=dnf.datum_id
+                                        ) from dnf
 
                             doc = proc_gen.send(doc)
 
