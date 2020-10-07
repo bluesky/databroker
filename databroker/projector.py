@@ -131,12 +131,14 @@ class Projector():
                 # single value data that will go in the top
                 # dataset's attributes
                 if projection_location == 'start':
-                    self._metadata_callback(field_key, run.metadata['start'][projection_linked_field])
+                    if self._metadata_callback:
+                        self._metadata_callback(field_key, run.metadata['start'][projection_linked_field])
                     continue
 
                 # added to return Dataset in data_vars dict
                 if projection_type == "calculated":
-                    self._event_field_callback(field_key, get_calculated_value(run, field_key, mapping))
+                    if self._event_field_callback:
+                        self._event_field_callback(field_key, get_calculated_value(run, field_key, mapping))
                     continue
 
                 # added to return Dataset in data_vars dict
@@ -146,13 +148,15 @@ class Projector():
                         raise ProjectionError(f'stream missing for event projection: {field_key}')
                     try:
                         # TODO check if field exists in stream first
-                        self._event_field_callback(field_key, run[projection_stream]
-                                                   .to_dask()[projection_linked_field])
+                        if self._event_field_callback:
+                            self._event_field_callback(field_key, run[projection_stream]
+                                                       .to_dask()[projection_linked_field])
                     except Exception as e:
                         raise ProjectionError(f'error projecting field: {field_key}') from e
 
                 elif projection_location == 'configuration':
-                    self._event_configuration_callback(field_key, projection_data)
+                    if self._event_configuration_callback:
+                        self._event_configuration_callback(field_key, projection_data)
                 else:
                     raise KeyError(f'Unknown location: {projection_location} in projection.')
 
