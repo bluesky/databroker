@@ -14,28 +14,26 @@ class DatumNotFound(Exception):
     """
     Raised if a Datum id is not found.
     """
-    def __init__(self, datum_id, *args):
-        super().__init__(*args)
+    def __init__(self, datum_id, msg=None, *args):
+        if msg is None:
+            msg = f"No datum found with datum id {datum_id}"
+        super().__init__(msg, *args)
         self.datum_id = datum_id
-
-    def __str__(self):
-        return f"No datum found with datum id {self.datum_id}"
 
 
 class EventDatumNotFound(Exception):
     """
     Raised if an Event document is found to have an unknown Datum id.
     """
-    def __init__(self, event_uid, datum_id, *args):
-        super().__init__(*args)
+    def __init__(self, event_uid, datum_id, msg=None, *args):
+        if msg is None:
+            msg = (
+                f"Event with uid {event_uid} references "
+                f"unknown Datum with datum id {datum_id}"
+            )
+        super().__init__(msg, *args)
         self.event_uid = event_uid
         self.datum_id = datum_id
-
-    def __str__(self):
-        return (
-            f"Event with uid {self.event_uid} references "
-            f"unknown Datum with datum id {self.datum_id}"
-        )
 
 
 def doc_or_uid_to_uid(doc_or_uid):
