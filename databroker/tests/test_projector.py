@@ -161,15 +161,13 @@ def test_find_projection_in_run():
 def test_unknown_location():
     mock_run = make_mock_run(bad_location, 'one_ring')
     with pytest.raises(ProjectionError):
-        projector = project_xarray(mock_run)
-        projector.project(bad_location[0])
+        project_xarray(mock_run)
 
 
 def test_nonexistent_stream():
     mock_run = make_mock_run(bad_stream, 'one_ring')
     with pytest.raises(ProjectionError):
-        projector = project_xarray(mock_run)
-        projector.project(bad_stream[0])
+        project_xarray(mock_run)
 
 
 def test_projector():

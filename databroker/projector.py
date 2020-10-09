@@ -211,9 +211,9 @@ class Projector():
 
                 if projection_type == "calculated":
                     if self._event_field_cb:
-                        self._event_field_cb(projection_stream,
+                        self._event_field_cb(field_key,
+                                             projection_stream,
                                              projection_linked_field,
-                                             field_key,
                                              get_calculated_value(run, field_key, mapping))
                         continue
 
@@ -321,15 +321,17 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
         # associate the stream configuration to the xarrays's atrtrs
         xarray.attrs['configuration'] = stream_configurations[stream]
         data_vars[projection_field] = xarray
+    try:
+        projector = Projector(
+            metadata_cb=metadata_cb,
+            event_configuration_cb=event_configuration_cb,
+            event_field_cb=event_field_cb)
 
-    projector = Projector(
-        metadata_cb=metadata_cb,
-        event_configuration_cb=event_configuration_cb,
-        event_field_cb=event_field_cb)
-
-    projector.project(run, projection=projection, projection_name=projection_name)
-    dataset = xarray.Dataset(data_vars, attrs=attrs)
-    return dataset
+        projector.project(run, projection=projection, projection_name=projection_name)
+        dataset = xarray.Dataset(data_vars, attrs=attrs)
+        return dataset
+    except Exception as e:
+        raise ProjectionError from e
 
 
 def get_xarray_config_field(dataset: xarray.Dataset,
