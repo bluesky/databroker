@@ -2,7 +2,7 @@ import pytest
 import xarray
 from databroker.core import BlueskyRun
 
-from ..projector import get_run_projection, project_xarray, ProjectionError
+from ..projector import get_run_projection, project_xarray, ProjectionError, get_xarray_config_field
 
 EVENT_FIELD = 'event_field_name'
 EVENT_CONFIGURATION_FIELD = 'event_configuration_name'
@@ -19,8 +19,12 @@ good_projection = [{
         "projection": {
             START_DOC_FIELD: {"type": "linked", "location": "start", "field": "sample"},
             EVENT_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "ccd"},
-            EVENT_CONFIGURATION_FIELD: {"type": "linked", "location": "configuration", "stream": "primary",
-                                        "field": "beamline_energy"},
+            EVENT_CONFIGURATION_FIELD: {"type": "linked",
+                                        "location": "configuration",
+                                        "stream": "primary",
+                                        "config_index": 0,
+                                        "config_device": "camera_thingy",
+                                        "field": "camera_manufacturer"},
         }
     }]
 
@@ -93,9 +97,18 @@ class MockRun():
                 'sample': sample,
                 'projections': projections
             },
+            'descriptors': [
+                {
+                    'configuration': {
+                        'camera_thingy': {
+                            'data': {'camera_manufacturer': 'berkeley lab'}
+                        }
+                    }
+
+                }
+            ],
             'stop': {}
         }
-
         self.primary = MockStream(self.metadata)
 
     def __getitem__(self, key):
@@ -164,10 +177,8 @@ def test_projector():
     dataset = project_xarray(mock_run)
     # Ensure that the to_dask function was called on both
     # energy and image datasets
-    assert mock_run['primary'].to_dask_counter == 2
-    assert dataset.attrs[START_DOC_FIELD] == mock_run.metadata['start']['sample']
-    for idx, energy in enumerate(dataset[EVENT_CONFIGURATION_FIELD]):
-        assert energy == mock_run['primary'].dataset['beamline_energy'][idx]
+    assert mock_run['primary'].to_dask_counter == 1
+    assert get_xarray_config_field(dataset, EVENT_FIELD, 0, 'camera_thingy', 'camera_manufacturer') == 'berkeley lab'
     for idx, image in enumerate(dataset[EVENT_FIELD]):
         comparison = image == mock_run['primary'].dataset['ccd'][idx]  # xarray of comparison results
         assert comparison.all()  # False if comparision does not contain all True

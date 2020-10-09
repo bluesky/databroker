@@ -1,10 +1,9 @@
-from typing import ValuesView
 import xarray
 from importlib import import_module
 
 from .core import BlueskyRun
 
-__all__ = ['Projector', 'project_xarray']
+__all__ = ['Projector', 'project_xarray', 'get_xarray_projection_config_field']
 
 
 class ProjectionError(Exception):
@@ -200,10 +199,11 @@ class Projector():
 
             if projection_location == 'start':
                 if self._metadata_cb:
-                    self._metadata_cb(field_key, run.metadata['start'][projection_linked_field])
+                    self._metadata_cb(field_key,
+                                      run.metadata['start'][projection_linked_field])
                 continue
 
-            if projection_location == 'event':
+            elif projection_location == 'event':
                 projection_stream = mapping.get('stream')
 
                 if projection_stream is None:
@@ -212,19 +212,33 @@ class Projector():
                 if projection_type == "calculated":
                     if self._event_field_cb:
                         self._event_field_cb(projection_stream,
+                                             projection_linked_field,
                                              field_key,
                                              get_calculated_value(run, field_key, mapping))
                         continue
 
                 # TODO check if field exists in stream first
                 if self._event_field_cb:
-                    self._event_field_cb(projection_stream, field_key, run[projection_stream]
-                                            .to_dask()[projection_linked_field])
+                    value = run[projection_stream].to_dask()[projection_linked_field]
+                    self._event_field_cb(field_key,
+                                         projection_stream,
+                                         projection_linked_field,
+                                         value)
                     continue
-              
-            if projection_location == 'configuration':
+
+            elif projection_location == 'configuration':
                 if self._event_configuration_cb:
-                    self._event_configuration_cb(field_key, run)
+                    projection_stream = mapping['stream']
+                    config_index = mapping['config_index']
+                    config_device = mapping['config_device']
+                    value = run.primary.metadata['descriptors'][config_index]['configuration'][config_device]
+                    value = value['data'][projection_linked_field]
+                    self._event_configuration_cb(field_key,
+                                                 projection_stream,
+                                                 config_index,
+                                                 config_device,
+                                                 projection_linked_field,
+                                                 value)
             else:
                 raise KeyError(f'Unknown location: {projection_location} in projection.')
 
@@ -275,21 +289,38 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
     """
     attrs = {}  # will populate the return Dataset attrs field
     data_vars = {}  # will populate the return Dataset DataArrays
-    stream_configurations = {}
+    stream_configurations = {}  # will populate a collection of dicts of stream configurations
 
     def metadata_cb(field, value):
         attrs[field] = value
 
-    def event_configuration_cb(stream, field, value):
-        if stream not in stream_configurations:
-            stream_configurations[stream] = {}
-        stream_configurations[stream][field] = value
+    def event_configuration_cb(
+            projection_field,
+            stream,
+            config_index,
+            config_device,
+            config_field,
+            value):
 
-    def event_field_cb(stream, field, xarray: xarray.DataArray):
         if stream not in stream_configurations:
-            stream_configurations[stream] = {}
+            stream_configurations[stream] = []
+        if len(stream_configurations[stream]) == 0:
+            stream_configurations[stream].append({})
+        if config_device not in stream_configurations[stream][config_index]:
+            stream_configurations[stream][config_index][config_device] = {}
+
+        stream_configurations[stream][config_index][config_device][config_field] = value
+
+    def event_field_cb(projection_field,
+                       stream,
+                       field,
+                       xarray: xarray.DataArray):
+
+        if projection_field not in stream_configurations:
+            stream_configurations[stream] = []
+        # associate the stream configuration to the xarrays's atrtrs
         xarray.attrs['configuration'] = stream_configurations[stream]
-        data_vars[field] = xarray
+        data_vars[projection_field] = xarray
 
     projector = Projector(
         metadata_cb=metadata_cb,
@@ -298,6 +329,32 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
 
     projector.project(run, projection=projection, projection_name=projection_name)
     dataset = xarray.Dataset(data_vars, attrs=attrs)
-    # configuraiton callback results in each field's xarray
-
     return dataset
+
+
+def get_xarray_config_field(dataset: xarray.Dataset,
+                            projection_field,
+                            config_index,
+                            device,
+                            field):
+    """Reach into the dataset and 
+
+    Parameters
+    ----------
+    dataset : xarray.Dataset
+        [description]
+    projection_field : [type]
+        [description]
+    config_index : [type]
+        [description]
+    device : [type]
+        [description]
+    field : [type]
+        [description]
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    return dataset[projection_field].attrs['configuration'][config_index][device][field]
