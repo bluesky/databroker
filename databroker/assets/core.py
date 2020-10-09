@@ -9,8 +9,31 @@ import time as ttime
 import pandas as pd
 from ..utils import sanitize_np, apply_to_dict_recursively
 
+
 class DatumNotFound(Exception):
-    pass
+    """
+    Raised if a Datum id is not found.
+    """
+    def __init__(self, datum_id, msg=None, *args):
+        if msg is None:
+            msg = f"No datum found with datum id {datum_id}"
+        super().__init__(msg, *args)
+        self.datum_id = datum_id
+
+
+class EventDatumNotFound(Exception):
+    """
+    Raised if an Event document is found to have an unknown Datum id.
+    """
+    def __init__(self, event_uid, datum_id, msg=None, *args):
+        if msg is None:
+            msg = (
+                f"Event with uid {event_uid} references "
+                f"unknown Datum with datum id {datum_id}"
+            )
+        super().__init__(msg, *args)
+        self.event_uid = event_uid
+        self.datum_id = datum_id
 
 
 def doc_or_uid_to_uid(doc_or_uid):
@@ -40,8 +63,7 @@ def _get_datum_from_datum_id(col, datum_id, datum_cache, logger):
         # find the current document
         edoc = col.find_one({'datum_id': datum_id})
         if edoc is None:
-            raise DatumNotFound(
-                "No datum found with datum_id {!r}".format(datum_id))
+            raise DatumNotFound(datum_id=datum_id)
         # save it for later
         datum = dict(edoc)
 

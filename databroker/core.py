@@ -1839,13 +1839,14 @@ def _transpose(in_data, keys, field):
             # TEMPORARY EMERGENCY FALLBACK
             # If environment variable is set to anything but 0, work around
             # dask and return a numpy array.
-            if os.environ.get('DATABROKER_ARRAY_FALLBACK') != "0":
+            databroker_array_fallback = os.environ.get('DATABROKER_ARRAY_FALLBACK')
+            if databroker_array_fallback != "0":
                 out[k] = numpy.asarray(out[k])
                 warnings.warn(
                     f"Creating a dask array raised an error. Because the "
                     f"environment variable DATABROKER_ARRAY_FALLBACK was set "
-                    f"to {switch} we have caught the error and fallen "
-                    f"back to returning a numpy array instead. This may be "
+                    f"to {databroker_array_fallback} we have caught the error and "
+                    f"fallen back to returning a numpy array instead. This may be "
                     f"very slow. The underlying issue should be resolved. The "
                     f"error was {err!r}.")
             else:
