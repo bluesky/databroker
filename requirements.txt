@@ -1,3 +1,4 @@
+bluesky-live
 boltons
 cachetools
 dask[array,bag]
