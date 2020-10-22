@@ -279,10 +279,8 @@ def test_include_and_exclude(bundle):
     assert 'motor' in entry().read().variables
     assert 'motor' not in entry(exclude=['motor']).read().variables
     assert 'motor' in entry(exclude=['NONEXISTENT']).read().variables
-    expected = set(['time', 'uid', 'seq_num', 'motor'])
+    expected = set(['time', 'motor'])
     assert set(entry(include=['motor']).read().variables) == expected
-    expected = set(['time', 'uid', 'seq_num', 'motor:motor_velocity'])
-    assert set(entry(include=['motor:motor_velocity']).read().variables) == expected
 
 
 def test_transforms(bundle):
