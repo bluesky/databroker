@@ -3,7 +3,7 @@ import os
 import tempfile
 import xarray
 from ... import core
-from ...core import _documents_to_xarray
+from ...core import documents_to_xarray
 
 
 def no_event_pages(descriptor_uid):
@@ -28,7 +28,7 @@ def test_no_descriptors():
     run_bundle = event_model.compose_run()
     start_doc = run_bundle.start_doc
     stop_doc = run_bundle.compose_stop()
-    _documents_to_xarray(
+    documents_to_xarray(
         start_doc=start_doc,
         stop_doc=stop_doc,
         descriptor_docs=[],
@@ -47,7 +47,7 @@ def test_no_events():
         name='primary')
     descriptor_doc = desc_bundle.descriptor_doc
     stop_doc = run_bundle.compose_stop()
-    _documents_to_xarray(
+    documents_to_xarray(
         start_doc=start_doc,
         stop_doc=stop_doc,
         descriptor_docs=[descriptor_doc],
