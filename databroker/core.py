@@ -30,6 +30,10 @@ from .utils import LazyMap
 from collections import deque, OrderedDict
 from dask.base import normalize_token
 
+try:
+    from intake.catalog.remote import RemoteCatalog as intake_RemoteCatalog
+except ImportError:
+    from intake.catalog.base import RemoteCatalog as intake_RemoteCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -836,7 +840,7 @@ def _canonical(*, start, stop, entries, fill, strict_order=True):
         yield ('stop', stop)
 
 
-class RemoteBlueskyRun(intake.catalog.base.RemoteCatalog):
+class RemoteBlueskyRun(intake_RemoteCatalog):
     """
     Catalog representing one Run.
 
