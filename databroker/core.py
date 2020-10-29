@@ -2069,7 +2069,7 @@ def extract_shape(descriptor, key, resource=None):
     Patch up misreported 'shape' metadata in old documents.
 
     This uses heuristcs to guess if the shape looks wrong and determine the
-    right one. Once historical data has been fixed, this function will will be
+    right one. Once historical data has been fixed, this function will be
     reused to::
 
     return descriptor['data_keys'][key]['shape']
