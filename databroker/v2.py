@@ -63,6 +63,9 @@ class Broker(Catalog):
     def __init__(self, *, handler_registry=None, root_map=None,
                  filler_class=event_model.Filler, transforms=None, **kwargs):
 
+        # Work around https://github.com/intake/intake/issues/543
+        self.auth = kwargs.pop("auth", None)
+
         if isinstance(filler_class, str):
             module_name, _, class_name = filler_class.rpartition('.')
             self._filler_class = getattr(importlib.import_module(module_name), class_name)
