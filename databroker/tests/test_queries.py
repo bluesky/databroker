@@ -10,17 +10,17 @@ def test_time_range():
     assert empty == dict(empty) == empty.query == {}
     assert TimeRange(**empty.kwargs) == empty
 
-    since = TimeRange(since='2020')
+    since = TimeRange(since='2020', timezone="US/Eastern")
     expected = {'time': {'$gte': 1577854800.0}}
     assert since == dict(since) == since.query == expected
     assert TimeRange(**since.kwargs) == since
 
-    until = TimeRange(until='2020')
+    until = TimeRange(until='2020', timezone="US/Eastern")
     expected = {'time': {'$lt': 1577854800.0}}
     assert until == dict(until) == until.query == expected
     assert TimeRange(**until.kwargs) == until
 
-    both = TimeRange(since='2020', until='2021')
+    both = TimeRange(since='2020', until='2021', timezone="US/Eastern")
     expected = {'time': {'$gte': 1577854800.0, '$lt': 1609477200.0}}
     assert both == dict(both) == both.query == expected
     assert TimeRange(**both.kwargs) == both
@@ -37,7 +37,7 @@ def test_time_range():
 
 def test_replace():
     "Test the Query.replace() method using TimeRange."
-    original = TimeRange(since='2020', until='2021')
+    original = TimeRange(since='2020', until='2021', timezone="US/Eastern")
     clone = original.replace()
     assert original == clone
 
@@ -47,7 +47,7 @@ def test_replace():
 
 def test_pickle():
     "Ensure that query objects are pickle-able."
-    q = TimeRange(since='2020-01-01 9:52')
+    q = TimeRange(since='2020-01-01 9:52', timezone="US/Eastern")
     serialized = pickle.dumps(q)
     deserialized = pickle.loads(serialized)
     assert q == deserialized
