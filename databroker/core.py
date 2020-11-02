@@ -1172,6 +1172,11 @@ class BlueskyEventStream(DataSourceMixin):
     exclude : list, optional
         Fields ('data keys') to exclude. By default none are excluded. This
         parameter is mutually exclusive with ``include``.
+    sub_dict : {"data", "timestamps"}, optional
+        Which sub-dict in the EventPage to use
+    configuration_for : str
+        The name of an object (e.g. device) whose configuration we want to
+        read.
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
