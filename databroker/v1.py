@@ -430,7 +430,7 @@ class Broker:
             get_documents_router = _GetDocumentsRouter(self.prepare_hook,
                                                        merge_config_into_event,
                                                        stream_name=stream_name)
-            for name, doc in self._catalog[uid].canonical(fill=_FILL[bool(fill)],
+            for name, doc in self._catalog[uid].documents(fill=_FILL[bool(fill)],
                                                           strict_order=True):
                 yield from get_documents_router(name, doc)
 
@@ -916,7 +916,7 @@ class Broker:
         file_pairs = []
 
         for header in headers:
-            for name, doc in self._catalog[header.start['uid']].canonical(fill='no'):
+            for name, doc in self._catalog[header.start['uid']].documents(fill='no'):
                 if name == 'event_page':
                     for event in event_model.unpack_event_page(doc):
                         db.insert('event', event)
@@ -948,7 +948,7 @@ class Broker:
         total_size = 0
         for header in headers:
             run = self._catalog[header.start['uid']]
-            for name, doc in self._catalog[header.start['uid']].canonical(fill='no'):
+            for name, doc in self._catalog[header.start['uid']].documents(fill='no'):
                 if name == 'resource':
                     for filepath in run.get_file_list(doc):
                         total_size += os.path.getsize(filepath)

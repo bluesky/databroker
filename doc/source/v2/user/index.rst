@@ -283,11 +283,11 @@ Replay Document Stream
 Bluesky is built around a streaming-friendly representation of data and
 metadata. (See event-model_.) To access the run---effectively replaying the
 chronological stream of documents that were emitted during data
-acquisition---use the ``canonical()`` method.
+acquisition---use the ``documents()`` method.
 
 .. ipython:: python
 
-   run.canonical(fill='yes')
+   run.documents(fill='yes')
 
 This generator yields ``(name, doc)`` pairs and can be fed into streaming
 visualization, processing, and serialization tools that consume this

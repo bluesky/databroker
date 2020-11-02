@@ -190,7 +190,8 @@ def test_run_metadata(bundle):
         assert key in run().metadata  # datasource
 
 
-def test_canonical(bundle):
+def test_read_canonical(bundle):
+    "This is a deprecated synonym for documents()."
     run = bundle.cat['xyz']()[bundle.uid]
 
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
@@ -200,25 +201,40 @@ def test_canonical(bundle):
     with pytest.warns(UserWarning):
         next(run.read_canonical())
 
-    compare(run.canonical(fill='yes'),
+    compare(run.documents(fill='yes'),
             (filler(name, doc) for name, doc in bundle.docs))
 
 
-def test_canonical_unfilled(bundle):
+def test_canonical(bundle):
+    "This is a deprecated synonym for documents()."
     run = bundle.cat['xyz']()[bundle.uid]
-    run.canonical(fill='no')
 
-    compare(run.canonical(fill='no'), bundle.docs)
+    filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
+                                inplace=False)
+
+    # Smoke test for back-compat alias
+    with pytest.warns(UserWarning):
+        next(run.canonical())
+
+    compare(run.documents(fill='yes'),
+            (filler(name, doc) for name, doc in bundle.docs))
+
+
+def test_documents_unfilled(bundle):
+    run = bundle.cat['xyz']()[bundle.uid]
+    run.documents(fill='no')
+
+    compare(run.documents(fill='no'), bundle.docs)
 
     # Passing the run through the filler to check resource and datum are
     # received before corresponding event.
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
                                 inplace=False)
-    for name, doc in run.canonical(fill='no'):
+    for name, doc in run.documents(fill='no'):
         filler(name, doc)
 
 
-def test_canonical_delayed(bundle):
+def test_documents_delayed(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
 
     filler = event_model.Filler({'NPY_SEQ': ophyd.sim.NumpySeqHandler},
@@ -226,18 +242,18 @@ def test_canonical_delayed(bundle):
 
     if bundle.remote:
         with pytest.raises(NotImplementedError):
-            next(run.canonical(fill='delayed'))
+            next(run.documents(fill='delayed'))
     else:
-        compare(run.canonical(fill='delayed'),
+        compare(run.documents(fill='delayed'),
                 (filler(name, doc) for name, doc in bundle.docs))
 
 
-def test_canonical_duplicates(bundle):
+def test_documents_duplicates(bundle):
     run = bundle.cat['xyz']()[bundle.uid]
     history = set()
     run_start_uid = None
 
-    for name, doc in run.canonical(fill='no'):
+    for name, doc in run.documents(fill='no'):
         if name == 'start':
             run_start_uid = doc['uid']
         elif name == 'datum':
@@ -285,7 +301,7 @@ def test_include_and_exclude(bundle):
 
 def test_transforms(bundle):
     run = bundle.cat['xyz_with_transforms']()[bundle.uid]
-    for name, doc in run.canonical(fill='no'):
+    for name, doc in run.documents(fill='no'):
         if name in {'start', 'stop', 'resource', 'descriptor'}:
             assert doc.get('test_key') == 'test_value'
 
@@ -312,7 +328,7 @@ def test_items(bundle):
     if bundle.remote:
         pytest.xfail("Regression in intake 0.6.0 awaiting patch")
     for uid, run in bundle.cat['xyz']().items():
-        assert hasattr(run, 'canonical')
+        assert hasattr(run, 'documents')
 
 '''
 
@@ -325,7 +341,7 @@ def test_catalog_update(bundle, RE, hw):
         new_uid = RE(count([hw.img]), serializer)[0]
         new_file = serializer.artifacts['all'][0]
 
-    name, start_doc = next(bundle.cat['xyz']()[-1].canonical(fill='no'))
+    name, start_doc = next(bundle.cat['xyz']()[-1].documents(fill='no'))
     assert start_doc['uid'] == new_uid
     os.unlink(new_file)
     bundle.cat['xyz'].force_reload()
