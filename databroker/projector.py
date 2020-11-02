@@ -3,7 +3,8 @@ from importlib import import_module
 
 from .core import BlueskyRun
 
-__all__ = ['Projector', 'project_xarray', 'get_xarray_projection_config_field']
+
+__all__ = ['Projector', 'project_xarray']
 
 
 class ProjectionError(Exception):
@@ -109,7 +110,7 @@ def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
 
 
 class Projector():
-    """Handles much of the inner workings of projecting a BlueskyRun by scanning the 
+    """Handles much of the inner workings of projecting a BlueskyRun by scanning the
     projection definition and providing callbacks for the different types of items
     that can be projected.
     """
@@ -133,12 +134,6 @@ class Projector():
         self._event_configuration_cb = event_configuration_cb
         self._event_field_cb = event_field_cb
 
-    def _get_field_and_stream(mapping):
-        projection_stream = mapping.get('stream')
-
-        if projection_stream is None:
-            raise ProjectionError(f'stream missing for event projection: {field_key}')
-
     def project(self, run: BlueskyRun, projection=None, projection_name=None):
         """Iterates a projection and communicates fields through callbacks.
 
@@ -155,7 +150,7 @@ class Projector():
         on projection key.
 
         All projection fields with "location"=="configuration" will look in the event_descriptor.configuration
-        field for settings that appear once per stream. Each field will be added to the return Dataset's 
+        field for settings that appear once per stream. Each field will be added to the return Dataset's
         attrs dictionary keyed on projection key.
 
         All projection fields with "location"=="event" will look for a field in a stream.
@@ -176,8 +171,8 @@ class Projector():
             - single value meta data (from the run start) in the return Dataset's attrs dict, keyed
             on the projection key. These are projections marked  "location": "start"
 
-            - single value meata data (from a streams configuration field) in the return Dataset's xarray's dict, keyed
-            on the projection key. These are projections marked  "location": "start"
+            - single value meata data (from a streams configuration field) in the return Dataset's xarray's
+            dict, keyed on the projection key. These are projections marked  "location": "start"
 
             - multi-value data (from a stream). Keys for the dict-like xarray.Dataset match keys
             in the passed-in projection. These are projections with "location": "linked"
@@ -244,7 +239,7 @@ class Projector():
 
 
 def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None, **kwargs):
-    """Produces an xarray Dataset by projecting the provided run. 
+    """Produces an xarray Dataset by projecting the provided run.
 
     Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
     in the data (not at the top-level attrs).
@@ -271,7 +266,7 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
         on the projection key. These are projections marked  "location": "configuration"
 
         - multi-value data (from a stream). Keys for the dict-like xarray.Dataset match keys
-        in the passed-in projection. These are projections with "location": "linked"...note that 
+        in the passed-in projection. These are projections with "location": "linked"...note that
         every xarray for a field froma given stream will contain a reference to the same set of configuration attrs
         for as all fields from the same stream
 
@@ -339,7 +334,8 @@ def get_xarray_config_field(dataset: xarray.Dataset,
                             config_index,
                             device,
                             field):
-    """Reach into the dataset and 
+    """Reach into the dataset and get the value for the provided
+       configuration fidl
 
     Parameters
     ----------

@@ -176,7 +176,8 @@ def test_projector():
     # Ensure that the to_dask function was called on both
     # energy and image datasets
     assert mock_run['primary'].to_dask_counter == 1
-    assert get_xarray_config_field(dataset, EVENT_FIELD, 0, 'camera_thingy', 'camera_manufacturer') == 'berkeley lab'
+    assert get_xarray_config_field(dataset, EVENT_FIELD, 0, 'camera_thingy', 'camera_manufacturer') == \
+        'berkeley lab'
     for idx, image in enumerate(dataset[EVENT_FIELD]):
         comparison = image == mock_run['primary'].dataset['ccd'][idx]  # xarray of comparison results
         assert comparison.all()  # False if comparision does not contain all True
