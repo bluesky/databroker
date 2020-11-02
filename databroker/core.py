@@ -27,7 +27,7 @@ import xarray
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from .utils import LazyMap
-from bluesky_live.bluesky_run import documents_to_xarray, documents_to_xarray_config
+from bluesky_live.conversion import documents_to_xarray, documents_to_xarray_config
 from collections import deque, OrderedDict
 from dask.base import normalize_token
 

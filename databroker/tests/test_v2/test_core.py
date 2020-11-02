@@ -3,7 +3,7 @@ import os
 import tempfile
 import xarray
 from ... import core
-from ...core import documents_to_xarray
+from bluesky_live.conversion import documents_to_xarray
 
 
 def no_event_pages(descriptor_uid):
