@@ -285,6 +285,11 @@ metadata. (See event-model_.) To access the run---effectively replaying the
 chronological stream of documents that were emitted during data
 acquisition---use the ``documents()`` method.
 
+.. versionchanged:: 1.2.0
+
+   The ``documents`` method was formerly named ``canonical``. The old name is
+   still supported but deprecated.
+
 .. ipython:: python
 
    run.documents(fill='yes')
