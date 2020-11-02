@@ -27,6 +27,7 @@ import xarray
 from .intake_xarray_core.base import DataSourceMixin
 from .intake_xarray_core.xarray_container import RemoteXarray
 from .utils import LazyMap
+from bluesky_live.conversion import documents_to_xarray, documents_to_xarray_config
 from collections import deque, OrderedDict
 from dask.base import normalize_token
 
@@ -608,171 +609,6 @@ def _fill(filler,
         )
 
 
-def _documents_to_xarray(*, start_doc, stop_doc, descriptor_docs,
-                         get_event_pages, filler, get_resource,
-                         lookup_resource_for_datum, get_datum_pages,
-                         include=None, exclude=None):
-    """
-    Represent the data in one Event stream as an xarray.
-
-    Parameters
-    ----------
-    start_doc: dict
-        RunStart Document
-    stop_doc : dict
-        RunStop Document
-    descriptor_docs : list
-        EventDescriptor Documents
-    filler : event_model.Filler
-    get_resource : callable
-        Expected signature ``get_resource(resource_uid) -> Resource``
-    lookup_resource_for_datum : callable
-        Expected signature ``lookup_resource_for_datum(datum_id) -> resource_uid``
-    get_datum_pages : callable
-        Expected signature ``get_datum_pages(resource_uid) -> generator``
-        where ``generator`` yields datum_page documents
-    get_event_pages : callable
-        Expected signature ``get_event_pages(descriptor_uid) -> generator``
-        where ``generator`` yields event_page documents
-    include : list, optional
-        Fields ('data keys') to include. By default all are included. This
-        parameter is mutually exclusive with ``exclude``.
-    exclude : list, optional
-        Fields ('data keys') to exclude. By default none are excluded. This
-        parameter is mutually exclusive with ``include``.
-
-    Returns
-    -------
-    dataset : xarray.Dataset
-    """
-    if include is None:
-        include = []
-    if exclude is None:
-        exclude = []
-    if include and exclude:
-        raise ValueError(
-            "The parameters `include` and `exclude` are mutually exclusive.")
-    # Data keys must not change within one stream, so we can safely sample
-    # just the first Event Descriptor.
-    if descriptor_docs:
-        data_keys = descriptor_docs[0]['data_keys']
-        if include:
-            keys = list(set(data_keys) & set(include))
-        elif exclude:
-            keys = list(set(data_keys) - set(exclude))
-        else:
-            keys = list(data_keys)
-
-    # Collect a Dataset for each descriptor. Merge at the end.
-    datasets = []
-    dim_counter = itertools.count()
-    event_dim_labels = {}
-    config_dim_labels = {}
-    for descriptor in descriptor_docs:
-        events = list(_flatten_event_page_gen(get_event_pages(descriptor['uid'])))
-        if not events:
-            continue
-        if any(data_keys[key].get('external') for key in keys):
-            filler('descriptor', descriptor)
-            filled_events = []
-            for event in events:
-                filled_event = _fill(
-                    filler, event, lookup_resource_for_datum, get_resource,
-                    get_datum_pages)
-                filled_events.append(filled_event)
-        else:
-            filled_events = events
-        times = [ev['time'] for ev in events]
-        seq_nums = [ev['seq_num'] for ev in events]
-        uids = [ev['uid'] for ev in events]
-        data_table = _transpose(filled_events, keys, 'data')
-        # external_keys = [k for k in data_keys if 'external' in data_keys[k]]
-
-        # Collect a DataArray for each field in Event, each field in
-        # configuration, and 'seq_num'. The Event 'time' will be the
-        # default coordinate.
-        data_arrays = {}
-
-        # Make DataArrays for Event data.
-        for key in keys:
-            field_metadata = data_keys[key]
-            # if the EventDescriptor doesn't provide names for the
-            # dimensions (it's optional) use the same default dimension
-            # names that xarray would.
-            try:
-                dims = tuple(field_metadata['dims'])
-            except KeyError:
-                ndim = len(field_metadata['shape'])
-                # Reuse dim labels.
-                try:
-                    dims = event_dim_labels[key]
-                except KeyError:
-                    dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
-                    event_dim_labels[key] = dims
-            data_arrays[key] = xarray.DataArray(
-                data=data_table[key],
-                dims=('time',) + dims,
-                coords={'time': times},
-                name=key)
-
-        # Make DataArrays for configuration data.
-        for object_name, config in descriptor.get('configuration', {}).items():
-            data_keys = config['data_keys']
-            # For configuration, label the dimension specially to
-            # avoid key collisions.
-            scoped_data_keys = {key: f'{object_name}:{key}'
-                                for key in data_keys}
-            if include:
-                keys = {k: v for k, v in scoped_data_keys.items()
-                        if v in include}
-            elif exclude:
-                keys = {k: v for k, v in scoped_data_keys.items()
-                        if v not in include}
-            else:
-                keys = scoped_data_keys
-            for key, scoped_key in keys.items():
-                field_metadata = data_keys[key]
-                ndim = len(field_metadata['shape'])
-                # if the EventDescriptor doesn't provide names for the
-                # dimensions (it's optional) use the same default dimension
-                # names that xarray would.
-                try:
-                    dims = tuple(field_metadata['dims'])
-                except KeyError:
-                    try:
-                        dims = config_dim_labels[key]
-                    except KeyError:
-                        dims = tuple(f'dim_{next(dim_counter)}' for _ in range(ndim))
-                        config_dim_labels[key] = dims
-                data_arrays[scoped_key] = xarray.DataArray(
-                    # TODO Once we know we have one Event Descriptor
-                    # per stream we can be more efficient about this.
-                    data=numpy.tile(config['data'][key],
-                                    (len(times),) + ndim * (1,) or 1),
-                    dims=('time',) + dims,
-                    coords={'time': times},
-                    name=key)
-
-        # Finally, make DataArrays for 'seq_num' and 'uid'.
-        data_arrays['seq_num'] = xarray.DataArray(
-            data=seq_nums,
-            dims=('time',),
-            coords={'time': times},
-            name='seq_num')
-        data_arrays['uid'] = xarray.DataArray(
-            data=uids,
-            dims=('time',),
-            coords={'time': times},
-            name='uid')
-
-        datasets.append(xarray.Dataset(data_vars=data_arrays))
-    # Merge Datasets from all Event Descriptors into one representing the
-    # whole stream. (In the future we may simplify to one Event Descriptor
-    # per stream, but as of this writing we must account for the
-    # possibility of multiple.)
-    return xarray.merge(datasets)
-
-
 def _canonical(*, start, stop, entries, fill, strict_order=True):
     """
     Yields documents from this Run in chronological order.
@@ -1336,6 +1172,11 @@ class BlueskyEventStream(DataSourceMixin):
     exclude : list, optional
         Fields ('data keys') to exclude. By default none are excluded. This
         parameter is mutually exclusive with ``include``.
+    sub_dict : {"data", "timestamps"}, optional
+        Which sub-dict in the EventPage to use
+    configuration_for : str
+        The name of an object (e.g. device) whose configuration we want to
+        read.
     **kwargs :
         Additional keyword arguments are passed through to the base class.
     """
@@ -1387,6 +1228,8 @@ class BlueskyEventStream(DataSourceMixin):
                  entry,
                  include=None,
                  exclude=None,
+                 sub_dict="data",
+                 configuration_for=None,
                  **kwargs):
 
         self._stream_name = stream_name
@@ -1404,7 +1247,16 @@ class BlueskyEventStream(DataSourceMixin):
         self._ds = None  # set by _open_dataset below
         self.include = include
         self.exclude = exclude
+        if sub_dict not in {"data", "timestamps"}:
+            raise ValueError(
+                "The parameter 'sub_dict' controls where the xarray should "
+                "contain the Events' 'data' (common case) or reading-specific "
+                "'timestamps' (sometimes needed for hardware debugging). It "
+                f"must be one of those two strings, not {sub_dict}.")
+        self._configuration_for = configuration_for
+        self._sub_dict = sub_dict
         self._partitions = None
+        self.__entry = entry
 
         super().__init__(metadata=metadata, **kwargs)
         # turn off any attempts at persistence
@@ -1455,17 +1307,33 @@ class BlueskyEventStream(DataSourceMixin):
 
     def _open_dataset(self):
         self._load_header()
-        self._ds = _documents_to_xarray(
-            start_doc=self._run_start_doc,
-            stop_doc=self._run_stop_doc,
-            descriptor_docs=self._descriptors,
-            get_event_pages=self._get_event_pages,
-            filler=self.fillers['delayed'],
-            get_resource=self._get_resource,
-            lookup_resource_for_datum=self._lookup_resource_for_datum,
-            get_datum_pages=self._get_datum_pages,
-            include=self.include,
-            exclude=self.exclude)
+        if self._configuration_for is not None:
+            self._ds = documents_to_xarray_config(
+                object_name=self._configuration_for,
+                sub_dict=self._sub_dict,
+                start_doc=self._run_start_doc,
+                stop_doc=self._run_stop_doc,
+                descriptor_docs=self._descriptors,
+                get_event_pages=self._get_event_pages,
+                filler=self.fillers['delayed'],
+                get_resource=self._get_resource,
+                lookup_resource_for_datum=self._lookup_resource_for_datum,
+                get_datum_pages=self._get_datum_pages,
+                include=self.include,
+                exclude=self.exclude)
+        else:
+            self._ds = documents_to_xarray(
+                sub_dict=self._sub_dict,
+                start_doc=self._run_start_doc,
+                stop_doc=self._run_stop_doc,
+                descriptor_docs=self._descriptors,
+                get_event_pages=self._get_event_pages,
+                filler=self.fillers['delayed'],
+                get_resource=self._get_resource,
+                lookup_resource_for_datum=self._lookup_resource_for_datum,
+                get_datum_pages=self._get_datum_pages,
+                include=self.include,
+                exclude=self.exclude)
 
     def read(self):
         """
@@ -1566,6 +1434,41 @@ class BlueskyEventStream(DataSourceMixin):
             self.url, self.http_args,
             self._source_id, self.container,
             partition)
+
+    @property
+    def config(self):
+        objects = set()
+        for d in self._descriptors:
+            objects.update(set(d["object_keys"]))
+        return intake.catalog.Catalog.from_dict(
+            {object_name: self.configure_new(configuration_for=object_name)
+             for object_name in objects}
+        )
+
+    @property
+    def config_timestamps(self):
+        objects = set()
+        for d in self._descriptors:
+            objects.update(set(d["object_keys"]))
+        return intake.catalog.Catalog.from_dict(
+            {object_name: self.configure_new(configuration_for=object_name,
+                                             sub_dict="timestamps")
+             for object_name in objects}
+        )
+
+    @property
+    def timestamps(self):
+        return self.configure_new(sub_dict="timestamps")
+
+    def configure_new(self, **kwargs):
+        """
+        Return self or, if args are provided, some new instance of type(self).
+
+        This is here so that the user does not have to remember whether a given
+        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either
+        case, ``obj()`` will return a BlueskyRun.
+        """
+        return self.__entry.get(**kwargs)
 
 
 class RemoteBlueskyEventStream(RemoteXarray):
