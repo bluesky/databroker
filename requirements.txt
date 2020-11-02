@@ -1,8 +1,9 @@
+bluesky-live
 boltons
 cachetools
 dask[array,bag]
 doct
-event-model >=1.14.0
+event-model >=1.16.0
 humanize
 intake >=0.5.5
 jinja2

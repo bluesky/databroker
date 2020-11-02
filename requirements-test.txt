@@ -6,7 +6,7 @@ flake8
 glueviz
 intake[server]
 matplotlib
-mongobox
+mongomock
 numpy >=1.16.0  # for astropy (via glueviz)
 ophyd
 pathlib

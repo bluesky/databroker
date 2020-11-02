@@ -36,14 +36,11 @@ def build_intake_jsonl_backed_broker(request):
 
 
 def build_intake_mongo_backed_broker(request):
-    mongobox = pytest.importorskip('mongobox')
-    box = mongobox.MongoBox()
-    box.start()
-    client = box.client()
+    mongomock = pytest.importorskip('mongomock')
+    client = mongomock.MongoClient()
 
     def teardown():
-        "Delete temporary MongoDB data directory."
-        box.stop()
+        client.close()
 
     request.addfinalizer(teardown)
     broker = mongo_normalized.BlueskyMongoCatalog(
@@ -55,13 +52,11 @@ def build_intake_mongo_backed_broker(request):
 
 
 def build_intake_mongo_embedded_backed_broker(request):
-    mongobox = pytest.importorskip('mongobox')
+    mongomock = pytest.importorskip('mongomock')
+    client = mongomock.MongoClient()
     tmp_dir = tempfile.TemporaryDirectory()
     tmp_path = tmp_dir.name
     catalog_path = Path(tmp_path) / 'catalog.yml'
-    box = mongobox.MongoBox()
-    box.start()
-    client = box.client()
     with open(catalog_path, 'w') as file:
         file.write(f"""
 sources:
@@ -79,7 +74,7 @@ sources:
 
     def teardown():
         "Delete temporary MongoDB data directory."
-        box.stop()
+        client.close()
         tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
