@@ -36,6 +36,8 @@ User Documentation
    serializer.close()
    from intake.catalog.local import YAMLFileCatalog
    csx = YAMLFileCatalog('source/_catalogs/csx.yml')
+   # Work around intake#545.
+   csx._container = None
    import databroker
    # Monkey-patch to override databroker.catalog so we can directly
    # add examples instead of taking the trouble to create and then clean up
