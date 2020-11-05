@@ -10,10 +10,6 @@ class EntrypointEntry(CatalogEntry):
     """
     A catalog entry for an entrypoint.
     """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
     def __init__(self, entrypoint):
         self._entrypoint = entrypoint
 
@@ -41,9 +37,6 @@ class EntrypointsCatalog(Catalog):
     """
     A catalog of discovered entrypoint catalogs.
     """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
 
     def __init__(self, *args, entrypoints_group='intake.catalogs', paths=None,
                  **kwargs):
@@ -65,9 +58,6 @@ class EntrypointsCatalog(Catalog):
 
 
 class V0Entry(CatalogEntry):
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
 
     def __init__(self, name, *args, **kwargs):
         self._name = name
@@ -94,10 +84,6 @@ class V0Catalog(Catalog):
     """
     Build v2.Brokers based on any v0-style configs we can find.
     """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
     def __init__(self, *args, paths=CONFIG_SEARCH_PATH, **kwargs):
         self._paths = paths
         super().__init__(*args, **kwargs)
@@ -111,10 +97,6 @@ class MergedCatalog(Catalog):
     """
     A Catalog that merges the entries of a list of catalogs.
     """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
     def __init__(self, catalogs, *args, **kwargs):
         self._catalogs = catalogs
         super().__init__(*args, **kwargs)

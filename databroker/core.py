@@ -874,10 +874,6 @@ class BlueskyRun(intake.catalog.Catalog):
         Additional keyword arguments are passed through to the base class,
         Catalog.
     """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
     # opt-out of the persistence features of intake
     @property
     def has_been_persisted(self):

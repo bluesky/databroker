@@ -59,9 +59,6 @@ class Broker(Catalog):
         Additional keyword arguments are passed through to the base class,
         Catalog.
     """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
 
     def __init__(self, *, handler_registry=None, root_map=None,
                  filler_class=event_model.Filler, transforms=None, **kwargs):
