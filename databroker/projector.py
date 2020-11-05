@@ -112,6 +112,8 @@ def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
 class Projector():
     """Helper for scanning projection and building custom porjectors.
 
+    EXPERIMENTAL: projection code is experimental and could change in the near future.
+
     Handles much of the inner workings of projecting a BlueskyRun by scanning the
     projection definition and providing callbacks for the different types of items
     that can be projected.
@@ -242,6 +244,8 @@ class Projector():
 
 def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):
     """Produces an xarray Dataset by projecting the provided run.
+
+    EXPERIMENTAL: projection code is experimental and could change in the near future.
 
     Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
     in the data (not at the top-level attrs).
