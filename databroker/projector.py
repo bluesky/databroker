@@ -110,7 +110,9 @@ def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
 
 
 class Projector():
-    """Handles much of the inner workings of projecting a BlueskyRun by scanning the
+    """Helper for scanning projection and building custom porjectors.
+
+    Handles much of the inner workings of projecting a BlueskyRun by scanning the
     projection definition and providing callbacks for the different types of items
     that can be projected.
     """
@@ -238,7 +240,7 @@ class Projector():
                 raise KeyError(f'Unknown location: {projection_location} in projection.')
 
 
-def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None, **kwargs):
+def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):
     """Produces an xarray Dataset by projecting the provided run.
 
     Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
@@ -316,6 +318,8 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
         # associate the stream configuration to the xarrays's atrtrs
         xarray.attrs['configuration'] = stream_configurations[stream]
         data_vars[projection_field] = xarray
+
+    # Use the callbacks defined above to project the run and build up a return xarray.Dataset
     try:
         projector = Projector(
             metadata_cb=metadata_cb,
