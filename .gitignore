@@ -125,3 +125,5 @@ doc/data/*
 doc/source/_generated_images/*
 
 *.swn
+
+.vscode/* 
