@@ -819,7 +819,7 @@ class RemoteBlueskyRun(intake_RemoteCatalog):
         try:
             self._load()
             start = self.metadata['start']
-            stop = self.metadata['stop']
+            stop = self.metadata['stop'] or {}
             out = (f"BlueskyRun\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
@@ -969,7 +969,7 @@ class BlueskyRun(intake.catalog.Catalog):
         try:
             self._load()
             start = self.metadata['start']
-            stop = self.metadata['stop']
+            stop = self.metadata['stop'] or {}
             out = (f"BlueskyRun\n"
                    f"  uid={start['uid']!r}\n"
                    f"  exit_status={stop.get('exit_status')!r}\n"
