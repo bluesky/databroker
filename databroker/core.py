@@ -609,7 +609,7 @@ def _fill(filler,
         )
 
 
-def _canonical(*, start, stop, entries, fill, strict_order=True):
+def _documents(*, start, stop, entries, fill, strict_order=True):
     """
     Yields documents from this Run in chronological order.
 
@@ -781,7 +781,7 @@ class RemoteBlueskyRun(intake_RemoteCatalog):
     def _close(self):
         self.bag = None
 
-    def canonical(self, *, fill, strict_order=True):
+    def documents(self, *, fill, strict_order=True):
         # Special case for 'delayed' since it *is* supported in the local mode
         # of usage.
         if fill == 'delayed':
@@ -789,7 +789,7 @@ class RemoteBlueskyRun(intake_RemoteCatalog):
                 "Delayed access is not yet supported via the client--server "
                 "usage.")
 
-        yield from _canonical(start=self.metadata['start'],
+        yield from _documents(start=self.metadata['start'],
                               stop=self.metadata['stop'],
                               entries=self._entries,
                               fill=fill,
@@ -797,9 +797,15 @@ class RemoteBlueskyRun(intake_RemoteCatalog):
 
     def read_canonical(self):
         warnings.warn(
-            "The method read_canonical has been renamed canonical. This alias "
+            "The method read_canonical has been renamed documents. This alias "
             "may be removed in a future release.")
-        yield from self.canonical(fill='yes')
+        yield from self.documents(fill='yes')
+
+    def canonical(self):
+        warnings.warn(
+            "The method canonical has been renamed documents. This alias "
+            "may be removed in a future release.")
+        yield from self.documents(fill='yes')
 
     def __repr__(self):
         try:
@@ -1080,8 +1086,8 @@ class BlueskyRun(intake.catalog.Catalog):
 
     get = __call__ = configure_new
 
-    def canonical(self, *, fill, strict_order=True):
-        yield from _canonical(start=self.metadata['start'],
+    def documents(self, *, fill, strict_order=True):
+        yield from _documents(start=self.metadata['start'],
                               stop=self.metadata['stop'],
                               entries=self._entries,
                               fill=fill,
@@ -1089,9 +1095,15 @@ class BlueskyRun(intake.catalog.Catalog):
 
     def read_canonical(self):
         warnings.warn(
-            "The method read_canonical has been renamed canonical. This alias "
+            "The method read_canonical has been renamed documents. This alias "
             "may be removed in a future release.")
-        yield from self.canonical(fill='yes')
+        yield from self.documents(fill='yes')
+
+    def canonical(self):
+        warnings.warn(
+            "The method canonical has been renamed documents. This alias "
+            "may be removed in a future release.")
+        yield from self.documents(fill='yes')
 
     def get_file_list(self, resource):
         """

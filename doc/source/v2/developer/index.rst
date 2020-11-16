@@ -36,7 +36,7 @@ as a Catalog of Event Streams, :class:`BlueskyRun`. For example, the entries in
 a :class:`BlueskyRun` might have the names ``'primary'`` and ``'baseline'``.
 The entries always contain instances of :class:`BlueskyEventStream`.
 :class:`BlueskyRun` extends the standard Catalog interface with a special
-method :meth:BlueskyRun.canonical`. This returns a generator that yields
+method :meth:BlueskyRun.documents`. This returns a generator that yields
 ``(name, doc)`` pairs, recreating the stream of documents that would have been
 emitted during data acquisition. (This is akin to ``Header.documents()`` in
 DataBroker v0.x.)
