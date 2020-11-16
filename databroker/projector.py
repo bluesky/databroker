@@ -1,5 +1,5 @@
 from importlib import import_module
-from typing import Dict
+from typing import Dict, List
 
 import xarray
 
@@ -371,3 +371,58 @@ def get_xarray_config_field(dataset: xarray.Dataset,
         [description]
     """
     return dataset[projection_field].attrs['configuration'][config_index][device][field]
+
+
+def project_summary_dict(
+            run: BlueskyRun,
+            *args,
+            return_fields: List[str] = [],
+            projection=None,
+            projection_name=None) -> Dict:
+
+    """Produces an simple dictionary of metadata about a run using the selected or provided projection.
+
+    EXPERIMENTAL: projection code is experimental and could change in the near future.
+
+    This is intended to be used by applications that need fast access to summary data. For example,
+    a small number of fields might be displayed for multiple runs in a list. 
+    Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
+    in the data (not at the top-level attrs).
+
+    Projected fields will be inserted into the resulting xarray.Dataset
+
+    Parameters
+    ----------
+    run : BlueskyRun
+        run to project
+    return_fields: List[str]
+        list of fields desired in the return. Empty list will return all fields
+        returned by the projection
+    projection_name : str, optional
+        name of a projection to select in the run, by default None
+    projection : dict, optional
+        projection not from the run to use, by default None
+
+    Returns
+    -------
+    dict
+        Returns a dictionary with projected field names as keys and value
+
+    Raises
+    ------
+    ProjectionError
+    """
+    return_dict = {}
+
+    def metadata_cb(field, value):
+        if len(return_fields) == 0 or field in return_fields:
+            return_dict[field] = value
+
+    projector = Projector(
+        metadata_cb=metadata_cb,
+        event_configuration_cb=None,
+        event_field_cb=None)
+
+    projector.project(run, projection=projection, projection_name=projection_name)
+
+    return return_dict
