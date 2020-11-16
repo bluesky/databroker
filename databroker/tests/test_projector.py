@@ -105,6 +105,7 @@ class MockRun():
     def __init__(self, projections=[], sample='',):
         self.metadata = {
             'start': {
+                'uid': 42,
                 'sample': sample,
                 'projections': projections
             },
