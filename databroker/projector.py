@@ -140,6 +140,11 @@ class Projector():
         self._metadata_cb = metadata_cb
         self._event_configuration_cb = event_configuration_cb
         self._event_field_cb = event_field_cb
+        self._issues = []
+
+    @property
+    def issues(self):
+        return self._issues
 
     def project(self, run: BlueskyRun, projection=None, projection_name=None):
         """Iterates a projection and communicates fields through callbacks.
@@ -201,15 +206,19 @@ class Projector():
 
             if projection_location == 'start':
                 if self._metadata_cb:
-                    self._metadata_cb(field_key, # TODO catch key error
-                                      run.metadata['start'][projection_linked_field])
+                    value = run.metadata['start'].get(projection_linked_field)
+                    if value is None:
+                        self.issues.append(f"{run['start']['uid']} Start key misising in run {field_key}: {projection_linked_field}")
+                        continue
+                    self._metadata_cb(field_key, value)
                 continue
 
             elif projection_location == 'event':
                 projection_stream = mapping.get('stream')
 
                 if projection_stream is None:
-                    raise ProjectionError(f'stream missing for event projection: {field_key}')
+                    # raise ProjectionError(f'stream missing for event projection: {field_key}')
+                    self._issues.append(f'stream missing for event projection: {field_key}')
 
                 if projection_type == "calculated":
                     if self._event_field_cb:
@@ -225,7 +234,9 @@ class Projector():
                     try:
                         stream = run[projection_stream]
                     except KeyError:
-                        raise ProjectionError(f"Stream {projection_stream} specified does" +
+                        # raise ProjectionError(f"Stream {projection_stream} specified does" +
+                        #                       f"not exists {run.metadata['start']['uid']}")
+                        self._issues.append(f"Stream {projection_stream} specified does" +
                                               f"not exists {run.metadata['start']['uid']}")
 
                     value = stream.to_dask()[projection_linked_field]
@@ -249,10 +260,11 @@ class Projector():
                                                  projection_linked_field,
                                                  value)
             else:
-                raise ProjectionError(f'Unknown location: {projection_location} in projection.')
+                # raise ProjectionError(f'Unknown location: {projection_location} in projection.')
+                f"Unknown location: {projection_location} in projection."
 
 
-def  project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):
+def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):
     """Produces an xarray Dataset by projecting the provided run.
 
     EXPERIMENTAL: projection code is experimental and could change in the near future.
@@ -334,7 +346,7 @@ def  project_xarray(run: BlueskyRun, *args, projection=None, projection_name=Non
         data_vars[projection_field] = xarray
 
     # Use the callbacks defined above to project the run and build up a return xarray.Dataset
-    
+
     projector = Projector(
         metadata_cb=metadata_cb,
         event_configuration_cb=event_configuration_cb,
@@ -342,7 +354,7 @@ def  project_xarray(run: BlueskyRun, *args, projection=None, projection_name=Non
 
     projector.project(run, projection=projection, projection_name=projection_name)
     dataset = xarray.Dataset(data_vars, attrs=attrs)
-    return dataset
+    return dataset, projector.issues
 
 
 def get_xarray_config_field(dataset: xarray.Dataset,
@@ -426,4 +438,4 @@ def project_summary_dict(
 
     projector.project(run, projection=projection, projection_name=projection_name)
 
-    return return_dict
+    return return_dict, projector.issues
