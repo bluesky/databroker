@@ -238,6 +238,7 @@ class Projector():
                         #                       f"not exists {run.metadata['start']['uid']}")
                         self._issues.append(f"Stream {projection_stream} specified does" +
                                               f"not exists {run.metadata['start']['uid']}")
+                        continue
 
                     value = stream.to_dask()[projection_linked_field]
                     self._event_field_cb(field_key,
@@ -261,7 +262,7 @@ class Projector():
                                                  value)
             else:
                 # raise ProjectionError(f'Unknown location: {projection_location} in projection.')
-                f"Unknown location: {projection_location} in projection."
+                self._issues.append(f"Unknown location: {projection_location} in projection.")
 
 
 def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):

@@ -155,7 +155,8 @@ def test_calculated_projections():
     }]
 
     mock_run = make_mock_run(calculated_projection, 'garggle_blaster')
-    dataset = project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
+    assert len(issues) == 0
     comparison = dataset['/entry/event/computed'] == [42, 42, 42, 42, 42]
     assert comparison.all()
 
@@ -172,19 +173,19 @@ def test_find_projection_in_run():
 
 def test_unknown_location():
     mock_run = make_mock_run(bad_location, 'one_ring')
-    with pytest.raises(ProjectionError):
-        project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
+    assert len(issues) > 0
 
 
 def test_nonexistent_stream():
     mock_run = make_mock_run(bad_stream, 'one_ring')
-    with pytest.raises(ProjectionError):
-        project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
+    assert len(issues) > 0
 
 
 def test_xarray_projector():
     mock_run = make_mock_run(good_projection, 'one_ring')
-    dataset = project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
     # Ensure that the to_dask function was called on both
     # energy and image datasets
     assert mock_run['primary'].to_dask_counter == 1
@@ -197,12 +198,13 @@ def test_xarray_projector():
 
 def test_summary_projector():
     mock_run = make_mock_run(good_projection, 'one_ring')
-    dataset = project_summary_dict(mock_run)
+    dataset, issues = project_summary_dict(mock_run)
+    assert len(issues) == 0
     projection_fields = []
     for field, value in good_projection[0]['projection'].items():
         if 'location' in value and value['location'] == 'start':
             projection_fields.append(field)
-             
+
     assert len(dataset) > 0
     for field in projection_fields:
         assert dataset[START_DOC_FIELD] == 'one_ring'
@@ -211,6 +213,7 @@ def test_summary_projector():
 
 def test_summary_projector_filtered():
     mock_run = make_mock_run(good_projection, 'one_ring')
-    dataset = project_summary_dict(mock_run, return_fields=[START_DOC_FIELD_2])
+    dataset, issues = project_summary_dict(mock_run, return_fields=[START_DOC_FIELD_2])
+    assert len(issues) == 0
     assert len(dataset) == 1
     assert dataset[START_DOC_FIELD_2] == 'one_ring'
