@@ -208,7 +208,7 @@ class Projector():
                 if self._metadata_cb:
                     value = run.metadata['start'].get(projection_linked_field)
                     if value is None:
-                        self.issues.append(f"{run['start']['uid']} Start key misising in run {field_key}: {projection_linked_field}")
+                        self.issues.append(f"{run.metadata['start']['uid']} Start key misising in run {field_key}: {projection_linked_field}")
                         continue
                     self._metadata_cb(field_key, value)
                 continue
@@ -357,6 +357,14 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
     dataset = xarray.Dataset(data_vars, attrs=attrs)
     return dataset, projector.issues
 
+# def project_xarray_single_stream(run: BlueskyRun, stream_name, projection=None, projection_name=None):
+#     stream_data = None
+#     issues = []
+#     try:
+#         stream_data = run[stream_name].to_dask()[projection_linked_field]
+#     except Exception as e:
+#         issues.append(f"Error projecting {run.metadata['start']['uid']} for stream {stream_name} ")
+#     return stream_data, issues
 
 def get_xarray_config_field(dataset: xarray.Dataset,
                             projection_field,
