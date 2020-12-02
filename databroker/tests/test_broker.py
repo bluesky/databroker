@@ -47,6 +47,18 @@ def test_uid_roundtrip(db, RE, hw):
     assert h['start']['uid'] == uid
 
 
+def test_header_equality(db, RE, hw):
+    RE.subscribe(db.insert)
+    uid, = RE(count([hw.det]))
+    uid2, = RE(count([hw.det]))
+    h = db[uid]
+    h2 = db[uid2]
+
+    assert h != []
+    assert h != h2
+    assert h == db[uid]
+
+
 def test_no_descriptor_name(db, RE, hw):
     def local_insert(name, doc):
         doc.pop('name', None)
