@@ -89,6 +89,8 @@ class Header(object):
         self._cache = _cache
 
     def __eq__(self, other):
+        if not isinstance(other, Header):
+            return False
         return self.start == other.start
 
     @classmethod
