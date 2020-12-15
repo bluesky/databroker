@@ -3,6 +3,7 @@ ipython
 ipywidgets
 matplotlib
 numpydoc
+pytest  # because examples in docs import from databroker.tests.
 sphinx !=2.1.0
 sphinx-copybutton
 sphinx_rtd_theme
