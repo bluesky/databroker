@@ -107,6 +107,7 @@ def test_history(fs_v1):
     assert cnt == shift_count
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 @pytest.mark.parametrize('shift', [-5, 5])
 def test_over_step(fs_v1, shift):
     fs = fs_v1
@@ -166,6 +167,7 @@ def moving_files(request, fs_v1, tmpdir):
     return fs_v1, res, datum_ids, shape, cnt, fnames
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 @pytest.mark.parametrize("remove", [True, False])
 def test_moving(moving_files, remove):
     fs, res, datum_ids, shape, cnt, fnames = moving_files
@@ -199,6 +201,7 @@ def test_moving(moving_files, remove):
         assert np.prod(shape) * j == np.sum(datum)
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_no_root(fs_v1, tmpdir):
     fs = fs_v1
     fs.register_handler('npy_series', FileMoveTestingHandler)
@@ -213,6 +216,7 @@ def test_no_root(fs_v1, tmpdir):
     fs_v1.move_files(res, '/foobar')
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_get_resource(moving_files):
     fs, res, datum_ids, shape, cnt, fnames = moving_files
     for d in datum_ids:
@@ -221,6 +225,7 @@ def test_get_resource(moving_files):
         print(d_res, res)
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_temporary_root(fs_v1):
     fs = fs_v1
     print(fs._db)
