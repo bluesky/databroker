@@ -19,6 +19,7 @@ jobs:
     - name: Set env.REPOSITORY_NAME  # just the repo, as opposed to org/repo
       shell: bash -l {0}
       run: |
+        set -vxeuo pipefail
         export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
         echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
 
@@ -38,13 +39,13 @@ jobs:
     - name: Install documentation-building requirements
       shell: bash -l {0}
       run: |
+        set -vxeuo pipefail
         python -m pip install -r requirements-dev.txt
         python -m pip list
 
     - name: Build Docs
       shell: bash -l {0}
-      run: |
-        make -C docs/ html
+      run: make -C docs/ html
 
     - name: Deploy documentation to blueskyproject.io.
       # We pin to the SHA, not the tag, for security reasons.

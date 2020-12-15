@@ -36,6 +36,7 @@ jobs:
     - name: Install test requirements
       shell: bash -l {0}
       run: |
+        set -vxeuo pipefail
         python -m pip install -r requirements-dev.txt
         python -m pip list
 
@@ -43,12 +44,14 @@ jobs:
       if: ${{ matrix.intake-version == 'master' }}
       shell: bash -l {0}
       run: |
+        set -vxeuo pipefail
         python -m pip install git+https://github.com/intake/intake.git@master
         python -m pip list
 
     - name: Test with pytest
       shell: bash -l {0}
       run: |
+        set -vxeuo pipefail
         coverage run -m pytest -v
         coverage combine
         coverage report
