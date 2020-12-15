@@ -245,6 +245,11 @@ def test_scan_id_lookup(db, RE, hw):
     assert uid1 == list(db(scan_id=1, marked=True))[0]['start']['uid']
 
 
+# Flaky because
+# https://github.com/bluesky/databroker/issues/431
+
+
+@pytest.mark.flaky(reruns=10, reruns_delay=0)
 def test_partial_uid_lookup(db, RE, hw):
     RE.subscribe(db.insert)
 
