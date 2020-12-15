@@ -4,8 +4,12 @@ on: [push, pull_request]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+        - 27017:27017
     strategy:
       matrix:
         python-version: [3.8]
