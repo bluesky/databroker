@@ -52,5 +52,4 @@ jobs:
       run: |
         set -vxeuo pipefail
         coverage run -m pytest -v
-        coverage combine
         coverage report
