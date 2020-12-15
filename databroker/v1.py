@@ -1016,6 +1016,8 @@ class Header:
         return self.db.prepare_hook('stop', self._stop)
 
     def __eq__(self, other):
+        if not isinstance(other, Header):
+            return False
         return self.start == other.start
 
     @property
