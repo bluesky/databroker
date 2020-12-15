@@ -27,7 +27,7 @@ exclude =
     databroker/v0.py,
     databroker/_version.py,
     dist,
-    doc/source,
+    docs/source,
     migration,
     versioneer.py,
 max-line-length = 115
