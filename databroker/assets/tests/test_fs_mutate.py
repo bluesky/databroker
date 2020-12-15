@@ -78,6 +78,7 @@ def test_pathological_root(fs_v1, root):
     assert new_res['resource_path'] == 'baz'
 
 
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_history(fs_v1):
     fs = fs_v1
     rpath = num_paths(0, 15)

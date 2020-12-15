@@ -1,8 +1,12 @@
+bluesky
 h5py
 ipython
 ipywidgets
 matplotlib
 numpydoc
+ophyd
+pytest  # because examples in docs import from databroker.tests.
 sphinx !=2.1.0
 sphinx-copybutton
 sphinx_rtd_theme
+suitcase-jsonl

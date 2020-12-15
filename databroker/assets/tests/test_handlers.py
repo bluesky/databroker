@@ -5,8 +5,9 @@ import six
 import numpy as np
 import h5py
 import tempfile
-import uuid
+import time
 import tifffile
+import uuid
 
 from ..handlers import AreaDetectorHDF5Handler
 from ..handlers import AreaDetectorHDF5SWMRHandler
@@ -60,7 +61,23 @@ class _with_file(object):
     def _setup_class(self):
         with tempfile.NamedTemporaryFile(delete=False) as fn:
             self.filename = fn.name
-        self._make_data()
+        # This is flaky. Put it in a retry loop.
+        RETRIES = 10
+        WAIT_BETWEEN_ATTEMPTS = 2  # seconds
+        exc = None
+        for attempt_ in range(RETRIES):
+            try:
+                self._make_data()
+            except TimeoutError as exc_:
+                exc = exc_
+                # Sleep, then retry.
+                time.sleep(WAIT_BETWEEN_ATTEMPTS)
+                continue
+            else:
+                break
+        else:
+            # We have exhausted the retries.
+            raise exc
 
     @classmethod
     def teardown_class(self):
