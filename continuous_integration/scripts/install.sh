@@ -1,7 +1,7 @@
 #!/bin/bash
 set -vxeuo pipefail
 
-apt-get install libsnappy-dev
+sudo apt-get install libsnappy-dev
 # These packages are installed in the base environment but may be older
 # versions. Explicitly upgrade them because they often create
 # installation problems if out of date.
