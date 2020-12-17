@@ -1,0 +1,84 @@
+.. currentmodule:: databroker
+
+v1.2.0 (2020-12-17)
+-------------------
+
+Added
++++++
+
+* New accessors on ``BlueskyEventStream`` named ``config``, ``timestamps``, and
+  ``config_timestamps`` provide xarray Datasets of secondary readings from
+  Event Descriptors and Events.
+
+  .. code:: python
+
+     >>> run.primary
+     <BlueskyEventStream 'primary' from Run 69fd42fa...>
+
+     >>> run.primary.read()
+     <xarray.Dataset>
+     Dimensions:  (time: 3)
+     Coordinates:
+     * time     (time) float64 1.608e+09 1.608e+09 1.608e+09
+     Data variables:
+         det      (time) float64 1.0 1.0 1.0
+
+     >>> run.primary.timestamps.read()
+     <xarray.Dataset>
+     Dimensions:  (time: 3)
+     Coordinates:
+       * time     (time) float64 1.608e+09 1.608e+09 1.608e+09
+     Data variables:
+         det      (time) float64 1.608e+09 1.608e+09 1.608e+09
+
+     >>> list(run.primary.config)
+     ['det']
+
+     >>> run.primary.config.det.read()
+     <xarray.Dataset>
+     Dimensions:               (time: 3)
+     Coordinates:
+       * time                  (time) float64 1.608e+09 1.608e+09 1.608e+09
+     Data variables:
+         det_Imax              (time) int64 1 1 1
+         det_center            (time) int64 0 0 0
+         det_sigma             (time) int64 1 1 1
+         det_noise             (time) <U4 'none' 'none' 'none'
+         det_noise_multiplier  (time) int64 1 1 1
+
+     >>> run.primary.config_timestamps.det.read()
+     <xarray.Dataset>
+     Dimensions:               (time: 3)
+     Coordinates:
+       * time                  (time) float64 1.608e+09 1.608e+09 1.608e+09
+     Data variables:
+         det_Imax              (time) float64 1.608e+09 1.608e+09 1.608e+09
+         det_center            (time) float64 1.608e+09 1.608e+09 1.608e+09
+         det_sigma             (time) float64 1.608e+09 1.608e+09 1.608e+09
+         det_noise             (time) float64 1.608e+09 1.608e+09 1.608e+09
+         det_noise_multiplier  (time) float64 1.608e+09 1.608e+09 1.608e+09
+
+* Added a "summary" projector that operates, inexpensively, on just the 'start'
+  document.
+
+Fixed
++++++
+
+* Adjust to upstream (yet unreleased) changes to intake.
+* When the 'stop' document is not yet available (or permanently missing) the
+  IPython repr degrades gracefully.
+* When comparing ``BlueskyRun`` (v2) or a ``Header`` (v1) to another object via
+  equality, return ``False`` if the other object is of a different type,
+  instead of raising an exception.
+
+Changed
++++++++
+
+* Remove configuration columns from output of ``BlueskyEventStream.read()``
+  and ``.to_dask()``. The new ``config`` acccessor should be used to access
+  these.
+* In v1, provide more helpful exceptions when a Datum is referenced by an Event
+  is not found. (In v2 this is already done, via ``event_model.Filler``.)
+* The method ``BlueskyRun.canonical`` has been renamed to
+  ``BlueskyRun.documents``. The old name is deprecated and issues a warning
+  when used.
