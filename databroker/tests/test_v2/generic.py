@@ -214,7 +214,7 @@ def test_canonical(bundle):
 
     # Smoke test for back-compat alias
     with pytest.warns(UserWarning):
-        next(run.canonical())
+        next(run.canonical(fill="yes"))
 
     compare(run.documents(fill='yes'),
             (filler(name, doc) for name, doc in bundle.docs))

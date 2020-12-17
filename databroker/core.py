@@ -801,11 +801,11 @@ class RemoteBlueskyRun(intake_RemoteCatalog):
             "may be removed in a future release.")
         yield from self.documents(fill='yes')
 
-    def canonical(self):
+    def canonical(self, *, fill, strict_order=True):
         warnings.warn(
             "The method canonical has been renamed documents. This alias "
             "may be removed in a future release.")
-        yield from self.documents(fill='yes')
+        yield from self.documents(fill=fill, strict_order=strict_order)
 
     def __repr__(self):
         try:
@@ -1099,11 +1099,11 @@ class BlueskyRun(intake.catalog.Catalog):
             "may be removed in a future release.")
         yield from self.documents(fill='yes')
 
-    def canonical(self):
+    def canonical(self, *, fill, strict_order=True):
         warnings.warn(
             "The method canonical has been renamed documents. This alias "
             "may be removed in a future release.")
-        yield from self.documents(fill='yes')
+        yield from self.documents(fill=fill, strict_order=strict_order)
 
     def get_file_list(self, resource):
         """
