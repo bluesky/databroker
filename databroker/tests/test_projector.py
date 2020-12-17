@@ -7,7 +7,6 @@ from databroker.core import BlueskyRun
 from ..projector import (
     get_run_projection,
     project_xarray,
-    ProjectionError,
     get_xarray_config_field,
     project_summary_dict
 )
@@ -78,7 +77,6 @@ projections_same_name = [
          "name": "nxsas"
         }
     ]
-
 
 
 class MockStream():
