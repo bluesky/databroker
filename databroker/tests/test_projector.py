@@ -1,12 +1,21 @@
 import pytest
+
 import xarray
+
 from databroker.core import BlueskyRun
 
-from ..projector import get_run_projection, project_xarray, ProjectionError, get_xarray_config_field
+from ..projector import (
+    get_run_projection,
+    project_xarray,
+    ProjectionError,
+    get_xarray_config_field,
+    project_summary_dict
+)
 
 EVENT_FIELD = 'event_field_name'
 EVENT_CONFIGURATION_FIELD = 'event_configuration_name'
 START_DOC_FIELD = 'start_doc_metadata_name'
+START_DOC_FIELD_2 = 'start_doc_metadata_name_2'
 MOCK_IMAGE = xarray.DataArray([[1, 2], [3, 4]])
 BEAMLINE_ENERGY_VALS = [1, 2, 3, 4, 5]
 OTHER_VALS = [-1, -2, -3, -4, -5]
@@ -18,6 +27,7 @@ good_projection = [{
         "configuration": {"name": "RSoXS"},
         "projection": {
             START_DOC_FIELD: {"type": "linked", "location": "start", "field": "sample"},
+            START_DOC_FIELD_2: {"type": "linked", "location": "start", "field": "sample"},
             EVENT_FIELD: {"type": "linked", "location": "event", "stream": "primary", "field": "ccd"},
             EVENT_CONFIGURATION_FIELD: {"type": "linked",
                                         "location": "configuration",
@@ -70,6 +80,7 @@ projections_same_name = [
     ]
 
 
+
 class MockStream():
     def __init__(self, metadata):
         self.metadata = metadata
@@ -94,6 +105,7 @@ class MockRun():
     def __init__(self, projections=[], sample='',):
         self.metadata = {
             'start': {
+                'uid': 42,
                 'sample': sample,
                 'projections': projections
             },
@@ -143,7 +155,8 @@ def test_calculated_projections():
     }]
 
     mock_run = make_mock_run(calculated_projection, 'garggle_blaster')
-    dataset = project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
+    assert len(issues) == 0
     comparison = dataset['/entry/event/computed'] == [42, 42, 42, 42, 42]
     assert comparison.all()
 
@@ -160,19 +173,19 @@ def test_find_projection_in_run():
 
 def test_unknown_location():
     mock_run = make_mock_run(bad_location, 'one_ring')
-    with pytest.raises(ProjectionError):
-        project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
+    assert len(issues) > 0
 
 
 def test_nonexistent_stream():
     mock_run = make_mock_run(bad_stream, 'one_ring')
-    with pytest.raises(ProjectionError):
-        project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
+    assert len(issues) > 0
 
 
-def test_projector():
+def test_xarray_projector():
     mock_run = make_mock_run(good_projection, 'one_ring')
-    dataset = project_xarray(mock_run)
+    dataset, issues = project_xarray(mock_run)
     # Ensure that the to_dask function was called on both
     # energy and image datasets
     assert mock_run['primary'].to_dask_counter == 1
@@ -181,3 +194,26 @@ def test_projector():
     for idx, image in enumerate(dataset[EVENT_FIELD]):
         comparison = image == mock_run['primary'].dataset['ccd'][idx]  # xarray of comparison results
         assert comparison.all()  # False if comparision does not contain all True
+
+
+def test_summary_projector():
+    mock_run = make_mock_run(good_projection, 'one_ring')
+    dataset, issues = project_summary_dict(mock_run)
+    assert len(issues) == 0
+    projection_fields = []
+    for field, value in good_projection[0]['projection'].items():
+        if 'location' in value and value['location'] == 'start':
+            projection_fields.append(field)
+
+    assert len(dataset) > 0
+    for field in projection_fields:
+        assert dataset[START_DOC_FIELD] == 'one_ring'
+        assert dataset[START_DOC_FIELD_2] == 'one_ring'
+
+
+def test_summary_projector_filtered():
+    mock_run = make_mock_run(good_projection, 'one_ring')
+    dataset, issues = project_summary_dict(mock_run, return_fields=[START_DOC_FIELD_2])
+    assert len(issues) == 0
+    assert len(dataset) == 1
+    assert dataset[START_DOC_FIELD_2] == 'one_ring'

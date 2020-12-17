@@ -1,5 +1,7 @@
-import xarray
 from importlib import import_module
+from typing import Dict, List
+
+import xarray
 
 from .core import BlueskyRun
 
@@ -47,7 +49,8 @@ def get_run_projection(run: BlueskyRun, projection_name: str = None):
         if len(projections) == 0:
             return None
 
-    if 'projections' in run.metadata['start'] and len(run.metadata['start']['projections']) == 1:
+    projections = run.metadata['start'].get('projections')
+    if projections is not None and len(projections) == 1:
         return run.metadata['start']['projections'][0]
 
     return None
@@ -137,6 +140,11 @@ class Projector():
         self._metadata_cb = metadata_cb
         self._event_configuration_cb = event_configuration_cb
         self._event_field_cb = event_field_cb
+        self._issues = []
+
+    @property
+    def issues(self):
+        return self._issues
 
     def project(self, run: BlueskyRun, projection=None, projection_name=None):
         """Iterates a projection and communicates fields through callbacks.
@@ -188,7 +196,7 @@ class Projector():
         if projection is None:
             projection = get_run_projection(run, projection_name)
         if projection is None:
-            raise ProjectionError("Projection could not be found")
+            raise ProjectionError(f"Projection could not be found {run.cat.name} {run.metadata['start']['uid']}")
 
         for field_key, mapping in projection['projection'].items():
             # go through each projection
@@ -198,15 +206,23 @@ class Projector():
 
             if projection_location == 'start':
                 if self._metadata_cb:
-                    self._metadata_cb(field_key,
-                                      run.metadata['start'][projection_linked_field])
+                    value = run.metadata['start'].get(projection_linked_field)
+                    if value is None:
+                        self.issues.append(
+                            (f"{run.metadata['start']['uid']} "
+                             f"Start key misising in run {field_key}: "
+                             f"{projection_linked_field}")
+                        )
+                        continue
+                    self._metadata_cb(field_key, value)
                 continue
 
             elif projection_location == 'event':
                 projection_stream = mapping.get('stream')
 
                 if projection_stream is None:
-                    raise ProjectionError(f'stream missing for event projection: {field_key}')
+                    # raise ProjectionError(f'stream missing for event projection: {field_key}')
+                    self._issues.append(f'stream missing for event projection: {field_key}')
 
                 if projection_type == "calculated":
                     if self._event_field_cb:
@@ -218,7 +234,17 @@ class Projector():
 
                 # TODO check if field exists in stream first
                 if self._event_field_cb:
-                    value = run[projection_stream].to_dask()[projection_linked_field]
+                    stream = None
+                    try:
+                        stream = run[projection_stream]
+                    except KeyError:
+                        # raise ProjectionError(f"Stream {projection_stream} specified does" +
+                        #                       f"not exists {run.metadata['start']['uid']}")
+                        self._issues.append(f"Stream {projection_stream} specified does" +
+                                            f"not exists {run.metadata['start']['uid']}")
+                        continue
+
+                    value = stream.to_dask()[projection_linked_field]
                     self._event_field_cb(field_key,
                                          projection_stream,
                                          projection_linked_field,
@@ -239,7 +265,8 @@ class Projector():
                                                  projection_linked_field,
                                                  value)
             else:
-                raise KeyError(f'Unknown location: {projection_location} in projection.')
+                # raise ProjectionError(f'Unknown location: {projection_location} in projection.')
+                self._issues.append(f"Unknown location: {projection_location} in projection.")
 
 
 def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):
@@ -324,17 +351,24 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
         data_vars[projection_field] = xarray
 
     # Use the callbacks defined above to project the run and build up a return xarray.Dataset
-    try:
-        projector = Projector(
-            metadata_cb=metadata_cb,
-            event_configuration_cb=event_configuration_cb,
-            event_field_cb=event_field_cb)
 
-        projector.project(run, projection=projection, projection_name=projection_name)
-        dataset = xarray.Dataset(data_vars, attrs=attrs)
-        return dataset
-    except Exception as e:
-        raise ProjectionError from e
+    projector = Projector(
+        metadata_cb=metadata_cb,
+        event_configuration_cb=event_configuration_cb,
+        event_field_cb=event_field_cb)
+
+    projector.project(run, projection=projection, projection_name=projection_name)
+    dataset = xarray.Dataset(data_vars, attrs=attrs)
+    return dataset, projector.issues
+
+# def project_xarray_single_stream(run: BlueskyRun, stream_name, projection=None, projection_name=None):
+#     stream_data = None
+#     issues = []
+#     try:
+#         stream_data = run[stream_name].to_dask()[projection_linked_field]
+#     except Exception as e:
+#         issues.append(f"Error projecting {run.metadata['start']['uid']} for stream {stream_name} ")
+#     return stream_data, issues
 
 
 def get_xarray_config_field(dataset: xarray.Dataset,
@@ -364,3 +398,58 @@ def get_xarray_config_field(dataset: xarray.Dataset,
         [description]
     """
     return dataset[projection_field].attrs['configuration'][config_index][device][field]
+
+
+def project_summary_dict(
+            run: BlueskyRun,
+            *args,
+            return_fields: List[str] = [],
+            projection=None,
+            projection_name=None) -> Dict:
+
+    """Produces an simple dictionary of metadata about a run using the selected or provided projection.
+
+    EXPERIMENTAL: projection code is experimental and could change in the near future.
+
+    This is intended to be used by applications that need fast access to summary data. For example,
+    a small number of fields might be displayed for multiple runs in a list.
+    Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
+    in the data (not at the top-level attrs).
+
+    Projected fields will be inserted into the resulting xarray.Dataset
+
+    Parameters
+    ----------
+    run : BlueskyRun
+        run to project
+    return_fields: List[str]
+        list of fields desired in the return. Empty list will return all fields
+        returned by the projection
+    projection_name : str, optional
+        name of a projection to select in the run, by default None
+    projection : dict, optional
+        projection not from the run to use, by default None
+
+    Returns
+    -------
+    dict
+        Returns a dictionary with projected field names as keys and value
+
+    Raises
+    ------
+    ProjectionError
+    """
+    return_dict = {}
+
+    def metadata_cb(field, value):
+        if len(return_fields) == 0 or field in return_fields:
+            return_dict[field] = value
+
+    projector = Projector(
+        metadata_cb=metadata_cb,
+        event_configuration_cb=None,
+        event_field_cb=None)
+
+    projector.project(run, projection=projection, projection_name=projection_name)
+
+    return return_dict, projector.issues
