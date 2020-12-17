@@ -208,7 +208,11 @@ class Projector():
                 if self._metadata_cb:
                     value = run.metadata['start'].get(projection_linked_field)
                     if value is None:
-                        self.issues.append(f"{run.metadata['start']['uid']} Start key misising in run {field_key}: {projection_linked_field}")
+                        self.issues.append(
+                            (f"{run.metadata['start']['uid']} "
+                             f"Start key misising in run {field_key}: "
+                             f"{projection_linked_field}")
+                        )
                         continue
                     self._metadata_cb(field_key, value)
                 continue
@@ -237,7 +241,7 @@ class Projector():
                         # raise ProjectionError(f"Stream {projection_stream} specified does" +
                         #                       f"not exists {run.metadata['start']['uid']}")
                         self._issues.append(f"Stream {projection_stream} specified does" +
-                                              f"not exists {run.metadata['start']['uid']}")
+                                            f"not exists {run.metadata['start']['uid']}")
                         continue
 
                     value = stream.to_dask()[projection_linked_field]
@@ -366,6 +370,7 @@ def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None
 #         issues.append(f"Error projecting {run.metadata['start']['uid']} for stream {stream_name} ")
 #     return stream_data, issues
 
+
 def get_xarray_config_field(dataset: xarray.Dataset,
                             projection_field,
                             config_index,
@@ -407,7 +412,7 @@ def project_summary_dict(
     EXPERIMENTAL: projection code is experimental and could change in the near future.
 
     This is intended to be used by applications that need fast access to summary data. For example,
-    a small number of fields might be displayed for multiple runs in a list. 
+    a small number of fields might be displayed for multiple runs in a list.
     Projections come with multiple types: linked, and caclulated. Calculated fields are only supported
     in the data (not at the top-level attrs).
 
