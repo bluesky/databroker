@@ -46,28 +46,11 @@ class RegistryRO(BaseRegistryRO):
         self.__datum_col = None
         self.__res_col = None
         self.__res_update_col = None
-        self._resource_index = False
-        self._datum_index = False
 
     def disconnect(self):
         self.__db = None
         self.__datum_col = None
         self.__res_col = None
-
-    def _create_resource_index(self):
-        if not self._resource_index:
-            self._resource_col.create_index('resource_id')
-            self._resource_update_col.create_index([
-                ('resource', pymongo.DESCENDING),
-                ('time', pymongo.DESCENDING)
-            ])
-            self._resource_index = True
-
-    def _create_datum_index(self):
-        if not self._datum_index:
-            self._datum_col.create_index('datum_id', unique=True)
-            self._datum_col.create_index('resource')
-            self._datum_index = True
 
     @property
     def _db(self):
@@ -118,39 +101,31 @@ class RegistryRO(BaseRegistryRO):
 
 class Registry(RegistryRO, RegistryTemplate):
     """Registry object that knows how to create new documents.
-       Overriding base class methods to make index creation more lazy.
-       This allows databroker to work with a read only mongo account.
     """
     def insert_datum(self, resource, datum_id, datum_kwargs,
                      ignore_duplicate_error=False):
-        self._create_datum_index()
         return super().insert_datum(resource, datum_id, datum_kwargs,
                                     ignore_duplicate_error=ignore_duplicate_error)
 
     def bulk_insert_datum(self, resource, datum_ids, datum_kwarg_list):
-        self._create_datum_index()
         return super().bulk_insert_datum(resource, datum_ids, datum_kwarg_list)
 
     def bulk_register_datum_table(self, resource_uid, dkwargs_table,
                                   validate=False):
-        self._create_datum_index()
         return super().bulk_register_datum_table(resource_uid, dkwargs_table,
                                                  validate=validate)
 
     def bulk_register_datum_list(self, resource_uid, dkwargs_list,
                                  validate=False):
-        self._create_datum_index()
         return super().bulk_register_datum_list(resource_uid, dkwargs_list,
                                                 validate=validate)
 
     def register_datum(self, resource_uid, datum_kwargs, validate=False):
-        self._create_datum_index()
         return super().register_datum(resource_uid, datum_kwargs,
                                       validate=validate)
 
     def register_resource(self, spec, root, rpath, rkwargs,
                           path_semantics='posix', run_start=None):
-        self._create_resource_index()
         return super().register_resource(spec, root, rpath, rkwargs,
                                          path_semantics=path_semantics,
                                          run_start=run_start)
@@ -158,7 +133,6 @@ class Registry(RegistryRO, RegistryTemplate):
     def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
                         path_semantics='posix', uid=None, run_start=None,
                         id=None, ignore_duplicate_error=False):
-        self._create_resource_index()
         return super().insert_resource(spec, resource_path, resource_kwargs, root=root,
                                        path_semantics=path_semantics, uid=uid, run_start=run_start,
                                        id=id, ignore_duplicate_error=ignore_duplicate_error)
