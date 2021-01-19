@@ -225,6 +225,12 @@ class Entry(intake.catalog.local.LocalCatalogEntry):
         self.entry = self
         logger.debug("Created Entry named %r", self.name)
 
+    def _repr_pretty_(self, p, cycle):
+        return self.get()._repr_pretty_(p, cycle)
+
+    def _repr_mimebundle_(self, include=None, exclude=None):
+        return self.get()._repr_mimebundle_(include=include, exclude=exclude)
+
     @property
     def catalog(self):
         return self._catalog
@@ -980,6 +986,13 @@ class BlueskyRun(intake.catalog.Catalog):
         except Exception as exc:
             out = f"<{self.__class__.__name__} *REPR_RENDERING_FAILURE* {exc!r}>"
         p.text(out)
+
+    def _repr_mimebundle_(self, include=None, exclude=None):
+        # TODO Make a nice 'text/html' repr here. For now just override
+        # intake's which is unreadably verbose for us.
+        return {}
+
+    _ipython_display_ = None
 
     def _make_entries_container(self):
         return LazyMap()
