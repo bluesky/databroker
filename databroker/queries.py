@@ -117,3 +117,30 @@ class TimeRange(Query):
             return query
         else:
             return {}
+
+
+class TextQuery(Query):
+    """
+    A search of the full text of the metadata.
+
+    This is currently only supported on databroker backed by Mongo. If used on
+    a databroker backed by files, an error will be raised.
+
+    Parameters
+    ----------
+    text : string
+    """
+    def __init__(self, text_search):
+        self.text = text_search
+
+    @property
+    def kwargs(self):
+        return {
+            "text_search": self.text,
+        }
+
+    @property
+    def query(self):
+        return {
+            "$text": {"$search": self.text},
+        }
