@@ -51,29 +51,29 @@ def _download_with_progress_bar(response, buffer):
             buffer.write(chunk)
 
 
-def fetch_RSOXS_example(version=1):
-    if "bluesky-tutorial-RSOXS" in databroker.catalog:
+def _fetch_into_memory_and_unzip_to_disk(name, url):
+    if name in databroker.catalog:
         return
     buffer = io.BytesIO()
-    URL = "https://nsls2datasamples.blob.core.windows.net/bluesky-tutorial-example-data/RSOXS-example-v1.zip"
-
-    directory = Path(data_dir, "BMM_example_v1")
-    with requests.get(URL, stream=True) as response:
+    directory = Path(data_dir, name)
+    with requests.get(url, stream=True) as response:
         _download_with_progress_bar(response, buffer)
     _extractall_with_progress_bar(buffer, directory)
-    unpack_inplace(directory, "bluesky-tutorial-BMM")
+    unpack_inplace(directory, name)
     databroker.catalog.force_reload()
 
 
 def fetch_BMM_example(version=1):
-    if "bluesky-tutorial-BMM" in databroker.catalog:
-        return
-    buffer = io.BytesIO()
-    URL = "https://nsls2datasamples.blob.core.windows.net/bluesky-tutorial-example-data/BMM-example-v1.zip"
+    if version != 1:
+        raise ValueError("Only version 1 is known.")
+    name = "bluesky-tutorial-BMM"
+    url = "https://nsls2datasamples.blob.core.windows.net/bluesky-tutorial-example-data/BMM-example-v1.zip"
+    return _fetch_into_memory_and_unzip_to_disk(name, url)
 
-    directory = Path(data_dir, "BMM_example_v1")
-    with requests.get(URL, stream=True) as response:
-        _download_with_progress_bar(response, buffer)
-    _extractall_with_progress_bar(buffer, directory)
-    unpack_inplace(directory, "bluesky-tutorial-BMM")
-    databroker.catalog.force_reload()
+
+def fetch_RSOXS_example(version=1):
+    if version != 1:
+        raise ValueError("Only version 1 is known.")
+    name = "bluesky-tutorial-RSOXS"
+    url = "https://nsls2datasamples.blob.core.windows.net/bluesky-tutorial-example-data/RSOXS-example-v1.zip"
+    return _fetch_into_memory_and_unzip_to_disk(name, url)
