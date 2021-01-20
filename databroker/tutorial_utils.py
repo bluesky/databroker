@@ -35,7 +35,7 @@ def _extractall_with_progress_bar(source, dest):
             else:
                 with zipf.open(i) as fi, open(os.fspath(dest / i.filename), "wb") as fo:
                     copyfileobj(CallbackIOWrapper(pbar.update, fi), fo)
-    print(f"Extracted to {dest}", file=sys.stderr)
+    print(f"Extracted internal data files to {dest}", file=sys.stderr)
 
 
 def _download_with_progress_bar(response, buffer):
@@ -59,7 +59,12 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
     with requests.get(url, stream=True) as response:
         _download_with_progress_bar(response, buffer)
     _extractall_with_progress_bar(buffer, directory)
-    unpack_inplace(directory, name)
+    config_path = unpack_inplace(directory, name)
+    print(
+        f"Placed config file at {config_path} to add catalog to databroker.catalog.\n",
+        f"Access from Python via import databroker; databroker.catalog['{name}'].",
+        file=sys.stderr
+    )
     databroker.catalog.force_reload()
 
 
