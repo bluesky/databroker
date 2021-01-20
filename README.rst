@@ -19,7 +19,9 @@ Source code    https://github.com/bluesky/databroker
 Documentation  https://blueskyproject.io/databroker
 ============== ==============================================================
 
-The bundle of metadata and data looks like this, for example. ::
+The bundle of metadata and data looks like this, for example.
+
+.. code:: python
 
    >>> run
    BlueskyRun
@@ -32,8 +34,10 @@ The bundle of metadata and data looks like this, for example. ::
 
 Additional user metadata beyond what is shown is stored in ``run.metadata``.
 The bundle contains some number of logical tables of data ("streams"). They can
-be accessed by name and read into a standard data structure from `xarray`_. ::
+be accessed by name and read into a standard data structure from `xarray`_.
   
+.. code:: python
+
     >>> run.primary.read()
     <xarray.Dataset>
     Dimensions:                   (time: 411)
@@ -48,12 +52,16 @@ be accessed by name and read into a standard data structure from `xarray`_. ::
         dcm_energy                (time) float64 1.697e+04 1.698e+04 ... 1.791e+04
         dcm_energy_setpoint       (time) float64 1.697e+04 1.698e+04 ... 1.791e+04
 
-Common search queries can be done with a high-level Python interface. ::
+Common search queries can be done with a high-level Python interface.
+
+.. code:: python
 
     >>> from databroker.queries import TimeRange
     >>> catalog.search(TimeRange(since="2020"))
 
-Custom queries can be done with the `MongoDB query language`_. ::
+Custom queries can be done with the `MongoDB query language`_.
+
+.. code:: python
 
     >>> query = {
     ...    "motors": {"$in": ["x", "y"]},  # scanning either x or y

@@ -24,7 +24,7 @@ Access the catalog as assign it to a variable for convenience.
    import databroker
    catalog = databroker.catalog['bluesky-tutorial-BMM']
 
-Look up
+Look-up
 -------
 
 In this section we will look up a Run by its

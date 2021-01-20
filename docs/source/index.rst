@@ -50,7 +50,8 @@ About the documentation
 
    tutorials/install
    tutorials/search-and-lookup
-   tutorials/use-a-run
+   tutorials/get-data
+   tutorials/get-metadata
    tutorials/alignment
 
 .. toctree::
