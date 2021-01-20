@@ -53,7 +53,7 @@ def _download_with_progress_bar(response, buffer):
 
 def _fetch_into_memory_and_unzip_to_disk(name, url):
     if name in databroker.catalog:
-        return
+        return databroker.catalog[name]
     buffer = io.BytesIO()
     directory = Path(data_dir, name)
     with requests.get(url, stream=True) as response:
@@ -61,11 +61,14 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
     _extractall_with_progress_bar(buffer, directory)
     config_path = unpack_inplace(directory, name)
     print(
-        f"Placed config file at {config_path} to add catalog to databroker.catalog.\n",
-        f"Access from Python via import databroker; databroker.catalog['{name}'].",
+        f"Placed config file at {config_path} to add this catalog to databroker.catalog.\n",
+        "Access it at any time via\n\n"
+        "    import databroker\n"
+        f"    databroker.catalog['{name}'].",
         file=sys.stderr
     )
     databroker.catalog.force_reload()
+    return databroker.catalog[name]
 
 
 def fetch_BMM_example(version=1):
