@@ -60,7 +60,7 @@ Custom queries can be done with the `MongoDB query language`_. ::
     ...    "temperature" {"$lt": 300},  # temperature less than 300
     ...    "sample.element": "Ni",
     ... }
-    >>> catalog.serach(query)
+    >>> catalog.search(query)
 
 See the tutorials for more.
 

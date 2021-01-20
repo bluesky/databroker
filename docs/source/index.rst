@@ -48,37 +48,39 @@ About the documentation
    :name: tutorials
    :maxdepth: 1
 
+   tutorials/install
    tutorials/search-and-lookup
+   tutorials/use-a-run
    tutorials/alignment
 
 .. toctree::
-    :caption: How-to Guides
-    :name: how-to
-    :maxdepth: 1
+   :caption: How-to Guides
+   :name: how-to
+   :maxdepth: 1
 
-    how-to/temp-catalog
-    how-to/file-based-catalog
-    how-to/mongo-catalog
-    how-to/mongo-with-auth
-    how-to/mongo-cluster
+   how-to/temp-catalog
+   how-to/file-based-catalog
+   how-to/mongo-catalog
+   how-to/mongo-with-auth
+   how-to/mongo-cluster
 
 .. toctree::
-    :caption: Explanations
-    :name: explanations
-    :maxdepth: 1
+   :caption: Explanations
+   :name: explanations
+   :maxdepth: 1
 
-    explanations/v0-v1-v2
+   explanations/v0-v1-v2
 
 .. rst-class:: no-margin-after-ul
 
 .. toctree::
-    :caption: Reference
-    :name: reference
-    :maxdepth: 1
+   :caption: Reference
+   :name: reference
+   :maxdepth: 1
 
-    reference/api
-    reference/changelog
-    reference/contributing
+   reference/api
+   reference/changelog
+   reference/contributing
 
 .. toctree::
    :hidden:
