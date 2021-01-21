@@ -1,9 +1,8 @@
-*************
-API Reference
-*************
+New (v2) API
+============
 
 Core
-====
+----
 
 .. autoclass:: databroker.core.Document
    :members:
@@ -27,7 +26,7 @@ Core
    :members:
 
 Utils
-=====
+-----
 
 .. autofunction:: databroker.utils.catalog_search_path
 
@@ -36,7 +35,7 @@ Utils
 .. autofunction:: databroker.v1.temp
 
 Backend-Specific Catalogs
-=========================
+-------------------------
 
 .. note::
 

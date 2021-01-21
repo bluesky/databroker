@@ -69,7 +69,9 @@ About the documentation
    :name: explanations
    :maxdepth: 1
 
-   explanations/v0-v1-v2
+   explanations/v2-transition
+   explanations/local-and-remote-use-cases
+   explanations/relationship-to-intake
 
 .. rst-class:: no-margin-after-ul
 
@@ -78,9 +80,11 @@ About the documentation
    :name: reference
    :maxdepth: 1
 
-   reference/api
+   reference/v2
+   reference/v1
    reference/changelog
-   reference/contributing
+
+* :ref:`genindex`
 
 .. toctree::
    :hidden:
@@ -94,7 +98,3 @@ About the documentation
    :caption: Getting Help
 
    Gitter <https://gitter.im/NSLS-II/DAMA>
-
-.. rst-class:: no-margin-after-ul
-
-* :ref:`genindex`

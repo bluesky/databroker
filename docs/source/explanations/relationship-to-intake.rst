@@ -1,11 +1,7 @@
 .. currentmodule:: databroker.core
 
-***********************
-Developer Documentation
-***********************
-
-Design
-======
+What is Databroker's relationship to Intake?
+============================================
 
 Intake Concepts
 ---------------
