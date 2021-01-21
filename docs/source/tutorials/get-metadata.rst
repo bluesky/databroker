@@ -3,9 +3,9 @@ Navigate Metadata in a Run
 
 In this tutorial we will access secondary measurements and metadata including:
 
+* Hardware configuration readings (e.g. exposure time)
 * User-provided context like sample information
 * Whether the Run completed with an error (and if so what error)
-* Hardware configuration readings (e.g. exposure time)
 * Hardware-level timestamps for each measurement
 
 Set up for Tutorial
@@ -34,6 +34,48 @@ Let's take a Run from this Catalog.
 .. ipython:: python
 
    run = catalog[23463]
+
+(Hardware) Configuration
+------------------------
+
+The Run *may* include configurational readings that may be necessary for
+interpreting and the data. These are typically things that change slowly or not
+at all during the Run, like detector exposure time, detector gain settings, or
+the configured maximum motor velocity.
+
+First, let's look at the ``I0`` readings in the ``primary`` stream.
+
+.. ipython:: python
+
+   da = run.primary.read()["I0"]
+   da.head()
+
+This section at the bottom of that summary
+
+.. code::
+
+   Attributes:
+       object:   quadem1
+
+is showing us that ``I0`` was measured by the device ``quadem1``. We can always
+access that programmatically like
+
+.. ipython:: python
+
+   da.attrs.get("object")
+
+We can then look up all the configuration readings associated with ``quadem1``
+in this stream.
+
+.. ipython:: python
+
+   run.primary.config["quadem1"].read()
+
+If another Run ran the ``quadem1`` detector with a *different* integration
+time, we could use this information to normalize the readings and compare them
+accurately.
+
+TO DO: Get an example of that.
 
 How It Started
 --------------
@@ -86,7 +128,9 @@ is often a great deal more.
 How It Ended
 ------------
 
-The Run Stop document tells us how and when and experiment ended.
+There are other things we can only know at the **stop** (end) of an experiment,
+including when and how it finished and how many events (rows) of data were
+collected in each stream.
 
 .. ipython:: python
 
@@ -113,48 +157,6 @@ or, getting a bit fancier, to tally the number of failures.
 
 TO DO: Obtain an example catalog that has some failures in it so that this
 example is not so trivial.
-
-(Hardware) Configuration
-------------------------
-
-The Run *may* include configurational readings that may be necessary for
-interpreting and the data. These are typically things that change slowly or not
-at all during the Run, like detector exposure time, detector gain settings, or
-the configured maximum motor velocity.
-
-First, let's look at the ``I0`` readings in the ``primary`` stream.
-
-.. ipython:: python
-
-   da = run.primary.read()["I0"]
-   da.head()
-
-This section at the bottom of that summary
-
-.. code::
-
-   Attributes:
-       object:   quadem1
-
-is showing us that ``I0`` was measured by the device ``quadem1``. We can always
-access that programmatically like
-
-.. ipython:: python
-
-   da.attrs.get("object")
-
-We can then look up all the configuration readings associated with ``quadem1``
-in this stream.
-
-.. ipython:: python
-
-   run.primary.config["quadem1"].read()
-
-If another Run ran the ``quadem1`` detector with a *different* integration
-time, we could use this information to normalize the readings and compare them
-accurately.
-
-TO DO: Get an example of that.
 
 Timestamps (rarely needed)
 --------------------------
