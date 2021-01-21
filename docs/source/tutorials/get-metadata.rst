@@ -158,8 +158,8 @@ or, getting a bit fancier, to tally the number of failures.
 TO DO: Obtain an example catalog that has some failures in it so that this
 example is not so trivial.
 
-Low-level Hardware Timestamps (rarely needed)
----------------------------------------------
+Low-level Hardware Timestamps
+-----------------------------
 
 .. note::
 
