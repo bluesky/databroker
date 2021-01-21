@@ -39,11 +39,13 @@ Let's take a Run from this Catalog.
 ------------------------
 
 The Run *may* include configurational readings that may be necessary for
-interpreting and the data. These are typically things that change slowly or not
+interpreting the data. These are typically things that change slowly or not
 at all during the Run, like detector exposure time, detector gain settings, or
 the configured maximum motor velocity.
 
-First, let's look at the ``I0`` readings in the ``primary`` stream.
+First, let's look at the ``I0`` readings in the ``primary`` stream. What are
+the configuration readings that might be necessary to interpret this data or
+compare it with other data?
 
 .. ipython:: python
 
@@ -57,7 +59,7 @@ This section at the bottom of that summary
    Attributes:
        object:   quadem1
 
-is showing us that ``I0`` was measured by the device ``quadem1``. We can always
+is showing us that ``I0`` was measured by the device ``quadem1``. We can also
 access that programmatically like
 
 .. ipython:: python
