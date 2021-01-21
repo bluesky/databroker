@@ -42,7 +42,6 @@ About the documentation
 
 `Why is the documentation structured this way? <https://documentation.divio.com>`_
 
-
 .. toctree::
    :caption: Tutorials
    :name: tutorials

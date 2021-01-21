@@ -12,8 +12,8 @@ these two implementations.
 API version Interface Implementation Who should use it?
 =========== ========= ============== ==========================
 v2          New       New            All new users
-v1          Original  New            Users supporting old code using the original interface
-v0          Original  Original       As an emergency fallback if case of bugs in v1/v2
+v1          Original  New            Users with old scripts that use original interface
+v0          Original  Original       Users who hit bugs in v1/v2 and need a fallback
 =========== ========= ============== ==========================
 
 Which one should I use?
