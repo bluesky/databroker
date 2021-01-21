@@ -81,9 +81,10 @@ use the ``data`` accessor.
 Handle large data
 -----------------
 
-The example data we have been using has no large arrays in it. For this section
-we will download a second Catalog with one Run in it that contains image
-data.
+The example data we have been using so far has no large arrays in it. For this
+section we will download a second Catalog with one Run in it that contains
+image data. It's 1 GB (uncompressed), which is large enough to exercise the
+tools involved. These same techniques scale to much larger datasets.
 
 .. ipython:: python
 
@@ -100,63 +101,79 @@ Access the catalog as assign it to a variable for convenience.
 The method ``run.primary.read()`` method reads all the data from the "primary"
 stream from storage into memory. This can be inconvenient if:
 
-1. The data is so large it does not all fit into memory (RAM) at once.
-2. You don't actually need some of the columns for your analysis.
+1. The data is so large it does not all fit into memory (RAM) at once. Reading
+   it would prompt a ``MemoryError`` (best case) or cause Python to crash
+   (worst case).
+2. You only need a subset of the data for your analysis. Reading all of it
+   would waste time.
 
-The ``read()`` operation could prompt a ``MemoryError`` (1) or take longer than
-necessary by givng an `xarray`_ backed by large numpy arrays that we don't
-actually need for our present purpose (2).
-
-Instead, we can summon up an `xarray`_ backed by *placeholders* (`dask`_
-arrays). Large arrays are not immediately read from storage into memory. They
-will only be read if and when we actually need them. Further, they can be read
-progressively in chunks, enabling us to process datasets that are too large to
-fit into memory all at once.
+In these situations, we can summon up an `xarray`_ backed by *placeholders*
+(`dask`_ arrays). These act like normal numpy arrays in many respects, but
+interanlly they divide the data up intelligently into chunks. They only load
+the each chunk if and when it is actually needed for a computation.
 
 .. ipython:: python
 
    lazy_ds = run.primary.to_dask()
 
-Compare the columns of ``lazy_ds`` and ``ds``. Notice, below, that the "lazy"
-variant contains ``<dask.array ...>`` and the original contains
-``<numpy.ndarray ...>``.
+Comparing ``lazy_ds["Synced_waxs_image"].data`` to ``ds["I0"].data`` from the
+previous section, we see that the "lazy" variant contains ``<dask.array ...>``
+and the original contains ordinary numpy ``array``.
 
 .. ipython:: python
 
-   ds = run.primary.read()  # Load non-lazy version for comparison.
-   ds["Synced_saxs_image"]
-   lazy_ds["Synced_saxs_image"]
-
-We can examine the dask array directly by using that ``data`` accessor.
-
-.. ipython:: python
-
-   lazy_ds["Synced_saxs_image"].data
+   ds["I0"].head().data  # array
+   lazy_ds["Synced_waxs_image"].data  # dask.array, a placeholder
 
 As an example of what's possible, we can subtract from this image series the
 mean of an image series taken while the shutter was closed ("dark" images).
 
 .. ipython:: python
 
-   corrected = run.primary.to_dask()["Synced_saxs_image"] - run.dark.to_dask()["Synced_saxs_image"].mean("time")
+   corrected = run.primary.to_dask()["Synced_waxs_image"] - run.dark.to_dask()["Synced_waxs_image"].mean("time")
+   corrected
+   middle_image = corrected[64, 0, :, :]  # Pull out a 2D slice.
+   middle_image
 
 At this point, *no data has yet been read*. We are still working with
 placeholders, building up an expression of work to be done in the future.
-If we attempt to plot it or otherwise hand it off to code that will treat it as
+Finally, when we plot it or otherwise hand it off to code that will treat it as
 normal array, the data will be loaded and processed (in chunks) and finally
-give us a normal numpy array as a result. We can force it to do so explicltly
-by calling ``.compute()``.
+give us a normal numpy array as a result. When only a sub-slice of the data is
+actually used (as is the case in this example), only the relevant chunk(s) will
+ever be loaded. This can save a lot of time and memory.
 
-If we subselect the data, only the relevant chunk(s) will be loaded. This can
-save a lot of time and memory.
+.. code:: python
+
+   import matplotlib.pyplot as plt
+   from matplotlib.colors import LogNorm
+
+   # Plot a slice from the middle as an image with a log-scaled color transfer.
+   plt.imshow(middle_image, norm=LogNorm(), origin='lower')
+
+.. plot::
+
+   import databroker
+   import matplotlib.pyplot as plt
+   from matplotlib.colors import LogNorm
+
+   run = databroker.catalog['bluesky-tutorial-RSOXS']['777b44a']
+   corrected = run.primary.to_dask()["Synced_waxs_image"] - run.dark.to_dask()["Synced_waxs_image"].mean("time")
+   middle_image = corrected[64, 0, :, :]  # Pull out a 2D slice.
+   plt.imshow(middle_image, norm=LogNorm(), origin='lower')
+
+We can force that processing to happen explicltly by calling ``.compute()``.
 
 .. ipython:: python
 
-   # Take a slice from the middle.
-   corrected[100, 0, :, :].compute()
+   middle_image.compute()
 
-For more, see the dask documentation. A good entry point is the example
-covering `Dask Arrays`_.
+Notice that we now see ``array`` in there instead of
+``<dask.array>``. This is how we know that it's a normal array in memory, not a
+placeholder for future work.
+
+For more, see the `xarray`_ documentation and the `dask`_ documentation. A good
+entry point is the example covering `Dask Arrays`_.
 
 .. _xarray: https://xarray.pydata.org/
 
