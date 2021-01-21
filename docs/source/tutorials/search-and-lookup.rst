@@ -3,6 +3,12 @@
 Find Runs in a Calalog
 ======================
 
+In this tutorial we will:
+
+* Look up a specific Run by some identifier.
+* Look up a specific Run based on recency (i.e. "Show me the data I just took").
+* Search for Runs using both simple and complex search queries.
+
 Set up for Tutorial
 -------------------
 
@@ -162,7 +168,8 @@ data.
    Python libraries that support most of MongoDB's query language without
    actual MongoDB.
 
-Here is an example of a more sophisticated query.
+Here is an example of a more sophisticated query, doing more than just checking
+for equality.
 
 .. ipython:: python
 
@@ -172,5 +179,8 @@ Here is an example of a more sophisticated query.
     }
     results = catalog.search(query)
     len(results)
+
+See the MongoDB documentation linked above to learn other expressions like
+``$lte``.
 
 .. _MongoDB query language: https://docs.mongodb.com/manual/reference/operator/query/

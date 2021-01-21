@@ -52,7 +52,6 @@ About the documentation
    tutorials/search-and-lookup
    tutorials/get-data
    tutorials/get-metadata
-   tutorials/alignment
 
 .. toctree::
    :caption: How-to Guides

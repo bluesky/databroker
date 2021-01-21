@@ -1,6 +1,12 @@
 Get Data from a Run
 ===================
 
+In this tutorial we will:
+
+* Load all the data from a small Run and do some basic math on it.
+* Load and visulaize just a slice of data from a 1 GB dataset, without loading
+  the whole dataset.
+
 Set up for Tutorial
 -------------------
 
@@ -77,6 +83,28 @@ use the ``data`` accessor.
 
    type(ds["I0"])
    type(ds["I0"].data)
+
+Looking again at this Run
+
+.. ipython:: python
+
+   run
+
+we see it has a second stream, "baseline". Reading that, we notice that columns
+it contains, its dimensions, and its coordinates are different from the ones in
+"primary". That's why it's in a different stream.  The "baseline" stream is a
+conventional name for snapshots taken at the very beginning and end of a
+procedure. We see a long list of instruments with two data points each---before
+and after.
+
+.. ipython:: python
+
+   run.baseline.read()
+
+Different Runs can have different streams, but "primary" and "baseline" are the
+two most common.
+
+With that, we have accessed all the data from this run.
 
 Handle large data
 -----------------
