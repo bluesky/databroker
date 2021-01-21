@@ -158,12 +158,14 @@ or, getting a bit fancier, to tally the number of failures.
 TO DO: Obtain an example catalog that has some failures in it so that this
 example is not so trivial.
 
-Timestamps (rarely needed)
---------------------------
+Low-level Hardware Timestamps (rarely needed)
+---------------------------------------------
 
 .. note::
 
    We mention this for completeness, but you will probably never need it.
+   Any *scientifically important* timing measurements should be in the data
+   itself, not in this supplemental hardware timestamp metadata.
 
 Control systems provide us with individually timestamps for every reading.
 These should generally *not* be used for data analysis. Any timing readings
