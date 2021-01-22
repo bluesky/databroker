@@ -1,6 +1,9 @@
 How to create a new Catalog backed by MongoDB
 =============================================
 
+*I want to set up a performant Catalog that scales to large numbers of Runs and
+supports the full search capability of Databroker.*
+
 #. Install the `MongoDB Community Edition`_. We recommend the latest stable
    version. Any version 3.x or later should be fine.
 

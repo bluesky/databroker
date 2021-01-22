@@ -17,13 +17,13 @@ We strongly recommend creating a fresh environment.
    conda create -n try-databroker
    conda activate try-databroker
 
-Install databroker from the ``nsls2forge`` conda channel maintained by NSLS-II.
+Install Databroker from the ``nsls2forge`` conda channel maintained by NSLS-II.
 
 .. code:: bash
 
    conda install -c nsls2forge databroker
 
-It is also availabe from the ``conda-forge`` channel.
+It is also available from the ``conda-forge`` channel.
 
 Pip
 ---
@@ -35,7 +35,7 @@ We strongly recommend creating a fresh environment.
    python3 -m venv try-databroker
    source try-databroker/bin/activate
 
-Install databroker from PyPI.
+Install Databroker from PyPI.
 
 .. code:: bash
 

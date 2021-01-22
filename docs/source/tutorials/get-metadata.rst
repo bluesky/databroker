@@ -108,8 +108,8 @@ we intend to do (i.e. which scan type or which data processing routine), who is
 doing it, and any additional context like sample information.
 
 The only fields *guaranteed* by Databroker to be present are ``uid`` (a
-globally unique identifer for the Run) and ``time`` (when it started) but there
-is often a great deal more.
+globally unique identifier for the Run) and ``time`` (when it started) but
+there is often a great deal more.
 
 .. code:: python
 
@@ -191,11 +191,11 @@ Low-level Hardware Timestamps
 
 Control systems provide us with individually timestamps for every reading.
 These should generally *not* be used for data analysis. Any timing readings
-necessary for analysis shoudl be recorded as data, as a column in some steram.
+necessary for analysis should be recorded as data, as a column in some stream.
 These are intended to be used for debugging and troubleshooting.
 
 The timestamps associated with the readings in ``run.primary.read()`` are
-availabe as
+available as
 
 .. ipython:: python
 

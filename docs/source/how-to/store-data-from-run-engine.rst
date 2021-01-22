@@ -1,6 +1,8 @@
 How to store data from the Run Engine
 =====================================
 
+*I want to connect RunEngine with Databroker and start saving data.*
+
 For small- and medium-sized deployments
 ---------------------------------------
 
@@ -15,10 +17,10 @@ Subscribe the Run Engine directly to Databroker.
    You may notice that we are falling back to the ``v1`` API here, where for
    all other things we show and recommend the new ``v2`` API. This is because
    we are still `discussing the design`_ for this in v2. Until that is sorted
-   out, this is the officially-supported solution.
+   out, this is the officially-recommended solution.
 
-This will cause the RunEngine to wait for storage to be successful before
-proceed with the next step of data acquisition.
+This will cause the RunEngine to wait for each document it emits to be stored
+successfully before it proceeds with the next step of data acquisition.
 
 Pro: We are assured that if data is not saved successfully, we will immediately
 know and the data acquisition will be aborted. We avoid the scary scenario of
@@ -32,7 +34,7 @@ For facility-scale deployments
 ------------------------------
 
 At present, all facilities currently using Bluesky (as far as we are aware) are
-using this straightfowrad approach described above but a more sophisticated
+using this straightforward approach described above but a more sophisticated
 alternative is being tested.
 
 In short, put a message bus such as Kafka between the Run Engine and the

@@ -4,7 +4,7 @@ Get Data from a Run
 In this tutorial we will:
 
 * Load all the data from a small Run and do some basic math and visualization.
-* Load and visulaize just a slice of data from a 1 GB dataset, without loading
+* Load and visualize just a slice of data from a 1 GB dataset, without loading
   the whole dataset.
 
 Set up for Tutorial
@@ -193,7 +193,7 @@ This can be inconvenient if:
 
 In these situations, we can summon up an `xarray`_ backed by *placeholders*
 (`dask`_ arrays). These act like normal numpy arrays in many respects, but
-interanlly they divide the data up intelligently into chunks. They only load
+internally they divide the data up intelligently into chunks. They only load
 the each chunk if and when it is actually needed for a computation.
 
 .. ipython:: python
@@ -246,7 +246,7 @@ will ever be loaded. This can save a lot of time and memory.
    middle_image = corrected[64, 0, :, :]  # Pull out a 2D slice.
    plt.imshow(middle_image, norm=LogNorm(), origin='lower')
 
-We can force that processing to happen explicltly by calling ``.compute()``.
+We can force that processing to happen explicitly by calling ``.compute()``.
 
 .. ipython:: python
 

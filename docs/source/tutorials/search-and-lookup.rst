@@ -1,6 +1,6 @@
 .. currentmodule:: databroker
 
-Find Runs in a Calalog
+Find Runs in a Catalog
 ======================
 
 In this tutorial we will:
@@ -16,7 +16,7 @@ Start your favorite interactive Python environment, such as ``ipython`` or
 ``jupyter lab``.
 
 For this tutorial, we'll use a catalog of publicly available, openly licensed
-sample data. This utility downloads it and makes it discoverable to databroker.
+sample data. This utility downloads it and makes it discoverable to Databroker.
 
 .. ipython:: python
 
@@ -35,7 +35,7 @@ Look-up
 
 In this section we will look up a Run by its
 
-* Globally unique identifier --- un-memorable, but great for scripts
+* Globally unique identifier --- unmemorable, but great for scripts
 * Counting-number "scan ID" --- easier to remember, but not necessarily unique
 * Recency --- e.g. "the data I just took"
 
@@ -59,12 +59,12 @@ If the abbreviated uid is ambiguous---if it matches more than one Run---a
 ``ValueError`` is raised listing the matches. Try ``catalog['a']``, which will
 match two Runs in this Catalog and raise that error.
 
-Runs typically also have a counting number identifer, dubbed ``scan_id``. This
+Runs typically also have a counting number identifier, dubbed ``scan_id``. This
 is easier to remember. Keep in mind that ``scan_id`` *is not neccesarily unique*,
 and Databroker will always give you the most recent match.
 Some users are in the habit of resetting ``scan_id`` to 1 at the beginning of
 a new experiment or operating cycle. This is why lookup based on the globally
-unique idenifier is safest for scripts and Jupyter notebooks, especially
+unique identifier is safest for scripts and Jupyter notebooks, especially
 long-lived ones.
 
 .. ipython:: python
@@ -83,11 +83,11 @@ in Python, where  ``a[-N]`` means "``N`` elements from the end of ``a``".
 
 In summary:
 
-================== ==============================================================
-``catalog["..."]`` Globally unique identifer ("uid")
+================== ===============================================
+``catalog["..."]`` Globally unique identifier ("uid")
 ``catalog[N]``     Counting number "scan ID" N (most recent match)
 ``catalog[-N]``    Nth most recent Run in the Catalog
-================== ==============================================================
+================== ===============================================
 
 All of these always return *one* ``BlueskyRun`` or raise an exception.
 
@@ -162,7 +162,7 @@ to get a sense of the metadata that would be useful in searches.
    run.metadata["start"]
 
 Again, the syntax of a query is that of the `MongoDB query language`_.
-It's an expressive language for specifying searches over heterogenous
+It's an expressive language for specifying searches over heterogeneous
 metadata.
 
 .. note:: 

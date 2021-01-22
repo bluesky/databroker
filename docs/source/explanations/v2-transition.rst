@@ -1,20 +1,20 @@
 What are the API versions v0, v1, v2?
 =====================================
 
-The Databroker codebase currently contains two completely and mostly indepenent
+The Databroker codebase currently contains two complete and mostly independent
 implementations. One is the original implementation from 2015. The other is a
 rewrite performed in 2019--2020, written to leverage the scientific Python
 libraries `dask`_, `intake`_, and `xarray`_, which emerged or reached maturity
 some time after 2015. Databroker 1.x provides three public interfaces on top of
 these two implementations.
 
-=========== ========= ============== ==========================
+=========== ========= ============== ==================================================
 API version Interface Implementation Who should use it?
-=========== ========= ============== ==========================
+=========== ========= ============== ==================================================
 v2          New       New            All new users
 v1          Original  New            Users with old scripts that use original interface
 v0          Original  Original       Users who hit bugs in v1/v2 and need a fallback
-=========== ========= ============== ==========================
+=========== ========= ============== ==================================================
 
 Which one should I use?
 -----------------------
@@ -23,10 +23,10 @@ If you are a new user, use v2. That is the version covered by the tutorials and
 user guides.
 
 As far as we know the only heavy users of the "original" 2015 interface are at
-NSLS-II. If you have existing scripts using that original interface, know that
-we intend to continue to support it for many years. We do not want to break
-your scripts. Consider using v2 for *new* work however, to enjoy its improved
-usability and feature set.
+NSLS-II. If you are such a user and you have have existing scripts using that
+original interface, know that we committed to supporting it for many years to
+come. We do not want to break your scripts. Consider using v2 for *new* work,
+however, to enjoy its improved usability and feature set.
 
 How do use them?
 ----------------
@@ -71,9 +71,9 @@ Therefore, code written like
 will work on both v1-style and v2-style.
 
 Finally, the v0 implementation is available as the battle-tested emergency
-fallback in case of show-shoping bugs the younger implementation underlying v1
-and v2. You cannot move between v0 and other interfaces. You can invoke v0 like
-so:
+fallback in case of any show-stopping bugs the newer implementation underlying
+v1 and v2. You *cannot* move between v0 and other interfaces. You can invoke v0
+like so:
 
 .. code:: python
 

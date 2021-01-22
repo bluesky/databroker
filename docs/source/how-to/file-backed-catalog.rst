@@ -1,10 +1,13 @@
 How to create a new Catalog backed by files
 ===========================================
 
+*I want to quickly set up a small Databroker Catalog.*
+
 Why backed by files and not a database?
 ---------------------------------------
 
 Pro: You don't have to run a database to try it.
+
 Cons: It only scales to about 100 Runs, it will be a bit slower, and you lose
 *some* of the search capability, such as full text search.
 
@@ -21,10 +24,11 @@ files on disk. This can be convenient in these situations:
 Temporary Catalog
 -----------------
 
-If you are in the "just trying things" phase, you might start by creating an
-*temporary* Catalog backed by file in your system's temp directory. These will
-be hard to find again, and they will be permanently deleted whenever you system
-next reboots, so do not put anything important (or especially large) there.
+If you are in the "just trying things" phase, you might start by creating a
+*temporary* Catalog backed by file in your system's temp directory. It will
+be hard to find again after you exit Python, and it will be permanently deleted
+whenever you system next reboots, so do not put anything important (or
+especially large) there.
 
 .. code:: python
 
@@ -39,7 +43,7 @@ the tutorials for how to get it back out.
 Persistent Catalog
 ------------------
 
-Taking the next step, let's make a permanent one.
+Taking the next step, let's make a persistent Catalog.
 
 #. Find where Databroker looks for Catalog configuration files on your system.
    It varies by OS and environment because Databroker does its best to be a
