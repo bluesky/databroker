@@ -6,7 +6,7 @@ Find Runs in a Calalog
 In this tutorial we will:
 
 * Look up a specific Run by some identifier.
-* Look up a specific Run based on recency (i.e. "Show me the data I just took").
+* Look up a specific Run based on recency (e.g. "Show me the data I just took").
 * Search for Runs using both simple and complex search queries.
 
 Set up for Tutorial
@@ -23,7 +23,7 @@ sample data. This utility downloads it and makes it discoverable to databroker.
    import databroker.tutorial_utils
    databroker.tutorial_utils.fetch_BMM_example()
 
-Access the catalog as assign it to a variable for convenience.
+Access the catalog and assign it to a variable for convenience.
 
 .. ipython:: python
 
@@ -35,14 +35,14 @@ Look-up
 
 In this section we will look up a Run by its
 
-* Globally unique identifier (un-memorable, but great for scripts)
-* Counting-number "scan ID" (easier to remember, but not necessarily unique)
-* Recency (e.g. "the data I just took")
+* Globally unique identifier --- un-memorable, but great for scripts
+* Counting-number "scan ID" --- easier to remember, but not necessarily unique
+* Recency --- e.g. "the data I just took"
 
 If you know exactly which Run you are looking for, the surest way to get it is
 to look it up by its globally unique identifier, its "uid". This is the
 recommended way to look up runs *in scripts* but it is not especially
-friendly for interactive use.
+fluid for interactive use.
 
 .. ipython:: python
 
@@ -55,16 +55,17 @@ to uniquely identify an entry.
 
    catalog['c07e765']
 
-If the abbreviated uid is ambiguous (matches more than run one) a
+If the abbreviated uid is ambiguous---if it matches more than one Run---a
 ``ValueError`` is raised listing the matches. Try ``catalog['a']``, which will
 match two Runs in this Catalog and raise that error.
 
 Runs typically also have a counting number identifer, dubbed ``scan_id``. This
 is easier to remember. Keep in mind that ``scan_id`` *is not neccesarily unique*,
-and databroker will always give you the most recent match.
+and Databroker will always give you the most recent match.
 Some users are in the habit of resetting ``scan_id`` to 1 at the beginning of
 a new experiment or operating cycle. This is why lookup based on the globally
-unique idenifier is safest for scripts, especially long-lived scripts.
+unique idenifier is safest for scripts and Jupyter notebooks, especially
+long-lived ones.
 
 .. ipython:: python
 
@@ -77,8 +78,8 @@ I just took".
 
    catalog[-1]
 
-This syntax is meant to feel similar to accessing elements in a list of array
-in Python, where  ``a[-N]`` means "N elements from the end".
+This syntax is meant to feel similar to accessing elements in a list or array
+in Python, where  ``a[-N]`` means "``N`` elements from the end of ``a``".
 
 In summary:
 
@@ -88,7 +89,7 @@ In summary:
 ``catalog[-N]``    Nth most recent Run in the Catalog
 ================== ==============================================================
 
-All of these always return a ``BlueskyRun`` (or raise an exception).
+All of these always return *one* ``BlueskyRun`` or raise an exception.
 
 Search
 ------
@@ -101,8 +102,8 @@ Common search queries can be done with a high-level Python interface.
    
    results = catalog.search(TimeRange(since="2020-03-05"))
 
-The result of a search is just another catalog. It has a subset of the original
-catalog's entries. We can compare the number of search results to the total
+The result of a search is just another Catalog. It has a subset of the original
+Catalog's entries. We can compare the number of search results to the total
 number of entries in ``catalog``.
 
 .. ipython:: python
@@ -125,8 +126,8 @@ result.
 
    results[-1]
 
-Because results is just another catalog, you can search on the search results
-to progressively narrow your results.
+Because ``results`` is just another Catalog, we can search on the search
+results to progressively narrow our results.
 
 .. ipython:: python
 
@@ -149,18 +150,20 @@ The above matches Runs where the 'start' document looks like::
        ...
    } 
 
-The allowed keys are totally open-ended as far as databroker is concerned.
+The allowed keys are totally open-ended as far as Databroker is concerned.
 This example is particular to the metadata recorded by the instrument that
 it came from.  What's useful in your case will depend on what metadata was
 provided when the data was captured. Look at a couple Runs' start documents
-to get a sense of the metadata that would be useful in searches.::
+to get a sense of the metadata that would be useful in searches.
+
+.. code:: python
 
    run = catalog[-1]
    run.metadata["start"]
 
 Again, the syntax of a query is that of the `MongoDB query language`_.
-It's a very expressive language for specifying searches over heterogenous
-data.
+It's an expressive language for specifying searches over heterogenous
+metadata.
 
 .. note:: 
 

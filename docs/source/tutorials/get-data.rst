@@ -3,7 +3,7 @@ Get Data from a Run
 
 In this tutorial we will:
 
-* Load all the data from a small Run and do some basic math on it.
+* Load all the data from a small Run and do some basic math and visualization.
 * Load and visulaize just a slice of data from a 1 GB dataset, without loading
   the whole dataset.
 
@@ -37,8 +37,8 @@ Let's take a Run from this Catalog.
 What's in the Run?
 ------------------
 
-The Run's "pretty display", shown by IPython and Jupyter (and some other
-similar tools), shows us a summary.
+The Run's "pretty display", shown by IPython and Jupyter and some other
+similar tools, shows us a summary.
 
 .. ipython:: python
 
@@ -75,9 +75,64 @@ Do math on columns.
    normed = ds["I0"] / ds["It"]
    normed.head()  # Just show the first couple elements.
 
-These `xarray`_ objects bundle a numpy (or numpy-like) array with some
-additional metadata and coordinates. To access the underlying array directly,
-use the ``data`` accessor.
+Visualize them. There are couple ways to do this.
+
+.. code:: python
+
+   # The plot() method on xarray.DataArray
+   ds["I0"].plot()
+
+.. plot::
+
+   import databroker
+
+   run = databroker.catalog['bluesky-tutorial-BMM'][23463]
+   ds = run.primary.read()
+   ds["I0"].plot()
+
+.. code:: python
+
+   # The plot accessor on xarray.Dataset 
+   ds.plot.scatter(x="dcm_energy", y="I0")
+
+
+.. plot::
+
+   import databroker
+
+   run = databroker.catalog['bluesky-tutorial-BMM'][23463]
+   ds = run.primary.read()
+
+   # The plot accessor on xarray.Dataset 
+   ds.plot.scatter(x="dcm_energy", y="I0")
+
+
+.. code:: python
+
+   # Using matplotlib directly
+   import matplotlib.pyplot as plt
+   import numpy
+
+   plt.plot(ds["dcm_energy"], numpy.log(ds["It"] / ds["I0"]))
+   plt.xlabel("dcm_energy")
+   plt.ylabel("log(It / I0)")
+
+.. plot::
+
+   import databroker
+   import matplotlib.pyplot as plt
+   import numpy
+
+   run = databroker.catalog['bluesky-tutorial-BMM'][23463]
+   ds = run.primary.read()
+
+   plt.plot(ds["dcm_energy"], numpy.log(ds["It"] / ds["I0"]))
+   plt.xlabel("dcm_energy")
+   plt.ylabel("log(It / I0)")
+
+These `xarray`_ DataArray objects bundle a numpy (or numpy-like) array with
+some additional metadata and coordinates. To access the underlying array
+directly, use the ``data`` attribute.
 
 .. ipython:: python
 
@@ -119,15 +174,16 @@ tools involved. These same techniques scale to much larger datasets.
    import databroker.tutorial_utils
    databroker.tutorial_utils.fetch_RSOXS_example()
 
-Access the catalog as assign it to a variable for convenience.
+Access the new Catalog and assign this Run to a variable.
 
 .. ipython:: python
 
    import databroker
    run = databroker.catalog['bluesky-tutorial-RSOXS']['777b44a']
 
-The method ``run.primary.read()`` method reads all the data from the "primary"
-stream from storage into memory. This can be inconvenient if:
+In the previous example, we used ``run.primary.read()`` at this point. That
+method reads all the data from the "primary" stream from storage into memory.
+This can be inconvenient if:
 
 1. The data is so large it does not all fit into memory (RAM) at once. Reading
    it would prompt a ``MemoryError`` (best case) or cause Python to crash
@@ -168,8 +224,8 @@ placeholders, building up an expression of work to be done in the future.
 Finally, when we plot it or otherwise hand it off to code that will treat it as
 normal array, the data will be loaded and processed (in chunks) and finally
 give us a normal numpy array as a result. When only a sub-slice of the data is
-actually used (as is the case in this example), only the relevant chunk(s) will
-ever be loaded. This can save a lot of time and memory.
+actually used---as is the case in this example---only the relevant chunk(s)
+will ever be loaded. This can save a lot of time and memory.
 
 .. code:: python
 

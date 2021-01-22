@@ -8,9 +8,9 @@ Databroker
 * Provide **metadata and data** in a coherent bundle, using standard widely-used
   Python and SciPy data structures.
 * Support fast, flexible **search** over metadata.
-* Enable tools in the bluesky software ecosystem to operate seamless on a
-  mixture of **live-streaming** data from the RunEngine and **saved** data from
-  Databroker.
+* Enable software tools to operate seamlessly on a
+  mixture of **live-streaming** data from the Bluesky Run Engine and **saved**
+  data from Databroker.
 
 ============== ==============================================================
 PyPI           ``pip install databroker``
