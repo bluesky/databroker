@@ -57,8 +57,10 @@ About the documentation
    :name: how-to
    :maxdepth: 1
 
-   how-to/temp-catalog
-   how-to/file-based-catalog
+   how-to/download-data-samples
+   how-to/file-backed-catalog
+   how-to/store-data-from-run-engine
+   how-to/store-analysis-results
    how-to/mongo-catalog
    how-to/mongo-with-auth
    how-to/mongo-cluster

@@ -96,7 +96,3 @@ Finally, the Catalog itself should implement ``__len__``. If it is not
 implemented, intake may obtain a Catalog's length by iterating through it
 entirely, which may be costly. If a more efficient approach is possible (e.g. a
 COUNT query) it should be implemented.
-
-.. toctree::
-
-   reference
