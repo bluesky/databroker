@@ -5,7 +5,8 @@ How to create a new Catalog backed by MongoDB
 supports the full search capability of Databroker.*
 
 #. Install the `MongoDB Community Edition`_. We recommend the latest stable
-   version. Any version 3.x or later should be fine.
+   version. Any version 3.x or later should be fine. See :ref:`container_advice`
+   below if you go this route.
 
 #. Find where Databroker looks for Catalog configuration files on your system.
    It varies by OS and environment because Databroker does its best to be a
@@ -94,6 +95,22 @@ supported: Users can access all the Runs in the MongoDB or none of them.
       export DATABROKER_MONGODB_USER='...'
       export DATABROKER_MONGODB_PASSWORD='...'
 
+.. _container_advice:
+
+Container Advice
+----------------
+
+If you choose to run MongoDB in a Docker container:
+
+* Be sure to mount persistent storage from the host machine into the volumes
+  MongoDB stores it data. When the container stops, you presumably still want
+  your data!
+* See `this resource`_ for information on enabling authenication.
+
 .. _MongoDB Community Edition: https://docs.mongodb.com/manual/administration/install-community/
 
 .. _Enable authentication on MongoDB: https://docs.mongodb.com/manual/tutorial/enable-authentication/
+
+.. _container: https://hub.docker.com/_/mongo
+
+.. _this resource: https://stackoverflow.com/a/42973849
