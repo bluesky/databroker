@@ -188,9 +188,9 @@ Low-level Hardware Timestamps
 
 .. note::
 
-   We mention this for completeness, but you will probably never need it.
-   Any *scientifically important* timing measurements should be in the data
-   itself, not in this supplemental hardware timestamp metadata.
+   Any *preicse* timing measurements should be in the data itself, not in this
+   supplemental hardware timestamp metadata. This should generally be
+   considered good for ~0.1 second precision alignment.
 
 Control systems provide us with individually timestamps for every reading.
 These should generally *not* be used for data analysis. Any timing readings
