@@ -73,7 +73,7 @@ Security
    This recommendation is a draft. If you are securing MongoDB, please reach
    out to us.
 
-Datbroker was designed with access controls *per Run* in mind, and this is now
+Databroker was designed with access controls *per Run* in mind, and this is now
 being actively developed, but currently only all-or-nothing access is
 supported: Users can access all the Runs in the MongoDB or none of them.
 
@@ -81,12 +81,16 @@ supported: Users can access all the Runs in the MongoDB or none of them.
    user with read and write access to your database and set a secure password.
 
 #. Edit your configuration file as to add a template for username and password
-   in the URI as follows.
+   in the URI as follows. Notice the addition of the query parameter
+   ``authSource=admin`` as well.
 
    .. code:: yaml
 
-      metadatastore_db: mongodb://{{ env(DATABROKER_MONGODB_USER) }}:{{ env(DATABROKER_MONGODB_PASSWORD) }}@HOST:PORT/DATABASE_NAME
-      asset_registry_db: mongodb://{{ en(DATABROKER_MONGODB_USER) }}:{{ env(DATABROKER_MONGODB_PASSWORD) }}@HOST:PORT/DATABASE_NAME
+      metadatastore_db: mongodb://{{ env(DATABROKER_MONGODB_USER) }}:{{ env(DATABROKER_MONGODB_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
+      asset_registry_db: mongodb://{{ en(DATABROKER_MONGODB_USER) }}:{{ env(DATABROKER_MONGODB_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
+
+
+   Refer to `PyMongo authencation documemation`_ for context.
 
 #. Set these environment variables to provide access to the database.
 
@@ -110,6 +114,8 @@ If you choose to run MongoDB in a Docker container:
 .. _MongoDB Community Edition: https://docs.mongodb.com/manual/administration/install-community/
 
 .. _Enable authentication on MongoDB: https://docs.mongodb.com/manual/tutorial/enable-authentication/
+
+.. _PyMongo authentication documemation: https://pymongo.readthedocs.io/en/stable/examples/authentication.html#default-database-and-authsource
 
 .. _container: https://hub.docker.com/_/mongo
 
