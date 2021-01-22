@@ -34,8 +34,8 @@ next reboots, so do not put anything important (or especially large) there.
    catalog = temp()
    # That's it!
 
-See :doc:`how-to-save-data-from-run-engine` or
-:doc:`how-to-save-analysis-results` to put some actual data in there, and see
+See :doc:`save-data-from-run-engine` or
+:doc:`save-analysis-results` to put some actual data in there, and see
 the tutorials for how to get it back out.
 
 Persistent Catalog
