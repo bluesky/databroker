@@ -5,10 +5,8 @@ Databroker
 
 Databroker is a data **access** tool built around the `Bluesky Data Model`_.
 The data it manages may be from ingested files, captured results of a
-Python-based data analysis, or (most commonly today) experimtanl data acquired
-using the Bluesky Run Engine.
-
-Goals:
+Python-based data analysis, or experimental data acquired using the Bluesky Run
+Engine.
 
 * Provide a consistent programmatic interface to data, **regardless of storage
   details** like file format or storage medium.
