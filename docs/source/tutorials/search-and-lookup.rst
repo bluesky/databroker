@@ -16,7 +16,10 @@ Start your favorite interactive Python environment, such as ``ipython`` or
 ``jupyter lab``.
 
 For this tutorial, we'll use a catalog of publicly available, openly licensed
-sample data. This utility downloads it and makes it discoverable to Databroker.
+sample data. Specifically, it is high-quality transmission XAS data from all
+over the periodical table.
+
+This utility downloads it and makes it discoverable to Databroker.
 
 .. ipython:: python
 

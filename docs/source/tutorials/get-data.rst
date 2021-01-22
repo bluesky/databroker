@@ -14,7 +14,10 @@ Start your favorite interactive Python environment, such as ``ipython`` or
 ``jupyter lab``.
 
 For this tutorial, we'll use a catalog of publicly available, openly licensed
-sample data. This utility downloads it and makes it discoverable to databroker.
+sample data. Specifically, it is high-quality transmission XAS data from all
+over the periodical table.
+
+This utility downloads it and makes it discoverable to Databroker.
 
 .. ipython:: python
 
@@ -169,6 +172,8 @@ section we will download a second Catalog with one Run in it that contains
 image data. It's 1 GB (uncompressed), which is large enough to exercise the
 tools involved. These same techniques scale to much larger datasets.
 
+Scientificaly, this is Resonant Soft X-ray Scattering (RSoXS) data. (`Details`_.)
+
 .. ipython:: python
 
    import databroker.tutorial_utils
@@ -264,3 +269,5 @@ entry point is the example covering `Dask Arrays`_.
 .. _dask: https://dask.org/
 
 .. _Dask Arrays: https://examples.dask.org/array.html
+
+.. _Details: https://github.com/bluesky/data-samples/blob/master/catalogs/RSOXS/README.md
