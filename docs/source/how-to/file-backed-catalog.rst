@@ -1,8 +1,6 @@
 How to create a new Catalog backed by files
 ===========================================
 
-*I want to make an empty Catalog of my own to put data in.*
-
 Why backed by files and not a database?
 ---------------------------------------
 
@@ -34,8 +32,8 @@ next reboots, so do not put anything important (or especially large) there.
    catalog = temp()
    # That's it!
 
-See :doc:`save-data-from-run-engine` or
-:doc:`save-analysis-results` to put some actual data in there, and see
+See :doc:`store-data-from-run-engine` or
+:doc:`store-analysis-results` to put some actual data in there, and see
 the tutorials for how to get it back out.
 
 Persistent Catalog
@@ -74,7 +72,7 @@ Taking the next step, let's make a permanent one.
    Note that the value of ``paths`` is a list. Multiple data directories may be
    grouped into one "source".
 
-#. Now the catalog should appear in
+#. Now ``CATALOG_NAME`` should appear in
 
    .. code:: python
 
@@ -83,11 +81,15 @@ Taking the next step, let's make a permanent one.
       # List catalog names.
       list(datbroker.catalog)
 
-   and it should be accessible like
+   If it does not appear, call ``databroker.catalog.force_reload()`` and retry.
+   The catalog may be accessed like
 
    .. code:: python
 
-      catalog = databroker.catalog[CATALOG_NAME]
+      import databroker
+
+      # List catalog names.
+      list(datbroker.catalog)
 
    using the ``CATALOG_NAME`` in the text of the configuration file. (Again,
    the *filename* of the configuration file is not relevant.)

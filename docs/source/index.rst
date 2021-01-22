@@ -62,8 +62,6 @@ About the documentation
    how-to/store-data-from-run-engine
    how-to/store-analysis-results
    how-to/mongo-backed-catalog
-   how-to/mongo-with-auth
-   how-to/mongo-cluster
 
 .. toctree::
    :caption: Explanations
