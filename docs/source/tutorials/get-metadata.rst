@@ -22,7 +22,7 @@ sample data. This utility downloads it and makes it discoverable to databroker.
    import databroker.tutorial_utils
    databroker.tutorial_utils.fetch_BMM_example()
 
-Access the catalog as assign it to a variable for convenience.
+Access the catalog and assign it to a variable for convenience.
 
 .. ipython:: python
 
@@ -38,10 +38,10 @@ Let's take a Run from this Catalog.
 (Hardware) Configuration
 ------------------------
 
-The Run *may* include configurational readings that may be necessary for
-interpreting the data. These are typically things that change slowly or not
-at all during the Run, like detector exposure time, detector gain settings, or
-the configured maximum motor velocity.
+The Run may include configurational readings necessary for interpreting the
+data. These are typically things that change slowly or not at all during the
+Run, like detector exposure time, detector gain settings, or the configured
+maximum motor velocity.
 
 First, let's look at the ``I0`` readings in the ``primary`` stream. What are
 the configuration readings that might be necessary to interpret this data or
@@ -78,6 +78,26 @@ time, we could use this information to normalize the readings and compare them
 accurately.
 
 TO DO: Get an example of that.
+
+Let's look at some other readings in the dataset. The ``It`` also comes from
+``quadem1``, so those same configuration readings apply.
+
+.. ipython:: python
+
+   ds["It"].attrs
+
+The ``dcm_energy``readings, on the other hand, comes from a different device,
+which happens to also be named ``dcm_energy``.
+
+.. ipython:: python
+
+   ds["dcm_energy"].attrs
+
+We can see that no configuration was recorded for that device.
+
+.. ipython:: python
+
+   run.primary.config["dcm_energy"].read()
 
 How It Started
 --------------
