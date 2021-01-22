@@ -16,8 +16,8 @@ v1          Original  New            Users with old scripts that use original in
 v0          Original  Original       Users who hit bugs in v1/v2 and need a fallback
 =========== ========= ============== ==================================================
 
-Which one should I use?
------------------------
+Which interface should I use?
+-----------------------------
 
 If you are a new user, use v2. That is the version covered by the tutorials and
 user guides.
@@ -27,6 +27,22 @@ NSLS-II. If you are such a user and you have have existing scripts using that
 original interface, know that we committed to supporting it for many years to
 come. We do not want to break your scripts. Consider using v2 for *new* work,
 however, to enjoy its improved usability and feature set.
+
+Do they use the same storage?
+-----------------------------
+
+Both implemenations integrate with `external assets`_ (e.g. large arrays from
+imaging detectors) in exactly the same way.
+
+Both use the same MongoDB storage layout for Bluesky documents. You can access
+the same MongoDB database from v0, v1, and v2, moving between them seamlessly.
+
+However, the original (v0) implementation also supported sqlite for very
+lightweight use cases and had an experimental HDF5-based storage. Both of these
+are deprecated. Instead, the new implementation (v2 / v1)  adds support for
+msgpack- and JSONL-backed storage, which have proven to be a better solution
+for very lightweight use cases. More are storage options are planned for early
+2021, with an emphasis on efficient binary formats, such as `TileDB`_.
 
 How do use them?
 ----------------
@@ -89,3 +105,7 @@ support old user code.
 .. _xarray: https://xarray.pydata.org/
 
 .. _dask: https://dask.org/
+
+.. _TileDB: https://tiledb.com/
+
+.. _external assets: https://blueskyproject.io/event-model/external.html
