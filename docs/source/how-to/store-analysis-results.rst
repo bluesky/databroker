@@ -73,4 +73,8 @@ analysis results, we have to do some of that works ourselves.
    we are still `discussing the design`_ for this in v2. Until that is sorted
    out, this is the officially-recommended solution.
 
+   It uses `Suitcase`_ internally to do the writing.
+
 .. _discussing the design: https://github.com/bluesky/databroker/issues/605
+
+.. _Suitcase: https://blueskyproject.io/suitcase/
