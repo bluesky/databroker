@@ -1,5 +1,6 @@
+**********
 Databroker
-==========
+**********
 
 |build_status| |coverage| |pypi_version| |license|
 

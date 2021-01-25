@@ -69,11 +69,6 @@ the tutorials for how to get it back out.
 Security
 --------
 
-.. note::
-
-   This recommendation is a draft. If you are securing MongoDB, please reach
-   out to us.
-
 Databroker was designed with access controls *per Run* in mind, and this is now
 being actively developed, but currently only all-or-nothing access is
 supported: Users can access all the Runs in the MongoDB or none of them.
@@ -88,7 +83,7 @@ supported: Users can access all the Runs in the MongoDB or none of them.
    .. code:: yaml
 
       metadatastore_db: mongodb://{{ env(DATABROKER_MONGO_USER) }}:{{ env(DATABROKER_MONGO_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
-      asset_registry_db: mongodb://{{ en(DATABROKER_MONGO_USER) }}:{{ env(DATABROKER_MONGO_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
+      asset_registry_db: mongodb://{{ env(DATABROKER_MONGO_USER) }}:{{ env(DATABROKER_MONGO_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
 
 
    Refer to `PyMongo authentication documenation`_ for context.

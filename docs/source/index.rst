@@ -1,7 +1,3 @@
-**********
-DataBroker
-**********
-
 .. include:: ../../README.rst
 
 How the documentation is structured
@@ -12,7 +8,7 @@ How the documentation is structured
 :ref:`tutorials`
 ~~~~~~~~~~~~~~~~
 
-Tutorials for installation, library and commandline usage. New users start here.
+Tutorials for installation and usage. New users start here.
 
 .. rst-class:: columns
 
@@ -33,7 +29,7 @@ Explanation of how the library works and why it works that way.
 :ref:`reference`
 ~~~~~~~~~~~~~~~~
 
-Technical reference material, for classes, methods, APIs, commands, and contributing to the project.
+Technically detailed API documenation.
 
 .. rst-class:: endcolumns
 
