@@ -23,7 +23,13 @@ Install Databroker from the ``nsls2forge`` conda channel maintained by NSLS-II.
 
    conda install -c nsls2forge databroker
 
-It is also available from the ``conda-forge`` channel.
+To follow the along with  the tutorials, you will also need
+``databroker-pack``.
+
+
+.. code:: bash
+
+   conda install -c nsls2forge databroker-pack
 
 Pip
 ---
@@ -40,6 +46,13 @@ Install Databroker from PyPI.
 .. code:: bash
 
    python3 -m pip install databroker
+
+To follow the along with  the tutorials, you will also need
+``databroker-pack``.
+
+.. code:: bash
+
+   python3 -m pip install databroker-pack
 
 
 Source

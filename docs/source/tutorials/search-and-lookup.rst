@@ -12,6 +12,9 @@ In this tutorial we will:
 Set up for Tutorial
 -------------------
 
+Before you begin, install ``databroker`` and ``databroker-pack``, following the
+:doc:`install`.
+
 Start your favorite interactive Python environment, such as ``ipython`` or
 ``jupyter lab``.
 

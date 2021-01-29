@@ -1,4 +1,5 @@
 bluesky
+databroker-pack
 h5py
 ipython
 ipywidgets
