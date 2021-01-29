@@ -1,3 +1,5 @@
+.. _v2-transition:
+
 What are the API versions v0, v1, v2?
 =====================================
 

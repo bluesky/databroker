@@ -1,7 +1,7 @@
 .. _changelog:
 
-Release History
-===============
+Changelog
+=========
 
 A catalog of new features, improvements, and bug-fixes in each release. Follow
 links to the relevant GitHub issue or pull request for specific code changes
