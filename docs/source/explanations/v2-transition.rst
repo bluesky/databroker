@@ -43,8 +43,9 @@ However, the original (v0) implementation also supported sqlite for very
 lightweight use cases and had an experimental HDF5-based storage. Both of these
 are deprecated. Instead, the new implementation (v2 / v1)  adds support for
 msgpack- and JSONL-backed storage, which have proven to be a better solution
-for very lightweight use cases. More are storage options are planned for early
-2021, with an emphasis on efficient binary formats, such as `TileDB`_.
+for very lightweight use cases. (See :ref:`migration_from_v0_storage`.) More
+are storage options are planned for early 2021, with an emphasis on efficient
+binary formats, such as `TileDB`_.
 
 How do use them?
 ----------------

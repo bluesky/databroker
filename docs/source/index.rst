@@ -78,6 +78,7 @@ About the documentation
 
    reference/v2
    reference/v1
+   reference/configuration
    reference/changelog
 
 * :ref:`genindex`
