@@ -47,8 +47,8 @@ for very lightweight use cases. (See :ref:`migration_from_v0_storage`.) More
 are storage options are planned for early 2021, with an emphasis on efficient
 binary formats, such as `TileDB`_.
 
-How do use them?
-----------------
+How do I use them?
+------------------
 
 All of the tutorials now use ``databroker.v2``. As they show, this gets you a
 v2-style catalog.
