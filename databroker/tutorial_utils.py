@@ -68,6 +68,7 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
         file=sys.stderr
     )
     databroker.catalog.force_reload()
+    databroker.catalog.force_reload()
     return databroker.catalog[name]
 
 
