@@ -83,7 +83,15 @@ CSV.
    df.to_csv("data.csv", index=False)
 
 If you target is to get data into Excel, note that you can write Excel files
-directly:
+directly. This requires an additional dependency that you may not already have
+installed.
+
+.. code:: python
+
+   # Install Excel writer used by pandas using pip...
+   pip install openpyxl
+   # or conda...
+   conda install -c conda-forge openpyxl
 
 .. ipython:: python
 

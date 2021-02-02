@@ -175,6 +175,15 @@ section we will download a second Catalog with one Run in it that contains
 image data. It's 1 GB (uncompressed), which is large enough to exercise the
 tools involved. These same techniques scale to much larger datasets.
 
+The large arrays require an extra reader, which we can get from the package
+``area-detector-handlers`` using pip on conda.
+
+.. code:: bash
+
+   pip install area-detector-handlers
+   # or...
+   conda install -c nsls2forge area-detector-handlers
+
 Scientificaly, this is Resonant Soft X-ray Scattering (RSoXS) data. (`Details`_.)
 
 .. ipython:: python
