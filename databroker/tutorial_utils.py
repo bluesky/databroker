@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from shutil import copyfileobj
 import sys
-import time
 import zipfile
 
 import appdirs
@@ -67,26 +66,17 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
         "Access it at any time via\n\n"
         "    import databroker\n"
         f"    databroker.catalog['{name}'].",
-        file=sys.stderr
+        file=sys.stderr,
     )
-    # Retry to be tolerant of very slow CI filesystems.
-    MAX_ATTEMPTS = 100
-    err = None
-    for attempt in range(MAX_ATTEMPTS):
-        databroker.catalog.force_reload()
-        print("databroker.catalog entries", list(databroker.catalog))
-        for path in databroker.catalog_search_path():
-            if os.path.exists(path):
-                print(f"ls {path}", os.listdir(path))
-        from intake.catalog.default import load_combo_catalog
-        print("combo catalog entries", list(load_combo_catalog()))
-        try:
-            return databroker.catalog[name]
-        except KeyError as err_:
-            err = err_
-            time.sleep(0.1)
-    else:
-        raise err
+    # If the config directory did not exist at import time when
+    # intake.catalog.default.load_combo_catalog() was run, it will never be
+    # checked again. We need to explicitly add it.
+    combo_catalog_path = databroker.catalog._catalogs[-1].path
+    for ext in ["*.yml", "*.yaml"]:
+        path = os.path.join(os.path.dirname(config_path), "*.yml")
+        if path not in combo_catalog_path:
+            combo_catalog_path.append(path)
+    databroker.catalog.force_reload()
 
 
 def fetch_BMM_example(version=1):
