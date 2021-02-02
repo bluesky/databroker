@@ -42,6 +42,7 @@ def _extractall_with_progress_bar(source, dest):
 def _download_with_progress_bar(response, buffer):
     "Stream the data from the response into the buffer, updating a progress bar as we go."
     # Derived from https://stackoverflow.com/a/37573701
+    response.raise_for_status()
     total_size = int(response.headers.get("Content-Length", 0))
     block_size = 1024
     with tqdm(
