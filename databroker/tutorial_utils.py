@@ -17,8 +17,7 @@ DEFAULT_DATA_DIR = Path(appdirs.user_data_dir(), "bluesky_tutorial_data")
 data_dir = os.getenv("BLUESKY_TUTORIAL_DATA", DEFAULT_DATA_DIR)
 
 
-def _extractall_with_progress_bar(source, dest):
-    "Unzip source into dest, updating a progress bar as we go."
+def _extractall_with_progress_bar(source, dest): "Unzip source into dest, updating a progress bar as we go."
     # Derived from https://stackoverflow.com/a/65513860rchive.extractall(directory)
     dest = Path(dest).expanduser()
     with zipfile.ZipFile(source) as zipf, tqdm(
@@ -68,7 +67,10 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
         file=sys.stderr
     )
     databroker.catalog.force_reload()
-    databroker.catalog.force_reload()
+    # HACK
+    if hasattr(datbroker.catalog, "_entries"):
+        for subcatalog in databroker.catalog._entries.values():
+            subcatalog.force_reload()
     return databroker.catalog[name]
 
 
