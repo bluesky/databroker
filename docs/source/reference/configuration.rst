@@ -1,82 +1,27 @@
-***************************
-Administrator Documentation
-***************************
+Configuration Reference
+=======================
 
-When databroker is imported, it discovers catalogs available on the system.
-User can list the discovered catalogs by importing a special global
-``databroker.catalog`` object and listing its entries.
+This covers configuration for both "old" (v0) and "new" (v2 / v1) Databroker
+implementations and interfaces.
 
-.. code:: python
+Current Best Practice
+---------------------
 
-   from databroker import catalog
-   list(catalog)  # a list of strings, names of sub-catalogs
+Databroker uses `intake`_'s configuration system.
 
-which can be accessed like
+Catalog File Search Path
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code:: python
+We rely on `appdirs`_ to detect local conventions for the location of
+application configuration files.  Thus, its configuration file search path is
+dependent on the OS and the software environment. It can be queried like so:
 
-   catalog['SOME_SUB_CATALOG']
+.. code:: bash
 
-DataBroker assembles this list of catalogs by looking for:
+   python3 -c "import databroker; print(databroker.catalog_search_path())"
 
-1. Old-style "databroker v0.x" YAML configuration files, for backward-compatibility
-2. Intake-style catalog YAML files, which have different fields
-3. Python packages that advertise catalogs via the ``intake.catalogs``
-   entrypoint
-
-Old-style databroker configuration files
-========================================
-
-DataBroker v0.x used a custom YAML-based configuration file. See
-:ref:`v0_configuration`. For backward-compatibility, configuration files
-specifying MongoDB storage will be discovered and included in
-``databroker.catalog``.
-
-Migrating sqlite or HDF5 storage
---------------------------------
-
-The implementation in ``databroker.v0`` interfaces with storage in MongoDB,
-sqlite, or HDF5.  The implementations in ``databroker.v1`` and
-``databroker.v2`` drop support for sqlite and HDF5 and add support for JSONL_
-(newline-delimited JSON) and msgpack_. For binary file-based storage, we
-recommend using msgpack. Data can be migrated from sqlite or HDF5 to msgpack
-like so:
-
-.. code-block:: python
-
-   from databroker import Broker
-   import suitcase.msgpack
-
-   # If the config file associated with YOUR_BROKER_NAME specifies sqlite or
-   # HDF5 storage, then this will return a databroker.v0.Broker instance.
-   db = Broker.named(YOUR_BROKER_NAME)
-   # Loop through every run in the old Broker.
-   for run in db():
-       # Load all the documents out of this run from their existing format and
-       # write them into one file located at
-       # `<DESTINATION_DIRECTORY>/<uid>.msgpack`.
-       suitcase.msgpack.export(run.documents(), DESTINATION_DIRECTORY)
-
-In the next section, we'll create a "catalog YAML file" to make this data
-discoverable by databroker.
-
-Intake-style Catalog YAML Files
-===============================
-
-Search Path
------------
-
-Use the convenience function :func:`catalog_search_path`. Place catalog YAML
-files in one of these locations to make them discoverable by intake and, in
-turn, by databroker.
-
-.. code:: python
-
-   from databroker import catalog_search_path
-   catalog_search_path()  # result will vary depending on OS and environment
-
-Structure
----------
+Within these directories, Databroker looks for YAML files. The filenames are
+not meaningful to Databroker.
 
 The general structure of a catalog YAML file is a nested dictionary of
 data "sources". Each source name is mapped to information for accessing that
@@ -101,10 +46,12 @@ As shown, multiple sources can be specified in one file. All sources found in
 all the YAML files in the search path will be included as top-level entries in
 ``databroker.catalog``.
 
-Arguments
----------
+.. _optional_driver_parameters:
 
-All databroker "drivers" accept the following arguments:
+Optional Parameters
+^^^^^^^^^^^^^^^^^^^
+
+All Databroker "drivers" accept the following arguments:
 
 * ``handler_registry`` ---
   If ommitted or ``None``, the result of
@@ -125,8 +72,11 @@ All databroker "drivers" accept the following arguments:
 Specific drivers require format-specific arguments, shown in the following
 subsections.
 
+Driver-Specific Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Msgpack Example
----------------
++++++++++++++++
 
 Msgpack_ is a binary file format.
 
@@ -147,7 +97,7 @@ Note that the value of ``paths`` is a list. Multiple directories can be grouped
 into one "source".
 
 JSONL (Newline-delimited JSON) Example
---------------------------------------
+++++++++++++++++++++++++++++++++++++++
 
 JSONL_ is a text-based format in which each line is a
 valid JSON. Unlike ordinary JSON, it is suitable for streaming. This storage is
@@ -170,7 +120,7 @@ Note that the value of ``paths`` is a list. Multiple directories can be grouped
 into one "source".
 
 MongoDB Example
----------------
++++++++++++++++
 
 MongoDB_ is the recommended storage format for
 large-scale deployments because it supports fast search.
@@ -184,17 +134,23 @@ large-scale deployments because it supports fast search.
          metadatastore_db: mongodb://HOST:PORT/MDS_DATABASE_NAME
          asset_registry_db: mongodb://HOST:PORT/ASSETS_DATABASE_NAME
 
-where ``ENTRY_NAME`` is a name of the entry that will appear in
-``databroker.catalog``, and the ``mongodb://...`` URIs point to MongoDB
-databases with documents inserted by suitcase-mongo_.
+where ``CATALOG_NAME`` is a name of the entry that will appear in
+``databroker.catalog``. The two datbase URIs, ``metadatastore_db`` and
+``asset_registry_db``, are distinct only for historical reasons. For new
+deployments, we recommend that you set them to the same value---i.e. that
+you use one database shared by both.
+
+If you are using Databroker on the same system where you are running
+MongoDB, then the URI would be ``mongodb://localhost:27017/DATABASE_NAME``
+where ``DATABASE_NAME`` is fully up to you.
 
 The driver's name, ``bluesky-mongo-normalized-catalog``, differentiates it from
 the ``bluesky-mongo-embedded-catalog``, an experimental alternative way of
 original bluesky documents into MongoDB documents and collections. It is still
 under evaluation and not yet recommended for use in production.
 
-Python packages
-===============
+Advanced: Configuration via Python Package
+------------------------------------------
 
 To distribute catalogs to users, it may be more convenient to provide an
 installable Python package, rather than placing YAML files in specific
@@ -217,7 +173,7 @@ minimal example:
    # example.py
 
    # Create an object named `catalog_instance` which is referenced in the
-   # setup.py, and will be discovered by databroker. How the instance is
+   # setup.py, and will be discovered by Databroker. How the instance is
    # created, and what type of catalog it is, is completely up to the
    # implementation. This is just one possible example.
 
@@ -233,7 +189,7 @@ The ``entry_points`` parameter in the ``setup(...)`` is a feature supported by
 Python packaging. When this package is installed, a special file inside the
 distribution, ``entry_points.txt``, will advertise that is has catalogs.
 DataBroker will discover these and add them to ``databroker.catalog``. Note
-that databroker does *not* need to actually *import* the package to discover
+that Databroker does *not* need to actually *import* the package to discover
 its catalogs. The package will only be imported if and when the catalog is
 accessed. Thus, the overhead of this discovery process is low.
 
@@ -251,9 +207,136 @@ accessed. Thus, the overhead of this discovery process is low.
      ``foo.bar:catalog_instance``.
 
 
+Legacy (v0-style) configuration
+-------------------------------
+
+For backward-compatibility, configuration files specifying MongoDB storage are
+discovered and included in ``databroker.catalog``. Other legacy formats
+(SQLite, HDF5) are only accessible via v0. See
+:ref:`v2-transition`.
+
+Search path
+^^^^^^^^^^^
+
+The search path for legacy configuration files differs from the new standard
+search path. It is, in order of highest precedence to lowest:
+
+* ``~/.config/databroker`` (under the user's home directory)
+* ``python/../etc/databroker``, where ``python`` is the current Python binary
+  reported by ``sys.executable`` (This allows config to be provided inside a
+  virtual environment.)
+* ``/etc/databroker/``
+
+NOTE: For Windows, we only look in: ``%APPDATA%\databroker``.
+
+A configuration file must be located in one of these directories, and it must
+be named with the extension ``.yml``. Configuration files are formatted as YAML
+files.
+
+MongoDB Example
+^^^^^^^^^^^^^^^
+
+This configuration file sets up a databroker that connects to a MongoDB server.
+This requires more work to set up.
+
+.. code-block:: yaml
+
+    description: 'heavyweight shared database'
+    metadatastore:
+        module: 'databroker.headersource.mongo'
+        class: 'MDS'
+        config:
+            host: 'localhost'
+            port: 27017
+            database: 'some_example_database'
+            timezone: 'US/Eastern'
+    assets:
+        module: 'databroker.assets.mongo'
+        class: 'Registry'
+        config:
+            host: 'localhost'
+            port: 27017
+            database: 'some_example_database'
+
+SQLite Example
+^^^^^^^^^^^^^^
+
+.. warning::
+
+   Storage in sqlite is deprecated, and not supported by the v2 or v1
+   interfaces. See :ref:`migration_from_v0_storage`.
+
+This configuration file sets up a simple databroker backed by sqlite files.
+This can be used immediately with no extra setup or installation.
+
+.. code-block:: yaml
+
+    description: 'lightweight personal database'
+    metadatastore:
+        module: 'databroker.headersource.sqlite'
+        class: 'MDS'
+        config:
+            directory: 'some_directory'
+            timezone: 'US/Eastern'
+    assets:
+        module: 'databroker.assets.sqlite'
+        class: 'Registry'
+        config:
+            dbpath: 'some_directory/assets.sqlite'
+
+Optional Parameters
+^^^^^^^^^^^^^^^^^^^
+
+With reference to the :ref:`optional_driver_parameters`, there are some
+differences in the legacy configuration files.
+
+* The ``root_map`` parameters is the same, and should given as a top-level key
+  (a peer of ``assets``).
+* The ``handler_registry`` parameters is spelled ``handlers`` and has its
+  contents specified differently, splitting up the module from the class. It
+  is, like ``root_map`` a top-level key.
+
+  .. code-block:: yaml
+
+      handlers:
+          FOO:
+              module: 'databroker.assets.path_only_handlers'
+              class: 'RawHandler'
+
+* the ``transforms`` parameter is not supported in legacy configuration.
+
+.. _migration_from_v0_storage:
+
+Migrating sqlite or HDF5 storage to a format supported by v2 / v1
+-----------------------------------------------------------------
+
+The implementation in ``databroker.v0`` interfaces with storage in MongoDB,
+sqlite, or HDF5.  The implementations in ``databroker.v1`` and
+``databroker.v2`` drop support for sqlite and HDF5 and add support for JSONL_
+(newline-delimited JSON) and msgpack_. For binary file-based storage, we
+recommend using msgpack. Data can be migrated from sqlite or HDF5 to msgpack
+like so:
+
+.. code-block:: python
+
+   from databroker import Broker
+   import suitcase.msgpack
+
+   # If the config file associated with YOUR_BROKER_NAME specifies sqlite or
+   # HDF5 storage, then this will return a databroker.v0.Broker instance.
+   db = Broker.named(YOUR_BROKER_NAME)
+   # Loop through every run in the old Broker.
+   for run in db():
+       # Load all the documents out of this run from their existing format and
+       # write them into one file located at
+       # `<DESTINATION_DIRECTORY>/<uid>.msgpack`.
+       suitcase.msgpack.export(run.documents(), DESTINATION_DIRECTORY)
+
+.. _appdirs: https://pypi.org/project/appdirs/
 .. _jsonl: http://jsonlines.org/
 .. _msgpack: https://msgpack.org/index.html
 .. _suitcase-mongo: https://github.com/bluesky/suitcase-mongo
 .. _suitcase-jsonl: https://github.com/bluesky/suitcase-jsonl
 .. _suitcase-msgpack: https://github.com/bluesky/suitcase-msgpack
 .. _MongoDB: https://www.mongodb.com/
+.. _Intake: https://intake.readthedocs.io/en/latest/

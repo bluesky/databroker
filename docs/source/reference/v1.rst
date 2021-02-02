@@ -1,6 +1,5 @@
-*****************
-API Documentation
-*****************
+Original (v1 / v0) API
+======================
 
 We use the :class:`Broker` to pose queries for saved data sets ("runs"). A
 search query returns a lazy-loaded iterable of :class:`Header` objects.
@@ -19,7 +18,7 @@ The Broker object
    Broker
 
 Making a Broker
-===============
+^^^^^^^^^^^^^^^
 
 You can instantiate a :class:`Broker` by passing it a dictionary of
 configuration or by providing the name of a configuration file on disk.
@@ -34,7 +33,7 @@ configuration or by providing the name of a configuration file on disk.
 Click the links the table above for details and examples.
 
 Searching
-=========
+^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -48,7 +47,7 @@ For some :class:`Broker` instance named ``db``, ``db()`` invokes
 Again, click the links the table above for details and examples.
 
 Loading Data
-============
+^^^^^^^^^^^^
 
 These methods are an older way to access data, like this:
 
@@ -97,7 +96,7 @@ The broker also has a number of methods to introspect headers:
 
 
 Saving Data
-===========
+^^^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -106,7 +105,7 @@ Saving Data
    Broker.insert
 
 Configuring Filters and Aliases
-===============================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -122,7 +121,7 @@ This current list of filters and aliases is accessible via the attributes
 the links in the table for examples.
 
 Export Data to Another Broker
-=============================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -135,7 +134,7 @@ Export Data to Another Broker
 .. _controlling_return_type:
 
 Advanced: Controlling the Return Type
-=====================================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The attribute :class:`Broker.prepare_hook` is a function with the signature
 ``f(name, doc)`` that is applied to every document on its way out.
@@ -173,7 +172,7 @@ The Header object
    Header
 
 Metadata
-========
+^^^^^^^^
 
 The :class:`Header` bundles together the metadata of a run, accessible via the
 attributes corresponding to the underlying documents:
@@ -214,7 +213,7 @@ make it easier to extract some key information:
    Header.stream_names
 
 Data
-====
+^^^^
 
 The :class:`Header` provides various methods for loading the 'Event' documents,
 which may be large. They all access the same data, presented in various ways
@@ -242,7 +241,7 @@ To request data from *all* event streams at once, use the special constant
 .. _configuration_utilities:
 
 Configuration Utilities
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -256,7 +255,7 @@ Configuration Utilities
    Broker.stats
 
 Back- and Forward-Compat Accessors
-----------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -266,7 +265,7 @@ Back- and Forward-Compat Accessors
    Broker.v2
 
 Internals
----------
+^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -276,7 +275,7 @@ Internals
    Broker.fetch_external
 
 Deprecated
-----------
+^^^^^^^^^^
 
 .. autosummary::
    :toctree: ../generated
@@ -291,7 +290,7 @@ Deprecated
    Header.values
 
 Removed
--------
+^^^^^^^
 
 These functions and methods now raise ``NotImplementedError`` if called.
 

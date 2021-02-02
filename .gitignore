@@ -127,3 +127,8 @@ docs/source/_generated_images/*
 *.swn
 
 .vscode/* 
+
+docs/output_directory
+docs/data.csv
+docs/data.xlsx
+docs/data.h5

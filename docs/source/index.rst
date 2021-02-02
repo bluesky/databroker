@@ -1,30 +1,87 @@
-**********
-DataBroker
-**********
+.. include:: ../../README.rst
 
-Search for data, and retrieve it as SciPy/PyData data structures for
-interactive data exploration or in
-`a representation suitable for streaming applications <https://blueskyproject.io/event-model>`_ .
+How the documentation is structured
+-----------------------------------
 
-If you are here to...
+.. rst-class:: columns
 
-* use the legacy "Version 1" user interace to databroker, see :doc:`v1/index`;
-* try the new "Version 2" user interace to databroker, see the :doc:`v2/user/index`;
-* configure or administrate data sources using databroker, see
-  the :doc:`v2/administrator/index`;
-* develop support for new storage formats or understand databroker's internal
-  workings, see the :doc:`v2/developer/index`.
+:ref:`tutorials`
+~~~~~~~~~~~~~~~~
+
+Tutorials for installation and usage. New users start here.
+
+.. rst-class:: columns
+
+:ref:`how-to`
+~~~~~~~~~~~~~
+
+Practical step-by-step guides for the more experienced user.
+
+.. rst-class:: columns
+
+:ref:`explanations`
+~~~~~~~~~~~~~~~~~~~
+
+Explanation of how the library works and why it works that way.
+
+.. rst-class:: columns
+
+:ref:`reference`
+~~~~~~~~~~~~~~~~
+
+Technically detailed API documenation.
+
+.. rst-class:: endcolumns
+
+About the documentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+`Why is the documentation structured this way? <https://documentation.divio.com>`_
 
 .. toctree::
-   :maxdepth: 2
+   :caption: Tutorials
+   :name: tutorials
+   :maxdepth: 1
 
-   data-access-overview
-   overview
-   installation
-   v2/index
-   v1/index
-   whats_new
-   DBEP/index
+   tutorials/install
+   tutorials/search-and-lookup
+   tutorials/get-data
+   tutorials/get-metadata
+   tutorials/export
+
+.. toctree::
+   :caption: How-to Guides
+   :name: how-to
+   :maxdepth: 1
+
+   how-to/download-data-samples
+   how-to/file-backed-catalog
+   how-to/store-data-from-run-engine
+   how-to/store-analysis-results
+   how-to/mongo-backed-catalog
+
+.. toctree::
+   :caption: Explanations
+   :name: explanations
+   :maxdepth: 1
+
+   explanations/v2-transition
+   explanations/local-and-remote-use-cases
+   explanations/relationship-to-intake
+
+.. rst-class:: no-margin-after-ul
+
+.. toctree::
+   :caption: Reference
+   :name: reference
+   :maxdepth: 1
+
+   reference/v2
+   reference/v1
+   reference/configuration
+   reference/changelog
+
+* :ref:`genindex`
 
 .. toctree::
    :hidden:

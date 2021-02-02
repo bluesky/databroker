@@ -4,7 +4,7 @@ v1.0.0 (2020-03-13)
 -------------------
 
 This release amounts to a full rewrite of databroker. See
-:ref:`transition_plan` for details.
+:ref:`v2-transition` for details.
 
 See the
 `v1.0.0 GitHub milestone <https://github.com/bluesky/databroker/milestone/11?closed=1>`_

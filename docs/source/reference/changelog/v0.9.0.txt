@@ -19,8 +19,6 @@ This is a major update to databroker.
 Enhancements
 ++++++++++++
 
-See the new :doc:`v1/tutorial` and the :doc:`v1/api`.
-
 User-facing API Changes
 +++++++++++++++++++++++
 
@@ -32,7 +30,7 @@ The following changes may break old user code.
     * ``/etc/filestore.yml`` or ``~/.config/filestore/connection.yml``
 
   These configuration files are now **completely ignored**. Users must adopt
-  the :doc:`new configuration system <v1/configuration>`.
+  the new configuration system.
 * The order of parameters to these methods has been rearranged to be mutally
   consistent.
 
@@ -118,7 +116,7 @@ future release, so the warnings should be heeded during this cycle if possible.
      h = db[-1]
      get_table(h) 
 
-  See the new :doc:`v1/tutorial` for the recommended usage. The short version is:
+  The new recommended usage is:
 
   .. code-block:: python
 
@@ -131,8 +129,7 @@ future release, so the warnings should be heeded during this cycle if possible.
 * The method :class:`Broker.get_images` and the class ``Images`` are deprecated
   and may be removed in a future release.
   See `issue <https://github.com/NSLS-II/databroker/issues/232>`_ for the
-  motivating discussion. Use the new method :meth:`Header.data`, as illustrated
-  in the :doc:`v1/tutorial`.
+  motivating discussion. Use the new method :meth:`Header.data`.
 * Databroker uses a custom dictionary subclass that supports dot access like
   ``event.data`` as a synonym for item lookup like ``event['data']``. Employing
   a custom dictionary subclass has downsides, including performance and

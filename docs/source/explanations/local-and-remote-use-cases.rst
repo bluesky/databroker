@@ -1,6 +1,5 @@
-********************
-Data Access Overview
-********************
+How can it be used locally and remotely?
+========================================
 
 The bluesky ecosystem provides several modes for accessing data:
 
@@ -17,7 +16,7 @@ The bluesky ecosystem provides several modes for accessing data:
 
 
 Access Central DataBroker via a Generic Remote Client
-=====================================================
+-----------------------------------------------------
 
 In this mode, users do not install ``databroker`` locally. They use any remote
 client---such as Remote Desktop, Jupyter, or SSH---to access a Python
@@ -26,7 +25,7 @@ presumably has fast access to the data storage and some compute resources.
 
 
 Portable DataBroker with Local Data
-===================================
+-----------------------------------
 
 DataBroker is not itself a data store; it is a Python library for accessing
 data across a variety of data stores. Therefore, it can be run on a laptop
@@ -57,7 +56,7 @@ process of "packing" some data from data broker into portable files and
 "unpacking" them at their destination.
 
 Portable DataBroker with Remote Data
-====================================
+------------------------------------
 
 In this mode, data copying would happen invisibility to the user and only on
 demand. The process involves:
@@ -77,7 +76,7 @@ connection. There are *no instances of this mode* known at this time, but all
 the software pieces to achieve it exist. It is on the project roadmap.
 
 Traditional File Export
-=======================
+-----------------------
 
 Export the data to files (e.g. TIFFs and/or CSVs) with the metadata of your
 choice encoded in filenames. This mode forfeits much of the power of databroker
@@ -89,7 +88,7 @@ We expect this mode to become less useful as data sizes increase and scientific
 software literacy grows over time. It is a bridge.
 
 Streaming Export
-----------------
+^^^^^^^^^^^^^^^^
 
 This means exporting the data during data acquisition such that partial results
 are available for reading. The bluesky
@@ -99,7 +98,7 @@ for doing this and ready-to-use implementations for popular formats.
 The streaming export tools may also be used after data acquisition.
 
 Prompt Export
--------------
+^^^^^^^^^^^^^
 
 This means exporting the data at the end of data acquisition. (To be precise,
 at the end of each "Bluesky Run". The scope of a "Run" is up to the details of
