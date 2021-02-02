@@ -74,6 +74,11 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
     err = None
     for attempt in range(MAX_ATTEMPTS):
         databroker.catalog.force_reload()
+        print("databroker.catalog entries", list(databroker.catalog))
+        for path in databroker.catalog_search_path():
+            print(f"ls {path}", os.listdir(path))
+        from intake.catalog.default import load_combo_catalog
+        print("combo catalog entries", list(load_combo_catalog()))
         try:
             return databroker.catalog[name]
         except KeyError as err_:
