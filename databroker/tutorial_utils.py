@@ -71,7 +71,7 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
     # HACK
     if hasattr(databroker.catalog, "_entries"):
         for subcatalog in databroker.catalog._entries.values():
-            subcatalog.force_reload()
+            subcatalog.get().force_reload()
     return databroker.catalog[name]
 
 
