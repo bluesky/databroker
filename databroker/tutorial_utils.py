@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from shutil import copyfileobj
 import sys
+import time
 import zipfile
 
 import appdirs
@@ -67,12 +68,18 @@ def _fetch_into_memory_and_unzip_to_disk(name, url):
         f"    databroker.catalog['{name}'].",
         file=sys.stderr
     )
-    databroker.catalog.force_reload()
-    # HACK
-    if hasattr(databroker.catalog, "_entries"):
-        for subcatalog in databroker.catalog._entries.values():
-            subcatalog.get().force_reload()
-    return databroker.catalog[name]
+    # Retry to be tolerant of very slow CI filesystems.
+    MAX_ATTEMPTS = 100
+    err = None
+    for attempt in range(MAX_ATTEMPTS):
+        databroker.catalog.force_reload()
+        try:
+            return databroker.catalog[name]
+        except KeyError as err_:
+            err = err_
+            time.sleep(0.1)
+    else:
+        raise err
 
 
 def fetch_BMM_example(version=1):
