@@ -33,6 +33,7 @@ jobs:
       run: |
         set -vxeuo pipefail
         python -m pip install -r requirements-docs.txt
+        python -m pip install -e .  # Enusre that we have local databroker.
         python -m pip list
 
     - name: Build Docs
