@@ -1,0 +1,10 @@
+.. currentmodule:: databroker
+
+v1.2.1 (2020-12-17)
+-------------------
+
+Fixed
++++++
+
+* An issue where catalogs were not discovered correctly. This is a new issue caused by the release of intake 0.6.1.
+* Sqlite connection timeout CI failures.
