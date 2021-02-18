@@ -1,8 +1,13 @@
 import collections
 from databroker.utils import list_configs, lookup_config, CONFIG_SEARCH_PATH
 import entrypoints
-from intake.catalog import Catalog, MergedCatalog
+from intake.catalog import Catalog
 from intake.catalog.entry import CatalogEntry
+
+# Import MergedCatalog from intake, so that code that relies on
+# databroker.discovery.MergedCatalog still works.
+from intake.catalog import MergedCatalog
+
 import warnings
 
 
