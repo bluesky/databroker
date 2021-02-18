@@ -94,7 +94,7 @@ class EventCollection(object):
                 continue
             uid, = match.groups()
             fp = os.path.join(self._dirpath, fn)
-            conn = sqlite3.connect(fp)
+            conn = sqlite3.connect(fp, timeout=30.0)
             # Return rows as objects that support getitem.
             conn.row_factory = sqlite3.Row
             self._runstarts[uid] = conn
@@ -269,7 +269,7 @@ class EventCollection(object):
     def _insert_start(self, doc):
         uid = doc['uid']
         fp = os.path.join(self._dirpath, '{}.sqlite'.format(uid))
-        conn = sqlite3.connect(fp)
+        conn = sqlite3.connect(fp, timeout=30.0)
         conn.row_factory = sqlite3.Row
         self._runstarts[uid] = conn
 

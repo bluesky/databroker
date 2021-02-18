@@ -166,7 +166,7 @@ class _ConnWrapper(object):
         self._c = None
 
     def __process_request_queue(self):
-        conn = sqlite3.connect(self._fp)
+        conn = sqlite3.connect(self._fp, timeout=30.0)
         # Return rows as objects that support getitem.
         conn.row_factory = sqlite3.Row
 
