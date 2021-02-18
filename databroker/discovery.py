@@ -6,67 +6,9 @@ from intake.catalog.entry import CatalogEntry
 
 # Import MergedCatalog from intake, so that code that relies on
 # databroker.discovery.MergedCatalog still works.
-from intake.catalog import MergedCatalog
+from intake.catalog import MergedCatalog, EntrypointsCatalog, EntrypointEntry
 
 import warnings
-
-
-class EntrypointEntry(CatalogEntry):
-    """
-    A catalog entry for an entrypoint.
-    """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
-    def __init__(self, entrypoint):
-        self._entrypoint = entrypoint
-
-    def __repr__(self):
-        return f"<Entry containing Catalog named {self.name}>"
-
-    @property
-    def name(self):
-        return self._entrypoint.name
-
-    def describe(self):
-        """Basic information about this entry"""
-        return {'name': self.name,
-                'module_name': self._entrypoint.module_name,
-                'object_name': self._entrypoint.object_name,
-                'distro': self._entrypoint.distro,
-                'extras': self._entrypoint.extras}
-
-    def get(self):
-        """Instantiate the DataSource for the given parameters"""
-        return self._entrypoint.load()
-
-
-class EntrypointsCatalog(Catalog):
-    """
-    A catalog of discovered entrypoint catalogs.
-    """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
-    def __init__(self, *args, entrypoints_group='intake.catalogs', paths=None,
-                 **kwargs):
-        self._entrypoints_group = entrypoints_group
-        self._paths = paths
-        super().__init__(*args, **kwargs)
-
-    def _load(self):
-        catalogs = entrypoints.get_group_named(self._entrypoints_group,
-                                               path=self._paths)
-        self.name = self.name or 'EntrypointsCatalog'
-        self.description = (self.description
-                            or f'EntrypointsCatalog of {len(catalogs)} catalogs.')
-        for name, entrypoint in catalogs.items():
-            try:
-                self._entries[name] = EntrypointEntry(entrypoint)
-            except Exception as e:
-                warnings.warn(f"Failed to load {name}, {entrypoint}, {e!r}.")
 
 
 class V0Entry(CatalogEntry):
