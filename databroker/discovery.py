@@ -105,23 +105,3 @@ class V0Catalog(Catalog):
     def _load(self):
         for name in list_configs(paths=self._paths):
             self._entries[name] = V0Entry(name)
-
-
-class MergedCatalog(Catalog):
-    """
-    A Catalog that merges the entries of a list of catalogs.
-    """
-    # Work around
-    # https://github.com/intake/intake/issues/545
-    _container = None
-
-    def __init__(self, catalogs, *args, **kwargs):
-        self._catalogs = catalogs
-        super().__init__(*args, **kwargs)
-
-    def _load(self):
-        for catalog in self._catalogs:
-            catalog._load()
-
-    def _make_entries_container(self):
-        return collections.ChainMap(*(catalog._entries for catalog in self._catalogs))
