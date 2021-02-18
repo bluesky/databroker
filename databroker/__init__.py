@@ -3,6 +3,7 @@ import logging
 
 import intake  # noqa: F401
 from intake.catalog.default import load_combo_catalog
+from intake.catalog import MergedCatalog
 
 from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
 from .utils import (  # noqa: 401
@@ -10,7 +11,7 @@ from .utils import (  # noqa: 401
     wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct,  # noqa: F401
     catalog_search_path)  # noqa: F401
 
-from .discovery import MergedCatalog, EntrypointsCatalog, V0Catalog
+from .discovery import EntrypointsCatalog, V0Catalog
 
 
 logger = logging.getLogger(__name__)
