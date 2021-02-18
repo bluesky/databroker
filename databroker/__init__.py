@@ -3,7 +3,8 @@ import logging
 
 import intake  # noqa: F401
 from intake.catalog.default import load_combo_catalog
-from intake.catalog import MergedCatalog, EntrypointsCatalog
+from intake.catalog import MergedCatalog
+from intake.catalog.local import EntrypointsCatalog
 
 from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
 from .utils import (  # noqa: 401

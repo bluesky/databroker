@@ -4,9 +4,10 @@ import entrypoints
 from intake.catalog import Catalog
 from intake.catalog.entry import CatalogEntry
 
-# Import MergedCatalog from intake, so that code that relies on
-# databroker.discovery.MergedCatalog still works.
-from intake.catalog import MergedCatalog, EntrypointsCatalog, EntrypointEntry
+# Import from intake, so that code that relies on
+# databroker.discovery.MergedCatalog, etc. still works.
+from intake.catalog import MergedCatalog, EntrypointsCatalog
+from intake.catalog.local import EntrypointEntry
 
 import warnings
 
