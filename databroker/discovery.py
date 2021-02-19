@@ -4,7 +4,7 @@ from intake.catalog.entry import CatalogEntry
 
 # Import from intake, so that code that relies on
 # databroker.discovery.MergedCatalog, etc. still works.
-from intake.catalog import MergedCatalog, EntrypointsCatalog  # noqa: F401
+from intake.catalog.local import MergedCatalog, EntrypointsCatalog  # noqa: F401
 from intake.catalog.local import EntrypointEntry  # noqa: F401
 
 
