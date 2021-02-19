@@ -1,0 +1,9 @@
+.. currentmodule:: databroker
+
+v1.2.2 (2020-2-19)
+-------------------
+
+Fixed
++++++
+
+* An issue where databroker was not compatible with older versions of intake. This is a new issue introduced in release of databroker 1.2.1.
