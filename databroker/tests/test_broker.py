@@ -304,17 +304,18 @@ def test_find_by_float_time(db_empty, RE, hw):
 
 
 def test_find_by_string_time(db_empty, RE, hw):
-    breakpoint()
     db = db_empty
     RE.subscribe(db.insert)
-
     uid, = RE(count([hw.det]))
-    today = date.fromtimestamp(db[uid])
-    tomorrow = today + timedelta(days=1)
-    day_after_tom = today + timedelta(days=2)
+
+    today = date.fromtimestamp(db[uid].start['time']) + timedelta(days=-1)
+    tomorrow = today + timedelta(days=2)
+    day_after_tom = today + timedelta(days=3)
+
     today_str = today.strftime('%Y-%m-%d')
     tomorrow_str = tomorrow.strftime('%Y-%m-%d')
     day_after_tom_str = day_after_tom.strftime('%Y-%m-%d')
+
     assert len(list(db(since=today_str, until=tomorrow_str))) == 1
     assert len(list(db(since=tomorrow_str,
                        until=day_after_tom_str))) == 0
