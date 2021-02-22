@@ -306,15 +306,17 @@ def test_find_by_float_time(db_empty, RE, hw):
 def test_find_by_string_time(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
-
     uid, = RE(count([hw.det]))
-    today = date.today()
-    tomorrow = date.today() + timedelta(days=1)
-    today_str = today.strftime('%Y-%m-%d')
+
+    yesterday = date.fromtimestamp(db[uid].start['time']) + timedelta(days=-1)
+    tomorrow = yesterday + timedelta(days=2)
+    day_after_tom = yesterday + timedelta(days=3)
+
+    yesterday_str = yesterday.strftime('%Y-%m-%d')
     tomorrow_str = tomorrow.strftime('%Y-%m-%d')
-    day_after_tom = date.today() + timedelta(days=2)
     day_after_tom_str = day_after_tom.strftime('%Y-%m-%d')
-    assert len(list(db(since=today_str, until=tomorrow_str))) == 1
+
+    assert len(list(db(since=yesterday_str, until=tomorrow_str))) == 1
     assert len(list(db(since=tomorrow_str,
                        until=day_after_tom_str))) == 0
 
