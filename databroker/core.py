@@ -2119,6 +2119,8 @@ def extract_shape(descriptor, key, resource=None):
                     break
             else:
                 num_images = -1
+    else:
+        num_images = -1
     # Work around bug in https://github.com/bluesky/ophyd/pull/746
     # Broken ophyd reports (x, y, 0). We want (num_images, y, x).
     if len(data_key['shape']) == 3 and data_key['shape'][-1] == 0:
