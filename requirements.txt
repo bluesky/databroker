@@ -5,7 +5,7 @@ dask[array,bag]
 doct
 event-model >=1.16.0
 humanize
-intake >=0.5.5
+intake >=0.5.5, !=0.6.2
 jinja2
 jsonschema
 mongoquery
