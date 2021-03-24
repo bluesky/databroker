@@ -4,7 +4,7 @@ codecov
 coverage
 flake8
 glueviz
-intake[server] !=0.6.2
+intake[server]
 matplotlib
 mongomock
 numpy >=1.16.0  # for astropy (via glueviz)
