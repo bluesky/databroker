@@ -1,7 +1,7 @@
 bluesky-live
 boltons
 cachetools
-dask[array,bag] != 2021.3.0
+dask[array,bag]
 doct
 event-model >=1.16.0
 humanize
