@@ -14,8 +14,8 @@ import numpy
 import pymongo
 import xarray
 
-from tiled.containers.array import ArrayStructure, MachineDataType
-from tiled.containers.xarray import (
+from tiled.structures.array import ArrayStructure, MachineDataType
+from tiled.structures.xarray import (
     DataArrayStructure,
     DatasetStructure,
     VariableStructure,
@@ -23,12 +23,12 @@ from tiled.containers.xarray import (
 from tiled.query_registration import QueryTranslationRegistry, register
 from tiled.queries import FullText, KeyLookup
 from tiled.utils import (
-    authenticated,
-    catalog_repr,
     DictView,
-    IndexCallable,
-    slice_to_interval,
     SpecialUsers,
+)
+from tiled.catalogs.utils import (
+    catalog_repr,
+    IndexersMixin,
     UNCHANGED,
 )
 from tiled.catalogs.in_memory import Catalog as CatalogInMemory
@@ -73,7 +73,7 @@ class DatasetFromDocuments:
     An xarray.Dataset from a sub-dict of an Event stream
     """
 
-    container = "dataset"
+    structure_family = "dataset"
 
     def __init__(
         self,
@@ -310,7 +310,7 @@ class DatasetFromDocuments:
         return doc["resource"]
 
 
-class Catalog(collections.abc.Mapping):
+class Catalog(collections.abc.Mapping, IndexersMixin):
 
     # Define classmethods for managing what queries this Catalog knows.
     query_registry = QueryTranslationRegistry()
@@ -424,9 +424,6 @@ class Catalog(collections.abc.Mapping):
             )
         self._access_policy = access_policy
         self._authenticated_identity = authenticated_identity
-        self.keys_indexer = IndexCallable(self._keys_indexer)
-        self.items_indexer = IndexCallable(self._items_indexer)
-        self.values_indexer = IndexCallable(self._values_indexer)
 
     def register_handler(self, spec, handler, overwrite=False):
         if (not overwrite) and (spec in self._handler_registry):
@@ -562,7 +559,6 @@ class Catalog(collections.abc.Mapping):
         metadata = {"descriptors": event_descriptors, "stream_name": stream_name}
         return BlueskyEventStream(mapping, metadata=metadata)
 
-    @authenticated
     def __getitem__(self, key):
         # Lookup this key *within the search results* of this Catalog.
         query = self._mongo_query({"uid": key})
@@ -634,14 +630,12 @@ class Catalog(collections.abc.Mapping):
             {"run_start": run_start_uid}, {"_id": False}
         )
 
-    @authenticated
     def __iter__(self):
         for run_start_doc in self._chunked_find(
             self._run_start_collection, self._mongo_query()
         ):
             yield run_start_doc["uid"]
 
-    @authenticated
     def __len__(self):
         return self._run_start_collection.count_documents(self._mongo_query())
 
@@ -662,7 +656,6 @@ class Catalog(collections.abc.Mapping):
             catalog = self.new_variation()
         return catalog
 
-    @authenticated
     def search(self, query):
         """
         Return a Catalog with a subset of the mapping.
@@ -705,38 +698,6 @@ class Catalog(collections.abc.Mapping):
         key = run_start_doc["uid"]
         value = self._build_run(run_start_doc)
         return (key, value)
-
-    @authenticated
-    def _keys_indexer(self, index):
-        if isinstance(index, int):
-            key, _value = self._item_by_index(index)
-            return key
-        elif isinstance(index, slice):
-            start, stop = slice_to_interval(index)
-            return list(self._keys_slice(start, stop))
-        else:
-            raise TypeError(f"{index} must be an int or slice, not {type(index)}")
-
-    @authenticated
-    def _items_indexer(self, index):
-        if isinstance(index, int):
-            return self._item_by_index(index)
-        elif isinstance(index, slice):
-            start, stop = slice_to_interval(index)
-            return list(self._items_slice(start, stop))
-        else:
-            raise TypeError(f"{index} must be an int or slice, not {type(index)}")
-
-    @authenticated
-    def _values_indexer(self, index):
-        if isinstance(index, int):
-            _key, value = self._item_by_index(index)
-            return value
-        elif isinstance(index, slice):
-            start, stop = slice_to_interval(index)
-            return [value for _key, value in self._items_slice(start, stop)]
-        else:
-            raise TypeError(f"{index} must be an int or slice, not {type(index)}")
 
 
 def full_text_search(query):
