@@ -13,5 +13,5 @@ Changed
 +++++++
 
 * Add an optional authsource configuration to the mongo connection string.
-* Drop support for python 3.6.
+* Drop support for Python 3.6.
 * Add CI tests for python 3.9.
