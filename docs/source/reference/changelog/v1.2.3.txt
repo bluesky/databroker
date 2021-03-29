@@ -1,0 +1,17 @@
+.. currentmodule:: databroker
+
+v1.2.3 (2020-3-39)
+-------------------
+
+Fixed
++++++
+
+* An issue where databroker was not compatible with dask version 2021.3.0.
+* Typo in the format string for mongodb uris.
+
+Changed
++++++++
+
+* Add an optional authsource configuration to the mongo connection string.
+* Drop support for python 3.6.
+* Add CI tests for python 3.9.
