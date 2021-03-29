@@ -7,7 +7,7 @@ Fixed
 +++++
 
 * An issue where databroker was not compatible with dask version 2021.3.0.
-* Typo in the format string for mongodb uris.
+* Typo in the format string for mongodb URIs.
 
 Changed
 +++++++
