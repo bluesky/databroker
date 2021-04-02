@@ -1,10 +1,10 @@
 import json
 
-from tiled.client.catalog import ClientCatalog
+from tiled.client.catalog import Catalog
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin
 
 
-class BlueskyRun(BlueskyRunMixin, ClientCatalog):
+class BlueskyRun(BlueskyRunMixin, Catalog):
     """
     This encapsulates the data and metadata for one Bluesky 'run'.
     """
@@ -18,5 +18,5 @@ class BlueskyRun(BlueskyRunMixin, ClientCatalog):
                 yield tuple(json.loads(line))
 
 
-class BlueskyEventStream(BlueskyEventStreamMixin, ClientCatalog):
+class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
     pass
