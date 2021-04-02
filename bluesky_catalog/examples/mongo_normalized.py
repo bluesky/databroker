@@ -1,7 +1,12 @@
 import os
 
 from bluesky_catalog.mongo_normalized import Catalog
+from bluesky_catalog.server import router
+from tiled.server.main import app
 
+
+# Apply customizations to app.
+app.include_router(router)
 
 try:
     uri = os.environ["MONGO_URI"]
