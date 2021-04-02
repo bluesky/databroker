@@ -2,6 +2,7 @@ import collections.abc
 from dataclasses import dataclass
 import importlib
 import itertools
+import json
 import functools
 import warnings
 
@@ -711,7 +712,7 @@ def key_lookup(query):
 
 def raw_mongo(query):
     # For now, only handle search on the 'run_start' collection.
-    return query.start
+    return json.loads(query.start)
 
 
 @register(name="raw_mongo")
@@ -721,7 +722,12 @@ class RawMongo:
     Run a MongoDB query against a given collection.
     """
 
-    start: dict
+    start: str  # We cannot put a dict in a URL, so this a JSON str.
+
+    def __init__(self, *, start):
+        if isinstance(start, collections.abc.Mapping):
+            start = json.dumps(start)
+        self.start = start
 
 
 Catalog.register_query(FullText, full_text_search)
