@@ -15,11 +15,13 @@ import numpy
 import pymongo
 import xarray
 
-from tiled.structures.array import ArrayStructure, MachineDataType
+from tiled.structures.array import ArrayStructure, ArrayMacroStructure, MachineDataType
 from tiled.structures.xarray import (
     DataArrayStructure,
-    DatasetStructure,
+    DataArrayMacroStructure,
+    DatasetMacroStructure,
     VariableStructure,
+    VariableMacroStructure,
 )
 from tiled.query_registration import QueryTranslationRegistry, register
 from tiled.queries import FullText, KeyLookup
@@ -110,7 +112,7 @@ class DatasetFromDocuments:
     def metadata(self):
         return DictView(self._metadata)
 
-    def structure(self):
+    def macrostructure(self):
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
         descriptor, *_ = self._event_descriptors
@@ -146,27 +148,41 @@ class DatasetFromDocuments:
                 # assert sub_dict == "timestamps"
                 dtype = FLOAT_DTYPE
             data = ArrayStructure(
-                shape=shape,
-                dtype=dtype,
-                chunks=tuple((s,) for s in shape),  # TODO subdivide
+                macro=ArrayMacroStructure(
+                    shape=shape,
+                    chunks=tuple((s,) for s in shape),  # TODO subdivide
+                ),
+                micro=dtype,
             )
-            variable = VariableStructure(dims=dims, data=data, attrs=attrs)
-            data_array = DataArrayStructure(variable, coords={}, name=key)
+            variable = VariableStructure(
+                macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
+                micro=None,
+            )
+            data_array = DataArrayStructure(
+                macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
+            )
             data_vars[key] = data_array
         # Build the time coordinate.
         shape = (self._cutoff_seq_num,)
         data = ArrayStructure(
-            shape=shape,
-            dtype=dtype,
-            chunks=tuple((s,) for s in shape),  # TODO subdivide
+            macro=ArrayMacroStructure(
+                shape=shape,
+                chunks=tuple((s,) for s in shape),  # TODO subdivide
+            ),
+            micro=dtype,
         )
-        variable = VariableStructure(dims=["time"], data=data, attrs={})
-        return DatasetStructure(
+        variable = VariableStructure(
+            macro=VariableMacroStructure(dims=["time"], data=data, attrs={}), micro=None
+        )
+        return DatasetMacroStructure(
             data_vars=data_vars, coords={"time": variable}, attrs={}
         )
 
+    def microstructure(self):
+        return None
+
     def read(self):
-        structure = self.structure()
+        structure = self.macrostructure()
         data_arrays = {}
         for key, data_array in structure.data_vars.items():
             variable = data_array.variable
