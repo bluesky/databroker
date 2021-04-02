@@ -424,6 +424,7 @@ class Catalog(collections.abc.Mapping, IndexersMixin):
             )
         self._access_policy = access_policy
         self._authenticated_identity = authenticated_identity
+        super().__init__()
 
     def register_handler(self, spec, handler, overwrite=False):
         if (not overwrite) and (spec in self._handler_registry):
