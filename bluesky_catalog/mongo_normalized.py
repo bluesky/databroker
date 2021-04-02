@@ -32,7 +32,7 @@ from tiled.catalogs.utils import (
     UNCHANGED,
 )
 from tiled.catalogs.in_memory import Catalog as CatalogInMemory
-from tiled.utils import LazyMap
+from tiled.utils import OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin
 
@@ -508,7 +508,7 @@ class Catalog(collections.abc.Mapping, IndexersMixin):
                 is_complete=(run_stop_doc is not None),
             )
         return BlueskyRun(
-            LazyMap(mapping),
+            OneShotCachedMap(mapping),
             metadata={"start": run_start_doc, "stop": run_stop_doc},
             handler_registry=self.handler_registry,
             transforms=self.transforms,
@@ -540,7 +540,7 @@ class Catalog(collections.abc.Mapping, IndexersMixin):
             ]
         )
         cutoff_seq_num = result["highest_seq_num"]
-        mapping = LazyMap(
+        mapping = OneShotCachedMap(
             {
                 "data": lambda: DatasetFromDocuments(
                     cutoff_seq_num=cutoff_seq_num,
