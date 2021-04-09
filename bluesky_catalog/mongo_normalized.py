@@ -125,7 +125,7 @@ class DatasetFromDocuments:
             try:
                 dims = ["time"] + field_metadata["dims"]
             except KeyError:
-                ndim = max(1, len(field_metadata["shape"]))
+                ndim = len(field_metadata["shape"])
                 dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
             attrs = {}
             # Record which object (i.e. device) this column is associated with,
@@ -181,30 +181,37 @@ class DatasetFromDocuments:
     def microstructure(self):
         return None
 
-    def read(self):
+    def read(self, variables=None):
         structure = self.macrostructure()
         data_arrays = {}
         for key, data_array in structure.data_vars.items():
+            if (variables is not None) and (key not in variables):
+                continue
             variable = data_array.variable
             # TODO Handle chunks.
             for dim in variable.data.chunks:
                 if len(dim) > 1:
                     raise NotImplementedError
-            dask_array = dask.array.from_delayed(
-                dask.delayed(self._get_column)(key, block=(0,)),
-                shape=variable.data.shape,
-                dtype=variable.data.dtype.to_numpy_dtype(),
-            )
-            data_array = xarray.DataArray(dask_array, attrs=variable.attrs)
+            # TODO Stack blocks. This selects only the first block.
+            array = self._get_column(key, block=(0,))
+            data_array = xarray.DataArray(array, attrs=variable.attrs)
             data_arrays[key] = data_array
         # Build the time coordinate.
         variable = structure.coords["time"]
-        dask_array = dask.array.from_delayed(
-            dask.delayed(self._get_time_coord)(block=(0,)),
-            shape=variable.data.shape,
-            dtype=variable.data.dtype.to_numpy_dtype(),
-        )
-        return xarray.Dataset(data_arrays, coords={"time": dask_array})
+        time_coord = self._get_time_coord(block=(0,))
+        return xarray.Dataset(data_arrays, coords={"time": time_coord})
+
+    def read_variable(self, variable):
+        return self.read(variables=[variable])[variable]
+
+    def read_block(self, variable, block, coord=None, slice=None):
+        # The DataArrays generated from Events never have coords.
+        if coord is not None:
+            raise KeyError(coord)
+        array = self._get_column(variable, block=block)
+        if slice is not None:
+            array = array[slice]
+        return array
 
     @property
     def filler(self):
