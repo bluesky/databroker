@@ -208,6 +208,8 @@ class DatasetFromDocuments:
         # The DataArrays generated from Events never have coords.
         if coord is not None:
             raise KeyError(coord)
+        if variable == "time":
+            return self._get_time_coord(block=block)
         array = self._get_column(variable, block=block)
         if slice is not None:
             array = array[slice]
