@@ -1,5 +1,4 @@
 import collections.abc
-from dataclasses import dataclass
 import importlib
 import itertools
 import json
@@ -23,7 +22,7 @@ from tiled.structures.xarray import (
     VariableStructure,
     VariableMacroStructure,
 )
-from tiled.query_registration import QueryTranslationRegistry, register
+from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import FullText, KeyLookup
 from tiled.utils import (
     DictView,
@@ -37,7 +36,8 @@ from tiled.catalogs.utils import (
 from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 from tiled.utils import OneShotCachedMap
 
-from .common import BlueskyEventStreamMixin, BlueskyRunMixin
+from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
+from .queries import RawMongo
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
@@ -336,7 +336,8 @@ class DatasetFromDocuments:
         return doc["resource"]
 
 
-class Catalog(collections.abc.Mapping, IndexersMixin):
+class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
+    client_type_hint = "CatalogOfBlueskyRuns"
 
     # Define classmethods for managing what queries this Catalog knows.
     query_registry = QueryTranslationRegistry()
@@ -728,7 +729,7 @@ class Catalog(collections.abc.Mapping, IndexersMixin):
 
 
 def full_text_search(query):
-    return Catalog.query_registry(RawMongo(start={"$text": {"$search": query.text}}))
+    return Catalog.querly_registry(RawMongo(start={"$text": {"$search": query.text}}))
 
 
 def key_lookup(query):
@@ -740,19 +741,9 @@ def raw_mongo(query):
     return json.loads(query.start)
 
 
-@register(name="raw_mongo")
-@dataclass
-class RawMongo:
-    """
-    Run a MongoDB query against a given collection.
-    """
-
-    start: str  # We cannot put a dict in a URL, so this a JSON str.
-
-    def __init__(self, *, start):
-        if isinstance(start, collections.abc.Mapping):
-            start = json.dumps(start)
-        self.start = start
+def scan_id(query):
+    results = Catalog.query_registry(RawMongo(start={"scan_id": {"$in": query.key}}))
+    return results
 
 
 Catalog.register_query(FullText, full_text_search)

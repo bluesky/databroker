@@ -1,7 +1,7 @@
 import json
 
 from tiled.client.catalog import Catalog
-from .common import BlueskyEventStreamMixin, BlueskyRunMixin
+from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 
 
 class BlueskyRun(BlueskyRunMixin, Catalog):
@@ -19,4 +19,8 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
 
 
 class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
+    pass
+
+
+class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Catalog):
     pass
