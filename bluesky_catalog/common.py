@@ -60,7 +60,7 @@ class CatalogOfBlueskyRunsMixin:
         sample_reprs = [
             repr(value.metadata["start"].get("scan_id", key)) for key, value in sample
         ]
-        out = "<Catalog {{"
+        out = "<Catalog {"
         # Always show at least one.
         if sample_reprs:
             out += sample_reprs[0]
