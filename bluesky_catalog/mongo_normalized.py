@@ -737,7 +737,12 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
 def full_text_search(query, catalog):
     return Catalog.query_registry(
-        RawMongo(start={"$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}}), catalog
+        RawMongo(
+            start={
+                "$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}
+            }
+        ),
+        catalog,
     )
 
 
