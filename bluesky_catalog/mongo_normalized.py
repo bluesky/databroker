@@ -24,7 +24,7 @@ from tiled.structures.xarray import (
     VariableMacroStructure,
 )
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import FullText, KeyLookup
+from tiled.queries import FullText, KeyLookup, QueryValueError
 from tiled.utils import (
     DictView,
     SpecialUsers,
@@ -38,7 +38,7 @@ from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 from tiled.utils import OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import RawMongo, _ScanID
+from .queries import RawMongo, _PartialUID, _ScanID
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
@@ -782,20 +782,41 @@ def scan_id(query, catalog):
             if v > 1:
                 duplicated.append(k)
         if duplicated:
-            raise ValueError(
+            raise QueryValueError(
                 f"There are multiples of the following scan_ids: {duplicated}"
             )
         results = mongo_results
     elif query.duplicates == "all":
         results = mongo_results
     else:
-        raise ValueError("duplicates should be one of {'latest', 'error', 'all'}")
+        raise QueryValueError("duplicates should be one of {'latest', 'error', 'all'}")
     return results
+
+
+def partial_uid(query, catalog):
+    results = {}
+    for partial_uid in query.partial_uids:
+        if len(partial_uid) < 5:
+            raise QueryValueError(
+                f"Partial uid {partial_uid} is too short. "
+                "It must include at least 5 characters."
+            )
+        result = Catalog.query_registry(
+            RawMongo(start={"uid": {"$regex": f"^{partial_uid}"}}), catalog
+        )
+        if len(result) > 1:
+            raise QueryValueError(
+                f"Partial uid {partial_uid} has multiple matches, "
+                "listed below. Include more characters. Matches:\n" + "\n".join(result)
+            )
+        results.update(result)
+    return CatalogInMemory(results)
 
 
 Catalog.register_query(FullText, full_text_search)
 Catalog.register_query(KeyLookup, key_lookup)
 Catalog.register_query(RawMongo, raw_mongo)
+Catalog.register_query(_PartialUID, partial_uid)
 Catalog.register_query(_ScanID, scan_id)
 
 
