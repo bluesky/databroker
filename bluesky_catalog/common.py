@@ -93,7 +93,7 @@ class CatalogOfBlueskyRunsMixin:
         # some "magic" here that is helpful in an interactive setting.
         if isinstance(key, str):
             # CASE 1: Interpret key as a uid or partial uid.
-            self._lookup_by_partial_uid(key)
+            return self._lookup_by_partial_uid(key)
         elif isinstance(key, int):
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
