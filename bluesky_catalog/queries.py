@@ -1,6 +1,8 @@
+import collections.abc
 from dataclasses import dataclass
 import enum
-from typing import List, Number
+import json
+from typing import List
 
 from tiled.query_registration import register
 
@@ -13,7 +15,7 @@ class Duplicates(str, enum.Enum):
 
 @register(name="scan_id")
 @dataclass
-class ScanID:
+class _ScanID:
     """
     Find matches to scan_id(s).
     """
@@ -21,9 +23,15 @@ class ScanID:
     scan_ids: List[int]
     duplicates: Duplicates
 
-    def __init__(self, *scan_ids, duplicates="latest"):
-        self.scan_ids = scan_ids
-        self.duplicates = duplicates
+
+def ScanID(*scan_ids, duplicates="latest"):
+    # Wrap _ScanID to provide a nice usage for *one or more scan_ids*:
+    # >>> ScanID(5)
+    # >>> ScanID(5, 6, 7)
+    # Placing a varargs parameter (*scan_ids) in the dataclass constructor
+    # would cause trouble on the server side and generally feels "wrong"
+    # so we have this wrapper function instead.
+    return _ScanID(scan_ids=scan_ids, duplicates=duplicates)
 
 
 @register(name="partial_uid")
@@ -46,5 +54,20 @@ class Duration:
     Run a MongoDB query against a given collection.
     """
 
-    less_than: Number
-    greater_than: Number
+    less_than: float
+    greater_than: float
+
+
+@register(name="raw_mongo")
+@dataclass
+class RawMongo:
+    """
+    Run a MongoDB query against a given collection.
+    """
+
+    start: str  # We cannot put a dict in a URL, so this a JSON str.
+
+    def __init__(self, *, start):
+        if isinstance(start, collections.abc.Mapping):
+            start = json.dumps(start)
+        self.start = start
