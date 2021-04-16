@@ -722,6 +722,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
     def _item_by_index(self, index):
         if index >= len(self):
             raise IndexError(f"index {index} out of range for length {len(self)}")
+        if index < 0:
+            index = len(self) + index
         run_start_doc = next(
             self._chunked_find(
                 self._run_start_collection,
