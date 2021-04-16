@@ -1,3 +1,4 @@
+import collections
 import collections.abc
 import importlib
 import itertools
@@ -37,7 +38,7 @@ from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 from tiled.utils import OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import RawMongo
+from .queries import RawMongo, _ScanID
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
@@ -441,8 +442,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         self.root_map = root_map
         self.transforms = transforms
         self._metadata = metadata or {}
-        self._high_level_queries = tuple(queries or [])
-        self._mongo_queries = [self.query_registry(q) for q in self._high_level_queries]
+        self.queries = tuple(queries or [])
         if (access_policy is not None) and (
             not access_policy.check_compatibility(self)
         ):
@@ -480,7 +480,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         if metadata is UNCHANGED:
             metadata = self._metadata
         if queries is UNCHANGED:
-            queries = self._high_level_queries
+            queries = self.queries
         if authenticated_identity is UNCHANGED:
             authenticated_identity = self._authenticated_identity
         return type(self)(
@@ -589,7 +589,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
     def __getitem__(self, key):
         # Lookup this key *within the search results* of this Catalog.
-        query = self._mongo_query({"uid": key})
+        query = self._build_mongo_query({"uid": key})
         run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
         if run_start_doc is None:
             raise KeyError(key)
@@ -645,8 +645,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             )
             items.clear()
 
-    def _mongo_query(self, *queries):
-        combined = self._mongo_queries + list(queries)
+    def _build_mongo_query(self, *queries):
+        combined = self.queries + queries
         if combined:
             return {"$and": combined}
         else:
@@ -660,17 +660,17 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
     def __iter__(self):
         for run_start_doc in self._chunked_find(
-            self._run_start_collection, self._mongo_query()
+            self._run_start_collection, self._build_mongo_query()
         ):
             yield run_start_doc["uid"]
 
     def __len__(self):
-        return self._run_start_collection.count_documents(self._mongo_query())
+        return self._run_start_collection.count_documents(self._build_mongo_query())
 
     def __length_hint__(self):
         # https://www.python.org/dev/peps/pep-0424/
         return self._run_start_collection.estimated_document_count(
-            self._mongo_query(),
+            self._build_mongo_query(),
         )
 
     def authenticated_as(self, identity):
@@ -688,9 +688,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         """
         Return a Catalog with a subset of the mapping.
         """
-        return self.new_variation(
-            queries=self._high_level_queries + (query,),
-        )
+        return self.query_registry(query, self)
 
     def _keys_slice(self, start, stop):
         skip = start or 0
@@ -699,7 +697,10 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         else:
             limit = None
         for run_start_doc in self._chunked_find(
-            self._run_start_collection, self._mongo_query(), skip=skip, limit=limit
+            self._run_start_collection,
+            self._build_mongo_query(),
+            skip=skip,
+            limit=limit,
         ):
             # TODO Fetch just the uid.
             yield run_start_doc["uid"]
@@ -711,7 +712,10 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         else:
             limit = None
         for run_start_doc in self._chunked_find(
-            self._run_start_collection, self._mongo_query(), skip=skip, limit=limit
+            self._run_start_collection,
+            self._build_mongo_query(),
+            skip=skip,
+            limit=limit,
         ):
             yield (run_start_doc["uid"], self._build_run(run_start_doc))
 
@@ -720,7 +724,10 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             raise IndexError(f"index {index} out of range for length {len(self)}")
         run_start_doc = next(
             self._chunked_find(
-                self._run_start_collection, self._mongo_query(), skip=index, limit=1
+                self._run_start_collection,
+                self._build_mongo_query(),
+                skip=index,
+                limit=1,
             )
         )
         key = run_start_doc["uid"]
@@ -728,27 +735,63 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         return (key, value)
 
 
-def full_text_search(query):
-    return Catalog.querly_registry(RawMongo(start={"$text": {"$search": query.text}}))
+def full_text_search(query, catalog):
+    return Catalog.query_registry(
+        RawMongo(start={"$text": {"$search": query.text}}), catalog
+    )
 
 
-def key_lookup(query):
-    return Catalog.query_registry(RawMongo(start={"uid": query.key}))
+def key_lookup(query, catalog):
+    return Catalog.query_registry(RawMongo(start={"uid": query.key}), catalog)
 
 
-def raw_mongo(query):
+def raw_mongo(query, catalog):
     # For now, only handle search on the 'run_start' collection.
-    return json.loads(query.start)
+    return catalog.new_variation(
+        queries=catalog.queries + (json.loads(query.start),),
+    )
 
 
-def scan_id(query):
-    results = Catalog.query_registry(RawMongo(start={"scan_id": {"$in": query.key}}))
+def scan_id(query, catalog):
+    mongo_results = Catalog.query_registry(
+        RawMongo(start={"scan_id": {"$in": query.scan_ids}}),
+        catalog,
+    )
+    # Handle duplicates.
+    if query.duplicates == "latest":
+        # Convert to an in-memory Catalog to do some filtering in Python
+        # that we cannot expressing in a collection.find(...) query.
+        # We might want to rethink this later and make it possible to do
+        # aggregations in Mongo from queries.
+        results_by_scan_id = {}
+        for key, value in mongo_results.items():
+            results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
+        results = CatalogInMemory(dict(results_by_scan_id.values()))
+    elif query.duplicates == "error":
+        scan_ids = list(
+            value.metadata["start"]["scan_id"] for value in mongo_results.values()
+        )
+        counter = collections.Counter(scan_ids)
+        duplicated = []
+        for k, v in counter.items():
+            if v > 1:
+                duplicated.append(k)
+        if duplicated:
+            raise ValueError(
+                f"There are multiples of the following scan_ids: {duplicated}"
+            )
+        results = mongo_results
+    elif query.duplicates == "all":
+        results = mongo_results
+    else:
+        raise ValueError("duplicates should be one of {'latest', 'error', 'all'}")
     return results
 
 
 Catalog.register_query(FullText, full_text_search)
 Catalog.register_query(KeyLookup, key_lookup)
 Catalog.register_query(RawMongo, raw_mongo)
+Catalog.register_query(_ScanID, scan_id)
 
 
 class DummyAccessPolicy:

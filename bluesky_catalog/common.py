@@ -1,5 +1,7 @@
 import operator
 
+from tiled.catalogs.utils import IndexCallable
+
 from .queries import PartialUID, ScanID
 
 
@@ -45,6 +47,10 @@ class BlueskyRunMixin:
 class CatalogOfBlueskyRunsMixin:
     "Convenience methods used by the server- and client-side"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.scan_id = IndexCallable(self._lookup_by_scan_id)
+
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
         # tiled.catalog.utils.catalog_repr
@@ -87,13 +93,16 @@ class CatalogOfBlueskyRunsMixin:
         elif isinstance(key, int):
             if key > 0:
                 # CASE 2: Interpret key as a scan_id.
-                results = self.search(ScanID(key, duplicates="latest"))
-                if not results:
-                    raise KeyError(f"No match for scan_id={key}")
-                else:
-                    # By construction there must be only one result. Return it.
-                    return results.values_indexer[0]
+                return self._lookup_by_scan_id(key)
             else:
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
                 return self.values_indexer[-1]
+
+    def _lookup_by_scan_id(self, scan_id):
+        results = self.search(ScanID(scan_id, duplicates="latest"))
+        if not results:
+            raise KeyError(f"No match for scan_id={scan_id}")
+        else:
+            # By construction there must be only one result. Return it.
+            return results.values_indexer[0]
