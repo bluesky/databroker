@@ -36,15 +36,17 @@ def ScanID(*scan_ids, duplicates="latest"):
 
 @register(name="partial_uid")
 @dataclass
-class PartialUID:
+class _PartialUID:
     """
     Find matches to (partial) uid(s).
     """
 
     partial_uids: List[str]
 
-    def __init__(self, *partial_uids):
-        self.partial_uids = partial_uids
+
+def PartialUID(*partial_uids):
+    # See comment above with ScanID and _ScanID. Same thinking here.
+    return _PartialUID(partial_uids)
 
 
 @register(name="duration")
