@@ -1,9 +1,5 @@
 import operator
 
-from tiled.catalogs.utils import IndexCallable
-
-from .queries import PartialUID, ScanID
-
 
 class BlueskyEventStreamMixin:
     "Convenience methods used by the server- and client-side"
@@ -47,18 +43,7 @@ class BlueskyRunMixin:
 class CatalogOfBlueskyRunsMixin:
     """
     Convenience methods used by the server- and client-side
-
-    >>> catalog.scan_id[1234]  # scan_id lookup
-    >>> catalog.uid["9acjef"]  # (partial) uid lookup
-    >>> catalog[1234]  # automatically do scan_id lookup for positive integer
-    >>> catalog["9acjef"]  # automatically do (partial) uid lookup for string
-    >>> catalog[-5]  # automatically do catalog.values_indexer[-N] for negative integer
     """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.scan_id = IndexCallable(self._lookup_by_scan_id)
-        self.uid = IndexCallable(self._lookup_by_partial_uid)
 
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
@@ -87,34 +72,3 @@ class CatalogOfBlueskyRunsMixin:
         else:
             out += "}>"
         return out
-
-    def __getitem__(self, key):
-        # For convenience and backward-compatiblity reasons, we support
-        # some "magic" here that is helpful in an interactive setting.
-        if isinstance(key, str):
-            # CASE 1: Interpret key as a uid or partial uid.
-            return self._lookup_by_partial_uid(key)
-        elif isinstance(key, int):
-            if key > 0:
-                # CASE 2: Interpret key as a scan_id.
-                return self._lookup_by_scan_id(key)
-            else:
-                # CASE 3: Interpret key as a recently lookup, as in
-                # `catalog[-1]` is the latest entry.
-                return self.values_indexer[key]
-
-    def _lookup_by_scan_id(self, scan_id):
-        results = self.search(ScanID(scan_id, duplicates="latest"))
-        if not results:
-            raise KeyError(f"No match for scan_id={scan_id}")
-        else:
-            # By construction there must be only one result. Return it.
-            return results.values_indexer[0]
-
-    def _lookup_by_partial_uid(self, partial_uid):
-        results = self.search(PartialUID(partial_uid))
-        if not results:
-            raise KeyError(f"No match for partial_uid {partial_uid}")
-        else:
-            # By construction there must be only one result. Return it.
-            return results.values_indexer[0]
