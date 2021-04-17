@@ -1016,10 +1016,12 @@ def _no_op(doc):
     return doc
 
 
+BOOLEAN_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("bool"))
 FLOAT_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("float64"))
 INT_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("int64"))
 STRING_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("<U"))
 JSON_DTYPE_TO_MACHINE_DATA_TYPE = {
+    "boolean": BOOLEAN_DTYPE,
     "number": FLOAT_DTYPE,
     "integer": INT_DTYPE,
     "string": STRING_DTYPE,
