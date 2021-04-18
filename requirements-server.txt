@@ -1,4 +1,3 @@
-bson
 entrypoints
 event-model
 fastapi
