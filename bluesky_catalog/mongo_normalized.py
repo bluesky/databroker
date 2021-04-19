@@ -170,7 +170,7 @@ class DatasetFromDocuments:
                 shape=shape,
                 chunks=tuple((s,) for s in shape),  # TODO subdivide
             ),
-            micro=dtype,
+            micro=FLOAT_DTYPE,
         )
         variable = VariableStructure(
             macro=VariableMacroStructure(dims=["time"], data=data, attrs={}), micro=None
