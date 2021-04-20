@@ -15,7 +15,7 @@ import numpy
 import pymongo
 import xarray
 
-from tiled.structures.array import ArrayStructure, ArrayMacroStructure, MachineDataType
+from tiled.structures.array import ArrayStructure, ArrayMacroStructure, Kind, MachineDataType
 from tiled.structures.xarray import (
     DataArrayStructure,
     DataArrayMacroStructure,
@@ -145,6 +145,14 @@ class DatasetFromDocuments:
             shape = tuple((self._cutoff_seq_num, *field_metadata["shape"]))
             if self._sub_dict == "data":
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
+                if dtype.kind == Kind.unicode:
+                    # Load the data to figure out the itemsize.
+                    # We have no other choice, except to *guess* but we'd be in
+                    # trouble if our guess were too small, and we'll waste space
+                    # if our guess is too large.
+                    # TODO Stack blocks. This selects only the first block.
+                    array = self._get_column(key, block=(0,))
+                    dtype.itemsize = array.itemsize // 4
             else:
                 # assert sub_dict == "timestamps"
                 dtype = FLOAT_DTYPE
