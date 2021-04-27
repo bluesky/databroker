@@ -61,10 +61,37 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self._handler_registry = handler_registry
-        self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
         self.transforms = transforms
         self.root_map = root_map
+        self._datum_collection = datum_collection
+        self._resource_collection = resource_collection
+        # This is used to create the Filler on first access.
+        self._init_handler_registry = handler_registry
+        self._filler = None
+
+    @property
+    def filler(self):
+        if self._filler is None:
+            self._filler = event_model.Filler(
+                handler_registry=self._init_handler_registry, root_map=self.root_map
+            )
+            for descriptor in itertools.chain(
+                *(stream.metadata["descriptors"] for stream in self.values())
+            ):
+                self._filler("descriptor", descriptor)
+        return self._filler
+
+    @property
+    def register_handler(self):
+        return self.filler.register_handler
+
+    @property
+    def deregister_handler(self):
+        return self.filler.deregister_handler
+
+    @property
+    def handler_registry(self):
+        self.filler.handler_registry
 
     def new_variation(self, *args, **kwargs):
         return super().new_variation(
@@ -72,6 +99,8 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
             handler_registry=self.handler_registry,
             transforms=self.transforms,
             root_map=self.root_map,
+            datum_collection=self._datum_collection,
+            resource_collection=self._resource_collection,
             **kwargs,
         )
 
@@ -211,6 +240,13 @@ class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
 
+    def new_variation(self, **kwargs):
+        return super().new_variation(
+            event_collection=self._event_collection,
+            cutoff_seq_num=self._cutoff_seq_num,
+            **kwargs,
+        )
+
     def iter_events(self, descriptor_uid):
         # TODO Grab paginated chunks.
         events = list(
@@ -240,7 +276,6 @@ class DatasetFromDocuments:
         cutoff_seq_num,
         event_descriptors,
         event_collection,
-        handler_registry,
         root_map,
         transforms,
         sub_dict,
@@ -251,11 +286,8 @@ class DatasetFromDocuments:
         self._event_descriptors = event_descriptors
         self._event_collection = event_collection
         self._sub_dict = sub_dict
-        self._handler_registry = handler_registry
-        self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
         self.transforms = transforms
         self.root_map = root_map
-        self._filler = None
 
     def __repr__(self):
         return f"<{type(self).__name__}>"
@@ -375,28 +407,6 @@ class DatasetFromDocuments:
             array = array[slice]
         return array
 
-    @property
-    def _filler(self):
-        if self._filler is None:
-            self._filler = event_model.Filler(
-                handler_registry=self._handler_registry, root_map=self.root_map
-            )
-            for descriptor in self._event_descriptors:
-                self._filler("descriptor", descriptor)
-        return self._filler
-
-    @property
-    def register_handler(self):
-        return self._filler.register_handler
-
-    @property
-    def deregister_handler(self):
-        return self._filler.deregister_handler
-
-    @property
-    def handler_registry(self):
-        self._filler.handler_registry
-
     def _get_time_coord(self, block):
         if block != (0,):
             raise NotImplementedError
@@ -468,7 +478,7 @@ class DatasetFromDocuments:
                     "filled": {key: False},
                 }
                 filled_mock_event = _fill(
-                    self._filler,
+                    self.run.filler,
                     mock_event,
                     self.run.lookup_resource_for_datum,
                     self.run.get_resource,
@@ -713,13 +723,14 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             ]
         )
         cutoff_seq_num = result["highest_seq_num"]
+        run = self[run_start_uid]
         mapping = OneShotCachedMap(
             {
                 "data": lambda: DatasetFromDocuments(
+                    run=run,
                     cutoff_seq_num=cutoff_seq_num,
                     event_descriptors=event_descriptors,
                     event_collection=self._event_collection,
-                    handler_registry=self._handler_registry,
                     root_map=self.root_map,
                     transforms=self.transforms,
                     sub_dict="data",
