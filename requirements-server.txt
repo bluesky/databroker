@@ -5,3 +5,4 @@ msgpack
 pydantic
 pymongo
 starlette
+toolz
