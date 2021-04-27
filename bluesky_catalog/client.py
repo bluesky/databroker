@@ -43,6 +43,30 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
     This adds for bluesky-specific conveniences to the standard client Catalog.
     """
 
+    @property
+    def descriptors(self):
+        return self.metadata["descriptors"]
+
+    @property
+    def _descriptor(self):
+        # For backward-compatibility
+        warnings.warn("Use .descriptors instead of ._descriptors.", stacklevel=2)
+        return self.metadata["descriptors"]
+
+    def read(self):
+        """
+        Shortcut for reading the 'data' (as opposed to timestamps or config).
+
+        That is:
+
+        >>> stream.read()
+
+        is equivalent to
+
+        >>> stream["data"].read()
+        """
+        return self["data"].read()
+
     def to_dask(self):
         warnings.warn(
             """Do not use this method.
