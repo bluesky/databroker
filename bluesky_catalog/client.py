@@ -49,7 +49,10 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
 
     @property
     def _descriptor(self):
-        # For backward-compatibility
+        # For backward-compatibility.
+        # We do not normally worry about backward-compatibility of _ methods, but
+        # for a time databroker.v2 *only* have _descriptors and not descriptros,
+        # and I know there is useer code that relies on that.
         warnings.warn("Use .descriptors instead of ._descriptors.", stacklevel=2)
         return self.metadata["descriptors"]
 

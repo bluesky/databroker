@@ -131,25 +131,14 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
             raise ValueError(f"Could not find Datum with datum_id={datum_id}")
         return doc["resource"]
 
-    def single_documents(self, fill):
+    def _single_documents(self, fill):
         if fill:
             raise NotImplementedError("Only fill=False is implemented.")
-        iters = []
-        for stream in self.values():
-
-            def iter_descriptors_and_events(stream=stream):
-                for descriptor in sorted(
-                    stream.metadata["descriptors"], key=lambda d: d["time"]
-                ):
-                    yield ("descriptor", descriptor)
-                    for event in stream.iter_events(descriptor["uid"]):
-                        yield ("event", event)
-
-            iters.append(iter_descriptors_and_events())
+        # Interleave the documents from the streams in time order.
         merged_iter = toolz.itertoolz.merge_sorted(
-            *iters, key=lambda item: item[1]["time"]
+            *(stream.iter_descriptors_and_events() for stream in self.values()),
+            key=lambda item: item[1]["time"],
         )
-
         yield ("start", self.metadata["start"])
         for name, doc in merged_iter:
             # TODO Add datum, resource as needed.
@@ -158,78 +147,14 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
         if stop_doc is not None:
             yield ("stop", stop_doc)
 
-    def batched_documents(self, fill, size=25):
+    def documents(self, fill, size=25):
         """
-        Batch Event and Datum documents into Event Pages and Datum Pages.
+        Yield ``(name, document)`` items from the run.
 
-        Batch into groups of up to ``size``, while preserving time-ordering of
-        documents.
+        Batch Event and Datum documents into pages of up to ``size`` rows,
+        while preserving time-ordering.
         """
-        # Acculuate rows for Event Pages or Datum Pages in a cache.
-        # Drain the cache and emit the page when any of the following conditions
-        # are met:
-        # (1) We reach a document of a different type.
-        # (2) The associated Event Descriptor or Resource changes.
-        # (3) The number of rows in the cache reaches `size`.
-        cache = collections.deque()
-        current_uid = None
-        current_type = None
-
-        def handle_item(name, doc):
-            nonlocal current_uid
-            nonlocal current_type
-            if name == "event":
-                if (
-                    (current_type == "event_page")
-                    and (current_uid == doc["descriptor"])
-                    and len(cache) < size
-                ):
-                    cache.append(doc)
-                elif current_type is None:
-                    current_type = "event_page"
-                    current_uid = doc["descriptor"]
-                    cache.append(doc)
-                else:
-                    # Emit the cache and recurse.
-                    yield (current_type, event_model.pack_event_page(*cache))
-                    cache.clear()
-                    current_uid = None
-                    current_type = None
-                    yield from handle_item(name, doc)
-            elif name == "datum":
-                if (
-                    (current_type == "datum_page")
-                    and (current_uid == doc["resource"])
-                    and len(cache) < size
-                ):
-                    cache.append(doc)
-                elif current_type is None:
-                    current_type = "datum_page"
-                    current_uid = doc["resource"]
-                    cache.append(doc)
-                else:
-                    # Emit the cache and recurse
-                    yield (current_type, event_model.pack_datum_page(*cache))
-                    cache.clear()
-                    current_uid = None
-                    current_type = None
-                    yield from handle_item(name, doc)
-            else:
-                # Emit the cached page (if nonempty) and then this item.
-                if cache:
-                    if current_type == "event_page":
-                        yield (current_type, event_model.pack_event_page(*cache))
-                    elif current_type == "datum_page":
-                        yield (current_type, event_model.pack_datum_page(*cache))
-                    else:
-                        assert False
-                    cache.clear()
-                    current_uid = None
-                    current_type = None
-                yield (name, doc)
-
-        for name, doc in self.single_documents(fill=fill):
-            yield from handle_item(name, doc)
+        yield from batch_documents(self._single_documents(fill=fill), size)
 
 
 class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
@@ -247,19 +172,22 @@ class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
             **kwargs,
         )
 
-    def iter_events(self, descriptor_uid):
-        # TODO Grab paginated chunks.
-        events = list(
-            self._event_collection.find(
-                {
-                    "descriptor": descriptor_uid,
-                    "seq_num": {"$lte": self._cutoff_seq_num},
-                },
-                {"_id": False},
-                sort=[("time", pymongo.ASCENDING)],
+    def iter_descriptors_and_events(self):
+        for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
+            yield ("descriptor", descriptor)
+            # TODO Grab paginated chunks.
+            events = list(
+                self._event_collection.find(
+                    {
+                        "descriptor": descriptor["uid"],
+                        "seq_num": {"$lte": self._cutoff_seq_num},
+                    },
+                    {"_id": False},
+                    sort=[("time", pymongo.ASCENDING)],
+                )
             )
-        )
-        yield from events
+            for event in events:
+                yield ("event", event)
 
 
 class DatasetFromDocuments:
@@ -1243,3 +1171,71 @@ def _fill(
             get_datum_for_resource,
             last_datum_id=datum_id,
         )
+
+
+def batch_documents(singles, size):
+    # Acculuate rows for Event Pages or Datum Pages in a cache.
+    # Drain the cache and emit the page when any of the following conditions
+    # are met:
+    # (1) We reach a document of a different type.
+    # (2) The associated Event Descriptor or Resource changes.
+    # (3) The number of rows in the cache reaches `size`.
+    cache = collections.deque()
+    current_uid = None
+    current_type = None
+
+    def handle_item(name, doc):
+        nonlocal current_uid
+        nonlocal current_type
+        if name == "event":
+            if (
+                (current_type == "event_page")
+                and (current_uid == doc["descriptor"])
+                and len(cache) < size
+            ):
+                cache.append(doc)
+            elif current_type is None:
+                current_type = "event_page"
+                current_uid = doc["descriptor"]
+                cache.append(doc)
+            else:
+                # Emit the cache and recurse.
+                yield (current_type, event_model.pack_event_page(*cache))
+                cache.clear()
+                current_uid = None
+                current_type = None
+                yield from handle_item(name, doc)
+        elif name == "datum":
+            if (
+                (current_type == "datum_page")
+                and (current_uid == doc["resource"])
+                and len(cache) < size
+            ):
+                cache.append(doc)
+            elif current_type is None:
+                current_type = "datum_page"
+                current_uid = doc["resource"]
+                cache.append(doc)
+            else:
+                # Emit the cache and recurse
+                yield (current_type, event_model.pack_datum_page(*cache))
+                cache.clear()
+                current_uid = None
+                current_type = None
+                yield from handle_item(name, doc)
+        else:
+            # Emit the cached page (if nonempty) and then this item.
+            if cache:
+                if current_type == "event_page":
+                    yield (current_type, event_model.pack_event_page(*cache))
+                elif current_type == "datum_page":
+                    yield (current_type, event_model.pack_datum_page(*cache))
+                else:
+                    assert False
+                cache.clear()
+                current_uid = None
+                current_type = None
+            yield (name, doc)
+
+    for name, doc in singles:
+        yield from handle_item(name, doc)
