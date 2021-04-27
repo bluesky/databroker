@@ -5,7 +5,7 @@ from tiled.catalogs.utils import IndexCallable
 from tiled.client.catalog import Catalog
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import PartialUID, ScanID
+from .queries import PartialUID, RawMongo, ScanID
 
 
 class BlueskyRun(BlueskyRunMixin, Catalog):
@@ -104,3 +104,10 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Catalog):
         else:
             # By construction there must be only one result. Return it.
             return results.values_indexer[0]
+
+    def search(self, query):
+        # For backward-compatiblity, accept a dict and interpret it as a Mongo
+        # query against the 'start' documents.
+        if isinstance(query, dict):
+            query = RawMongo(start=query)
+        return super().search(query)
