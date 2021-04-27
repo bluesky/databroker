@@ -15,7 +15,12 @@ import numpy
 import pymongo
 import xarray
 
-from tiled.structures.array import ArrayStructure, ArrayMacroStructure, Kind, MachineDataType
+from tiled.structures.array import (
+    ArrayStructure,
+    ArrayMacroStructure,
+    Kind,
+    MachineDataType,
+)
 from tiled.structures.xarray import (
     DataArrayStructure,
     DataArrayMacroStructure,
