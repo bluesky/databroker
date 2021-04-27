@@ -1,4 +1,5 @@
 import operator
+import warnings
 
 
 class BlueskyEventStreamMixin:
@@ -9,6 +10,12 @@ class BlueskyEventStreamMixin:
 
     @property
     def descriptors(self):
+        return self.metadata["descriptors"]
+
+    @property
+    def _descriptor(self):
+        # For backward-compatibility
+        warnings.warn("Use .descriptors instead of ._descriptors.", stacklevel=2)
         return self.metadata["descriptors"]
 
     def read(self):
