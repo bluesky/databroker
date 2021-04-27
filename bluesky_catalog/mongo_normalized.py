@@ -134,6 +134,11 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
     def _single_documents(self, fill):
         if fill:
             raise NotImplementedError("Only fill=False is implemented.")
+        external_fields = {}  # map descriptor uid to set of external fields
+        datum_cache = {}  # map datum_id to datum document
+        # Track which Resource and Datum documents we have yielded so far.
+        resource_uids = set()
+        datum_ids = set()
         # Interleave the documents from the streams in time order.
         merged_iter = toolz.itertoolz.merge_sorted(
             *(stream.iter_descriptors_and_events() for stream in self.values()),
@@ -141,7 +146,42 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
         )
         yield ("start", self.metadata["start"])
         for name, doc in merged_iter:
-            # TODO Add datum, resource as needed.
+            # Insert Datum, Resource as needed, and then yield (name, doc).
+            if name == "event":
+                for field in external_fields[doc["descriptor"]]:
+                    datum_id = doc["data"][field]
+                    if datum_ids not in datum_ids:
+                        # We haven't yielded this Datum yet. Look it up, and yield it.
+                        try:
+                            # Check to see if it's been pre-fetched.
+                            datum = datum_cache.pop(datum_id)
+                        except KeyError:
+                            resource_uid = self.lookup_resource_for_datum(datum_id)
+                            if resource_uid not in resource_uids:
+                                # We haven't yielded this Resource yet. Look it up, and yield it.
+                                resource = self.get_resource(resource_uid)
+                                resource_uids.add(resource_uid)
+                                yield ("resource", resource)
+                                # Pre-fetch *all* the Datum documents for this resource in one query.
+                                datum_cache.update(
+                                    {
+                                        doc["datum_id"]: doc
+                                        for doc in self.get_datum_for_resource(
+                                            resource_uid
+                                        )
+                                    }
+                                )
+                                # Now get the Datum we originally were looking for.
+                                datum = datum_cache.pop(datum_id)
+                            datum_ids.add(datum_id)
+                            yield ("datum", datum)
+            elif name == "descriptor":
+                # Track which fields ("data keys") hold references to external data.
+                external_fields[doc["uid"]] = {
+                    key
+                    for key, value in doc["data_keys"].items()
+                    if value.get("external")
+                }
             yield name, doc
         stop_doc = self.metadata["stop"]
         if stop_doc is not None:
