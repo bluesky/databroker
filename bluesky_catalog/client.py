@@ -52,6 +52,7 @@ Instead, set dask or when first creating the Catalog, as in
 
 and then read() will return dask objects.""",
             DeprecationWarning,
+            stacklevel=2,
         )
         return self.new_variation(
             structure_clients=Catalog.DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]
