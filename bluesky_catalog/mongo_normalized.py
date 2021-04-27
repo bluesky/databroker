@@ -230,7 +230,7 @@ class DatasetFromDocuments:
         return array
 
     @property
-    def filler(self):
+    def _filler(self):
         if self._filler is None:
             self._filler = event_model.Filler(
                 handler_registry=self._handler_registry, root_map=self.root_map
@@ -238,6 +238,18 @@ class DatasetFromDocuments:
             for descriptor in self._event_descriptors:
                 self._filler("descriptor", descriptor)
         return self._filler
+
+    @property
+    def register_handler(self):
+        return self._filler.register_handler
+
+    @property
+    def deregister_handler(self):
+        return self._filler.deregister_handler
+
+    @property
+    def handler_registry(self):
+        self._filler.handler_registry
 
     def _get_time_coord(self, block):
         if block != (0,):
@@ -310,7 +322,7 @@ class DatasetFromDocuments:
                     "filled": {key: False},
                 }
                 filled_mock_event = _fill(
-                    self.filler,
+                    self._filler,
                     mock_event,
                     self._lookup_resource_for_datum,
                     self._get_resource,
@@ -451,7 +463,6 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         self._asset_registry_db = asset_registry_db
 
         self._handler_registry = handler_registry
-        self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
         self.root_map = root_map
         self.transforms = transforms
         self._metadata = metadata or {}
