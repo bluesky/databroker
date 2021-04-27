@@ -2,6 +2,7 @@ import collections
 import collections.abc
 import importlib
 import itertools
+import toolz.itertoolz
 import json
 import functools
 import warnings
@@ -49,7 +50,16 @@ from .queries import RawMongo, _PartialUID, _ScanID
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
     client_type_hint = "BlueskyRun"
 
-    def __init__(self, *args, handler_registry, transforms, root_map, **kwargs):
+    def __init__(
+        self,
+        *args,
+        handler_registry,
+        transforms,
+        root_map,
+        datum_collection,
+        resource_collection,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self._handler_registry = handler_registry
         self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
@@ -65,16 +75,155 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
             **kwargs,
         )
 
-    def documents(self):
+    def get_datum_for_resource(self, resource_uid):
+        return self._datum_collection.find({"resource": resource_uid}, {"_id": False})
+
+    def get_resource(self, uid):
+        doc = self._resource_collection.find_one({"uid": uid}, {"_id": False})
+
+        # Some old resource documents don't have a 'uid' and they are
+        # referenced by '_id'.
+        if doc is None:
+            try:
+                _id = ObjectId(uid)
+            except InvalidId:
+                pass
+            else:
+                doc = self._resource_collection.find_one({"_id": _id}, {"_id": False})
+                doc["uid"] = uid
+
+        if doc is None:
+            raise ValueError(f"Could not find Resource with uid={uid}")
+        return doc
+
+    def lookup_resource_for_datum(self, datum_id):
+        doc = self._datum_collection.find_one({"datum_id": datum_id})
+        if doc is None:
+            raise ValueError(f"Could not find Datum with datum_id={datum_id}")
+        return doc["resource"]
+
+    def single_documents(self, fill):
+        if fill:
+            raise NotImplementedError("Only fill=False is implemented.")
+        iters = []
+        for stream in self.values():
+
+            def iter_descriptors_and_events(stream=stream):
+                for descriptor in sorted(
+                    stream.metadata["descriptors"], key=lambda d: d["time"]
+                ):
+                    yield ("descriptor", descriptor)
+                    for event in stream.iter_events(descriptor["uid"]):
+                        yield ("event", event)
+
+            iters.append(iter_descriptors_and_events())
+        merged_iter = toolz.itertoolz.merge_sorted(
+            *iters, key=lambda item: item[1]["time"]
+        )
+
         yield ("start", self.metadata["start"])
+        for name, doc in merged_iter:
+            # TODO Add datum, resource as needed.
+            yield name, doc
         stop_doc = self.metadata["stop"]
-        # TODO: All the other documents...
         if stop_doc is not None:
             yield ("stop", stop_doc)
+
+    def batched_documents(self, fill, size=25):
+        """
+        Batch Event and Datum documents into Event Pages and Datum Pages.
+
+        Batch into groups of up to ``size``, while preserving time-ordering of
+        documents.
+        """
+        # Acculuate rows for Event Pages or Datum Pages in a cache.
+        # Drain the cache and emit the page when any of the following conditions
+        # are met:
+        # (1) We reach a document of a different type.
+        # (2) The associated Event Descriptor or Resource changes.
+        # (3) The number of rows in the cache reaches `size`.
+        cache = collections.deque()
+        current_uid = None
+        current_type = None
+
+        def handle_item(name, doc):
+            nonlocal current_uid
+            nonlocal current_type
+            if name == "event":
+                if (
+                    (current_type == "event_page")
+                    and (current_uid == doc["descriptor"])
+                    and len(cache) < size
+                ):
+                    cache.append(doc)
+                elif current_type is None:
+                    current_type = "event_page"
+                    current_uid = doc["descriptor"]
+                    cache.append(doc)
+                else:
+                    # Emit the cache and recurse.
+                    yield (current_type, event_model.pack_event_page(*cache))
+                    cache.clear()
+                    current_uid = None
+                    current_type = None
+                    yield from handle_item(name, doc)
+            elif name == "datum":
+                if (
+                    (current_type == "datum_page")
+                    and (current_uid == doc["resource"])
+                    and len(cache) < size
+                ):
+                    cache.append(doc)
+                elif current_type is None:
+                    current_type = "datum_page"
+                    current_uid = doc["resource"]
+                    cache.append(doc)
+                else:
+                    # Emit the cache and recurse
+                    yield (current_type, event_model.pack_datum_page(*cache))
+                    cache.clear()
+                    current_uid = None
+                    current_type = None
+                    yield from handle_item(name, doc)
+            else:
+                # Emit the cached page (if nonempty) and then this item.
+                if cache:
+                    if current_type == "event_page":
+                        yield (current_type, event_model.pack_event_page(*cache))
+                    elif current_type == "datum_page":
+                        yield (current_type, event_model.pack_datum_page(*cache))
+                    else:
+                        assert False
+                    cache.clear()
+                    current_uid = None
+                    current_type = None
+                yield (name, doc)
+
+        for name, doc in self.single_documents(fill=fill):
+            yield from handle_item(name, doc)
 
 
 class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
     client_type_hint = "BlueskyEventStream"
+
+    def __init__(self, *args, event_collection, cutoff_seq_num, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._event_collection = event_collection
+        self._cutoff_seq_num = cutoff_seq_num
+
+    def iter_events(self, descriptor_uid):
+        # TODO Grab paginated chunks.
+        events = list(
+            self._event_collection.find(
+                {
+                    "descriptor": descriptor_uid,
+                    "seq_num": {"$lte": self._cutoff_seq_num},
+                },
+                {"_id": False},
+                sort=[("time", pymongo.ASCENDING)],
+            )
+        )
+        yield from events
 
 
 class DatasetFromDocuments:
@@ -87,11 +236,10 @@ class DatasetFromDocuments:
     def __init__(
         self,
         *,
+        run,
         cutoff_seq_num,
         event_descriptors,
         event_collection,
-        datum_collection,
-        resource_collection,
         handler_registry,
         root_map,
         transforms,
@@ -102,8 +250,6 @@ class DatasetFromDocuments:
         self._cutoff_seq_num = cutoff_seq_num
         self._event_descriptors = event_descriptors
         self._event_collection = event_collection
-        self._datum_collection = datum_collection
-        self._resource_collection = resource_collection
         self._sub_dict = sub_dict
         self._handler_registry = handler_registry
         self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
@@ -324,42 +470,15 @@ class DatasetFromDocuments:
                 filled_mock_event = _fill(
                     self._filler,
                     mock_event,
-                    self._lookup_resource_for_datum,
-                    self._get_resource,
-                    self._get_datum_for_resource,
+                    self.run.lookup_resource_for_datum,
+                    self.run.get_resource,
+                    self.run.get_datum_for_resource,
                     last_datum_id=None,
                 )
                 filled_column.append(filled_mock_event["data"][key])
             return dask.array.stack(filled_column)
         else:
             return numpy.array(column)
-
-    def _get_datum_for_resource(self, resource_uid):
-        return self._datum_collection.find({"resource": resource_uid}, {"_id": False})
-
-    def _get_resource(self, uid):
-        doc = self._resource_collection.find_one({"uid": uid}, {"_id": False})
-
-        # Some old resource documents don't have a 'uid' and they are
-        # referenced by '_id'.
-        if doc is None:
-            try:
-                _id = ObjectId(uid)
-            except InvalidId:
-                pass
-            else:
-                doc = self._resource_collection.find_one({"_id": _id}, {"_id": False})
-                doc["uid"] = uid
-
-        if doc is None:
-            raise ValueError(f"Could not find Resource with uid={uid}")
-        return doc
-
-    def _lookup_resource_for_datum(self, datum_id):
-        doc = self._datum_collection.find_one({"datum_id": datum_id})
-        if doc is None:
-            raise ValueError(f"Could not find Datum with datum_id={datum_id}")
-        return doc["resource"]
 
 
 class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
@@ -463,6 +582,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         self._asset_registry_db = asset_registry_db
 
         self._handler_registry = handler_registry
+        self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
         self.root_map = root_map
         self.transforms = transforms
         self._metadata = metadata or {}
@@ -564,6 +684,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             handler_registry=self.handler_registry,
             transforms=self.transforms,
             root_map=self.root_map,
+            datum_collection=self._datum_collection,
+            resource_collection=self._resource_collection,
             # caches=...,
         )
 
@@ -597,8 +719,6 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                     cutoff_seq_num=cutoff_seq_num,
                     event_descriptors=event_descriptors,
                     event_collection=self._event_collection,
-                    datum_collection=self._datum_collection,
-                    resource_collection=self._resource_collection,
                     handler_registry=self._handler_registry,
                     root_map=self.root_map,
                     transforms=self.transforms,
@@ -609,7 +729,12 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         )
 
         metadata = {"descriptors": event_descriptors, "stream_name": stream_name}
-        return BlueskyEventStream(mapping, metadata=metadata)
+        return BlueskyEventStream(
+            mapping,
+            metadata=metadata,
+            event_collection=self._event_collection,
+            cutoff_seq_num=cutoff_seq_num,
+        )
 
     def __getitem__(self, key):
         # Lookup this key *within the search results* of this Catalog.
