@@ -15,10 +15,19 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
     This adds for bluesky-specific conveniences to the standard client Catalog.
     """
 
-    def documents(self):
+    def documents(self, fill=False):
+        # For back-compat with v2:
+        if fill == "yes":
+            fill = True
+        elif fill == "no":
+            fill = False
+        elif fill == "delayed":
+            raise NotImplementedError("fill='delayed' is not supported")
+        else:
+            fill = bool(fill)
         # (name, doc) pairs are streamed as newline-delimited JSON
         with self._client.stream(
-            "GET", f"/documents/{'/'.join(self._path)}"
+            "GET", f"/documents/{'/'.join(self._path)}", params={"fill": fill}
         ) as response:
             for line in response.iter_lines():
                 yield tuple(json.loads(line))
