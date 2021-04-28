@@ -3,6 +3,7 @@ import warnings
 
 from tiled.catalogs.utils import IndexCallable
 from tiled.client.catalog import Catalog
+from tiled.client.utils import handle_error
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import PartialUID, RawMongo, ScanID
@@ -29,6 +30,9 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
         with self._client.stream(
             "GET", f"/documents/{'/'.join(self._path)}", params={"fill": fill}
         ) as response:
+            if response.is_error:
+                response.read()
+                handle_error(response)
             for line in response.iter_lines():
                 yield tuple(json.loads(line))
 
