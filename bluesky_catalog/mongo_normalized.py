@@ -74,7 +74,7 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
     def filler(self):
         if self._filler is None:
             self._filler = event_model.Filler(
-                handler_registry=self._init_handler_registry, root_map=self.root_map
+                handler_registry=self._init_handler_registry, root_map=self.root_map, inplace=False,
             )
             for descriptor in itertools.chain(
                 *(stream.metadata["descriptors"] for stream in self.values())
