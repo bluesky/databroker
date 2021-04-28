@@ -45,6 +45,7 @@ from tiled.utils import OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import RawMongo, _PartialUID, _ScanID
+from .server import router
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
@@ -466,6 +467,9 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
     query_registry = QueryTranslationRegistry()
     register_query = query_registry.register
     register_query_lazy = query_registry.register_lazy
+
+    # Add a /documents route to the server.
+    include_routers = [router]
 
     @classmethod
     def from_uri(
