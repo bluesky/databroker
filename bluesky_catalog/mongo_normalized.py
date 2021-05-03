@@ -44,7 +44,7 @@ from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 from tiled.utils import OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import RawMongo, _PartialUID, _ScanID
+from .queries import RawMongo, _PartialUID, _ScanID, TimeRange
 from .server import router
 
 
@@ -949,11 +949,26 @@ def partial_uid(query, catalog):
     return CatalogInMemory(results)
 
 
+def time_range(query, catalog):
+    mongo_query = {'time': {}}
+    if query.since is not None:
+        mongo_query['time']['$gte'] = query.since
+    if query.until is not None:
+        mongo_query['time']['$lt'] = query.until
+    if not mongo_query['time']:
+        # Neither 'since' nor 'until' are set.
+        mongo_query.clear()
+    return Catalog.query_registry(RawMongo(start=mongo_query), catalog)
+
+
+
+
 Catalog.register_query(FullText, full_text_search)
 Catalog.register_query(KeyLookup, key_lookup)
 Catalog.register_query(RawMongo, raw_mongo)
 Catalog.register_query(_PartialUID, partial_uid)
 Catalog.register_query(_ScanID, scan_id)
+Catalog.register_query(TimeRange, time_range)
 
 
 class DummyAccessPolicy:
