@@ -476,9 +476,9 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
     @classmethod
     def from_uri(
         cls,
-        metadatastore,
+        uri,
         *,
-        asset_registry=None,
+        asset_registry_uri=None,
         handler_registry=None,
         root_map=None,
         transforms=None,
@@ -520,11 +520,11 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             may later be applied permanently to the data at rest
             (e.g., via a database migration).
         """
-        metadatastore_db = _get_database(metadatastore)
-        if asset_registry is None:
+        metadatastore_db = _get_database(uri)
+        if asset_registry_uri is None:
             asset_registry_db = metadatastore_db
         else:
-            asset_registry_db = _get_database(asset_registry)
+            asset_registry_db = _get_database(asset_registry_uri)
         root_map = root_map or {}
         transforms = parse_transforms(transforms)
         if handler_registry is None:
