@@ -1,6 +1,7 @@
-import json
 import warnings
 
+import httpx
+import msgpack
 from tiled.catalogs.utils import IndexCallable
 from tiled.client.catalog import Catalog
 from tiled.client.utils import handle_error
@@ -27,14 +28,55 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
         else:
             fill = bool(fill)
         # (name, doc) pairs are streamed as newline-delimited JSON
+        if isinstance(self._client, httpx.AsyncClient):
+            yield from self._stream_async(fill)
+        else:
+            yield from self._stream_sync(fill)
+
+    def _stream_async(self, fill):
+        # HACK! Revisit this once we refactor the generic "service" part
+        # out from HTTP.
+
+        import asyncio
+
+        async def drain():
+            documents = []
+            async with self._client.stream(
+                "GET",
+                f"/documents/{'/'.join(self._path)}",
+                params={"fill": fill},
+                headers={"Accept": "application/x-msgpack"},
+            ) as response:
+                if response.is_error:
+                    response.read()
+                    handle_error(response)
+                unpacker = msgpack.Unpacker()
+                async for chunk in response.aiter_raw():
+                    unpacker.feed(chunk)
+                    for item in unpacker:
+                        # This will decode as [name, doc]. We want (name, doc).
+                        documents.append(tuple(item))
+            return documents
+
+        for item in asyncio.run(drain()):
+            yield item
+
+    def _stream_sync(self, fill):
         with self._client.stream(
-            "GET", f"/documents/{'/'.join(self._path)}", params={"fill": fill}
+            "GET",
+            f"/documents/{'/'.join(self._path)}",
+            params={"fill": fill},
+            headers={"Accept": "application/x-msgpack"},
         ) as response:
             if response.is_error:
                 response.read()
                 handle_error(response)
-            for line in response.iter_lines():
-                yield tuple(json.loads(line))
+            unpacker = msgpack.Unpacker()
+            for chunk in response.iter_raw():
+                unpacker.feed(chunk)
+                for item in unpacker:
+                    # This will decode as [name, doc]. We want (name, doc).
+                    yield tuple(item)
 
     def __getattr__(self, key):
         """
