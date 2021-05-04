@@ -749,6 +749,15 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                     transforms=self.transforms,
                     sub_dict="data",
                 ),
+                "timestamps": lambda: DatasetFromDocuments(
+                    run=run,
+                    cutoff_seq_num=cutoff_seq_num,
+                    event_descriptors=event_descriptors,
+                    event_collection=self._event_collection,
+                    root_map=self.root_map,
+                    transforms=self.transforms,
+                    sub_dict="timestamps",
+                ),
                 # TODO timestamps, config, config_timestamps
             }
         )
