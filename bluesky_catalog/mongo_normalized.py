@@ -356,7 +356,10 @@ class DatasetFromDocuments:
                 if len(dim) > 1:
                     raise NotImplementedError
             # TODO Stack blocks. This selects only the first block.
-            array = self._get_column(key, block=(0,))
+            dtype = structure.data_vars[
+                variable
+            ].macro.variable.macro.data.micro.to_numpy_dtype()
+            array = self._get_column(key, block=(0,), coerce_dtype=dtype)
             data_array = xarray.DataArray(array, attrs=variable.attrs)
             data_arrays[key] = data_array
         # Build the time coordinate.
@@ -369,11 +372,15 @@ class DatasetFromDocuments:
 
     def read_block(self, variable, block, coord=None, slice=None):
         # The DataArrays generated from Events never have coords.
+        structure = self.macrostructure()
         if coord is not None:
             raise KeyError(coord)
         if variable == "time":
             return self._get_time_coord(block=block)
-        array = self._get_column(variable, block=block)
+        dtype = structure.data_vars[
+            variable
+        ].macro.variable.macro.data.micro.to_numpy_dtype()
+        array = self._get_column(variable, block=block, coerce_dtype=dtype)
         if slice is not None:
             array = array[slice]
         return array
@@ -425,10 +432,7 @@ class DatasetFromDocuments:
             column.extend(result["column"])
         return numpy.array(column)
 
-    def _get_column(self, key, block):
-        if block != (0,):
-            raise NotImplementedError
-            # TODO Implement columns that are internally chunked.
+    def _get_column(self, key, block, coerce_dtype=None):
         column = []
         for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
             # TODO When seq_num is repeated, take the last one only (sorted by
@@ -443,9 +447,7 @@ class DatasetFromDocuments:
                         },
                     },
                     # Sort by time.
-                    {
-                     "$sort": {"time": 1}
-                    },
+                    {"$sort": {"time": 1}},
                     # If seq_num is repeated, take the latest one.
                     {
                         "$group": {
@@ -457,9 +459,7 @@ class DatasetFromDocuments:
                     # sorting by time but could not be in weird cases
                     # (which I'm not aware have ever occurred) where an NTP sync
                     # moves system time backward mid-run.
-                    {
-                       "$sort": {"seq_num": 1}
-                    },
+                    {"$sort": {"seq_num": 1}},
                     # Extract the column of interest as an array.
                     {
                         "$group": {
@@ -497,9 +497,18 @@ class DatasetFromDocuments:
                     last_datum_id=None,
                 )
                 filled_column.append(filled_mock_event["data"][key])
-            return dask.array.stack(filled_column)
+            array = numpy.concatenate(filled_column)
         else:
-            return numpy.array(column)
+            array = numpy.array(column)
+        # Verify that we send it as the datatype we say it is.
+        # This addresses two things that I know of:
+        # 1. Enforcing a consistent itemsize among chunks of unicode data
+        # 2. Making a best effort to deal with wrong metadata.
+        if coerce_dtype:
+            result = array.astype(coerce_dtype)
+        else:
+            result = array
+        return result
 
 
 class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
