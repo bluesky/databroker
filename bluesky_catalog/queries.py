@@ -178,6 +178,10 @@ class TimeRange:
     until: Optional[float] = None
 
     def __init__(self, *, timezone=None, since=None, until=None):
+        # Stash the raw values just for use in the repr.
+        self._raw_since = since
+        self._raw_until = until
+
         if timezone is None:
             import tzlocal
 
@@ -194,3 +198,9 @@ class TimeRange:
         if since is not None and until is not None:
             if self.since > self.until:
                 raise ValueError("since must not be greater than until.")
+
+    def __repr__(self):
+        return (
+            f"{type(self).__name__!s}("
+            f"timezone={self.timezone!r}, since={self._raw_since!r}, until={self._raw_until!r})"
+        )
