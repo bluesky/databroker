@@ -417,7 +417,7 @@ class DatasetFromDocuments:
                     {
                         "$group": {
                             "_id": {"descriptor": "descriptor"},
-                            "column": {"$push": "$time"},
+                            "column": {"$push": "$doc.time"},
                         },
                     },
                 ]
@@ -469,7 +469,6 @@ class DatasetFromDocuments:
                     },
                 ]
             )
-            breakpoint()
             column.extend(result["column"])
 
         # If data is external, we now have a column of datum_ids, and we need
