@@ -388,12 +388,32 @@ class DatasetFromDocuments:
             # time).
             (result,) = self._event_collection.aggregate(
                 [
+                    # Select Events for this Descriptor with seq_num less than the cutoff.
                     {
                         "$match": {
                             "descriptor": descriptor["uid"],
                             "seq_num": {"$lte": self._cutoff_seq_num},
                         },
                     },
+                    # Sort by time.
+                    # {
+                    # "$sort": {"time": 1}
+                    # },
+                    # If seq_num is repeated, take the latest one.
+                    {
+                        "$group": {
+                            "_id": "$seq_num",
+                            "doc": {"$last": "$$ROOT"},
+                        },
+                    },
+                    # Re-sort, now by seq_num which *should* be equivalent to
+                    # sorting by time but could not be in weird cases
+                    # (which I'm not aware have ever occurred) where an NTP sync
+                    # moves system time backward mid-run.
+                    # {
+                    # "$sort": {"seq_num": 1}
+                    # },
+                    # Extract the column of interest as an array.
                     {
                         "$group": {
                             "_id": {"descriptor": "descriptor"},
@@ -415,20 +435,41 @@ class DatasetFromDocuments:
             # time).
             (result,) = self._event_collection.aggregate(
                 [
+                    # Select Events for this Descriptor with seq_num less than the cutoff.
                     {
                         "$match": {
                             "descriptor": descriptor["uid"],
                             "seq_num": {"$lte": self._cutoff_seq_num},
                         },
                     },
+                    # Sort by time.
+                    # {
+                    #  "$sort": {"time": 1}
+                    # },
+                    # If seq_num is repeated, take the latest one.
+                    {
+                        "$group": {
+                            "_id": "$seq_num",
+                            "doc": {"$last": "$$ROOT"},
+                        },
+                    },
+                    # Re-sort, now by seq_num which *should* be equivalent to
+                    # sorting by time but could not be in weird cases
+                    # (which I'm not aware have ever occurred) where an NTP sync
+                    # moves system time backward mid-run.
+                    # {
+                    #    "$sort": {"seq_num": 1}
+                    # },
+                    # Extract the column of interest as an array.
                     {
                         "$group": {
                             "_id": {"descriptor": "descriptor"},
-                            "column": {"$push": f"${self._sub_dict}.{key}"},
+                            "column": {"$push": f"$doc.{self._sub_dict}.{key}"},
                         },
                     },
                 ]
             )
+            breakpoint()
             column.extend(result["column"])
 
         # If data is external, we now have a column of datum_ids, and we need
