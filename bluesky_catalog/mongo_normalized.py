@@ -396,9 +396,9 @@ class DatasetFromDocuments:
                         },
                     },
                     # Sort by time.
-                    # {
-                    # "$sort": {"time": 1}
-                    # },
+                    {
+                    "$sort": {"time": 1}
+                    },
                     # If seq_num is repeated, take the latest one.
                     {
                         "$group": {
@@ -410,9 +410,9 @@ class DatasetFromDocuments:
                     # sorting by time but could not be in weird cases
                     # (which I'm not aware have ever occurred) where an NTP sync
                     # moves system time backward mid-run.
-                    # {
-                    # "$sort": {"seq_num": 1}
-                    # },
+                    {
+                    "$sort": {"seq_num": 1}
+                    },
                     # Extract the column of interest as an array.
                     {
                         "$group": {
@@ -443,9 +443,9 @@ class DatasetFromDocuments:
                         },
                     },
                     # Sort by time.
-                    # {
-                    #  "$sort": {"time": 1}
-                    # },
+                    {
+                     "$sort": {"time": 1}
+                    },
                     # If seq_num is repeated, take the latest one.
                     {
                         "$group": {
@@ -457,9 +457,9 @@ class DatasetFromDocuments:
                     # sorting by time but could not be in weird cases
                     # (which I'm not aware have ever occurred) where an NTP sync
                     # moves system time backward mid-run.
-                    # {
-                    #    "$sort": {"seq_num": 1}
-                    # },
+                    {
+                       "$sort": {"seq_num": 1}
+                    },
                     # Extract the column of interest as an array.
                     {
                         "$group": {
