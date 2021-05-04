@@ -10,8 +10,7 @@ import warnings
 from bson.objectid import ObjectId, InvalidId
 import entrypoints
 import event_model
-import dask
-import dask.array
+from dask.array.core import normalize_chunks
 import numpy
 import pymongo
 import xarray
@@ -46,6 +45,10 @@ from tiled.utils import OneShotCachedMap
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import RawMongo, _PartialUID, _ScanID, TimeRange
 from .server import router
+
+
+CHUNK_SIZE_LIMIT = "1kB"  # for testing
+CHUNK_SIZE_LIMIT = "50MB"
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
@@ -296,25 +299,31 @@ class DatasetFromDocuments:
                     attrs["units_string"] = units
                 # TODO We may soon add a more structured units type, which
                 # would likely be a dict here.
-            shape = tuple((self._cutoff_seq_num, *field_metadata["shape"]))
             if self._sub_dict == "data":
+                shape = tuple((self._cutoff_seq_num, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    # Load the data to figure out the itemsize.
+                    # Load the all the data to figure out the  itemsize.
                     # We have no other choice, except to *guess* but we'd be in
                     # trouble if our guess were too small, and we'll waste space
                     # if our guess is too large.
-                    # TODO Stack blocks. This selects only the first block.
-                    array = self._get_column(key, block=(0,))
+                    array = self._get_column(key, block=None)  # Fetch *all*.
+                    # I do not fully understand why we need this factor of 4.
+                    # Something about what itemsize means to the dtype system
+                    # versus its actual bytesize.
                     dtype.itemsize = array.itemsize // 4
             else:
                 # assert sub_dict == "timestamps"
+                shape = tuple((self._cutoff_seq_num,))
                 dtype = FLOAT_DTYPE
+            chunks = normalize_chunks(
+                ("auto",) * len(shape),
+                shape=shape,
+                limit=CHUNK_SIZE_LIMIT,
+                dtype=dtype.to_numpy_dtype(),
+            )
             data = ArrayStructure(
-                macro=ArrayMacroStructure(
-                    shape=shape,
-                    chunks=tuple((s,) for s in shape),  # TODO subdivide
-                ),
+                macro=ArrayMacroStructure(shape=shape, chunks=chunks),
                 micro=dtype,
             )
             variable = VariableStructure(
@@ -327,10 +336,16 @@ class DatasetFromDocuments:
             data_vars[key] = data_array
         # Build the time coordinate.
         shape = (self._cutoff_seq_num,)
+        chunks = normalize_chunks(
+            ("auto",) * len(shape),
+            shape=shape,
+            limit=CHUNK_SIZE_LIMIT,
+            dtype=FLOAT_DTYPE.to_numpy_dtype(),
+        )
         data = ArrayStructure(
             macro=ArrayMacroStructure(
                 shape=shape,
-                chunks=tuple((s,) for s in shape),  # TODO subdivide
+                chunks=chunks,
             ),
             micro=FLOAT_DTYPE,
         )
