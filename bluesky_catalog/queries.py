@@ -172,6 +172,7 @@ class TimeRange:
     >>> TimeRange(since='2014-07-04 05:00')
 
     """
+
     timezone: str
     since: Optional[float] = None
     until: Optional[float] = None

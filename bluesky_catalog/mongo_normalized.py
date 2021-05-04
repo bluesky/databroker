@@ -950,17 +950,15 @@ def partial_uid(query, catalog):
 
 
 def time_range(query, catalog):
-    mongo_query = {'time': {}}
+    mongo_query = {"time": {}}
     if query.since is not None:
-        mongo_query['time']['$gte'] = query.since
+        mongo_query["time"]["$gte"] = query.since
     if query.until is not None:
-        mongo_query['time']['$lt'] = query.until
-    if not mongo_query['time']:
+        mongo_query["time"]["$lt"] = query.until
+    if not mongo_query["time"]:
         # Neither 'since' nor 'until' are set.
         mongo_query.clear()
     return Catalog.query_registry(RawMongo(start=mongo_query), catalog)
-
-
 
 
 Catalog.register_query(FullText, full_text_search)
