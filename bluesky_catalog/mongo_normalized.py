@@ -74,6 +74,22 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
         self._filler = None
 
     @property
+    def metadata(self):
+        "Metadata about this Catalog."
+        # If there are transforms configured, shadow the 'start' and 'stop' documents
+        # with transfomed copies.
+        transformed = {}
+        if "start" in self.transforms:
+            transformed["start"] = self.transforms["start"](self._metadata["start"])
+        if "stop" in self.transforms:
+            transformed["stop"] = self.transforms["stop"](self._metadata["stop"])
+        metadata = collections.ChainMap(transformed, self._metadata)
+        # Ensure this is immutable (at the top level) to help the user avoid
+        # getting the wrong impression that editing this would update anything
+        # persistent.
+        return DictView(metadata)
+
+    @property
     def filler(self):
         if self._filler is None:
             self._filler = event_model.Filler(
@@ -727,18 +743,10 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
     @property
     def metadata(self):
         "Metadata about this Catalog."
-        # If there are transforms configured, shadow the 'start' and 'stop' documents
-        # with transfomed copies.
-        transformed = {}
-        if "start" in self.transforms:
-            transformed["start"] = self.transforms["start"](self._metadata["start"])
-        if "stop" in self.transforms:
-            transformed["stop"] = self.transforms["stop"](self._metadata["stop"])
-        metadata = collections.ChainMap(transformed, self._metadata)
         # Ensure this is immutable (at the top level) to help the user avoid
         # getting the wrong impression that editing this would update anything
         # persistent.
-        return DictView(metadata)
+        return DictView(self._metadata)
 
     def __repr__(self):
         # Display up to the first N keys to avoid making a giant service
