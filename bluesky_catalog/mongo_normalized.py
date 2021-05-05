@@ -206,15 +206,33 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
 class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
     client_type_hint = "BlueskyEventStream"
 
-    def __init__(self, *args, event_collection, cutoff_seq_num, **kwargs):
+    def __init__(self, *args, event_collection, cutoff_seq_num, run, **kwargs):
         super().__init__(*args, **kwargs)
         self._event_collection = event_collection
         self._cutoff_seq_num = cutoff_seq_num
+        self._run = run
+
+    @property
+    def metadata(self):
+        # If there are transforms configured, shadow the 'descriptor' documents
+        # with transfomed copies.
+        transformed = {}
+        transforms = self._run.transforms
+        if "descriptor" in transforms:
+            transformed["descriptors"] = [
+                transforms["descriptor"](d) for d in self._metadata["descriptors"]
+            ]
+        metadata = collections.ChainMap(transformed, self._metadata)
+        # Ensure this is immutable (at the top level) to help the user avoid
+        # getting the wrong impression that editing this would update anything
+        # persistent.
+        return DictView(metadata)
 
     def new_variation(self, **kwargs):
         return super().new_variation(
             event_collection=self._event_collection,
             cutoff_seq_num=self._cutoff_seq_num,
+            run=self._run,
             **kwargs,
         )
 
@@ -251,7 +269,6 @@ class DatasetFromDocuments:
         event_descriptors,
         event_collection,
         root_map,
-        transforms,
         sub_dict,
         metadata=None,
     ):
@@ -260,7 +277,6 @@ class DatasetFromDocuments:
         self._event_descriptors = event_descriptors
         self._event_collection = event_collection
         self._sub_dict = sub_dict
-        self.transforms = transforms
         self.root_map = root_map
 
     def __repr__(self):
@@ -711,10 +727,18 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
     @property
     def metadata(self):
         "Metadata about this Catalog."
+        # If there are transforms configured, shadow the 'start' and 'stop' documents
+        # with transfomed copies.
+        transformed = {}
+        if "start" in self.transforms:
+            transformed["start"] = self.transforms["start"](self._metadata["start"])
+        if "stop" in self.transforms:
+            transformed["stop"] = self.transforms["stop"](self._metadata["stop"])
+        metadata = collections.ChainMap(transformed, self._metadata)
         # Ensure this is immutable (at the top level) to help the user avoid
         # getting the wrong impression that editing this would update anything
         # persistent.
-        return DictView(self._metadata)
+        return DictView(metadata)
 
     def __repr__(self):
         # Display up to the first N keys to avoid making a giant service
@@ -782,7 +806,6 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                     event_descriptors=event_descriptors,
                     event_collection=self._event_collection,
                     root_map=self.root_map,
-                    transforms=self.transforms,
                     sub_dict="data",
                 ),
                 "timestamps": lambda: DatasetFromDocuments(
@@ -791,7 +814,6 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                     event_descriptors=event_descriptors,
                     event_collection=self._event_collection,
                     root_map=self.root_map,
-                    transforms=self.transforms,
                     sub_dict="timestamps",
                 ),
                 # TODO timestamps, config, config_timestamps
@@ -804,6 +826,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             metadata=metadata,
             event_collection=self._event_collection,
             cutoff_seq_num=cutoff_seq_num,
+            run=run,
         )
 
     def __getitem__(self, key):
