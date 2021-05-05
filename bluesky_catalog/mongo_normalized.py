@@ -1,18 +1,19 @@
 import collections
 import collections.abc
+import functools
 import importlib
 import itertools
-import toolz.itertoolz
 import json
-import functools
+import os
 import warnings
 
 from bson.objectid import ObjectId, InvalidId
 import entrypoints
 import event_model
-from dask.array.core import normalize_chunks
+from dask.array.core import normalize_chunks, slices_from_chunks
 import numpy
 import pymongo
+import toolz.itertoolz
 import xarray
 
 from tiled.structures.array import (
@@ -47,8 +48,7 @@ from .queries import RawMongo, _PartialUID, _ScanID, TimeRange
 from .server import router
 
 
-CHUNK_SIZE_LIMIT = "1kB"  # for testing
-CHUNK_SIZE_LIMIT = "50MB"
+CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "10MB")
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
@@ -307,7 +307,7 @@ class DatasetFromDocuments:
                     # We have no other choice, except to *guess* but we'd be in
                     # trouble if our guess were too small, and we'll waste space
                     # if our guess is too large.
-                    array = self._get_column(key, block=None)  # Fetch *all*.
+                    array = self._get_column(key, slices=None)  # Fetch *all*.
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
@@ -360,26 +360,21 @@ class DatasetFromDocuments:
         return None
 
     def read(self, variables=None):
+        # num_blocks = (range(len(n)) for n in chunks)
+        # for block in itertools.product(*num_blocks):
         structure = self.macrostructure()
         data_arrays = {}
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
-            variable = data_array.variable
-            # TODO Handle chunks.
-            for dim in variable.data.chunks:
-                if len(dim) > 1:
-                    raise NotImplementedError
-            # TODO Stack blocks. This selects only the first block.
-            dtype = structure.data_vars[
-                variable
-            ].macro.variable.macro.data.micro.to_numpy_dtype()
-            array = self._get_column(key, block=(0,), coerce_dtype=dtype)
-            data_array = xarray.DataArray(array, attrs=variable.attrs)
+            variable = structure.data_vars[key].macro.variable
+            dtype = variable.macro.data.micro.to_numpy_dtype()
+            array = self._get_column(key, slices=None, coerce_dtype=dtype)
+            data_array = xarray.DataArray(array, attrs=variable.macro.attrs)
             data_arrays[key] = data_array
         # Build the time coordinate.
         variable = structure.coords["time"]
-        time_coord = self._get_time_coord(block=(0,))
+        time_coord = self._get_time_coord(slice=None)
         return xarray.Dataset(data_arrays, coords={"time": time_coord})
 
     def read_variable(self, variable):
@@ -391,30 +386,40 @@ class DatasetFromDocuments:
         if coord is not None:
             raise KeyError(coord)
         if variable == "time":
-            return self._get_time_coord(block=block)
+            data_structure = structure.coords["time"].macro.data
+            chunks = data_structure.macro.chunks
+            (offset,) = block
+            (slice,) = slices_from_chunks(chunks)[offset]
+            return self._get_time_coord(slice=slice)
         dtype = structure.data_vars[
             variable
         ].macro.variable.macro.data.micro.to_numpy_dtype()
-        array = self._get_column(variable, block=block, coerce_dtype=dtype)
+        data_structure = structure.data_vars[variable].macro.variable.macro.data
+        dtype = data_structure.micro.to_numpy_dtype()
+        chunks = data_structure.macro.chunks
+        offset = sum(b * len(c) for b, c in list(zip(block, chunks))[:-1]) + block[-1]
+        slices = slices_from_chunks(chunks)[offset]
+        array = self._get_column(variable, slices=slices, coerce_dtype=dtype)
         if slice is not None:
             array = array[slice]
         return array
 
-    def _get_time_coord(self, block):
-        if block != (0,):
-            raise NotImplementedError
-            # TODO Implement columns that are internally chunked.
+    def _get_time_coord(self, slice):
+        if slice is None:
+            min_seq_num = 1
+            max_seq_num = self._cutoff_seq_num
+        else:
+            min_seq_num = 1 + slice.start
+            max_seq_num = 1 + slice.stop
         column = []
         for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
-            # TODO When seq_num is repeated, take the last one only (sorted by
-            # time).
             (result,) = self._event_collection.aggregate(
                 [
-                    # Select Events for this Descriptor with seq_num less than the cutoff.
+                    # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
                             "descriptor": descriptor["uid"],
-                            "seq_num": {"$lte": self._cutoff_seq_num},
+                            "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
                     },
                     # Sort by time.
@@ -443,18 +448,25 @@ class DatasetFromDocuments:
             column.extend(result["column"])
         return numpy.array(column)
 
-    def _get_column(self, key, block, coerce_dtype=None):
+    def _get_column(self, key, slices, coerce_dtype=None):
         column = []
+        if slices is None:
+            min_seq_num = 1
+            max_seq_num = self._cutoff_seq_num
+        else:
+            slice_ = slices[0]
+            min_seq_num = 1 + slice_.start
+            max_seq_num = 1 + slice_.stop
         for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
             # TODO When seq_num is repeated, take the last one only (sorted by
             # time).
             (result,) = self._event_collection.aggregate(
                 [
-                    # Select Events for this Descriptor with seq_num less than the cutoff.
+                    # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
                             "descriptor": descriptor["uid"],
-                            "seq_num": {"$lte": self._cutoff_seq_num},
+                            "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
                     },
                     # Sort by time.
@@ -511,14 +523,18 @@ class DatasetFromDocuments:
             array = numpy.concatenate(filled_column)
         else:
             array = numpy.array(column)
+        if slices[1:]:
+            sliced_array = array[slices[1:]]]
+        else:
+            sliced_array = array
         # Verify that we send it as the datatype we say it is.
         # This addresses two things that I know of:
         # 1. Enforcing a consistent itemsize among chunks of unicode data
         # 2. Making a best effort to deal with wrong metadata.
         if coerce_dtype:
-            result = array.astype(coerce_dtype)
+            result = sliced_array.astype(coerce_dtype)
         else:
-            result = array
+            result = sliced_array
         return result
 
 
