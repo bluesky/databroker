@@ -524,7 +524,7 @@ class DatasetFromDocuments:
         else:
             array = numpy.array(column)
         if slices[1:]:
-            sliced_array = array[slices[1:]]]
+            sliced_array = array[slices[1:]]
         else:
             sliced_array = array
         # Verify that we send it as the datatype we say it is.
