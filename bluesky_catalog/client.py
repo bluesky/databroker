@@ -8,6 +8,17 @@ from tiled.client.utils import handle_error
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import PartialUID, RawMongo, ScanID
+from .document import Start, Stop, Descriptor, EventPage, DatumPage, Resource
+
+
+_document_types = {
+    "start": Start,
+    "stop": Stop,
+    "descriptor": Descriptor,
+    "event_page": EventPage,
+    "datum_page": DatumPage,
+    "resource": Resource,
+}
 
 
 class BlueskyRun(BlueskyRunMixin, Catalog):
@@ -53,9 +64,9 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
                 unpacker = msgpack.Unpacker()
                 async for chunk in response.aiter_raw():
                     unpacker.feed(chunk)
-                    for item in unpacker:
+                    for name, doc in unpacker:
                         # This will decode as [name, doc]. We want (name, doc).
-                        documents.append(tuple(item))
+                        documents.append((name, _document_types[name](doc)))
             return documents
 
         for item in asyncio.run(drain()):
@@ -74,9 +85,8 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
             unpacker = msgpack.Unpacker()
             for chunk in response.iter_raw():
                 unpacker.feed(chunk)
-                for item in unpacker:
-                    # This will decode as [name, doc]. We want (name, doc).
-                    yield tuple(item)
+                for name, doc in unpacker:
+                    yield (name, _document_types[name](doc))
 
     def __getattr__(self, key):
         """
