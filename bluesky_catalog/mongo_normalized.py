@@ -145,7 +145,11 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
 
         if doc is None:
             raise ValueError(f"Could not find Resource with uid={uid}")
-        return doc
+        if "resource" in self.transforms:
+            transformed_doc = self.transforms["resource"](doc)
+        else:
+            transformed_doc = doc
+        return transformed_doc
 
     def lookup_resource_for_datum(self, datum_id):
         doc = self._datum_collection.find_one({"datum_id": datum_id})
