@@ -1,7 +1,6 @@
 import collections
 import collections.abc
 import functools
-import importlib
 import itertools
 import json
 import os
@@ -41,7 +40,7 @@ from tiled.catalogs.utils import (
     UNCHANGED,
 )
 from tiled.catalogs.in_memory import Catalog as CatalogInMemory
-from tiled.utils import OneShotCachedMap
+from tiled.utils import import_object, OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import RawMongo, _PartialUID, _ScanID, TimeRange
@@ -1214,14 +1213,23 @@ def parse_handler_registry(handler_registry):
     {'my_spec': <package.module.ClassName>}
 
     """
+    return _parse_dict_of_objs_or_importable_strings(handler_registry)
+
+
+def _parse_dict_of_objs_or_importable_strings(d):
     result = {}
-    for spec, handler_str in handler_registry.items():
-        if isinstance(handler_str, str):
-            module_name, _, class_name = handler_str.rpartition(".")
-            class_ = getattr(importlib.import_module(module_name), class_name)
+    for key, value in d.items():
+        if isinstance(value, str):
+            try:
+                class_ = import_object(value)
+            except Exception:
+                # For back-compat, trying transforming 'a.b.c' into 'a.b:c'.
+                edited_value = ":".join(value.rsplit(".", 1))
+                class_ = import_object(edited_value)
+                # TODO Warn.
         else:
-            class_ = handler_str
-        result[spec] = class_
+            class_ = value
+        result[key] = class_
     return result
 
 
@@ -1248,39 +1256,21 @@ def parse_transforms(transforms):
     {'descriptor': <package.module.function_name>}
 
     """
-    transformable = {"start", "stop", "resource", "descriptor"}
-
     if transforms is None:
-        result = {key: _no_op for key in transformable}
-        return result
+        return
     elif isinstance(transforms, collections.abc.Mapping):
-        if len(transforms.keys() - transformable) > 0:
+        allowed_keys = {"start", "stop", "resource", "descriptor"}
+        if (transforms.keys() - allowed_keys):
             raise NotImplementedError(
-                f"Transforms for {transforms.keys() - transformable} "
+                f"Transforms for {transforms.keys() - allowed_keys} "
                 f"are not supported."
             )
-        result = {}
-
-        for name in transformable:
-            transform = transforms.get(name)
-            if isinstance(transform, str):
-                module_name, _, class_name = transform.rpartition(".")
-                function = getattr(importlib.import_module(module_name), class_name)
-            elif transform is None:
-                function = _no_op
-            else:
-                function = transform
-            result[name] = function
-        return result
     else:
         raise ValueError(
             f"Invalid transforms argument {transforms}. "
             f"transforms must be None or a dictionary."
         )
-
-
-def _no_op(doc):
-    return doc
+    return _parse_dict_of_objs_or_importable_strings(transforms)
 
 
 BOOLEAN_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("bool"))
