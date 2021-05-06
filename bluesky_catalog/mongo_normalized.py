@@ -1262,7 +1262,7 @@ def parse_transforms(transforms):
         return
     elif isinstance(transforms, collections.abc.Mapping):
         allowed_keys = {"start", "stop", "resource", "descriptor"}
-        if (transforms.keys() - allowed_keys):
+        if transforms.keys() - allowed_keys:
             raise NotImplementedError(
                 f"Transforms for {transforms.keys() - allowed_keys} "
                 f"are not supported."
