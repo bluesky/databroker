@@ -1379,7 +1379,10 @@ def batch_documents(singles, size):
                 cache.append(doc)
             else:
                 # Emit the cache and recurse.
-                yield (current_type, event_model.pack_event_page(*cache))
+                if current_type == "event_page":
+                    yield (current_type, event_model.pack_event_page(*cache))
+                if current_type == "datum_page":
+                    yield (current_type, event_model.pack_datum_page(*cache))
                 cache.clear()
                 current_uid = None
                 current_type = None
@@ -1397,7 +1400,10 @@ def batch_documents(singles, size):
                 cache.append(doc)
             else:
                 # Emit the cache and recurse
-                yield (current_type, event_model.pack_datum_page(*cache))
+                if current_type == "event_page":
+                    yield (current_type, event_model.pack_event_page(*cache))
+                if current_type == "datum_page":
+                    yield (current_type, event_model.pack_datum_page(*cache))
                 cache.clear()
                 current_uid = None
                 current_type = None
