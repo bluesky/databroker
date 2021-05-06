@@ -200,7 +200,7 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
                                 # Now get the Datum we originally were looking for.
                                 datum = datum_cache.pop(datum_id)
                             datum_ids.add(datum_id)
-                            yield ("datum", datum)
+                        yield ("datum", datum)
             elif name == "descriptor":
                 # Track which fields ("data keys") hold references to external data.
                 external_fields[doc["uid"]] = {
