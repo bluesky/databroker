@@ -557,11 +557,11 @@ class DatasetFromDocuments:
                     last_datum_id=None,
                 )
                 filled_column.append(filled_mock_event["data"][key])
-            array = numpy.concatenate(filled_column)
+            array = numpy.stack(filled_column)
         else:
-            array = numpy.array(column)
+            array = numpy.stack(column)
         if slices[1:]:
-            sliced_array = array[slices[1:]]
+            sliced_array = array[(..., *slices[1:])]
         else:
             sliced_array = array
         # Verify that we send it as the datatype we say it is.
