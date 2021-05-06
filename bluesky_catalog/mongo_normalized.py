@@ -536,6 +536,7 @@ class DatasetFromDocuments:
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the last one from the
         # loop above.
+        expected_shape = descriptor["data_keys"][key]["shape"]
         if descriptor["data_keys"][key].get("external"):
             filled_column = []
             descriptor_uid = descriptor["uid"]
@@ -556,6 +557,13 @@ class DatasetFromDocuments:
                     self._run.get_datum_for_resource,
                     last_datum_id=None,
                 )
+                filled_data = filled_mock_event["data"][key]
+                if filled_data.shape != expected_shape:
+                    raise BadShapeMetadata(
+                        f"Actual shape {filled_data.shape} does not "
+                        f"match expected shape {expected_shape}."
+                    )
+
                 filled_column.append(filled_mock_event["data"][key])
             array = numpy.stack(filled_column)
         else:
@@ -1410,3 +1418,7 @@ def batch_documents(singles, size):
 
     for name, doc in singles:
         yield from handle_item(name, doc)
+
+
+class BadShapeMetadata(Exception):
+    pass
