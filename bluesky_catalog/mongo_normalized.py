@@ -49,7 +49,7 @@ from .queries import RawMongo, _PartialUID, _ScanID, TimeRange
 from .server import router
 
 
-CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "10MB")
+CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
 
 
 class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
