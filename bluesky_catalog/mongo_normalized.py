@@ -65,7 +65,7 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.transforms = transforms
+        self.transforms = transforms or {}
         self.root_map = root_map
         self._datum_collection = datum_collection
         self._resource_collection = resource_collection
@@ -680,7 +680,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         self._handler_registry = handler_registry
         self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
         self.root_map = root_map
-        self.transforms = transforms
+        self.transforms = transforms or {}
         self._metadata = metadata or {}
         self.queries = tuple(queries or [])
         if (access_policy is not None) and (
