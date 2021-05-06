@@ -551,9 +551,9 @@ class DatasetFromDocuments:
                 filled_mock_event = _fill(
                     self._run.filler,
                     mock_event,
-                    self.run.lookup_resource_for_datum,
-                    self.run.get_resource,
-                    self.run.get_datum_for_resource,
+                    self._run.lookup_resource_for_datum,
+                    self._run.get_resource,
+                    self._run.get_datum_for_resource,
                     last_datum_id=None,
                 )
                 filled_column.append(filled_mock_event["data"][key])
