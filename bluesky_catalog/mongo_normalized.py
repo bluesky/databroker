@@ -803,7 +803,25 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         N = 10
         return catalog_repr(self, self._keys_slice(0, N))
 
+    def _get_run(self, run_start_doc):
+        "Get a BlueskyRun, either from a cache or by making one if needed."
+        uid = run_start_doc["uid"]
+        try:
+            return self._cache_of_bluesky_runs[uid]
+        except KeyError:
+            run = self._build_run(run_start_doc)
+            # Choose a cache depending on whethter the run is complete (in
+            # which case updates are rare) or incomplete/partial (in which case
+            # more data is likely incoming soon).
+            if run.metadata.get("stop") is None:
+                self._cache_of_partial_bluesky_runs[uid] = run
+            else:
+                self._cache_of_complete_bluesky_runs[uid] = run
+            return run
+
     def _build_run(self, run_start_doc):
+        "This should not be called directly, even internally. Use _get_run."
+        # Instantiate a BlueskyRun for this run_start_doc.
         uid = run_start_doc["uid"]
         # This may be None; that's fine.
         run_stop_doc = self._get_stop_doc(uid)
@@ -819,7 +837,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 stream_name=stream_name,
                 is_complete=(run_stop_doc is not None),
             )
-        run = BlueskyRun(
+        return BlueskyRun(
             OneShotCachedMap(mapping),
             metadata={"start": run_start_doc, "stop": run_stop_doc},
             handler_registry=self.handler_registry,
@@ -828,14 +846,6 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
         )
-        # Cache depending on whethter it is complete (in which case updates are
-        # rare) or incomplete/partial (in which case more data is likely
-        # incoming soon).
-        if run_stop_doc is None:
-            self._cache_of_partial_bluesky_runs[uid] = run
-        else:
-            self._cache_of_complete_bluesky_runs[uid] = run
-        return run
 
     def _build_event_stream(self, *, run_start_uid, stream_name, is_complete):
         event_descriptors = list(
@@ -894,15 +904,12 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         )
 
     def __getitem__(self, key):
-        try:
-            return self._cache_of_bluesky_runs[key]
-        except KeyError:
-            # Lookup this key *within the search results* of this Catalog.
-            query = self._build_mongo_query({"uid": key})
-            run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
-            if run_start_doc is None:
-                raise KeyError(key)
-            return self._build_run(run_start_doc)
+        # Lookup this key *within the search results* of this Catalog.
+        query = self._build_mongo_query({"uid": key})
+        run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
+        if run_start_doc is None:
+            raise KeyError(key)
+        return self._get_run(run_start_doc)
 
     def _chunked_find(self, collection, query, *args, skip=0, limit=None, **kwargs):
         # This is an internal chunking that affects how much we pull from
@@ -1027,10 +1034,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             limit=limit,
         ):
             uid = run_start_doc["uid"]
-            try:
-                run = self._cache_of_bluesky_runs[uid]
-            except KeyError:
-                run = self._build_run(run_start_doc)
+            run = self._get_run(run_start_doc)
             yield (uid, run)
 
     def _item_by_index(self, index):
@@ -1047,10 +1051,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             )
         )
         uid = run_start_doc["uid"]
-        try:
-            run = self._cache_of_bluesky_runs[uid]
-        except KeyError:
-            run = self._build_run(run_start_doc)
+        run = self._get_run(run_start_doc)
         return (uid, run)
 
 
