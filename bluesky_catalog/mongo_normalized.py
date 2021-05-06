@@ -1,5 +1,6 @@
 import collections
 import collections.abc
+import copy
 import functools
 import itertools
 import json
@@ -777,7 +778,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             OneShotCachedMap(mapping),
             metadata={"start": run_start_doc, "stop": run_stop_doc},
             handler_registry=self.handler_registry,
-            transforms=self.transforms,
+            transforms=copy.copy(self.transforms),
             root_map=self.root_map,
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
