@@ -536,7 +536,7 @@ class DatasetFromDocuments:
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the last one from the
         # loop above.
-        expected_shape = descriptor["data_keys"][key]["shape"]
+        expected_shape = tuple(descriptor["data_keys"][key]["shape"])
         if descriptor["data_keys"][key].get("external"):
             filled_column = []
             descriptor_uid = descriptor["uid"]
