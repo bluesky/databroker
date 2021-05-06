@@ -4,5 +4,7 @@ fastapi
 msgpack
 pydantic
 pymongo
+pytz
 starlette
 toolz
+tzlocal
