@@ -1,3 +1,4 @@
+cachetools
 entrypoints
 event-model
 fastapi
