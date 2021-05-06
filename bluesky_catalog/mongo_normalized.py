@@ -9,6 +9,7 @@ import os
 import warnings
 
 from bson.objectid import ObjectId, InvalidId
+import cachetools
 import entrypoints
 import event_model
 from dask.array.core import cached_cumsum, normalize_chunks
@@ -615,6 +616,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         metadata=None,
         access_policy=None,
         authenticated_identity=None,
+        cache_ttl_complete=60,  # seconds
+        cache_ttl_partial=2,  # seconds
     ):
         """
         Create a Catalog from MongoDB with the "normalized" (original) layout.
@@ -649,6 +652,12 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             erroneous metadata. It is intended for quick, temporary fixes that
             may later be applied permanently to the data at rest
             (e.g., via a database migration).
+        cache_ttl_partial : float
+            Time (in seconds) to cache a *partial* (i.e. incomplete, ongoing)
+            BlueskyRun before checking the database for updates. Default 2.
+        cache_ttl_complete : float
+            Time (in seconds) to cache a *complete* BlueskyRun before checking
+            the database for updates. Default 60.
         """
         metadatastore_db = _get_database(uri)
         if asset_registry_uri is None:
@@ -660,12 +669,21 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         if handler_registry is None:
             handler_registry = discover_handlers()
         handler_registry = parse_handler_registry(handler_registry)
+        # Two different caches with different eviction rules.
+        cache_of_complete_bluesky_runs = cachetools.TTLCache(
+            ttl=cache_ttl_complete, maxsize=100
+        )
+        cache_of_partial_bluesky_runs = cachetools.TTLCache(
+            ttl=cache_ttl_partial, maxsize=100
+        )
         return cls(
             metadatastore_db=metadatastore_db,
             asset_registry_db=asset_registry_db,
             handler_registry=handler_registry,
             root_map=root_map,
             transforms=transforms,
+            cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
+            cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
             access_policy=access_policy,
             authenticated_identity=authenticated_identity,
@@ -678,6 +696,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         handler_registry,
         root_map,
         transforms,
+        cache_of_complete_bluesky_runs,
+        cache_of_partial_bluesky_runs,
         metadata=None,
         queries=None,
         access_policy=None,
@@ -699,6 +719,11 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         self.handler_registry = event_model.HandlerRegistryView(self._handler_registry)
         self.root_map = root_map
         self.transforms = transforms or {}
+        self._cache_of_complete_bluesky_runs = cache_of_complete_bluesky_runs
+        self._cache_of_partial_bluesky_runs = cache_of_partial_bluesky_runs
+        self._cache_of_bluesky_runs = collections.ChainMap(
+            cache_of_complete_bluesky_runs, cache_of_partial_bluesky_runs
+        )
         self._metadata = metadata or {}
         self.queries = tuple(queries or [])
         if (access_policy is not None) and (
@@ -748,6 +773,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             handler_registry=self.handler_registry,
             root_map=self.root_map,
             transforms=self.transforms,
+            cache_of_complete_bluesky_runs=self._cache_of_complete_bluesky_runs,
+            cache_of_partial_bluesky_runs=self._cache_of_partial_bluesky_runs,
             queries=queries,
             access_policy=self.access_policy,
             authenticated_identity=authenticated_identity,
@@ -792,7 +819,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 stream_name=stream_name,
                 is_complete=(run_stop_doc is not None),
             )
-        return BlueskyRun(
+        run = BlueskyRun(
             OneShotCachedMap(mapping),
             metadata={"start": run_start_doc, "stop": run_stop_doc},
             handler_registry=self.handler_registry,
@@ -800,8 +827,15 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             root_map=copy.copy(self.root_map),
             datum_collection=self._datum_collection,
             resource_collection=self._resource_collection,
-            # caches=...,
         )
+        # Cache depending on whethter it is complete (in which case updates are
+        # rare) or incomplete/partial (in which case more data is likely
+        # incoming soon).
+        if run_stop_doc is None:
+            self._cache_of_partial_bluesky_runs[uid] = run
+        else:
+            self._cache_of_complete_bluesky_runs[uid] = run
+        return run
 
     def _build_event_stream(self, *, run_start_uid, stream_name, is_complete):
         event_descriptors = list(
@@ -860,12 +894,15 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         )
 
     def __getitem__(self, key):
-        # Lookup this key *within the search results* of this Catalog.
-        query = self._build_mongo_query({"uid": key})
-        run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
-        if run_start_doc is None:
-            raise KeyError(key)
-        return self._build_run(run_start_doc)
+        try:
+            return self._cache_of_bluesky_runs[key]
+        except KeyError:
+            # Lookup this key *within the search results* of this Catalog.
+            query = self._build_mongo_query({"uid": key})
+            run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
+            if run_start_doc is None:
+                raise KeyError(key)
+            return self._build_run(run_start_doc)
 
     def _chunked_find(self, collection, query, *args, skip=0, limit=None, **kwargs):
         # This is an internal chunking that affects how much we pull from
@@ -989,7 +1026,12 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             skip=skip,
             limit=limit,
         ):
-            yield (run_start_doc["uid"], self._build_run(run_start_doc))
+            uid = run_start_doc["uid"]
+            try:
+                run = self._cache_of_bluesky_runs[uid]
+            except KeyError:
+                run = self._build_run(run_start_doc)
+            yield (uid, run)
 
     def _item_by_index(self, index):
         if index >= len(self):
@@ -1004,9 +1046,12 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 limit=1,
             )
         )
-        key = run_start_doc["uid"]
-        value = self._build_run(run_start_doc)
-        return (key, value)
+        uid = run_start_doc["uid"]
+        try:
+            run = self._cache_of_bluesky_runs[uid]
+        except KeyError:
+            run = self._build_run(run_start_doc)
+        return (uid, run)
 
 
 def full_text_search(query, catalog):
