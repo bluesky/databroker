@@ -1,3 +1,4 @@
+import builtins
 import collections
 import collections.abc
 import copy
@@ -10,7 +11,7 @@ import warnings
 from bson.objectid import ObjectId, InvalidId
 import entrypoints
 import event_model
-from dask.array.core import normalize_chunks, slices_from_chunks
+from dask.array.core import cached_cumsum, normalize_chunks
 import numpy
 import pymongo
 import toolz.itertoolz
@@ -425,9 +426,13 @@ class DatasetFromDocuments:
         if variable == "time":
             data_structure = structure.coords["time"].macro.data
             chunks = data_structure.macro.chunks
-            (offset,) = block
-            (slice,) = slices_from_chunks(chunks)[offset]
-            return self._get_time_coord(slice=slice)
+            cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
+            slices_for_chunks = [
+                    [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
+                    for starts, shapes in zip(cumdims, chunks)
+                ]
+            (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
+            return self._get_time_coord(slice=slice_)
         dtype = structure.data_vars[
             variable
         ].macro.variable.macro.data.micro.to_numpy_dtype()
@@ -435,7 +440,12 @@ class DatasetFromDocuments:
         dtype = data_structure.micro.to_numpy_dtype()
         chunks = data_structure.macro.chunks
         offset = sum(b * len(c) for b, c in list(zip(block, chunks))[:-1]) + block[-1]
-        slices = slices_from_chunks(chunks)[offset]
+        cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
+        slices_for_chunks = [
+                [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
+                for starts, shapes in zip(cumdims, chunks)
+            ]
+        slices = [s[index] for s, index in zip(slices_for_chunks, block)]
         array = self._get_column(variable, slices=slices, coerce_dtype=dtype)
         if slice is not None:
             array = array[slice]
