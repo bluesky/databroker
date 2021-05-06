@@ -418,9 +418,9 @@ class DatasetFromDocuments:
         return self.read(variables=[variable])[variable]
 
     def read_block(self, variable, block, coord=None, slice=None):
-        # The DataArrays generated from Events never have coords.
         structure = self.macrostructure()
         if coord is not None:
+            # The DataArrays generated from Events never have coords.
             raise KeyError(coord)
         if variable == "time":
             data_structure = structure.coords["time"].macro.data
