@@ -293,6 +293,7 @@ class DatasetFromDocuments:
         metadata=None,
     ):
         self._metadata = metadata or {}
+        self._run = run
         self._cutoff_seq_num = cutoff_seq_num
         self._event_descriptors = event_descriptors
         self._event_collection = event_collection
@@ -548,7 +549,7 @@ class DatasetFromDocuments:
                     "filled": {key: False},
                 }
                 filled_mock_event = _fill(
-                    self.run.filler,
+                    self._run.filler,
                     mock_event,
                     self.run.lookup_resource_for_datum,
                     self.run.get_resource,
