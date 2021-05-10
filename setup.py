@@ -68,9 +68,9 @@ setup(
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     entry_points={
         "tiled.special_client": [
-            "CatalogOfBlueskyRuns = bluesky_catalog.client:CatalogOfBlueskyRuns",
-            "BlueskyRun = bluesky_catalog.client:BlueskyRun",
-            "BlueskyEventStream = bluesky_catalog.client:BlueskyEventStream",
+            "CatalogOfBlueskyRuns = databroker.client:CatalogOfBlueskyRuns",
+            "BlueskyRun = databroker.client:BlueskyRun",
+            "BlueskyEventStream = databroker.client:BlueskyEventStream",
         ],
     },
     classifiers=[
