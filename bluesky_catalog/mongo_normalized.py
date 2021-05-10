@@ -623,9 +623,9 @@ class Config(CatalogInMemory):
     ...
 
 
-class ConfigDatasetFromDocuments:
+class ConfigDatasetFromDocuments(DatasetFromDocuments):
     """
-    An xarray.Dataset from a sub-dict of an Event stream
+    An xarray.Dataset from a configuration sub-dict of an Event stream
     """
 
     structure_family = "dataset"
@@ -648,13 +648,6 @@ class ConfigDatasetFromDocuments:
         self._event_collection = event_collection
         self._object_name = object_name
         self._sub_dict = sub_dict
-
-    def __repr__(self):
-        return f"<{type(self).__name__}>"
-
-    @property
-    def metadata(self):
-        return DictView(self._metadata)
 
     def macrostructure(self):
         # The `data_keys` in a series of Event Descriptor documents with the same
@@ -740,106 +733,6 @@ class ConfigDatasetFromDocuments:
         return DatasetMacroStructure(
             data_vars=data_vars, coords={"time": variable}, attrs={}
         )
-
-    def microstructure(self):
-        return None
-
-    def read(self, variables=None):
-        # num_blocks = (range(len(n)) for n in chunks)
-        # for block in itertools.product(*num_blocks):
-        structure = self.macrostructure()
-        data_arrays = {}
-        for key, data_array in structure.data_vars.items():
-            if (variables is not None) and (key not in variables):
-                continue
-            variable = structure.data_vars[key].macro.variable
-            dtype = variable.macro.data.micro.to_numpy_dtype()
-            array = self._get_column(key, slices=None, coerce_dtype=dtype)
-            data_array = xarray.DataArray(array, attrs=variable.macro.attrs)
-            data_arrays[key] = data_array
-        # Build the time coordinate.
-        variable = structure.coords["time"]
-        time_coord = self._get_time_coord(slice=None)
-        return xarray.Dataset(data_arrays, coords={"time": time_coord})
-
-    def read_variable(self, variable):
-        return self.read(variables=[variable])[variable]
-
-    def read_block(self, variable, block, coord=None, slice=None):
-        structure = self.macrostructure()
-        if coord is not None:
-            # The DataArrays generated from Events never have coords.
-            raise KeyError(coord)
-        if variable == "time":
-            data_structure = structure.coords["time"].macro.data
-            chunks = data_structure.macro.chunks
-            cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
-            slices_for_chunks = [
-                [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
-                for starts, shapes in zip(cumdims, chunks)
-            ]
-            (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
-            return self._get_time_coord(slice=slice_)
-        dtype = structure.data_vars[
-            variable
-        ].macro.variable.macro.data.micro.to_numpy_dtype()
-        data_structure = structure.data_vars[variable].macro.variable.macro.data
-        dtype = data_structure.micro.to_numpy_dtype()
-        chunks = data_structure.macro.chunks
-        cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
-        slices_for_chunks = [
-            [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
-            for starts, shapes in zip(cumdims, chunks)
-        ]
-        slices = [s[index] for s, index in zip(slices_for_chunks, block)]
-        array = self._get_column(variable, slices=slices, coerce_dtype=dtype)
-        if slice is not None:
-            array = array[slice]
-        return array
-
-    def _get_time_coord(self, slice):
-        if slice is None:
-            min_seq_num = 1
-            max_seq_num = self._cutoff_seq_num
-        else:
-            min_seq_num = 1 + slice.start
-            max_seq_num = 1 + slice.stop
-        column = []
-        for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
-            (result,) = self._event_collection.aggregate(
-                [
-                    # Select Events for this Descriptor with the appropriate seq_num range.
-                    {
-                        "$match": {
-                            "descriptor": descriptor["uid"],
-                            "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
-                        },
-                    },
-                    # Sort by time.
-                    {"$sort": {"time": 1}},
-                    # If seq_num is repeated, take the latest one.
-                    {
-                        "$group": {
-                            "_id": "$seq_num",
-                            "doc": {"$last": "$$ROOT"},
-                        },
-                    },
-                    # Re-sort, now by seq_num which *should* be equivalent to
-                    # sorting by time but could not be in weird cases
-                    # (which I'm not aware have ever occurred) where an NTP sync
-                    # moves system time backward mid-run.
-                    {"$sort": {"seq_num": 1}},
-                    # Extract the column of interest as an array.
-                    {
-                        "$group": {
-                            "_id": {"descriptor": "descriptor"},
-                            "column": {"$push": "$doc.time"},
-                        },
-                    },
-                ]
-            )
-            column.extend(result["column"])
-        return numpy.array(column)
 
     def _get_column(self, key, slices, coerce_dtype=None):
         to_stack = []
