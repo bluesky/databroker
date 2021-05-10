@@ -28,6 +28,26 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
     This adds for bluesky-specific conveniences to the standard client Catalog.
     """
 
+    @property
+    def start(self):
+        """
+        The Run Start document. A convenience alias:
+
+        >>> run.start is run.metadata["start"]
+        True
+        """
+        return self.metadata["start"]
+
+    @property
+    def stop(self):
+        """
+        The Run Stop document. A convenience alias:
+
+        >>> run.stop is run.metadata["stop"]
+        True
+        """
+        return self.metadata["stop"]
+
     def documents(self, fill=False):
         # For back-compat with v2:
         if fill == "yes":
