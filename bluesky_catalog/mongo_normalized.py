@@ -778,7 +778,6 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 validated_value = _validate_shape(numpy.asarray(value), expected_shape)
             else:
                 validated_value = value
-            ndim = len(expected_shape)
             chunk = numpy.tile(validated_value, (num,))
             to_stack.extend(chunk)
 
