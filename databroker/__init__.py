@@ -1,9 +1,4 @@
-# Import intake to run driver discovery first and avoid circular import issues.
 import logging
-
-import intake  # noqa: F401
-from intake.catalog.default import load_combo_catalog
-from intake.catalog.local import MergedCatalog, EntrypointsCatalog
 
 from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
 from .utils import (  # noqa: 401
@@ -11,18 +6,8 @@ from .utils import (  # noqa: 401
     wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct,  # noqa: F401
     catalog_search_path)  # noqa: F401
 
-from .discovery import V0Catalog
-
-
 logger = logging.getLogger(__name__)
 
-
-# A catalog created from discovered entrypoints, v0, and intake YAML catalogs.
-yaml_catalogs = load_combo_catalog()
-catalog = MergedCatalog([
-    EntrypointsCatalog(),
-    V0Catalog(),
-    load_combo_catalog()])
 
 # set version string using versioneer
 from ._version import get_versions  # noqa: F402, E402
