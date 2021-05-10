@@ -879,14 +879,14 @@ class ConfigDatasetFromDocuments:
                     },
                 ]
             )
-            num = result["max"] - result["min"]
+            num = 1 + result["max"] - result["min"]
             value = descriptor["configuration"][self._object_name][self._sub_dict][key]
             if expected_shape:
                 validated_value = _validate_shape(numpy.asarray(value), expected_shape)
             else:
                 validated_value = value
             ndim = len(expected_shape)
-            chunk = (numpy.tile(validated_value, (num,) + ndim * (1,) or 1),)
+            chunk = numpy.tile(validated_value, (num,))
             to_stack.extend(chunk)
 
         array = numpy.stack(to_stack)
