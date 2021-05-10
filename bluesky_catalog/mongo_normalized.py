@@ -600,7 +600,297 @@ class DatasetFromDocuments:
         else:
             to_stack = column
         array = numpy.stack(to_stack)
-        if slices[1:]:
+        if slices:
+            sliced_array = array[(..., *slices[1:])]
+        else:
+            sliced_array = array
+        # Verify that we send it as the datatype we say it is.
+        # This addresses two things that I know of:
+        # 1. Enforcing a consistent itemsize among chunks of unicode data
+        # 2. Making a best effort to deal with wrong metadata.
+        if coerce_dtype:
+            result = sliced_array.astype(coerce_dtype)
+        else:
+            result = sliced_array
+        return result
+
+
+class Config(CatalogInMemory):
+    """
+    Catalog of configuration datasets, keyed on 'object' (e.g. device)
+    """
+
+    ...
+
+
+class ConfigDatasetFromDocuments:
+    """
+    An xarray.Dataset from a sub-dict of an Event stream
+    """
+
+    structure_family = "dataset"
+
+    def __init__(
+        self,
+        *,
+        run,
+        cutoff_seq_num,
+        event_descriptors,
+        event_collection,
+        object_name,
+        sub_dict,
+        metadata=None,
+    ):
+        self._metadata = metadata or {}
+        self._run = run
+        self._cutoff_seq_num = cutoff_seq_num
+        self._event_descriptors = event_descriptors
+        self._event_collection = event_collection
+        self._object_name = object_name
+        self._sub_dict = sub_dict
+
+    def __repr__(self):
+        return f"<{type(self).__name__}>"
+
+    @property
+    def metadata(self):
+        return DictView(self._metadata)
+
+    def macrostructure(self):
+        # The `data_keys` in a series of Event Descriptor documents with the same
+        # `name` MUST be alike, so we can choose one arbitrarily.
+        descriptor, *_ = self._event_descriptors
+        data_vars = {}
+        dim_counter = itertools.count()
+        data_keys = (
+            descriptor.get("configuration", {})
+            .get(self._object_name, {})
+            .get("data_keys", {})
+        )
+        for key, field_metadata in data_keys.items():
+            # if the EventDescriptor doesn't provide names for the
+            # dimensions (it's optional) use the same default dimension
+            # names that xarray would.
+            try:
+                dims = ["time"] + field_metadata["dims"]
+            except KeyError:
+                ndim = len(field_metadata["shape"])
+                dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
+            attrs = {}
+            units = field_metadata.get("units")
+            if units:
+                if isinstance(units, str):
+                    attrs["units_string"] = units
+                # TODO We may soon add a more structured units type, which
+                # would likely be a dict here.
+            if self._sub_dict == "data":
+                shape = tuple((self._cutoff_seq_num, *field_metadata["shape"]))
+                dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
+                if dtype.kind == Kind.unicode:
+                    # Load the all the data to figure out the  itemsize.
+                    # We have no other choice, except to *guess* but we'd be in
+                    # trouble if our guess were too small, and we'll waste space
+                    # if our guess is too large.
+                    array = self._get_column(key, slices=None)  # Fetch *all*.
+                    # I do not fully understand why we need this factor of 4.
+                    # Something about what itemsize means to the dtype system
+                    # versus its actual bytesize.
+                    dtype.itemsize = array.itemsize // 4
+            else:
+                # assert sub_dict == "timestamps"
+                shape = tuple((self._cutoff_seq_num,))
+                dtype = FLOAT_DTYPE
+            suggested_chunks = ("auto",) * len(shape)
+            chunks = normalize_chunks(
+                suggested_chunks,
+                shape=shape,
+                limit=CHUNK_SIZE_LIMIT,
+                dtype=dtype.to_numpy_dtype(),
+            )
+            data = ArrayStructure(
+                macro=ArrayMacroStructure(shape=shape, chunks=chunks),
+                micro=dtype,
+            )
+            variable = VariableStructure(
+                macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
+                micro=None,
+            )
+            data_array = DataArrayStructure(
+                macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
+            )
+            data_vars[key] = data_array
+        # Build the time coordinate.
+        shape = (self._cutoff_seq_num,)
+        chunks = normalize_chunks(
+            ("auto",) * len(shape),
+            shape=shape,
+            limit=CHUNK_SIZE_LIMIT,
+            dtype=FLOAT_DTYPE.to_numpy_dtype(),
+        )
+        data = ArrayStructure(
+            macro=ArrayMacroStructure(
+                shape=shape,
+                chunks=chunks,
+            ),
+            micro=FLOAT_DTYPE,
+        )
+        variable = VariableStructure(
+            macro=VariableMacroStructure(dims=["time"], data=data, attrs={}), micro=None
+        )
+        return DatasetMacroStructure(
+            data_vars=data_vars, coords={"time": variable}, attrs={}
+        )
+
+    def microstructure(self):
+        return None
+
+    def read(self, variables=None):
+        # num_blocks = (range(len(n)) for n in chunks)
+        # for block in itertools.product(*num_blocks):
+        structure = self.macrostructure()
+        data_arrays = {}
+        for key, data_array in structure.data_vars.items():
+            if (variables is not None) and (key not in variables):
+                continue
+            variable = structure.data_vars[key].macro.variable
+            dtype = variable.macro.data.micro.to_numpy_dtype()
+            array = self._get_column(key, slices=None, coerce_dtype=dtype)
+            data_array = xarray.DataArray(array, attrs=variable.macro.attrs)
+            data_arrays[key] = data_array
+        # Build the time coordinate.
+        variable = structure.coords["time"]
+        time_coord = self._get_time_coord(slice=None)
+        return xarray.Dataset(data_arrays, coords={"time": time_coord})
+
+    def read_variable(self, variable):
+        return self.read(variables=[variable])[variable]
+
+    def read_block(self, variable, block, coord=None, slice=None):
+        structure = self.macrostructure()
+        if coord is not None:
+            # The DataArrays generated from Events never have coords.
+            raise KeyError(coord)
+        if variable == "time":
+            data_structure = structure.coords["time"].macro.data
+            chunks = data_structure.macro.chunks
+            cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
+            slices_for_chunks = [
+                [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
+                for starts, shapes in zip(cumdims, chunks)
+            ]
+            (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
+            return self._get_time_coord(slice=slice_)
+        dtype = structure.data_vars[
+            variable
+        ].macro.variable.macro.data.micro.to_numpy_dtype()
+        data_structure = structure.data_vars[variable].macro.variable.macro.data
+        dtype = data_structure.micro.to_numpy_dtype()
+        chunks = data_structure.macro.chunks
+        cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
+        slices_for_chunks = [
+            [builtins.slice(s, s + dim) for s, dim in zip(starts, shapes)]
+            for starts, shapes in zip(cumdims, chunks)
+        ]
+        slices = [s[index] for s, index in zip(slices_for_chunks, block)]
+        array = self._get_column(variable, slices=slices, coerce_dtype=dtype)
+        if slice is not None:
+            array = array[slice]
+        return array
+
+    def _get_time_coord(self, slice):
+        if slice is None:
+            min_seq_num = 1
+            max_seq_num = self._cutoff_seq_num
+        else:
+            min_seq_num = 1 + slice.start
+            max_seq_num = 1 + slice.stop
+        column = []
+        for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
+            (result,) = self._event_collection.aggregate(
+                [
+                    # Select Events for this Descriptor with the appropriate seq_num range.
+                    {
+                        "$match": {
+                            "descriptor": descriptor["uid"],
+                            "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
+                        },
+                    },
+                    # Sort by time.
+                    {"$sort": {"time": 1}},
+                    # If seq_num is repeated, take the latest one.
+                    {
+                        "$group": {
+                            "_id": "$seq_num",
+                            "doc": {"$last": "$$ROOT"},
+                        },
+                    },
+                    # Re-sort, now by seq_num which *should* be equivalent to
+                    # sorting by time but could not be in weird cases
+                    # (which I'm not aware have ever occurred) where an NTP sync
+                    # moves system time backward mid-run.
+                    {"$sort": {"seq_num": 1}},
+                    # Extract the column of interest as an array.
+                    {
+                        "$group": {
+                            "_id": {"descriptor": "descriptor"},
+                            "column": {"$push": "$doc.time"},
+                        },
+                    },
+                ]
+            )
+            column.extend(result["column"])
+        return numpy.array(column)
+
+    def _get_column(self, key, slices, coerce_dtype=None):
+        to_stack = []
+        if slices is None:
+            min_seq_num = 1
+            max_seq_num = self._cutoff_seq_num
+        else:
+            slice_ = slices[0]
+            min_seq_num = 1 + slice_.start
+            max_seq_num = 1 + slice_.stop
+        # The `data_keys` in a series of Event Descriptor documents with the
+        # same `name` MUST be alike, so we can just use the first one.
+        first_descriptor = self._event_descriptors[0]
+        data_key = first_descriptor["configuration"][self._object_name]["data_keys"][
+            key
+        ]
+        expected_shape = tuple(data_key["shape"] or [])
+        for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
+            # TODO When seq_num is repeated, take the last one only (sorted by
+            # time).
+            (result,) = self._event_collection.aggregate(
+                [
+                    # Select Events for this Descriptor with the appropriate seq_num range.
+                    {
+                        "$match": {
+                            "descriptor": descriptor["uid"],
+                            "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
+                        },
+                    },
+                    # Find the lowest and higher seq_num covered by this descriptor.
+                    {
+                        "$group": {
+                            "_id": {"descriptor": "descriptor"},
+                            "max": {"$max": "$seq_num"},
+                            "min": {"$min": "$seq_num"},
+                        },
+                    },
+                ]
+            )
+            num = result["max"] - result["min"]
+            value = descriptor["configuration"][self._object_name][self._sub_dict][key]
+            if expected_shape:
+                validated_value = _validate_shape(numpy.asarray(value), expected_shape)
+            else:
+                validated_value = value
+            ndim = len(expected_shape)
+            chunk = (numpy.tile(validated_value, (num,) + ndim * (1,) or 1),)
+            to_stack.extend(chunk)
+
+        array = numpy.stack(to_stack)
+        if slices:
             sliced_array = array[(..., *slices[1:])]
         else:
             sliced_array = array
@@ -893,6 +1183,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             ]
         )
         cutoff_seq_num = result["highest_seq_num"]
+        object_names = event_descriptors[0]["object_keys"]
         run = self[run_start_uid]
         mapping = OneShotCachedMap(
             {
@@ -912,7 +1203,36 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                     root_map=self.root_map,
                     sub_dict="timestamps",
                 ),
-                # TODO timestamps, config, config_timestamps
+                "config": lambda: Config(
+                    OneShotCachedMap(
+                        {
+                            object_name: lambda object_name=object_name: ConfigDatasetFromDocuments(
+                                run=run,
+                                cutoff_seq_num=cutoff_seq_num,
+                                event_descriptors=event_descriptors,
+                                event_collection=self._event_collection,
+                                object_name=object_name,
+                                sub_dict="data",
+                            )
+                            for object_name in object_names
+                        }
+                    )
+                ),
+                "config_timestamps": lambda: Config(
+                    OneShotCachedMap(
+                        {
+                            object_name: lambda object_name=object_name: ConfigDatasetFromDocuments(
+                                run=run,
+                                cutoff_seq_num=cutoff_seq_num,
+                                event_descriptors=event_descriptors,
+                                event_collection=self._event_collection,
+                                object_name=object_name,
+                                sub_dict="timestamps",
+                            )
+                            for object_name in object_names
+                        }
+                    )
+                ),
             }
         )
 
