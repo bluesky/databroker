@@ -355,8 +355,22 @@ class DatasetFromDocuments:
                 # assert sub_dict == "timestamps"
                 shape = tuple((self._cutoff_seq_num,))
                 dtype = FLOAT_DTYPE
+            # TEMP: Special-case 4D data in a way that optimzes single-frame
+            # access of area detector data. The correct way to handle this may
+            # be to place "chunks" in the data_keys.
+            if len(shape) == 4:
+                # If we choose 1 that would make single-frame access fast
+                # but many-frame access too slow.
+                suggested_chunks = (
+                    min(10, shape[0]),
+                    min(10, shape[1]),
+                    "auto",
+                    "auto",
+                )
+            else:
+                suggested_chunks = ("auto",) * len(shape)
             chunks = normalize_chunks(
-                ("auto",) * len(shape),
+                suggested_chunks,
                 shape=shape,
                 limit=CHUNK_SIZE_LIMIT,
                 dtype=dtype.to_numpy_dtype(),
