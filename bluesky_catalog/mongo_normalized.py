@@ -1730,25 +1730,30 @@ def _validate_shape(data, expected_shape):
     """
     if data.shape == expected_shape:
         return data
-    if (data.ndim != len(expected_shape)) or any(
-        actual > expected for actual, expected in zip(data.shape, expected_shape)
-    ):
-        # No padding can fix this.
-        raise BadShapeMetadata(
-            f"Actual shape {data.shape} does not "
-            f"match expected shape {expected_shape}."
-        )
     # Pad at the "end" along any dimension that is too short.
     padding = []
+    trimming = []
     for actual, expected in zip(data.shape, expected_shape):
         margin = expected - actual
-        if margin > 2:
+        # Limit how much padding or trimming we are willing to do.
+        SOMEWHAT_ARBITRARY_LIMIT_OF_WHAT_IS_REASONABLE = 2
+        if abs(margin) > SOMEWHAT_ARBITRARY_LIMIT_OF_WHAT_IS_REASONABLE:
             raise BadShapeMetadata(
                 f"Actual shape {data.shape} does not "
                 f"match expected shape {expected_shape}."
             )
-        padding.append((0, margin))
-    # TODO Rethink this!
-    # We cannot do NaN because that does not work for integers
-    # and it is too late to change our mind about the data type.
-    return numpy.pad(data, padding, "edge")
+        if margin > 0:
+            padding.append((0, margin))
+            trimming.append(slice(None, None))
+        elif margin < 0:
+            padding.append((0, 0))
+            trimming.append(slice(None))
+        else:  # margin == 0
+            padding.append((0, 0))
+            trimming.append(slice(None, None))
+        # TODO Rethink this!
+        # We cannot do NaN because that does not work for integers
+        # and it is too late to change our mind about the data type.
+        padded = numpy.pad(data, padding, "edge")
+        padded_and_trimmed = padded[trimming]
+    return padded_and_trimmed
