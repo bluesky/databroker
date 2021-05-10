@@ -518,6 +518,13 @@ class DatasetFromDocuments:
             slice_ = slices[0]
             min_seq_num = 1 + slice_.start
             max_seq_num = 1 + slice_.stop
+        # The `data_keys` in a series of Event Descriptor documents with the
+        # same `name` MUST be alike, so we can just use the first one.
+        data_key = self._event_descriptors[0]["data_keys"][key]
+        is_external = "external" in data_key
+        expected_shape = tuple(data_key["shape"] or [])
+        # If data is external, we now have a column of datum_ids, and we need
+        # to look up the data that they reference.
         for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
             # TODO When seq_num is repeated, take the last one only (sorted by
             # time).
@@ -553,15 +560,20 @@ class DatasetFromDocuments:
                     },
                 ]
             )
-            column.extend(result["column"])
+            if expected_shape and (not is_external):
+                validated_column = list(
+                    map(
+                        lambda item: _validate_shape(
+                            numpy.asarray(item), expected_shape
+                        ),
+                        result["column"],
+                    )
+                )
+            else:
+                validated_column = result["column"]
+            column.extend(validated_column)
 
-        # If data is external, we now have a column of datum_ids, and we need
-        # to look up the data that they reference.
-        # The `data_keys` in a series of Event Descriptor documents with the
-        # same `name` MUST be alike, so we can just use the last one from the
-        # loop above.
-        expected_shape = tuple(descriptor["data_keys"][key]["shape"])
-        if descriptor["data_keys"][key].get("external"):
+        if is_external:
             filled_column = []
             descriptor_uid = descriptor["uid"]
             for datum_id in column:
@@ -582,16 +594,12 @@ class DatasetFromDocuments:
                     last_datum_id=None,
                 )
                 filled_data = filled_mock_event["data"][key]
-                if filled_data.shape != expected_shape:
-                    raise BadShapeMetadata(
-                        f"Actual shape {filled_data.shape} does not "
-                        f"match expected shape {expected_shape}."
-                    )
-
-                filled_column.append(filled_mock_event["data"][key])
-            array = numpy.stack(filled_column)
+                validated_filled_data = _validate_shape(filled_data, expected_shape)
+                filled_column.append(validated_filled_data)
+            to_stack = filled_column
         else:
-            array = numpy.stack(column)
+            to_stack = column
+        array = numpy.stack(to_stack)
         if slices[1:]:
             sliced_array = array[(..., *slices[1:])]
         else:
@@ -1497,3 +1505,38 @@ def batch_documents(singles, size):
 
 class BadShapeMetadata(Exception):
     pass
+
+
+def _validate_shape(data, expected_shape):
+    """
+    Check that data.shape == expected.shape.
+
+    * If number of dimensions differ, raise BadShapeMetadata
+    * If any dimension is larger than expected, raise BadShapeMetadata.
+    * If some dimensions are smaller than expected,, pad "right" edge of each
+      dimension that falls short with NaN.
+    """
+    if data.shape == expected_shape:
+        return data
+    if (data.ndim != len(expected_shape)) or any(
+        actual > expected for actual, expected in zip(data.shape, expected_shape)
+    ):
+        # No padding can fix this.
+        raise BadShapeMetadata(
+            f"Actual shape {data.shape} does not "
+            f"match expected shape {expected_shape}."
+        )
+    # Pad at the "end" along any dimension that is too short.
+    padding = []
+    for actual, expected in zip(data.shape, expected_shape):
+        margin = expected - actual
+        if margin > 2:
+            raise BadShapeMetadata(
+                f"Actual shape {data.shape} does not "
+                f"match expected shape {expected_shape}."
+            )
+        padding.append((0, margin))
+    # TODO Rethink this!
+    # We cannot do NaN because that does not work for integers
+    # and it is too late to change our mind about the data type.
+    return numpy.pad(data, padding, "edge")
