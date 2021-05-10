@@ -1755,5 +1755,5 @@ def _validate_shape(data, expected_shape):
         # We cannot do NaN because that does not work for integers
         # and it is too late to change our mind about the data type.
         padded = numpy.pad(data, padding, "edge")
-        padded_and_trimmed = padded[trimming]
+        padded_and_trimmed = padded[tuple(trimming)]
     return padded_and_trimmed
