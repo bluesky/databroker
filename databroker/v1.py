@@ -13,13 +13,14 @@ from types import SimpleNamespace
 import tzlocal
 import xarray
 import event_model
-import intake
 import pymongo
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
 except ImportError:
     from toolz.dicttoolz import merge
+
+from tiled.client import from_config, from_profile
 
 from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
                     ensure_path_exists, lookup_config,
@@ -168,26 +169,24 @@ class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
     """
-    def __init__(self, catalog, *, serializer=None,
-                 external_fetchers=None):
+    def __init__(self, catalog):
         self._catalog = catalog
-        self.__serializer = serializer
-        self.external_fetchers = external_fetchers or {}
         self.prepare_hook = wrap_in_deprecated_doct
         self.aliases = {}
         self.filters = {}
         self.v2._Broker__v1 = self
         self._reg = Registry(catalog)
 
-    @property
-    def _serializer(self):
-        if self.__serializer is None:
-            # The method _get_serializer is an optional method implememented on
-            # some Broker subclasses to support the Broker.insert() method,
-            # which is pending deprecation.
-            if hasattr(self._catalog, '_get_serializer'):
-                self.__serializer = self._catalog._get_serializer()
-        return self.__serializer
+    # TODO: Re-instate this if the server grows a POST /documents/{path} route.
+    # @property
+    # def _serializer(self):
+    #     if self.__serializer is None:
+    #         # The method _get_serializer is an optional method implememented on
+    #         # some Broker subclasses to support the Broker.insert() method,
+    #         # which is pending deprecation.
+    #         if hasattr(self._catalog, '_get_serializer'):
+    #             self.__serializer = self._catalog._get_serializer()
+    #     return self.__serializer
 
     @property
     def reg(self):
@@ -196,7 +195,7 @@ class Broker:
 
     @property
     def name(self):
-        return self._catalog.name
+        return self._catalog.metadata.get("name")
 
     @property
     def v1(self):
@@ -209,19 +208,28 @@ class Broker:
         return self._catalog
 
     @classmethod
-    def from_config(cls, config, auto_register=True, name=None):
-        return from_config(
-            config=config, auto_register=auto_register, name=name)
+    def from_config(cls, config, auto_register=None, name=None):
+        if auto_register is not None:
+            warngins.warn(
+                "The parameter auto_register is now ignored. "
+                "Handlers are now a concern of the service and not configurable "
+                "from the client."
+            )
+        if name is not None:
+            warngins.warn(
+                "The parameter name is now ignored."
+            )
+        catalog = from_config(config)
+        return Broker(catalog)
 
     def get_config(self):
         """
-        Return the v0 config dict this was created from, or None if N/A.
+        This formerly returned v0 config (if applicable) or None. Now it always returns None.
         """
-        if hasattr(self, '_config'):
-            return self._config
+        return None
 
     @classmethod
-    def named(cls, name, auto_register=True):
+    def named(cls, name, auto_register=None):
         """
         Create a new Broker instance using a configuration file with this name.
 
@@ -252,18 +260,13 @@ class Broker:
         -------
         db : Broker
         """
-        if name == 'temp':
-            return temp()
-        else:
-            try:
-                config = lookup_config(name)
-            except FileNotFoundError:
-                # Continue on to the v2 way.
-                pass
-            else:
-                db = cls.from_config(config, auto_register=auto_register, name=name)
-                return db
-        catalog = getattr(intake.cat, name)
+        if auto_register is not None:
+            warngins.warn(
+                "The parameter auto_register is now ignored. "
+                "Handlers are now a concern of the service and not configurable "
+                "from the client."
+            )
+        catalog = from_profile(name)
         return Broker(catalog)
 
     @property
@@ -303,27 +306,8 @@ class Broker:
                        data_key)
 
     def __getitem__(self, key):
-        # If this came from a client, we might be getting '-1'.
-        if not isinstance(key, str) and isinstance(key, Iterable):
-            return [self[item] for item in key]
-        if isinstance(key, slice):
-            if key.start is not None and key.start > -1:
-                raise ValueError("slice.start must be negative. You gave me "
-                                 "key=%s The offending part is key.start=%s"
-                                 % (key, key.start))
-            if key.stop is not None and key.stop > 0:
-                raise ValueError("slice.stop must be <= 0. You gave me key=%s. "
-                                 "The offending part is key.stop = %s"
-                                 % (key, key.stop))
-            if key.start is None:
-                raise ValueError("slice.start cannot be None because we do not "
-                                 "support slicing infinitely into the past; "
-                                 "the size of the result is non-deterministic "
-                                 "and could become too large.")
-            return [self[index]
-                    for index in reversed(range(key.start, key.stop or 0, key.step or 1))]
-        datasource = self._catalog[key]
-        return Header(datasource)
+        run = self._catalog[key]
+        return Header(run, self)
 
     get_fields = staticmethod(get_fields)
 
@@ -985,21 +969,15 @@ class Broker:
 
 class Header:
     """
-    This supports the original Header API but implemented on intake's Entry.
+    This supports the original Header API but implemplemented on new code..
     """
-    def __init__(self, datasource):
-        self.__data_source = datasource
-        self.db = datasource.catalog_object.v1
+    def __init__(self, run, db):
+        self._run = run
+        self.db = db
         self.ext = None  # TODO
-        md = datasource.describe()['metadata']
-        self._start = md['start']
-        self._stop = md['stop']
-        self.ext = SimpleNamespace(
-            **self.db.fetch_external(self.start, self.stop))
-
-    @property
-    def _data_source(self):
-        return self.__data_source
+        self._start = self._run.metadata['start']
+        self._stop = self._run.metadata['stop']
+        self.ext = SimpleNamespace()  # not implemented
 
     @property
     def start(self):
@@ -1012,7 +990,7 @@ class Header:
     @property
     def stop(self):
         if self._stop is None:
-            self._stop = self.__data_source.describe()['metadata']['stop'] or {}
+            self._stop = self._run['metadata']['stop'] or {}
         return self.db.prepare_hook('stop', self._stop)
 
     def __eq__(self, other):
@@ -1022,13 +1000,15 @@ class Header:
 
     @property
     def descriptors(self):
-        descriptors = self._data_source._descriptors
+        descriptors = []
+        for stream in self._run.values():
+            stream.descriptors
         return sorted([self.db.prepare_hook('descriptor', doc) for doc in descriptors],
                       key=lambda d: d['time'], reverse=True)
 
     @property
     def stream_names(self):
-        return list(self.__data_source)
+        return list(self._run)
 
     # These methods mock part of the dict interface. It has been proposed that
     # we might remove them for 1.0.
@@ -1058,10 +1038,10 @@ class Header:
         return self.keys()
 
     def xarray(self, stream_name='primary'):
-        return self._data_source[stream_name].read()
+        return self._run[stream_name].read()
 
     def xarray_dask(self, stream_name='primary'):
-        return self._data_source[stream_name].to_dask()
+        return self._run[stream_name].to_dask()
 
     def table(self, stream_name='primary', fields=None, fill=False,
               timezone=None, convert_times=True, localize_times=True):
@@ -1395,27 +1375,13 @@ class Results:
     ----------
     catalog : Catalog
         search results
-    data_key : string or None
-        Special query parameter that filters results
     """
-    def __init__(self, broker, catalog, data_key):
+    def __init__(self, broker):
         self._broker = broker
-        self._catalog = catalog
-        self._data_key = data_key
 
     def __iter__(self):
-        # TODO Catalog.walk() fails. We should probably support Catalog.items().
-        for uid, entry in self._catalog._entries.items():
-            header = Header(entry())
-            if self._data_key is None:
-                yield header
-            else:
-                # Only include this header in the result if `data_key` is found
-                # in one of its descriptors' data_keys.
-                for descriptor in header.descriptors:
-                    if self._data_key in descriptor['data_keys']:
-                        yield header
-                        break
+        for uid, run in self._broker._catalog.items():
+            yield Header(run, broker)
 
 
 def _ensure_list(headers):
@@ -1573,134 +1539,6 @@ def _pretty_print_time(timestamp):
 class InvalidConfig(Exception):
     """Raised when the configuration file is invalid."""
     ...
-
-
-def from_config(config, auto_register=True, name=None):
-    """
-    Build (some version of) a Broker instance from a v0 configuration dict.
-
-    This method accepts v1 config files.
-
-    This can return a ``v0.Broker``, ``v1.Broker``, or ``v2.Broker`` depending
-    on the contents of ``config``.
-
-    If config contains the key 'api_version', it should be set to a value 0, 1,
-    0, or 2. That setting will be respected until there is an error, in which
-    case a warning will be issued and we will fall back to v0. If no
-    'api_version' is explicitly set by the configuration file, version 1 will
-    be used.
-    """
-    forced_version = config.get('api_version')
-    if forced_version == 0:
-        from . import v0
-        return v0.Broker.from_config(config, auto_register, name)
-    try:
-        catalog = _from_v0_config(config, auto_register, name)
-    except InvalidConfig:
-        raise
-    except Exception as exc:
-        warnings.warn(
-            f"Failed to load config. Falling back to v0."
-            f"Exception was: {exc}")
-        from . import v0
-        return v0.Broker.from_config(config, auto_register, name)
-    if forced_version == 2:
-        return catalog
-    elif forced_version is None or forced_version == 1:
-        broker = Broker(catalog)
-        broker._config = config  # HACK to support Broker.get_config()
-        return broker
-    else:
-        raise ValueError(f"Cannot handle api_version {forced_version}")
-
-
-def _from_v0_config(config, auto_register, name):
-    mds_module = config['metadatastore']['module']
-    if mds_module != 'databroker.headersource.mongo':
-        raise NotImplementedError(
-            f"Unable to handle metadatastore.module {mds_module!r}")
-    mds_class = config['metadatastore']['class']
-    if mds_class not in ('MDS', 'MDSRO'):
-        raise NotImplementedError(
-            f"Unable to handle metadatastore.class {mds_class!r}")
-
-    assets_module = config['assets']['module']
-    if assets_module != 'databroker.assets.mongo':
-        raise NotImplementedError(
-            f"Unable to handle assets.module {assets_module!r}")
-    assets_class = config['assets']['class']
-    if assets_class not in ('Registry', 'RegistryRO'):
-        raise NotImplementedError(
-            f"Unable to handle assets.class {assets_class!r}")
-
-    # Get the mongo databases.
-    metadatastore_db = _get_mongo_database(config['metadatastore']['config'])
-    asset_registry_db = _get_mongo_database(config['assets']['config'])
-
-    from ._drivers.mongo_normalized import BlueskyMongoCatalog
-    from .core import discover_handlers
-
-    # Update the handler registry.
-    handler_registry = {}
-    if auto_register:
-        handler_registry.update(discover_handlers())
-    # In v0, config-specified handlers are *added* to any default ones.
-    for spec, contents in config.get('handlers', {}).items():
-        dotted_object = '.'.join((contents['module'], contents['class']))
-        handler_registry[spec] = dotted_object
-
-    root_map = config.get('root_map')
-    transforms = config.get('transforms')
-
-    return BlueskyMongoCatalog(metadatastore_db, asset_registry_db,
-                               handler_registry=handler_registry,
-                               root_map=root_map,
-                               name=name,
-                               transforms=transforms)
-
-
-_mongo_clients = {}  # cache of pymongo.MongoClient instances
-
-
-def _get_mongo_database(config):
-    """
-    Return a MongoClient.database. Use a cache in order to reuse the
-    MongoClient.
-    """
-    # Check that config contains either uri, or host/port, but not both.
-    if {'uri', 'host'} <= set(config) or {'uri', 'port'} <= set(config):
-        raise InvalidConfig(
-            "The config file must define either uri, or host/port, but not both.")
-
-    uri = config.get('uri')
-    database = config['database']
-
-    # If this statement is True then uri does not exist in the config.
-    # If the config has username and password, turn it into a uri.
-    # This is only here for backward compatibility.
-    if {'mongo_user', 'mongo_pwd', 'host', 'port'} <= set(config):
-        uri = (f"mongodb://{config['mongo_user']}:{config['mongo_pwd']}@"
-               f"{config['host']}:{config['port']}/")
-
-    if uri:
-        if 'authsource' in config:
-            uri += f'?authsource={config["authsource"]}'
-
-        try:
-            client = _mongo_clients[uri]
-        except KeyError:
-            client = pymongo.MongoClient(uri)
-            _mongo_clients[uri] = client
-    else:
-        host = config.get('host')
-        port = config.get('port')
-        try:
-            client = _mongo_clients[(host, port)]
-        except KeyError:
-            client = pymongo.MongoClient(host, port)
-            _mongo_clients[(host, port)] = client
-
-    return client[database]
 
 
 class _GetDocumentsRouter:
