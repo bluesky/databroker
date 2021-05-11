@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from collections import defaultdict
 from datetime import datetime
 import pandas
@@ -10,10 +9,8 @@ import jinja2
 import os
 import shutil
 from types import SimpleNamespace
-import tzlocal
 import xarray
 import event_model
-import pymongo
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -21,10 +18,11 @@ except ImportError:
     from toolz.dicttoolz import merge
 
 from tiled.client import from_config, from_profile
+from tiled.queries import FullText
 
-from .utils import (ALL, format_time, get_fields, wrap_in_deprecated_doct,
-                    ensure_path_exists, lookup_config,
-                    transpose)
+from .queries import RawMongo, TimeRange
+from .utils import (ALL, get_fields, wrap_in_deprecated_doct,
+                    ensure_path_exists, transpose)
 
 
 # The v2 API is expected to grow more options for filled than just True/False
@@ -210,13 +208,13 @@ class Broker:
     @classmethod
     def from_config(cls, config, auto_register=None, name=None):
         if auto_register is not None:
-            warngins.warn(
+            warnings.warn(
                 "The parameter auto_register is now ignored. "
                 "Handlers are now a concern of the service and not configurable "
                 "from the client."
             )
         if name is not None:
-            warngins.warn(
+            warnings.warn(
                 "The parameter name is now ignored."
             )
         catalog = from_config(config)
@@ -261,7 +259,7 @@ class Broker:
         db : Broker
         """
         if auto_register is not None:
-            warngins.warn(
+            warnings.warn(
                 "The parameter auto_register is now ignored. "
                 "Handlers are now a concern of the service and not configurable "
                 "from the client."
@@ -288,26 +286,18 @@ class Broker:
         catalog.v1.prepare_hook = self.prepare_hook
 
     def __call__(self, text_search=None, **kwargs):
-        data_key = kwargs.pop('data_key', None)
-        tz = tzlocal.get_localzone()
-        try:
-            tz = tz.key
-        except AttributeError:
-            tz = tz.zone
+
         if self.filters:
-            filters = self.filters.copy()
-            format_time(filters, tz)  # mutates in place
-            catalog = self._catalog.search(filters)
-            self._patch_state(catalog)
-        else:
-            catalog = self._catalog
+            raise NotImplementedError("filters are no longer supported")
+        results_catalog = self._catalog.search(
+            TimeRange(since=kwargs.pop("since", None), until=kwargs.pop("until", None))
+        )
+        if kwargs:
+            results_catalog = results_catalog.search(RawMongo(start=kwargs))
         if text_search:
-            kwargs.update({'$text': {'$search': text_search}})
-        format_time(kwargs, tz)  # mutates in place
-        result_catalog = catalog.search(kwargs)
-        self._patch_state(result_catalog)
-        return Results(self, result_catalog,
-                       data_key)
+            results_catalog = results_catalog.search(FullText(text_search))
+        self._patch_state(results_catalog)
+        return Results(results_catalog)
 
     def __getitem__(self, key):
         run = self._catalog[key]
@@ -418,8 +408,7 @@ class Broker:
             get_documents_router = _GetDocumentsRouter(self.prepare_hook,
                                                        merge_config_into_event,
                                                        stream_name=stream_name)
-            for name, doc in self._catalog[uid].documents(fill=_FILL[bool(fill)],
-                                                          strict_order=True):
+            for name, doc in self._catalog[uid].documents(fill=fill):
                 yield from get_documents_router(name, doc)
 
     def get_events(self,
@@ -904,7 +893,7 @@ class Broker:
         file_pairs = []
 
         for header in headers:
-            for name, doc in self._catalog[header.start['uid']].documents(fill='no'):
+            for name, doc in self._catalog[header.start['uid']].documents(fill=False):
                 if name == 'event_page':
                     for event in event_model.unpack_event_page(doc):
                         db.insert('event', event)
@@ -1006,7 +995,7 @@ class Header:
     def descriptors(self):
         descriptors = []
         for stream in self._run.values():
-            stream.descriptors
+            descriptors.extend(stream.descriptors)
         return sorted([self.db.prepare_hook('descriptor', doc) for doc in descriptors],
                       key=lambda d: d['time'], reverse=True)
 
@@ -1183,10 +1172,10 @@ class Header:
         ------
         data
         """
-        for event in self.events(stream_name=stream_name,
-                                 fields=[field],
-                                 fill=fill):
-            yield event['data'][field]
+        if not fill:
+            raise ValueError("Only fill=True is now supported by the data(...) method.")
+        for item in self._run[stream_name]["data"][field].data:
+            yield item
 
     def stream(self, *args, **kwargs):
         warnings.warn(
@@ -1380,12 +1369,13 @@ class Results:
     catalog : Catalog
         search results
     """
-    def __init__(self, broker):
-        self._broker = broker
+    def __init__(self, catalog):
+        self._catalog = catalog
+        self._broker = Broker(catalog)
 
     def __iter__(self):
-        for uid, run in self._broker._catalog.items():
-            yield Header(run, broker)
+        for uid, run in self._catalog.items():
+            yield Header(run, self._broker)
 
 
 def _ensure_list(headers):
