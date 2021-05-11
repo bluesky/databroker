@@ -541,7 +541,7 @@ class Broker:
                 "in a configuration file.")
 
         headers = _ensure_list(headers)
-        fields = set(fields)
+        fields = set(fields or [])
         dfs = []
         for header in headers:
             run = self._catalog[header.start["uid"]]
