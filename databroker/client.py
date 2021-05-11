@@ -198,6 +198,7 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Catalog):
         super().__init__(*args, **kwargs)
         self.scan_id = IndexCallable(self._lookup_by_scan_id)
         self.uid = IndexCallable(self._lookup_by_partial_uid)
+        self._v1 = None
 
     def __getitem__(self, key):
         # For convenience and backward-compatiblity reasons, we support
@@ -236,3 +237,12 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Catalog):
         if isinstance(query, dict):
             query = RawMongo(start=query)
         return super().search(query)
+
+    @property
+    def v1(self):
+        "Accessor to legacy interface."
+        if self._v1 is None:
+            from .v1 import Broker
+
+            self._v1 = Broker(self)
+        return self._v1
