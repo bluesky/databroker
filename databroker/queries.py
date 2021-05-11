@@ -5,6 +5,7 @@ import json
 from typing import List, Optional
 
 from tiled.query_registration import register
+from tiled.queries import FullText
 
 
 class Duplicates(str, enum.Enum):
