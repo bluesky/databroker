@@ -141,6 +141,18 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
         warnings.warn("Use .descriptors instead of ._descriptors.", stacklevel=2)
         return self.descriptors
 
+    def __getattr__(self, key):
+        """
+        Let run.X be a synonym for run['X'] unless run.X already exists.
+
+        This behavior is the same as with pandas.DataFrame.
+        """
+        # The wisdom of this kind of "magic" is arguable, but we
+        # need to support it for backward-compatibility reasons.
+        if key in self:
+            return self[key]
+        raise AttributeError(key)
+
     def read(self):
         """
         Shortcut for reading the 'data' (as opposed to timestamps or config).
