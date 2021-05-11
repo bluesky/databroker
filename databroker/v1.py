@@ -22,7 +22,7 @@ from tiled.queries import FullText
 
 from .queries import RawMongo, TimeRange
 from .utils import (ALL, get_fields, wrap_in_deprecated_doct,
-                    ensure_path_exists, transpose)
+                    ensure_path_exists)
 
 
 # The v2 API is expected to grow more options for filled than just True/False
@@ -541,69 +541,33 @@ class Broker:
                 "in a configuration file.")
 
         headers = _ensure_list(headers)
-        # TODO --- Use local time I guess.
-        # if timezone is None:
-        #     timezone = self.mds.config['timezone']
-
-        no_fields_filter = False
-        if fields is None:
-            no_fields_filter = True
-            fields = []
         fields = set(fields)
-
-        comp_re = _compile_re(fields)
-
         dfs = []
         for header in headers:
-            descs = header.descriptors
-            start = header.start
-            stop = header.stop
-            descs = [desc for desc in descs if desc.get('name') == stream_name]
-            for descriptor in descs:
-                (all_extra_dk, all_extra_data,
-                 all_extra_ts, discard_fields) = _extract_extra_data(
-                    start, stop, descriptor, fields, comp_re, no_fields_filter)
+            run = self._catalog[header.start["uid"]]
+            dataset = run[stream_name].read(variables=(fields or None))
+            dict_of_arrays = {}
+            for var_name in dataset:
+                dict_of_arrays[var_name] = dataset[var_name].data
+            df = pandas.DataFrame(dict_of_arrays)
+            # if converting to datetime64 (in utc or 'local' tz)
+            times = dataset["time"].data
+            if convert_times or localize_times:
+                times = pandas.to_datetime(times, unit='s')
+            # make sure this is a series
+            times = pandas.Series(times, index=df.index)
 
-                all_events = [
-                    doc for name, doc in
-                    self.get_documents(header, stream_name=stream_name, fill=fill)
-                    if name == 'event' and
-                    doc['descriptor'] == descriptor['uid']]
-                seq_nums = [ev['seq_num'] for ev in all_events]
-                times = [ev['time'] for ev in all_events]
-                keys = list(descriptor['data_keys'])
-                data = transpose(all_events, keys, 'data')
-                # timestamps = transpose(all_events, keys, 'timestamps')
+            # if localizing to 'local' time
+            if localize_times:
+                times = (
+                    times
+                    .dt.tz_localize('UTC')  # first make tz aware
+                    # .dt.tz_convert(timezone)  # convert to 'local'
+                    .dt.tz_localize(None)  # make naive again
+                )
 
-                df = pandas.DataFrame(index=seq_nums)
-                # if converting to datetime64 (in utc or 'local' tz)
-                if convert_times or localize_times:
-                    times = pandas.to_datetime(times, unit='s')
-                # make sure this is a series
-                times = pandas.Series(times, index=seq_nums)
-
-                # if localizing to 'local' time
-                if localize_times:
-                    times = (times
-                             .dt.tz_localize('UTC')  # first make tz aware
-                             # .dt.tz_convert(timezone)  # convert to 'local'
-                             .dt.tz_localize(None)  # make naive again
-                             )
-
-                df['time'] = times
-                for field, values in data.items():
-                    if field in discard_fields:
-                        continue
-                    df[field] = values
-                if list(df.columns) == ['time']:
-                    # no content
-                    continue
-
-                for field, v in all_extra_data.items():
-                    df[field] = v
-
-                dfs.append(df)
-
+            df['time'] = times
+            dfs.append(df)
         if dfs:
             result = pandas.concat(dfs)
         else:

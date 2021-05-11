@@ -153,19 +153,19 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
             return self[key]
         raise AttributeError(key)
 
-    def read(self):
+    def read(self, *args, **kwargs):
         """
         Shortcut for reading the 'data' (as opposed to timestamps or config).
 
         That is:
 
-        >>> stream.read()
+        >>> stream.read(...)
 
         is equivalent to
 
-        >>> stream["data"].read()
+        >>> stream["data"].read(...)
         """
-        return self["data"].read()
+        return self["data"].read(*args, **kwargs)
 
     def to_dask(self):
         warnings.warn(
