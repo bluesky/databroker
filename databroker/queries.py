@@ -5,7 +5,7 @@ import json
 from typing import List, Optional
 
 from tiled.query_registration import register
-from tiled.queries import FullText
+from tiled.queries import FullText  # noqa: F401
 
 
 class Duplicates(str, enum.Enum):
