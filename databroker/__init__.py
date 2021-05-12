@@ -1,12 +1,24 @@
 import logging
 
+from tiled.utils import OneShotCachedMap
+from tiled.profiles import list_profiles
+from tiled.client import from_profile
+
 # from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
 from .utils import (  # noqa: 401
     lookup_config, list_configs, describe_configs,  # noqa: F401
     wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct,  # noqa: F401
-    catalog_search_path)  # noqa: F401
+    catalog_search_path,  # noqa: F401
+    FactoryMap)  # noqa: F401
+
 
 logger = logging.getLogger(__name__)
+
+catalog = FactoryMap(
+    lambda: OneShotCachedMap(
+        {profile: lambda: from_profile(profile) for profile in list_profiles()}
+    )
+)
 
 
 # set version string using versioneer
