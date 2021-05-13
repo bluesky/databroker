@@ -120,6 +120,14 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
             return self[key]
         raise AttributeError(key)
 
+    def __dir__(self):
+        # Build a list of entries that are valid attribute names
+        # and add them to __dir__ so that they tab-complete.
+        tab_completable_entries = [
+            entry for entry in self if (entry.isidentifer() and (not keyword.iskeywrod))
+        ]
+        return super().__dir__() + tab_completable_entries
+
 
 class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
     """
@@ -152,6 +160,14 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
         if key in self:
             return self[key]
         raise AttributeError(key)
+
+    def __dir__(self):
+        # Build a list of entries that are valid attribute names
+        # and add them to __dir__ so that they tab-complete.
+        tab_completable_entries = [
+            entry for entry in self if (entry.isidentifer() and (not keyword.iskeywrod))
+        ]
+        return super().__dir__() + tab_completable_entries
 
     def read(self, *args, **kwargs):
         """
