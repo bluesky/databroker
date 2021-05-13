@@ -930,7 +930,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             cache_of_complete_bluesky_runs, cache_of_partial_bluesky_runs
         )
         self._metadata = metadata or {}
-        self.queries = tuple(queries or [])
+        self.queries = list(queries or [])
         if sorting is None:
             sorting = [("time", 1)]
         self._sorting = sorting
@@ -1195,28 +1195,28 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 for token in tokens:
                     value = value[token]
                 last_sorted_values[name] = value
-            query.update(
-                {
-                    "$and": [
-                        {
-                            "$or": [
-                                {
-                                    name: {
-                                        (
-                                            "$gt" if direction > 0 else "$lt"
-                                        ): last_sorted_values[name]
-                                    }
-                                },
-                                {
-                                    name: last_sorted_values[name],
-                                    "_id": {"$gt": last_object_id},
-                                },
-                            ]
-                        }
-                        for name, direction in self._sorting
-                    ]
-                }
-            )
+                page_cutoff_query = [
+                    {
+                        "$or": [
+                            {
+                                name: {
+                                    (
+                                        "$gt" if direction > 0 else "$lt"
+                                    ): last_sorted_values[name]
+                                }
+                            },
+                            {
+                                name: last_sorted_values[name],
+                                "_id": {"$gt": last_object_id},
+                            },
+                        ]
+                    }
+                    for name, direction in self._sorting
+                ]
+                if "$and" in query:
+                    query["$and"].extend(page_cutoff_query)
+                else:
+                    query["$and"] = page_cutoff_query
             for item in items:
                 item.pop("_id")
                 yield item
@@ -1239,7 +1239,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             items.clear()
 
     def _build_mongo_query(self, *queries):
-        combined = self.queries + queries
+        combined = self.queries + list(queries)
         if combined:
             return {"$and": combined}
         else:
@@ -1352,7 +1352,7 @@ def key_lookup(query, catalog):
 def raw_mongo(query, catalog):
     # For now, only handle search on the 'run_start' collection.
     return catalog.new_variation(
-        queries=catalog.queries + (json.loads(query.start),),
+        queries=catalog.queries + [json.loads(query.start)],
     )
 
 
