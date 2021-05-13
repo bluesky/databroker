@@ -153,6 +153,10 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
             transformed_doc = doc
         return transformed_doc
 
+    def sort(self, sorting):
+        # TODO
+        return self
+
     def lookup_resource_for_datum(self, datum_id):
         doc = self._datum_collection.find_one({"datum_id": datum_id})
         if doc is None:
@@ -257,6 +261,10 @@ class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
             run=self._run,
             **kwargs,
         )
+
+    def sort(self, sorting):
+        # TODO
+        return self
 
     def iter_descriptors_and_events(self):
         for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
@@ -974,7 +982,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         if queries is UNCHANGED:
             queries = self.queries
         if sorting is UNCHANGED:
-            sorting = self.sorting
+            sorting = self._sorting
         if authenticated_identity is UNCHANGED:
             authenticated_identity = self._authenticated_identity
         return type(self)(
@@ -1013,7 +1021,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         # Display up to the first N keys to avoid making a giant service
         # request. Use _keys_slicer because it is unauthenticated.
         N = 10
-        return catalog_repr(self, self._keys_slice(0, N))
+        return catalog_repr(self, self._keys_slice(0, N, direction=1))
 
     def _get_run(self, run_start_doc):
         "Get a BlueskyRun, either from a cache or by making one if needed."
@@ -1183,7 +1191,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             # Next time through the loop, we'll pick up where we left off.
             last_object_id = items[-1]["_id"]
             last_sorted_values.update(
-                {name: items[-1]["name"] for name, _ in self._sorting}
+                {name: items[-1][name] for name, _ in self._sorting}
             )
             query.update(
                 {
@@ -1311,8 +1319,6 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
     def _item_by_index(self, index, direction):
         assert direction == 1, "direction=-1 should be handled by the client"
-        if index < 0:
-            index = len(self) + index
         run_start_doc = next(
             self._chunked_find(
                 self._run_start_collection,
