@@ -1188,6 +1188,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             last_object_id = items[-1]["_id"]
             last_item = items[-1]
             for name, _ in self._sorting:
+                # This supports sorting by sub-items like, for example,
+                # "XDI.Element.edge".
                 first_token, *tokens = name.split(".")
                 value = last_item[first_token]
                 for token in tokens:
