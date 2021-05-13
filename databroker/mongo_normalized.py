@@ -1009,6 +1009,10 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         # persistent.
         return DictView(self._metadata)
 
+    @property
+    def sorting(self):
+        return list(self._sorting)
+
     def __repr__(self):
         # Display up to the first N keys to avoid making a giant service
         # request. Use _keys_slicer because it is unauthenticated.
@@ -1182,9 +1186,13 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 break
             # Next time through the loop, we'll pick up where we left off.
             last_object_id = items[-1]["_id"]
-            last_sorted_values.update(
-                {name: items[-1][name] for name, _ in self._sorting}
-            )
+            last_item = items[-1]
+            for name, _ in self._sorting:
+                first_token, *tokens = name.split(".")
+                value = last_item[first_token]
+                for token in tokens:
+                    value = value[token]
+                last_sorted_values[name] = value
             query.update(
                 {
                     "$and": [
