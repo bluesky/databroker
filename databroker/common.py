@@ -1,3 +1,4 @@
+from datetime import datetime
 import operator
 
 
@@ -13,11 +14,13 @@ class BlueskyRunMixin:
 
     def __repr__(self):
         metadata = self.metadata
+        datetime_ = datetime.fromtimestamp(metadata['start']['time'])
         return (
             f"<{type(self).__name__} "
             f"{set(self)!r} "
             f"scan_id={metadata['start'].get('scan_id', 'UNSET')!s} "  # (scan_id is optional in the schema)
-            f"uid={metadata['start']['uid'][:8]!r}"  # truncated uid
+            f"uid={metadata['start']['uid'][:8]!r} "  # truncated uid
+            f"{datetime_.isoformat(sep=' ', timespec='minutes')}"
             ">"
         )
 
