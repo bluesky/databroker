@@ -153,10 +153,6 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
             transformed_doc = doc
         return transformed_doc
 
-    def sort(self, sorting):
-        # TODO
-        return self
-
     def lookup_resource_for_datum(self, datum_id):
         doc = self._datum_collection.find_one({"datum_id": datum_id})
         if doc is None:
@@ -261,10 +257,6 @@ class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
             run=self._run,
             **kwargs,
         )
-
-    def sort(self, sorting):
-        # TODO
-        return self
 
     def iter_descriptors_and_events(self):
         for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
