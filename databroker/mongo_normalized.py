@@ -904,6 +904,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         cache_of_partial_bluesky_runs,
         metadata=None,
         queries=None,
+        sorting=None,
         access_policy=None,
         authenticated_identity=None,
     ):
@@ -930,6 +931,9 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         )
         self._metadata = metadata or {}
         self.queries = tuple(queries or [])
+        if sorting is None:
+            sorting = [("time", 1)]
+        self._sorting = sorting
         if (access_policy is not None) and (
             not access_policy.check_compatibility(self)
         ):
@@ -961,6 +965,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         *args,
         metadata=UNCHANGED,
         queries=UNCHANGED,
+        sorting=UNCHANGED,
         authenticated_identity=UNCHANGED,
         **kwargs,
     ):
@@ -968,6 +973,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             metadata = self._metadata
         if queries is UNCHANGED:
             queries = self.queries
+        if sorting is UNCHANGED:
+            sorting = self.sorting
         if authenticated_identity is UNCHANGED:
             authenticated_identity = self._authenticated_identity
         return type(self)(
@@ -980,6 +987,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             cache_of_complete_bluesky_runs=self._cache_of_complete_bluesky_runs,
             cache_of_partial_bluesky_runs=self._cache_of_partial_bluesky_runs,
             queries=queries,
+            sorting=sorting,
             access_policy=self.access_policy,
             authenticated_identity=authenticated_identity,
             **kwargs,
@@ -1155,7 +1163,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             initial_limit = CURSOR_LIMIT
         cursor = (
             collection.find(query, *args, **kwargs)
-            .sort([("_id", 1)])
+            .sort(self._sorting + [("_id", 1)])
             .skip(skip)
             .limit(initial_limit)
         )
@@ -1163,6 +1171,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         # https://medium.com/swlh/mongodb-pagination-fast-consistent-ece2a97070f3
         tally = 0
         items = []
+        last_sorted_values = {}
         while True:
             # Greedily exhaust the cursor. The user may loop over this iterator
             # slowly and, if we don't pull it all into memory now, we'll be
@@ -1173,7 +1182,31 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 break
             # Next time through the loop, we'll pick up where we left off.
             last_object_id = items[-1]["_id"]
-            query["_id"] = {"$gt": last_object_id}
+            last_sorted_values.update(
+                {name: items[-1]["name"] for name, _ in self._sorting}
+            )
+            query.update(
+                {
+                    "$and": [
+                        {
+                            "$or": [
+                                {
+                                    name: {
+                                        (
+                                            "$gt" if direction > 0 else "$lt"
+                                        ): last_sorted_values[name]
+                                    }
+                                },
+                                {
+                                    name: last_sorted_values[name],
+                                    "_id": {"$gt": last_object_id},
+                                },
+                            ]
+                        }
+                        for name, direction in self._sorting
+                    ]
+                }
+            )
             for item in items:
                 item.pop("_id")
                 yield item
@@ -1190,7 +1223,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             # Get another batch and go round again.
             cursor = (
                 collection.find(query, *args, **kwargs)
-                .sort([("_id", 1)])
+                .sort(self._sorting + [("_id", 1)])
                 .limit(this_limit)
             )
             items.clear()
@@ -1240,7 +1273,11 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         """
         return self.query_registry(query, self)
 
-    def _keys_slice(self, start, stop):
+    def sort(self, sorting):
+        return self.new_variation(sorting=sorting)
+
+    def _keys_slice(self, start, stop, direction):
+        assert direction == 1, "direction=-1 should be handled by the client"
         skip = start or 0
         if stop is not None:
             limit = stop - skip
@@ -1255,7 +1292,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             # TODO Fetch just the uid.
             yield run_start_doc["uid"]
 
-    def _items_slice(self, start, stop):
+    def _items_slice(self, start, stop, direction):
+        assert direction == 1, "direction=-1 should be handled by the client"
         skip = start or 0
         if stop is not None:
             limit = stop - skip
@@ -1271,9 +1309,8 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             run = self._get_run(run_start_doc)
             yield (uid, run)
 
-    def _item_by_index(self, index):
-        if index >= len(self):
-            raise IndexError(f"index {index} out of range for length {len(self)}")
+    def _item_by_index(self, index, direction):
+        assert direction == 1, "direction=-1 should be handled by the client"
         if index < 0:
             index = len(self) + index
         run_start_doc = next(
