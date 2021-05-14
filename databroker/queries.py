@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from tiled.query_registration import register
 from tiled.queries import FullText  # noqa: F401
+from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 
 
 class Duplicates(str, enum.Enum):
@@ -205,3 +206,15 @@ class TimeRange:
             f"{type(self).__name__!s}("
             f"timezone={self.timezone!r}, since={self._raw_since!r}, until={self._raw_until!r})"
         )
+
+
+def raw_mongo_in_memory(query, catalog):
+
+    from mongoquery import Query
+
+    query_obj = Query(query.start)
+    matches = {key: value for key, value in catalog.items() if query_obj.match(value.metadata["start"])}
+    return catalog.new_variation( mapping=matches)
+
+
+CatalogInMemory.register_query(RawMongo, raw_mongo_in_memory)
