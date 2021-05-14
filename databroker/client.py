@@ -125,9 +125,19 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
+            entry
+            for entry in self
+            if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
+
+    def describe(self):
+        "For back-compat with intake-based BlueskyRun"
+        warnings.warn(
+            "This will be removed. Use .metadata directly instead of describe()['metadata'].",
+            DeprecationWarning,
+        )
+        return {"metadata": self.metadata}
 
 
 class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
@@ -166,7 +176,9 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
+            entry
+            for entry in self
+            if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
 

@@ -14,7 +14,7 @@ class BlueskyRunMixin:
 
     def __repr__(self):
         metadata = self.metadata
-        datetime_ = datetime.fromtimestamp(metadata['start']['time'])
+        datetime_ = datetime.fromtimestamp(metadata["start"]["time"])
         return (
             f"<{type(self).__name__} "
             f"{set(self)!r} "
