@@ -125,7 +125,7 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword))
+            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
 
@@ -166,7 +166,7 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
         # Build a list of entries that are valid attribute names
         # and add them to __dir__ so that they tab-complete.
         tab_completable_entries = [
-            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword))
+            entry for entry in self if (entry.isidentifier() and (not keyword.iskeyword(entry)))
         ]
         return super().__dir__() + tab_completable_entries
 
