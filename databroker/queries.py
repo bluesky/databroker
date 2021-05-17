@@ -213,7 +213,11 @@ def raw_mongo_in_memory(query, catalog):
     from mongoquery import Query
 
     query_obj = Query(json.loads(query.start))
-    matches = {key: value for key, value in catalog.items() if query_obj.match(value.metadata["start"])}
+    matches = {
+        key: value
+        for key, value in catalog.items()
+        if query_obj.match(value.metadata["start"])
+    }
     return catalog.new_variation(mapping=matches)
 
 
