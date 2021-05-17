@@ -1,7 +1,6 @@
 import keyword
 import warnings
 
-import httpx
 import msgpack
 from tiled.catalogs.utils import IndexCallable
 from tiled.client.catalog import Catalog
@@ -59,47 +58,14 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
             raise NotImplementedError("fill='delayed' is not supported")
         else:
             fill = bool(fill)
-        # (name, doc) pairs are streamed as newline-delimited JSON
-        if isinstance(self._client, httpx.AsyncClient):
-            yield from self._stream_async(fill)
-        else:
-            yield from self._stream_sync(fill)
-
-    def _stream_async(self, fill):
-        # HACK! Revisit this once we refactor the generic "service" part
-        # out from HTTP.
-
-        import asyncio
-
-        async def drain():
-            documents = []
-            async with self._client.stream(
-                "GET",
-                f"/documents/{'/'.join(self._path)}",
-                params={"fill": fill},
-                headers={"Accept": "application/x-msgpack"},
-            ) as response:
-                if response.is_error:
-                    response.read()
-                    handle_error(response)
-                unpacker = msgpack.Unpacker()
-                async for chunk in response.aiter_raw():
-                    unpacker.feed(chunk)
-                    for name, doc in unpacker:
-                        # This will decode as [name, doc]. We want (name, doc).
-                        documents.append((name, _document_types[name](doc)))
-            return documents
-
-        for item in asyncio.run(drain()):
-            yield item
-
-    def _stream_sync(self, fill):
-        with self._client.stream(
+        request = self._client.build_request(
             "GET",
             f"/documents/{'/'.join(self._path)}",
             params={"fill": fill},
             headers={"Accept": "application/x-msgpack"},
-        ) as response:
+        )
+        response = self._client.send(request, stream=True)
+        try:
             if response.is_error:
                 response.read()
                 handle_error(response)
@@ -108,6 +74,8 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
                 unpacker.feed(chunk)
                 for name, doc in unpacker:
                     yield (name, _document_types[name](doc))
+        finally:
+            response.close()
 
     def __getattr__(self, key):
         """
