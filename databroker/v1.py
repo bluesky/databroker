@@ -555,7 +555,10 @@ class Broker:
             dataset = run[stream_name].read(variables=(applicable_fields or None))
             dict_of_arrays = {}
             for var_name in dataset:
-                dict_of_arrays[var_name] = dataset[var_name].data
+                column = dataset[var_name].data
+                if column.ndim > 1:
+                    column = list(column)  # data must be 1-dimensional
+                dict_of_arrays[var_name] = column
             df = pandas.DataFrame(dict_of_arrays)
             # if converting to datetime64 (in utc or 'local' tz)
             times = dataset["time"].data
