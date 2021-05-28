@@ -496,11 +496,11 @@ class DatasetFromDocuments:
                     # sorting by time but could not be in weird cases
                     # (which I'm not aware have ever occurred) where an NTP sync
                     # moves system time backward mid-run.
-                    {"$sort": {"seq_num": 1}},
+                    {"$sort": {"doc.seq_num": 1}},
                     # Extract the column of interest as an array.
                     {
                         "$group": {
-                            "_id": {"descriptor": "descriptor"},
+                            "_id": "$descriptor",
                             "column": {"$push": "$doc.time"},
                         },
                     },
@@ -550,11 +550,11 @@ class DatasetFromDocuments:
                     # sorting by time but could not be in weird cases
                     # (which I'm not aware have ever occurred) where an NTP sync
                     # moves system time backward mid-run.
-                    {"$sort": {"seq_num": 1}},
+                    {"$sort": {"doc.seq_num": 1}},
                     # Extract the column of interest as an array.
                     {
                         "$group": {
-                            "_id": {"descriptor": "descriptor"},
+                            "_id": "$descriptor",
                             "column": {"$push": f"$doc.{self._sub_dict}.{key}"},
                         },
                     },
