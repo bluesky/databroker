@@ -543,8 +543,15 @@ class Broker:
         fields = set(fields or [])
         dfs = []
         for header in headers:
+            if not fill:
+                descriptors = [d for d in header.descriptors if d.get("name") == stream_name]
+                data_keys = descriptors[0]["data_keys"]
+                external_fields = {k for k, v in data_keys.items() if v.get("external")}
+                applicable_fields = (fields or set(data_keys)) - external_fields
+            else:
+                applicable_fields = fields or set(data_keys)
             run = self._catalog[header.start["uid"]]
-            dataset = run[stream_name].read(variables=(fields or None))
+            dataset = run[stream_name].read(variables=(applicable_fields or None))
             dict_of_arrays = {}
             for var_name in dataset:
                 dict_of_arrays[var_name] = dataset[var_name].data
