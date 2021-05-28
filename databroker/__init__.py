@@ -4,7 +4,7 @@ from tiled.utils import OneShotCachedMap
 from tiled.profiles import list_profiles
 from tiled.client import from_profile
 
-# from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
+from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
 from .utils import (  # noqa: 401
     lookup_config, list_configs, describe_configs,  # noqa: F401
     wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct,  # noqa: F401
