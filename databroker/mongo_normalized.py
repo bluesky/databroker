@@ -287,6 +287,7 @@ class DatasetFromDocuments:
         self,
         *,
         run,
+        stream_name,
         cutoff_seq_num,
         event_descriptors,
         event_collection,
@@ -294,8 +295,8 @@ class DatasetFromDocuments:
         sub_dict,
         metadata=None,
     ):
-        self._metadata = metadata or {}
         self._run = run
+        self._stream_name = stream_name
         self._cutoff_seq_num = cutoff_seq_num
         self._event_descriptors = event_descriptors
         self._event_collection = event_collection
@@ -307,12 +308,13 @@ class DatasetFromDocuments:
 
     @property
     def metadata(self):
-        return DictView(self._metadata)
+        return self._run[self._stream_name].metadata
 
     def macrostructure(self):
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
-        descriptor, *_ = self._event_descriptors
+        # IMPORTANT: Access via self.metadata so that the transforms are applied.
+        descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
         for key, field_metadata in descriptor["data_keys"].items():
@@ -473,7 +475,7 @@ class DatasetFromDocuments:
             min_seq_num = 1 + slice.start
             max_seq_num = 1 + slice.stop
         column = []
-        for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
+        for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
             (result,) = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
@@ -518,14 +520,16 @@ class DatasetFromDocuments:
             slice_ = slices[0]
             min_seq_num = 1 + slice_.start
             max_seq_num = 1 + slice_.stop
+        # IMPORTANT: Access via self.metadata so that transforms are applied.
+        descriptors = self.metadata["descriptors"]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
-        data_key = self._event_descriptors[0]["data_keys"][key]
+        data_key = descriptors[0]["data_keys"][key]
         is_external = "external" in data_key
         expected_shape = tuple(data_key["shape"] or [])
         # If data is external, we now have a column of datum_ids, and we need
         # to look up the data that they reference.
-        for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
+        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
             # TODO When seq_num is repeated, take the last one only (sorted by
             # time).
             (result,) = self._event_collection.aggregate(
@@ -634,25 +638,28 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         self,
         *,
         run,
+        stream_name,
         cutoff_seq_num,
         event_descriptors,
         event_collection,
-        object_name,
         sub_dict,
-        metadata=None,
+        object_name,
     ):
-        self._metadata = metadata or {}
-        self._run = run
-        self._cutoff_seq_num = cutoff_seq_num
-        self._event_descriptors = event_descriptors
-        self._event_collection = event_collection
+        super().__init__(
+            run=run,
+            stream_name=stream_name,
+            cutoff_seq_num=cutoff_seq_num,
+            event_descriptors=event_descriptors,
+            event_collection=event_collection,
+            sub_dict=sub_dict,
+        )
         self._object_name = object_name
-        self._sub_dict = sub_dict
 
     def macrostructure(self):
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
-        descriptor, *_ = self._event_descriptors
+        # IMPORTANT: Access via self.metadata so that the transforms are applied.
+        descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
         data_keys = (
@@ -743,14 +750,16 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             slice_ = slices[0]
             min_seq_num = 1 + slice_.start
             max_seq_num = 1 + slice_.stop
+        # IMPORTANT: Access via self.metadata so that transforms are applied.
+        descriptors = self.metadata["descriptors"]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
-        first_descriptor = self._event_descriptors[0]
+        first_descriptor = descriptors[0]
         data_key = first_descriptor["configuration"][self._object_name]["data_keys"][
             key
         ]
         expected_shape = tuple(data_key["shape"] or [])
-        for descriptor in sorted(self._event_descriptors, key=lambda d: d["time"]):
+        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
             # TODO When seq_num is repeated, take the last one only (sorted by
             # time).
             (result,) = self._event_collection.aggregate(
@@ -1093,6 +1102,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             {
                 "data": lambda: DatasetFromDocuments(
                     run=run,
+                    stream_name=stream_name,
                     cutoff_seq_num=cutoff_seq_num,
                     event_descriptors=event_descriptors,
                     event_collection=self._event_collection,
@@ -1101,6 +1111,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 ),
                 "timestamps": lambda: DatasetFromDocuments(
                     run=run,
+                    stream_name=stream_name,
                     cutoff_seq_num=cutoff_seq_num,
                     event_descriptors=event_descriptors,
                     event_collection=self._event_collection,
@@ -1112,6 +1123,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                         {
                             object_name: lambda object_name=object_name: ConfigDatasetFromDocuments(
                                 run=run,
+                                stream_name=stream_name,
                                 cutoff_seq_num=cutoff_seq_num,
                                 event_descriptors=event_descriptors,
                                 event_collection=self._event_collection,
@@ -1127,6 +1139,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                         {
                             object_name: lambda object_name=object_name: ConfigDatasetFromDocuments(
                                 run=run,
+                                stream_name=stream_name,
                                 cutoff_seq_num=cutoff_seq_num,
                                 event_descriptors=event_descriptors,
                                 event_collection=self._event_collection,
