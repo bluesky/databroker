@@ -425,7 +425,9 @@ class DatasetFromDocuments:
             variable = structure.data_vars[key].macro.variable
             dtype = variable.macro.data.micro.to_numpy_dtype()
             array = self._get_column(key, slices=None, coerce_dtype=dtype)
-            data_array = xarray.DataArray(array, attrs=variable.macro.attrs)
+            data_array = xarray.DataArray(
+                array, attrs=variable.macro.attrs, dims=variable.macro.dims
+            )
             data_arrays[key] = data_array
         # Build the time coordinate.
         variable = structure.coords["time"]
