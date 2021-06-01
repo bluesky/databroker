@@ -341,7 +341,7 @@ class DatasetFromDocuments:
                 # TODO We may soon add a more structured units type, which
                 # would likely be a dict here.
             if self._sub_dict == "data":
-                shape = tuple((self._cutoff_seq_num, *field_metadata["shape"]))
+                shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     # Load the all the data to figure out the  itemsize.
@@ -355,7 +355,7 @@ class DatasetFromDocuments:
                     dtype.itemsize = array.itemsize // 4
             else:
                 # assert sub_dict == "timestamps"
-                shape = tuple((self._cutoff_seq_num,))
+                shape = tuple((self._cutoff_seq_num - 1,))
                 dtype = FLOAT_DTYPE
             # TEMP: Special-case 4D data in a way that optimzes single-frame
             # access of area detector data. The correct way to handle this may
@@ -390,7 +390,7 @@ class DatasetFromDocuments:
             )
             data_vars[key] = data_array
         # Build the time coordinate.
-        shape = (self._cutoff_seq_num,)
+        shape = (self._cutoff_seq_num - 1,)
         chunks = normalize_chunks(
             ("auto",) * len(shape),
             shape=shape,
@@ -684,7 +684,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 # TODO We may soon add a more structured units type, which
                 # would likely be a dict here.
             if self._sub_dict == "data":
-                shape = tuple((self._cutoff_seq_num, *field_metadata["shape"]))
+                shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     # Load the all the data to figure out the  itemsize.
@@ -698,7 +698,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                     dtype.itemsize = array.itemsize // 4
             else:
                 # assert sub_dict == "timestamps"
-                shape = tuple((self._cutoff_seq_num,))
+                shape = tuple((self._cutoff_seq_num - 1,))
                 dtype = FLOAT_DTYPE
             suggested_chunks = ("auto",) * len(shape)
             chunks = normalize_chunks(
@@ -1095,7 +1095,9 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
                 },
             ]
         )
-        cutoff_seq_num = result["highest_seq_num"]
+        cutoff_seq_num = (
+            1 + result["highest_seq_num"]
+        )  # `1 +` because we use a half-open interval
         object_names = event_descriptors[0]["object_keys"]
         run = self[run_start_uid]
         mapping = OneShotCachedMap(
