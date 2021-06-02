@@ -296,7 +296,8 @@ def time_range(query, catalog):
     return catalog.query_registry(RawMongo(start=mongo_query), catalog)
 
 
-CatalogInMemory.register_query(RawMongo, raw_mongo_in_memory)
-CatalogInMemory.register_query(KeyLookup, key_lookup)
-CatalogInMemory.register_query(_ScanID, scan_id)
+# CatalogInMemory.register_query(KeyLookup, key_lookup)
 CatalogInMemory.register_query(_PartialUID, partial_uid)
+CatalogInMemory.register_query(RawMongo, raw_mongo_in_memory)
+CatalogInMemory.register_query(_ScanID, scan_id)
+CatalogInMemory.register_query(TimeRange, time_range)
