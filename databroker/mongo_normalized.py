@@ -32,7 +32,7 @@ from tiled.structures.xarray import (
     VariableMacroStructure,
 )
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import FullText, KeyLookup, QueryValueError
+from tiled.queries import FullText, KeyLookup
 from tiled.utils import (
     DictView,
     SpecialUsers,
@@ -46,7 +46,16 @@ from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 from tiled.utils import import_object, OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
-from .queries import RawMongo, _PartialUID, _ScanID, TimeRange
+from .queries import (
+    RawMongo,
+    _PartialUID,
+    _ScanID,
+    TimeRange,
+    key_lookup,
+    partial_uid,
+    scan_id,
+    time_range,
+)
 from .server import router
 
 
@@ -1362,10 +1371,6 @@ def full_text_search(query, catalog):
     )
 
 
-def key_lookup(query, catalog):
-    return Catalog.query_registry(RawMongo(start={"uid": query.key}), catalog)
-
-
 def raw_mongo(query, catalog):
     # For now, only handle search on the 'run_start' collection.
     return catalog.new_variation(
@@ -1373,77 +1378,11 @@ def raw_mongo(query, catalog):
     )
 
 
-def scan_id(query, catalog):
-    mongo_results = Catalog.query_registry(
-        RawMongo(start={"scan_id": {"$in": query.scan_ids}}),
-        catalog,
-    )
-    # Handle duplicates.
-    if query.duplicates == "latest":
-        # Convert to an in-memory Catalog to do some filtering in Python
-        # that we cannot expressing in a collection.find(...) query.
-        # We might want to rethink this later and make it possible to do
-        # aggregations in Mongo from queries.
-        results_by_scan_id = {}
-        for key, value in mongo_results.items():
-            results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
-        results = CatalogInMemory(dict(results_by_scan_id.values()))
-    elif query.duplicates == "error":
-        scan_ids = list(
-            value.metadata["start"]["scan_id"] for value in mongo_results.values()
-        )
-        counter = collections.Counter(scan_ids)
-        duplicated = []
-        for k, v in counter.items():
-            if v > 1:
-                duplicated.append(k)
-        if duplicated:
-            raise QueryValueError(
-                f"There are multiples of the following scan_ids: {duplicated}"
-            )
-        results = mongo_results
-    elif query.duplicates == "all":
-        results = mongo_results
-    else:
-        raise QueryValueError("duplicates should be one of {'latest', 'error', 'all'}")
-    return results
-
-
-def partial_uid(query, catalog):
-    results = {}
-    for partial_uid in query.partial_uids:
-        if len(partial_uid) < 5:
-            raise QueryValueError(
-                f"Partial uid {partial_uid} is too short. "
-                "It must include at least 5 characters."
-            )
-        result = Catalog.query_registry(
-            RawMongo(start={"uid": {"$regex": f"^{partial_uid}"}}), catalog
-        )
-        if len(result) > 1:
-            raise QueryValueError(
-                f"Partial uid {partial_uid} has multiple matches, "
-                "listed below. Include more characters. Matches:\n" + "\n".join(result)
-            )
-        results.update(result)
-    return CatalogInMemory(results)
-
-
-def time_range(query, catalog):
-    mongo_query = {"time": {}}
-    if query.since is not None:
-        mongo_query["time"]["$gte"] = query.since
-    if query.until is not None:
-        mongo_query["time"]["$lt"] = query.until
-    if not mongo_query["time"]:
-        # Neither 'since' nor 'until' are set.
-        mongo_query.clear()
-    return Catalog.query_registry(RawMongo(start=mongo_query), catalog)
-
-
+# These are implementation-specific definitions.
 Catalog.register_query(FullText, full_text_search)
-Catalog.register_query(KeyLookup, key_lookup)
 Catalog.register_query(RawMongo, raw_mongo)
+# These are generic definitions that use RawMongo internally.
+Catalog.register_query(KeyLookup, key_lookup)
 Catalog.register_query(_PartialUID, partial_uid)
 Catalog.register_query(_ScanID, scan_id)
 Catalog.register_query(TimeRange, time_range)
