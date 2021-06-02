@@ -550,6 +550,7 @@ class Broker:
                 applicable_fields = (fields or set(data_keys)) - external_fields
             else:
                 applicable_fields = fields or set(data_keys)
+            applicable_fields.add("time")
             run = self._catalog[header.start["uid"]]
             dataset = run[stream_name].read(variables=(applicable_fields or None))
             dict_of_arrays = {}
