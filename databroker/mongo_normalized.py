@@ -42,11 +42,11 @@ from tiled.catalogs.utils import (
     IndexersMixin,
     UNCHANGED,
 )
-from tiled.catalogs.in_memory import Catalog as CatalogInMemory
 from tiled.utils import import_object, OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import (
+    CatalogInMemory,
     RawMongo,
     _PartialUID,
     _ScanID,
@@ -124,7 +124,7 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
 
     @property
     def handler_registry(self):
-        self.filler.handler_registry
+        return self.filler.handler_registry
 
     def new_variation(self, *args, **kwargs):
         return super().new_variation(
