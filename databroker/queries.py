@@ -4,12 +4,29 @@ import enum
 import json
 from typing import List, Optional
 
-from tiled.queries import KeyLookup, QueryValueError
+from tiled.catalogs.in_memory import Catalog as GenericCatalog
+from tiled.queries import QueryValueError
+from tiled.query_registration import QueryTranslationRegistry
 
 # Reimport generic queries for convenience so all can be imported from this module.
 from tiled.queries import FullText  # noqa: F401
 from tiled.query_registration import register
-from tiled.catalogs.in_memory import Catalog as CatalogInMemory
+
+from .common import CatalogOfBlueskyRunsMixin
+
+
+class CatalogInMemory(GenericCatalog, CatalogOfBlueskyRunsMixin):
+    """
+    A Catalog that contains BlueskyRuns and supports relevant queries on them.
+    """
+
+    # The primary purpose of this class is to have a query_registry
+    # distinct form the generic tiled.in_memory.Catalog.query_registry
+    # with queries that assume the conntents are BlueskyRuns and have the
+    # requisite metadata structure.
+    query_registry = QueryTranslationRegistry()
+    register_query = query_registry.register
+    register_query_lazy = query_registry.register_lazy
 
 
 class Duplicates(str, enum.Enum):
@@ -235,7 +252,7 @@ def scan_id(query, catalog):
     )
     # Handle duplicates.
     if query.duplicates == "latest":
-        # Convert to an in-memory Catalog to do some filtering in Python
+        # Convert to a CatalogInMemory to do some filtering in Python
         # that we cannot expressing in a collection.find(...) query.
         # We might want to rethink this later and make it possible to do
         # aggregations in Mongo from queries.
@@ -296,7 +313,6 @@ def time_range(query, catalog):
     return catalog.query_registry(RawMongo(start=mongo_query), catalog)
 
 
-# CatalogInMemory.register_query(KeyLookup, key_lookup)
 CatalogInMemory.register_query(_PartialUID, partial_uid)
 CatalogInMemory.register_query(RawMongo, raw_mongo_in_memory)
 CatalogInMemory.register_query(_ScanID, scan_id)
