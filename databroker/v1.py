@@ -299,8 +299,13 @@ class Broker:
         return Results(results_catalog)
 
     def __getitem__(self, key):
-        run = self._catalog[key]
-        return Header(run, self)
+        result = self._catalog[key]
+        if isinstance(result, list):
+            # self[a, b, c] -> List[BlueskyRun]
+            return [Header(run, self) for run in result]
+        else:
+            # self[a] -> BlueskyRun
+            return Header(result, self)
 
     get_fields = staticmethod(get_fields)
 
