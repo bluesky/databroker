@@ -211,6 +211,13 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Catalog):
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
                 return self.values_indexer[key]
+        elif isinstance(key, tuple):
+            # Recurse.
+            return [self[item] for item in key]
+        else:
+            raise ValueError(
+                "Indexing expects a string, an integer, or a collection of strings and/or integers."
+            )
 
     def _lookup_by_scan_id(self, scan_id):
         results = self.search(ScanID(scan_id, duplicates="latest"))
