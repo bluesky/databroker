@@ -43,7 +43,7 @@ def read_requirements(filename):
 
 
 extras_require = {
-    key: read_requirements(f"requirements-{key}.txt") for key in ["client", "server", "v1"]
+    key: read_requirements(f"requirements-{key}.txt") for key in ["client", "server", "back-compat"]
 }
 extras_require["complete"] = sorted(set(sum(extras_require.values(), [])))
 extras_require['all'] = extras_require["complete"]  # for back-compat
