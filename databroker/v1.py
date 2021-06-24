@@ -953,6 +953,10 @@ class Header:
         self.ext = SimpleNamespace()  # not implemented
 
     @property
+    def v2(self):
+        return self._run
+
+    @property
     def start(self):
         return self.db.prepare_hook('start', self._start)
 
