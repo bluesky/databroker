@@ -523,8 +523,8 @@ class DatasetFromDocuments:
             column.extend(result["column"])
         return numpy.array(column)
 
-    def _get_column(self, key, slices, coerce_dtype=None):
-        column = []
+    def _get_columns(self, keys, slices, coerce_dtype=None):
+        columns = {key: [] for key in keys}
         if slices is None:
             min_seq_num = 1
             max_seq_num = self._cutoff_seq_num
@@ -536,9 +536,9 @@ class DatasetFromDocuments:
         descriptors = self.metadata["descriptors"]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
-        data_key = descriptors[0]["data_keys"][key]
-        is_external = "external" in data_key
-        expected_shape = tuple(data_key["shape"] or [])
+        data_keys = [descriptors[0]["data_keys"][key] for key in keys]
+        is_externals = ["external" in data_key for data_key in data_keys]
+        expected_shapes = [tuple(data_key["shape"] or []) for data_key in data_keys]
         # If data is external, we now have a column of datum_ids, and we need
         # to look up the data that they reference.
         for descriptor in sorted(descriptors, key=lambda d: d["time"]):
@@ -571,23 +571,30 @@ class DatasetFromDocuments:
                     {
                         "$group": {
                             "_id": "$descriptor",
-                            "column": {"$push": f"$doc.{self._sub_dict}.{key}"},
+                            **{
+                                key: {"$push": f"$doc.{self._sub_dict}.{key}"}
+                                for key in keys
+                            },
                         },
                     },
                 ]
             )
+            print(result)
+            for key, expected_shape, is_external in zip(
+                keys, expected_shapes, is_externals
+            ):
             if expected_shape and (not is_external):
                 validated_column = list(
                     map(
                         lambda item: _validate_shape(
                             numpy.asarray(item), expected_shape
                         ),
-                        result["column"],
+                            result[key],
                     )
                 )
             else:
-                validated_column = result["column"]
-            column.extend(validated_column)
+                    validated_column = result[key]
+                columns[key].extend(validated_column)
 
         if is_external:
             filled_column = []
