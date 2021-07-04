@@ -2,6 +2,7 @@ cachetools
 entrypoints
 event-model
 fastapi
+mongomock
 msgpack
 pydantic
 pymongo
