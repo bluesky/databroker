@@ -975,6 +975,28 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         self._authenticated_identity = authenticated_identity
         super().__init__()
 
+    @property
+    def database(self):
+        """
+        The underlying MongoDB database object
+
+        Note: Very old deployments use two separate databases. We believe these
+        are rare "in the wild", mostly or entirely restricted to the earliest
+        facility to use databroker, BNL NSLS-II.
+
+        In the event that two databases are used, this raises
+        NotImplementedError and instructs the callers to use two semi-internal
+        attributes instead.
+        """
+        if self._metadatastore_db != self._asset_registry_db:
+            raise NotImplementedError(
+                "This Catalog is backed by two databases. This is no longer "
+                "necessary or recommended. As a result, the `database` property "
+                "is undefined. Use the attributes _metadatastore_db and "
+                "_asset_registry_db directly."
+            )
+        return self._metadatastore_db
+
     def register_handler(self, spec, handler, overwrite=False):
         if (not overwrite) and (spec in self._handler_registry):
             original = self._handler_registry[spec]
