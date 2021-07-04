@@ -883,11 +883,22 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             Time (in seconds) to cache a *complete* BlueskyRun before checking
             the database for updates. Default 60.
         """
-        metadatastore_db = _get_database(uri)
-        if asset_registry_uri is None:
-            asset_registry_db = metadatastore_db
+        if uri == "mongomock":
+            # Prohibit mixing actual and mock databases.
+            if (asset_registry_uri is not None) and (asset_registry_uri != "mongomock"):
+                raise NotImplementedError(
+                    "When uri == 'mongomock', asset_registry_uri must be too."
+                )
+            import mongomock
+
+            client = mongomock.MongoClient()
+            metadatastore_db = asset_registry_db = client["mock_database"]
         else:
-            asset_registry_db = _get_database(asset_registry_uri)
+            metadatastore_db = _get_database(uri)
+            if asset_registry_uri is None:
+                asset_registry_db = metadatastore_db
+            else:
+                asset_registry_db = _get_database(asset_registry_uri)
         root_map = root_map or {}
         transforms = parse_transforms(transforms)
         if handler_registry is None:
