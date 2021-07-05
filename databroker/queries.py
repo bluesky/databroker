@@ -4,11 +4,15 @@ import enum
 import json
 from typing import List, Optional
 
-from tiled.catalogs.in_memory import Catalog as GenericCatalog, key_lookup as generic_key_lookup
-from tiled.queries import QueryValueError, KeyLookup
+from tiled.catalogs.in_memory import (
+    Catalog as GenericCatalog,
+    key_lookup as generic_key_lookup,
+    full_text_search,
+)
+from tiled.queries import FullText, QueryValueError, KeyLookup
 from tiled.query_registration import QueryTranslationRegistry
+
 # Reimport generic queries for convenience so all can be imported from this module.
-from tiled.queries import FullText  # noqa: F401
 from tiled.query_registration import register
 
 from .common import CatalogOfBlueskyRunsMixin
@@ -317,3 +321,4 @@ CatalogInMemory.register_query(RawMongo, raw_mongo_in_memory)
 CatalogInMemory.register_query(_ScanID, scan_id)
 CatalogInMemory.register_query(TimeRange, time_range)
 CatalogInMemory.register_query(KeyLookup, generic_key_lookup)
+CatalogInMemory.register_query(FullText, full_text_search)
