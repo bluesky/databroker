@@ -6,6 +6,7 @@ import functools
 import itertools
 import json
 import os
+import sys
 import warnings
 
 from bson.objectid import ObjectId, InvalidId
@@ -1394,6 +1395,18 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
 
 def full_text_search(query, catalog):
+    # First if this catalog is backed by mongomock, which does not support $text queries.
+    # Avoid importing mongomock if it is not already imported.
+    if "mongomock" in sys.modules:
+        import mongomock
+
+        if isinstance(catalog.database.client, mongomock.MongoClient):
+            # Do the query in memory.
+            # For huge Catalogs this will be slow, but if you are attempting
+            # full text search on a large mongomock-backed Catalog,
+            # you have made your choices! :-)
+            return CatalogInMemory(dict(catalog)).search(query)
+
     return Catalog.query_registry(
         RawMongo(
             start={
