@@ -808,6 +808,13 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
         Parameters
         ----------
+        uri: str
+            MongoDB URI with database name, formed like "mongodb://HOSTNAME:27017/DATABASE_NAME"
+            or "mongodb://USER:PASSWORD@HOSTNAME:27017/DATABASE_NAME?authSource=admin".
+        asset_registry_uri: str
+            A separate URI for legacy deployments that place Resource and Datum documents
+            in a different database from the rest of the documents. (This is believed to
+            only be needed for old deployments at BNL NSLS-II.)
         handler_registry: dict, optional
             Maps each 'spec' (a string identifying a given type or external
             resource) to a handler class.
@@ -843,22 +850,96 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             Time (in seconds) to cache a *complete* BlueskyRun before checking
             the database for updates. Default 60.
         """
-        if uri == "mongomock":
-            # Prohibit mixing actual and mock databases.
-            if (asset_registry_uri is not None) and (asset_registry_uri != "mongomock"):
-                raise NotImplementedError(
-                    "When uri == 'mongomock', asset_registry_uri must be too."
-                )
-            import mongomock
-
-            client = mongomock.MongoClient()
-            metadatastore_db = asset_registry_db = client["mock_database"]
+        metadatastore_db = _get_database(uri)
+        if asset_registry_uri is None:
+            asset_registry_db = metadatastore_db
         else:
-            metadatastore_db = _get_database(uri)
-            if asset_registry_uri is None:
-                asset_registry_db = metadatastore_db
-            else:
-                asset_registry_db = _get_database(asset_registry_uri)
+            asset_registry_db = _get_database(asset_registry_uri)
+        root_map = root_map or {}
+        transforms = parse_transforms(transforms)
+        if handler_registry is None:
+            handler_registry = discover_handlers()
+        handler_registry = parse_handler_registry(handler_registry)
+        # Two different caches with different eviction rules.
+        cache_of_complete_bluesky_runs = cachetools.TTLCache(
+            ttl=cache_ttl_complete, maxsize=100
+        )
+        cache_of_partial_bluesky_runs = cachetools.TTLCache(
+            ttl=cache_ttl_partial, maxsize=100
+        )
+        return cls(
+            metadatastore_db=metadatastore_db,
+            asset_registry_db=asset_registry_db,
+            handler_registry=handler_registry,
+            root_map=root_map,
+            transforms=transforms,
+            cache_of_complete_bluesky_runs=cache_of_complete_bluesky_runs,
+            cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
+            metadata=metadata,
+            access_policy=access_policy,
+            authenticated_identity=authenticated_identity,
+        )
+
+    @classmethod
+    def from_mongomock(
+        cls,
+        *,
+        handler_registry=None,
+        root_map=None,
+        transforms=None,
+        metadata=None,
+        access_policy=None,
+        authenticated_identity=None,
+        cache_ttl_complete=60,  # seconds
+        cache_ttl_partial=2,  # seconds
+    ):
+        """
+        Create a transient Catalog from backed by "mongomock".
+
+        This is intended for testing, teaching, an demos. The data does not
+        persistent. Do not use this for anything important.
+
+        Parameters
+        ----------
+        handler_registry: dict, optional
+            Maps each 'spec' (a string identifying a given type or external
+            resource) to a handler class.
+
+            A 'handler class' may be any callable with the signature::
+
+                handler_class(resource_path, root, **resource_kwargs)
+
+            It is expected to return an object, a 'handler instance', which is also
+            callable and has the following signature::
+
+                handler_instance(**datum_kwargs)
+
+            As the names 'handler class' and 'handler instance' suggest, this is
+            typically implemented using a class that implements ``__init__`` and
+            ``__call__``, with the respective signatures. But in general it may be
+            any callable-that-returns-a-callable.
+        root_map: dict, optional
+            str -> str mapping to account for temporarily moved/copied/remounted
+            files.  Any resources which have a ``root`` in ``root_map`` will be
+            loaded using the mapped ``root``.
+        transforms: dict
+            A dict that maps any subset of the keys {start, stop, resource, descriptor}
+            to a function that accepts a document of the corresponding type and
+            returns it, potentially modified. This feature is for patching up
+            erroneous metadata. It is intended for quick, temporary fixes that
+            may later be applied permanently to the data at rest
+            (e.g., via a database migration).
+        cache_ttl_partial : float
+            Time (in seconds) to cache a *partial* (i.e. incomplete, ongoing)
+            BlueskyRun before checking the database for updates. Default 2.
+        cache_ttl_complete : float
+            Time (in seconds) to cache a *complete* BlueskyRun before checking
+            the database for updates. Default 60.
+        """
+        import mongomock
+
+        client = mongomock.MongoClient()
+        metadatastore_db = asset_registry_db = client["mock_database"]
         root_map = root_map or {}
         transforms = parse_transforms(transforms)
         if handler_registry is None:
