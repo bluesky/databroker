@@ -13,6 +13,7 @@ del get_versions
 
 logger = logging.getLogger(__name__)
 
+# TODO This seems to load *all* items when one item is accessed.
 catalog = FactoryMap(
     lambda: OneShotCachedMap(
         {profile: lambda: from_profile(profile) for profile in list_profiles()}
