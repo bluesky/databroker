@@ -327,6 +327,16 @@ class DatasetFromDocuments:
         descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
+        # Collect the keys (column names) that are of unicode data type.
+        unicode_keys = []
+        for key, field_metadata in descriptor["data_keys"].items():
+            if self._sub_dict == "data":
+                unicode_keys.append(key)
+        # Load the all the data for unicode columns to figure out the itemsize.
+        # We have no other choice, except to *guess* but we'd be in
+        # trouble if our guess were too small, and we'll waste space
+        # if our guess is too large.
+        columns = self._get_columns(unicode_keys, slices=None)  # Fetch *all*.
         for key, field_metadata in descriptor["data_keys"].items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -354,14 +364,13 @@ class DatasetFromDocuments:
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    # Load the all the data to figure out the  itemsize.
-                    # We have no other choice, except to *guess* but we'd be in
-                    # trouble if our guess were too small, and we'll waste space
-                    # if our guess is too large.
-                    array = self._get_column(key, slices=None)  # Fetch *all*.
+                    array = columns[key]
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
+                    # This might be making an assumption that we have ASCII
+                    # characters only, which is not a safe assumption. We should
+                    # revisit this.
                     dtype.itemsize = array.itemsize // 4
             else:
                 # assert sub_dict == "timestamps"
@@ -429,12 +438,15 @@ class DatasetFromDocuments:
         # for block in itertools.product(*num_blocks):
         structure = self.macrostructure()
         data_arrays = {}
+        keys = list(structure.data_vars)
+        columns = self._get_columns(keys, slices=None)
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
             variable = structure.data_vars[key].macro.variable
             dtype = variable.macro.data.micro.to_numpy_dtype()
-            array = self._get_column(key, slices=None, coerce_dtype=dtype)
+            raw_array = columns[key]
+            array = raw_array.astype(dtype)
             data_array = xarray.DataArray(
                 array, attrs=variable.macro.attrs, dims=variable.macro.dims
             )
@@ -474,7 +486,8 @@ class DatasetFromDocuments:
             for starts, shapes in zip(cumdims, chunks)
         ]
         slices = [s[index] for s, index in zip(slices_for_chunks, block)]
-        array = self._get_column(variable, slices=slices, coerce_dtype=dtype)
+        raw_array = self._get_columns([variable], slices=slices)[variable]
+        array = raw_array.astype(dtype)
         if slice is not None:
             array = array[slice]
         return array
@@ -523,7 +536,7 @@ class DatasetFromDocuments:
             column.extend(result["column"])
         return numpy.array(column)
 
-    def _get_columns(self, keys, slices, coerce_dtype=None):
+    def _get_columns(self, keys, slices):
         columns = {key: [] for key in keys}
         if slices is None:
             min_seq_num = 1
@@ -579,62 +592,59 @@ class DatasetFromDocuments:
                     },
                 ]
             )
-            print(result)
             for key, expected_shape, is_external in zip(
                 keys, expected_shapes, is_externals
             ):
-            if expected_shape and (not is_external):
-                validated_column = list(
-                    map(
-                        lambda item: _validate_shape(
-                            numpy.asarray(item), expected_shape
-                        ),
+                if expected_shape and (not is_external):
+                    validated_column = list(
+                        map(
+                            lambda item: _validate_shape(
+                                numpy.asarray(item), expected_shape
+                            ),
                             result[key],
+                        )
                     )
-                )
-            else:
+                else:
                     validated_column = result[key]
                 columns[key].extend(validated_column)
 
-        if is_external:
-            filled_column = []
-            descriptor_uid = descriptor["uid"]
-            for datum_id in column:
-                # HACK to adapt Filler which is designed to consume whole,
-                # streamed documents, to this column-based access mode.
-                mock_event = {
-                    "data": {key: datum_id},
-                    "descriptor": descriptor_uid,
-                    "uid": "PLACEHOLDER",
-                    "filled": {key: False},
-                }
-                filled_mock_event = _fill(
-                    self._run.filler,
-                    mock_event,
-                    self._run.lookup_resource_for_datum,
-                    self._run.get_resource,
-                    self._run.get_datum_for_resource,
-                    last_datum_id=None,
-                )
-                filled_data = filled_mock_event["data"][key]
-                validated_filled_data = _validate_shape(filled_data, expected_shape)
-                filled_column.append(validated_filled_data)
-            to_stack = filled_column
-        else:
-            to_stack = column
-        array = numpy.stack(to_stack)
-        if slices:
-            sliced_array = array[(..., *slices[1:])]
-        else:
-            sliced_array = array
-        # Verify that we send it as the datatype we say it is.
-        # This addresses two things that I know of:
-        # 1. Enforcing a consistent itemsize among chunks of unicode data
-        # 2. Making a best effort to deal with wrong metadata.
-        if coerce_dtype:
-            result = sliced_array.astype(coerce_dtype)
-        else:
-            result = sliced_array
+        result = {}
+        for key, expected_shape, is_external in zip(
+            keys, expected_shapes, is_externals
+        ):
+            column = columns[key]
+            if is_external:
+                filled_column = []
+                descriptor_uid = descriptor["uid"]
+                for datum_id in column:
+                    # HACK to adapt Filler which is designed to consume whole,
+                    # streamed documents, to this column-based access mode.
+                    mock_event = {
+                        "data": {key: datum_id},
+                        "descriptor": descriptor_uid,
+                        "uid": "PLACEHOLDER",
+                        "filled": {key: False},
+                    }
+                    filled_mock_event = _fill(
+                        self._run.filler,
+                        mock_event,
+                        self._run.lookup_resource_for_datum,
+                        self._run.get_resource,
+                        self._run.get_datum_for_resource,
+                        last_datum_id=None,
+                    )
+                    filled_data = filled_mock_event["data"][key]
+                    validated_filled_data = _validate_shape(filled_data, expected_shape)
+                    filled_column.append(validated_filled_data)
+                to_stack = filled_column
+            else:
+                to_stack = column
+            array = numpy.stack(to_stack)
+            if slices:
+                sliced_array = array[(..., *slices[1:])]
+            else:
+                sliced_array = array
+            result[key] = sliced_array
         return result
 
 
@@ -686,6 +696,16 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             .get(self._object_name, {})
             .get("data_keys", {})
         )
+        # Collect the keys (column names) that are of unicode data type.
+        unicode_keys = []
+        for key, field_metadata in descriptor["data_keys"].items():
+            if self._sub_dict == "data":
+                unicode_keys.append(key)
+        # Load the all the data for unicode columns to figure out the itemsize.
+        # We have no other choice, except to *guess* but we'd be in
+        # trouble if our guess were too small, and we'll waste space
+        # if our guess is too large.
+        columns = self._get_columns(unicode_keys, slices=None)  # Fetch *all*.
         for key, field_metadata in data_keys.items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -706,11 +726,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    # Load the all the data to figure out the  itemsize.
-                    # We have no other choice, except to *guess* but we'd be in
-                    # trouble if our guess were too small, and we'll waste space
-                    # if our guess is too large.
-                    array = self._get_column(key, slices=None)  # Fetch *all*.
+                    array = columns[key]
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
@@ -759,70 +775,6 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         return DatasetMacroStructure(
             data_vars=data_vars, coords={"time": variable}, attrs={}
         )
-
-    def _get_column(self, key, slices, coerce_dtype=None):
-        to_stack = []
-        if slices is None:
-            min_seq_num = 1
-            max_seq_num = self._cutoff_seq_num
-        else:
-            slice_ = slices[0]
-            min_seq_num = 1 + slice_.start
-            max_seq_num = 1 + slice_.stop
-        # IMPORTANT: Access via self.metadata so that transforms are applied.
-        descriptors = self.metadata["descriptors"]
-        # The `data_keys` in a series of Event Descriptor documents with the
-        # same `name` MUST be alike, so we can just use the first one.
-        first_descriptor = descriptors[0]
-        data_key = first_descriptor["configuration"][self._object_name]["data_keys"][
-            key
-        ]
-        expected_shape = tuple(data_key["shape"] or [])
-        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
-            # TODO When seq_num is repeated, take the last one only (sorted by
-            # time).
-            (result,) = self._event_collection.aggregate(
-                [
-                    # Select Events for this Descriptor with the appropriate seq_num range.
-                    {
-                        "$match": {
-                            "descriptor": descriptor["uid"],
-                            "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
-                        },
-                    },
-                    # Find the lowest and higher seq_num covered by this descriptor.
-                    {
-                        "$group": {
-                            "_id": {"descriptor": "descriptor"},
-                            "max": {"$max": "$seq_num"},
-                            "min": {"$min": "$seq_num"},
-                        },
-                    },
-                ]
-            )
-            num = 1 + result["max"] - result["min"]
-            value = descriptor["configuration"][self._object_name][self._sub_dict][key]
-            if expected_shape:
-                validated_value = _validate_shape(numpy.asarray(value), expected_shape)
-            else:
-                validated_value = value
-            chunk = numpy.tile(validated_value, (num,))
-            to_stack.extend(chunk)
-
-        array = numpy.stack(to_stack)
-        if slices:
-            sliced_array = array[(..., *slices[1:])]
-        else:
-            sliced_array = array
-        # Verify that we send it as the datatype we say it is.
-        # This addresses two things that I know of:
-        # 1. Enforcing a consistent itemsize among chunks of unicode data
-        # 2. Making a best effort to deal with wrong metadata.
-        if coerce_dtype:
-            result = sliced_array.astype(coerce_dtype)
-        else:
-            result = sliced_array
-        return result
 
 
 class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
