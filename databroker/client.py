@@ -2,8 +2,8 @@ import keyword
 import warnings
 
 import msgpack
-from tiled.catalogs.utils import IndexCallable
-from tiled.client.catalog import Catalog
+from tiled.trees.utils import IndexCallable
+from tiled.client.node import Node
 from tiled.client.utils import handle_error
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
@@ -21,11 +21,11 @@ _document_types = {
 }
 
 
-class BlueskyRun(BlueskyRunMixin, Catalog):
+class BlueskyRun(BlueskyRunMixin, Node):
     """
     This encapsulates the data and metadata for one Bluesky 'run'.
 
-    This adds for bluesky-specific conveniences to the standard client Catalog.
+    This adds for bluesky-specific conveniences to the standard client Node.
     """
 
     @property
@@ -108,11 +108,11 @@ class BlueskyRun(BlueskyRunMixin, Catalog):
         return {"metadata": self.metadata}
 
 
-class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
+class BlueskyEventStream(BlueskyEventStreamMixin, Node):
     """
     This encapsulates the data and metadata for one 'stream' in a Bluesky 'run'.
 
-    This adds for bluesky-specific conveniences to the standard client Catalog.
+    This adds for bluesky-specific conveniences to the standard client Node.
     """
 
     @property
@@ -167,7 +167,7 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Catalog):
     def to_dask(self):
         warnings.warn(
             """Do not use this method.
-Instead, set dask or when first creating the Catalog, as in
+Instead, set dask or when first creating the client, as in
 
     >>> catalog = from_uri("...", "dask")
 
@@ -176,13 +176,13 @@ and then read() will return dask objects.""",
             stacklevel=2,
         )
         return self.new_variation(
-            structure_clients=Catalog.DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]
+            structure_clients=Node.DEFAULT_STRUCTURE_CLIENT_DISPATCH["dask"]
         ).read()
 
 
-class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Catalog):
+class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
     """
-    This adds some bluesky-specific conveniences to the standard client Catalog.
+    This adds some bluesky-specific conveniences to the standard client Node.
 
     >>> catalog.scan_id[1234]  # scan_id lookup
     >>> catalog.uid["9acjef"]  # (partial) uid lookup

@@ -38,8 +38,8 @@ from tiled.utils import (
     DictView,
     SpecialUsers,
 )
-from tiled.catalogs.utils import (
-    catalog_repr,
+from tiled.trees.utils import (
+    tree_repr,
     IndexersMixin,
     UNCHANGED,
 )
@@ -47,7 +47,7 @@ from tiled.utils import import_object, OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import (
-    CatalogInMemory,
+    TreeInMemory,
     RawMongo,
     _PartialUID,
     _ScanID,
@@ -63,7 +63,7 @@ from .server import router
 CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
 
 
-class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
+class BlueskyRun(TreeInMemory, BlueskyRunMixin):
     client_type_hint = "BlueskyRun"
 
     def __init__(
@@ -87,7 +87,7 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
 
     @property
     def metadata(self):
-        "Metadata about this Catalog."
+        "Metadata about this Tree."
         # If there are transforms configured, shadow the 'start' and 'stop' documents
         # with transfomed copies.
         transformed = {}
@@ -235,7 +235,7 @@ class BlueskyRun(CatalogInMemory, BlueskyRunMixin):
         yield from batch_documents(self._single_documents(fill=fill), size)
 
 
-class BlueskyEventStream(CatalogInMemory, BlueskyEventStreamMixin):
+class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
     client_type_hint = "BlueskyEventStream"
 
     def __init__(self, *args, event_collection, cutoff_seq_num, run, **kwargs):
@@ -648,9 +648,9 @@ class DatasetFromDocuments:
         return result
 
 
-class Config(CatalogInMemory):
+class Config(TreeInMemory):
     """
-    Catalog of configuration datasets, keyed on 'object' (e.g. device)
+    Tree of configuration datasets, keyed on 'object' (e.g. device)
     """
 
     ...
@@ -777,10 +777,10 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         )
 
 
-class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
+class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
     client_type_hint = "CatalogOfBlueskyRuns"
 
-    # Define classmethods for managing what queries this Catalog knows.
+    # Define classmethods for managing what queries this Tree knows.
     query_registry = QueryTranslationRegistry()
     register_query = query_registry.register
     register_query_lazy = query_registry.register_lazy
@@ -804,7 +804,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         cache_ttl_partial=2,  # seconds
     ):
         """
-        Create a Catalog from MongoDB with the "normalized" (original) layout.
+        Create a Tree from MongoDB with the "normalized" (original) layout.
 
         Parameters
         ----------
@@ -894,7 +894,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         cache_ttl_partial=2,  # seconds
     ):
         """
-        Create a transient Catalog from backed by "mongomock".
+        Create a transient Tree from backed by "mongomock".
 
         This is intended for testing, teaching, an demos. The data does not
         persistent. Do not use this for anything important.
@@ -980,7 +980,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         access_policy=None,
         authenticated_identity=None,
     ):
-        "This is not user-facing. Use Catalog.from_uri."
+        "This is not user-facing. Use Tree.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
         self._run_stop_collection = metadatastore_db.get_collection("run_stop")
         self._event_descriptor_collection = metadatastore_db.get_collection(
@@ -1010,7 +1010,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
             not access_policy.check_compatibility(self)
         ):
             raise ValueError(
-                f"Access policy {access_policy} is not compatible with this Catalog."
+                f"Access policy {access_policy} is not compatible with this Tree."
             )
         self._access_policy = access_policy
         self._authenticated_identity = authenticated_identity
@@ -1031,7 +1031,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         """
         if self._metadatastore_db != self._asset_registry_db:
             raise NotImplementedError(
-                "This Catalog is backed by two databases. This is no longer "
+                "This Tree is backed by two databases. This is no longer "
                 "necessary or recommended. As a result, the `database` property "
                 "is undefined. Use the attributes _metadatastore_db and "
                 "_asset_registry_db directly."
@@ -1097,7 +1097,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
     @property
     def metadata(self):
-        "Metadata about this Catalog."
+        "Metadata about this Tree."
         # Ensure this is immutable (at the top level) to help the user avoid
         # getting the wrong impression that editing this would update anything
         # persistent.
@@ -1111,7 +1111,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         # Display up to the first N keys to avoid making a giant service
         # request. Use _keys_slicer because it is unauthenticated.
         N = 10
-        return catalog_repr(self, self._keys_slice(0, N, direction=1))
+        return tree_repr(self, self._keys_slice(0, N, direction=1))
 
     def _get_run(self, run_start_doc):
         "Get a BlueskyRun, either from a cache or by making one if needed."
@@ -1250,7 +1250,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
         )
 
     def __getitem__(self, key):
-        # Lookup this key *within the search results* of this Catalog.
+        # Lookup this key *within the search results* of this Tree.
         query = self._build_mongo_query({"uid": key})
         run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
         if run_start_doc is None:
@@ -1379,7 +1379,7 @@ class Catalog(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin)
 
     def search(self, query):
         """
-        Return a Catalog with a subset of the mapping.
+        Return a Tree with a subset of the mapping.
         """
         return self.query_registry(query, self)
 
@@ -1442,12 +1442,12 @@ def full_text_search(query, catalog):
 
         if isinstance(catalog.database.client, mongomock.MongoClient):
             # Do the query in memory.
-            # For huge Catalogs this will be slow, but if you are attempting
-            # full text search on a large mongomock-backed Catalog,
+            # For huge Trees this will be slow, but if you are attempting
+            # full text search on a large mongomock-backed Tree,
             # you have made your choices! :-)
-            return CatalogInMemory(dict(catalog)).search(query)
+            return TreeInMemory(dict(catalog)).search(query)
 
-    return Catalog.query_registry(
+    return Tree.query_registry(
         RawMongo(
             start={
                 "$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}
@@ -1465,21 +1465,21 @@ def raw_mongo(query, catalog):
 
 
 # These are implementation-specific definitions.
-Catalog.register_query(FullText, full_text_search)
-Catalog.register_query(RawMongo, raw_mongo)
+Tree.register_query(FullText, full_text_search)
+Tree.register_query(RawMongo, raw_mongo)
 # These are generic definitions that use RawMongo internally.
-Catalog.register_query(KeyLookup, key_lookup)
-Catalog.register_query(_PartialUID, partial_uid)
-Catalog.register_query(_ScanID, scan_id)
-Catalog.register_query(TimeRange, time_range)
+Tree.register_query(KeyLookup, key_lookup)
+Tree.register_query(_PartialUID, partial_uid)
+Tree.register_query(_ScanID, scan_id)
+Tree.register_query(TimeRange, time_range)
 
 
 class DummyAccessPolicy:
     "Impose no access restrictions."
 
     def check_compatibility(self, catalog):
-        # This only works on in-memory Catalog or subclases.
-        return isinstance(catalog, Catalog)
+        # This only works on in-memory Tree or subclases.
+        return isinstance(catalog, Tree)
 
     def modify_queries(self, queries, authenticated_identity):
         return queries
@@ -1507,8 +1507,8 @@ class SimpleAccessPolicy:
         self.access_lists = access_lists
 
     def check_compatibility(self, catalog):
-        # This only works on in-memory Catalog or subclases.
-        return isinstance(catalog, Catalog)
+        # This only works on in-memory Tree or subclases.
+        return isinstance(catalog, Tree)
 
     def modify_queries(self, queries, authenticated_identity):
         allowed = self.access_lists.get(authenticated_identity, [])
