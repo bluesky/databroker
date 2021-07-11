@@ -32,7 +32,7 @@ class CatalogOfBlueskyRunsMixin:
 
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
-        # tiled.catalog.utils.catalog_repr
+        # tiled.trees.utils.tree_repr
         # with some modifications to extract scan_id from the metadata.
         sample = self.items_indexer[:10]
         # Use scan_id (int) if defined; otherwise fall back to uid.
@@ -50,8 +50,8 @@ class CatalogOfBlueskyRunsMixin:
                 break
             out += ", " + sample_repr
             counter += 1
-        approx_len = operator.length_hint(self)  # cheaper to compute than len(catalog)
-        # Are there more in the catalog that what we displayed above?
+        approx_len = operator.length_hint(self)  # cheaper to compute than len(node)
+        # Are there more in the node that what we displayed above?
         if approx_len > counter:
             out += f", ...}} ~{approx_len} entries>"
         else:
