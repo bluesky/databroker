@@ -4,8 +4,8 @@ import enum
 import json
 from typing import List, Optional
 
-from tiled.catalogs.in_memory import (
-    Catalog as GenericCatalog,
+from tiled.trees.in_memory import (
+    Tree as GenericTree,
     key_lookup as generic_key_lookup,
     full_text_search,
 )
@@ -18,13 +18,13 @@ from tiled.query_registration import register
 from .common import CatalogOfBlueskyRunsMixin
 
 
-class CatalogInMemory(GenericCatalog, CatalogOfBlueskyRunsMixin):
+class TreeInMemory(GenericTree, CatalogOfBlueskyRunsMixin):
     """
-    A Catalog that contains BlueskyRuns and supports relevant queries on them.
+    A Tree that contains BlueskyRuns and supports relevant queries on them.
     """
 
     # The primary purpose of this class is to have a query_registry
-    # distinct form the generic tiled.in_memory.Catalog.query_registry
+    # distinct form the generic tiled.in_memory.Tree.query_registry
     # with queries that assume the conntents are BlueskyRuns and have the
     # requisite metadata structure.
     query_registry = QueryTranslationRegistry()
@@ -255,14 +255,14 @@ def scan_id(query, catalog):
     )
     # Handle duplicates.
     if query.duplicates == "latest":
-        # Convert to a CatalogInMemory to do some filtering in Python
+        # Convert to a TreeInMemory to do some filtering in Python
         # that we cannot expressing in a collection.find(...) query.
         # We might want to rethink this later and make it possible to do
         # aggregations in Mongo from queries.
         results_by_scan_id = {}
         for key, value in mongo_results.items():
             results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
-        results = CatalogInMemory(dict(results_by_scan_id.values()))
+        results = TreeInMemory(dict(results_by_scan_id.values()))
     elif query.duplicates == "error":
         scan_ids = list(
             value.metadata["start"]["scan_id"] for value in mongo_results.values()
@@ -301,7 +301,7 @@ def partial_uid(query, catalog):
                 "listed below. Include more characters. Matches:\n" + "\n".join(result)
             )
         results.update(result)
-    return CatalogInMemory(results)
+    return TreeInMemory(results)
 
 
 def time_range(query, catalog):
@@ -316,9 +316,9 @@ def time_range(query, catalog):
     return catalog.query_registry(RawMongo(start=mongo_query), catalog)
 
 
-CatalogInMemory.register_query(_PartialUID, partial_uid)
-CatalogInMemory.register_query(RawMongo, raw_mongo_in_memory)
-CatalogInMemory.register_query(_ScanID, scan_id)
-CatalogInMemory.register_query(TimeRange, time_range)
-CatalogInMemory.register_query(KeyLookup, generic_key_lookup)
-CatalogInMemory.register_query(FullText, full_text_search)
+TreeInMemory.register_query(_PartialUID, partial_uid)
+TreeInMemory.register_query(RawMongo, raw_mongo_in_memory)
+TreeInMemory.register_query(_ScanID, scan_id)
+TreeInMemory.register_query(TimeRange, time_range)
+TreeInMemory.register_query(KeyLookup, generic_key_lookup)
+TreeInMemory.register_query(FullText, full_text_search)
