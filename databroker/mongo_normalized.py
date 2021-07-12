@@ -64,7 +64,7 @@ CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
 
 
 class BlueskyRun(TreeInMemory, BlueskyRunMixin):
-    client_type_hint = "BlueskyRun"
+    spec = "BlueskyRun"
 
     def __init__(
         self,
@@ -236,7 +236,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
 
 
 class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
-    client_type_hint = "BlueskyEventStream"
+    spec = "BlueskyEventStream"
 
     def __init__(self, *args, event_collection, cutoff_seq_num, run, **kwargs):
         super().__init__(*args, **kwargs)
@@ -778,7 +778,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
 
 
 class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
-    client_type_hint = "CatalogOfBlueskyRuns"
+    spec = "CatalogOfBlueskyRuns"
 
     # Define classmethods for managing what queries this Tree knows.
     query_registry = QueryTranslationRegistry()
