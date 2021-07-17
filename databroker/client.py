@@ -58,13 +58,15 @@ class BlueskyRun(BlueskyRunMixin, Node):
             raise NotImplementedError("fill='delayed' is not supported")
         else:
             fill = bool(fill)
-        request = self._client.build_request(
+        # Access internal object context._client here because
+        # Context does not yet expose a streaming API.
+        request = self.context._client.build_request(
             "GET",
             f"/documents/{'/'.join(self._path)}",
             params={"fill": fill},
             headers={"Accept": "application/x-msgpack"},
         )
-        response = self._client.send(request, stream=True)
+        response = self.context._client.send(request, stream=True)
         try:
             if response.is_error:
                 response.read()
