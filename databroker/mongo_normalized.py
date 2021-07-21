@@ -7,6 +7,7 @@ import itertools
 import json
 import os
 import sys
+import threading
 import warnings
 
 from bson.objectid import ObjectId, InvalidId
@@ -84,6 +85,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
         # This is used to create the Filler on first access.
         self._init_handler_registry = handler_registry
         self._filler = None
+        self._filler_creation_lock = threading.RLock()
 
     @property
     def metadata(self):
@@ -103,17 +105,21 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
 
     @property
     def filler(self):
-        if self._filler is None:
-            self._filler = event_model.Filler(
-                handler_registry=self._init_handler_registry,
-                root_map=self.root_map,
-                inplace=False,
-            )
-            for descriptor in itertools.chain(
-                *(stream.metadata["descriptors"] for stream in self.values())
-            ):
-                self._filler("descriptor", descriptor)
-        return self._filler
+        # Often multiple requests prompt this to be created in parallel.
+        # We need this to be threadsafe.
+        with self._filler_creation_lock:
+            if self._filler is None:
+                filler = event_model.Filler(
+                    handler_registry=self._init_handler_registry,
+                    root_map=self.root_map,
+                    inplace=False,
+                )
+                for descriptor in itertools.chain(
+                    *(stream.metadata["descriptors"] for stream in self.values())
+                ):
+                    filler("descriptor", descriptor)
+                self._filler = filler
+            return self._filler
 
     @property
     def register_handler(self):
