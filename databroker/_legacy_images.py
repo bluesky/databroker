@@ -21,8 +21,8 @@ class Images(FramesSequence):
         >>> for image in images:
                 # do something
         """
-        warn("Images and get_images are deprecated. Use Header.data(), "
-             "Header.xarray() or Header.xarray_dask() instead.", stacklevel=3)
+        # warn("Images and get_images are deprecated. Use Header.data(), "
+        #      "Header.xarray() or Header.xarray_dask() instead.", stacklevel=3)
         self._data_array = data_array
         self._dtype = data_array.dtype
         self._shape = data_array.shape[1:]
