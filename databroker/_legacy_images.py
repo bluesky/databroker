@@ -1,5 +1,3 @@
-from warnings import warn
-
 from pims import FramesSequence, Frame
 
 
