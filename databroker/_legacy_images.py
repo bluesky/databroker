@@ -41,4 +41,4 @@ class Images(FramesSequence):
 
     def get_frame(self, i):
         img = self._data_array[i]
-        return Frame(img, frame_no=i)
+        return Frame(img.data, frame_no=i)
