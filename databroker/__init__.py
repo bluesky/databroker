@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 catalog = FactoryMap(
     lambda: OneShotCachedMap(
         {
-            # This 'lambda profile=profile' thing ensures that profile binds to
+            # This `lambda profile=profile:` trick ensures that profile binds to
             # the each item in turn, rather than binding to the last item in
-            # the loop. This is gotcha in Python scoping.
+            # the loop. This is a "gotcha" in Python scoping.
             profile: lambda profile=profile: from_profile(profile)
             for profile in list_profiles()
         }
