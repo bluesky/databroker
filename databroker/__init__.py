@@ -16,7 +16,13 @@ logger = logging.getLogger(__name__)
 # TODO This seems to load *all* items when one item is accessed.
 catalog = FactoryMap(
     lambda: OneShotCachedMap(
-        {profile: lambda: from_profile(profile) for profile in list_profiles()}
+        {
+            # This 'lambda profile=profile' thing ensures that profile binds to
+            # the each item in turn, rather than binding to the last item in
+            # the loop. This is gotcha in Python scoping.
+            profile: lambda profile=profile: from_profile(profile)
+            for profile in list_profiles()
+        }
     )
 )
 
