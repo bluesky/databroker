@@ -678,6 +678,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         event_descriptors,
         event_collection,
         sub_dict,
+        root_map,
         object_name,
     ):
         super().__init__(
@@ -687,6 +688,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             event_descriptors=event_descriptors,
             event_collection=event_collection,
             sub_dict=sub_dict,
+            root_map=root_map,
         )
         self._object_name = object_name
 
@@ -1221,6 +1223,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                                 event_descriptors=event_descriptors,
                                 event_collection=self._event_collection,
                                 object_name=object_name,
+                                root_map=self.root_map,
                                 sub_dict="data",
                             )
                             for object_name in object_names
@@ -1237,6 +1240,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                                 event_descriptors=event_descriptors,
                                 event_collection=self._event_collection,
                                 object_name=object_name,
+                                root_map=self.root_map,
                                 sub_dict="timestamps",
                             )
                             for object_name in object_names
