@@ -7,7 +7,6 @@ import time
 import humanize
 import jinja2
 import os
-import shutil
 from types import SimpleNamespace
 import xarray
 import event_model
@@ -21,8 +20,7 @@ from tiled.client import from_config, from_profile
 from tiled.queries import FullText
 
 from .queries import RawMongo, TimeRange
-from .utils import (ALL, get_fields, wrap_in_deprecated_doct,
-                    ensure_path_exists)
+from .utils import ALL, get_fields, wrap_in_deprecated_doct
 
 
 # The v2 API is expected to grow more options for filled than just True/False
@@ -49,11 +47,21 @@ class Registry:
 
     @property
     def handler_reg(self):
-        return self._catalog.handler_registry
+        warnings.warn(
+            "In databroker 2.x, there are separate notions of 'server' and 'client', "
+            "and root_map is not visible to the client. Likely these "
+            "details are handled for you on the server side, so you should not worry "
+            "about this message unless you encounter trouble loading large array data."
+        )
 
     @property
     def root_map(self):
-        return self._catalog.root_map
+        warnings.warn(
+            "In databroker 2.x, there are separate notions of 'server' and 'client', "
+            "and root_map is not visible to the client. Likely these "
+            "details are handled for you on the server side, so you should not worry "
+            "about this message unless you encounter trouble loading large array data."
+        )
 
     def register_handler(self, *args, **kwargs):
         warnings.warn(
@@ -74,102 +82,9 @@ class Registry:
     def copy_files(self, resource, new_root,
                    verify=False, file_rename_hook=None,
                    run_start_uid=None):
-        """
-        Copy files associated with a resource to a new directory.
-
-        The registered handler must have a `get_file_list` method and the
-        process running this method must have read/write access to both the
-        source and destination file systems.
-
-        This method does *not* update the assets dataregistry_template.
-
-        Internally the resource level directory information is stored
-        as two parts: the root and the resource_path.  The 'root' is
-        the non-semantic component (typically a mount point) and the
-        'resource_path' is the 'semantic' part of the file path.  For
-        example, it is common to collect data into paths that look like
-        ``/mnt/DATA/2016/04/28``.  In this case we could split this as
-        ``/mnt/DATA`` as the 'root' and ``2016/04/28`` as the resource_path.
-
-        Parameters
-        ----------
-        resource : Document
-            The resource to move the files of
-
-        new_root : str
-            The new 'root' to copy the files into
-
-        verify : bool, optional (False)
-            Verify that the move happened correctly.  This currently
-            is not implemented and will raise if ``verify == True``.
-
-        file_rename_hook : callable, optional
-            If provided, must be a callable with signature ::
-
-               def hook(file_counter, total_number, old_name, new_name):
-                   pass
-
-            This will be run in the inner loop of the file copy step and is
-            run inside of an unconditional try/except block.
-
-        See Also
-        --------
-        `RegistryMoving.shift_root`
-        `RegistryMoving.change_root`
-        """
-        if verify:
-            raise NotImplementedError('Verification is not implemented yet')
-
-        def rename_hook_wrapper(hook):
-            if hook is None:
-                def noop(n, total, old_name, new_name):
-                    return
-                return noop
-
-            def safe_hook(n, total, old_name, new_name):
-                try:
-                    hook(n, total, old_name, new_name)
-                except Exception:
-                    pass
-            return safe_hook
-
-        file_rename_hook = rename_hook_wrapper(file_rename_hook)
-
-        run_start_uid = resource.get('run_start', run_start_uid)
-        if run_start_uid is None:
-            raise ValueError(
-                "If the Resource document has no `run_start` key, the "
-                "caller must provide run_start_uid.")
-        file_list = self._catalog[run_start_uid].get_file_list(resource)
-
-        # check that all files share the same root
-        old_root = resource.get('root')
-        if not old_root:
-            warnings.warn("There is no 'root' in this resource which "
-                          "is required to be able to change the root. "
-                          "Please use `fs.shift_root` to move some of "
-                          "the path from the 'resource_path' to the "
-                          "'root'.  For now assuming '/' as root")
-            old_root = os.path.sep
-
-        for f in file_list:
-            if not f.startswith(old_root):
-                raise RuntimeError('something is very wrong, the files '
-                                   'do not all share the same root, ABORT')
-
-        # sort out where new files should go
-        new_file_list = [os.path.join(new_root,
-                                      os.path.relpath(f, old_root))
-                         for f in file_list]
-        N = len(new_file_list)
-        # copy the files to the new location
-        for n, (fin, fout) in enumerate(zip(file_list, new_file_list)):
-            # copy files
-            file_rename_hook(n, N, fin, fout)
-            ensure_path_exists(os.path.dirname(fout))
-            shutil.copy2(fin, fout)
-
-        return zip(file_list, new_file_list)
+        raise NotImplementedError(
+            "The copy_files functionality is not supported via a client."
+        )
 
 
 class Broker:
