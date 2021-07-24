@@ -61,7 +61,7 @@ from .queries import (
 from .server import router
 
 
-CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
+CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "30MB")
 
 
 class BlueskyRun(TreeInMemory, BlueskyRunMixin):
@@ -389,8 +389,8 @@ class DatasetFromDocuments:
                 # If we choose 1 that would make single-frame access fast
                 # but many-frame access too slow.
                 suggested_chunks = (
-                    min(10, shape[0]),
-                    min(10, shape[1]),
+                    min(5, shape[0]),
+                    min(5, shape[1]),
                     "auto",
                     "auto",
                 )
