@@ -55,12 +55,21 @@ class Registry:
     def root_map(self):
         return self._catalog.root_map
 
-    def register_handler(self, key, handler, overwrite=False):
-        return self._catalog.register_handler(
-            key, handler, overwrite=overwrite)
+    def register_handler(self, *args, **kwargs):
+        warnings.warn(
+            "In databroker 2.x, there are separate notions of 'server' and 'client', "
+            "and register_handler(...) has no effect on the client. Likely this "
+            "is being done for you on the server side, so you should not worry "
+            "about this message unless you encounter trouble loading large array data."
+        )
 
     def deregister_handler(self, key):
-        return self._catalog.deregister_handler(key)
+        warnings.warn(
+            "In databroker 2.x, there are separate notions of 'server' and 'client', "
+            "and deregister_handler(...) has no effect on the client. Likely this "
+            "is being done for you on the server side, so you should not worry "
+            "about this message unless you encounter trouble loading large array data."
+        )
 
     def copy_files(self, resource, new_root,
                    verify=False, file_rename_hook=None,

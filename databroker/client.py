@@ -109,14 +109,6 @@ class BlueskyRun(BlueskyRunMixin, Node):
         )
         return {"metadata": self.metadata}
 
-    def register_handler(self, *args, **kwargs):
-        warnings.warn(
-            "In databroker 2.x, there are separate notions of 'server' and 'client', "
-            "and register_handler(...) has no effect on the client. Likely this "
-            "is being done for you on the server side, so you should not worry "
-            "about this message unless you encounter trouble loading large array data."
-        )
-
 
 class BlueskyEventStream(BlueskyEventStreamMixin, Node):
     """
