@@ -61,7 +61,7 @@ from .queries import (
 from .server import router
 
 
-CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "30MB")
+CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "50MB")
 
 
 class BlueskyRun(TreeInMemory, BlueskyRunMixin):
