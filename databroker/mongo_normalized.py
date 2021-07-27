@@ -464,8 +464,6 @@ class DatasetFromDocuments:
                         scalar.append(key)
                     else:
                         nonscalar.append(key)
-                print("scalar", scalar)
-                print("nonscalar", nonscalar)
                 columns = {}
                 try:
                     # Fetch all the scalar ones in one batch.
