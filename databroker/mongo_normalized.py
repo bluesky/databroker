@@ -447,8 +447,21 @@ class DatasetFromDocuments:
         # for block in itertools.product(*num_blocks):
         structure = self.macrostructure()
         data_arrays = {}
-        keys = list(structure.data_vars)
-        columns = self._get_columns(keys, slices=None)
+        if variables is None:
+            keys = list(structure.data_vars)
+        else:
+            keys = variables
+        try:
+            columns = self._get_columns(keys, slices=None)
+        except Exception as err:
+            # Work around https://github.com/bluesky/databroker/issues/667
+            if "'code': 10334" in err.args[0]:
+                # This is slow but at least it works.
+                # We could make this faster by first trying to get all the variables
+                # with a non-scalar shape in one batch.
+                columns = {}
+                for key in keys:
+                    columns.update(self._get_columns([key], slice=None))
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
