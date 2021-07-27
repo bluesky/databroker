@@ -334,16 +334,18 @@ class DatasetFromDocuments:
         descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
-        # Collect the keys (column names) that are of unicode data type.
-        unicode_keys = []
-        for key, field_metadata in descriptor["data_keys"].items():
-            if self._sub_dict == "data":
-                unicode_keys.append(key)
-        # Load the all the data for unicode columns to figure out the itemsize.
-        # We have no other choice, except to *guess* but we'd be in
-        # trouble if our guess were too small, and we'll waste space
-        # if our guess is too large.
-        columns = self._get_columns(unicode_keys, slices=None)  # Fetch *all*.
+        columns = {}
+        if self._sub_dict == "data":
+            # Collect the keys (column names) that are of unicode data type.
+            unicode_keys = []
+            for key, field_metadata in descriptor["data_keys"].items():
+                if field_metadata["dtype"] == "string":
+                    unicode_keys.append(key)
+            # Load the all the data for unicode columns to figure out the itemsize.
+            # We have no other choice, except to *guess* but we'd be in
+            # trouble if our guess were too small, and we'll waste space
+            # if our guess is too large.
+            columns.update(self._get_columns(unicode_keys, slices=None))  # Fetch *all*.
         for key, field_metadata in descriptor["data_keys"].items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -705,16 +707,18 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             .get(self._object_name, {})
             .get("data_keys", {})
         )
-        # Collect the keys (column names) that are of unicode data type.
-        unicode_keys = []
-        for key, field_metadata in descriptor["data_keys"].items():
-            if self._sub_dict == "data":
-                unicode_keys.append(key)
-        # Load the all the data for unicode columns to figure out the itemsize.
-        # We have no other choice, except to *guess* but we'd be in
-        # trouble if our guess were too small, and we'll waste space
-        # if our guess is too large.
-        columns = self._get_columns(unicode_keys, slices=None)  # Fetch *all*.
+        columns = {}
+        if self._sub_dict == "data":
+            # Collect the keys (column names) that are of unicode data type.
+            unicode_keys = []
+            for key, field_metadata in descriptor["data_keys"].items():
+                if field_metadata["dtype"] == "string":
+                    unicode_keys.append(key)
+            # Load the all the data for unicode columns to figure out the itemsize.
+            # We have no other choice, except to *guess* but we'd be in
+            # trouble if our guess were too small, and we'll waste space
+            # if our guess is too large.
+            columns.update(self._get_columns(unicode_keys, slices=None))  # Fetch *all*.
         for key, field_metadata in data_keys.items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
