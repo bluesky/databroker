@@ -457,12 +457,36 @@ class DatasetFromDocuments:
             if "'code': 10334" in err.args[0]:
                 # We have hit MongoDB's limit (default 16MB) for the result size of a query.
                 # See https://github.com/bluesky/databroker/issues/667
-                # This is slow but it is likely to work.
-                columns = {}
+                scalar = []
+                nonscalar = []
                 for key in keys:
-                    columns.update(self._get_columns([key], slice=None))
+                    if structure.data_vars[key].macro.shape:
+                        scalar.append(key)
+                    else:
+                        nonscalar.append(key)
+                print("scalar", scalar)
+                print("nonscalar", nonscalar)
+                columns = {}
+                try:
+                    # Fetch all the scalar ones in one batch.
+                    columns.update(self._get_columns(scalar, slice=None))
+                except Exception as err2:
+                    if "'code': 10334" in err2.args[0]:
+                        # Even *that* was too much.
+                        # Last resort: fetch each key individually.
+                        columns.clear()
+                        for key in keys:
+                            columns.update(self._get_columns([key], slice=None))
+                    else:
+                        raise
+                else:
+                    # If we reach here, fetching all the scalar ones in one batch worked.
+                    # Fetch each nonscalar one separately. If we fail here, we give up.
+                    for key in nonscalar:
+                        columns.update(self._get_columns([key], slice=None))
             else:
                 raise
+
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
