@@ -454,14 +454,15 @@ class DatasetFromDocuments:
         try:
             columns = self._get_columns(keys, slices=None)
         except Exception as err:
-            # Work around https://github.com/bluesky/databroker/issues/667
             if "'code': 10334" in err.args[0]:
-                # This is slow but at least it works.
-                # We could make this faster by first trying to get all the variables
-                # with a non-scalar shape in one batch.
+                # We have hit MongoDB's limit (default 16MB) for the result size of a query.
+                # See https://github.com/bluesky/databroker/issues/667
+                # This is slow but it is likely to work.
                 columns = {}
                 for key in keys:
                     columns.update(self._get_columns([key], slice=None))
+            else:
+                raise
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
