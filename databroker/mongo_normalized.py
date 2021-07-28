@@ -1055,6 +1055,8 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         if sorting is None:
             sorting = [("time", 1)]
         self._sorting = sorting
+        if isinstance(access_policy, str):
+            access_policy = import_object(access_policy)
         if (access_policy is not None) and (
             not access_policy.check_compatibility(self)
         ):
