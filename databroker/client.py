@@ -72,7 +72,7 @@ class BlueskyRun(BlueskyRunMixin, Node):
                 response.read()
                 handle_error(response)
             unpacker = msgpack.Unpacker()
-            for chunk in response.iter_raw():
+            for chunk in response.iter_bytes():
                 unpacker.feed(chunk)
                 for name, doc in unpacker:
                     yield (name, _document_types[name](doc))
