@@ -75,9 +75,25 @@ class Tree(FileTree):
             "application/x-bluesky-jsonl": jsonl_reader.consume_file,
             "application/x-bluesky-msgpack": msgpack_reader.consume_file,
         }
-        return super().from_directory(
+        instance = super().from_directory(
             directory,
             readers_by_mimetype=readers_by_mimetype,
             mimetypes_by_file_ext=mimetypes_by_file_ext,
             key_from_filename=key_from_filename,
         )
+        # The way tiled.trees.files is designed makes it hard to extend this
+        # in a good way. It probably needs to be overhauled in a significant way
+        # if we want to remove this monkey-patching.
+        instance.tree = tree
+        return instance
+
+    def new_variation(self, **kwargs):
+        instance = super().new_variation(**kwargs)
+        # The way tiled.trees.files is designed makes it hard to extend this
+        # in a good way. It probably needs to be overhauled in a significant way
+        # if we want to remove this monkey-patching.
+        instance.tree = self.tree
+        return instance
+
+    def search(self, *args, **kwargs):
+        return self.tree.search(*args, **kwargs)
