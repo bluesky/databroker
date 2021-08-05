@@ -523,6 +523,8 @@ class DatasetFromDocuments:
                     {
                         "$match": {
                             "descriptor": {"$in": descriptor_uids},
+                            # It's important to use a half-open interval here
+                            # so that the boundaries work.
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
                     },
@@ -596,6 +598,8 @@ class DatasetFromDocuments:
                     {
                         "$match": {
                             "descriptor": {"$in": descriptor_uids},
+                            # It's important to use a half-open interval here
+                            # so that the boundaries work.
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
                     },
