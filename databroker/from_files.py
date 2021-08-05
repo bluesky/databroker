@@ -81,6 +81,10 @@ class Tree(FileTree):
         self._tree = tree
         super().__init__(*args, **kwargs)
 
+    @property
+    def database(self):
+        return self._tree.database
+
     def new_variation(self, **kwargs):
         return super().new_variation(tree=self._tree, **kwargs)
 
