@@ -561,36 +561,22 @@ class DatasetFromDocuments:
             max_seq_num = 1 + slice_.stop
         # IMPORTANT: Access via self.metadata so that transforms are applied.
         descriptors = self.metadata["descriptors"]
+        descriptor_uids = [doc["uid"] for doc in descriptors]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
         data_keys = [descriptors[0]["data_keys"][key] for key in keys]
         is_externals = ["external" in data_key for data_key in data_keys]
         expected_shapes = [tuple(data_key["shape"] or []) for data_key in data_keys]
-        scalars = []
-        nonscalars = []
-        estimated_nonscalar_row_bytesizes = []
-        estimated_scalar_row_bytesize = 0
-        for key, data_key, is_external in zip(keys, data_keys, is_externals):
-            # TODO Refine the row byte size estimates based on the dtype.
-            if (not data_key["shape"]) or is_external:
-                # This is either a literal scalar value of a datum_id.
-                estimated_scalar_row_bytesize += 8
-                scalars.append(key)
-            else:
-                nonscalars.append(key)
-                estimated_nonscalar_row_bytesizes.append(
-                    numpy.product(data_key["shape"]) * 8
-                )
 
-        to_stack = collections.defaultdict(list)
-
-        def pull_rows(descriptor, min_seq_num, max_seq_num):
+        def populate_columns(keys, min_seq_num, max_seq_num):
+            # This closes over the local variable columns and appends to its
+            # contents.
             (result,) = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
-                            "descriptor": descriptor["uid"],
+                            "descriptor": {"$in": descriptor_uids},
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
                     },
@@ -636,24 +622,50 @@ class DatasetFromDocuments:
                     validated_column = result[key]
                 columns[key].extend(validated_column)
 
-        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
-            pull_rows(descriptor, min_seq_num, max_seq_num)
+        scalars = []
+        nonscalars = []
+        estimated_nonscalar_row_bytesizes = []
+        estimated_scalar_row_bytesize = 0
+        for key, data_key, is_external in zip(keys, data_keys, is_externals):
+            # TODO Refine the row byte size estimates based on the dtype.
+            if (not data_key["shape"]) or is_external:
+                # This is either a literal scalar value of a datum_id.
+                estimated_scalar_row_bytesize += 8
+                scalars.append(key)
+            else:
+                nonscalars.append(key)
+                estimated_nonscalar_row_bytesizes.append(
+                    numpy.product(data_key["shape"]) * 8
+                )
+
+        # Aim for 10 MB chunks to stay safely clear the MongoDB's hard limit
+        # of 16 MB.
+
+        # Fetch scalars all together.
+        populate_columns(scalars, min_seq_num, max_seq_num)
+
+        # Fetch each nonscalar column individually.
+        # TODO We could batch a couple nonscalar columns at at ime based on
+        # their size if we need to squeeze more performance out here. But maybe
+        # we can get away with never adding that complexity.
+        for key in nonscalars:
+            populate_columns([key], min_seq_num, max_seq_num)
 
         # If data is external, we now have a column of datum_ids, and we need
         # to look up the data that they reference.
+        to_stack = collections.defaultdict(list)
         for key, expected_shape, is_external in zip(
             keys, expected_shapes, is_externals
         ):
             column = columns[key]
             if is_external:
                 filled_column = []
-                descriptor_uid = descriptor["uid"]
                 for datum_id in column:
                     # HACK to adapt Filler which is designed to consume whole,
                     # streamed documents, to this column-based access mode.
                     mock_event = {
                         "data": {key: datum_id},
-                        "descriptor": descriptor_uid,
+                        "descriptor": "PLACEHOLDER",
                         "uid": "PLACEHOLDER",
                         "filled": {key: False},
                     }
