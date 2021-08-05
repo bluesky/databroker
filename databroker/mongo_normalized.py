@@ -638,18 +638,30 @@ class DatasetFromDocuments:
                     numpy.product(data_key["shape"]) * 8
                 )
 
-        # Aim for 10 MB chunks to stay safely clear the MongoDB's hard limit
+        # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
         # of 16 MB.
+        TARGET_PAGE_BYTESIZE = 10_000_000
 
         # Fetch scalars all together.
-        populate_columns(scalars, min_seq_num, max_seq_num)
+        page_size = TARGET_PAGE_BYTESIZE // estimated_scalar_row_bytesize
+        boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+        if boundaries[-1] != max_seq_num:
+            boundaries.append(max_seq_num)
+        breakpoint()
+        for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+            populate_columns(scalars, min_, max_)
 
         # Fetch each nonscalar column individually.
         # TODO We could batch a couple nonscalar columns at at ime based on
         # their size if we need to squeeze more performance out here. But maybe
         # we can get away with never adding that complexity.
-        for key in nonscalars:
-            populate_columns([key], min_seq_num, max_seq_num)
+        for key, est_row_bytesize in zip(nonscalars, estimated_nonscalar_row_bytesizes):
+            page_size = TARGET_PAGE_BYTESIZE // est_row_bytesize
+            boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+            if boundaries[-1] != max_seq_num:
+                boundaries.append(max_seq_num)
+            for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+                populate_columns([key], min_, max_)
 
         # If data is external, we now have a column of datum_ids, and we need
         # to look up the data that they reference.
