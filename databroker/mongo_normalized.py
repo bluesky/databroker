@@ -517,7 +517,7 @@ class DatasetFromDocuments:
         descriptor_uids = [doc["uid"] for doc in self.metadata["descriptors"]]
 
         def populate_column(min_seq_num, max_seq_num):
-            (result,) = self._event_collection.aggregate(
+            cursor = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
                     {
@@ -553,6 +553,7 @@ class DatasetFromDocuments:
                     },
                 ]
             )
+            result = (cursor,)
             column.extend(result["column"])
 
         # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
@@ -1269,7 +1270,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         # cutoff. If not, we need to know the length anyway. Note that this
         # is not the same thing as the number of Event documents in the
         # stream because seq_num may be repeated, nonunique.
-        (result,) = self._event_collection.aggregate(
+        cursor = self._event_collection.aggregate(
             [
                 {"$match": {"descriptor": {"$in": event_descriptor_uids}}},
                 {
@@ -1280,6 +1281,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                 },
             ]
         )
+        (result,) = cursor
         cutoff_seq_num = (
             1 + result["highest_seq_num"]
         )  # `1 +` because we use a half-open interval
