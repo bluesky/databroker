@@ -98,17 +98,14 @@ class Broker:
         self.filters = {}
         self.v2._Broker__v1 = self
         self._reg = Registry(catalog)
+        self.__serializer = None
 
     # TODO: Re-instate this if the server grows a POST /documents/{path} route.
-    # @property
-    # def _serializer(self):
-    #     if self.__serializer is None:
-    #         # The method _get_serializer is an optional method implememented on
-    #         # some Broker subclasses to support the Broker.insert() method,
-    #         # which is pending deprecation.
-    #         if hasattr(self._catalog, '_get_serializer'):
-    #             self.__serializer = self._catalog._get_serializer()
-    #     return self.__serializer
+    @property
+    def _serializer(self):
+        if self.__serializer is None:
+            self.__serializer = self._catalog.get_serializer()
+        return self.__serializer
 
     @property
     def reg(self):
@@ -846,9 +843,6 @@ class Broker:
             "The method Broker.insert may be removed in a future release of "
             "databroker.", PendingDeprecationWarning)
         self._serializer(name, doc)
-        # Make a reasonable effort to keep the Catalog in sync with new data.
-        if name == 'stop':
-            self._catalog.force_reload()
 
     def fill_event(*args, **kwargs):
         raise NotImplementedError("This method is no longer supported. If you "

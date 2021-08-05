@@ -246,6 +246,16 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
             # By construction there must be only one result. Return it.
             return results.values_indexer[0]
 
+    def get_serializer(self):
+        from suitcase.mongo_normalized import Serializer
+        from tiled.server.app import get_root_tree
+
+        if self.context.app is None:
+            raise NotImplementedError("Only works on local application.")
+        tree = self.context.app.dependency_overrides[get_root_tree]()
+        database = tree.database
+        return Serializer(database, database)
+
     def search(self, query):
         # For backward-compatiblity, accept a dict and interpret it as a Mongo
         # query against the 'start' documents.
