@@ -577,7 +577,9 @@ class DatasetFromDocuments:
                 scalars.append(key)
             else:
                 nonscalars.append(key)
-                estimated_nonscalar_row_bytesizes.append(numpy.product(data_key["shape"]) * 8)
+                estimated_nonscalar_row_bytesizes.append(
+                    numpy.product(data_key["shape"]) * 8
+                )
 
         to_stack = {}
 
