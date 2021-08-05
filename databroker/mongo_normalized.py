@@ -555,7 +555,7 @@ class DatasetFromDocuments:
                     },
                 ]
             )
-            result = (cursor,)
+            (result,) = cursor
             column.extend(result["column"])
 
         # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
