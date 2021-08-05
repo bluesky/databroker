@@ -647,7 +647,6 @@ class DatasetFromDocuments:
         boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
         if boundaries[-1] != max_seq_num:
             boundaries.append(max_seq_num)
-        breakpoint()
         for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
             populate_columns(scalars, min_, max_)
 
