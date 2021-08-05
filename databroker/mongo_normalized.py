@@ -17,6 +17,7 @@ import event_model
 from dask.array.core import cached_cumsum, normalize_chunks
 import numpy
 import pymongo
+import pymongo.errors
 import toolz.itertoolz
 import xarray
 
@@ -334,7 +335,7 @@ class DatasetFromDocuments:
         descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
-        columns = {}
+        unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
             unicode_keys = []
@@ -345,7 +346,7 @@ class DatasetFromDocuments:
             # We have no other choice, except to *guess* but we'd be in
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
-            columns.update(self._get_columns(unicode_keys, slices=None))  # Fetch *all*.
+            unicode_columns.update(self._get_columns(unicode_keys, slices=None))
         for key, field_metadata in descriptor["data_keys"].items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -373,7 +374,7 @@ class DatasetFromDocuments:
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    array = columns[key]
+                    array = unicode_columns[key]
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
@@ -451,40 +452,7 @@ class DatasetFromDocuments:
             keys = list(structure.data_vars)
         else:
             keys = variables
-        try:
-            columns = self._get_columns(keys, slices=None)
-        except Exception as err:
-            if "'code': 10334" in err.args[0]:
-                # We have hit MongoDB's limit (default 16MB) for the result size of a query.
-                # See https://github.com/bluesky/databroker/issues/667
-                scalar = []
-                nonscalar = []
-                for key in keys:
-                    if structure.data_vars[key].macro.shape:
-                        scalar.append(key)
-                    else:
-                        nonscalar.append(key)
-                columns = {}
-                try:
-                    # Fetch all the scalar ones in one batch.
-                    columns.update(self._get_columns(scalar, slice=None))
-                except Exception as err2:
-                    if "'code': 10334" in err2.args[0]:
-                        # Even *that* was too much.
-                        # Last resort: fetch each key individually.
-                        columns.clear()
-                        for key in keys:
-                            columns.update(self._get_columns([key], slice=None))
-                    else:
-                        raise
-                else:
-                    # If we reach here, fetching all the scalar ones in one batch worked.
-                    # Fetch each nonscalar one separately. If we fail here, we give up.
-                    for key in nonscalar:
-                        columns.update(self._get_columns([key], slice=None))
-            else:
-                raise
-
+        columns = self._get_columns(keys, slices=None)
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
@@ -597,11 +565,23 @@ class DatasetFromDocuments:
         data_keys = [descriptors[0]["data_keys"][key] for key in keys]
         is_externals = ["external" in data_key for data_key in data_keys]
         expected_shapes = [tuple(data_key["shape"] or []) for data_key in data_keys]
-        # If data is external, we now have a column of datum_ids, and we need
-        # to look up the data that they reference.
-        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
-            # TODO When seq_num is repeated, take the last one only (sorted by
-            # time).
+        scalars = []
+        nonscalars = []
+        estimated_nonscalar_row_bytesizes = []
+        estimated_scalar_row_bytesize = 0
+        for key, data_key, is_external in zip(keys, data_keys, is_externals):
+            # TODO Refine the row byte size estimates based on the dtype.
+            if (not data_key["shape"]) or is_external:
+                # This is either a literal scalar value of a datum_id.
+                estimated_scalar_row_bytesize += 8
+                scalars.append(key)
+            else:
+                nonscalars.append(key)
+                estimated_nonscalar_row_bytesizes.append(numpy.product(data_key["shape"]) * 8)
+
+        to_stack = {}
+
+        def pull_rows(descriptor, min_seq_num, max_seq_num):
             (result,) = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
@@ -653,7 +633,11 @@ class DatasetFromDocuments:
                     validated_column = result[key]
                 columns[key].extend(validated_column)
 
-        result = {}
+        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
+            pull_rows(descriptor, min_seq_num, max_seq_num)
+
+        # If data is external, we now have a column of datum_ids, and we need
+        # to look up the data that they reference.
         for key, expected_shape, is_external in zip(
             keys, expected_shapes, is_externals
         ):
@@ -681,15 +665,19 @@ class DatasetFromDocuments:
                     filled_data = filled_mock_event["data"][key]
                     validated_filled_data = _validate_shape(filled_data, expected_shape)
                     filled_column.append(validated_filled_data)
-                to_stack = filled_column
+                to_stack[key].append(filled_column)
             else:
-                to_stack = column
-            array = numpy.stack(to_stack)
+                to_stack[key].append(column)
+
+        result = {}
+        for key, value in to_stack.items():
+            array = numpy.stack(value)
             if slices:
                 sliced_array = array[(..., *slices[1:])]
             else:
                 sliced_array = array
             result[key] = sliced_array
+
         return result
 
 
@@ -743,7 +731,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             .get(self._object_name, {})
             .get("data_keys", {})
         )
-        columns = {}
+        unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
             unicode_keys = []
@@ -754,7 +742,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             # We have no other choice, except to *guess* but we'd be in
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
-            columns.update(self._get_columns(unicode_keys, slices=None))  # Fetch *all*.
+            unicode_columns.update(self._get_columns(unicode_keys, slices=None))
         for key, field_metadata in data_keys.items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -775,7 +763,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    array = columns[key]
+                    array = unicode_columns[key]
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
@@ -1897,3 +1885,7 @@ def _validate_shape(data, expected_shape):
         padded = numpy.pad(data, padding, "edge")
         padded_and_trimmed = padded[tuple(trimming)]
     return padded_and_trimmed
+
+
+def _too_large(err):
+    return ("'code': 10334" in err.args[0]) or ("'code': 16945" in err.args[0])
