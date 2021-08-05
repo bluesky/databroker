@@ -346,7 +346,8 @@ class DatasetFromDocuments:
             # We have no other choice, except to *guess* but we'd be in
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
-            unicode_columns.update(self._get_columns(unicode_keys, slices=None))
+            if unicode_keys:
+                unicode_columns.update(self._get_columns(unicode_keys, slices=None))
         for key, field_metadata in descriptor["data_keys"].items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -581,7 +582,7 @@ class DatasetFromDocuments:
                     numpy.product(data_key["shape"]) * 8
                 )
 
-        to_stack = {}
+        to_stack = collections.defaultdict(list)
 
         def pull_rows(descriptor, min_seq_num, max_seq_num):
             (result,) = self._event_collection.aggregate(
@@ -667,9 +668,9 @@ class DatasetFromDocuments:
                     filled_data = filled_mock_event["data"][key]
                     validated_filled_data = _validate_shape(filled_data, expected_shape)
                     filled_column.append(validated_filled_data)
-                to_stack[key].append(filled_column)
+                to_stack[key].extend(filled_column)
             else:
-                to_stack[key].append(column)
+                to_stack[key].extend(column)
 
         result = {}
         for key, value in to_stack.items():
@@ -744,7 +745,8 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             # We have no other choice, except to *guess* but we'd be in
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
-            unicode_columns.update(self._get_columns(unicode_keys, slices=None))
+            if unicode_keys:
+                unicode_columns.update(self._get_columns(unicode_keys, slices=None))
         for key, field_metadata in data_keys.items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
