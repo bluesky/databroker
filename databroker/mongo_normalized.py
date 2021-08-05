@@ -630,8 +630,8 @@ class DatasetFromDocuments:
             # TODO Refine the row byte size estimates based on the dtype.
             if (not data_key["shape"]) or is_external:
                 # This is either a literal scalar value of a datum_id.
-                estimated_scalar_row_bytesize += 8
                 scalars.append(key)
+                estimated_scalar_row_bytesize += 8
             else:
                 nonscalars.append(key)
                 estimated_nonscalar_row_bytesizes.append(
