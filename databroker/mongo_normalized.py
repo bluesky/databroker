@@ -17,6 +17,7 @@ import event_model
 from dask.array.core import cached_cumsum, normalize_chunks
 import numpy
 import pymongo
+import pymongo.errors
 import toolz.itertoolz
 import xarray
 
@@ -334,7 +335,7 @@ class DatasetFromDocuments:
         descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
-        columns = {}
+        unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
             unicode_keys = []
@@ -345,7 +346,8 @@ class DatasetFromDocuments:
             # We have no other choice, except to *guess* but we'd be in
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
-            columns.update(self._get_columns(unicode_keys, slices=None))  # Fetch *all*.
+            if unicode_keys:
+                unicode_columns.update(self._get_columns(unicode_keys, slices=None))
         for key, field_metadata in descriptor["data_keys"].items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -373,7 +375,7 @@ class DatasetFromDocuments:
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    array = columns[key]
+                    array = unicode_columns[key]
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
@@ -451,40 +453,7 @@ class DatasetFromDocuments:
             keys = list(structure.data_vars)
         else:
             keys = variables
-        try:
-            columns = self._get_columns(keys, slices=None)
-        except Exception as err:
-            if "'code': 10334" in err.args[0]:
-                # We have hit MongoDB's limit (default 16MB) for the result size of a query.
-                # See https://github.com/bluesky/databroker/issues/667
-                scalar = []
-                nonscalar = []
-                for key in keys:
-                    if structure.data_vars[key].macro.shape:
-                        scalar.append(key)
-                    else:
-                        nonscalar.append(key)
-                columns = {}
-                try:
-                    # Fetch all the scalar ones in one batch.
-                    columns.update(self._get_columns(scalar, slice=None))
-                except Exception as err2:
-                    if "'code': 10334" in err2.args[0]:
-                        # Even *that* was too much.
-                        # Last resort: fetch each key individually.
-                        columns.clear()
-                        for key in keys:
-                            columns.update(self._get_columns([key], slice=None))
-                    else:
-                        raise
-                else:
-                    # If we reach here, fetching all the scalar ones in one batch worked.
-                    # Fetch each nonscalar one separately. If we fail here, we give up.
-                    for key in nonscalar:
-                        columns.update(self._get_columns([key], slice=None))
-            else:
-                raise
-
+        columns = self._get_columns(keys, slices=None)
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
@@ -545,15 +514,23 @@ class DatasetFromDocuments:
             min_seq_num = 1 + slice.start
             max_seq_num = 1 + slice.stop
         column = []
-        for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
-            (result,) = self._event_collection.aggregate(
+        descriptor_uids = [doc["uid"] for doc in self.metadata["descriptors"]]
+
+        def populate_column(min_seq_num, max_seq_num):
+            cursor = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
-                            "descriptor": descriptor["uid"],
+                            "descriptor": {"$in": descriptor_uids},
+                            # It's important to use a half-open interval here
+                            # so that the boundaries work.
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
+                    },
+                    # Include only the fields of interest.
+                    {
+                        "$project": {"descriptor": 1, "seq_num": 1, "time": 1},
                     },
                     # Sort by time.
                     {"$sort": {"time": 1}},
@@ -578,7 +555,20 @@ class DatasetFromDocuments:
                     },
                 ]
             )
+            result = (cursor,)
             column.extend(result["column"])
+
+        # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
+        # of 16 MB.
+        TARGET_PAGE_BYTESIZE = 10_000_000
+
+        page_size = TARGET_PAGE_BYTESIZE // 8  # estimated row byte size is 8
+        boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+        if boundaries[-1] != max_seq_num:
+            boundaries.append(max_seq_num)
+        for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+            populate_column(min_, max_)
+
         return numpy.array(column)
 
     def _get_columns(self, keys, slices):
@@ -592,23 +582,33 @@ class DatasetFromDocuments:
             max_seq_num = 1 + slice_.stop
         # IMPORTANT: Access via self.metadata so that transforms are applied.
         descriptors = self.metadata["descriptors"]
+        descriptor_uids = [doc["uid"] for doc in descriptors]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
         data_keys = [descriptors[0]["data_keys"][key] for key in keys]
         is_externals = ["external" in data_key for data_key in data_keys]
         expected_shapes = [tuple(data_key["shape"] or []) for data_key in data_keys]
-        # If data is external, we now have a column of datum_ids, and we need
-        # to look up the data that they reference.
-        for descriptor in sorted(descriptors, key=lambda d: d["time"]):
-            # TODO When seq_num is repeated, take the last one only (sorted by
-            # time).
-            (result,) = self._event_collection.aggregate(
+
+        def populate_columns(keys, min_seq_num, max_seq_num):
+            # This closes over the local variable columns and appends to its
+            # contents.
+            cursor = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
-                            "descriptor": descriptor["uid"],
+                            "descriptor": {"$in": descriptor_uids},
+                            # It's important to use a half-open interval here
+                            # so that the boundaries work.
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
+                        },
+                    },
+                    # Include only the fields of interest.
+                    {
+                        "$project": {
+                            "descriptor": 1,
+                            "seq_num": 1,
+                            **{f"{self._sub_dict}.{key}": 1 for key in keys},
                         },
                     },
                     # Sort by time.
@@ -637,6 +637,7 @@ class DatasetFromDocuments:
                     },
                 ]
             )
+            (result,) = cursor
             for key, expected_shape, is_external in zip(
                 keys, expected_shapes, is_externals
             ):
@@ -653,14 +654,62 @@ class DatasetFromDocuments:
                     validated_column = result[key]
                 columns[key].extend(validated_column)
 
-        result = {}
+        scalars = []
+        nonscalars = []
+        estimated_nonscalar_row_bytesizes = []
+        estimated_scalar_row_bytesize = 0
+        for key, data_key, is_external in zip(keys, data_keys, is_externals):
+            if (not data_key["shape"]) or is_external:
+                # This is either a literal scalar value of a datum_id.
+                scalars.append(key)
+                if data_key["dtype"] == "string":
+                    # Give a generous amount of headroom here.
+                    estimated_scalar_row_bytesize += 10_000  # 10 kB
+                else:
+                    # 64-bit integer or float
+                    estimated_scalar_row_bytesize += 8
+            else:
+                nonscalars.append(key)
+                estimated_nonscalar_row_bytesizes.append(
+                    numpy.product(data_key["shape"]) * 8
+                )
+
+        # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
+        # of 16 MB.
+        TARGET_PAGE_BYTESIZE = 10_000_000
+
+        # Fetch scalars all together.
+        page_size = TARGET_PAGE_BYTESIZE // estimated_scalar_row_bytesize
+        boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+        if boundaries[-1] != max_seq_num:
+            boundaries.append(max_seq_num)
+        for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+            populate_columns(scalars, min_, max_)
+
+        # Fetch each nonscalar column individually.
+        # TODO We could batch a couple nonscalar columns at at ime based on
+        # their size if we need to squeeze more performance out here. But maybe
+        # we can get away with never adding that complexity.
+        for key, est_row_bytesize in zip(nonscalars, estimated_nonscalar_row_bytesizes):
+            page_size = TARGET_PAGE_BYTESIZE // est_row_bytesize
+            boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+            if boundaries[-1] != max_seq_num:
+                boundaries.append(max_seq_num)
+            for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+                populate_columns([key], min_, max_)
+
+        # If data is external, we now have a column of datum_ids, and we need
+        # to look up the data that they reference.
+        to_stack = collections.defaultdict(list)
+        # Any arbitrary valid descriptor uid will work; we just need to satisfy
+        # the Filler with our mocked Event below. So we pick the first one.
+        descriptor_uid = descriptor_uids[0]
         for key, expected_shape, is_external in zip(
             keys, expected_shapes, is_externals
         ):
             column = columns[key]
             if is_external:
                 filled_column = []
-                descriptor_uid = descriptor["uid"]
                 for datum_id in column:
                     # HACK to adapt Filler which is designed to consume whole,
                     # streamed documents, to this column-based access mode.
@@ -681,15 +730,19 @@ class DatasetFromDocuments:
                     filled_data = filled_mock_event["data"][key]
                     validated_filled_data = _validate_shape(filled_data, expected_shape)
                     filled_column.append(validated_filled_data)
-                to_stack = filled_column
+                to_stack[key].extend(filled_column)
             else:
-                to_stack = column
-            array = numpy.stack(to_stack)
+                to_stack[key].extend(column)
+
+        result = {}
+        for key, value in to_stack.items():
+            array = numpy.stack(value)
             if slices:
                 sliced_array = array[(..., *slices[1:])]
             else:
                 sliced_array = array
             result[key] = sliced_array
+
         return result
 
 
@@ -743,7 +796,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             .get(self._object_name, {})
             .get("data_keys", {})
         )
-        columns = {}
+        unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
             unicode_keys = []
@@ -754,7 +807,8 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             # We have no other choice, except to *guess* but we'd be in
             # trouble if our guess were too small, and we'll waste space
             # if our guess is too large.
-            columns.update(self._get_columns(unicode_keys, slices=None))  # Fetch *all*.
+            if unicode_keys:
+                unicode_columns.update(self._get_columns(unicode_keys, slices=None))
         for key, field_metadata in data_keys.items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -775,7 +829,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
-                    array = columns[key]
+                    array = unicode_columns[key]
                     # I do not fully understand why we need this factor of 4.
                     # Something about what itemsize means to the dtype system
                     # versus its actual bytesize.
@@ -1220,7 +1274,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         # cutoff. If not, we need to know the length anyway. Note that this
         # is not the same thing as the number of Event documents in the
         # stream because seq_num may be repeated, nonunique.
-        (result,) = self._event_collection.aggregate(
+        cursor = self._event_collection.aggregate(
             [
                 {"$match": {"descriptor": {"$in": event_descriptor_uids}}},
                 {
@@ -1231,6 +1285,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                 },
             ]
         )
+        (result,) = cursor
         cutoff_seq_num = (
             1 + result["highest_seq_num"]
         )  # `1 +` because we use a half-open interval
@@ -1897,3 +1952,7 @@ def _validate_shape(data, expected_shape):
         padded = numpy.pad(data, padding, "edge")
         padded_and_trimmed = padded[tuple(trimming)]
     return padded_and_trimmed
+
+
+def _too_large(err):
+    return ("'code': 10334" in err.args[0]) or ("'code': 16945" in err.args[0])
