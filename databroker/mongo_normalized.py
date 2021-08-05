@@ -514,15 +514,21 @@ class DatasetFromDocuments:
             min_seq_num = 1 + slice.start
             max_seq_num = 1 + slice.stop
         column = []
-        for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
+        descriptor_uids = [doc["uid"] for doc in self.metadata["descriptors"]]
+
+        def populate_column(min_seq_num, max_seq_num):
             (result,) = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
-                            "descriptor": descriptor["uid"],
+                            "descriptor": {"$in": descriptor_uids},
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
                         },
+                    },
+                    # Include only the fields of interest.
+                    {
+                        "$project": {"descriptor": 1, "seq_num": 1, "time": 1},
                     },
                     # Sort by time.
                     {"$sort": {"time": 1}},
@@ -548,6 +554,18 @@ class DatasetFromDocuments:
                 ]
             )
             column.extend(result["column"])
+
+        # Aim for 10 MB pages to stay safely clear the MongoDB's hard limit
+        # of 16 MB.
+        TARGET_PAGE_BYTESIZE = 10_000_000
+
+        page_size = TARGET_PAGE_BYTESIZE // 8  # estimated row byte size is 8
+        boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+        if boundaries[-1] != max_seq_num:
+            boundaries.append(max_seq_num)
+        for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+            populate_column(min_, max_)
+
         return numpy.array(column)
 
     def _get_columns(self, keys, slices):
@@ -571,13 +589,21 @@ class DatasetFromDocuments:
         def populate_columns(keys, min_seq_num, max_seq_num):
             # This closes over the local variable columns and appends to its
             # contents.
-            (result,) = self._event_collection.aggregate(
+            cursor = self._event_collection.aggregate(
                 [
                     # Select Events for this Descriptor with the appropriate seq_num range.
                     {
                         "$match": {
                             "descriptor": {"$in": descriptor_uids},
                             "seq_num": {"$gte": min_seq_num, "$lt": max_seq_num},
+                        },
+                    },
+                    # Include only the fields of interest.
+                    {
+                        "$project": {
+                            "descriptor": 1,
+                            "seq_num": 1,
+                            **{f"{self._sub_dict}.{key}": 1 for key in keys},
                         },
                     },
                     # Sort by time.
@@ -606,6 +632,7 @@ class DatasetFromDocuments:
                     },
                 ]
             )
+            (result,) = cursor
             for key, expected_shape, is_external in zip(
                 keys, expected_shapes, is_externals
             ):
@@ -627,11 +654,15 @@ class DatasetFromDocuments:
         estimated_nonscalar_row_bytesizes = []
         estimated_scalar_row_bytesize = 0
         for key, data_key, is_external in zip(keys, data_keys, is_externals):
-            # TODO Refine the row byte size estimates based on the dtype.
             if (not data_key["shape"]) or is_external:
                 # This is either a literal scalar value of a datum_id.
                 scalars.append(key)
-                estimated_scalar_row_bytesize += 8
+                if data_key["dtype"] == "string":
+                    # Give a generous amount of headroom here.
+                    estimated_scalar_row_bytesize += 10_000  # 10 kB
+                else:
+                    # 64-bit integer or float
+                    estimated_scalar_row_bytesize += 8
             else:
                 nonscalars.append(key)
                 estimated_nonscalar_row_bytesizes.append(
