@@ -654,6 +654,9 @@ class DatasetFromDocuments:
         # If data is external, we now have a column of datum_ids, and we need
         # to look up the data that they reference.
         to_stack = collections.defaultdict(list)
+        # Any arbitrary valid descriptor uid will work; we just need to satisfy
+        # the Filler with our mocked Event below. So we pick the first one.
+        descriptor_uid = descriptor_uids[0]
         for key, expected_shape, is_external in zip(
             keys, expected_shapes, is_externals
         ):
@@ -665,7 +668,7 @@ class DatasetFromDocuments:
                     # streamed documents, to this column-based access mode.
                     mock_event = {
                         "data": {key: datum_id},
-                        "descriptor": "PLACEHOLDER",
+                        "descriptor": descriptor_uid,
                         "uid": "PLACEHOLDER",
                         "filled": {key: False},
                     }
