@@ -62,7 +62,7 @@ class BlueskyRun(BlueskyRunMixin, Node):
         # Context does not yet expose a streaming API.
         request = self.context._client.build_request(
             "GET",
-            f"/documents/{'/'.join(self._path)}",
+            f"/documents/{'/'.join(list(self.context.path_parts) + list(self._path))}",
             params={"fill": fill},
             headers={"Accept": "application/x-msgpack"},
         )
