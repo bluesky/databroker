@@ -679,12 +679,13 @@ class DatasetFromDocuments:
         TARGET_PAGE_BYTESIZE = 10_000_000
 
         # Fetch scalars all together.
-        page_size = TARGET_PAGE_BYTESIZE // estimated_scalar_row_bytesize
-        boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
-        if boundaries[-1] != max_seq_num:
-            boundaries.append(max_seq_num)
-        for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
-            populate_columns(scalars, min_, max_)
+        if scalars:
+            page_size = TARGET_PAGE_BYTESIZE // estimated_scalar_row_bytesize
+            boundaries = list(range(min_seq_num, 1 + max_seq_num, page_size))
+            if boundaries[-1] != max_seq_num:
+                boundaries.append(max_seq_num)
+            for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
+                populate_columns(scalars, min_, max_)
 
         # Fetch each nonscalar column individually.
         # TODO We could batch a couple nonscalar columns at at ime based on
