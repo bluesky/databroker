@@ -1953,7 +1953,3 @@ def _validate_shape(data, expected_shape):
         padded = numpy.pad(data, padding, "edge")
         padded_and_trimmed = padded[tuple(trimming)]
     return padded_and_trimmed
-
-
-def _too_large(err):
-    return ("'code': 10334" in err.args[0]) or ("'code': 16945" in err.args[0])
