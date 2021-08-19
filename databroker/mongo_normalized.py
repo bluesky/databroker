@@ -467,7 +467,7 @@ class DatasetFromDocuments:
             data_arrays[key] = data_array
         # Build the time coordinate.
         variable = structure.coords["time"]
-        time_coord = self._get_time_coord(slice=None)
+        time_coord = self._get_time_coord(slice_params=None)
         return xarray.Dataset(data_arrays, coords={"time": time_coord})
 
     def read_variable(self, variable):
@@ -487,7 +487,7 @@ class DatasetFromDocuments:
                 for starts, shapes in zip(cumdims, chunks)
             ]
             (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
-            return self._get_time_coord(slice=slice_)
+            return self._get_time_coord(slice_params=(slice_.start, slice_.stop))
         dtype = structure.data_vars[
             variable
         ].macro.variable.macro.data.micro.to_numpy_dtype()
@@ -506,13 +506,14 @@ class DatasetFromDocuments:
             array = array[slice]
         return array
 
-    def _get_time_coord(self, slice):
-        if slice is None:
+    @functools.lru_cache(maxsize=1024)
+    def _get_time_coord(self, slice_params):
+        if slice_params is None:
             min_seq_num = 1
             max_seq_num = self._cutoff_seq_num
         else:
-            min_seq_num = 1 + slice.start
-            max_seq_num = 1 + slice.stop
+            min_seq_num = 1 + slice_params[0]
+            max_seq_num = 1 + slice_params[1]
         column = []
         descriptor_uids = [doc["uid"] for doc in self.metadata["descriptors"]]
 
@@ -572,7 +573,6 @@ class DatasetFromDocuments:
         return numpy.array(column)
 
     def _get_columns(self, keys, slices):
-        columns = {key: [] for key in keys}
         if slices is None:
             min_seq_num = 1
             max_seq_num = self._cutoff_seq_num
@@ -580,6 +580,23 @@ class DatasetFromDocuments:
             slice_ = slices[0]
             min_seq_num = 1 + slice_.start
             max_seq_num = 1 + slice_.stop
+
+        to_stack = self._inner_get_columns(tuple(keys), min_seq_num, max_seq_num)
+
+        result = {}
+        for key, value in to_stack.items():
+            array = numpy.stack(value)
+            if slices:
+                sliced_array = array[(..., *slices[1:])]
+            else:
+                sliced_array = array
+            result[key] = sliced_array
+
+        return result
+
+    @functools.lru_cache(maxsize=1024)
+    def _inner_get_columns(self, keys, min_seq_num, max_seq_num):
+        columns = {key: [] for key in keys}
         # IMPORTANT: Access via self.metadata so that transforms are applied.
         descriptors = self.metadata["descriptors"]
         descriptor_uids = [doc["uid"] for doc in descriptors]
@@ -685,7 +702,7 @@ class DatasetFromDocuments:
             if boundaries[-1] != max_seq_num:
                 boundaries.append(max_seq_num)
             for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
-                populate_columns(scalars, min_, max_)
+                populate_columns(tuple(scalars), min_, max_)
 
         # Fetch each nonscalar column individually.
         # TODO We could batch a couple nonscalar columns at at ime based on
@@ -697,7 +714,7 @@ class DatasetFromDocuments:
             if boundaries[-1] != max_seq_num:
                 boundaries.append(max_seq_num)
             for min_, max_ in zip(boundaries[:-1], boundaries[1:]):
-                populate_columns([key], min_, max_)
+                populate_columns((key,), min_, max_)
 
         # If data is external, we now have a column of datum_ids, and we need
         # to look up the data that they reference.
@@ -735,16 +752,7 @@ class DatasetFromDocuments:
             else:
                 to_stack[key].extend(column)
 
-        result = {}
-        for key, value in to_stack.items():
-            array = numpy.stack(value)
-            if slices:
-                sliced_array = array[(..., *slices[1:])]
-            else:
-                sliced_array = array
-            result[key] = sliced_array
-
-        return result
+        return to_stack
 
 
 class Config(TreeInMemory):
