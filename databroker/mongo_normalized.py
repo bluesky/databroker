@@ -25,8 +25,15 @@ from tiled.structures.array import (
     ArrayStructure,
     ArrayMacroStructure,
     Kind,
-    MachineDataType,
+    MachineDataType as BuiltinType,
 )
+
+from tiled.structures.structure_array import (
+    StructDtype,
+    ArrayTabularMacroStructure,
+    StructuredArrayTabularStructure,
+)
+
 from tiled.structures.xarray import (
     DataArrayStructure,
     DataArrayMacroStructure,
@@ -34,6 +41,7 @@ from tiled.structures.xarray import (
     VariableStructure,
     VariableMacroStructure,
 )
+from tiled.trees.in_memory import Tree
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import FullText
 from tiled.utils import (
@@ -65,6 +73,146 @@ CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
 MAX_AD_FRAMES_PER_CHUNK = int(os.getenv("DATABROKER_MAX_AD_FRAMES_PER_CHUNK", "10"))
 
 logger = logging.getLogger(__name__)
+
+
+def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns=None):
+    def _try_descr(field_metadata):
+        if descr := field_metadata.get("dtype_descr"):
+            if len(descr) == 1 and descr[0][0] == "":
+                return None
+            dtype = StructDtype.from_numpy_dtype(numpy.dtype(descr))
+            if dtype.max_depth() > 1:
+                raise RuntimeError(
+                    "We can not yet cope with multiple nested structured dtypes.  "
+                    f"{descr}"
+                )
+            return dtype
+        else:
+            return None
+
+    # Build the time coordinate.
+    time_shape = (max_seq_num - 1,)
+    time_chunks = normalize_chunks(
+        ("auto",) * len(time_shape),
+        shape=time_shape,
+        limit=CHUNK_SIZE_LIMIT,
+        dtype=FLOAT_DTYPE.to_numpy_dtype(),
+    )
+    time_data = ArrayStructure(
+        macro=ArrayMacroStructure(
+            shape=time_shape,
+            chunks=time_chunks,
+        ),
+        micro=FLOAT_DTYPE,
+    )
+    time_variable = VariableStructure(
+        macro=VariableMacroStructure(dims=["time"], data=time_data, attrs={}),
+        micro=None,
+    )
+    time_data_array = DataArrayStructure(
+        macro=DataArrayMacroStructure(variable=time_variable, coords={}, name="time"),
+        micro=None,
+    )
+    if unicode_columns is None:
+        unicode_columns = {}
+    dim_counter = itertools.count()
+    base_vars = {}
+    struct_vars = {}
+
+    for key, field_metadata in descriptor["data_keys"].items():
+        # if the EventDescriptor doesn't provide names for the
+        # dimensions (it's optional) use the same default dimension
+        # names that xarray would.
+        try:
+            dims = ["time"] + field_metadata["dims"]
+        except KeyError:
+            ndim = len(field_metadata["shape"])
+            dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
+        attrs = {}
+        # Record which object (i.e. device) this column is associated with,
+        # which enables one to find the relevant configuration, if any.
+        for object_name, keys_ in descriptor.get("object_keys", {}).items():
+            for item in keys_:
+                if item == key:
+                    attrs["object"] = object_name
+                    break
+        units = field_metadata.get("units")
+        if units:
+            if isinstance(units, str):
+                attrs["units_string"] = units
+            # TODO We may soon add a more structured units type, which
+            # would likely be a dict here.
+        if sub_dict == "data":
+            shape = tuple((max_seq_num - 1, *field_metadata["shape"]))
+            # if we have a descr, then this is a
+            if dtype := _try_descr(field_metadata):
+                if len(shape) > 2:
+                    raise RuntimeError(
+                        "We do not yet support general structured arrays, only 1D ones."
+                    )
+            # if we have a detailed string, trust that
+            elif dt_str := field_metadata.get("dtype_str"):
+                dtype = BuiltinType.from_numpy_dtype(numpy.dtype(dt_str))
+            # otherwise guess!
+            else:
+                dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
+        else:
+            # assert sub_dict == "timestamps"
+            shape = tuple((max_seq_num - 1,))
+            dtype = FLOAT_DTYPE
+
+        if "chunks" in field_metadata:
+            # If the Event Descriptor tells us a preferred chunking, use that.
+            suggested_chunks = field_metadata["chunks"]
+        elif 0 in shape:
+            # special case to avoid warning from dask
+            suggested_chunks = shape
+        elif len(shape) == 4:
+            # TEMP: Special-case 4D data in a way that optimzes single-frame
+            # access of area detector data.
+            # If we choose 1 that would make single-frame access fast
+            # but many-frame access too slow.
+            suggested_chunks = (
+                min(MAX_AD_FRAMES_PER_CHUNK, shape[0]),
+                min(MAX_AD_FRAMES_PER_CHUNK, shape[1]),
+                "auto",
+                "auto",
+            )
+        else:
+            suggested_chunks = ("auto",) * len(shape)
+
+        chunks = normalize_chunks(
+            suggested_chunks,
+            shape=shape,
+            limit=CHUNK_SIZE_LIMIT,
+            dtype=dtype.to_numpy_dtype(),
+        )
+
+        if isinstance(dtype, BuiltinType):
+            data = ArrayStructure(
+                macro=ArrayMacroStructure(shape=shape, chunks=chunks),
+                micro=dtype,
+            )
+            variable = VariableStructure(
+                macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
+                micro=None,
+            )
+            data_array = DataArrayStructure(
+                macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
+            )
+            base_vars[key] = data_array
+        else:
+            struct_vars[key] = StructuredArrayTabularStructure(
+                macro=ArrayTabularMacroStructure(chunks=chunks, shape=shape),
+                micro=dtype,
+            )
+
+    return (
+        DatasetMacroStructure(
+            data_vars=base_vars, coords={"time": time_data_array}, attrs={}
+        ),
+        Tree(struct_vars),
+    )
 
 
 class BlueskyRun(TreeInMemory, BlueskyRunMixin):
@@ -334,8 +482,6 @@ class DatasetFromDocuments:
         # `name` MUST be alike, so we can choose one arbitrarily.
         # IMPORTANT: Access via self.metadata so that the transforms are applied.
         descriptor, *_ = self.metadata["descriptors"]
-        data_vars = {}
-        dim_counter = itertools.count()
         unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
@@ -349,121 +495,11 @@ class DatasetFromDocuments:
             # if our guess is too large.
             if unicode_keys:
                 unicode_columns.update(self._get_columns(unicode_keys, slices=None))
-        # Build the time coordinate.
-        time_shape = (self._cutoff_seq_num - 1,)
-        time_chunks = normalize_chunks(
-            ("auto",) * len(time_shape),
-            shape=time_shape,
-            limit=CHUNK_SIZE_LIMIT,
-            dtype=FLOAT_DTYPE.to_numpy_dtype(),
+
+        old_ret, structed_data = structure_from_descriptor(
+            descriptor, self._sub_dict, self._cutoff_seq_num - 1, unicode_columns
         )
-        time_data = ArrayStructure(
-            macro=ArrayMacroStructure(
-                shape=time_shape,
-                chunks=time_chunks,
-            ),
-            micro=FLOAT_DTYPE,
-        )
-        time_variable = VariableStructure(
-            macro=VariableMacroStructure(dims=["time"], data=time_data, attrs={}),
-            micro=None,
-        )
-        time_data_array = DataArrayStructure(
-            macro=DataArrayMacroStructure(
-                variable=time_variable, coords={}, name="time"
-            ),
-            micro=None,
-        )
-        for key, field_metadata in descriptor["data_keys"].items():
-            # if the EventDescriptor doesn't provide names for the
-            # dimensions (it's optional) use the same default dimension
-            # names that xarray would.
-            try:
-                dims = ["time"] + field_metadata["dims"]
-            except KeyError:
-                ndim = len(field_metadata["shape"])
-                dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
-            attrs = {}
-            # Record which object (i.e. device) this column is associated with,
-            # which enables one to find the relevant configuration, if any.
-            for object_name, keys_ in descriptor.get("object_keys", {}).items():
-                for item in keys_:
-                    if item == key:
-                        attrs["object"] = object_name
-                        break
-            units = field_metadata.get("units")
-            if units:
-                if isinstance(units, str):
-                    attrs["units_string"] = units
-                # TODO We may soon add a more structured units type, which
-                # would likely be a dict here.
-            if self._sub_dict == "data":
-                shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
-                # A detailed dtype "dtype_str" was added to the schema in event-model#215.
-                # Prefer that, if it is set.
-                # Fall back to "dtype" otherwise, and guess the detailed dtype.
-                if "dtype_str" in field_metadata:
-                    dtype = MachineDataType.from_numpy_dtype(
-                        numpy.dtype(field_metadata["dtype_str"])
-                    )
-                else:
-                    dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
-                if dtype.kind == Kind.unicode:
-                    array = unicode_columns[key]
-                    # I do not fully understand why we need this factor of 4.
-                    # Something about what itemsize means to the dtype system
-                    # versus its actual bytesize.
-                    # This might be making an assumption that we have ASCII
-                    # characters only, which is not a safe assumption. We should
-                    # revisit this.
-                    dtype.itemsize = array.itemsize // 4
-            else:
-                # assert sub_dict == "timestamps"
-                shape = tuple((self._cutoff_seq_num - 1,))
-                dtype = FLOAT_DTYPE
-            if "chunks" in field_metadata:
-                # If the Event Descriptor tells us a preferred chunking, use that.
-                suggested_chunks = field_metadata["chunks"]
-            elif 0 in shape:
-                # special case to avoid warning from dask
-                suggested_chunks = shape
-            elif len(shape) == 4:
-                # TEMP: Special-case 4D data in a way that optimzes single-frame
-                # access of area detector data.
-                # If we choose 1 that would make single-frame access fast
-                # but many-frame access too slow.
-                suggested_chunks = (
-                    min(MAX_AD_FRAMES_PER_CHUNK, shape[0]),
-                    min(MAX_AD_FRAMES_PER_CHUNK, shape[1]),
-                    "auto",
-                    "auto",
-                )
-            else:
-                suggested_chunks = ("auto",) * len(shape)
-            chunks = normalize_chunks(
-                suggested_chunks,
-                shape=shape,
-                limit=CHUNK_SIZE_LIMIT,
-                dtype=dtype.to_numpy_dtype(),
-            )
-            data = ArrayStructure(
-                macro=ArrayMacroStructure(shape=shape, chunks=chunks),
-                micro=dtype,
-            )
-            variable = VariableStructure(
-                macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
-                micro=None,
-            )
-            data_array = DataArrayStructure(
-                macro=DataArrayMacroStructure(
-                    variable, coords={"time": time_data_array}, name=key
-                ),
-                micro=None,
-            )
-            data_vars[key] = data_array
-        return DatasetMacroStructure(
-            data_vars=data_vars, coords={"time": time_data_array}, attrs={}
-        )
+        return old_ret
 
     def microstructure(self):
         return None
@@ -1825,10 +1861,10 @@ def parse_transforms(transforms):
 
 # These are fallback guesses when all we have is a general jsonschema "dtype"
 # like "array" no specific "dtype_str" like "<u2".
-BOOLEAN_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("bool"))
-FLOAT_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("float64"))
-INT_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("int64"))
-STRING_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("<U"))
+BOOLEAN_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("bool"))
+FLOAT_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("float64"))
+INT_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("int64"))
+STRING_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("<U"))
 JSON_DTYPE_TO_MACHINE_DATA_TYPE = {
     "boolean": BOOLEAN_DTYPE,
     "number": FLOAT_DTYPE,
