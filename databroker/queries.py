@@ -6,10 +6,9 @@ from typing import List, Optional
 
 from tiled.trees.in_memory import (
     Tree as GenericTree,
-    key_lookup as generic_key_lookup,
     full_text_search,
 )
-from tiled.queries import FullText, QueryValueError, KeyLookup
+from tiled.queries import FullText, QueryValueError
 from tiled.query_registration import QueryTranslationRegistry
 
 # Reimport generic queries for convenience so all can be imported from this module.
@@ -244,10 +243,6 @@ def raw_mongo_in_memory(query, catalog):
     return catalog.new_variation(mapping=matches)
 
 
-def key_lookup(query, catalog):
-    return catalog.query_registry(RawMongo(start={"uid": query.key}), catalog)
-
-
 def scan_id(query, catalog):
     mongo_results = catalog.query_registry(
         RawMongo(start={"scan_id": {"$in": query.scan_ids}}),
@@ -320,5 +315,4 @@ TreeInMemory.register_query(_PartialUID, partial_uid)
 TreeInMemory.register_query(RawMongo, raw_mongo_in_memory)
 TreeInMemory.register_query(_ScanID, scan_id)
 TreeInMemory.register_query(TimeRange, time_range)
-TreeInMemory.register_query(KeyLookup, generic_key_lookup)
 TreeInMemory.register_query(FullText, full_text_search)

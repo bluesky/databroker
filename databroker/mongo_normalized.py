@@ -35,7 +35,7 @@ from tiled.structures.xarray import (
     VariableMacroStructure,
 )
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import FullText, KeyLookup
+from tiled.queries import FullText
 from tiled.utils import (
     DictView,
     SpecialUsers,
@@ -54,7 +54,6 @@ from .queries import (
     _PartialUID,
     _ScanID,
     TimeRange,
-    key_lookup,
     partial_uid,
     scan_id,
     time_range,
@@ -1489,10 +1488,13 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                 f"Already authenticated as {self.authenticated_identity}"
             )
         if self._access_policy is not None:
-            raise NotImplementedError
+            tree = self._access_policy.filter_results(
+                self,
+                identity,
+            )
         else:
-            catalog = self.new_variation()
-        return catalog
+            tree = self.new_variation(authenticated_identity=identity)
+        return tree
 
     def search(self, query):
         """
@@ -1585,37 +1587,16 @@ def raw_mongo(query, catalog):
 Tree.register_query(FullText, full_text_search)
 Tree.register_query(RawMongo, raw_mongo)
 # These are generic definitions that use RawMongo internally.
-Tree.register_query(KeyLookup, key_lookup)
 Tree.register_query(_PartialUID, partial_uid)
 Tree.register_query(_ScanID, scan_id)
 Tree.register_query(TimeRange, time_range)
-
-
-class DummyAccessPolicy:
-    "Impose no access restrictions."
-
-    def check_compatibility(self, catalog):
-        # This only works on in-memory Tree or subclases.
-        return isinstance(catalog, Tree)
-
-    def modify_queries(self, queries, authenticated_identity):
-        return queries
-
-    def filter_results(self, catalog, authenticated_identity):
-        return type(catalog)(
-            metadatastore_db=catalog.metadatastore_db,
-            asset_registry_db=catalog.asset_registry_db,
-            metadata=catalog.metadata,
-            access_policy=catalog.access_policy,
-            authenticated_identity=authenticated_identity,
-        )
 
 
 class SimpleAccessPolicy:
     """
     Refer to a mapping of user names to lists of entries they can access.
 
-    >>> SimpleAccessPolicy({"alice": ["A", "B"], "bob": ["B"]})
+    >>> SimpleAccessPolicy({"alice": [<uuid>, <uuid>], "bob": [<uuid>]})
     """
 
     ALL = object()  # sentinel
@@ -1624,7 +1605,6 @@ class SimpleAccessPolicy:
         self.access_lists = access_lists
 
     def check_compatibility(self, catalog):
-        # This only works on in-memory Tree or subclases.
         return isinstance(catalog, Tree)
 
     def modify_queries(self, queries, authenticated_identity):
