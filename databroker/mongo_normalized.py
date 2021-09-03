@@ -399,7 +399,11 @@ class DatasetFromDocuments:
                     "auto",
                 )
             else:
-                suggested_chunks = ("auto",) * len(shape)
+                if 0 in shape:
+                    # special case to avoid warning from dask
+                    suggested_chunks = shape
+                else:
+                    suggested_chunks = ("auto",) * len(shape)
             chunks = normalize_chunks(
                 suggested_chunks,
                 shape=shape,
