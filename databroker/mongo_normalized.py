@@ -389,7 +389,10 @@ class DatasetFromDocuments:
             # TEMP: Special-case 4D data in a way that optimzes single-frame
             # access of area detector data. The correct way to handle this may
             # be to place "chunks" in the data_keys.
-            if len(shape) == 4:
+            if 0 in shape:
+                # special case to avoid warning from dask
+                suggested_chunks = shape
+            elif len(shape) == 4:
                 # If we choose 1 that would make single-frame access fast
                 # but many-frame access too slow.
                 suggested_chunks = (
@@ -399,11 +402,7 @@ class DatasetFromDocuments:
                     "auto",
                 )
             else:
-                if 0 in shape:
-                    # special case to avoid warning from dask
-                    suggested_chunks = shape
-                else:
-                    suggested_chunks = ("auto",) * len(shape)
+                suggested_chunks = ("auto",) * len(shape)
             chunks = normalize_chunks(
                 suggested_chunks,
                 shape=shape,
