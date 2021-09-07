@@ -664,7 +664,7 @@ class DatasetFromDocuments:
                     validated_column = list(
                         map(
                             lambda item: _validate_shape(
-                                numpy.asarray(item), expected_shape
+                                key, numpy.asarray(item), expected_shape
                             ),
                             result[key],
                         )
@@ -748,7 +748,9 @@ class DatasetFromDocuments:
                         last_datum_id=None,
                     )
                     filled_data = filled_mock_event["data"][key]
-                    validated_filled_data = _validate_shape(filled_data, expected_shape)
+                    validated_filled_data = _validate_shape(
+                        key, filled_data, expected_shape
+                    )
                     filled_column.append(validated_filled_data)
                 to_stack[key].extend(filled_column)
             else:
@@ -1906,7 +1908,7 @@ class BadShapeMetadata(Exception):
     pass
 
 
-def _validate_shape(data, expected_shape):
+def _validate_shape(key, data, expected_shape):
     """
     Check that data.shape == expected.shape.
 
@@ -1926,7 +1928,8 @@ def _validate_shape(data, expected_shape):
         SOMEWHAT_ARBITRARY_LIMIT_OF_WHAT_IS_REASONABLE = 2
         if abs(margin) > SOMEWHAT_ARBITRARY_LIMIT_OF_WHAT_IS_REASONABLE:
             raise BadShapeMetadata(
-                f"Actual shape {data.shape} does not "
+                f"For data key {key} "
+                f"shape {data.shape} does not "
                 f"match expected shape {expected_shape}."
             )
         if margin > 0:
