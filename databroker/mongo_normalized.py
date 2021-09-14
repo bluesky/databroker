@@ -176,7 +176,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
             raise ValueError(f"Could not find Datum with datum_id={datum_id}")
         return doc["resource"]
 
-    def _single_documents(self, fill):
+    def single_documents(self, fill):
         if fill:
             raise NotImplementedError("Only fill=False is implemented.")
         external_fields = {}  # map descriptor uid to set of external fields
@@ -239,7 +239,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
         Batch Event and Datum documents into pages of up to ``size`` rows,
         while preserving time-ordering.
         """
-        yield from batch_documents(self._single_documents(fill=fill), size)
+        yield from batch_documents(self.single_documents(fill=fill), size)
 
 
 class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
