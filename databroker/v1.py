@@ -482,6 +482,7 @@ class Broker:
             applicable_fields.add("time")
             run = self._catalog[header.start["uid"]]
             dataset = run[stream_name].read(variables=(applicable_fields or None))
+            dataset.load()
             dict_of_arrays = {}
             for var_name in dataset:
                 column = dataset[var_name].data
