@@ -286,7 +286,11 @@ class Broker:
 
     def __call__(self, text_search=None, **kwargs):
         data_key = kwargs.pop('data_key', None)
-        tz = tzlocal.get_localzone().zone
+        tz = tzlocal.get_localzone()
+        try:
+            tz = tz.key
+        except AttributeError:
+            tz = tz.zone
         if self.filters:
             filters = self.filters.copy()
             format_time(filters, tz)  # mutates in place
