@@ -27,7 +27,7 @@ def teardown_module(module):
             pass
 
 
-@pytest.fixture(params=['local', 'remote'], scope='module')
+@pytest.fixture(params=['local'], scope='module')
 def bundle(request, intake_server, example_data):  # noqa
     tmp_dir = TMP_DIRS[request.param]
     tmp_data_dir = Path(tmp_dir) / 'data'
