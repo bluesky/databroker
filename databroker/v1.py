@@ -472,9 +472,9 @@ class Broker:
         fields = set(fields or [])
         dfs = []
         for header in headers:
+            descriptors = [d for d in header.descriptors if d.get("name") == stream_name]
+            data_keys = descriptors[0]["data_keys"]
             if not fill:
-                descriptors = [d for d in header.descriptors if d.get("name") == stream_name]
-                data_keys = descriptors[0]["data_keys"]
                 external_fields = {k for k, v in data_keys.items() if v.get("external")}
                 applicable_fields = (fields or set(data_keys)) - external_fields
             else:
