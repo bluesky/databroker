@@ -23,6 +23,6 @@ suitcase-mongo  # for back-compat to support insert()
 suitcase-msgpack  # for back-compat to support insert on Broker.named('temp')
 tifffile !=2019.7.26.2
 toolz
-tzlocal
+tzlocal <3  # Returned type of zone object changed
 xarray
 zarr
