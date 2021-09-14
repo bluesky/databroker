@@ -51,5 +51,5 @@ jobs:
       shell: bash -l {0}
       run: |
         set -vxeuo pipefail
-        coverage run -m pytest -v
+        coverage run -m pytest -v -k "not v2"
         coverage report
