@@ -386,13 +386,15 @@ class DatasetFromDocuments:
                 # assert sub_dict == "timestamps"
                 shape = tuple((self._cutoff_seq_num - 1,))
                 dtype = FLOAT_DTYPE
-            # TEMP: Special-case 4D data in a way that optimzes single-frame
-            # access of area detector data. The correct way to handle this may
-            # be to place "chunks" in the data_keys.
-            if 0 in shape:
+            if "chunks" in field_metadata:
+                # If the Event Descriptor tells us a preferred chunking, use that.
+                suggested_chunks = field_metadata["chunks"]
+            elif 0 in shape:
                 # special case to avoid warning from dask
                 suggested_chunks = shape
             elif len(shape) == 4:
+                # TEMP: Special-case 4D data in a way that optimzes single-frame
+                # access of area detector data.
                 # If we choose 1 that would make single-frame access fast
                 # but many-frame access too slow.
                 suggested_chunks = (
