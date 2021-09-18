@@ -347,6 +347,31 @@ class DatasetFromDocuments:
             # if our guess is too large.
             if unicode_keys:
                 unicode_columns.update(self._get_columns(unicode_keys, slices=None))
+        # Build the time coordinate.
+        time_shape = (self._cutoff_seq_num - 1,)
+        time_chunks = normalize_chunks(
+            ("auto",) * len(time_shape),
+            shape=time_shape,
+            limit=CHUNK_SIZE_LIMIT,
+            dtype=FLOAT_DTYPE.to_numpy_dtype(),
+        )
+        time_data = ArrayStructure(
+            macro=ArrayMacroStructure(
+                shape=time_shape,
+                chunks=time_chunks,
+            ),
+            micro=FLOAT_DTYPE,
+        )
+        time_variable = VariableStructure(
+            macro=VariableMacroStructure(dims=["time"], data=time_data, attrs={}),
+            micro=None,
+        )
+        time_data_array = DataArrayStructure(
+            macro=DataArrayMacroStructure(
+                variable=time_variable, coords={}, name="time"
+            ),
+            micro=None,
+        )
         for key, field_metadata in descriptor["data_keys"].items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -420,29 +445,14 @@ class DatasetFromDocuments:
                 micro=None,
             )
             data_array = DataArrayStructure(
-                macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
+                macro=DataArrayMacroStructure(
+                    variable, coords={"time": time_data_array}, name=key
+                ),
+                micro=None,
             )
             data_vars[key] = data_array
-        # Build the time coordinate.
-        shape = (self._cutoff_seq_num - 1,)
-        chunks = normalize_chunks(
-            ("auto",) * len(shape),
-            shape=shape,
-            limit=CHUNK_SIZE_LIMIT,
-            dtype=FLOAT_DTYPE.to_numpy_dtype(),
-        )
-        data = ArrayStructure(
-            macro=ArrayMacroStructure(
-                shape=shape,
-                chunks=chunks,
-            ),
-            micro=FLOAT_DTYPE,
-        )
-        variable = VariableStructure(
-            macro=VariableMacroStructure(dims=["time"], data=data, attrs={}), micro=None
-        )
         return DatasetMacroStructure(
-            data_vars=data_vars, coords={"time": variable}, attrs={}
+            data_vars=data_vars, coords={"time": time_data_array}, attrs={}
         )
 
     def microstructure(self):
@@ -458,6 +468,8 @@ class DatasetFromDocuments:
         else:
             keys = variables
         columns = self._get_columns(keys, slices=None)
+        # Build the time coordinate.
+        time_coord = self._get_time_coord(slice_params=None)
         for key, data_array in structure.data_vars.items():
             if (variables is not None) and (key not in variables):
                 continue
@@ -466,12 +478,12 @@ class DatasetFromDocuments:
             raw_array = columns[key]
             array = raw_array.astype(dtype)
             data_array = xarray.DataArray(
-                array, attrs=variable.macro.attrs, dims=variable.macro.dims
+                array,
+                attrs=variable.macro.attrs,
+                dims=variable.macro.dims,
+                coords={"time": time_coord},
             )
             data_arrays[key] = data_array
-        # Build the time coordinate.
-        variable = structure.coords["time"]
-        time_coord = self._get_time_coord(slice_params=None)
         return xarray.Dataset(data_arrays, coords={"time": time_coord})
 
     def read_variable(self, variable):
@@ -479,11 +491,8 @@ class DatasetFromDocuments:
 
     def read_block(self, variable, block, coord=None, slice=None):
         structure = self.macrostructure()
-        if coord is not None:
-            # The DataArrays generated from Events never have coords.
-            raise KeyError(coord)
-        if variable == "time":
-            data_structure = structure.coords["time"].macro.data
+        if coord == "time":
+            data_structure = structure.coords["time"].macro.variable.macro.data
             chunks = data_structure.macro.chunks
             cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
             slices_for_chunks = [
@@ -492,6 +501,8 @@ class DatasetFromDocuments:
             ]
             (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
             return self._get_time_coord(slice_params=(slice_.start, slice_.stop))
+        elif coord is not None:
+            raise KeyError("time")
         dtype = structure.data_vars[
             variable
         ].macro.variable.macro.data.micro.to_numpy_dtype()
@@ -824,6 +835,31 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             # if our guess is too large.
             if unicode_keys:
                 unicode_columns.update(self._get_columns(unicode_keys, slices=None))
+        # Build the time coordinate.
+        time_shape = (self._cutoff_seq_num - 1,)
+        time_chunks = normalize_chunks(
+            ("auto",) * len(time_shape),
+            shape=time_shape,
+            limit=CHUNK_SIZE_LIMIT,
+            dtype=FLOAT_DTYPE.to_numpy_dtype(),
+        )
+        time_data = ArrayStructure(
+            macro=ArrayMacroStructure(
+                shape=time_shape,
+                chunks=time_chunks,
+            ),
+            micro=FLOAT_DTYPE,
+        )
+        time_variable = VariableStructure(
+            macro=VariableMacroStructure(dims=["time"], data=time_data, attrs={}),
+            micro=None,
+        )
+        time_data_array = DataArrayStructure(
+            macro=DataArrayMacroStructure(
+                variable=time_variable, coords={}, name="time"
+            ),
+            micro=None,
+        )
         for key, field_metadata in data_keys.items():
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
@@ -869,29 +905,14 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 micro=None,
             )
             data_array = DataArrayStructure(
-                macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
+                macro=DataArrayMacroStructure(
+                    variable, coords={"time": time_data_array}, name=key
+                ),
+                micro=None,
             )
             data_vars[key] = data_array
-        # Build the time coordinate.
-        shape = (self._cutoff_seq_num,)
-        chunks = normalize_chunks(
-            ("auto",) * len(shape),
-            shape=shape,
-            limit=CHUNK_SIZE_LIMIT,
-            dtype=FLOAT_DTYPE.to_numpy_dtype(),
-        )
-        data = ArrayStructure(
-            macro=ArrayMacroStructure(
-                shape=shape,
-                chunks=chunks,
-            ),
-            micro=FLOAT_DTYPE,
-        )
-        variable = VariableStructure(
-            macro=VariableMacroStructure(dims=["time"], data=data, attrs={}), micro=None
-        )
         return DatasetMacroStructure(
-            data_vars=data_vars, coords={"time": variable}, attrs={}
+            data_vars=data_vars, coords={"time": time_data_array}, attrs={}
         )
 
 
