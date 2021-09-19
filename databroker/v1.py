@@ -515,6 +515,8 @@ class Broker:
             # edge case: no data
             result = pandas.DataFrame()
         result.index.name = 'seq_num'
+        # seq_num starts at 1, not 0
+        result.index = 1 + result.index
         return result
 
     def get_images(self, headers, name,
