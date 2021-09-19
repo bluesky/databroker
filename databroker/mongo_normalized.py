@@ -1516,10 +1516,11 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                 f"Already authenticated as {self.authenticated_identity}"
             )
         if self._access_policy is not None:
-            tree = self._access_policy.filter_results(
-                self,
+            queries = self._access_policy.modify_queries(
+                self.queries,
                 identity,
             )
+            tree = self.new_variation(authenticated_identity=identity, queries=queries)
         else:
             tree = self.new_variation(authenticated_identity=identity)
         return tree
@@ -1624,13 +1625,22 @@ class SimpleAccessPolicy:
     """
     Refer to a mapping of user names to lists of entries they can access.
 
-    >>> SimpleAccessPolicy({"alice": [<uuid>, <uuid>], "bob": [<uuid>]})
+    By Run Start UID
+    >>> SimpleAccessPolicy({"alice": [<uuid>, <uuid>], "bob": [<uuid>]}, key="uid")
+
+    By Data Session
+    >>> SimpleAccessPolicy({"alice": [<data_session>, key="data_session")
     """
 
     ALL = object()  # sentinel
 
-    def __init__(self, access_lists):
-        self.access_lists = access_lists
+    def __init__(self, access_lists, key):
+        self.access_lists = {}
+        self.key = key
+        for identity, entries in (access_lists or {}).items():
+            if isinstance(entries, str):
+                entries = import_object(entries)
+            self.access_lists[identity] = entries
 
     def check_compatibility(self, catalog):
         return isinstance(catalog, Tree)
@@ -1641,11 +1651,8 @@ class SimpleAccessPolicy:
             modified_queries = queries
         else:
             modified_queries = list(queries)
-            modified_queries.append(RawMongo(start={"uid": {"$in": allowed}}))
+            modified_queries.append({self.key: {"$in": allowed}})
         return modified_queries
-
-    def filter_results(self, catalog, authenticated_identity):
-        return catalog.new_variation(authenticated_identity=authenticated_identity)
 
 
 def _get_database(uri):
