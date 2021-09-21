@@ -5,10 +5,10 @@ import copy
 import functools
 import itertools
 import json
+import logging
 import os
 import sys
 import threading
-import warnings
 
 from bson.objectid import ObjectId, InvalidId
 import cachetools
@@ -63,6 +63,8 @@ from .server import router
 
 CHUNK_SIZE_LIMIT = os.getenv("DATABROKER_CHUNK_SIZE_LIMIT", "100MB")
 MAX_AD_FRAMES_PER_CHUNK = int(os.getenv("DATABROKER_MAX_AD_FRAMES_PER_CHUNK", "10"))
+
+logger = logging.getLogger(__name__)
 
 
 class BlueskyRun(TreeInMemory, BlueskyRunMixin):
@@ -397,7 +399,15 @@ class DatasetFromDocuments:
                 # would likely be a dict here.
             if self._sub_dict == "data":
                 shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
-                dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
+                # A detailed dtype "dtype_str" was added to the schema in event-model#215.
+                # Prefer that, if it is set.
+                # Fall back to "dtype" otherwise, and guess the detailed dtype.
+                if "dtype_str" in field_metadata:
+                    dtype = MachineDataType.from_numpy_dtype(
+                        numpy.dtype(field_metadata["dtype_str"])
+                    )
+                else:
+                    dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     array = unicode_columns[key]
                     # I do not fully understand why we need this factor of 4.
@@ -476,7 +486,18 @@ class DatasetFromDocuments:
             variable = structure.data_vars[key].macro.variable
             dtype = variable.macro.data.micro.to_numpy_dtype()
             raw_array = columns[key]
-            array = raw_array.astype(dtype)
+            if raw_array.dtype != dtype:
+                logger.warning(
+                    f"{key!r} actually has dtype {raw_array.dtype.str!r} "
+                    f"but was reported as having dtype {dtype.str!r}. "
+                    "It will be converted to the reported type, "
+                    "but this should be fixed by setting 'dtype_str' "
+                    "in the data_key of the EventDescriptor. "
+                    f"RunStart UID: {self._run.metadata['start']['uid']!r}"
+                )
+                array = raw_array.astype(dtype)
+            else:
+                array = raw_array
             data_array = xarray.DataArray(
                 array,
                 attrs=variable.macro.attrs,
@@ -516,7 +537,18 @@ class DatasetFromDocuments:
         ]
         slices = [s[index] for s, index in zip(slices_for_chunks, block)]
         raw_array = self._get_columns([variable], slices=slices)[variable]
-        array = raw_array.astype(dtype)
+        if raw_array.dtype != dtype:
+            logger.warning(
+                f"{variable!r} actually has dtype {raw_array.dtype.str!r} "
+                f"but was reported as having dtype {dtype.str!r}. "
+                "It will be converted to the reported type, "
+                "but this should be fixed by setting 'dtype_str' "
+                "in the data_key of the EventDescriptor. "
+                f"RunStart UID: {self._run.metadata['start']['uid']!r}"
+            )
+            array = raw_array.astype(dtype)
+        else:
+            array = raw_array
         if slice is not None:
             array = array[slice]
         return array
@@ -1691,7 +1723,7 @@ def discover_handlers(entrypoint_group_name="databroker.handlers", skip_failures
             matches = list(matches)
             if len(matches) != 1:
                 winner = group[name]
-                warnings.warn(
+                logger.warning(
                     f"There are {len(matches)} entrypoints for the "
                     f"databroker handler spec {name!r}. "
                     f"They are {matches}. The match {winner} has won the race."
@@ -1702,7 +1734,7 @@ def discover_handlers(entrypoint_group_name="databroker.handlers", skip_failures
             handler_class = entrypoint.load()
         except Exception as exc:
             if skip_failures:
-                warnings.warn(
+                logger.warning(
                     f"Skipping {entrypoint!r} which failed to load. "
                     f"Exception: {exc!r}"
                 )
@@ -1791,6 +1823,8 @@ def parse_transforms(transforms):
     return _parse_dict_of_objs_or_importable_strings(transforms)
 
 
+# These are fallback guesses when all we have is a general jsonschema "dtype"
+# like "array" no specific "dtype_str" like "<u2".
 BOOLEAN_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("bool"))
 FLOAT_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("float64"))
 INT_DTYPE = MachineDataType.from_numpy_dtype(numpy.dtype("int64"))
@@ -1800,7 +1834,7 @@ JSON_DTYPE_TO_MACHINE_DATA_TYPE = {
     "number": FLOAT_DTYPE,
     "integer": INT_DTYPE,
     "string": STRING_DTYPE,
-    "array": FLOAT_DTYPE,  # HACK This is not a good assumption.
+    "array": FLOAT_DTYPE,  # If this is wrong, set 'dtype_str' in data_key to override.
 }
 
 
