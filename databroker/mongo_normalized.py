@@ -28,7 +28,7 @@ from tiled.structures.array import (
     MachineDataType as BuiltinType,
 )
 
-from tiled.structures.structure_array import (
+from tiled.structures.structured_array import (
     StructDtype,
     ArrayTabularMacroStructure,
     StructuredArrayTabularStructure,
