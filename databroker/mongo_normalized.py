@@ -41,7 +41,7 @@ from tiled.structures.xarray import (
     VariableStructure,
     VariableMacroStructure,
 )
-from tiled.trees.in_memory import Tree
+from tiled.trees.in_memory import Tree as TreeInMemory
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import FullText
 from tiled.utils import (
@@ -57,7 +57,6 @@ from tiled.utils import import_object, OneShotCachedMap
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import (
-    TreeInMemory,
     RawMongo,
     _PartialUID,
     _ScanID,
@@ -211,7 +210,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         DatasetMacroStructure(
             data_vars=base_vars, coords={"time": time_data_array}, attrs={}
         ),
-        Tree(struct_vars),
+        TreeInMemory(struct_vars),
     )
 
 
