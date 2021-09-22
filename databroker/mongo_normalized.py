@@ -116,8 +116,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
     if unicode_columns is None:
         unicode_columns = {}
     dim_counter = itertools.count()
-    base_vars = {}
-    struct_vars = {}
+    data_vars = {}
 
     for key, field_metadata in descriptor["data_keys"].items():
         # if the EventDescriptor doesn't provide names for the
@@ -195,25 +194,22 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 macro=ArrayMacroStructure(shape=shape, chunks=chunks),
                 micro=dtype,
             )
-            variable = VariableStructure(
-                macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
-                micro=None,
-            )
-            data_array = DataArrayStructure(
-                macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
-            )
-            base_vars[key] = data_array
         else:
-            struct_vars[key] = StructuredArrayTabularStructure(
+            data = StructuredArrayTabularStructure(
                 macro=ArrayTabularMacroStructure(chunks=chunks, shape=shape),
                 micro=dtype,
             )
+        variable = VariableStructure(
+            macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
+            micro=None,
+        )
+        data_array = DataArrayStructure(
+            macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
+        )
+        data_vars[key] = data_array
 
-    return (
-        DatasetMacroStructure(
-            data_vars=base_vars, coords={"time": time_data_array}, attrs={}
-        ),
-        TreeInMemory(struct_vars),
+    return DatasetMacroStructure(
+        data_vars=data_vars, coords={"time": time_data_array}, attrs={}
     )
 
 
@@ -498,10 +494,9 @@ class DatasetFromDocuments:
             if unicode_keys:
                 unicode_columns.update(self._get_columns(unicode_keys, slices=None))
 
-        old_ret, structed_data = structure_from_descriptor(
-            descriptor, self._sub_dict, self._cutoff_seq_num - 1, unicode_columns
+        return structure_from_descriptor(
+            descriptor, self._sub_dict, self._cutoff_seq_num, unicode_columns
         )
-        return old_ret
 
     def microstructure(self):
         return None
