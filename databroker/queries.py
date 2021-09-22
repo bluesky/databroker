@@ -82,7 +82,12 @@ class TimeRange(Query):
     """
     def __init__(self, since=None, until=None, timezone=None):
         if timezone is None:
-            timezone = tzlocal.get_localzone().zone
+            lz = tzlocal.get_localzone()
+            try:
+                timezone = lz.key
+            except AttributeError:
+                timezone = lz.zone
+
         self.timezone = timezone
         if since is None:
             self._since_normalized = None

@@ -90,9 +90,14 @@ def mds_portable(request):
     temporary database on localhost:27017 with both v0 and v1.
 
     '''
+    tz = tzlocal.get_localzone()
+    try:
+        tz = tz.key
+    except AttributeError:
+        tz = tz.zone
     tempdirname = tempfile.mkdtemp()
     mds = request.param.MDS({'directory': tempdirname,
-                             'timezone': tzlocal.get_localzone().zone,
+                             'timezone': tz,
                              'version': 1})
     filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
                  'events.json']

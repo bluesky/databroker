@@ -114,9 +114,15 @@ def build_hdf5_backed_broker(request):
     from ..headersource.hdf5 import MDS
     from ..assets.sqlite import Registry
 
+    tz = tzlocal.get_localzone()
+    try:
+        tz = tz.key
+    except AttributeError:
+        tz = tz.zone
+
     tempdirname = tempfile.mkdtemp()
     mds = MDS({'directory': tempdirname,
-               'timezone': tzlocal.get_localzone().zone,
+               'timezone': tz,
                'version': 1})
     filenames = ['run_starts.json', 'run_stops.json', 'event_descriptors.json',
                  'events.json']
