@@ -76,7 +76,8 @@ logger = logging.getLogger(__name__)
 
 def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns=None):
     def _try_descr(field_metadata):
-        if descr := field_metadata.get("dtype_descr"):
+        descr = field_metadata.get("dtype_descr")
+        if descr:
             if len(descr) == 1 and descr[0][0] == "":
                 return None
             dtype = StructDtype.from_numpy_dtype(numpy.dtype(descr))
@@ -144,13 +145,15 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         if sub_dict == "data":
             shape = tuple((max_seq_num - 1, *field_metadata["shape"]))
             # if we have a descr, then this is a
-            if dtype := _try_descr(field_metadata):
+            dtype = _try_descr(field_metadata)
+            dt_str = field_metadata.get("dtype_str")
+            if dtype is not None:
                 if len(shape) > 2:
                     raise RuntimeError(
                         "We do not yet support general structured arrays, only 1D ones."
                     )
             # if we have a detailed string, trust that
-            elif dt_str := field_metadata.get("dtype_str"):
+            elif dt_str is not None:
                 dtype = BuiltinType.from_numpy_dtype(numpy.dtype(dt_str))
             # otherwise guess!
             else:
