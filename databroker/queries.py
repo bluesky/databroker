@@ -209,7 +209,11 @@ class TimeRange:
         if timezone is None:
             import tzlocal
 
-            timezone = tzlocal.get_localzone().zone
+            lz = tzlocal.get_localzone()
+            try:
+                timezone = lz.key
+            except AttributeError:
+                timezone = lz.zone
         self.timezone = timezone
         if since is None:
             self.since = None
