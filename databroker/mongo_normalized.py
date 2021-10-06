@@ -194,13 +194,20 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 macro=ArrayMacroStructure(shape=shape, chunks=chunks),
                 micro=dtype,
             )
+            array_structure_family = "array"
         else:
             data = StructuredArrayTabularStructure(
                 macro=ArrayTabularMacroStructure(chunks=chunks, shape=shape),
                 micro=dtype,
             )
+            array_structure_family = "structured_array_tabular"
         variable = VariableStructure(
-            macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
+            macro=VariableMacroStructure(
+                dims=dims,
+                data=data,
+                attrs=attrs,
+                array_structure_family=array_structure_family,
+            ),
             micro=None,
         )
         data_array = DataArrayStructure(
