@@ -1,0 +1,9 @@
+.. currentmodule:: databroker
+
+v1.2.4 (2021-10-07)
+-------------------
+
+Fixed
++++++
+
+* tzlocal support
