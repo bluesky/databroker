@@ -496,6 +496,11 @@ class DatasetFromDocuments:
             unicode_keys = []
             for key, field_metadata in descriptor["data_keys"].items():
                 if field_metadata["dtype"] == "string":
+                    # Skip this if it has a dtype_str with an itemsize.
+                    dtype_str = field_metadata.get("dtype_str")
+                    if dtype_str is not None:
+                        if numpy.dtype(dtype_str).itemsize != 0:
+                            continue
                     unicode_keys.append(key)
             # Load the all the data for unicode columns to figure out the itemsize.
             # We have no other choice, except to *guess* but we'd be in
@@ -899,10 +904,16 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         )
         unicode_columns = {}
         if self._sub_dict == "data":
-            # Collect the keys (column names) that are of unicode data type.
+            # Collect the keys (column names) that are of "string" data type.
+            # but do not have a specific length.
             unicode_keys = []
             for key, field_metadata in descriptor["data_keys"].items():
                 if field_metadata["dtype"] == "string":
+                    # Skip this if it has a dtype_str with an itemsize.
+                    dtype_str = field_metadata.get("dtype_str")
+                    if dtype_str is not None:
+                        if numpy.dtype(dtype_str).itemsize != 0:
+                            continue
                     unicode_keys.append(key)
             # Load the all the data for unicode columns to figure out the itemsize.
             # We have no other choice, except to *guess* but we'd be in
