@@ -157,6 +157,9 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
             # otherwise guess!
             else:
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
+                if dtype.kind == Kind.unicode:
+                    array = unicode_columns[key]
+                    dtype.itemsize = array.itemsize
         else:
             # assert sub_dict == "timestamps"
             shape = tuple((max_seq_num - 1,))
@@ -953,10 +956,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     array = unicode_columns[key]
-                    # I do not fully understand why we need this factor of 4.
-                    # Something about what itemsize means to the dtype system
-                    # versus its actual bytesize.
-                    dtype.itemsize = array.itemsize // 4
+                    dtype.itemsize = array.itemsize
             else:
                 # assert sub_dict == "timestamps"
                 shape = tuple((self._cutoff_seq_num - 1,))
