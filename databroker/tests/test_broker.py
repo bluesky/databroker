@@ -242,7 +242,7 @@ def test_scan_id_lookup(db, RE, hw):
     # Now we find uid2 for scan_id=1, but we can get the old one by
     # being more specific.
     assert uid2 == db[1]['start']['uid']
-    assert uid1 == list(db(scan_id=1, marked=True))[0]['start']['uid']
+    assert uid1 in [run['start']['uid'] for run in db(scan_id=1, marked=True)]
 
 
 # Flaky because
