@@ -102,7 +102,7 @@ def test_get_events(db, RE, hw):
 
 def test_get_events_multiple_headers(db, RE, hw):
     RE.subscribe(db.insert)
-    headers = db[RE(pchain(count([hw.det]), count([hw.det])))]
+    headers = db[RE(pchain(count([hw.det]), count([hw.det]))).run_start_uids]
     assert len(list(db.get_events(headers))) == 2
 
 
@@ -130,7 +130,7 @@ def test_filtering_stream_name(db, RE, hw):
     # two event streams: 'primary' and 'd_monitor'
     d = sim.SynPeriodicSignal(name='d', period=.5)
     uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1),
-                                     a[d])).run_start_uids
+                                     [d])).run_start_uids
     h = db[uid]
     assert len(list(h.descriptors)) == 2
     assert set(h.stream_names) == set(['primary', 'd_monitor'])
@@ -467,7 +467,7 @@ def test_raise_key_error_conditions(key, db, RE, hw):
 @pytest.mark.parametrize('method_name', ['restream', 'stream'])
 def test_stream(method_name, db, RE, hw):
     RE.subscribe(db.insert)
-    uid = RE(count([hw.det]), owner='Dan')
+    uid, = RE(count([hw.det]), owner='Dan').run_start_uids
     s = getattr(db, method_name)(db[uid])
     name, doc = next(s)
     assert name == 'start'
@@ -487,8 +487,8 @@ def test_stream(method_name, db, RE, hw):
 
 
 def test_process(db, RE, hw):
-    uid = RE.subscribe(db.insert)
-    uid = RE(count([hw.det]))
+    RE.subscribe(db.insert)
+    uid, = RE(count([hw.det])).run_start_uids
     c = itertools.count()
 
     def f(name, doc):
@@ -620,7 +620,7 @@ def test_external_access_with_handler(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
 
     RE.subscribe(db.insert)
-    rs_uid, = RE(count([hw.img], 2))
+    rs_uid, = RE(count([hw.img], 2)).run_start_uids
 
 
     # For some db fixtures, this is already registered and is therefore a
