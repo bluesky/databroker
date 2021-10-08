@@ -284,12 +284,12 @@ def test_find_by_float_time(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
 
-    before, = RE(count([hw.det]))
+    before, = RE(count([hw.det])).run_start_uids
     ttime.sleep(0.25)
     t = ttime.time()
-    during, = RE(count([hw.det]))
+    during, = RE(count([hw.det])).run_start_uids
     ttime.sleep(0.25)
-    after, = RE(count([hw.det]))
+    after, = RE(count([hw.det])).run_start_uids
 
     assert len(list(db())) == 3
 

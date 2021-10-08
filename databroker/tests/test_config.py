@@ -151,7 +151,7 @@ def test_legacy_config_warnings(RE, hw):
     from databroker import db, DataBroker, get_table, get_events
 
     RE.subscribe(db.insert)
-    uid, = RE(bp.count([hw.det]))
+    uid, = RE(bp.count([hw.det])).run_start_uids
     with pytest.warns(UserWarning):
         assert len(get_table(db[uid]))
     with pytest.warns(UserWarning):
@@ -195,7 +195,7 @@ def test_transforms(RE, hw):
     config = {**EXAMPLE, **transforms}
     broker = Broker.from_config(config)
     RE.subscribe(broker.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     run = broker[uid]
 
     for name, doc in run.documents(fill='false'):
@@ -229,7 +229,7 @@ def test_uri(RE, hw):
     config['metadatastore']['config'] = meta_config
     broker = Broker.from_config(config)
     RE.subscribe(broker.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     run = broker[uid]
 
     config['api_version'] = 0
