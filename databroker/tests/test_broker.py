@@ -49,8 +49,8 @@ def test_uid_roundtrip(db, RE, hw):
 
 def test_header_equality(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
-    uid2, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
+    uid2, = RE(count([hw.det])).run_start_uids
     h = db[uid]
     h2 = db[uid2]
 
@@ -64,7 +64,7 @@ def test_no_descriptor_name(db, RE, hw):
         doc.pop('name', None)
         return db.insert(name, doc)
     RE.subscribe(local_insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     h = db[uid]
     db.get_fields(h, name='primary')
     assert h['start']['uid'] == uid
@@ -74,27 +74,27 @@ def test_no_descriptor_name(db, RE, hw):
 
 def test_uid_list_multiple_headers(db, RE, hw):
     RE.subscribe(db.insert)
-    uids = RE(pchain(count([hw.det]), count([hw.det])))
+    uids = RE(pchain(count([hw.det]), count([hw.det]))).run_start_uids
     headers = db[uids]
     assert uids == tuple([h['start']['uid'] for h in headers])
 
 
 def test_no_descriptors(db, RE):
     RE.subscribe(db.insert)
-    uid, = RE(count([]))
+    uid, = RE(count([])).run_start_uids
     header = db[uid]
     assert [] == header.descriptors
 
 
 def test_get_events(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     h = db[uid]
     assert len(list(db.get_events(h))) == 1
     assert len(list(h.documents())) == 1 + 3
 
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], num=7))
+    uid, = RE(count([hw.det], num=7)).run_start_uids
     h = db[uid]
     assert len(list(db.get_events(h))) == 7
     assert len(list(h.documents())) == 7 + 3
@@ -110,7 +110,7 @@ def test_filtering_stream_name(db, RE, hw):
     from ophyd import sim
     # one event stream
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], num=7), bc=1)
+    uid, = RE(count([hw.det], num=7), bc=1).run_start_uids
     h = db[uid]
     assert len(list(h.descriptors)) == 1
     assert list(h.stream_names) == ['primary']
@@ -130,7 +130,7 @@ def test_filtering_stream_name(db, RE, hw):
     # two event streams: 'primary' and 'd_monitor'
     d = sim.SynPeriodicSignal(name='d', period=.5)
     uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1),
-                                     [d]))
+                                     a[d])).run_start_uids
     h = db[uid]
     assert len(list(h.descriptors)) == 2
     assert set(h.stream_names) == set(['primary', 'd_monitor'])
@@ -155,7 +155,7 @@ def test_filtering_stream_name(db, RE, hw):
 
 def test_table_index_name(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], 5))
+    uid, = RE(count([hw.det], 5)).run_start_uids
     h = db[uid]
 
     name = h.table().index.name
@@ -164,13 +164,13 @@ def test_table_index_name(db, RE, hw):
 
 def test_get_events_filtering_field(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], num=7))
+    uid, = RE(count([hw.det], num=7)).run_start_uids
     h = db[uid]
     assert len(list(db.get_events(h, fields=['det']))) == 7
     assert len(list(h.documents(fields=['det']))) == 7 + 3
 
     uids = RE(pchain(count([hw.det1], num=7),
-                     count([hw.det2], num=3)))
+                     count([hw.det2], num=3))).run_start_uids
     headers = db[uids]
 
     assert len(list(db.get_events(headers, fields=['det1']))) == 7
@@ -182,7 +182,7 @@ def test_indexing(db_empty, RE, hw):
     RE.subscribe(db.insert)
     uids = []
     for i in range(10):
-        uids.extend(RE(count([hw.det])))
+        uids.extend(RE(count([hw.det])).run_start_uids)
 
     assert uids[-1] == db[-1]['start']['uid']
     assert uids[-2] == db[-2]['start']['uid']
@@ -204,7 +204,7 @@ def test_full_text_search(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
 
-    uid, = RE(count([hw.det]), foo='some words')
+    uid, = RE(count([hw.det]), foo='some words').run_start_uids
     RE(count([hw.det]))
 
     try:
@@ -223,7 +223,7 @@ def test_full_text_search(db_empty, RE, hw):
 def test_table_alignment(db, RE, hw):
     # test time shift issue GH9
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     table = db.get_table(db[uid])
     assert table.notnull().all().all()
 
@@ -232,12 +232,12 @@ def test_scan_id_lookup(db, RE, hw):
     RE.subscribe(db.insert)
 
     RE.md.clear()
-    uid1, = RE(count([hw.det]), marked=True)  # scan_id=1
+    uid1, = RE(count([hw.det]), marked=True).run_start_uids  # scan_id=1
 
     assert uid1 == db[1]['start']['uid']
 
     RE.md.clear()
-    uid2, = RE(count([hw.det]))  # scan_id=1 again
+    uid2, = RE(count([hw.det])).run_start_uids  # scan_id=1 again
 
     # Now we find uid2 for scan_id=1, but we can get the old one by
     # being more specific.
@@ -306,7 +306,7 @@ def test_find_by_float_time(db_empty, RE, hw):
 def test_find_by_string_time(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
 
     yesterday = date.fromtimestamp(db[uid].start['time']) + timedelta(days=-1)
     tomorrow = yesterday + timedelta(days=2)
@@ -360,7 +360,7 @@ def test_search_for_smoke(db, RE, hw):
 def test_alias(db, RE, hw):
     RE.subscribe(db.insert)
 
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     RE(count([hw.det]))
 
     # basic usage of alias
@@ -386,8 +386,8 @@ def test_filters(db_empty, RE, hw):
     db = db_empty
     RE.subscribe(db.insert)
     RE(count([hw.det]), user='Ken')
-    dan_uid, = RE(count([hw.det]), user='Dan', purpose='calibration')
-    ken_calib_uid, = RE(count([hw.det]), user='Ken', purpose='calibration')
+    dan_uid, = RE(count([hw.det]), user='Dan', purpose='calibration').run_start_uids
+    ken_calib_uid, = RE(count([hw.det]), user='Ken', purpose='calibration').run_start_uids
 
     assert len(list(db())) == 3
     db.add_filter(user='Dan')
@@ -500,7 +500,7 @@ def test_process(db, RE, hw):
 
 def test_get_fields(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det1, hw.det2]))
+    uid, = RE(count([hw.det1, hw.det2])).run_start_uids
     actual = db.get_fields(db[uid])
     expected = set(['det1', 'det2'])
     assert actual == expected
@@ -526,7 +526,7 @@ def test_configuration(db, RE):
     det.configuration_attrs = ['d']
 
     RE.subscribe(db.insert)
-    uid, = RE(count([det]), c=3)
+    uid, = RE(count([det]), c=3).run_start_uids
     h = db[uid]
 
     # check that config is not included by default
@@ -572,7 +572,7 @@ def test_stream_name(db, RE, hw):
     # if our two detectors have the same name. Ensure this is true
     assert hw.det.name != hw.det2.name
 
-    rs_uid, = RE(myplan([hw.det, hw.det2]))
+    rs_uid, = RE(myplan([hw.det, hw.det2])).run_start_uids
     h = db[rs_uid]
 
     assert h.fields() == {'det', 'det2'}
@@ -584,7 +584,7 @@ def test_external_access_without_handler(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
 
     RE.subscribe(db.insert)
-    rs_uid, = RE(count([hw.img], 2))
+    rs_uid, = RE(count([hw.img], 2)).run_start_uids
 
 
     # Clear the handler registry. We'll reinstate the relevant handler below.
@@ -670,7 +670,7 @@ def test_export(broker_factory, RE, hw):
     RE.subscribe(db1.insert)
 
     # test mds only
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     db1.export(db1[uid], db2)
     assert db2[uid] == db1[uid]
     assert list(db2.get_events(db2[uid])) == list(db1.get_events(db1[uid]))
@@ -684,7 +684,7 @@ def test_export(broker_factory, RE, hw):
     detfs = sim.SynSignalWithRegistry(name='detfs',
                                       func=lambda: np.ones((5, 5)),
                                       save_path=dir1)
-    uid, = RE(count([detfs]))
+    uid, = RE(count([detfs])).run_start_uids
 
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
@@ -728,7 +728,7 @@ def test_export_noroot(broker_factory, RE, tmpdir, hw):
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     RE.subscribe(db1.insert)
-    uid, = RE(count([detfs], num=3))
+    uid, = RE(count([detfs], num=3)).run_start_uids
 
     file_pairs = db1.export(db1[uid], db2, new_root=dir2)
     for from_path, to_path in file_pairs:
@@ -755,7 +755,7 @@ def test_export_size_smoke(broker_factory, RE, tmpdir):
                                       func=lambda: np.ones((5, 5)),
                                       save_path=str(tmpdir.mkdir('a')))
 
-    uid, = RE(count([detfs]))
+    uid, = RE(count([detfs])).run_start_uids
 
     db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     size = db1.export_size(db1[uid])
@@ -777,7 +777,7 @@ def test_results_multiple_iters(db, RE, hw):
 def test_dict_header(db, RE, hw):
     # Ensure that we aren't relying on h being a doct as opposed to a dict.
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     h = db[uid]
     expected = list(db.get_events(h))
     actual = list(db.get_events(dict(h)))
@@ -807,7 +807,7 @@ def test_config_data(db, RE, hw):
     det.read_attrs = ['x']
     det.configuration_attrs = ['y', 'z']
 
-    uid, = RE(count([det]))
+    uid, = RE(count([det])).run_start_uids
     h = db[uid]
     actual = h.config_data('det')
     expected = {'primary': [{'y': 2, 'z': 3}]}
@@ -827,14 +827,14 @@ def test_config_data(db, RE, hw):
         for msg in trigger_and_read([det]):
             yield msg
 
-    uid, = RE(plan())
+    uid, = RE(plan()).run_start_uids
     h = db[uid]
     actual = h.config_data('det')
     expected = {'primary': [{'y': 2, 'z': 3}, {'y': 2, 'z': 4}]}
     assert actual == expected
 
     # generate two streams, primary and baseline -- one Event Descriptor each
-    uid, = RE(baseline_wrapper(count([det]), [det]))
+    uid, = RE(baseline_wrapper(count([det]), [det])).run_start_uids
     h = db[uid]
     actual = h.config_data('det')
     expected = {'primary': [{'y': 2, 'z': 4}],
@@ -844,7 +844,7 @@ def test_config_data(db, RE, hw):
 
 def test_events(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     h = db[uid]
     events = list(h.events())
     assert len(events) == 1
@@ -864,7 +864,7 @@ def _get_docs(h):
 
 def test_prepare_hook_default(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
 
     # check default -- returning a subclass of doct.Document that warns
     # when you use getattr for getitem
@@ -881,7 +881,7 @@ def test_prepare_hook_old_style(db, RE, hw):
     db.prepare_hook = wrap_in_doct
 
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
 
     # Test Broker.__getitem__ and Broker.__call__ means of creating Headers.
     for h in (db[uid], list(db())[0]):
@@ -895,7 +895,7 @@ def test_prepare_hook_deep_copy(db, RE, hw):
     db.prepare_hook = lambda name, doc: copy.deepcopy(dict(doc))
 
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
 
     for h in (db[uid], list(db())[0]):
         for doc in _get_docs(h):
@@ -908,7 +908,7 @@ def test_prepare_hook_raw(db, RE, hw):
     db.prepare_hook = lambda name, doc: doc
 
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
 
     for h in (db[uid], list(db())[0]):
         for doc in _get_docs(h):
@@ -996,7 +996,7 @@ def test_ingest_array_metadata(db, RE):
 
 def test_deprecated_stream_method(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det]))
+    uid, = RE(count([hw.det])).run_start_uids
     h = db[uid]
 
     # h.stream() is the same as h.documents() but it warns
@@ -1008,7 +1008,7 @@ def test_deprecated_stream_method(db, RE, hw):
 
 def test_data_method(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det, hw.det2], 5))
+    uid, = RE(count([hw.det, hw.det2], 5)).run_start_uids
     h = db[uid]
 
     actual = list(h.data('det'))
@@ -1087,7 +1087,7 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
 
     uid, = RE(stage_wrapper(baseline_wrapper(count(primary_dets),
                                              baseline_dets),
-                            baseline_dets))
+                            baseline_dets)).run_start_uids
 
     db.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     h = db[uid]
@@ -1097,7 +1097,7 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
 
 def test_repr_html(db, RE, hw):
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], 5))
+    uid, = RE(count([hw.det], 5)).run_start_uids
     h = db[uid]
 
     # smoke test
@@ -1109,7 +1109,7 @@ def test_externals(db, RE, hw):
         return start['uid']
 
     RE.subscribe(db.insert)
-    uid, = RE(count([hw.det], 5))
+    uid, = RE(count([hw.det], 5)).run_start_uids
     db.external_fetchers['suid'] = external_fetcher
 
     h = db[uid]
@@ -1148,7 +1148,7 @@ def test_order(db, RE, hw):
     from ophyd import sim
     RE.subscribe(db.insert)
     d = sim.SynPeriodicSignal(name='d', period=.5)
-    uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1), [d]))
+    uid, = RE(monitor_during_wrapper(count([hw.det], num=7, delay=0.1), [d])).run_start_uids
 
     t0 = None
     for name, doc in db[uid].documents():
@@ -1170,7 +1170,7 @@ def test_res_datum(db, RE, hw):
     RE.subscribe(db.insert)
     RE.subscribe(lambda *x: L.append(x))
 
-    uid, = RE(count([hw.img], num=7, delay=0.1))
+    uid, = RE(count([hw.img], num=7, delay=0.1)).run_start_uids
 
     unique_names = set(name for name, _ in db[uid].documents())
     assert unique_names == set(DOCT_NAMES.keys())
@@ -1197,7 +1197,7 @@ def test_filtering_fields(db, RE, hw):
             yield from trigger_and_read([m1], 'a')
             yield from trigger_and_read([m2], 'b')
 
-    uid, = RE(round_robin_plan())
+    uid, = RE(round_robin_plan()).run_start_uids
     h = db[uid]
 
     for fields in (
@@ -1221,7 +1221,7 @@ def resource_roundtrip(broker_factory, RE, hw):
     RE.subscribe(db.insert)
     RE.subscribe(lambda *x: L.append(x))
 
-    uid, = RE(count([hw.img], num=7, delay=0.1))
+    uid, = RE(count([hw.img], num=7, delay=0.1)).run_start_uids
 
     for nd in db[-1].documents():
         db2.insert(*nd)
