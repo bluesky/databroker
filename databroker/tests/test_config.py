@@ -10,6 +10,7 @@ import yaml
 from bluesky.plans import count
 from databroker.v1 import InvalidConfig
 from databroker.utils import ensure_path_exists
+from databroker.tests.utils import get_uids
 from databroker import (lookup_config, Broker, temp, temp_config, list_configs,
                         describe_configs)
 
@@ -151,7 +152,7 @@ def test_legacy_config_warnings(RE, hw):
     from databroker import db, DataBroker, get_table, get_events
 
     RE.subscribe(db.insert)
-    uid, = RE(bp.count([hw.det])).run_start_uids
+    uid, = get_uids(RE(bp.count([hw.det])))
     with pytest.warns(UserWarning):
         assert len(get_table(db[uid]))
     with pytest.warns(UserWarning):
@@ -195,7 +196,7 @@ def test_transforms(RE, hw):
     config = {**EXAMPLE, **transforms}
     broker = Broker.from_config(config)
     RE.subscribe(broker.insert)
-    uid, = RE(count([hw.det])).run_start_uids
+    uid, = get_uids(RE(count([hw.det])))
     run = broker[uid]
 
     for name, doc in run.documents(fill='false'):
@@ -229,7 +230,7 @@ def test_uri(RE, hw):
     config['metadatastore']['config'] = meta_config
     broker = Broker.from_config(config)
     RE.subscribe(broker.insert)
-    uid, = RE(count([hw.det])).run_start_uids
+    uid, = get_uids(RE(count([hw.det])))
     run = broker[uid]
 
     config['api_version'] = 0
