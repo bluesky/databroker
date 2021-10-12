@@ -36,7 +36,6 @@ if sys.version_info >= (3, 5):
 logger = logging.getLogger(__name__)
 
 
-
 def test_empty_fixture(db):
     "Test that the db pytest fixture works."
     assert len(list(db())) == 0
