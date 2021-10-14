@@ -19,6 +19,11 @@ _document_types = {
     "datum_page": DatumPage,
     "resource": Resource,
 }
+# There are methods that IPython will try to call.
+# We special-case them because we want to avoid the getattr
+# resulting in an unnecessary network hit just to raise
+# AttributeError.
+_IPYTHON_METHODS = {"_ipython_canary_method_should_not_exist_", "_repr_mimebundle_"}
 
 
 class BlueskyRun(BlueskyRunMixin, Node):
@@ -87,6 +92,8 @@ class BlueskyRun(BlueskyRunMixin, Node):
         """
         # The wisdom of this kind of "magic" is arguable, but we
         # need to support it for backward-compatibility reasons.
+        if key in _IPYTHON_METHODS:
+            raise AttributeError(key)
         if key in self:
             return self[key]
         raise AttributeError(key)
@@ -138,6 +145,8 @@ class BlueskyEventStream(BlueskyEventStreamMixin, Node):
         """
         # The wisdom of this kind of "magic" is arguable, but we
         # need to support it for backward-compatibility reasons.
+        if key in _IPYTHON_METHODS:
+            raise AttributeError(key)
         if key in self:
             return self[key]
         raise AttributeError(key)
