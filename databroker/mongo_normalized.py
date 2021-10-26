@@ -2,6 +2,7 @@ import builtins
 import collections
 import collections.abc
 import copy
+from datetime import datetime, timedelta
 import functools
 import itertools
 import json
@@ -258,6 +259,18 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
         self._filler = None
         self._filler_creation_lock = threading.RLock()
 
+    def must_revalidate(self):
+        return self._metadata["stop"] is not None
+
+    @property
+    def metadata_stale_at(self):
+        return datetime.utcnow() + timedelta(hours=1)
+
+    @property
+    def entries_stale_at(self):
+        if self._metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
+
     @property
     def metadata(self):
         "Metadata about this Tree."
@@ -422,6 +435,22 @@ class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
         self._run = run
 
     @property
+    def must_revalidate(self):
+        # The keys in this node are *always* stable.
+        return False
+
+    @property
+    def metadata_stale_at(self):
+        if self._run.metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
+        return datetime.utcnow() + timedelta(hours=1)
+
+    @property
+    def entries_stale_at(self):
+        if self._run.metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
+
+    @property
     def metadata(self):
         # If there are transforms configured, shadow the 'descriptor' documents
         # with transfomed copies.
@@ -492,6 +521,17 @@ class DatasetFromDocuments:
 
     def __repr__(self):
         return f"<{type(self).__name__}>"
+
+    @property
+    def metadata_stale_at(self):
+        if self._run.metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
+        return datetime.utcnow() + timedelta(hours=1)
+
+    @property
+    def content_stale_at(self):
+        if self._run.metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
 
     @property
     def metadata(self):
@@ -1332,6 +1372,14 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
     @property
     def authenticated_identity(self):
         return self._authenticated_identity
+
+    @property
+    def metadata_stale_at(self):
+        return datetime.utcnow() + timedelta(seconds=600)
+
+    @property
+    def entries_stale_at(self):
+        return None
 
     @property
     def metadata(self):
