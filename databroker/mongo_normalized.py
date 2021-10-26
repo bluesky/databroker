@@ -167,10 +167,11 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
             shape = tuple((max_seq_num - 1,))
             dtype = FLOAT_DTYPE
 
+        numpy_dtype = dtype.to_numpy_dtype()
         if "chunks" in field_metadata:
             # If the Event Descriptor tells us a preferred chunking, use that.
             suggested_chunks = field_metadata["chunks"]
-        elif 0 in shape:
+        elif (0 in shape) or (numpy_dtype.itemsize == 0):
             # special case to avoid warning from dask
             suggested_chunks = shape
         elif len(shape) == 4:
@@ -187,12 +188,21 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         else:
             suggested_chunks = ("auto",) * len(shape)
 
-        chunks = normalize_chunks(
-            suggested_chunks,
-            shape=shape,
-            limit=CHUNK_SIZE_LIMIT,
-            dtype=dtype.to_numpy_dtype(),
-        )
+        try:
+            chunks = normalize_chunks(
+                suggested_chunks,
+                shape=shape,
+                limit=CHUNK_SIZE_LIMIT,
+                dtype=numpy_dtype,
+            )
+        except Exception as err:
+            raise ValueError(
+                "Failed to normalize chunks with suggested_chunks. Params: "
+                f"suggested_chunks={suggested_chunks} "
+                f"shape={shape} "
+                f"limit={CHUNK_SIZE_LIMIT} "
+                f"dtype={numpy_dtype}"
+           ) from err
 
         if isinstance(dtype, BuiltinType):
             data = ArrayStructure(
