@@ -261,7 +261,7 @@ def scan_id(query, catalog):
         results_by_scan_id = {}
         for key, value in mongo_results.items():
             results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
-        results = TreeInMemory(dict(results_by_scan_id.values()))
+        results = TreeInMemory(dict(results_by_scan_id.values()), must_revalidate=False)
     elif query.duplicates == "error":
         scan_ids = list(
             value.metadata["start"]["scan_id"] for value in mongo_results.values()
@@ -300,7 +300,7 @@ def partial_uid(query, catalog):
                 "listed below. Include more characters. Matches:\n" + "\n".join(result)
             )
         results.update(result)
-    return TreeInMemory(results)
+    return TreeInMemory(results, must_revalidate=False)
 
 
 def time_range(query, catalog):
