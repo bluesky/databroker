@@ -1438,7 +1438,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
             metadata={
                 "start": run_start_doc,
                 "stop": run_stop_doc,
-                "summary": build_summary(run_start_doc, run_stop_doc),
+                "summary": build_summary(run_start_doc, run_stop_doc, stream_names),
             },
             handler_registry=self.handler_registry,
             transforms=copy.copy(self.transforms),
@@ -2130,13 +2130,14 @@ def _validate_shape(key, data, expected_shape):
     return padded_and_trimmed
 
 
-def build_summary(run_start_doc, run_stop_doc):
+def build_summary(run_start_doc, run_stop_doc, stream_names):
     summary = {
         "uid": run_start_doc["uid"],
         "scan_id": run_start_doc["scan_id"],
         "timestamp": run_start_doc["time"],
         "datetime": datetime.fromtimestamp(run_start_doc["time"]),
         "plan_name": run_start_doc["plan_name"],
+        "stream_names": stream_names,
     }
     if run_stop_doc is None:
         summary["duration"] = None
