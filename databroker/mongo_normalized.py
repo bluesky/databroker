@@ -1435,7 +1435,11 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
             )
         return BlueskyRun(
             OneShotCachedMap(mapping),
-            metadata={"start": run_start_doc, "stop": run_stop_doc},
+            metadata={
+                "start": run_start_doc,
+                "stop": run_stop_doc,
+                "summary": build_summary(run),
+            },
             handler_registry=self.handler_registry,
             transforms=copy.copy(self.transforms),
             root_map=copy.copy(self.root_map),
@@ -2124,3 +2128,18 @@ def _validate_shape(key, data, expected_shape):
         padded = numpy.pad(data, padding, "edge")
         padded_and_trimmed = padded[tuple(trimming)]
     return padded_and_trimmed
+
+
+def build_summary(run_start_doc, run_stop_doc):
+    summary = {
+        "uid": run_start_doc["uid"],
+        "scan_id": run_start_doc["scan_id"],
+        "timestamp": run_start_doc["time"],
+        "datetime": datetime.fromtimestamp(run_start_doc["time"]),
+        "plan_name": run_start_doc["plan_name"],
+    }
+    if run_stop_doc is None:
+        summary["duration"] = None
+    else:
+        summary["duration"] = run_stop_doc["time"] - run_start_doc["time"]
+    return summary
