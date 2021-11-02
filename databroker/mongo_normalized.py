@@ -1438,7 +1438,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
             metadata={
                 "start": run_start_doc,
                 "stop": run_stop_doc,
-                "summary": build_summary(run),
+                "summary": build_summary(run_start_doc, run_stop_doc),
             },
             handler_registry=self.handler_registry,
             transforms=copy.copy(self.transforms),
