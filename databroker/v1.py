@@ -893,7 +893,7 @@ class Header:
     @property
     def stop(self):
         if self._stop is None:
-            self._stop = self._run['metadata']['stop'] or {}
+            self._stop = self._run.metadata['stop'] or {}
         return self.db.prepare_hook('stop', self._stop)
 
     def __eq__(self, other):
