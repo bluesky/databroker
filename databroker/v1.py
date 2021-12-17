@@ -108,14 +108,19 @@ class Broker:
         self.filters = {}
         self.v2._Broker__v1 = self
         self._reg = Registry(catalog)
-        self.__serializer = None
 
-    # TODO: Re-instate this if the server grows a POST /documents/{path} route.
+        # When the user asks for a Serializer, give a RunRouter
+        # that will generate a fresh Serializer instance for each
+        # run.
+
+        def factory(name, doc):
+            return [self._catalog.get_serializer()], []
+
+        self._run_router = event_model.RunRouter([factory])
+
     @property
     def _serializer(self):
-        if self.__serializer is None:
-            self.__serializer = self._catalog.get_serializer()
-        return self.__serializer
+        return self._run_router
 
     @property
     def reg(self):
