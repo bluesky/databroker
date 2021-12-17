@@ -20,6 +20,12 @@ import suitcase.jsonl
 import suitcase.mongo_normalized
 import suitcase.mongo_embedded
 
+def get_uids(result):
+    if hasattr(result, "run_start_uids"):
+        return result.run_start_uids
+    else:
+        return result
+
 
 def build_intake_jsonl_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
