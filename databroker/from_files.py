@@ -87,7 +87,17 @@ class TreeJSONL(FileTree):
     def get_serializer(self):
         import suitcase.jsonl
 
-        return suitcase.jsonl.Serializer(self.directory)
+        tree = self
+
+        class _Serializer(suitcase.jsonl.Serializer):
+            def __call__(self, name, doc):
+                super().__call__(name, doc)
+                if name in {"start", "stop"}:
+                    tree.update_now()
+                    breakpoint()
+
+
+        return _Serializer(self.directory)
 
 
 class TreeMsgpack(FileTree):
@@ -132,4 +142,13 @@ class TreeMsgpack(FileTree):
     def get_serializer(self):
         import suitcase.msgpack
 
-        return suitcase.msgpack.Serializer(self.directory)
+        tree = self
+
+        class _Serializer(suitcase.jsonl.Serializer):
+            def __call__(self, name, doc):
+                super().__call__(name, doc)
+                if name in {"start", "stop"}:
+                    tree.update_now()
+                    breakpoint()
+
+        return _Serializer(self.directory)
