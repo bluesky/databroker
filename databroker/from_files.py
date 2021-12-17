@@ -49,11 +49,6 @@ class MsgpackReader:
         return self._tree[self._ser]
 
 
-def key_from_filename(filename):
-    "'blah.jsonl' -> 'blah'"
-    return Path(filename).stem
-
-
 class Tree(FileTree):
 
     # This is set up in Tree.from_directory.
@@ -62,9 +57,9 @@ class Tree(FileTree):
     specs = ["CatalogOfBlueskyRuns"]
 
     @classmethod
-    def from_directory(cls, directory):
+    def from_directory(cls, directory, *, handler_registry=None):
 
-        tree = MongoNormalizedTree.from_mongomock()
+        tree = MongoNormalizedTree.from_mongomock(handler_registry=handler_registry)
         jsonl_reader = JSONLReader(tree)
         msgpack_reader = MsgpackReader(tree)
         mimetypes_by_file_ext = {
@@ -79,7 +74,6 @@ class Tree(FileTree):
             directory,
             readers_by_mimetype=readers_by_mimetype,
             mimetypes_by_file_ext=mimetypes_by_file_ext,
-            key_from_filename=key_from_filename,
             tree=tree,
         )
 
