@@ -40,7 +40,7 @@ param_map = {'sqlite': build_sqlite_backed_broker,
 params = [
     # Apply the mark pytest.mark.flaky to a *fixture* as shown in
     # https://github.com/pytest-dev/pytest/issues/3969#issuecomment-420511822
-    pytest.param('sqlite', marks=pytest.mark.flaky(reruns=5, reruns_delay=2)),
+    # pytest.param('sqlite', marks=pytest.mark.flaky(reruns=1, reruns_delay=2)),
     'mongo',
     'hdf5',
     'intake_jsonl',
