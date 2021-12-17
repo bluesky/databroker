@@ -49,7 +49,7 @@ class MsgpackReader:
         return self._tree[self._ser]
 
 
-class Tree(FileTree):
+class TreeJSONL(FileTree):
 
     # This is set up in Tree.from_directory.
     DEFAULT_READERS_BY_MIMETYPE = {}
@@ -61,13 +61,51 @@ class Tree(FileTree):
 
         tree = MongoNormalizedTree.from_mongomock(handler_registry=handler_registry)
         jsonl_reader = JSONLReader(tree)
-        msgpack_reader = MsgpackReader(tree)
         mimetypes_by_file_ext = {
             ".jsonl": "application/x-bluesky-jsonl",
-            ".msgpack": "application/x-bluesky-msgpack",
         }
         readers_by_mimetype = {
             "application/x-bluesky-jsonl": jsonl_reader.consume_file,
+        }
+        return super().from_directory(
+            directory,
+            readers_by_mimetype=readers_by_mimetype,
+            mimetypes_by_file_ext=mimetypes_by_file_ext,
+            tree=tree,
+        )
+
+    def __init__(self, *args, tree, **kwargs):
+        self._tree = tree
+        super().__init__(*args, **kwargs)
+
+    def new_variation(self, **kwargs):
+        return super().new_variation(tree=self._tree, **kwargs)
+
+    def search(self, *args, **kwargs):
+        return self._tree.search(*args, **kwargs)
+
+    def get_serializer(self):
+        import suitcase.jsonl
+
+        return suitcase.jsonl.Serializer(self.directory)
+
+
+class TreeMsgpack(FileTree):
+
+    # This is set up in Tree.from_directory.
+    DEFAULT_READERS_BY_MIMETYPE = {}
+
+    specs = ["CatalogOfBlueskyRuns"]
+
+    @classmethod
+    def from_directory(cls, directory, *, handler_registry=None):
+
+        tree = MongoNormalizedTree.from_mongomock(handler_registry=handler_registry)
+        msgpack_reader = MsgpackReader(tree)
+        mimetypes_by_file_ext = {
+            ".msgpack": "application/x-bluesky-msgpack",
+        }
+        readers_by_mimetype = {
             "application/x-bluesky-msgpack": msgpack_reader.consume_file,
         }
         return super().from_directory(
@@ -90,3 +128,8 @@ class Tree(FileTree):
 
     def search(self, *args, **kwargs):
         return self._tree.search(*args, **kwargs)
+
+    def get_serializer(self):
+        import suitcase.msgpack
+
+        return suitcase.msgpack.Serializer(self.directory)

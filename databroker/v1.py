@@ -8,8 +8,10 @@ import humanize
 import jinja2
 import os
 from types import SimpleNamespace
+
 import xarray
 import event_model
+
 # Toolz and CyToolz have identical APIs -- same test suite, docstrings.
 try:
     from cytoolz.dicttoolz import merge
@@ -25,7 +27,7 @@ from .utils import ALL, get_fields, wrap_in_deprecated_doct
 
 # The v2 API is expected to grow more options for filled than just True/False
 # (e.g. 'delayed') so it expects a string instead of a boolean.
-_FILL = {True: 'yes', False: 'no'}
+_FILL = {True: "yes", False: "no"}
 
 
 def temp_config():
@@ -34,6 +36,7 @@ def temp_config():
 
 def temp():
     from .v2 import temp
+
     catalog = temp()
     return Broker(catalog)
 
@@ -42,6 +45,7 @@ class Registry:
     """
     An accessor that serves as a backward-compatible shim for Broker.reg
     """
+
     def __init__(self, catalog):
         self._catalog = catalog
 
@@ -79,9 +83,14 @@ class Registry:
             "about this message unless you encounter trouble loading large array data."
         )
 
-    def copy_files(self, resource, new_root,
-                   verify=False, file_rename_hook=None,
-                   run_start_uid=None):
+    def copy_files(
+        self,
+        resource,
+        new_root,
+        verify=False,
+        file_rename_hook=None,
+        run_start_uid=None,
+    ):
         raise NotImplementedError(
             "The copy_files functionality is not supported via a client."
         )
@@ -91,6 +100,7 @@ class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
     """
+
     def __init__(self, catalog):
         self._catalog = catalog
         self.prepare_hook = wrap_in_deprecated_doct
@@ -135,9 +145,7 @@ class Broker:
                 "from the client."
             )
         if name is not None:
-            warnings.warn(
-                "The parameter name is now ignored."
-            )
+            warnings.warn("The parameter name is now ignored.")
         catalog = from_config(config)
         return Broker(catalog)
 
@@ -197,8 +205,7 @@ class Broker:
         return list(self._catalog)
 
     def fetch_external(self, start, stop):
-        return {k: func(start, stop) for
-                k, func in self.external_fetchers.items()}
+        return {k: func(start, stop) for k, func in self.external_fetchers.items()}
 
     def _patch_state(self, catalog):
         "Copy references to v1 state."
@@ -231,9 +238,9 @@ class Broker:
 
     get_fields = staticmethod(get_fields)
 
-    def get_documents(self,
-                      headers, stream_name=ALL, fields=None, fill=False,
-                      handler_registry=None):
+    def get_documents(
+        self, headers, stream_name=ALL, fields=None, fill=False, handler_registry=None
+    ):
         """
         Get all documents from one or more runs.
 
@@ -278,9 +285,11 @@ class Broker:
         pre header.
         """
         if handler_registry is not None:
-            raise NotImplementedError("The handler_registry must be set when "
-                                      "the Broker is initialized, usually specified "
-                                      "in a configuration file.")
+            raise NotImplementedError(
+                "The handler_registry must be set when "
+                "the Broker is initialized, usually specified "
+                "in a configuration file."
+            )
 
         headers = _ensure_list(headers)
 
@@ -293,37 +302,41 @@ class Broker:
         comp_re = _compile_re(fields)
 
         for header in headers:
-            uid = header.start['uid']
+            uid = header.start["uid"]
             descs = header.descriptors
 
             per_desc_discards = {}
             per_desc_extra_data = {}
             per_desc_extra_ts = {}
             for d in descs:
-                (all_extra_dk, all_extra_data,
-                 all_extra_ts, discard_fields) = _extract_extra_data(
-                        header.start, header.stop, d, fields, comp_re,
-                        no_fields_filter)
+                (
+                    all_extra_dk,
+                    all_extra_data,
+                    all_extra_ts,
+                    discard_fields,
+                ) = _extract_extra_data(
+                    header.start, header.stop, d, fields, comp_re, no_fields_filter
+                )
 
-                per_desc_discards[d['uid']] = discard_fields
-                per_desc_extra_data[d['uid']] = all_extra_data
-                per_desc_extra_ts[d['uid']] = all_extra_ts
+                per_desc_discards[d["uid"]] = discard_fields
+                per_desc_extra_data[d["uid"]] = all_extra_data
+                per_desc_extra_ts[d["uid"]] = all_extra_ts
 
                 d = d.copy()
-                dict.__setitem__(d, 'data_keys', d['data_keys'].copy())
+                dict.__setitem__(d, "data_keys", d["data_keys"].copy())
                 for k in discard_fields:
-                    del d['data_keys'][k]
-                d['data_keys'].update(all_extra_dk)
+                    del d["data_keys"][k]
+                d["data_keys"].update(all_extra_dk)
 
-                if not len(d['data_keys']) and not len(all_extra_data):
+                if not len(d["data_keys"]) and not len(all_extra_data):
                     continue
 
             def merge_config_into_event(event):
                 # Mutate event in place, adding in data and timestamps from the
                 # descriptor's 'configuration' key.
-                event_data = event['data']  # cache for perf
-                desc = event['descriptor']
-                event_timestamps = event['timestamps']
+                event_data = event["data"]  # cache for perf
+                desc = event["descriptor"]
+                event_timestamps = event["timestamps"]
                 event_data.update(per_desc_extra_data[desc])
                 event_timestamps.update(per_desc_extra_ts[desc])
                 discard_fields = per_desc_discards[desc]
@@ -331,15 +344,20 @@ class Broker:
                     del event_data[field]
                     del event_timestamps[field]
 
-            get_documents_router = _GetDocumentsRouter(self.prepare_hook,
-                                                       merge_config_into_event,
-                                                       stream_name=stream_name)
+            get_documents_router = _GetDocumentsRouter(
+                self.prepare_hook, merge_config_into_event, stream_name=stream_name
+            )
             for name, doc in self._catalog[uid].documents(fill=fill):
                 yield from get_documents_router(name, doc)
 
-    def get_events(self,
-                   headers, stream_name='primary', fields=None, fill=False,
-                   handler_registry=None):
+    def get_events(
+        self,
+        headers,
+        stream_name="primary",
+        fields=None,
+        fill=False,
+        handler_registry=None,
+    ):
         """
         Get Event documents from one or more runs.
 
@@ -382,22 +400,33 @@ class Broker:
         """
 
         if handler_registry is not None:
-            raise NotImplementedError("The handler_registry must be set when "
-                                      "the Broker is initialized, usually specified "
-                                      "in a configuration file.")
+            raise NotImplementedError(
+                "The handler_registry must be set when "
+                "the Broker is initialized, usually specified "
+                "in a configuration file."
+            )
 
-        for name, doc in self.get_documents(headers,
-                                            fields=fields,
-                                            stream_name=stream_name,
-                                            fill=fill,
-                                            handler_registry=handler_registry):
-            if name == 'event':
+        for name, doc in self.get_documents(
+            headers,
+            fields=fields,
+            stream_name=stream_name,
+            fill=fill,
+            handler_registry=handler_registry,
+        ):
+            if name == "event":
                 yield doc
 
-    def get_table(self,
-                  headers, stream_name='primary', fields=None, fill=False,
-                  handler_registry=None,
-                  convert_times=True, timezone=None, localize_times=True):
+    def get_table(
+        self,
+        headers,
+        stream_name="primary",
+        fields=None,
+        fill=False,
+        handler_registry=None,
+        convert_times=True,
+        timezone=None,
+        localize_times=True,
+    ):
         """
         Load the data from one or more runs as a table (``pandas.DataFrame``).
 
@@ -464,13 +493,16 @@ class Broker:
             raise NotImplementedError(
                 "The handler_registry must be set when "
                 "the Broker is initialized, usually specified "
-                "in a configuration file.")
+                "in a configuration file."
+            )
 
         headers = _ensure_list(headers)
         fields = set(fields or [])
         dfs = []
         for header in headers:
-            descriptors = [d for d in header.descriptors if d.get("name") == stream_name]
+            descriptors = [
+                d for d in header.descriptors if d.get("name") == stream_name
+            ]
             data_keys = descriptors[0]["data_keys"]
             if not fill:
                 external_fields = {k for k, v in data_keys.items() if v.get("external")}
@@ -491,34 +523,37 @@ class Broker:
             # if converting to datetime64 (in utc or 'local' tz)
             times = dataset["time"].data
             if convert_times or localize_times:
-                times = pandas.to_datetime(times, unit='s')
+                times = pandas.to_datetime(times, unit="s")
             # make sure this is a series
             times = pandas.Series(times, index=df.index)
 
             # if localizing to 'local' time
             if localize_times:
                 times = (
-                    times
-                    .dt.tz_localize('UTC')  # first make tz aware
+                    times.dt.tz_localize("UTC")  # first make tz aware
                     # .dt.tz_convert(timezone)  # convert to 'local'
                     .dt.tz_localize(None)  # make naive again
                 )
 
-            df['time'] = times
+            df["time"] = times
             dfs.append(df)
         if dfs:
             result = pandas.concat(dfs)
         else:
             # edge case: no data
             result = pandas.DataFrame()
-        result.index.name = 'seq_num'
+        result.index.name = "seq_num"
         # seq_num starts at 1, not 0
         result.index = 1 + result.index
         return result
 
-    def get_images(self, headers, name,
-                   stream_name='primary',
-                   handler_registry=None,):
+    def get_images(
+        self,
+        headers,
+        name,
+        stream_name="primary",
+        handler_registry=None,
+    ):
         """
         This method is deprecated. Use Broker.get_documents instead.
 
@@ -541,13 +576,14 @@ class Broker:
         """
         # Defer this import so that pims is an optional dependency.
         from ._legacy_images import Images
+
         headers = _ensure_list(headers)
-        datasets = [header.xarray_dask(stream_name=stream_name)
-                    for header in headers]
+        datasets = [header.xarray_dask(stream_name=stream_name) for header in headers]
         if handler_registry is not None:
             raise NotImplementedError(
                 "The handler_registry parameter is no longer supported "
-                "and must be None.")
+                "and must be None."
+            )
         dataset = xarray.merge(datasets)
         data_array = dataset[name]
         return Images(data_array=data_array)
@@ -797,15 +833,15 @@ class Broker:
         file_pairs = []
 
         for header in headers:
-            for name, doc in self._catalog[header.start['uid']].documents(fill=False):
-                if name == 'event_page':
+            for name, doc in self._catalog[header.start["uid"]].documents(fill=False):
+                if name == "event_page":
                     for event in event_model.unpack_event_page(doc):
-                        db.insert('event', event)
-                elif name == 'resource' and new_root:
-                    copy_kwargs.setdefault('run_start_uid', header.start['uid'])
+                        db.insert("event", event)
+                elif name == "resource" and new_root:
+                    copy_kwargs.setdefault("run_start_uid", header.start["uid"])
                     file_pairs.extend(self.reg.copy_files(doc, new_root, **copy_kwargs))
                     new_resource = doc.to_dict()
-                    new_resource['root'] = new_root
+                    new_resource["root"] = new_root
                     db.insert(name, new_resource)
                 else:
                     db.insert(name, doc)
@@ -828,9 +864,9 @@ class Broker:
         headers = _ensure_list(headers)
         total_size = 0
         for header in headers:
-            run = self._catalog[header.start['uid']]
-            for name, doc in self._catalog[header.start['uid']].documents(fill='no'):
-                if name == 'resource':
+            run = self._catalog[header.start["uid"]]
+            for name, doc in self._catalog[header.start["uid"]].documents(fill="no"):
+                if name == "resource":
                     for filepath in run.get_file_list(doc):
                         total_size += os.path.getsize(filepath)
 
@@ -841,20 +877,26 @@ class Broker:
             raise RuntimeError("No Serializer was configured for this.")
         warnings.warn(
             "The method Broker.insert may be removed in a future release of "
-            "databroker.", PendingDeprecationWarning)
+            "databroker.",
+            PendingDeprecationWarning,
+        )
         self._serializer(name, doc)
 
     def fill_event(*args, **kwargs):
-        raise NotImplementedError("This method is no longer supported. If you "
-                                  "need this please contact the developers by "
-                                  "opening an issue here: "
-                                  "https://github.com/bluesky/databroker/issues/new ")
+        raise NotImplementedError(
+            "This method is no longer supported. If you "
+            "need this please contact the developers by "
+            "opening an issue here: "
+            "https://github.com/bluesky/databroker/issues/new "
+        )
 
     def fill_events(*args, **kwargs):
-        raise NotImplementedError("This method is no longer supported. If you "
-                                  "need this please contact the developers by "
-                                  "opening an issue here: "
-                                  "https://github.com/bluesky/databroker/issues/new ")
+        raise NotImplementedError(
+            "This method is no longer supported. If you "
+            "need this please contact the developers by "
+            "opening an issue here: "
+            "https://github.com/bluesky/databroker/issues/new "
+        )
 
     def stats(self):
         "Access MongoDB storage statistics for this database."
@@ -865,12 +907,13 @@ class Header:
     """
     This supports the original Header API but implemplemented on new code..
     """
+
     def __init__(self, run, db):
         self._run = run
         self.db = db
         self.ext = None  # TODO
-        self._start = self._run.metadata['start']
-        self._stop = self._run.metadata['stop']
+        self._start = self._run.metadata["start"]
+        self._stop = self._run.metadata["stop"]
         self.ext = SimpleNamespace()  # not implemented
 
     @property
@@ -879,17 +922,17 @@ class Header:
 
     @property
     def start(self):
-        return self.db.prepare_hook('start', self._start)
+        return self.db.prepare_hook("start", self._start)
 
     @property
     def uid(self):
-        return self._start['uid']
+        return self._start["uid"]
 
     @property
     def stop(self):
         if self._stop is None:
-            self._stop = self._run.metadata['stop'] or {}
-        return self.db.prepare_hook('stop', self._stop)
+            self._stop = self._run.metadata["stop"] or {}
+        return self.db.prepare_hook("stop", self._stop)
 
     def __eq__(self, other):
         if not isinstance(other, Header):
@@ -901,8 +944,11 @@ class Header:
         descriptors = []
         for stream in self._run.values():
             descriptors.extend(stream.descriptors)
-        return sorted([self.db.prepare_hook('descriptor', doc) for doc in descriptors],
-                      key=lambda d: d['time'], reverse=True)
+        return sorted(
+            [self.db.prepare_hook("descriptor", doc) for doc in descriptors],
+            key=lambda d: d["time"],
+            reverse=True,
+        )
 
     @property
     def stream_names(self):
@@ -912,7 +958,7 @@ class Header:
     # we might remove them for 1.0.
 
     def __getitem__(self, k):
-        if k in ('start', 'descriptors', 'stop', 'ext'):
+        if k in ("start", "descriptors", "stop", "ext"):
             return getattr(self, k)
         else:
             raise KeyError(k)
@@ -929,21 +975,28 @@ class Header:
             yield getattr(self, k)
 
     def keys(self):
-        for k in ('start', 'descriptors', 'stop', 'ext'):
+        for k in ("start", "descriptors", "stop", "ext"):
             yield k
 
     def __iter__(self):
         return self.keys()
 
-    def xarray(self, stream_name='primary'):
+    def xarray(self, stream_name="primary"):
         return self._run[stream_name].read()
 
-    def xarray_dask(self, stream_name='primary'):
+    def xarray_dask(self, stream_name="primary"):
         return self._run[stream_name].to_dask()
 
-    def table(self, stream_name='primary', fields=None, fill=False,
-              timezone=None, convert_times=True, localize_times=True):
-        '''
+    def table(
+        self,
+        stream_name="primary",
+        fields=None,
+        fill=False,
+        timezone=None,
+        convert_times=True,
+        localize_times=True,
+    ):
+        """
         Load the data from one event stream as a table (``pandas.DataFrame``).
 
         Parameters
@@ -1018,12 +1071,16 @@ class Header:
                                     time temperature
         0  2017-07-16 12:12:35.128515999         273
         1  2017-07-16 12:12:40.128515999         274
-        '''
-        return self.db.get_table(self, fields=fields,
-                                 stream_name=stream_name, fill=fill,
-                                 timezone=timezone,
-                                 convert_times=convert_times,
-                                 localize_times=localize_times)
+        """
+        return self.db.get_table(
+            self,
+            fields=fields,
+            stream_name=stream_name,
+            fill=fill,
+            timezone=timezone,
+            convert_times=convert_times,
+            localize_times=localize_times,
+        )
 
     def documents(self, stream_name=ALL, fields=None, fill=False):
         """
@@ -1052,13 +1109,13 @@ class Header:
         >>> for name, doc in h.documents():
         ...     # do something
         """
-        gen = self.db.get_documents(self, fields=fields,
-                                    stream_name=stream_name,
-                                    fill=fill)
+        gen = self.db.get_documents(
+            self, fields=fields, stream_name=stream_name, fill=fill
+        )
         for payload in gen:
             yield payload
 
-    def data(self, field, stream_name='primary', fill=True):
+    def data(self, field, stream_name="primary", fill=True):
         """
         Extract data for one field. This is convenient for loading image data.
 
@@ -1085,7 +1142,8 @@ class Header:
     def stream(self, *args, **kwargs):
         warnings.warn(
             "The 'stream' method been renamed to 'documents'. The old name "
-            "will be removed in the future.")
+            "will be removed in the future."
+        )
         for payload in self.documents(*args, **kwargs):
             yield payload
 
@@ -1117,8 +1175,8 @@ class Header:
         """
         fields = set()
         for descriptor in self.descriptors:
-            if stream_name is ALL or descriptor.get('name') == stream_name:
-                fields.update(descriptor['data_keys'])
+            if stream_name is ALL or descriptor.get("name") == stream_name:
+                fields.update(descriptor["data_keys"])
         return fields
 
     def devices(self, stream_name=ALL):
@@ -1149,8 +1207,8 @@ class Header:
         """
         result = set()
         for d in self.descriptors:
-            if stream_name is ALL or stream_name == d.get('name', 'primary'):
-                result.update(d['object_keys'])
+            if stream_name is ALL or stream_name == d.get("name", "primary"):
+                result.update(d["object_keys"])
         return result
 
     def config_data(self, device_name):
@@ -1202,13 +1260,13 @@ class Header:
         {'eiger', 'cs700'}
         """
         result = defaultdict(list)
-        for d in sorted(self.descriptors, key=lambda d: d['time']):
-            config = d['configuration'].get(device_name)
+        for d in sorted(self.descriptors, key=lambda d: d["time"]):
+            config = d["configuration"].get(device_name)
             if config:
-                result[d.get('name')].append(config['data'])
+                result[d.get("name")].append(config["data"])
         return dict(result)  # strip off defaultdict behavior
 
-    def events(self, stream_name='primary', fields=None, fill=False):
+    def events(self, stream_name="primary", fields=None, fill=False):
         """
         Load all Event documents from one event stream.
 
@@ -1253,14 +1311,15 @@ class Header:
 
         >>> events = list(h.events())
         """
-        ev_gen = self.db.get_events([self], stream_name=stream_name,
-                                    fields=fields, fill=fill)
+        ev_gen = self.db.get_events(
+            [self], stream_name=stream_name, fields=fields, fill=fill
+        )
         for ev in ev_gen:
             yield ev
 
     def _repr_html_(self):
         env = jinja2.Environment()
-        env.filters['human_time'] = _pretty_print_time
+        env.filters["human_time"] = _pretty_print_time
         template = env.from_string(_HTML_TEMPLATE)
         return template.render(document=self)
 
@@ -1274,6 +1333,7 @@ class Results:
     catalog : Catalog
         search results
     """
+
     def __init__(self, catalog):
         self._catalog = catalog
         self._broker = Broker(catalog)
@@ -1307,16 +1367,14 @@ def _compile_re(fields=[]):
 
     """
     if len(fields) == 0:
-        fields = ['.*']
+        fields = [".*"]
     f = ["(?:" + regex + r")\Z" for regex in fields]
-    comp_re = re.compile('|'.join(f))
+    comp_re = re.compile("|".join(f))
     return comp_re
 
 
-def _extract_extra_data(start, stop, d, fields, comp_re,
-                        no_fields_filter):
-    def _project_header_data(source_data, source_ts,
-                             selected_fields, comp_re):
+def _extract_extra_data(start, stop, d, fields, comp_re, no_fields_filter):
+    def _project_header_data(source_data, source_ts, selected_fields, comp_re):
         """Extract values from a header for merging into events
 
         Parameters
@@ -1331,41 +1389,40 @@ def _extract_extra_data(start, stop, d, fields, comp_re,
         data : dict
         timestamps : dict
         """
-        fields = (set(filter(comp_re.match, source_data)) - selected_fields)
+        fields = set(filter(comp_re.match, source_data)) - selected_fields
         data = {k: source_data[k] for k in fields}
         timestamps = {k: source_ts[k] for k in fields}
 
         return {}, data, timestamps
 
     if fields:
-        event_fields = set(d['data_keys'])
+        event_fields = set(d["data_keys"])
         selected_fields = set(filter(comp_re.match, event_fields))
         discard_fields = event_fields - selected_fields
     else:
         discard_fields = set()
-        selected_fields = set(d['data_keys'])
+        selected_fields = set(d["data_keys"])
 
-    objs_config = d.get('configuration', {}).values()
-    config_data = merge(obj_conf['data'] for obj_conf in objs_config)
-    config_ts = merge(obj_conf['timestamps']
-                      for obj_conf in objs_config)
+    objs_config = d.get("configuration", {}).values()
+    config_data = merge(obj_conf["data"] for obj_conf in objs_config)
+    config_ts = merge(obj_conf["timestamps"] for obj_conf in objs_config)
     all_extra_data = {}
     all_extra_ts = {}
     all_extra_dk = {}
     if not no_fields_filter:
-        for dt, ts in [(config_data, config_ts),
-                       (start, defaultdict(lambda: start['time'])),
-                       (stop, defaultdict(lambda: stop['time']))]:
+        for dt, ts in [
+            (config_data, config_ts),
+            (start, defaultdict(lambda: start["time"])),
+            (stop, defaultdict(lambda: stop["time"])),
+        ]:
             # Look in the descriptor, then start, then stop.
-            l_dk, l_data, l_ts = _project_header_data(
-                dt, ts, selected_fields, comp_re)
+            l_dk, l_data, l_ts = _project_header_data(dt, ts, selected_fields, comp_re)
             all_extra_data.update(l_data)
             all_extra_ts.update(l_ts)
             selected_fields.update(l_data)
             all_extra_dk.update(l_dk)
 
-    return (all_extra_dk, all_extra_data, all_extra_ts,
-            discard_fields)
+    return (all_extra_dk, all_extra_data, all_extra_ts, discard_fields)
 
 
 _HTML_TEMPLATE = """
@@ -1432,11 +1489,12 @@ def _pretty_print_time(timestamp):
     timestamp = float(timestamp)
     dt = datetime.fromtimestamp(timestamp).isoformat()
     ago = humanize.naturaltime(time.time() - timestamp)
-    return '{ago} ({date})'.format(ago=ago, date=dt)
+    return "{ago} ({date})".format(ago=ago, date=dt)
 
 
 class InvalidConfig(Exception):
     """Raised when the configuration file is invalid."""
+
     ...
 
 
@@ -1447,6 +1505,7 @@ class _GetDocumentsRouter:
     It employs a pattern similar to event_model.DocumentRouter, but the methods
     are generators instead of functions.
     """
+
     def __init__(self, prepare_hook, merge_config_into_event, stream_name):
         self.prepare_hook = prepare_hook
         self.merge_config_into_event = merge_config_into_event
@@ -1456,46 +1515,101 @@ class _GetDocumentsRouter:
     def __call__(self, name, doc):
         # Special case when there is no Run Stop doc.
         # In v0, we returned an empty dict here. We now think better of it.
-        if name == 'stop' and doc is None:
+        if name == "stop" and doc is None:
             doc = {}
         for new_name, new_doc in getattr(self, name)(doc):
             yield new_name, self.prepare_hook(new_name, new_doc)
 
     def descriptor(self, doc):
         "Cache descriptor uid and pass it through if it is stream of interest."
-        if self.stream_name is ALL or doc.get('name', 'primary') == self.stream_name:
-            self._descriptors.add(doc['uid'])
-            yield 'descriptor', doc
+        if self.stream_name is ALL or doc.get("name", "primary") == self.stream_name:
+            self._descriptors.add(doc["uid"])
+            yield "descriptor", doc
 
     def event_page(self, doc):
         "Unpack into events and pass them to event method for more processing."
-        if doc['descriptor'] in self._descriptors:
+        if doc["descriptor"] in self._descriptors:
             for event in event_model.unpack_event_page(doc):
                 yield from self.event(event)
 
     def event(self, doc):
         "Apply merge_config_into_event."
-        if doc['descriptor'] in self._descriptors:
+        if doc["descriptor"] in self._descriptors:
             # Mutate event in place, merging in content from other documents
             # and discarding fields excluded by the user.
             self.merge_config_into_event(doc)
             # If the mutation above leaves event['data'] empty, omit it.
-            if doc['data']:
-                yield 'event', doc
+            if doc["data"]:
+                yield "event", doc
 
     def datum_page(self, doc):
         "Unpack into datum."
         for datum in event_model.unpack_datum_page(doc):
-            yield 'datum', datum
+            yield "datum", datum
 
     def datum(self, doc):
-        yield 'datum', doc
+        yield "datum", doc
 
     def start(self, doc):
-        yield 'start', doc
+        yield "start", doc
 
     def stop(self, doc):
-        yield 'stop', doc
+        yield "stop", doc
 
     def resource(self, doc):
-        yield 'resource', doc
+        yield "resource", doc
+
+
+class InvalidConfig(Exception):
+    """Raised when the configuration file is invalid."""
+
+    ...
+
+
+_mongo_clients = {}  # cache of pymongo.MongoClient instances
+
+
+def _get_mongo_database(config):
+    """
+    Return a MongoClient.database. Use a cache in order to reuse the
+    MongoClient.
+    """
+    import pymongo
+
+    # Check that config contains either uri, or host/port, but not both.
+    if {"uri", "host"} <= set(config) or {"uri", "port"} <= set(config):
+        raise InvalidConfig(
+            "The config file must define either uri, or host/port, but not both."
+        )
+
+    uri = config.get("uri")
+    database = config["database"]
+
+    # If this statement is True then uri does not exist in the config.
+    # If the config has username and password, turn it into a uri.
+    # This is only here for backward compatibility.
+    if {"mongo_user", "mongo_pwd", "host", "port"} <= set(config):
+        uri = (
+            f"mongodb://{config['mongo_user']}:{config['mongo_pwd']}@"
+            f"{config['host']}:{config['port']}/"
+        )
+
+    if uri:
+        if "authsource" in config:
+            uri += f'?authsource={config["authsource"]}'
+
+        try:
+            client = _mongo_clients[uri]
+        except KeyError:
+            client = pymongo.MongoClient(uri)
+            _mongo_clients[uri] = client
+    else:
+        host = config.get("host")
+        port = config.get("port")
+        try:
+            client = _mongo_clients[(host, port)]
+        except KeyError:
+            client = pymongo.MongoClient(host, port)
+            _mongo_clients[(host, port)] = client
+
+    return client[database]
