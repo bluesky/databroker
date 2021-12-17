@@ -12,13 +12,12 @@ import tzlocal
 from databroker import v0, v1
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-from .._drivers import jsonl
-from .._drivers import mongo_normalized
-from .._drivers import mongo_embedded
-from .. import core
+from ..from_files import Tree as FileTree
+from .. import mongo_normalized
 import suitcase.jsonl
 import suitcase.mongo_normalized
 import suitcase.mongo_embedded
+from tiled.client import from_tree
 
 def get_uids(result):
     if hasattr(result, "run_start_uids"):
@@ -34,11 +33,10 @@ def build_intake_jsonl_backed_broker(request):
         tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
-    broker = jsonl.BlueskyJSONLCatalog(
-        f"{tmp_dir.name}/*.jsonl",
-        name='test',
+    broker = FileTree.from_directory(
+        tmp_dir.name,
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    return broker.v1
+    return from_tree(broker).v1
 
 
 def build_intake_mongo_backed_broker(request):
@@ -49,12 +47,11 @@ def build_intake_mongo_backed_broker(request):
         client.close()
 
     request.addfinalizer(teardown)
-    broker = mongo_normalized.BlueskyMongoCatalog(
-        client['mds'],
-        client['assets'],
-        name='test',
+    broker = mongo_normalized.Tree.from_uri(
+        uri=client['mds'],
+        assert_registry_uri=client['assets'],
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    return broker.v1
+    return from_tree(broker).v1
 
 
 def build_intake_mongo_embedded_backed_broker(request):
