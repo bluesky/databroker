@@ -50,7 +50,7 @@ supports the full search capability of Databroker.*
       import databroker
 
       # List catalog names.
-      list(datbroker.catalog)
+      list(databroker.catalog)
 
    If it does not appear, call ``databroker.catalog.force_reload()`` and retry.
    The catalog may be accessed like
