@@ -83,7 +83,7 @@ Taking the next step, let's make a persistent Catalog.
       import databroker
 
       # List catalog names.
-      list(datbroker.catalog)
+      list(databroker.catalog)
 
    If it does not appear, call ``databroker.catalog.force_reload()`` and retry.
    The catalog may be accessed like
@@ -93,7 +93,7 @@ Taking the next step, let's make a persistent Catalog.
       import databroker
 
       # List catalog names.
-      list(datbroker.catalog)
+      list(databroker.catalog)
 
    using the ``CATALOG_NAME`` in the text of the configuration file. (Again,
    the *filename* of the configuration file is not relevant.)
