@@ -59,7 +59,7 @@ v2-style catalog.
    import databroker
    catalog = databroker.catalog["MY CATALOG NAME"]
 
-This older-style usage getse you a v1-style catalog.
+This older-style usage gets you a v1-style catalog.
 
 .. code:: python
 
