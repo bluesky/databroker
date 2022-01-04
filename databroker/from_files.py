@@ -1,55 +1,56 @@
-from pathlib import Path
-
 from tiled.trees.files import Tree as FileTree
-from suitcase.mongo_normalized import Serializer
 
 from .mongo_normalized import Tree as MongoNormalizedTree
 
 
-class JSONLReader:
+class EmptyFile(FileNotFoundError):
+    pass
+
+
+class JSONLAdapter:
 
     specs = ["BlueskyRun"]
 
-    def __init__(self, tree):
-        self._tree = tree
-        database = tree.database
-        self._serializer = Serializer(database, database)
+    def __init__(self, in_memory_mongo_tree):
+        self._in_memory_mongo_tree = in_memory_mongo_tree
 
     def consume_file(self, filepath):
         import json
 
+        serializer = self._in_memory_mongo_tree.get_serializer()
         with open(filepath) as file:
             lines = iter(file)
-            name, doc = json.loads(next(lines))
+            try:
+                name, doc = json.loads(next(lines))
+            except StopIteration:
+                raise EmptyFile(filepath)
             assert name == "start"
             uid = doc["uid"]
-            self._serializer(name, doc)
             for line in lines:
                 name, doc = json.loads(line)
-                self._serializer(name, doc)
-        return self._tree[uid]
+                serializer(name, doc)
+        return self._in_memory_mongo_tree[uid]
 
 
-class MsgpackReader:
+class MsgpackAdapter:
 
     specs = ["BlueskyRun"]
 
-    def __init__(self, tree):
-        self._tree = tree
-        database = tree.database
-        self._serializer = Serializer(database, database)
+    def __init__(self, in_memory_mongo_tree):
+        self._in_memory_mongo_tree = in_memory_mongo_tree
 
     def consume_file(self, filepath):
         import msgpack
 
+        serializer = self._in_memory_mongo_tree.get_serializer()
         with open(filepath) as file:
             for name, doc in msgpack.Unpacker(file):
-                self._serializer(name, doc)
+                serializer(name, doc)
 
-        return self._tree[self._ser]
+        return self._in_memory_mongo_tree[self._ser]
 
 
-class TreeJSONL(FileTree):
+class JSONLTree(FileTree):
 
     # This is set up in Tree.from_directory.
     DEFAULT_READERS_BY_MIMETYPE = {}
@@ -59,8 +60,10 @@ class TreeJSONL(FileTree):
     @classmethod
     def from_directory(cls, directory, *, handler_registry=None):
 
-        tree = MongoNormalizedTree.from_mongomock(handler_registry=handler_registry)
-        jsonl_reader = JSONLReader(tree)
+        in_memory_mongo_tree = MongoNormalizedTree.from_mongomock(
+            handler_registry=handler_registry
+        )
+        jsonl_reader = JSONLAdapter(in_memory_mongo_tree)
         mimetypes_by_file_ext = {
             ".jsonl": "application/x-bluesky-jsonl",
         }
@@ -71,36 +74,38 @@ class TreeJSONL(FileTree):
             directory,
             readers_by_mimetype=readers_by_mimetype,
             mimetypes_by_file_ext=mimetypes_by_file_ext,
-            tree=tree,
+            in_memory_mongo_tree=in_memory_mongo_tree,
         )
 
-    def __init__(self, *args, tree, **kwargs):
-        self._tree = tree
+    def __init__(self, *args, in_memory_mongo_tree, **kwargs):
+        self._in_memory_mongo_tree = in_memory_mongo_tree
         super().__init__(*args, **kwargs)
 
     def new_variation(self, **kwargs):
-        return super().new_variation(tree=self._tree, **kwargs)
+        return super().new_variation(
+            in_memory_mongo_tree=self._in_memory_mongo_tree, **kwargs
+        )
 
     def search(self, *args, **kwargs):
-        return self._tree.search(*args, **kwargs)
+        return self._in_memory_mongo_tree.search(*args, **kwargs)
 
     def get_serializer(self):
         import suitcase.jsonl
 
-        tree = self
+        file_tree = self
+        serializer = self._in_memory_mongo_tree.get_serializer()
 
         class _Serializer(suitcase.jsonl.Serializer):
             def __call__(self, name, doc):
                 super().__call__(name, doc)
+                serializer(name, doc)
                 if name in {"start", "stop"}:
-                    tree.update_now()
-                    breakpoint()
-
+                    file_tree.update_now(timeout=5)
 
         return _Serializer(self.directory)
 
 
-class TreeMsgpack(FileTree):
+class MsgpackTree(FileTree):
 
     # This is set up in Tree.from_directory.
     DEFAULT_READERS_BY_MIMETYPE = {}
@@ -110,8 +115,10 @@ class TreeMsgpack(FileTree):
     @classmethod
     def from_directory(cls, directory, *, handler_registry=None):
 
-        tree = MongoNormalizedTree.from_mongomock(handler_registry=handler_registry)
-        msgpack_reader = MsgpackReader(tree)
+        in_memory_mongo_tree = MongoNormalizedTree.from_mongomock(
+            handler_registry=handler_registry
+        )
+        msgpack_reader = MsgpackAdapter(in_memory_mongo_tree)
         mimetypes_by_file_ext = {
             ".msgpack": "application/x-bluesky-msgpack",
         }
@@ -122,33 +129,32 @@ class TreeMsgpack(FileTree):
             directory,
             readers_by_mimetype=readers_by_mimetype,
             mimetypes_by_file_ext=mimetypes_by_file_ext,
-            tree=tree,
+            in_memory_mongo_tree=in_memory_mongo_tree,
         )
 
-    def __init__(self, *args, tree, **kwargs):
-        self._tree = tree
+    def __init__(self, *args, in_memory_mongo_tree, **kwargs):
+        self._in_memory_mongo_tree = in_memory_mongo_tree
         super().__init__(*args, **kwargs)
 
-    @property
-    def database(self):
-        return self._tree.database
-
     def new_variation(self, **kwargs):
-        return super().new_variation(tree=self._tree, **kwargs)
+        return super().new_variation(
+            in_memory_mongo_tree=self._in_memory_mongo_tree, **kwargs
+        )
 
     def search(self, *args, **kwargs):
-        return self._tree.search(*args, **kwargs)
+        return self._in_memory_mongo_tree.search(*args, **kwargs)
 
     def get_serializer(self):
         import suitcase.msgpack
 
         tree = self
+        serializer = self._in_memory_mongo_tree.get_serializer()
 
         class _Serializer(suitcase.jsonl.Serializer):
             def __call__(self, name, doc):
                 super().__call__(name, doc)
+                serializer(name, doc)
                 if name in {"start", "stop"}:
-                    tree.update_now()
-                    breakpoint()
+                    tree.update_now(timeout=5)
 
         return _Serializer(self.directory)
