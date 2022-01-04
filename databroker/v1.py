@@ -1565,12 +1565,6 @@ class _GetDocumentsRouter:
         yield "resource", doc
 
 
-class InvalidConfig(Exception):
-    """Raised when the configuration file is invalid."""
-
-    ...
-
-
 _mongo_clients = {}  # cache of pymongo.MongoClient instances
 
 

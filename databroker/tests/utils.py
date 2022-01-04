@@ -12,7 +12,7 @@ import tzlocal
 from databroker import v0, v1
 from databroker.headersource import HeaderSourceShim
 from databroker.eventsource import EventSourceShim
-from ..from_files import TreeJSONL, TreeMsgpack
+from ..from_files import JSONLTree, MsgpackTree
 from .. import mongo_normalized
 import suitcase.jsonl
 import suitcase.mongo_normalized
@@ -33,7 +33,7 @@ def build_intake_jsonl_backed_broker(request):
         tmp_dir.cleanup()
 
     request.addfinalizer(teardown)
-    broker = TreeJSONL.from_directory(
+    broker = JSONLTree.from_directory(
         tmp_dir.name,
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
     return from_tree(broker).v1
