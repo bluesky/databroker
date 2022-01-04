@@ -44,7 +44,6 @@ def test_empty_fixture(db):
 def test_uid_roundtrip(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = get_uids(RE(count([hw.det])))
-    print('about to look up')
     h = db[uid]
     assert h['start']['uid'] == uid
 
