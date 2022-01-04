@@ -203,7 +203,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 f"shape={shape} "
                 f"limit={CHUNK_SIZE_LIMIT} "
                 f"dtype={numpy_dtype}"
-           ) from err
+            ) from err
 
         if isinstance(dtype, BuiltinType):
             data = ArrayStructure(
@@ -1292,6 +1292,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
             )
         self._access_policy = access_policy
         self._authenticated_identity = authenticated_identity
+        self._serializer = None
         super().__init__()
 
     @property
@@ -1315,6 +1316,16 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
                 "_asset_registry_db directly."
             )
         return self._metadatastore_db
+
+    def get_serializer(self):
+        from suitcase.mongo_normalized import Serializer
+
+        if self._serializer is None:
+            self._serializer = Serializer(
+                self._metadatastore_db, self._asset_registry_db
+            )
+
+        return self._serializer
 
     def register_handler(self, spec, handler, overwrite=False):
         if (not overwrite) and (spec in self._handler_registry):
