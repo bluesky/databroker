@@ -49,7 +49,7 @@ def build_intake_mongo_backed_broker(request):
     request.addfinalizer(teardown)
     broker = mongo_normalized.Tree.from_uri(
         uri=client['mds'],
-        assert_registry_uri=client['assets'],
+        asset_registry_uri=client['assets'],
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
     return from_tree(broker).v1
 
