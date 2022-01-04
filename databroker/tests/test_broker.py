@@ -250,7 +250,6 @@ def test_scan_id_lookup(db, RE, hw):
 # https://github.com/bluesky/databroker/issues/431
 
 
-@pytest.mark.flaky(reruns=10, reruns_delay=0)
 def test_partial_uid_lookup(db, RE, hw):
     RE.subscribe(db.insert)
 
@@ -333,8 +332,6 @@ def test_data_key(db_empty, RE, hw):
     assert len(result2) == 1
 
 
-# flaky because of https://github.com/bluesky/databroker/issues/431
-@pytest.mark.flaky(reruns=5, reruns_delay=0)
 def test_search_for_smoke(db, RE, hw):
     RE.subscribe(db.insert)
     for _ in range(5):
