@@ -4,10 +4,7 @@ import enum
 import json
 from typing import List, Optional
 
-from tiled.trees.in_memory import (
-    Tree as GenericTree,
-    full_text_search,
-)
+from tiled.adapters.mapping import MapAdapter, full_text_search
 from tiled.queries import FullText, QueryValueError
 from tiled.query_registration import QueryTranslationRegistry
 
@@ -17,14 +14,14 @@ from tiled.query_registration import register
 from .common import CatalogOfBlueskyRunsMixin
 
 
-class TreeInMemory(GenericTree, CatalogOfBlueskyRunsMixin):
+class BlueskyMapAdapter(MapAdapter, CatalogOfBlueskyRunsMixin):
     """
     A Tree that contains BlueskyRuns and supports relevant queries on them.
     """
 
     # The primary purpose of this class is to have a query_registry
     # distinct form the generic tiled.in_memory.Tree.query_registry
-    # with queries that assume the conntents are BlueskyRuns and have the
+    # with queries that assume the contents are BlueskyRuns and have the
     # requisite metadata structure.
     query_registry = QueryTranslationRegistry()
     register_query = query_registry.register
@@ -254,14 +251,14 @@ def scan_id(query, catalog):
     )
     # Handle duplicates.
     if query.duplicates == "latest":
-        # Convert to a TreeInMemory to do some filtering in Python
+        # Convert to a BlueskyMapAdapter to do some filtering in Python
         # that we cannot expressing in a collection.find(...) query.
         # We might want to rethink this later and make it possible to do
         # aggregations in Mongo from queries.
         results_by_scan_id = {}
         for key, value in mongo_results.items():
             results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
-        results = TreeInMemory(dict(results_by_scan_id.values()), must_revalidate=False)
+        results = BlueskyMapAdapter(dict(results_by_scan_id.values()), must_revalidate=False)
     elif query.duplicates == "error":
         scan_ids = list(
             value.metadata["start"]["scan_id"] for value in mongo_results.values()
@@ -300,7 +297,7 @@ def partial_uid(query, catalog):
                 "listed below. Include more characters. Matches:\n" + "\n".join(result)
             )
         results.update(result)
-    return TreeInMemory(results, must_revalidate=False)
+    return BlueskyMapAdapter(results, must_revalidate=False)
 
 
 def time_range(query, catalog):
@@ -315,8 +312,8 @@ def time_range(query, catalog):
     return catalog.query_registry(RawMongo(start=mongo_query), catalog)
 
 
-TreeInMemory.register_query(_PartialUID, partial_uid)
-TreeInMemory.register_query(RawMongo, raw_mongo_in_memory)
-TreeInMemory.register_query(_ScanID, scan_id)
-TreeInMemory.register_query(TimeRange, time_range)
-TreeInMemory.register_query(FullText, full_text_search)
+BlueskyMapAdapter.register_query(_PartialUID, partial_uid)
+BlueskyMapAdapter.register_query(RawMongo, raw_mongo_in_memory)
+BlueskyMapAdapter.register_query(_ScanID, scan_id)
+BlueskyMapAdapter.register_query(TimeRange, time_range)
+BlueskyMapAdapter.register_query(FullText, full_text_search)
