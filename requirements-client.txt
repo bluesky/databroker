@@ -1,2 +1,2 @@
 mongoquery
-tiled[client]
+tiled[client] >=0.1.0a47
