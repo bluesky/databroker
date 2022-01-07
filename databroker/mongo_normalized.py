@@ -650,7 +650,7 @@ class DatasetFromDocuments:
                 array = raw_array
             data_array = xarray.DataArray(
                 array,
-                attrs=self.metadata["data_vars"][key],
+                attrs=self.metadata["data_vars"][key]["attrs"],
                 dims=variable.macro.dims,
                 coords={"time": time_coord},
             )
