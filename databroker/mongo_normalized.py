@@ -468,28 +468,28 @@ class ArrayFromDocuments:
 
     metadata = {}
 
-    def __init__(self, thing):
-        self._thing = thing
+    def __init__(self, data_array_adapter):
+        self._data_array_adapter = data_array_adapter
 
-    def read(self):
-        return self._thing.read()
+    def read(self, slice):
+        return self._data_array_adapter.read(slice)
 
     def read_block(self, block, slice=None):
-        return self._thing.read_block(block, slice=slice)
+        return self._data_array_adapter.read_block(block, slice=slice)
 
 
 class TimeArrayFromDocuments:
 
     metadata = {}
 
-    def __init__(self, thing):
-        self._thing = thing
+    def __init__(self, dataset_adapter):
+        self._dataset_adapter = dataset_adapter
 
-    def read(self):
-        return self._thing.read()
+    def read(self, slice):
+        return self._dataset_adapter.read(slice)
 
     def read_block(self, block, slice=None):
-        return self._thing.read_block(None, block, coord="time", slice=slice)
+        return self._dataset_adapter.read_block(None, block, coord="time", slice=slice)
 
 
 class DataArrayFromDocuments:
@@ -506,7 +506,9 @@ class DataArrayFromDocuments:
     def read_block(self, block, slice=None):
         return self._dataset_adapter.read_block(self._field, block, slice=slice)
 
-    def read(self):
+    def read(self, slice=None):
+        if slice:
+            raise NotImplementedError
         return self._dataset_adapter.read(fields=[self._field])[self._field]
 
     def __getitem__(self, key):
