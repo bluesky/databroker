@@ -546,12 +546,18 @@ class DatasetFromDocuments:
         self.root_map = root_map
 
         # metadata should look like
-        # {"descriptors": [...], "attrs": {...}, "stream_name": "..."}
+        # {
+        #     "stream_name": "...",
+        #     "descriptors": [...],
+        #     "attrs": {...},
+        #     "data_vars": {...},
+        #     "coords": {"time": {}},
+        # }
         # We intentionally do not put the descriptors in attrs (ruins UI)
         # but we put the stream_name there.
         self.metadata = self._run[
             self._stream_name
-        ].metadata.copy()  # {"descriptors": ...}
+            ].metadata.copy()  # {"descriptors": [...], "stream_name: "..."}
         # Put the stream_name in attrs so it shows up in the xarray repr.
         self.metadata["attrs"] = {"stream_name": self.metadata["stream_name"]}
 
@@ -581,7 +587,7 @@ class DatasetFromDocuments:
         self._macrostructure, metadata = structure_from_descriptor(
             descriptor, self._sub_dict, self._cutoff_seq_num, unicode_columns
         )
-        self.metadata.update(metadata)
+        self.metadata.update(metadata)  # adds "data_vars" and "coords"
         self._data_vars = MapAdapter(
             {
                 field: DataArrayFromDocuments(self, field)
@@ -644,7 +650,7 @@ class DatasetFromDocuments:
                 array = raw_array
             data_array = xarray.DataArray(
                 array,
-                attrs=self.metadata["attrs"]["data_vars"][key],
+                attrs=self.metadata["data_vars"][key],
                 dims=variable.macro.dims,
                 coords={"time": time_coord},
             )
