@@ -2,7 +2,7 @@ import keyword
 import warnings
 
 import msgpack
-from tiled.trees.utils import IndexCallable
+from tiled.adapters.utils import IndexCallable
 from tiled.client.node import Node
 from tiled.client.utils import handle_error
 
