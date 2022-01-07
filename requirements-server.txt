@@ -1,3 +1,4 @@
+area-detector-handlers
 cachetools
 entrypoints
 event-model
@@ -8,5 +9,6 @@ pydantic
 pymongo
 pytz
 starlette
+tiled[server] >=0.1.0a47
 toolz
 tzlocal
