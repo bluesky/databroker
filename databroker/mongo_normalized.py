@@ -25,36 +25,26 @@ import xarray
 from tiled.structures.array import (
     ArrayStructure,
     ArrayMacroStructure,
+    BuiltinDtype,
     Kind,
-    MachineDataType as BuiltinType,
-)
-
-from tiled.structures.structured_array import (
     StructDtype,
-    ArrayTabularMacroStructure,
-    StructuredArrayTabularStructure,
 )
-
 from tiled.structures.xarray import (
     DataArrayStructure,
     DataArrayMacroStructure,
     DatasetMacroStructure,
-    VariableStructure,
-    VariableMacroStructure,
 )
-from tiled.trees.in_memory import Tree as TreeInMemory
+from tiled.adapters.mapping import MapAdapter
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import FullText
 from tiled.utils import (
-    DictView,
     SpecialUsers,
 )
-from tiled.trees.utils import (
+from tiled.adapters.utils import (
     tree_repr,
     IndexersMixin,
-    UNCHANGED,
 )
-from tiled.utils import import_object, OneShotCachedMap
+from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import (
@@ -99,19 +89,18 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         limit=CHUNK_SIZE_LIMIT,
         dtype=FLOAT_DTYPE.to_numpy_dtype(),
     )
-    time_data = ArrayStructure(
+    time_variable = ArrayStructure(
         macro=ArrayMacroStructure(
             shape=time_shape,
             chunks=time_chunks,
+            dims=["time"],
         ),
         micro=FLOAT_DTYPE,
     )
-    time_variable = VariableStructure(
-        macro=VariableMacroStructure(dims=["time"], data=time_data, attrs={}),
-        micro=None,
-    )
     time_data_array = DataArrayStructure(
-        macro=DataArrayMacroStructure(variable=time_variable, coords={}, name="time"),
+        macro=DataArrayMacroStructure(
+            variable=time_variable, coords={}, coord_names=[], name="time"
+        ),
         micro=None,
     )
     if unicode_columns is None:
@@ -154,13 +143,13 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                     )
             # if we have a detailed string, trust that
             elif dt_str is not None:
-                dtype = BuiltinType.from_numpy_dtype(numpy.dtype(dt_str))
+                dtype = BuiltinDtype.from_numpy_dtype(numpy.dtype(dt_str))
             # otherwise guess!
             else:
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     array = unicode_columns[key]
-                    dtype = BuiltinType.from_numpy_dtype(
+                    dtype = BuiltinDtype.from_numpy_dtype(
                         numpy.dtype(f"<U{array.itemsize // 4}")
                     )
         else:
@@ -205,38 +194,22 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
                 f"dtype={numpy_dtype}"
             ) from err
 
-        if isinstance(dtype, BuiltinType):
-            data = ArrayStructure(
-                macro=ArrayMacroStructure(shape=shape, chunks=chunks),
-                micro=dtype,
-            )
-            array_structure_family = "array"
-        else:
-            data = StructuredArrayTabularStructure(
-                macro=ArrayTabularMacroStructure(chunks=chunks, shape=shape),
-                micro=dtype,
-            )
-            array_structure_family = "structured_array_tabular"
-        variable = VariableStructure(
-            macro=VariableMacroStructure(
-                dims=dims,
-                data=data,
-                attrs=attrs,
-                array_structure_family=array_structure_family,
+        variable = ArrayStructure(
+            macro=ArrayMacroStructure(shape=shape, chunks=chunks, dims=dims),
+            micro=dtype,
+        )
+        data_array = DataArrayStructure(
+            macro=DataArrayMacroStructure(
+                variable, coords={}, coord_names=["time"], name=key
             ),
             micro=None,
         )
-        data_array = DataArrayStructure(
-            macro=DataArrayMacroStructure(variable, coords={}, name=key), micro=None
-        )
         data_vars[key] = data_array
 
-    return DatasetMacroStructure(
-        data_vars=data_vars, coords={"time": time_data_array}, attrs={}
-    )
+    return DatasetMacroStructure(data_vars=data_vars, coords={"time": time_data_array})
 
 
-class BlueskyRun(TreeInMemory, BlueskyRunMixin):
+class BlueskyRun(MapAdapter, BlueskyRunMixin):
     specs = ["BlueskyRun"]
 
     def __init__(
@@ -273,7 +246,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
 
     @property
     def metadata(self):
-        "Metadata about this Tree."
+        "Metadata about this MongoAdapter."
         # If there are transforms configured, shadow the 'start' and 'stop' documents
         # with transfomed copies.
         transformed = {}
@@ -281,11 +254,8 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
             transformed["start"] = self.transforms["start"](self._metadata["start"])
         if "stop" in self.transforms:
             transformed["stop"] = self.transforms["stop"](self._metadata["stop"])
-        metadata = collections.ChainMap(transformed, self._metadata)
-        # Ensure this is immutable (at the top level) to help the user avoid
-        # getting the wrong impression that editing this would update anything
-        # persistent.
-        return DictView(metadata)
+        metadata = dict(collections.ChainMap(transformed, self._metadata))
+        return metadata
 
     @property
     def filler(self):
@@ -372,7 +342,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
             *(stream.iter_descriptors_and_events() for stream in self.values()),
             key=lambda item: item[1]["time"],
         )
-        yield ("start", self.metadata["start"])
+        yield ("start", self.metadata["attrs"]["start"])
         for name, doc in merged_iter:
             # Insert Datum, Resource as needed, and then yield (name, doc).
             if name == "event":
@@ -411,7 +381,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
                     if value.get("external")
                 }
             yield name, doc
-        stop_doc = self.metadata["stop"]
+        stop_doc = self.metadata["attrs"]["stop"]
         if stop_doc is not None:
             yield ("stop", stop_doc)
 
@@ -425,7 +395,7 @@ class BlueskyRun(TreeInMemory, BlueskyRunMixin):
         yield from batch_documents(self.single_documents(fill=fill), size)
 
 
-class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
+class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
     specs = ["BlueskyEventStream"]
 
     def __init__(self, *args, event_collection, cutoff_seq_num, run, **kwargs):
@@ -460,11 +430,8 @@ class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
             transformed["descriptors"] = [
                 transforms["descriptor"](d) for d in self._metadata["descriptors"]
             ]
-        metadata = collections.ChainMap(transformed, self._metadata)
-        # Ensure this is immutable (at the top level) to help the user avoid
-        # getting the wrong impression that editing this would update anything
-        # persistent.
-        return DictView(metadata)
+        metadata = dict(collections.ChainMap(transformed, self._metadata))
+        return metadata
 
     def new_variation(self, **kwargs):
         return super().new_variation(
@@ -475,7 +442,9 @@ class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
         )
 
     def iter_descriptors_and_events(self):
-        for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
+        for descriptor in sorted(
+            self.metadata["attrs"]["descriptors"], key=lambda d: d["time"]
+        ):
             yield ("descriptor", descriptor)
             # TODO Grab paginated chunks.
             events = list(
@@ -492,12 +461,66 @@ class BlueskyEventStream(TreeInMemory, BlueskyEventStreamMixin):
                 yield ("event", event)
 
 
+class ArrayFromDocuments:
+
+    metadata = {}
+
+    def __init__(self, thing):
+        self._thing = thing
+
+    def read(self):
+        return self._thing.read()
+
+    def read_block(self, block, slice=None):
+        return self._thing.read_block(block, slice=slice)
+
+
+class TimeArrayFromDocuments:
+
+    metadata = {}
+
+    def __init__(self, thing):
+        self._thing = thing
+
+    def read(self):
+        return self._thing.read()
+
+    def read_block(self, block, slice=None):
+        return self._thing.read_block(None, block, coord="time", slice=slice)
+
+
+class DataArrayFromDocuments:
+    """
+    Represents one column
+    """
+
+    structure_family = "xarray_data_array"
+
+    def __init__(self, dataset_adapter, field):
+        self._dataset_adapter = dataset_adapter
+        self._field = field
+
+    def read_block(self, block, slice=None):
+        return self._dataset_adapter.read_block(self._field, block, slice=slice)
+
+    def read(self):
+        return self._dataset_adapter.read(fields=[self._field])[self._field]
+
+    def __getitem__(self, key):
+        if key == "variable":
+            return ArrayFromDocuments(self)
+        elif key == "coords":
+            return MapAdapter({"time": TimeArrayFromDocuments(self)})
+        else:
+            raise KeyError(key)
+
+
 class DatasetFromDocuments:
     """
     An xarray.Dataset from a sub-dict of an Event stream
     """
 
-    structure_family = "dataset"
+    structure_family = "xarray_dataset"
 
     def __init__(
         self,
@@ -519,29 +542,10 @@ class DatasetFromDocuments:
         self._sub_dict = sub_dict
         self.root_map = root_map
 
-    def __repr__(self):
-        return f"<{type(self).__name__}>"
-
-    @property
-    def metadata_stale_at(self):
-        if self._run.metadata["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
-        return datetime.utcnow() + timedelta(hours=1)
-
-    @property
-    def content_stale_at(self):
-        if self._run.metadata["stop"] is not None:
-            return datetime.utcnow() + timedelta(hours=1)
-
-    @property
-    def metadata(self):
-        return self._run[self._stream_name].metadata
-
-    def macrostructure(self):
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
         # IMPORTANT: Access via self.metadata so that the transforms are applied.
-        descriptor, *_ = self.metadata["descriptors"]
+        descriptor, *_ = self.metadata["attrs"]["descriptors"]
         unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
@@ -561,30 +565,65 @@ class DatasetFromDocuments:
             if unicode_keys:
                 unicode_columns.update(self._get_columns(unicode_keys, slices=None))
 
-        return structure_from_descriptor(
+        self._macrostructure = structure_from_descriptor(
             descriptor, self._sub_dict, self._cutoff_seq_num, unicode_columns
         )
+        self._data_vars = MapAdapter(
+            {
+                field: DataArrayFromDocuments(self, field)
+                for field in self._macrostructure.data_vars
+            }
+        )
+        self._coords = MapAdapter(
+            {"time": MapAdapter({"variable": TimeArrayFromDocuments(self)})}
+        )
+
+    def __repr__(self):
+        return f"<{type(self).__name__}>"
+
+    @property
+    def metadata_stale_at(self):
+        if self._run.metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
+        return datetime.utcnow() + timedelta(hours=1)
+
+    @property
+    def content_stale_at(self):
+        if self._run.metadata["stop"] is not None:
+            return datetime.utcnow() + timedelta(hours=1)
+
+    @property
+    def metadata(self):
+        return {
+            "attrs": self._run[self._stream_name].metadata,
+            # TODO Fill these in.
+            "coords": {"time": {"attrs": {}}},
+            "data_vars": {},
+        }
+
+    def macrostructure(self):
+        return self._macrostructure
 
     def microstructure(self):
         return None
 
-    def read(self, variables=None):
+    def read(self, fields=None):
         # num_blocks = (range(len(n)) for n in chunks)
         # for block in itertools.product(*num_blocks):
         structure = self.macrostructure()
         data_arrays = {}
-        if variables is None:
+        if fields is None:
             keys = list(structure.data_vars)
         else:
-            keys = variables
+            keys = fields
         columns = self._get_columns(keys, slices=None)
         # Build the time coordinate.
         time_coord = self._get_time_coord(slice_params=None)
         for key, data_array in structure.data_vars.items():
-            if (variables is not None) and (key not in variables):
+            if (fields is not None) and (key not in fields):
                 continue
             variable = structure.data_vars[key].macro.variable
-            dtype = variable.macro.data.micro.to_numpy_dtype()
+            dtype = variable.micro.to_numpy_dtype()
             raw_array = columns[key]
             if raw_array.dtype != dtype:
                 logger.warning(
@@ -600,20 +639,25 @@ class DatasetFromDocuments:
                 array = raw_array
             data_array = xarray.DataArray(
                 array,
-                attrs=variable.macro.attrs,
+                attrs={},  # TODO
                 dims=variable.macro.dims,
                 coords={"time": time_coord},
             )
             data_arrays[key] = data_array
         return xarray.Dataset(data_arrays, coords={"time": time_coord})
 
-    def read_variable(self, variable):
-        return self.read(variables=[variable])[variable]
+    def __getitem__(self, key):
+        if key == "variable":
+            return self._variable
+        elif key == "coords":
+            return self._coords
+        else:
+            raise KeyError(key)
 
     def read_block(self, variable, block, coord=None, slice=None):
         structure = self.macrostructure()
         if coord == "time":
-            data_structure = structure.coords["time"].macro.variable.macro.data
+            data_structure = structure.coords["time"].macro.variable
             chunks = data_structure.macro.chunks
             cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
             slices_for_chunks = [
@@ -623,11 +667,10 @@ class DatasetFromDocuments:
             (slice_,) = [s[index] for s, index in zip(slices_for_chunks, block)]
             return self._get_time_coord(slice_params=(slice_.start, slice_.stop))
         elif coord is not None:
-            raise KeyError("time")
-        dtype = structure.data_vars[
-            variable
-        ].macro.variable.macro.data.micro.to_numpy_dtype()
-        data_structure = structure.data_vars[variable].macro.variable.macro.data
+            # We only have a "time" coordinate. Any other coordinate is invalid.
+            raise KeyError(coord)
+        dtype = structure.data_vars[variable].macro.variable.micro.to_numpy_dtype()
+        data_structure = structure.data_vars[variable].macro.variable
         dtype = data_structure.micro.to_numpy_dtype()
         chunks = data_structure.macro.chunks
         cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
@@ -662,7 +705,7 @@ class DatasetFromDocuments:
             min_seq_num = 1 + slice_params[0]
             max_seq_num = 1 + slice_params[1]
         column = []
-        descriptor_uids = [doc["uid"] for doc in self.metadata["descriptors"]]
+        descriptor_uids = [doc["uid"] for doc in self.metadata["attrs"]["descriptors"]]
 
         def populate_column(min_seq_num, max_seq_num):
             cursor = self._event_collection.aggregate(
@@ -745,7 +788,7 @@ class DatasetFromDocuments:
     def _inner_get_columns(self, keys, min_seq_num, max_seq_num):
         columns = {key: [] for key in keys}
         # IMPORTANT: Access via self.metadata so that transforms are applied.
-        descriptors = self.metadata["descriptors"]
+        descriptors = self.metadata["attrs"]["descriptors"]
         descriptor_uids = [doc["uid"] for doc in descriptors]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
@@ -904,9 +947,9 @@ class DatasetFromDocuments:
         return to_stack
 
 
-class Config(TreeInMemory):
+class Config(MapAdapter):
     """
-    Tree of configuration datasets, keyed on 'object' (e.g. device)
+    MongoAdapter of configuration datasets, keyed on 'object' (e.g. device)
     """
 
     ...
@@ -917,7 +960,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
     An xarray.Dataset from a configuration sub-dict of an Event stream
     """
 
-    structure_family = "dataset"
+    structure_family = "xarray_dataset"
 
     def __init__(
         self,
@@ -946,7 +989,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
         # IMPORTANT: Access via self.metadata so that the transforms are applied.
-        descriptor, *_ = self.metadata["descriptors"]
+        descriptor, *_ = self.metadata["attrs"]["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
         data_keys = (
@@ -981,20 +1024,17 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             limit=CHUNK_SIZE_LIMIT,
             dtype=FLOAT_DTYPE.to_numpy_dtype(),
         )
-        time_data = ArrayStructure(
+        time_variable = ArrayStructure(
             macro=ArrayMacroStructure(
                 shape=time_shape,
                 chunks=time_chunks,
+                dims=["time"],
             ),
             micro=FLOAT_DTYPE,
         )
-        time_variable = VariableStructure(
-            macro=VariableMacroStructure(dims=["time"], data=time_data, attrs={}),
-            micro=None,
-        )
         time_data_array = DataArrayStructure(
             macro=DataArrayMacroStructure(
-                variable=time_variable, coords={}, name="time"
+                variable=time_variable, coords={}, coord_names=[], name="time"
             ),
             micro=None,
         )
@@ -1019,7 +1059,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
                 if dtype.kind == Kind.unicode:
                     array = unicode_columns[key]
-                    dtype = BuiltinType.from_numpy_dtype(
+                    dtype = BuiltinDtype.from_numpy_dtype(
                         numpy.dtype(f"<U{array.itemsize // 4}")
                     )
             else:
@@ -1037,26 +1077,27 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 macro=ArrayMacroStructure(shape=shape, chunks=chunks),
                 micro=dtype,
             )
-            variable = VariableStructure(
-                macro=VariableMacroStructure(dims=dims, data=data, attrs=attrs),
-                micro=None,
-            )
             data_array = DataArrayStructure(
                 macro=DataArrayMacroStructure(
-                    variable, coords={"time": time_data_array}, name=key
+                    variable,
+                    coords={"time": time_data_array},
+                    coord_names=["time"],
+                    name=key,
                 ),
                 micro=None,
             )
             data_vars[key] = data_array
         return DatasetMacroStructure(
-            data_vars=data_vars, coords={"time": time_data_array}, attrs={}
+            data_vars=data_vars,
+            coords={"time": time_data_array},
         )
 
 
-class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
+class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
+    structure_family = "node"
     specs = ["CatalogOfBlueskyRuns"]
 
-    # Define classmethods for managing what queries this Tree knows.
+    # Define classmethods for managing what queries this MongoAdapter knows.
     query_registry = QueryTranslationRegistry()
     register_query = query_registry.register
     register_query_lazy = query_registry.register_lazy
@@ -1080,7 +1121,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         cache_ttl_partial=2,  # seconds
     ):
         """
-        Create a Tree from MongoDB with the "normalized" (original) layout.
+        Create a MongoAdapter from MongoDB with the "normalized" (original) layout.
 
         Parameters
         ----------
@@ -1170,7 +1211,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         cache_ttl_partial=2,  # seconds
     ):
         """
-        Create a transient Tree from backed by "mongomock".
+        Create a transient MongoAdapter from backed by "mongomock".
 
         This is intended for testing, teaching, an demos. The data does not
         persistent. Do not use this for anything important.
@@ -1256,7 +1297,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         access_policy=None,
         authenticated_identity=None,
     ):
-        "This is not user-facing. Use Tree.from_uri."
+        "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
         self._run_stop_collection = metadatastore_db.get_collection("run_stop")
         self._event_descriptor_collection = metadatastore_db.get_collection(
@@ -1288,7 +1329,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
             not access_policy.check_compatibility(self)
         ):
             raise ValueError(
-                f"Access policy {access_policy} is not compatible with this Tree."
+                f"Access policy {access_policy} is not compatible with this MongoAdapter."
             )
         self._access_policy = access_policy
         self._authenticated_identity = authenticated_identity
@@ -1310,7 +1351,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         """
         if self._metadatastore_db != self._asset_registry_db:
             raise NotImplementedError(
-                "This Tree is backed by two databases. This is no longer "
+                "This MongoAdapter is backed by two databases. This is no longer "
                 "necessary or recommended. As a result, the `database` property "
                 "is undefined. Use the attributes _metadatastore_db and "
                 "_asset_registry_db directly."
@@ -1394,11 +1435,8 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
 
     @property
     def metadata(self):
-        "Metadata about this Tree."
-        # Ensure this is immutable (at the top level) to help the user avoid
-        # getting the wrong impression that editing this would update anything
-        # persistent.
-        return DictView(self._metadata)
+        "Metadata about this MongoAdapter."
+        return self._metadata
 
     @property
     def sorting(self):
@@ -1554,7 +1592,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
         )
 
     def __getitem__(self, key):
-        # Lookup this key *within the search results* of this Tree.
+        # Lookup this key *within the search results* of this MongoAdapter.
         query = self._build_mongo_query({"uid": key})
         run_start_doc = self._run_start_collection.find_one(query, {"_id": False})
         if run_start_doc is None:
@@ -1687,7 +1725,7 @@ class Tree(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
 
     def search(self, query):
         """
-        Return a Tree with a subset of the mapping.
+        Return a MongoAdapter with a subset of the mapping.
         """
         return self.query_registry(query, self)
 
@@ -1750,12 +1788,12 @@ def full_text_search(query, catalog):
 
         if isinstance(catalog.database.client, mongomock.MongoClient):
             # Do the query in memory.
-            # For huge Trees this will be slow, but if you are attempting
-            # full text search on a large mongomock-backed Tree,
+            # For huge MongoAdapters this will be slow, but if you are attempting
+            # full text search on a large mongomock-backed MongoAdapter,
             # you have made your choices! :-)
-            return TreeInMemory(dict(catalog)).search(query)
+            return MapAdapter(dict(catalog)).search(query)
 
-    return Tree.query_registry(
+    return MongoAdapter.query_registry(
         RawMongo(
             start={
                 "$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}
@@ -1773,12 +1811,12 @@ def raw_mongo(query, catalog):
 
 
 # These are implementation-specific definitions.
-Tree.register_query(FullText, full_text_search)
-Tree.register_query(RawMongo, raw_mongo)
+MongoAdapter.register_query(FullText, full_text_search)
+MongoAdapter.register_query(RawMongo, raw_mongo)
 # These are generic definitions that use RawMongo internally.
-Tree.register_query(_PartialUID, partial_uid)
-Tree.register_query(_ScanID, scan_id)
-Tree.register_query(TimeRange, time_range)
+MongoAdapter.register_query(_PartialUID, partial_uid)
+MongoAdapter.register_query(_ScanID, scan_id)
+MongoAdapter.register_query(TimeRange, time_range)
 
 
 class SimpleAccessPolicy:
@@ -1803,7 +1841,7 @@ class SimpleAccessPolicy:
             self.access_lists[identity] = entries
 
     def check_compatibility(self, catalog):
-        return isinstance(catalog, Tree)
+        return isinstance(catalog, MongoAdapter)
 
     def modify_queries(self, queries, authenticated_identity):
         allowed = self.access_lists.get(authenticated_identity, [])
@@ -1953,10 +1991,10 @@ def parse_transforms(transforms):
 
 # These are fallback guesses when all we have is a general jsonschema "dtype"
 # like "array" no specific "dtype_str" like "<u2".
-BOOLEAN_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("bool"))
-FLOAT_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("float64"))
-INT_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("int64"))
-STRING_DTYPE = BuiltinType.from_numpy_dtype(numpy.dtype("<U"))
+BOOLEAN_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("bool"))
+FLOAT_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("float64"))
+INT_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("int64"))
+STRING_DTYPE = BuiltinDtype.from_numpy_dtype(numpy.dtype("<U"))
 JSON_DTYPE_TO_MACHINE_DATA_TYPE = {
     "boolean": BOOLEAN_DTYPE,
     "number": FLOAT_DTYPE,
@@ -2155,3 +2193,7 @@ def build_summary(run_start_doc, run_stop_doc, stream_names):
     else:
         summary["duration"] = run_stop_doc["time"] - run_start_doc["time"]
     return summary
+
+
+# for back-compat with old config file
+Tree = MongoAdapter
