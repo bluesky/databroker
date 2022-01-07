@@ -107,6 +107,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         unicode_columns = {}
     dim_counter = itertools.count()
     data_vars = {}
+    metadata = {"data_vars": {}, "coords": {"time": {"attrs": {}}}}
 
     for key, field_metadata in descriptor["data_keys"].items():
         # if the EventDescriptor doesn't provide names for the
@@ -205,8 +206,12 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
             micro=None,
         )
         data_vars[key] = data_array
+        metadata["data_vars"][key] = {"attrs": attrs}
 
-    return DatasetMacroStructure(data_vars=data_vars, coords={"time": time_data_array})
+    return (
+        DatasetMacroStructure(data_vars=data_vars, coords={"time": time_data_array}),
+        metadata,
+    )
 
 
 class BlueskyRun(MapAdapter, BlueskyRunMixin):
@@ -342,7 +347,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
             *(stream.iter_descriptors_and_events() for stream in self.values()),
             key=lambda item: item[1]["time"],
         )
-        yield ("start", self.metadata["attrs"]["start"])
+        yield ("start", self.metadata["start"])
         for name, doc in merged_iter:
             # Insert Datum, Resource as needed, and then yield (name, doc).
             if name == "event":
@@ -381,7 +386,7 @@ class BlueskyRun(MapAdapter, BlueskyRunMixin):
                     if value.get("external")
                 }
             yield name, doc
-        stop_doc = self.metadata["attrs"]["stop"]
+        stop_doc = self.metadata["stop"]
         if stop_doc is not None:
             yield ("stop", stop_doc)
 
@@ -442,9 +447,7 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
         )
 
     def iter_descriptors_and_events(self):
-        for descriptor in sorted(
-            self.metadata["attrs"]["descriptors"], key=lambda d: d["time"]
-        ):
+        for descriptor in sorted(self.metadata["descriptors"], key=lambda d: d["time"]):
             yield ("descriptor", descriptor)
             # TODO Grab paginated chunks.
             events = list(
@@ -542,10 +545,20 @@ class DatasetFromDocuments:
         self._sub_dict = sub_dict
         self.root_map = root_map
 
+        # metadata should look like
+        # {"descriptors": [...], "attrs": {...}, "stream_name": "..."}
+        # We intentionally do not put the descriptors in attrs (ruins UI)
+        # but we put the stream_name there.
+        self.metadata = self._run[
+            self._stream_name
+        ].metadata.copy()  # {"descriptors": ...}
+        # Put the stream_name in attrs so it shows up in the xarray repr.
+        self.metadata["attrs"] = {"stream_name": self.metadata["stream_name"]}
+
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
         # IMPORTANT: Access via self.metadata so that the transforms are applied.
-        descriptor, *_ = self.metadata["attrs"]["descriptors"]
+        descriptor, *_ = self.metadata["descriptors"]
         unicode_columns = {}
         if self._sub_dict == "data":
             # Collect the keys (column names) that are of unicode data type.
@@ -565,9 +578,10 @@ class DatasetFromDocuments:
             if unicode_keys:
                 unicode_columns.update(self._get_columns(unicode_keys, slices=None))
 
-        self._macrostructure = structure_from_descriptor(
+        self._macrostructure, metadata = structure_from_descriptor(
             descriptor, self._sub_dict, self._cutoff_seq_num, unicode_columns
         )
+        self.metadata.update(metadata)
         self._data_vars = MapAdapter(
             {
                 field: DataArrayFromDocuments(self, field)
@@ -591,15 +605,6 @@ class DatasetFromDocuments:
     def content_stale_at(self):
         if self._run.metadata["stop"] is not None:
             return datetime.utcnow() + timedelta(hours=1)
-
-    @property
-    def metadata(self):
-        return {
-            "attrs": self._run[self._stream_name].metadata,
-            # TODO Fill these in.
-            "coords": {"time": {"attrs": {}}},
-            "data_vars": {},
-        }
 
     def macrostructure(self):
         return self._macrostructure
@@ -639,7 +644,7 @@ class DatasetFromDocuments:
                 array = raw_array
             data_array = xarray.DataArray(
                 array,
-                attrs={},  # TODO
+                attrs=self.metadata["attrs"]["data_vars"][key],
                 dims=variable.macro.dims,
                 coords={"time": time_coord},
             )
@@ -647,8 +652,8 @@ class DatasetFromDocuments:
         return xarray.Dataset(data_arrays, coords={"time": time_coord})
 
     def __getitem__(self, key):
-        if key == "variable":
-            return self._variable
+        if key == "data_vars":
+            return self._data_vars
         elif key == "coords":
             return self._coords
         else:
@@ -705,7 +710,7 @@ class DatasetFromDocuments:
             min_seq_num = 1 + slice_params[0]
             max_seq_num = 1 + slice_params[1]
         column = []
-        descriptor_uids = [doc["uid"] for doc in self.metadata["attrs"]["descriptors"]]
+        descriptor_uids = [doc["uid"] for doc in self.metadata["descriptors"]]
 
         def populate_column(min_seq_num, max_seq_num):
             cursor = self._event_collection.aggregate(
@@ -788,7 +793,7 @@ class DatasetFromDocuments:
     def _inner_get_columns(self, keys, min_seq_num, max_seq_num):
         columns = {key: [] for key in keys}
         # IMPORTANT: Access via self.metadata so that transforms are applied.
-        descriptors = self.metadata["attrs"]["descriptors"]
+        descriptors = self.metadata["descriptors"]
         descriptor_uids = [doc["uid"] for doc in descriptors]
         # The `data_keys` in a series of Event Descriptor documents with the
         # same `name` MUST be alike, so we can just use the first one.
@@ -989,7 +994,7 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
         # The `data_keys` in a series of Event Descriptor documents with the same
         # `name` MUST be alike, so we can choose one arbitrarily.
         # IMPORTANT: Access via self.metadata so that the transforms are applied.
-        descriptor, *_ = self.metadata["attrs"]["descriptors"]
+        descriptor, *_ = self.metadata["descriptors"]
         data_vars = {}
         dim_counter = itertools.count()
         data_keys = (
@@ -1073,8 +1078,8 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
                 limit=CHUNK_SIZE_LIMIT,
                 dtype=dtype.to_numpy_dtype(),
             )
-            data = ArrayStructure(
-                macro=ArrayMacroStructure(shape=shape, chunks=chunks),
+            variable = ArrayStructure(
+                macro=ArrayMacroStructure(shape=shape, chunks=chunks, dims=dims),
                 micro=dtype,
             )
             data_array = DataArrayStructure(
