@@ -2162,6 +2162,12 @@ def _validate_shape(key, data, expected_shape):
     """
     if data.shape == expected_shape:
         return data
+    if data.shape.ndim != expected.shape.ndim:
+        raise BadShapeMetadata(
+            f"For data key {key} "
+            f"shape {data.shape} does not "
+            f"match expected shape {expected_shape}."
+        )
     # Pad at the "end" along any dimension that is too short.
     padding = []
     trimming = []
