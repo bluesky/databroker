@@ -190,6 +190,9 @@ class EventCollection(object):
     def insert_one(self, doc):
         self.insert([doc])
 
+    def insert_many(self, docs):
+        self.insert(docs)
+
     def insert(self, docs):
         success_event = threading.Event()
         ret = {}
