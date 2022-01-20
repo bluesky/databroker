@@ -264,6 +264,9 @@ class DatumCollection(object):
         with cursor(self._conn) as c:
             c.execute(INSERT_DATUM, [datum[k] for k in keys])
 
+    def insert_many(self, datums):
+        self.insert(datums)
+
     def insert(self, datums):
         datums = map(lambda d: shadow_with_json(d, ['datum_kwargs']), datums)
         keys = ['datum_id', 'datum_kwargs', 'resource']
