@@ -107,6 +107,9 @@ class EventCollection(object):
         # not used on event_col
         return self.insert([doc])
 
+    def insert_many(self, docs):
+        return self.insert(docs)
+
     def insert(self, docs):
         # Sort docs by descriptor.
         descs = defaultdict(list)
