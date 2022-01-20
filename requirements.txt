@@ -14,7 +14,7 @@ msgpack-numpy  # to be split into extras or a separate package
 numpy
 pandas
 pims
-pymongo <4 # to be split into extras or a separate package
+pymongo >3.0 # to be split into extras or a separate package
 pytz
 pyyaml
 requests
