@@ -755,7 +755,7 @@ def bulk_insert_events(event_col, descriptor, events, validate):
                           seq_num=int(ev['seq_num']))
             yield ev_out
 
-    return event_col.insert(event_factory())
+    return event_col.insert_many(event_factory())
 
 
 # DATABASE RETRIEVAL ##########################################################
