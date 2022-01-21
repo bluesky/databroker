@@ -5,7 +5,7 @@ dask[array,bag]
 doct
 event-model >=1.16.0
 humanize
-intake >=0.5.5
+intake >=0.5.5, <=0.6.4
 jinja2
 jsonschema
 mongoquery
@@ -14,7 +14,7 @@ msgpack-numpy  # to be split into extras or a separate package
 numpy
 pandas
 pims
-pymongo  # to be split into extras or a separate package
+pymongo >=3.0 # to be split into extras or a separate package
 pytz
 pyyaml
 requests

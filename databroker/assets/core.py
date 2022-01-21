@@ -116,7 +116,7 @@ def bulk_insert_datum(col, resource, datum_ids,
             apply_to_dict_recursively(datum, sanitize_np)
             yield datum
 
-    col.insert(datum_factory())
+    col.insert_many(datum_factory())
 
 
 def bulk_register_datum_table(datum_col,
