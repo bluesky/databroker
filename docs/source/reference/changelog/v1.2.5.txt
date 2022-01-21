@@ -9,3 +9,4 @@ Fixed
 * several typos
 * compatibility with pymongo 4
 * problem with intake v0.6.5
+* stop document metadata access
