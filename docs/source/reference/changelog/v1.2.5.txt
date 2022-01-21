@@ -1,0 +1,12 @@
+.. currentmodule:: databroker
+
+v1.2.5 (2022-1-21)
+-------------------
+
+Fixed
++++++
+
+* several typos
+* compatibility with pymongo 4
+* problem with intake v0.6.5
+* stop document metadata access
