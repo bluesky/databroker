@@ -213,6 +213,13 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
         # some "magic" here that is helpful in an interactive setting.
         if isinstance(key, str):
             # CASE 1: Interpret key as a uid or partial uid.
+            if len(key) == 36:
+                # This looks like a full uid. Try direct lookup first.
+                try:
+                    return super().__getitem__(key)
+                except KeyError:
+                    # Fall back to partial uid lookup below.
+                    pass
             return self._lookup_by_partial_uid(key)
         elif isinstance(key, int):
             if key > 0:
