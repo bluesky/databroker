@@ -4,7 +4,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 import pydantic
-from tiled.server.core import entry, PatchedStreamingResponse
+from tiled.server.core import PatchedStreamingResponse
+from tiled.server.dependencies import entry
 
 
 class NameDocumentPair(pydantic.BaseModel):
