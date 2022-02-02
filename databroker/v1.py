@@ -1718,7 +1718,7 @@ class _GetDocumentsRouter:
         self.prepare_hook = prepare_hook
         self.merge_config_into_event = merge_config_into_event
         self.stream_name = stream_name
-        self._descriptors = set()
+        self._descriptors = dict()
 
     def __call__(self, name, doc):
         # Special case when there is no Run Stop doc.
@@ -1731,7 +1731,7 @@ class _GetDocumentsRouter:
     def descriptor(self, doc):
         "Cache descriptor uid and pass it through if it is stream of interest."
         if self.stream_name is ALL or doc.get('name', 'primary') == self.stream_name:
-            self._descriptors.add(doc['uid'])
+            self._descriptors[doc['uid']] = doc
             yield 'descriptor', doc
 
     def event_page(self, doc):
@@ -1746,7 +1746,11 @@ class _GetDocumentsRouter:
             # Mutate event in place, merging in content from other documents
             # and discarding fields excluded by the user.
             self.merge_config_into_event(doc)
-            # If the mutation above leaves event['data'] empty, omit it.
+            descriptor = self._descriptors[doc['descriptor']]
+            external_keys = {k for k, v in descriptor['data_keys'].items()
+                             if 'external' in v}
+            doc['filled'] = {k: False for k in external_keys}
+            # if the mutation above leaves event['data'] empty, omit it.
             if doc['data']:
                 yield 'event', doc
 
