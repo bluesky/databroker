@@ -1718,7 +1718,7 @@ class _GetDocumentsRouter:
         self.prepare_hook = prepare_hook
         self.merge_config_into_event = merge_config_into_event
         self.stream_name = stream_name
-        self._descriptors = set()
+        self._descriptors = dict()
 
     def __call__(self, name, doc):
         # Special case when there is no Run Stop doc.
@@ -1731,7 +1731,7 @@ class _GetDocumentsRouter:
     def descriptor(self, doc):
         "Cache descriptor uid and pass it through if it is stream of interest."
         if self.stream_name is ALL or doc.get('name', 'primary') == self.stream_name:
-            self._descriptors.add(doc['uid'])
+            self._descriptors[doc['uid']] = doc
             yield 'descriptor', doc
 
     def event_page(self, doc):
