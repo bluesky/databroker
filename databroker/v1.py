@@ -1746,7 +1746,11 @@ class _GetDocumentsRouter:
             # Mutate event in place, merging in content from other documents
             # and discarding fields excluded by the user.
             self.merge_config_into_event(doc)
-            # If the mutation above leaves event['data'] empty, omit it.
+            descriptor = self._descriptors[doc['descriptor']]
+            external_keys = {k for k, v in descriptor['data_keys'].items()
+                             if 'external' in v}
+            doc['filled'] = {k: False for k in external_keys}
+            # if the mutation above leaves event['data'] empty, omit it.
             if doc['data']:
                 yield 'event', doc
 
