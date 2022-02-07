@@ -5,6 +5,7 @@ event-model
 fastapi
 mongomock
 msgpack
+pims
 pydantic
 pymongo
 pytz
