@@ -22,6 +22,7 @@ import pymongo.errors
 import toolz.itertoolz
 import xarray
 
+from tiled.adapters.xarray import DatasetAdapter
 from tiled.structures.array import (
     ArrayStructure,
     ArrayMacroStructure,
@@ -559,7 +560,7 @@ class DatasetFromDocuments:
         # but we put the stream_name there.
         self.metadata = self._run[
             self._stream_name
-            ].metadata.copy()  # {"descriptors": [...], "stream_name: "..."}
+        ].metadata.copy()  # {"descriptors": [...], "stream_name: "..."}
         # Put the stream_name in attrs so it shows up in the xarray repr.
         self.metadata["attrs"] = {"stream_name": self.metadata["stream_name"]}
 
@@ -968,90 +969,28 @@ class Config(MapAdapter):
     ...
 
 
-class ConfigDatasetFromDocuments(DatasetFromDocuments):
-    """
-    An xarray.Dataset from a configuration sub-dict of an Event stream
-    """
-
-    structure_family = "xarray_dataset"
-
-    def __init__(
-        self,
-        *,
-        run,
-        stream_name,
-        cutoff_seq_num,
-        event_descriptors,
-        event_collection,
-        sub_dict,
-        root_map,
-        object_name,
-    ):
-        super().__init__(
-            run=run,
-            stream_name=stream_name,
-            cutoff_seq_num=cutoff_seq_num,
-            event_descriptors=event_descriptors,
-            event_collection=event_collection,
-            sub_dict=sub_dict,
-            root_map=root_map,
-        )
-        self._object_name = object_name
-
-    def macrostructure(self):
-        # The `data_keys` in a series of Event Descriptor documents with the same
-        # `name` MUST be alike, so we can choose one arbitrarily.
-        # IMPORTANT: Access via self.metadata so that the transforms are applied.
-        descriptor, *_ = self.metadata["descriptors"]
-        data_vars = {}
-        dim_counter = itertools.count()
-        data_keys = (
-            descriptor.get("configuration", {})
-            .get(self._object_name, {})
-            .get("data_keys", {})
-        )
-        unicode_columns = {}
-        if self._sub_dict == "data":
-            # Collect the keys (column names) that are of "string" data type.
-            # but do not have a specific length.
-            unicode_keys = []
-            for key, field_metadata in descriptor["data_keys"].items():
-                if field_metadata["dtype"] == "string":
-                    # Skip this if it has a dtype_str with an itemsize.
-                    dtype_str = field_metadata.get("dtype_str")
-                    if dtype_str is not None:
-                        if numpy.dtype(dtype_str).itemsize != 0:
-                            continue
-                    unicode_keys.append(key)
-            # Load the all the data for unicode columns to figure out the itemsize.
-            # We have no other choice, except to *guess* but we'd be in
-            # trouble if our guess were too small, and we'll waste space
-            # if our guess is too large.
-            if unicode_keys:
-                unicode_columns.update(self._get_columns(unicode_keys, slices=None))
-        # Build the time coordinate.
-        time_shape = (self._cutoff_seq_num - 1,)
-        time_chunks = normalize_chunks(
-            ("auto",) * len(time_shape),
-            shape=time_shape,
-            limit=CHUNK_SIZE_LIMIT,
-            dtype=FLOAT_DTYPE.to_numpy_dtype(),
-        )
-        time_variable = ArrayStructure(
-            macro=ArrayMacroStructure(
-                shape=time_shape,
-                chunks=time_chunks,
-                dims=["time"],
-            ),
-            micro=FLOAT_DTYPE,
-        )
-        time_data_array = DataArrayStructure(
-            macro=DataArrayMacroStructure(
-                variable=time_variable, coords={}, coord_names=[], name="time"
-            ),
-            micro=None,
-        )
-        for key, field_metadata in data_keys.items():
+def build_config_xarray(
+    *,
+    event_descriptors,
+    sub_dict,
+    object_name,
+):
+    first_descriptor, *_ = event_descriptors
+    data_keys = first_descriptor["configuration"][object_name]["data_keys"]
+    # All the data is stored in-line in the Event Descriptor documents.
+    # The overwhelming majority of Runs have just one Event Descriptor,
+    # and those that have more than one have only a couple, so we do
+    # slow appending loop here knowing that we won't pay for too
+    # many iterations except in vanishingly rare pathological cases.
+    columns = {key: [] for key in data_keys}
+    for descriptor in event_descriptors:
+        for key in data_keys:
+            columns[key].append(descriptor["configuration"][object_name][sub_dict][key])
+    data_arrays = {}
+    dim_counter = itertools.count()
+    for key, field_metadata in data_keys.items():
+        attrs = {}
+        if sub_dict == "data":
             # if the EventDescriptor doesn't provide names for the
             # dimensions (it's optional) use the same default dimension
             # names that xarray would.
@@ -1060,50 +999,18 @@ class ConfigDatasetFromDocuments(DatasetFromDocuments):
             except KeyError:
                 ndim = len(field_metadata["shape"])
                 dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
-            attrs = {}
             units = field_metadata.get("units")
             if units:
                 if isinstance(units, str):
                     attrs["units_string"] = units
                 # TODO We may soon add a more structured units type, which
                 # would likely be a dict here.
-            if self._sub_dict == "data":
-                shape = tuple((self._cutoff_seq_num - 1, *field_metadata["shape"]))
-                dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[field_metadata["dtype"]]
-                if dtype.kind == Kind.unicode:
-                    array = unicode_columns[key]
-                    dtype = BuiltinDtype.from_numpy_dtype(
-                        numpy.dtype(f"<U{array.itemsize // 4}")
-                    )
-            else:
-                # assert sub_dict == "timestamps"
-                shape = tuple((self._cutoff_seq_num - 1,))
-                dtype = FLOAT_DTYPE
-            suggested_chunks = ("auto",) * len(shape)
-            chunks = normalize_chunks(
-                suggested_chunks,
-                shape=shape,
-                limit=CHUNK_SIZE_LIMIT,
-                dtype=dtype.to_numpy_dtype(),
-            )
-            variable = ArrayStructure(
-                macro=ArrayMacroStructure(shape=shape, chunks=chunks, dims=dims),
-                micro=dtype,
-            )
-            data_array = DataArrayStructure(
-                macro=DataArrayMacroStructure(
-                    variable,
-                    coords={"time": time_data_array},
-                    coord_names=["time"],
-                    name=key,
-                ),
-                micro=None,
-            )
-            data_vars[key] = data_array
-        return DatasetMacroStructure(
-            data_vars=data_vars,
-            coords={"time": time_data_array},
-        )
+        else:
+            dims = ["time"]
+        data_array = xarray.DataArray(columns[key], dims=dims, attrs=attrs)
+        data_arrays[key] = data_array
+    ds = xarray.Dataset(data_arrays)
+    return DatasetAdapter(ds)
 
 
 class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersMixin):
@@ -1561,14 +1468,9 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 "config": lambda: Config(
                     OneShotCachedMap(
                         {
-                            object_name: lambda object_name=object_name: ConfigDatasetFromDocuments(
-                                run=run,
-                                stream_name=stream_name,
-                                cutoff_seq_num=cutoff_seq_num,
+                            object_name: lambda object_name=object_name: build_config_xarray(
                                 event_descriptors=event_descriptors,
-                                event_collection=self._event_collection,
                                 object_name=object_name,
-                                root_map=self.root_map,
                                 sub_dict="data",
                             )
                             for object_name in object_names
@@ -1578,14 +1480,9 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 "config_timestamps": lambda: Config(
                     OneShotCachedMap(
                         {
-                            object_name: lambda object_name=object_name: ConfigDatasetFromDocuments(
-                                run=run,
-                                stream_name=stream_name,
-                                cutoff_seq_num=cutoff_seq_num,
+                            object_name: lambda object_name=object_name: build_config_xarray(
                                 event_descriptors=event_descriptors,
-                                event_collection=self._event_collection,
                                 object_name=object_name,
-                                root_map=self.root_map,
                                 sub_dict="timestamps",
                             )
                             for object_name in object_names
