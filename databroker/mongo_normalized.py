@@ -66,22 +66,23 @@ MAX_AD_FRAMES_PER_CHUNK = int(os.getenv("DATABROKER_MAX_AD_FRAMES_PER_CHUNK", "1
 logger = logging.getLogger(__name__)
 
 
-def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns=None):
-    def _try_descr(field_metadata):
-        descr = field_metadata.get("dtype_descr")
-        if descr:
-            if len(descr) == 1 and descr[0][0] == "":
-                return None
-            dtype = StructDtype.from_numpy_dtype(numpy.dtype(descr))
-            if dtype.max_depth() > 1:
-                raise RuntimeError(
-                    "We can not yet cope with multiple nested structured dtypes.  "
-                    f"{descr}"
-                )
-            return dtype
-        else:
+def _try_descr(field_metadata):
+    descr = field_metadata.get("dtype_descr")
+    if descr:
+        if len(descr) == 1 and descr[0][0] == "":
             return None
+        dtype = StructDtype.from_numpy_dtype(numpy.dtype(descr))
+        if dtype.max_depth() > 1:
+            raise RuntimeError(
+                "We can not yet cope with multiple nested structured dtypes.  "
+                f"{descr}"
+            )
+        return dtype
+    else:
+        return None
 
+
+def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns=None):
     # Build the time coordinate.
     time_shape = (max_seq_num - 1,)
     time_chunks = normalize_chunks(
@@ -982,10 +983,33 @@ def build_config_xarray(
     # and those that have more than one have only a couple, so we do
     # slow appending loop here knowing that we won't pay for too
     # many iterations except in vanishingly rare pathological cases.
-    columns = {key: [] for key in data_keys}
+    raw_columns = {key: [] for key in data_keys}
     for descriptor in event_descriptors:
         for key in data_keys:
-            columns[key].append(descriptor["configuration"][object_name][sub_dict][key])
+            raw_columns[key].append(
+                descriptor["configuration"][object_name][sub_dict][key]
+            )
+    # Enforce dtype.
+    columns = {}
+    for key, column in raw_columns.items():
+        field_metadata = data_keys[key]
+        dtype = _try_descr(field_metadata)
+        dt_str = field_metadata.get("dtype_str")
+        if dtype is not None:
+            if len(getattr(column[0], "shape", ())) > 2:
+                raise RuntimeError(
+                    "We do not yet support general structured arrays, only 1D ones."
+                )
+            numpy_dtype = dtype.to_numpy_dtype()
+        # if we have a detailed string, trust that
+        elif dt_str is not None:
+            numpy_dtype = numpy.dtype(dt_str)
+        # otherwise guess!
+        else:
+            numpy_dtype = JSON_DTYPE_TO_MACHINE_DATA_TYPE[
+                field_metadata["dtype"]
+            ].to_numpy_dtype()
+        columns[key] = numpy.array(column, dtype=numpy_dtype)
     data_arrays = {}
     dim_counter = itertools.count()
     for key, field_metadata in data_keys.items():
