@@ -96,6 +96,18 @@ class Registry:
         )
 
 
+def _no_aliases():
+    raise NotImplementedError("Aliases have been removed. Use search instead.")
+
+
+def _No_filters():
+    raise NotImplementedError(
+        """Filters have been removed. Chain searches instead like
+
+
+>>> db.v2.search(...).search(...)""")
+
+
 class Broker:
     """
     This supports the original Broker API but implemented on intake.Catalog.
@@ -104,8 +116,6 @@ class Broker:
     def __init__(self, catalog):
         self._catalog = catalog
         self.prepare_hook = wrap_in_deprecated_doct
-        self.aliases = {}
-        self.filters = {}
         self.v2._Broker__v1 = self
         self._reg = Registry(catalog)
 
@@ -117,6 +127,28 @@ class Broker:
             return [self._catalog.get_serializer()], []
 
         self._run_router = event_model.RunRouter([factory])
+
+    @property
+    def aliases(self):
+        _no_aliases()
+
+    @aliases.setter
+    def aliases(self, value):
+        _no_aliases()
+
+    @property
+    def filters(self):
+        _no_filters()
+
+    @filters.setter
+    def filters(self):
+        _no_filters()
+
+    def add_filter(self, *args, **kwargs):
+        _no_filters()
+
+    def clear_filters(self, *args, **kwargs):
+        _no_filters()
 
     @property
     def _serializer(self):
@@ -209,22 +241,17 @@ class Broker:
     def stream_names_given_header(self):
         return list(self._catalog)
 
-    def fetch_external(self, start, stop):
-        return {k: func(start, stop) for k, func in self.external_fetchers.items()}
-
     def _patch_state(self, catalog):
         "Copy references to v1 state."
-        catalog.v1.aliases = self.aliases
-        catalog.v1.filters = self.filters
         catalog.v1.prepare_hook = self.prepare_hook
 
     def __call__(self, text_search=None, **kwargs):
 
-        if self.filters:
-            raise NotImplementedError("filters are no longer supported")
         results_catalog = self._catalog.search(
             TimeRange(since=kwargs.pop("since", None), until=kwargs.pop("until", None))
         )
+        if "data_key" in kwargs:
+            raise NotImplementedError("Search by data key is no longer implemented.")
         if kwargs:
             results_catalog = results_catalog.search(RawMongo(start=kwargs))
         if text_search:
@@ -511,6 +538,12 @@ class Broker:
             data_keys = descriptors[0]["data_keys"]
             if not fill:
                 external_fields = {k for k, v in data_keys.items() if v.get("external")}
+                requested_external = fields.intersection(external_fields)
+                if requested_external:
+                    raise ValueError(
+                        f"The fields {requested_external} are externally stored data "
+                        "and can only be requested with fill=True."
+                    )
                 applicable_fields = (fields or set(data_keys)) - external_fields
             else:
                 applicable_fields = fields or set(data_keys)
@@ -592,129 +625,6 @@ class Broker:
         dataset = xarray.merge(datasets)
         data_array = dataset[name]
         return Images(data_array=data_array)
-
-    def alias(self, key, **query):
-        """
-        Create an alias for a query.
-
-        Parameters
-        ----------
-        key : string
-            must be a valid Python identifier
-        query :
-            keyword argument comprising a query
-
-        Examples
-        --------
-        Define an alias that searches for headers with purpose='calibration'.
-
-        >>> db.alias('cal', purpose='calibration')
-
-        Use it.
-
-        >>> headers = db.cal  # -> db(purpose='calibration')
-
-        Review defined aliases.
-
-        >>> db.aliases
-        {'cal': {'purpose': 'calibration'}}
-        """
-        if hasattr(self, key) and key not in self.aliases:
-            raise ValueError("'%s' is not a legal alias." % key)
-        self.aliases[key] = query
-
-    def dynamic_alias(self, key, func):
-        """
-        Create an alias for a "dynamic" query, a function that returns a query.
-
-        Parameters
-        ----------
-        key : string
-            must be a valid Python identifier
-        func : callable
-            When called with no arguments, must return a dict that is a valid
-            query.
-
-        Examples
-        --------
-        Define an alias to get headers from the last 24 hours.
-
-        >>> import time
-        >>> db.dynamic_alias('today',
-        ...                  lambda: {'since': time.time() - 24*60*60})
-
-        Use it.
-
-        >>> headers = db.today
-
-        Define an alias to get headers with the 'user' field in metadata
-        matches the current logged-in user.
-
-        >>> import getpass
-        >>> db.dynamic_alias('mine', lambda: {'user': getpass.getuser()})
-
-        Use it
-
-        >>> headers = db.mine
-        """
-        if hasattr(self, key) and key not in self.aliases:
-            raise ValueError("'%s' is not a legal alias." % key)
-        self.aliases[key] = func
-
-    def add_filter(self, **kwargs):
-        """
-        Add query to the list of 'filter' queries.
-
-        Any query passed to ``db.add_filter()`` is stashed and "AND-ed" with
-        all future queries.
-
-        ``db.add_filter(**kwargs)`` is just a convenient way to spell
-        ``db.filters.update(**kwargs)``.
-
-        Examples
-        --------
-        Filter all searches to restrict results to a specific user after a
-        March 2017.
-
-        >>> db.add_filter(user='Dan')
-        >>> db.add_filter(since='2017-3')
-
-        The following query is equivalent to
-        ``db(user='Dan', plan_name='scan')``.
-
-        >>> db(plan_name='scan')
-
-        Review current filters.
-
-        >>> db.filters
-        {'user': 'Dan', 'since': '2017-3'}
-
-        Clear filters.
-
-        >>> db.clear_filters()
-
-        See Also
-        --------
-        :meth:`Broker.clear_filters`
-
-        """
-        self.filters.update(**kwargs)
-
-    def clear_filters(self, **kwargs):
-        """
-        Clear all 'filter' queries.
-
-        Filter queries are combined with every given query using '$and',
-        acting as a filter to restrict the results.
-
-        ``Broker.clear_filters()`` is just a convenient way to spell
-        ``Broker.filters.clear()``.
-
-        See Also
-        --------
-        :meth:`Broker.add_filter`
-        """
-        self.filters.clear()
 
     def __getattr__(self, key):
         try:

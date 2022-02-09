@@ -26,7 +26,7 @@ def get_uids(result):
         return result
 
 
-def build_intake_jsonl_backed_broker(request):
+def build_jsonl_backed_broker(request):
     tmp_dir = tempfile.TemporaryDirectory()
 
     def teardown():
@@ -39,19 +39,10 @@ def build_intake_jsonl_backed_broker(request):
     return from_tree(broker).v1
 
 
-def build_intake_mongo_backed_broker(request):
-    mongomock = pytest.importorskip('mongomock')
-    client = mongomock.MongoClient()
-
-    def teardown():
-        client.close()
-
-    request.addfinalizer(teardown)
-    broker = mongo_normalized.Tree.from_uri(
-        uri=client['mds'],
-        asset_registry_uri=client['assets'],
+def build_tiled_mongo_backed_broker(request):
+    adapter = mongo_normalized.MongoAdapter.from_mongomock(
         handler_registry={'NPY_SEQ': ophyd.sim.NumpySeqHandler})
-    return from_tree(broker).v1
+    return from_tree(adapter).v1
 
 
 def build_intake_mongo_embedded_backed_broker(request):
@@ -151,7 +142,7 @@ def build_hdf5_backed_broker(request):
                        {'': fs}, {}, name=None)
 
 
-def build_pymongo_backed_broker(request):
+def build_legacy_mongo_backed_broker(request):
     '''Provide a function level scoped MDS instance talking to
     temporary database on localhost:27017 with v1 schema.
 
@@ -180,79 +171,3 @@ def build_pymongo_backed_broker(request):
     request.addfinalizer(delete_fs)
 
     return v0.Broker(mds, fs)
-
-
-def start_md_server(testing_config):
-    cmd = ["start_md_server", "--mongo-host",
-           testing_config["mongohost"],
-           "--mongo-port",
-           str(testing_config['mongoport']),
-           "--database", testing_config['database'],
-           "--timezone", testing_config['tzone'],
-           "--service-port",
-           str(testing_config['serviceport'])]
-    print(' '.join(cmd))
-    proc = Popen(cmd)
-    print('Started the server with configuration..:{}'.format(testing_config))
-    return proc
-
-
-def stop_md_server(proc, testing_config):
-
-    from pymongo import MongoClient
-    Popen(['kill', '-9', str(proc.pid)])
-    conn = MongoClient(host=testing_config['mongohost'],
-                       port=testing_config['mongoport'])
-    conn.drop_database(testing_config['database'])
-
-
-def build_client_backend_broker(request):
-    from ..headersource.client import MDS
-    from ..assets.utils import create_test_database
-    from ..assets.mongo import Registry
-    import requests.exceptions
-    from random import randint
-    import ujson
-
-    port = randint(9000, 60000)
-    testing_config = dict(mongohost='localhost', mongoport=27017,
-                          database='mds_test'+str(uuid.uuid4()),
-                          serviceport=port, tzone='US/Eastern')
-
-    proc = start_md_server(testing_config)
-
-    tmds = MDS({'host': 'localhost',
-                'port': port,
-                'timezone': 'US/Eastern'})
-    db_name = "fs_testing_base_disposable_{uid}"
-    fs_test_conf = create_test_database(host='localhost',
-                                        port=27017, version=1,
-                                        db_template=db_name)
-    fs = Registry(fs_test_conf)
-
-    def tear_down():
-        stop_md_server(proc, testing_config)
-
-    request.addfinalizer(tear_down)
-
-    base_url = 'http://{}:{}/'.format('localhost',
-                                      testing_config['serviceport'])
-    # Wait here until the server responds. Time out after 1 minute.
-    TIMEOUT = 60  # seconds
-    startup_time = time.time()
-    url = base_url + 'run_start'
-    message = dict(query={}, signature='find_run_starts')
-    print("Waiting up to 60 seconds for the server to start up....")
-    while True:
-        if time.time() - startup_time > TIMEOUT:
-            raise Exception("Server startup timed out.")
-        try:
-            r = requests.get(url, params=ujson.dumps(message))
-        except requests.exceptions.ConnectionError:
-            time.sleep(1)
-            continue
-        else:
-            break
-    print("Server is up!")
-
-    return v0.Broker(tmds, fs)
