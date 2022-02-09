@@ -2,8 +2,6 @@ import pytest
 
 import xarray
 
-from databroker.core import BlueskyRun
-
 from ..projector import (
     get_run_projection,
     project_xarray,
@@ -131,7 +129,7 @@ def make_mock_run(projections, sample):
     return MockRun(projections, sample)
 
 
-def dont_panic(run: BlueskyRun, *args, **kwargs):
+def dont_panic(run, *args, **kwargs):
     # TODO test that args and kwargs are passed
     return xarray.DataArray([42, 42, 42, 42, 42])
 

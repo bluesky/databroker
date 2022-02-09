@@ -3,8 +3,6 @@ from typing import Dict, List
 
 import xarray
 
-from .core import BlueskyRun
-
 
 __all__ = ['Projector', 'project_xarray']
 
@@ -13,7 +11,7 @@ class ProjectionError(Exception):
     pass
 
 
-def get_run_projection(run: BlueskyRun, projection_name: str = None):
+def get_run_projection(run, projection_name: str = None):
     """Finds a projection in the run.
     If projection_name is provided, searches through the projections in the run
     to find a match.
@@ -56,7 +54,7 @@ def get_run_projection(run: BlueskyRun, projection_name: str = None):
     return None
 
 
-def get_calculated_value(run: BlueskyRun, key: str, mapping: dict):
+def get_calculated_value(run, key: str, mapping: dict):
     """Calls and returns the callable from the calculated projection mapping.
 
     It is ancticipated that the return will be
@@ -146,7 +144,7 @@ class Projector():
     def issues(self):
         return self._issues
 
-    def project(self, run: BlueskyRun, projection=None, projection_name=None):
+    def project(self, run, projection=None, projection_name=None):
         """Iterates a projection and communicates fields through callbacks.
 
         Selects projection based on logic of get_run_projection().
@@ -269,7 +267,7 @@ class Projector():
                 self._issues.append(f"Unknown location: {projection_location} in projection.")
 
 
-def project_xarray(run: BlueskyRun, *args, projection=None, projection_name=None):
+def project_xarray(run, *args, projection=None, projection_name=None):
     """Produces an xarray Dataset by projecting the provided run.
 
     EXPERIMENTAL: projection code is experimental and could change in the near future.
@@ -401,7 +399,7 @@ def get_xarray_config_field(dataset: xarray.Dataset,
 
 
 def project_summary_dict(
-            run: BlueskyRun,
+            run,
             *args,
             return_fields: List[str] = [],
             projection=None,
