@@ -626,15 +626,6 @@ class Broker:
         data_array = dataset[name]
         return Images(data_array=data_array)
 
-    def __getattr__(self, key):
-        try:
-            query = self.aliases[key]
-        except KeyError:
-            raise AttributeError(key)
-        if callable(query):
-            query = query()
-        return self(**query)
-
     def restream(self, headers, fields=None, fill=False):
         """
         Get all Documents from given run(s).
