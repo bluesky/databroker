@@ -30,7 +30,6 @@ param_map = {'sqlite': build_sqlite_backed_broker,
              'mongo-legacy': build_legacy_mongo_backed_broker,
              'jsonl': build_jsonl_backed_broker,
              'mongo-tiled': build_tiled_mongo_backed_broker,
-             # 'intake_mongo_embedded': build_intake_mongo_embedded_backed_broker,
              }
 params = [
     # Apply the mark pytest.mark.flaky to a *fixture* as shown in
@@ -73,7 +72,7 @@ def mds_all(request, db):
     try:
         return db.mds
     except AttributeError:
-        pytest.skip("mds tests do not apply to intake-backed Broker")
+        pytest.skip("mds tests do not apply to tiled-backed Broker")
 
 
 @pytest.fixture(params=[mqmds,
