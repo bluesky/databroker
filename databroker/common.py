@@ -32,7 +32,7 @@ class CatalogOfBlueskyRunsMixin:
 
     def __repr__(self):
         # This is a copy/paste of the general-purpose implementation
-        # tiled.trees.utils.tree_repr
+        # tiled.adapters.utils.tree_repr
         # with some modifications to extract scan_id from the metadata.
         sample = self.items_indexer[:10]
         # Use scan_id (int) if defined; otherwise fall back to uid.

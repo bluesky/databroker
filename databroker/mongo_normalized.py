@@ -2155,10 +2155,10 @@ def _validate_shape(key, data, expected_shape):
 def build_summary(run_start_doc, run_stop_doc, stream_names):
     summary = {
         "uid": run_start_doc["uid"],
-        "scan_id": run_start_doc["scan_id"],
+        "scan_id": run_start_doc.get("scan_id"),
         "timestamp": run_start_doc["time"],
         "datetime": datetime.fromtimestamp(run_start_doc["time"]),
-        "plan_name": run_start_doc["plan_name"],
+        "plan_name": run_start_doc.get("plan_name"),
         "stream_names": stream_names,
     }
     if run_stop_doc is None:

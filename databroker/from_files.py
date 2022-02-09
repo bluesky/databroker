@@ -1,4 +1,4 @@
-from tiled.trees.files import Tree as FileTree
+from tiled.adapters.files import DirectoryAdapter
 
 from .mongo_normalized import Tree as MongoNormalizedTree
 
@@ -50,7 +50,7 @@ class MsgpackAdapter:
         return self._in_memory_mongo_tree[self._ser]
 
 
-class JSONLTree(FileTree):
+class JSONLTree(DirectoryAdapter):
 
     # This is set up in Tree.from_directory.
     DEFAULT_READERS_BY_MIMETYPE = {}
@@ -105,7 +105,7 @@ class JSONLTree(FileTree):
         return _Serializer(self.directory)
 
 
-class MsgpackTree(FileTree):
+class MsgpackTree(DirectoryAdapter):
 
     # This is set up in Tree.from_directory.
     DEFAULT_READERS_BY_MIMETYPE = {}

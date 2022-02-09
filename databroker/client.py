@@ -1,3 +1,4 @@
+import collections.abc
 import keyword
 import warnings
 
@@ -229,7 +230,16 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
                 # CASE 3: Interpret key as a recently lookup, as in
                 # `catalog[-1]` is the latest entry.
                 return self.values_indexer[key]
-        elif isinstance(key, tuple):
+        elif isinstance(key, slice):
+            if (key.start is None) or (key.start >= 0):
+                raise ValueError(
+                    "For backward-compatibility reasons, slicing here "
+                    "is limited to negative indexes. "
+                    "Use .values_indexer to slice how you please."
+                )
+            return self.values_indexer.__getitem__(key)
+        elif isinstance(key, collections.abc.Iterable):
+            # We know that isn't a str because we check that above.
             # Recurse.
             return [self[item] for item in key]
         else:
