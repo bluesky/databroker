@@ -38,7 +38,7 @@ params = [
     'mongo-legacy',
     'mongo-tiled',
     'sqlite',
-    'jsonl',
+    # 'jsonl',
 ]
 
 
