@@ -468,6 +468,7 @@ class BlueskyEventStream(MapAdapter, BlueskyEventStreamMixin):
 
 class ArrayFromDocuments:
 
+    structure_family = "array"
     metadata = {}
 
     def __init__(self, data_array_adapter):
@@ -479,19 +480,32 @@ class ArrayFromDocuments:
     def read_block(self, block, slice=None):
         return self._data_array_adapter.read_block(block, slice=slice)
 
+    def macrostructure(self):
+        return self._data_array_adapter.macrostructure().variable.macro
+
+    def microstructure(self):
+        return self._data_array_adapter.macrostructure().variable.micro
+
 
 class TimeArrayFromDocuments:
 
+    structure_family = "array"
     metadata = {}
 
-    def __init__(self, dataset_adapter):
-        self._dataset_adapter = dataset_adapter
+    def __init__(self, data_array_adapter):
+        self._data_array_adapter = data_array_adapter
 
     def read(self, slice):
-        return self._dataset_adapter.read(slice)
+        return self._data_array_adapter.read(slice)
 
     def read_block(self, block, slice=None):
-        return self._dataset_adapter.read_block(None, block, coord="time", slice=slice)
+        return self._data_array_adapter.read_block(None, block, coord="time", slice=slice)
+
+    def macrostructure(self):
+        return self._data_array_adapter.macrostructure().coords["time"].macro
+
+    def microstructure(self):
+        return self._data_array_adapter.macrostructure().coords["time"].micro
 
 
 class DataArrayFromDocuments:
@@ -521,6 +535,12 @@ class DataArrayFromDocuments:
             return MapAdapter({"time": TimeArrayFromDocuments(self)})
         else:
             raise KeyError(key)
+
+    def macrostructure(self):
+        return self._dataset_adapter.macrostructure().data_vars[self._field].macro
+
+    def microstructure(self):
+        return self._dataset_adapter.macrostructure().data_vars[self._field].micro
 
 
 class DatasetFromDocuments:
