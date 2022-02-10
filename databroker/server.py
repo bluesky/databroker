@@ -2,7 +2,7 @@ import json
 import msgpack
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Security
 import pydantic
 from tiled.server.core import PatchedStreamingResponse
 from tiled.server.dependencies import entry
@@ -18,7 +18,11 @@ router = APIRouter()
 
 @router.get("/documents/{path:path}", response_model=NameDocumentPair)
 @router.get("/documents", response_model=NameDocumentPair, include_in_schema=False)
-def documents(request: Request, fill: Optional[bool] = False, run=Depends(entry)):
+def documents(
+    request: Request,
+    fill: Optional[bool] = False,
+    run=Security(entry, scopes=["read:data", "read:metadata"]),
+):
     # Check that this is a BlueskyRun.
     if not hasattr(run, "documents"):
         raise HTTPException(status_code=404, detail="This is not a BlueskyRun.")
