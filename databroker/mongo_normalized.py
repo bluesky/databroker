@@ -2116,7 +2116,8 @@ def _validate_shape(key, data, expected_shape):
     """
     if data.shape == expected_shape:
         return data
-    if data.shape.ndim != expected_shape.ndim:
+    if len(data.shape) != len(expected_shape):
+        # The number of dimensions are different; padding can't fix this.
         raise BadShapeMetadata(
             f"For data key {key} "
             f"shape {data.shape} does not "
