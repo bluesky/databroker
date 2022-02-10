@@ -1060,7 +1060,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         transforms=None,
         metadata=None,
         access_policy=None,
-        authenticated_identity=None,
+        principal=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
     ):
@@ -1138,7 +1138,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
             access_policy=access_policy,
-            authenticated_identity=authenticated_identity,
+            principal=principal,
         )
 
     @classmethod
@@ -1150,7 +1150,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         transforms=None,
         metadata=None,
         access_policy=None,
-        authenticated_identity=None,
+        principal=None,
         cache_ttl_complete=60,  # seconds
         cache_ttl_partial=2,  # seconds
     ):
@@ -1223,7 +1223,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             cache_of_partial_bluesky_runs=cache_of_partial_bluesky_runs,
             metadata=metadata,
             access_policy=access_policy,
-            authenticated_identity=authenticated_identity,
+            principal=principal,
         )
 
     def __init__(
@@ -1239,7 +1239,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         queries=None,
         sorting=None,
         access_policy=None,
-        authenticated_identity=None,
+        principal=None,
     ):
         "This is not user-facing. Use MongoAdapter.from_uri."
         self._run_start_collection = metadatastore_db.get_collection("run_start")
@@ -1276,7 +1276,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
                 f"Access policy {access_policy} is not compatible with this MongoAdapter."
             )
         self._access_policy = access_policy
-        self._authenticated_identity = authenticated_identity
+        self._principal = principal
         self._serializer = None
         super().__init__()
 
@@ -1334,7 +1334,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         metadata=UNCHANGED,
         queries=UNCHANGED,
         sorting=UNCHANGED,
-        authenticated_identity=UNCHANGED,
+        principal=UNCHANGED,
         **kwargs,
     ):
         if metadata is UNCHANGED:
@@ -1343,8 +1343,8 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             queries = self.queries
         if sorting is UNCHANGED:
             sorting = self._sorting
-        if authenticated_identity is UNCHANGED:
-            authenticated_identity = self._authenticated_identity
+        if principal is UNCHANGED:
+            principal = self._principal
         return type(self)(
             *args,
             metadatastore_db=self._metadatastore_db,
@@ -1357,7 +1357,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             queries=queries,
             sorting=sorting,
             access_policy=self.access_policy,
-            authenticated_identity=authenticated_identity,
+            principal=principal,
             **kwargs,
         )
 
@@ -1366,8 +1366,8 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         return self._access_policy
 
     @property
-    def authenticated_identity(self):
-        return self._authenticated_identity
+    def principal(self):
+        return self._principal
 
     @property
     def metadata_stale_at(self):
@@ -1643,18 +1643,18 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         )
 
     def authenticated_as(self, identity):
-        if self._authenticated_identity is not None:
+        if self._principal is not None:
             raise RuntimeError(
-                f"Already authenticated as {self.authenticated_identity}"
+                f"Already authenticated as {self.principal}"
             )
         if self._access_policy is not None:
             queries = self._access_policy.modify_queries(
                 self.queries,
                 identity,
             )
-            tree = self.new_variation(authenticated_identity=identity, queries=queries)
+            tree = self.new_variation(principal=identity, queries=queries)
         else:
-            tree = self.new_variation(authenticated_identity=identity)
+            tree = self.new_variation(principal=identity)
         return tree
 
     def search(self, query):
@@ -1766,9 +1766,10 @@ class SimpleAccessPolicy:
 
     ALL = object()  # sentinel
 
-    def __init__(self, access_lists, key):
+    def __init__(self, access_lists, key, provider):
         self.access_lists = {}
         self.key = key
+        self.provider = provider
         for identity, entries in (access_lists or {}).items():
             if isinstance(entries, str):
                 entries = import_object(entries)
@@ -1777,9 +1778,20 @@ class SimpleAccessPolicy:
     def check_compatibility(self, catalog):
         return isinstance(catalog, MongoAdapter)
 
-    def modify_queries(self, queries, authenticated_identity):
-        allowed = self.access_lists.get(authenticated_identity, [])
-        if (authenticated_identity is SpecialUsers.admin) or (allowed is self.ALL):
+    def modify_queries(self, queries, principal):
+        # Get the id (i.e. username) of this Principal for the
+        # associated authentication provider.
+        for identity in principal.identities:
+            if identity.provider == self.provider:
+                id = identity.id
+                break
+        else:
+            raise ValueError(
+                f"Principcal {principal} has no identity from provider {self.provider}. "
+                f"Its identities are: {principal.identities}"
+            )
+        allowed = self.access_lists.get(id, [])
+        if (id is SpecialUsers.admin) or (allowed is self.ALL):
             modified_queries = queries
         else:
             modified_queries = list(queries)
@@ -2083,7 +2095,7 @@ def _validate_shape(key, data, expected_shape):
     """
     if data.shape == expected_shape:
         return data
-    if data.shape.ndim != expected.shape.ndim:
+    if data.shape.ndim != expected_shape.ndim:
         raise BadShapeMetadata(
             f"For data key {key} "
             f"shape {data.shape} does not "
