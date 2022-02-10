@@ -504,6 +504,7 @@ class DataArrayFromDocuments:
     def __init__(self, dataset_adapter, field):
         self._dataset_adapter = dataset_adapter
         self._field = field
+        self.metadata = dataset_adapter.metadata["data_vars"].get(field, {})
 
     def read_block(self, block, slice=None):
         return self._dataset_adapter.read_block(self._field, block, slice=slice)
