@@ -26,7 +26,7 @@ if sys.version_info >= (3, 5):
         from ophyd.sim import hw
         return hw()
 
-param_map = {'sqlite': build_sqlite_backed_broker,
+param_map = {'sqlite-legacy': build_sqlite_backed_broker,
              'mongo-legacy': build_legacy_mongo_backed_broker,
              'jsonl': build_jsonl_backed_broker,
              'mongo-tiled': build_tiled_mongo_backed_broker,
@@ -37,7 +37,7 @@ params = [
     # pytest.param('sqlite', marks=pytest.mark.flaky(reruns=1, reruns_delay=2)),
     'mongo-legacy',
     'mongo-tiled',
-    'sqlite',
+    'sqlite-legacy',
     # 'jsonl',
 ]
 
