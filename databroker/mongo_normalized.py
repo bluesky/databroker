@@ -524,9 +524,10 @@ class DataArrayFromDocuments:
         return self._dataset_adapter.read_block(self._field, block, slice=slice)
 
     def read(self, slice=None):
+        da = self._dataset_adapter.read(fields=[self._field])[self._field]
         if slice:
-            raise NotImplementedError
-        return self._dataset_adapter.read(fields=[self._field])[self._field]
+            da = da[slice]
+        return da
 
     def __getitem__(self, key):
         if key == "variable":
