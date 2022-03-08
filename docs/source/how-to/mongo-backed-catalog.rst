@@ -86,7 +86,7 @@ supported: Users can access all the Runs in the MongoDB or none of them.
       asset_registry_db: mongodb://{{ env(DATABROKER_MONGO_USER) }}:{{ env(DATABROKER_MONGO_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
 
 
-   Refer to `PyMongo authentication documenation`_ for context.
+   Refer to `PyMongo authentication documentation`_ for context.
 
 #. Set these environment variables to provide access to the database.
 
@@ -113,7 +113,7 @@ If you choose to run MongoDB in a Docker container:
 
 .. _Enable authentication on MongoDB: https://docs.mongodb.com/manual/tutorial/enable-authentication/
 
-.. _PyMongo authentication documenation: https://pymongo.readthedocs.io/en/stable/examples/authentication.html#default-database-and-authsource
+.. _PyMongo authentication documentation: https://pymongo.readthedocs.io/en/stable/examples/authentication.html#default-database-and-authsource
 
 .. _container: https://hub.docker.com/_/mongo
 
