@@ -103,6 +103,7 @@ Search
 Common search queries can be done with a high-level Python interface.
 
 .. ipython:: python
+   :okwarning:
 
    from databroker.queries import TimeRange
    
