@@ -34,7 +34,7 @@ supports the full search capability of Databroker.*
             asset_registry_db: mongodb://HOST:PORT/DATABASE_NAME
 
    where ``CATALOG_NAME`` is a name of the entry that will appear in
-   ``databroker.catalog``. The two datbase URIs, ``metadatastore_db`` and
+   ``databroker.catalog``. The two database URIs, ``metadatastore_db`` and
    ``asset_registry_db``, are distinct only for historical reasons. For new
    deployments, we recommend that you set them to the same value---i.e. that
    you use one database shared by both.
