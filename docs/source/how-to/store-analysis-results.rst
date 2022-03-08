@@ -75,6 +75,6 @@ analysis results, we have to do some of that works ourselves.
 
    It uses `Suitcase`_ internally to do the writing.
 
-.. _discussing the design: https://github.com/bluesky/databroker/issues/605
+.. _discussing the design: :issue:`605`
 
 .. _Suitcase: https://blueskyproject.io/suitcase/
