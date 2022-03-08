@@ -165,6 +165,7 @@ here) and on live-streaming data during data acquisition.
       pip install suitcase-csv
 
 .. ipython:: python
+   :okexcept:
 
    import suitcase.csv
    artifacts = suitcase.csv.export(run.documents(fill="yes"), "output_directory")
