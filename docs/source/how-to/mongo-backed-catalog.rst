@@ -105,7 +105,7 @@ If you choose to run MongoDB in a Docker container:
 * Be sure to mount persistent storage from the host machine into the volumes
   MongoDB stores it data. When the container stops, you presumably still want
   your data!
-* See `this resource`_ for information on enabling authenication.
+* See `this resource`_ for information on enabling authentication.
 
 .. _MongoDB Community Edition: https://docs.mongodb.com/manual/administration/install-community/
 
