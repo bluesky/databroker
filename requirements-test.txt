@@ -9,7 +9,6 @@ matplotlib
 mongomock
 numpy >=1.16.0  # for astropy (via glueviz)
 ophyd
-pathlib
 pyqt5 !=5.14.1
 pytest >=4.4,!=5.4.0
 pytest-rerunfailures

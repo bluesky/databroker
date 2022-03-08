@@ -43,7 +43,7 @@ In short, put a message bus such as Kafka between the Run Engine and the
 database. Tooling for this is under development at
 `bluesky-kafka`_. Check back here for updates later in 2021.
 
-.. _discussing the design: https://github.com/bluesky/databroker/issues/605
+.. _discussing the design: :issue:`605`
 
 .. _Suitcase: https://blueskyproject.io/suitcase/
 
