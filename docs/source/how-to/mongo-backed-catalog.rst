@@ -5,7 +5,7 @@ How to create a new Catalog backed by MongoDB
 supports the full search capability of Databroker.*
 
 #. Install the `MongoDB Community Edition`_. We recommend the latest stable
-   version. Any version 3.x or later should be fine. Alternativel, you can
+   version. Any version 3.x or later should be fine. Alternatively, you can
    run MongoDB in the `MongoDB Docker container`_ maintained by Docker. See
    :ref:`container_advice` below if you go this route.
 
