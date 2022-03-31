@@ -370,17 +370,14 @@ def transpose(in_data, keys, field):
 
 def catalog_search_path():
     """
-    List directories that will be searched for catalog YAML files.
-
-    This is a convenience wrapper around functions used by intake to determine
-    its search path.
+    List directories that will be searched for Tiled profiles.
 
     Returns
     -------
     directories: tuple
     """
-    from intake.catalog.default import user_data_dir, global_data_dir
-    return (user_data_dir(), global_data_dir())
+    from tiled.profiles import paths
+    return tuple(paths)
 
 
 # This object should never be directly instantiated by external code.

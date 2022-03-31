@@ -45,51 +45,6 @@ def build_tiled_mongo_backed_broker(request):
     return from_tree(adapter).v1
 
 
-def build_intake_mongo_embedded_backed_broker(request):
-    mongomock = pytest.importorskip('mongomock')
-    client = mongomock.MongoClient()
-    tmp_dir = tempfile.TemporaryDirectory()
-    tmp_path = tmp_dir.name
-    catalog_path = Path(tmp_path) / 'catalog.yml'
-    with open(catalog_path, 'w') as file:
-        file.write(f"""
-sources:
-  xyz:
-    description: Some imaginary beamline
-    driver: "bluesky-mongo-embedded-catalog"
-    container: catalog
-    args:
-      datastore_db: mongodb://{client.address[0]}:{client.address[1]}/permanent
-      handler_registry:
-        NPY_SEQ: ophyd.sim.NumpySeqHandler
-    metadata:
-      beamline: "00-ID"
-""")
-
-    def teardown():
-        "Delete temporary MongoDB data directory."
-        client.close()
-        tmp_dir.cleanup()
-
-    request.addfinalizer(teardown)
-    db = v1.Broker.from_config({'uri': catalog_path, 'source': 'xyz'})
-    serializer = None
-
-    def insert(name, doc):
-        nonlocal serializer
-        if name == 'start':
-            if serializer is not None:
-                # serializer.close()
-                ...
-            serializer = suitcase.mongo_embedded.Serializer(client['permanent'])
-        serializer(name, doc)
-        if name == 'stop':
-            db._catalog.reload()
-
-    db.insert = insert
-    return db
-
-
 def build_sqlite_backed_broker(request):
     """Uses mongoquery + sqlite -- no pymongo or mongo server anywhere"""
 
