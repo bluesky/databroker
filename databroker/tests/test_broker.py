@@ -1109,10 +1109,12 @@ def test_run_read_not_implemented(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = get_uids(RE(count([hw.det], 5)))
     h = db[uid]
+    if not hasattr(h, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
     with pytest.raises(NotImplementedError):
         h.v2.read()
     with pytest.raises(NotImplementedError):
-        h2.v2.to_dask()
+        h.v2.to_dask()
 
 
 def test_run_metadata(db, RE, hw):
@@ -1120,6 +1122,10 @@ def test_run_metadata(db, RE, hw):
     RE.subscribe(db.insert)
     uid, = get_uids(RE(count([hw.det], 5)))
     h = db[uid]
+    if not hasattr(h, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+    run = h.v2
     for key in ('start', 'stop'):
-        assert key in run.metadata  # entry
-        assert key in run().metadata  # datasource
+        assert key in run.metadata
+        with pytest.warns(DeprecationWarning):
+            assert key in run().metadata  # intake compat
