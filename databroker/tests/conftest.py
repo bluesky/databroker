@@ -1,16 +1,12 @@
 import os
 import pytest
 import sys
-import uuid
-import ujson
 from databroker.tests.utils import (build_sqlite_backed_broker,
                                     build_legacy_mongo_backed_broker,
                                     build_jsonl_backed_broker,
                                     build_tiled_mongo_backed_broker,
                                     )
 import tempfile
-import time
-import requests.exceptions
 import shutil
 import tzlocal
 import databroker.headersource.mongoquery as mqmds
@@ -103,4 +99,3 @@ def mds_portable(request):
     request.addfinalizer(delete_dm)
 
     return mds
-

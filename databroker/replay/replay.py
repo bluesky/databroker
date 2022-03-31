@@ -159,7 +159,7 @@ def main(argv=None):
         for query in queries:
             results = results.search(query)
         if not results:
-            print(f"Query {combined_query} yielded no results. Exiting.")
+            print("Query yielded no results. Exiting.")
             # This can be a result of bash mangling the query beacuse the
             # caller forgot to escape the $'s.
             print(

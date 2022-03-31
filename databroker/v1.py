@@ -100,7 +100,7 @@ def _no_aliases():
     raise NotImplementedError("Aliases have been removed. Use search instead.")
 
 
-def _No_filters():
+def _no_filters():
     raise NotImplementedError(
         """Filters have been removed. Chain searches instead like
 

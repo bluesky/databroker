@@ -286,3 +286,13 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
 
             self._v1 = Broker(self)
         return self._v1
+
+    def __call__(self):
+        warnings.warn(
+            DeprecationWarning,
+            "Do not call a BlueskyRun. For now this returns self, for "
+            "backward-compatibility. but it will be removed in a future "
+            "release.",
+            stacklevel=2,
+        )
+        return self

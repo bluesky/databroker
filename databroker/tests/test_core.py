@@ -1,8 +1,6 @@
 import event_model
-import os
-import tempfile
 import xarray
-from ... import core
+from .. import _core as core
 from bluesky_live.conversion import documents_to_xarray
 
 

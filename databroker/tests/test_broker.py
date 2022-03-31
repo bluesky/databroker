@@ -1103,3 +1103,23 @@ def resource_roundtrip(broker_factory, RE, hw):
 
     for nd in db[-1].documents():
         db2.insert(*nd)
+
+
+def test_run_read_not_implemented(db, RE, hw):
+    RE.subscribe(db.insert)
+    uid, = get_uids(RE(count([hw.det], 5)))
+    h = db[uid]
+    with pytest.raises(NotImplementedError):
+        h.v2.read()
+    with pytest.raises(NotImplementedError):
+        h2.v2.to_dask()
+
+
+def test_run_metadata(db, RE, hw):
+    "Find 'start' and 'stop' in the Entry metadata."
+    RE.subscribe(db.insert)
+    uid, = get_uids(RE(count([hw.det], 5)))
+    h = db[uid]
+    for key in ('start', 'stop'):
+        assert key in run.metadata  # entry
+        assert key in run().metadata  # datasource
