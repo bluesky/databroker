@@ -53,22 +53,3 @@ def test_no_events():
         lookup_resource_for_datum=None,
         get_datum_pages=None)
 
-
-def test_single_run_cache(hw, detector, RE):
-    import bluesky
-    from databroker.core import SingleRunCache
-
-    def plan(num_points=11):
-        src = SingleRunCache()
-
-        @bluesky.preprocessors.subs_decorator(src.callback)
-        def inner_plan():
-            yield from bluesky.plans.rel_scan([detector], hw.motor, -1, 1,
-                                              num_points)
-            run = src.retrieve()
-            table = run.primary.read()['motor'].to_dataframe()
-            assert len(table) == num_points
-
-        yield from inner_plan()
-
-    RE(plan())
