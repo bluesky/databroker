@@ -18,7 +18,7 @@ try:
 except ImportError:
     from toolz.dicttoolz import merge
 
-from tiled.client import from_config, from_profile
+from tiled.client import from_profile
 from tiled.queries import FullText
 
 from .queries import RawMongo, TimeRange
