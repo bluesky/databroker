@@ -52,4 +52,3 @@ def test_no_events():
         get_resource=None,
         lookup_resource_for_datum=None,
         get_datum_pages=None)
-
