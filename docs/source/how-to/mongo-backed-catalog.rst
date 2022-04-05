@@ -5,7 +5,7 @@ How to create a new Catalog backed by MongoDB
 supports the full search capability of Databroker.*
 
 #. Install the `MongoDB Community Edition`_. We recommend the latest stable
-   version. Any version 3.x or later should be fine. Alternativel, you can
+   version. Any version 3.x or later should be fine. Alternatively, you can
    run MongoDB in the `MongoDB Docker container`_ maintained by Docker. See
    :ref:`container_advice` below if you go this route.
 
@@ -34,7 +34,7 @@ supports the full search capability of Databroker.*
             asset_registry_db: mongodb://HOST:PORT/DATABASE_NAME
 
    where ``CATALOG_NAME`` is a name of the entry that will appear in
-   ``databroker.catalog``. The two datbase URIs, ``metadatastore_db`` and
+   ``databroker.catalog``. The two database URIs, ``metadatastore_db`` and
    ``asset_registry_db``, are distinct only for historical reasons. For new
    deployments, we recommend that you set them to the same value---i.e. that
    you use one database shared by both.
@@ -86,7 +86,7 @@ supported: Users can access all the Runs in the MongoDB or none of them.
       asset_registry_db: mongodb://{{ env(DATABROKER_MONGO_USER) }}:{{ env(DATABROKER_MONGO_PASSWORD) }}@HOST:PORT/DATABASE_NAME?authSource=admin
 
 
-   Refer to `PyMongo authentication documenation`_ for context.
+   Refer to `PyMongo authentication documentation`_ for context.
 
 #. Set these environment variables to provide access to the database.
 
@@ -105,7 +105,7 @@ If you choose to run MongoDB in a Docker container:
 * Be sure to mount persistent storage from the host machine into the volumes
   MongoDB stores it data. When the container stops, you presumably still want
   your data!
-* See `this resource`_ for information on enabling authenication.
+* See `this resource`_ for information on enabling authentication.
 
 .. _MongoDB Community Edition: https://docs.mongodb.com/manual/administration/install-community/
 
@@ -113,7 +113,7 @@ If you choose to run MongoDB in a Docker container:
 
 .. _Enable authentication on MongoDB: https://docs.mongodb.com/manual/tutorial/enable-authentication/
 
-.. _PyMongo authentication documenation: https://pymongo.readthedocs.io/en/stable/examples/authentication.html#default-database-and-authsource
+.. _PyMongo authentication documentation: https://pymongo.readthedocs.io/en/stable/examples/authentication.html#default-database-and-authsource
 
 .. _container: https://hub.docker.com/_/mongo
 
