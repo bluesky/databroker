@@ -127,6 +127,12 @@ class BlueskyRun(BlueskyRunMixin, Node):
         )
         return self
 
+    def read(self):
+        raise NotImplementedError(
+            "Reading any entire run is not supported. "
+            "Access a stream in this run and read that."
+        )
+
 
 class BlueskyEventStream(BlueskyEventStreamMixin, Node):
     """
