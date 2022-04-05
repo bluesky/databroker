@@ -1243,6 +1243,7 @@ class Results:
     def __init__(self, catalog):
         self._catalog = catalog
         self._broker = Broker(catalog)
+        self._broker.v1.prepare_hook = catalog.v1.prepare_hook
 
     def __iter__(self):
         for uid, run in self._catalog.items():
