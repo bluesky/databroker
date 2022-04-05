@@ -175,36 +175,23 @@ class Broker:
 
     @classmethod
     def from_config(cls, config, auto_register=None, name=None):
-        if auto_register is not None:
-            warnings.warn(
-                "The parameter auto_register is now ignored. "
-                "Handlers are now a concern of the service and not configurable "
-                "from the client."
-            )
-        if name is not None:
-            warnings.warn("The parameter name is now ignored.")
-        catalog = from_config(config)
-        return Broker(catalog)
+        raise NotImplementedError(
+            """Old-style databroker configuration is not supported.
+"To construct from tiled profile, use:
+
+    >>> from tiled.client import from_config
+    >>> Broker(from_config({...}))
+""")
 
     def get_config(self):
-        """
-        This formerly returned v0 config (if applicable) or None. Now it always returns None.
-        """
-        return None
+        raise NotImplementedError("No longer supported")
 
     @classmethod
     def named(cls, name, auto_register=None):
         """
-        Create a new Broker instance using a configuration file with this name.
+        Create a new Broker instance using the Tiled profile of this name.
 
-        Configuration file search path:
-
-        * ``~/.config/databroker/{name}.yml``
-        * ``{python}/../etc/databroker/{name}.yml``
-        * ``/etc/databroker/{name}.yml``
-
-        where ``{python}`` is the location of the current Python binary, as
-        reported by ``sys.executable``. It will use the first match it finds.
+        See https://blueskyproject.io/tiled/how-to/profiles.html
 
         Special Case: The name ``'temp'`` creates a new, temporary
         configuration. Subsequent calls to ``Broker.named('temp')`` will
@@ -230,6 +217,8 @@ class Broker:
                 "Handlers are now a concern of the service and not configurable "
                 "from the client."
             )
+        if name == "temp":
+            raise NotImplementedError("databroker 2.0.0 does not yet support 'temp' Broker")
         catalog = from_profile(name)
         return Broker(catalog)
 
