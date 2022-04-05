@@ -576,8 +576,9 @@ def test_external_access_with_handler(db, RE, hw):
     EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
 
     # Fetching filled events is no longer supported.
-    with pytest.raises(NotImplementedError):
-        next(db.get_events(h, fields=['img'], fill=True))
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            next(db.get_events(h, fields=['img'], fill=True))
 
     ev, ev2 = db.get_events(h, fields=['img'])
     assert ev is not ev2
@@ -595,8 +596,9 @@ def test_external_access_with_handler(db, RE, hw):
 
     # table with fill=False (default)
     # cannot fetch image data
-    with pytest.raises(ValueError):
-        table = db.get_table(h, fields=['img'])
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(ValueError):
+            table = db.get_table(h, fields=['img'])
 
     # table with fill=True
     table = db.get_table(h, fields=['img'], fill=True)
@@ -982,9 +984,10 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
                             baseline_dets)))
 
     h = db[uid]
-    with pytest.raises(NotImplementedError):
-        list(h.documents(stream_name=ALL, fill=True))
-    list(h.documents(stream_name=ALL, fill=False))
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            list(h.documents(stream_name=ALL, fill=True))
+        list(h.documents(stream_name=ALL, fill=False))
 
 
 def test_repr_html(db, RE, hw):
