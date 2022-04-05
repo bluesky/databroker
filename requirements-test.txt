@@ -7,6 +7,7 @@ glueviz
 intake[server] <=0.6.4
 matplotlib
 mongomock
+msgpack >=1.0.0
 numpy >=1.16.0  # for astropy (via glueviz)
 ophyd
 pyqt5 !=5.14.1

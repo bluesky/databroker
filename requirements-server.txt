@@ -4,7 +4,7 @@ entrypoints
 event-model
 fastapi
 mongomock
-msgpack
+msgpack >=1.0.0
 pims
 pydantic
 pymongo
