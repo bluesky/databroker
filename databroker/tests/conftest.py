@@ -46,7 +46,7 @@ def db(request):
 @pytest.fixture(params=params, scope='function')
 def db_empty(request):
     if ('array_data' in request.function.__name__ and
-            request.param == 'sqlite'):
+            request.param == 'sqlite-legacy'):
         pytest.xfail('can not put lists into sqlite columns')
     return param_map[request.param](request)
 
