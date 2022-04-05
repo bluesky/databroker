@@ -133,6 +133,8 @@ class BlueskyRun(BlueskyRunMixin, Node):
             "Access a stream in this run and read that."
         )
 
+    to_dask = read
+
 
 class BlueskyEventStream(BlueskyEventStreamMixin, Node):
     """

@@ -921,13 +921,6 @@ def test_data_method(db, RE, hw):
     assert actual == expected
 
 
-def test_auto_register():
-    db_auto = Broker.from_config(EXAMPLE)
-    db_manual = Broker.from_config(EXAMPLE, auto_register=False)
-    assert 'AD_HDF5' in db_auto.reg.handler_reg
-    assert 'AD_HDF5' not in db_manual.reg.handler_reg
-
-
 def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     db = db_empty
     doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
