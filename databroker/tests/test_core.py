@@ -1,6 +1,5 @@
 import event_model
 import xarray
-from .. import _core as core
 from bluesky_live.conversion import documents_to_xarray
 
 
@@ -54,33 +53,6 @@ def test_no_events():
         get_resource=None,
         lookup_resource_for_datum=None,
         get_datum_pages=None)
-
-
-def test_xarray_helpers():
-    event_pages = list(event_page_gen(10, 5))
-    dataarray_pages = [core._event_page_to_dataarray_page(page) for page in event_pages]
-    dataarray_page = core._concat_dataarray_pages(dataarray_pages)
-    dataset_page = core._dataarray_page_to_dataset_page(dataarray_page)
-    assert isinstance(dataset_page['data'], xarray.Dataset)
-    assert isinstance(dataset_page['timestamps'], xarray.Dataset)
-    assert isinstance(dataset_page['filled'], xarray.Dataset)
-
-
-def test_interlace_event_page_chunks():
-    page_gens = [event_page_gen(10, 5) for i in range(3)]
-    interlaced = core._interlace_event_page_chunks(*page_gens, chunk_size=3)
-
-    t0 = None
-    total_events = 0
-    for j, chunk in enumerate(interlaced):
-        total_events += len(chunk['seq_num'])
-        t1 = chunk['time'][0]
-        if t0:
-            assert t1 >= t0
-        t0 = t1
-    expected_page_count = (50 // 3 + 1) * 3
-    assert j + 1 == expected_page_count
-    assert 10*5*3 == total_events
 
 
 def test_single_run_cache(hw, detector, RE):
