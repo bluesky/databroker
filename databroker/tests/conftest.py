@@ -99,3 +99,13 @@ def mds_portable(request):
     request.addfinalizer(delete_dm)
 
     return mds
+
+
+SIM_DETECTORS = {'scalar': 'det',
+                 'image': 'direct_img',
+                 'external_image': 'img'}
+
+
+@pytest.fixture(params=['scalar', 'image', 'external_image'])
+def detector(request, hw):
+    return getattr(hw, SIM_DETECTORS[request.param])

@@ -235,10 +235,13 @@ class Broker:
         catalog.v1.prepare_hook = self.prepare_hook
 
     def __call__(self, text_search=None, **kwargs):
-
-        results_catalog = self._catalog.search(
-            TimeRange(since=kwargs.pop("since", None), until=kwargs.pop("until", None))
-        )
+        results_catalog = self._catalog
+        since = kwargs.pop("since", None) or kwargs.pop("start_time", None)
+        until = kwargs.pop("until", None) or kwargs.pop("stop_time", None)
+        if (since is not None) or (until is not None):
+            results_catalog = results_catalog.search(
+                TimeRange(since=since, until=until)
+            )
         if "data_key" in kwargs:
             raise NotImplementedError("Search by data key is no longer implemented.")
         if kwargs:

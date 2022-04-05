@@ -308,8 +308,7 @@ def test_find_by_float_time(db_empty, RE, hw):
     assert header['start']['uid'] == during
 
     # Test the old names
-    with pytest.warns(UserWarning):
-        header, = db(start_time=t - 0.1, stop_time=t + 0.2)
+    header, = db(start_time=t - 0.1, stop_time=t + 0.2)
     assert header['start']['uid'] == during
 
 
