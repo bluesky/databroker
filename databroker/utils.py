@@ -248,8 +248,6 @@ else:
     CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 SPECIAL_NAME = '_legacy_config'
-if 'DATABROKER_TEST_MODE' in os.environ:
-    SPECIAL_NAME = '_test_legacy_config'
 
 
 def list_configs(paths=CONFIG_SEARCH_PATH):
