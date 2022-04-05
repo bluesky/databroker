@@ -248,8 +248,6 @@ else:
     CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 SPECIAL_NAME = '_legacy_config'
-if 'DATABROKER_TEST_MODE' in os.environ:
-    SPECIAL_NAME = '_test_legacy_config'
 
 
 def list_configs(paths=CONFIG_SEARCH_PATH):
@@ -370,17 +368,14 @@ def transpose(in_data, keys, field):
 
 def catalog_search_path():
     """
-    List directories that will be searched for catalog YAML files.
-
-    This is a convenience wrapper around functions used by intake to determine
-    its search path.
+    List directories that will be searched for Tiled profiles.
 
     Returns
     -------
     directories: tuple
     """
-    from intake.catalog.default import user_data_dir, global_data_dir
-    return (user_data_dir(), global_data_dir())
+    from tiled.profiles import paths
+    return tuple(paths)
 
 
 # This object should never be directly instantiated by external code.

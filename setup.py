@@ -30,19 +30,23 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
-with open(path.join(here, 'requirements.txt')) as requirements_file:
-    # Parse requirements.txt, ignoring any commented-out lines.
-    requirements = [line for line in requirements_file.read().splitlines()
-                    if not line.startswith('#')]
+
+def read_requirements(filename):
+    with open(path.join(here, filename)) as requirements_file:
+        # Parse requirements-*.txt, ignoring any commented-out lines.
+        requirements = [
+            line
+            for line in requirements_file.read().splitlines()
+            if not line.startswith("#")
+        ]
+    return requirements
+
 
 extras_require = {
-    'mongo': ['pymongo>=3.0'],
-    'hdf5': ['h5py'],
-    'client': ['requests'],
-    'service': ['tornado<6', 'ujson'],
+    key: read_requirements(f"requirements-{key}.txt") for key in ["client", "server", "back-compat"]
 }
-
-extras_require['all'] = sorted(set(sum(extras_require.values(), [])))
+extras_require["complete"] = sorted(set(sum(extras_require.values(), [])))
+extras_require["all"] = extras_require["complete"]  # for back-compat
 
 setup(
     name='databroker',
@@ -58,30 +62,17 @@ setup(
     package_data={'databroker.assets': ['schemas/*.json']},
     # The project's main homepage.
     url='https://github.com/NSLS-II/databroker',
-    scripts=['scripts/fs_rename', 'scripts/start_md_server'],
+    scripts=['scripts/fs_rename'],
     license='BSD (3-clause)',
-
-    install_requires=requirements,
     extras_require=extras_require,
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
-
     entry_points={
-        'console_scripts': [
-            # 'command = some.module:some_function',
+        "tiled.special_client": [
+            "CatalogOfBlueskyRuns = databroker.client:CatalogOfBlueskyRuns",
+            "BlueskyRun = databroker.client:BlueskyRun",
+            "BlueskyEventStream = databroker.client:BlueskyEventStream",
         ],
-        'intake.drivers': [
-            'bluesky-event-stream = databroker.core:BlueskyEventStream',
-            'bluesky-jsonl-catalog = databroker._drivers.jsonl:BlueskyJSONLCatalog',
-            ('bluesky-mongo-embedded-catalog = '
-             'databroker._drivers.mongo_embedded:BlueskyMongoCatalog'),
-            ('bluesky-mongo-normalized-catalog = '
-             'databroker._drivers.mongo_normalized:BlueskyMongoCatalog'),
-            'bluesky-msgpack-catalog = databroker._drivers.msgpack:BlueskyMsgpackCatalog',
-            'bluesky-run = databroker.core:BlueskyRun',
-            'databroker-remote-xarray = databroker.intake_xarray_core.xarray_container:RemoteXarray',
-        ]
     },
-
     classifiers=[
         'License :: OSI Approved :: BSD License',
         'Development Status :: 4 - Beta',
@@ -91,5 +82,5 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-    ]
+    ],
 )

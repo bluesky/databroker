@@ -8,6 +8,7 @@ from . import mongo_core
 from .base import MDSROTemplate, MDSTemplate
 from databroker.v1 import _get_mongo_database
 
+
 class MDSRO(MDSROTemplate):
     _API_MAP = {1: mongo_core}
 

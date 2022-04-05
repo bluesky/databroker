@@ -104,22 +104,6 @@ Saving Data
 
    Broker.insert
 
-Configuring Filters and Aliases
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   Broker.add_filter
-   Broker.clear_filters
-   Broker.alias
-   Broker.dynamic_alias
-
-This current list of filters and aliases is accessible via the attributes
-:class:`Broker.filters` and :class:`Broker.aliases` respectively. Again, click
-the links in the table for examples.
-
 Export Data to Another Broker
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -263,16 +247,6 @@ Back- and Forward-Compat Accessors
 
    Broker.v1
    Broker.v2
-
-Internals
-^^^^^^^^^
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   Broker.reg
-   Broker.fetch_external
 
 Deprecated
 ^^^^^^^^^^

@@ -60,7 +60,11 @@ def test_header_equality(db, RE, hw):
     assert h == db[uid]
 
 
+@pytest.mark.xfail(reason="We now require descriptor have names.")
 def test_no_descriptor_name(db, RE, hw):
+    # We leave this xfail-ed test here for the historical record.
+    # There may still be some nameless Event Descriptors floating
+    # around very old deployments (circa 2015).
     def local_insert(name, doc):
         doc.pop('name', None)
         return db.insert(name, doc)
@@ -180,6 +184,9 @@ def test_get_events_filtering_field(db, RE, hw):
 
 def test_indexing(db_empty, RE, hw):
     db = db_empty
+    if not hasattr(db, "v2"):
+        # We have a v0.
+        raise pytest.skip("v0 has a bug in negative-stride indexing")
     RE.subscribe(db.insert)
     uids = []
     for i in range(10):
@@ -187,10 +194,16 @@ def test_indexing(db_empty, RE, hw):
 
     assert uids[-1] == db[-1]['start']['uid']
     assert uids[-2] == db[-2]['start']['uid']
-    assert uids[-1:] == [h['start']['uid'] for h in db[-1:]]
-    assert uids[-2:] == [h['start']['uid'] for h in reversed(db[-2:])]
-    assert uids[-2:-1] == [h['start']['uid'] for h in reversed(db[-2:-1])]
-    assert uids[-5:-1] == [h['start']['uid'] for h in reversed(db[-5:-1])]
+    assert uids[-1:-5:-1] == [h['start']['uid'] for h in db[-1:-5:-1]]
+    # These used to be supported but are not anymore.
+    # We only support slices that can be expressed in pagination terms,
+    # i.e. as offset, limit, and sort direction.
+    with pytest.raises(ValueError):
+        db[-2:]
+    with pytest.raises(ValueError):
+        db[-2:-1]
+    with pytest.raises(ValueError):
+        db[-5:-1]
 
     with pytest.raises(ValueError):
         # not allowed to slice into unspecified past
@@ -246,22 +259,18 @@ def test_scan_id_lookup(db, RE, hw):
     assert uid1 in [run['start']['uid'] for run in db(scan_id=1, marked=True)]
 
 
-# Flaky because
-# https://github.com/bluesky/databroker/issues/431
+@pytest.mark.xfail(reason="We no longer permit lookup by one char.")
+def test_partial_uid_collision(db, RE, hw):
+    ...
+    # RE.subscribe(db.insert)
 
+    # # Create enough runs that there are two that begin with the same char.
+    # for _ in range(50):
+    #     RE(count([hw.det]))
 
-@pytest.mark.flaky(reruns=10, reruns_delay=0)
-def test_partial_uid_lookup(db, RE, hw):
-    RE.subscribe(db.insert)
-
-    # Create enough runs that there are two that begin with the same char.
-    for _ in range(50):
-        RE(count([hw.det]))
-
-    with pytest.raises(ValueError):
-        # Some letter will happen to be the first letter of more than one uid.
-        for first_letter in string.ascii_lowercase:
-            db[first_letter]
+    # with pytest.raises(ValueError):
+    #     for first_letter in string.ascii_lowercase:
+    #         db[first_letter]
 
 
 def test_partial_uid_lookup2(db):
@@ -299,8 +308,7 @@ def test_find_by_float_time(db_empty, RE, hw):
     assert header['start']['uid'] == during
 
     # Test the old names
-    with pytest.warns(UserWarning):
-        header, = db(start_time=t - 0.1, stop_time=t + 0.2)
+    header, = db(start_time=t - 0.1, stop_time=t + 0.2)
     assert header['start']['uid'] == during
 
 
@@ -327,14 +335,21 @@ def test_data_key(db_empty, RE, hw):
     RE.subscribe(db.insert)
     RE(count([hw.det1]))
     RE(count([hw.det1, hw.det2]))
-    result1 = list(db(data_key='det1'))
-    result2 = list(db(data_key='det2'))
-    assert len(result1) == 2
-    assert len(result2) == 1
+    # This could be restored once we support search by descriptor in RawMongo query.
+    if hasattr(db, "v2"):
+        with pytest.raises(NotImplementedError):
+            result1 = list(db(data_key='det1'))
+            assert len(result1) == 2
+        with pytest.raises(NotImplementedError):
+            result2 = list(db(data_key='det2'))
+            assert len(result2) == 1
+    else:
+        result1 = list(db(data_key='det1'))
+        assert len(result1) == 2
+        result2 = list(db(data_key='det2'))
+        assert len(result2) == 1
 
 
-# flaky because of https://github.com/bluesky/databroker/issues/431
-@pytest.mark.flaky(reruns=5, reruns_delay=0)
 def test_search_for_smoke(db, RE, hw):
     RE.subscribe(db.insert)
     for _ in range(5):
@@ -348,86 +363,13 @@ def test_search_for_smoke(db, RE, hw):
         (-1, -2),
         -1,
         uid1,
-        six.text_type(uid1),
-        [uid1, [uid2, uid3]],
-        [-1, uid1, slice(-5, 0)],
-        slice(-5, 0, 2),
-        slice(-5, 0),
+        # [uid1, [uid2, uid3]],  # formerly supported, but too silly
+        # [-1, uid1, slice(-5, 0)],  # formerly supported, but too silly
+        slice(-1, -5, -1),
     ]
     for query in queries:
         db[query]
 
-
-def test_alias(db, RE, hw):
-    RE.subscribe(db.insert)
-
-    uid, = get_uids(RE(count([hw.det])))
-    RE(count([hw.det]))
-
-    # basic usage of alias
-    db.alias('foo', uid=uid)
-    assert list(db.foo) == list(db(uid=uid))
-
-    # can't set alias to existing attribute name
-    with pytest.raises(ValueError):
-        db.alias('get_events', uid=uid)
-    with pytest.raises(ValueError):
-        db.dynamic_alias('get_events', lambda: {'uid': uid})
-
-    # basic usage of dynamic alias
-    db.dynamic_alias('bar', lambda: {'uid': uid})
-    assert list(db.bar) == list(db(uid=uid))
-
-    # normal AttributeError still works
-    with pytest.raises(AttributeError):
-        db.this_is_not_a_thing
-
-
-def test_filters(db_empty, RE, hw):
-    db = db_empty
-    RE.subscribe(db.insert)
-    RE(count([hw.det]), user='Ken')
-    dan_uid, = get_uids(RE(count([hw.det]), user='Dan', purpose='calibration'))
-    ken_calib_uid, = get_uids(RE(count([hw.det]), user='Ken', purpose='calibration'))
-
-    assert len(list(db())) == 3
-    db.add_filter(user='Dan')
-    assert len(db.filters) == 1
-    assert len(list(db())) == 1
-    header, = db()
-    assert header['start']['uid'] == dan_uid
-
-    db.clear_filters()
-    assert len(db.filters) == 0
-
-    assert len(list(db(purpose='calibration'))) == 2
-    db.add_filter(user='Ken')
-    assert len(list(db(purpose='calibration'))) == 1
-    header, = db(purpose='calibration')
-
-    assert header['start']['uid'] == ken_calib_uid
-
-    db.clear_filters()
-    db.add_filter(since='2017')
-    db.add_filter(since='2017')
-    assert len(db.filters) == 1
-    db.add_filter(since='2016', until='2017')
-    assert len(db.filters) == 2
-    assert db.filters['since'] == '2016'
-
-    list(db())  # after search, time content keeps the same
-    assert db.filters['since'] == '2016'
-
-    # Check again using old names (start_time, stop_time)
-    db.clear_filters()
-    db.add_filter(start_time='2017')
-    db.add_filter(start_time='2017')
-    assert len(db.filters) == 1
-    db.add_filter(start_time='2016', stop_time='2017')
-    assert len(db.filters) == 2
-    assert db.filters['start_time'] == '2016'
-    with pytest.warns(UserWarning):
-        list(db())
 
 @pytest.mark.parametrize(
     'key',
@@ -581,6 +523,7 @@ def test_stream_name(db, RE, hw):
     assert h.fields(stream_name='secondary') == {'det2'}
 
 
+@pytest.mark.xfail(reason="This needs to be tested with a custom server config.")
 def test_external_access_without_handler(db, RE, hw):
     from ophyd.sim import NumpySeqHandler
 
@@ -632,11 +575,10 @@ def test_external_access_with_handler(db, RE, hw):
 
     EXPECTED_SHAPE = (10, 10)  # via ophyd.sim.img
 
-    ev, ev2 = db.get_events(h, fields=['img'], fill=True)
-    assert ev['data']['img'].shape == EXPECTED_SHAPE
-    ims = db.get_images(h, 'img')[0]
-    assert ims.shape == EXPECTED_SHAPE
-    assert ev['filled']['img']
+    # Fetching filled events is no longer supported.
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            next(db.get_events(h, fields=['img'], fill=True))
 
     ev, ev2 = db.get_events(h, fields=['img'])
     assert ev is not ev2
@@ -653,9 +595,10 @@ def test_external_access_with_handler(db, RE, hw):
             ev2_filled = db.fill_event(ev2, inplace=False)
 
     # table with fill=False (default)
-    table = db.get_table(h, fields=['img'])
-    datum_id = table['img'].iloc[0]
-    assert isinstance(datum_id, str)
+    # cannot fetch image data
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(ValueError):
+            table = db.get_table(h, fields=['img'])
 
     # table with fill=True
     table = db.get_table(h, fields=['img'], fill=True)
@@ -664,6 +607,7 @@ def test_external_access_with_handler(db, RE, hw):
     assert img.shape == EXPECTED_SHAPE
 
 
+@pytest.mark.xfail(reason="This has been replaced either databroker-pack or tiled export methods.")
 def test_export(broker_factory, RE, hw):
     from ophyd import sim
     db1 = broker_factory()
@@ -698,51 +642,7 @@ def test_export(broker_factory, RE, hw):
     image2, = db2.get_images(db2[uid], 'detfs')
 
 
-def test_export_noroot(broker_factory, RE, tmpdir, hw):
-    from ophyd import sim
-
-    class BrokenSynRegistry(sim.SynSignalWithRegistry):
-
-        def stage(self):
-            self._file_stem = sim.short_uid()
-            self._path_stem = os.path.join(self.save_path, self._file_stem)
-            self._datum_counter = itertools.count()
-            # This is temporarily more complicated than it will be in the future.
-            # It needs to support old configurations that have a registry.
-            resource = {'spec': self._spec,
-                        'root': '',
-                        'resource_path': self._path_stem,
-                        'resource_kwargs': {},
-                        'path_semantics': os.name}
-            self._resource_uid = sim.new_uid()
-            resource['uid'] = self._resource_uid
-            self._asset_docs_cache.append(('resource', resource))
-
-    dir1 = str(tmpdir.mkdir('a'))
-    dir2 = str(tmpdir.mkdir('b'))
-    db1 = broker_factory()
-    db2 = broker_factory()
-
-    detfs = BrokenSynRegistry(name='detfs',
-                              func=lambda: np.ones((5, 5)),
-                              save_path=dir1)
-    db1.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
-    db2.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
-    RE.subscribe(db1.insert)
-    uid, = get_uids(RE(count([detfs], num=3)))
-
-    file_pairs = db1.export(db1[uid], db2, new_root=dir2)
-    for from_path, to_path in file_pairs:
-        assert os.path.dirname(from_path) == dir1
-        assert os.path.dirname(to_path) == os.path.join(dir2, dir1[1:])
-
-    assert db2[uid] == db1[uid]
-    image1s = db1.get_images(db1[uid], 'detfs')
-    image2s = db2.get_images(db2[uid], 'detfs')
-    for im1, im2 in zip(image1s, image2s):
-        assert np.array_equal(im1, im2)
-
-
+@pytest.mark.xfail(reason="File-copying is not supported via the client.")
 def test_export_size_smoke(broker_factory, RE, tmpdir):
     from ophyd import sim
     db1 = broker_factory()
@@ -1022,13 +922,6 @@ def test_data_method(db, RE, hw):
     assert actual == expected
 
 
-def test_auto_register():
-    db_auto = Broker.from_config(EXAMPLE)
-    db_manual = Broker.from_config(EXAMPLE, auto_register=False)
-    assert 'AD_HDF5' in db_auto.reg.handler_reg
-    assert 'AD_HDF5' not in db_manual.reg.handler_reg
-
-
 def test_sanitize_does_not_modify_array_data_in_place(db_empty):
     db = db_empty
     doc = {'uid': '0', 'time': 0, 'stuff': np.ones((3, 3))}
@@ -1090,10 +983,11 @@ def test_fill_and_multiple_streams(db, RE, tmpdir, hw):
                                              baseline_dets),
                             baseline_dets)))
 
-    db.reg.register_handler('NPY_SEQ', sim.NumpySeqHandler)
     h = db[uid]
-    list(h.documents(stream_name=ALL, fill=False))
-    list(h.documents(stream_name=ALL, fill=True))
+    if hasattr(db, 'v1') or hasattr(db, 'v2'):
+        with pytest.raises(NotImplementedError):
+            list(h.documents(stream_name=ALL, fill=True))
+        list(h.documents(stream_name=ALL, fill=False))
 
 
 def test_repr_html(db, RE, hw):
@@ -1103,19 +997,6 @@ def test_repr_html(db, RE, hw):
 
     # smoke test
     h._repr_html_()
-
-
-def test_externals(db, RE, hw):
-    def external_fetcher(start, stop):
-        return start['uid']
-
-    RE.subscribe(db.insert)
-    uid, = get_uids(RE(count([hw.det], 5)))
-    db.external_fetchers['suid'] = external_fetcher
-
-    h = db[uid]
-
-    assert h.ext.suid == h.start['uid']
 
 
 def test_monitoring(db, RE, hw):
@@ -1226,3 +1107,29 @@ def resource_roundtrip(broker_factory, RE, hw):
 
     for nd in db[-1].documents():
         db2.insert(*nd)
+
+
+def test_run_read_not_implemented(db, RE, hw):
+    RE.subscribe(db.insert)
+    uid, = get_uids(RE(count([hw.det], 5)))
+    h = db[uid]
+    if not hasattr(h, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+    with pytest.raises(NotImplementedError):
+        h.v2.read()
+    with pytest.raises(NotImplementedError):
+        h.v2.to_dask()
+
+
+def test_run_metadata(db, RE, hw):
+    "Find 'start' and 'stop' in the Entry metadata."
+    RE.subscribe(db.insert)
+    uid, = get_uids(RE(count([hw.det], 5)))
+    h = db[uid]
+    if not hasattr(h, "v2"):
+        raise pytest.skip("v0 has no v2 accessor")
+    run = h.v2
+    for key in ('start', 'stop'):
+        assert key in run.metadata
+        with pytest.warns(DeprecationWarning):
+            assert key in run().metadata  # intake compat

@@ -1,44 +1,82 @@
-# Import intake to run driver discovery first and avoid circular import issues.
 import logging
 
-import intake  # noqa: F401
-from intake.catalog.default import load_combo_catalog
-from intake.catalog.local import MergedCatalog, EntrypointsCatalog
+from tiled.utils import OneShotCachedMap
+from tiled.profiles import list_profiles
+from tiled.client import from_profile
 
-from .v1 import Broker, Header, ALL, temp, temp_config  # noqa: F401
-from .utils import (  # noqa: 401
-    lookup_config, list_configs, describe_configs,  # noqa: F401
-    wrap_in_doct, DeprecatedDoct, wrap_in_deprecated_doct,  # noqa: F401
-    catalog_search_path)  # noqa: F401
+from ._factory_map import FactoryMap
+from ._version import get_versions  # noqa: F402, E402
 
-from .discovery import V0Catalog
+__version__ = get_versions()["version"]
+del get_versions
 
 
 logger = logging.getLogger(__name__)
 
+# TODO This seems to load *all* items when one item is accessed.
+catalog = FactoryMap(
+    lambda: OneShotCachedMap(
+        {
+            # This `lambda profile=profile:` trick ensures that profile binds to
+            # the each item in turn, rather than binding to the last item in
+            # the loop. This is a "gotcha" in Python scoping.
+            profile: lambda profile=profile: from_profile(profile)
+            for profile in list_profiles()
+        }
+    )
+)
 
-# A catalog created from discovered entrypoints, v0, and intake YAML catalogs.
-yaml_catalogs = load_combo_catalog()
-catalog = MergedCatalog([
-    EntrypointsCatalog(),
-    V0Catalog(),
-    load_combo_catalog()])
+# Everything below here is for backward-compatibility with v0 and v1 APIs.
 
-# set version string using versioneer
-from ._version import get_versions  # noqa: F402, E402
-__version__ = get_versions()['version']
-del get_versions
+# Support old top-level imports for backward compatibility,
+# but do the imports lazily via module __getattr__ for speed.
+_V1_IMPORTS = set("Broker Header ALL temp temp_config".split())
+_UTILS_IMPORTS = set(
+    (
+        "lookup_config list_configs describe_configs "
+        "wrap_in_doct DeprecatedDoct wrap_in_deprecated_doct "
+        "catalog_search_path "
+    ).split()
+)
+_DATABROKER_IMPORTS = set(
+    (
+        "DataBroker db get_events get_table stream get_fields restream process get_images"
+    ).split()
+)
 
 
-# Legacy imports
+def __getattr__(name):
+    if name in _V1_IMPORTS:
+        from . import v1
 
-try:
-    from .databroker import DataBroker
-except ImportError:
-    pass
-else:
-    from .databroker import (DataBroker,  # noqa: 811
-                             DataBroker as db,
-                             get_events, get_table, stream, get_fields,
-                             restream, process)
-    from .pims_readers import get_images  # noqa: F401
+        return getattr(v1, name)
+    if name in _UTILS_IMPORTS:
+        from . import utils
+
+        return getattr(utils, name)
+    if name in _DATABROKER_IMPORTS:
+        # This is a real mess...working around old poor choices.
+        # Only very old (c. 2015) user code would hit this path.
+        try:
+            from .databroker import DataBroker
+
+        except ImportError:
+            # There is no legacy config defining a singleton Broker instance.
+            # None of the objects in .databroker are defined.
+            raise AttributeError(name)
+        if name == "db":
+            return DataBroker  # i.e. from .databroker import DataBroker as db
+        if name == "get_images":
+            # Likewise, this is only defined if there is a singleton
+            # Broker instance.
+            from .pims_readers import get_images
+
+            return get_images
+        return getattr(utils, name)
+    raise AttributeError(name)
+
+
+def __dir__():
+    return sorted(
+        list((set(globals()) | _V1_IMPORTS | _UTILS_IMPORTS | _DATABROKER_IMPORTS))
+    )

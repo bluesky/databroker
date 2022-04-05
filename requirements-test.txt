@@ -4,15 +4,14 @@ codecov
 coverage
 flake8
 glueviz
-intake[server] <=0.6.4
 matplotlib
 mongomock
+msgpack >=1.0.0
 numpy >=1.16.0  # for astropy (via glueviz)
 ophyd
 pyqt5 !=5.14.1
 pytest >=4.4,!=5.4.0
 pytest-rerunfailures
-pytest-env
 sphinx
 suitcase-jsonl >=0.1.0b2
 suitcase-mongo >=0.1.0
