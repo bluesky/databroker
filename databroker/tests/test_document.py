@@ -4,7 +4,7 @@ import pickle
 import pytest
 import json
 
-from ..core import Document, NotMutable, Event
+from ..document import Document, NotMutable, Event
 
 
 def test_immutable():

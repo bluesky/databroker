@@ -68,7 +68,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     from databroker import Broker
-    from databroker.core import register_builtin_handlers
+    from databroker._core import register_builtin_handlers
     from metadatastore.mds import MDS
     from filestore.fs import FileStoreMoving
 
