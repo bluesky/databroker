@@ -184,6 +184,9 @@ def test_get_events_filtering_field(db, RE, hw):
 
 def test_indexing(db_empty, RE, hw):
     db = db_empty
+    if not hasattr(db, "v2"):
+        # We have a v0.
+        raise pytest.skip("v0 has a bug in negative-stride indexing")
     RE.subscribe(db.insert)
     uids = []
     for i in range(10):
@@ -334,10 +337,16 @@ def test_data_key(db_empty, RE, hw):
     RE(count([hw.det1]))
     RE(count([hw.det1, hw.det2]))
     # This could be restored once we support search by descriptor in RawMongo query.
-    with pytest.raises(NotImplementedError):
+    if hasattr(db, "v2"):
+        with pytest.raises(NotImplementedError):
+            result1 = list(db(data_key='det1'))
+            assert len(result1) == 2
+        with pytest.raises(NotImplementedError):
+            result2 = list(db(data_key='det2'))
+            assert len(result2) == 1
+    else:
         result1 = list(db(data_key='det1'))
         assert len(result1) == 2
-    with pytest.raises(NotImplementedError):
         result2 = list(db(data_key='det2'))
         assert len(result2) == 1
 
