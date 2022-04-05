@@ -8,7 +8,6 @@ import uuid
 import yaml
 
 from bluesky.plans import count
-from databroker.v1 import InvalidConfig
 from databroker.utils import ensure_path_exists
 from databroker.tests.utils import get_uids
 from databroker import (lookup_config, list_configs, describe_configs)
@@ -93,27 +92,13 @@ def test_temp_config():
 
 def test_uri(RE, hw):
 
-    bad_meta_config1 = {'uri': 'mongodb://localhost',
-                        'host': 'localhost',
-                        'database': 'mds_database_placholder'}
-    bad_meta_config2 = {'uri': 'mongodb://localhost',
-                        'port': 27017,
-                        'database': 'mds_database_placholder'}
     meta_config = {'uri': 'mongodb://localhost',
-                   'database': 'mds_database_placholder'}
+                   'database': 'mds_database_placholder',
+                   'timezone': 'US/Eastern'}
     asset_config = {'uri': 'mongodb://localhost',
                     'database': 'assets_database_placeholder'}
 
     config = copy.deepcopy(EXAMPLE)
-    config['metadatastore']['config'] = bad_meta_config1
-    config['assets']['config'] = asset_config
-    with pytest.raises(InvalidConfig):
-        broker = Broker.from_config(config)
-
-    config['metadatastore']['config'] = bad_meta_config2
-    with pytest.raises(InvalidConfig):
-        broker = Broker.from_config(config)
-
     config['metadatastore']['config'] = meta_config
     broker = Broker.from_config(config)
     RE.subscribe(broker.insert)
