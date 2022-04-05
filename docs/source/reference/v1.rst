@@ -248,16 +248,6 @@ Back- and Forward-Compat Accessors
    Broker.v1
    Broker.v2
 
-Internals
-^^^^^^^^^
-
-.. autosummary::
-   :toctree: ../generated
-   :nosignatures:
-
-   Broker.reg
-   Broker.fetch_external
-
 Deprecated
 ^^^^^^^^^^
 
