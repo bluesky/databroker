@@ -49,6 +49,7 @@ from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import (
+    BlueskyMapAdapter,
     RawMongo,
     _PartialUID,
     _ScanID,
@@ -1747,7 +1748,7 @@ def full_text_search(query, catalog):
             # For huge MongoAdapters this will be slow, but if you are attempting
             # full text search on a large mongomock-backed MongoAdapter,
             # you have made your choices! :-)
-            return MapAdapter(dict(catalog)).search(query)
+            return BlueskyMapAdapter(dict(catalog)).search(query)
 
     return MongoAdapter.query_registry(
         RawMongo(
