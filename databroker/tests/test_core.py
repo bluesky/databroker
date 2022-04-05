@@ -1,5 +1,4 @@
 import event_model
-import xarray
 from bluesky_live.conversion import documents_to_xarray
 
 
