@@ -4,7 +4,6 @@ codecov
 coverage
 flake8
 glueviz
-intake[server] <=0.6.4
 matplotlib
 mongomock
 msgpack >=1.0.0
