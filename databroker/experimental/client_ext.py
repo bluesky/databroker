@@ -15,11 +15,12 @@ def submit_recon(context, array, metadata, specs, mimetype):
         ),
         micro=BuiltinDtype.from_numpy_dtype(array.dtype),
     )
-    
     data = {"metadata": metadata, "structure": asdict(structure), "structure_family": StructureFamily.array,
             "specs": specs, "mimetype": mimetype}    
     response = context._client.post("/node/metadata/", json=data)
     handle_error(response)
     uid = response.json()["uid"]
     # time.sleep(0.1)
-    # context._client.put(f"/node/metadata/{uid}", content=array.tobytes())
+    # context._client.put(f"/recon/{uid}", content=array.tobytes())
+    time.sleep(0.1)
+    context._client.put(f"/array/full/{uid}", content=array.tobytes())
