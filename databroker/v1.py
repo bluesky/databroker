@@ -19,6 +19,7 @@ except ImportError:
     from toolz.dicttoolz import merge
 
 from tiled.client import from_profile
+from tiled.client.utils import ClientError
 from tiled.queries import FullText
 
 from .queries import RawMongo, TimeRange
@@ -187,7 +188,7 @@ class Broker:
         raise NotImplementedError("No longer supported")
 
     @classmethod
-    def named(cls, name, auto_register=None):
+    def named(cls, name, auto_register=None, try_raw=True):
         """
         Create a new Broker instance using the Tiled profile of this name.
 
@@ -206,6 +207,10 @@ class Broker:
             By default, automatically register built-in asset handlers (classes
             that handle I/O for externally stored data). Set this to ``False``
             to do all registration manually.
+        try_raw: boolean, optional
+            This is a backward-compatibilty shim. Raw data has been moved from
+            "xyz" to "xyz/raw" in many deployments. If true, check to see if an item
+            named "raw" is contained in this node and, if so, uses that.
 
         Returns
         -------
@@ -219,8 +224,13 @@ class Broker:
             )
         if name == "temp":
             raise NotImplementedError("databroker 2.0.0 does not yet support 'temp' Broker")
-        catalog = from_profile(name)
-        return Broker(catalog)
+        client = from_profile(name)
+        if try_raw:
+            try:
+                client = client["raw"]
+            except (ClientError, KeyError):
+                pass
+        return Broker(client)
 
     @property
     def fs(self):
