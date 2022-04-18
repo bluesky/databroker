@@ -15,12 +15,13 @@ from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
 from tiled.server.core import json_or_msgpack
 from tiled.server.dependencies import entry
+
 # from tiled.structures.array import ArrayStructure
 from tiled.query_registration import QueryTranslationRegistry
 
 from dataclasses import asdict
 from tiled.structures.core import StructureFamily
-from apischema import deserialize 
+from apischema import deserialize
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.utils import UNCHANGED
@@ -28,6 +29,7 @@ from tiled.utils import UNCHANGED
 from schemas import Document
 
 from sys import platform
+
 
 class PostMetadataRequest(pydantic.BaseModel):
     structure_family: StructureFamily
@@ -54,9 +56,13 @@ def post_metadata(
         raise HTTPException(
             status_code=404, detail="This path cannot accept reconstruction metadata."
         )
-    uid = entry.post_metadata(metadata=body.metadata, structure_family=body.structure_family,
-                              structure=body.structure, specs=body.specs,
-                              mimetype=body.mimetype)
+    uid = entry.post_metadata(
+        metadata=body.metadata,
+        structure_family=body.structure_family,
+        structure=body.structure,
+        specs=body.specs,
+        mimetype=body.mimetype,
+    )
     return json_or_msgpack(request, {"uid": uid})
 
 
@@ -100,7 +106,7 @@ class ReconAdapter:
             file = h5py.File(path)
             dataset = file["data"]
             self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
-        elif  self.doc.data_blob is not None:
+        elif self.doc.data_blob is not None:
             self.array_adapter = ArrayAdapter(dask.array.from_array(self.doc.data_blob))
 
     @property
@@ -130,7 +136,7 @@ class ReconAdapter:
         # charcters of the uid to avoid one giant directory.
         path = self.directory / self.doc.uid[:2] / self.doc.uid
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # array = numpy.frombuffer(
         #     body, dtype=self.structure.micro.to_numpy_dtype()
         # ).reshape(self.structure.macro.shape)
@@ -141,8 +147,12 @@ class ReconAdapter:
             file.create_dataset("data", data=array)
         self.collection.update_one(
             {"uid": self.doc.uid},
-            {"$set": {"data_url": "file://localhost/" + str(path).replace(os.sep, '/'),
-                      "active": True}},
+            {
+                "$set": {
+                    "data_url": "file://localhost/" + str(path).replace(os.sep, "/"),
+                    "active": True,
+                }
+            },
         )
 
 
@@ -221,11 +231,16 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def post_metadata(self, metadata, structure_family, structure, specs, mimetype):
         uid = str(uuid.uuid4())
 
-        validated_document = Document(uid=uid, structure_family=structure_family, structure=structure, 
-                                      metadata=metadata, specs=specs, mimetype=mimetype, active=False)
-        self.collection.insert_one(
-            validated_document.dict()
+        validated_document = Document(
+            uid=uid,
+            structure_family=structure_family,
+            structure=structure,
+            metadata=metadata,
+            specs=specs,
+            mimetype=mimetype,
+            active=False,
         )
+        self.collection.insert_one(validated_document.dict())
         return uid
 
     def authenticated_as(self, identity):
@@ -255,7 +270,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         for doc in list(
             self.collection.find(
                 # self._build_mongo_query({"active": True}), {"uid": True}
-                self._build_mongo_query({"data_url": {"$ne":None}}), {"uid": True}
+                self._build_mongo_query({"data_url": {"$ne": None}}),
+                {"uid": True},
             )
         ):
             yield doc["uid"]
@@ -264,7 +280,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         print("len")
         return self.collection.count_documents(
             # self._build_mongo_query({"active": True})
-            self._build_mongo_query({"data_url": {"$ne":None}})
+            self._build_mongo_query({"data_url": {"$ne": None}})
         )
 
     def __length_hint__(self):
@@ -272,7 +288,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         # https://www.python.org/dev/peps/pep-0424/
         return self.collection.estimated_document_count(
             # self._build_mongo_query({"active": True}),
-            self._build_mongo_query({"data_url": {"$ne":None}}),
+            self._build_mongo_query({"data_url": {"$ne": None}}),
         )
 
     def __repr__(self):
@@ -300,7 +316,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         print("keys_slice")
         for doc in self.collection.find(
             # self._build_mongo_query({"active": True}),
-            self._build_mongo_query({"data_url": {"$ne":None}}),
+            self._build_mongo_query({"data_url": {"$ne": None}}),
             skip=skip,
             limit=limit,
         ):
@@ -312,11 +328,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         if stop is not None:
             limit = stop - skip
         else:
-            limit = None        
+            limit = None
         print("items_slice")
         for doc in self.collection.find(
             # self._build_mongo_query({"active": True}),
-            self._build_mongo_query({"data_url": {"$ne":None}}),
+            self._build_mongo_query({"data_url": {"$ne": None}}),
             skip=skip,
             limit=limit,
         ):
@@ -328,7 +344,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         doc = next(
             self.collection.find(
                 # self._build_mongo_query({"active": True}),
-                self._build_mongo_query({"data_url": {"$ne":None}}),
+                self._build_mongo_query({"data_url": {"$ne": None}}),
                 skip=index,
                 limit=1,
             )
