@@ -101,12 +101,12 @@ class ReconAdapter:
         # if self.doc.active:
         if self.doc.data_url is not None:
             path = self.doc.data_url.path
-            if platform == "win32" and path[0] == '/':
+            if platform == "win32" and path[0] == "/":
                 path = path[1:]
             #     path = str(Path(self.doc.data_url).absolute()).replace(":", ":/")
             # else:
             #     path = self.doc.data_url
-            
+
             file = h5py.File(path)
             dataset = file["data"]
             self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
@@ -151,7 +151,11 @@ class ReconAdapter:
             file.create_dataset("data", data=array)
         self.collection.update_one(
             {"uid": self.doc.uid},
-            {"$set": {"data_url": "file://localhost/" + str(path).replace(os.sep, '/')}},
+            {
+                "$set": {
+                    "data_url": "file://localhost/" + str(path).replace(os.sep, "/")
+                }
+            },
         )
 
 
@@ -230,8 +234,14 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def post_metadata(self, metadata, structure_family, structure, specs, mimetype):
         uid = str(uuid.uuid4())
 
-        validated_document = Document(uid=uid, structure_family=structure_family, structure=structure, 
-                                      metadata=metadata, specs=specs, mimetype=mimetype)
+        validated_document = Document(
+            uid=uid,
+            structure_family=structure_family,
+            structure=structure,
+            metadata=metadata,
+            specs=specs,
+            mimetype=mimetype,
+        )
         self.collection.insert_one(validated_document.dict())
         return uid
 
