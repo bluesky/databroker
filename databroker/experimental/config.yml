@@ -4,5 +4,5 @@ trees:
   - path: /
     tree: "server_ext:MongoAdapter.from_uri" # "server_ext:MongoAdapter.from_uri"
     args:
-      uri: mongodb://localhost:27017/fxi-recon-tiled-dev-4
+      uri: mongodb://localhost:27017/fxi-recon-tiled-dev-5
       directory: C:/Users/jmaruland/Documents/MongoDB/tmp/fxi-recon-tiled-dev  # writeable directory

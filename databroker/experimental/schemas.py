@@ -1,21 +1,19 @@
-from typing import Dict, Generic, List, Optional, TypeVar
+from typing import  Dict, Generic, List, Optional, TypeVar, Union
 from enum import Enum
 
 import pydantic
 import pydantic.generics
 
-from tiled.server.pydantic_array import (
-    ArrayStructure,
-    ArrayMacroStructure,
-    BuiltinDtype,
-)
+from tiled.server.pydantic_array import ArrayStructure, ArrayMacroStructure, BuiltinDtype
+from tiled.server.pydantic_dataframe import DataFrameStructure, DataFrameMacroStructure, DataFrameMicroStructure
 from tiled.structures.core import StructureFamily
-from tiled.structures.dataframe import DataFrameStructure
 from tiled.structures.xarray import DataArrayStructure, DatasetStructure
 
 
 import dask.array
+import dask.dataframe
 import numpy
+import pandas
 
 
 StrucT = TypeVar("StrucT")
@@ -36,13 +34,12 @@ structure_association = {
 class Document(pydantic.BaseModel):
     uid: str
     structure_family: StructureFamily
-    structure: ArrayStructure
+    structure: Union[ArrayStructure, DataFrameStructure]
     metadata: Dict
     specs: List[str]
     mimetype: str
     data_blob: Optional[bytes]
     data_url: Optional[pydantic.AnyUrl]
-    active: Optional[bool]
 
     @pydantic.root_validator
     def validate_structure_matches_structure_family(cls, values):
@@ -50,15 +47,10 @@ class Document(pydantic.BaseModel):
         actual_structure = values.get("structure")
         # Given the structure_family, we know what the structure type should be.
         expected_structure_type = structure_association[values.get("structure_family")]
-        if values.get("structure_family") == StructureFamily.node:
-            raise Exception(
-                f"{structure_family} is not currently supported as a writable structure"
-            )
+        if values.get("expected_structure_type") == StructureFamily.node:
+            raise Exception(f"{expected_structure_type} is not currently supported as a writable structure")
         elif not isinstance(actual_structure, expected_structure_type):
-            breakpoint()
-            raise Exception(
-                "The expected structure type does not match the received structure type"
-            )
+            raise Exception("The expected structure type does not match the received structure type")
         return values
 
     @pydantic.root_validator
@@ -94,28 +86,44 @@ class Document(pydantic.BaseModel):
         if m_type not in mime_type_list:
             raise ValueError(f"{m_type} is not a valid mime type")
         return v
-
-
-if __name__ == "__main__":
-    array = dask.array.from_array(numpy.ones((5, 5)))
-
-    name = "TestNode"
-    structure_family = StructureFamily.array
-    structure = ArrayStructure(
-        macro=ArrayMacroStructure(shape=array.shape, chunks=array.chunks),
-        micro=BuiltinDtype.from_numpy_dtype(array.dtype),
-    )
-    metadata = {"A": 0, "B": 1}
-    specs = ["BlueskyNode"]
-    # data_blob = b'1234'
-    # file:///a/b/c
-    # data_url = 'http://localhost:8000'
-    mimetype = "image/png"
-    node = Document(
-        uid=name,
-        structure_family=structure_family,
-        structure=structure,
-        metadata=metadata,
-        specs=specs,
-        mimetype=mimetype,
-    )
+    
+    
+# if __name__ == "__main__":
+    # array = dask.array.from_array(numpy.ones((5, 5)))
+    
+    # name = 'TestNode'
+    
+    # structure_family = StructureFamily.array
+    # structure = ArrayStructure(macro=ArrayMacroStructure(shape=array.shape, chunks=array.chunks),
+    #                             micro=BuiltinDtype.from_numpy_dtype(array.dtype))
+    
+    # name = 'DataFrameNode'    
+    # array = numpy.ones((5, 5))
+    # data = {"Column1": array[0],
+    #         "Column2": array[1],
+    #         "Column3": array[2],
+    #         "Column4": array[3],
+    #         "Column5": array[4]}
+    
+    # df = pandas.DataFrame(data)
+    # ddf = dask.dataframe.from_pandas(df, npartitions=len(df.columns))
+    
+    # meta={}
+    # for key,value in df.items():
+    #     meta[key] = value.dtypes.name
+    
+    # structure_family = StructureFamily.dataframe
+    # # structure = DataFrameStructure(macro=DataFrameMacroStructure.from_dask_dataframe(ddf),
+    # #                                 micro=DataFrameMicroStructure.from_dask_dataframe(ddf))
+    # structure = DataFrameStructure( micro=DataFrameMicroStructure(meta=meta, divisions=ddf.divisions),
+    #                                macro=DataFrameMacroStructure(npartitions=ddf.npartitions, columns=list(ddf.columns)))
+    
+    # meta = {'A': 0, 'B': 1}
+    # metadata = {"columns": list(ddf.columns)}
+    # specs=["BlueskyNode"]
+    # # data_blob = b'1234'
+    # #file:///a/b/c
+    # # data_url = 'http://localhost:8000'
+    # mimetype = 'image/png'
+    # node = Document(uid=name, structure_family=structure_family, structure=structure,
+    #                   metadata=meta, specs=specs, mimetype=mimetype)

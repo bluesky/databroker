@@ -15,8 +15,6 @@ from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
 from tiled.server.core import json_or_msgpack
 from tiled.server.dependencies import entry
-
-# from tiled.structures.array import ArrayStructure
 from tiled.query_registration import QueryTranslationRegistry
 
 from dataclasses import asdict
@@ -24,7 +22,10 @@ from tiled.structures.core import StructureFamily
 from apischema import deserialize
 
 from tiled.server.pydantic_array import ArrayStructure
+from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.utils import UNCHANGED
+
+from typing import Union
 
 from schemas import Document
 
@@ -33,7 +34,7 @@ from sys import platform
 
 class PostMetadataRequest(pydantic.BaseModel):
     structure_family: StructureFamily
-    structure: ArrayStructure
+    structure: Union[ArrayStructure, DataFrameStructure]
     metadata: Dict
     specs: List[str]
     mimetype: str
@@ -99,10 +100,13 @@ class ReconAdapter:
         self.array_adapter = None
         # if self.doc.active:
         if self.doc.data_url is not None:
-            if platform == "win32":
-                path = str(Path(self.doc.data_url).absolute()).replace(":", ":/")
-            else:
-                path = self.doc.data_url
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == '/':
+                path = path[1:]
+            #     path = str(Path(self.doc.data_url).absolute()).replace(":", ":/")
+            # else:
+            #     path = self.doc.data_url
+            
             file = h5py.File(path)
             dataset = file["data"]
             self.array_adapter = ArrayAdapter(dask.array.from_array(dataset))
@@ -147,12 +151,7 @@ class ReconAdapter:
             file.create_dataset("data", data=array)
         self.collection.update_one(
             {"uid": self.doc.uid},
-            {
-                "$set": {
-                    "data_url": "file://localhost/" + str(path).replace(os.sep, "/"),
-                    "active": True,
-                }
-            },
+            {"$set": {"data_url": "file://localhost/" + str(path).replace(os.sep, '/')}},
         )
 
 
@@ -231,15 +230,8 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def post_metadata(self, metadata, structure_family, structure, specs, mimetype):
         uid = str(uuid.uuid4())
 
-        validated_document = Document(
-            uid=uid,
-            structure_family=structure_family,
-            structure=structure,
-            metadata=metadata,
-            specs=specs,
-            mimetype=mimetype,
-            active=False,
-        )
+        validated_document = Document(uid=uid, structure_family=structure_family, structure=structure, 
+                                      metadata=metadata, specs=specs, mimetype=mimetype)
         self.collection.insert_one(validated_document.dict())
         return uid
 
@@ -266,7 +258,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
-        print("iter")
         for doc in list(
             self.collection.find(
                 # self._build_mongo_query({"active": True}), {"uid": True}
@@ -277,14 +268,12 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             yield doc["uid"]
 
     def __len__(self):
-        print("len")
         return self.collection.count_documents(
             # self._build_mongo_query({"active": True})
             self._build_mongo_query({"data_url": {"$ne": None}})
         )
 
     def __length_hint__(self):
-        print("length_hint")
         # https://www.python.org/dev/peps/pep-0424/
         return self.collection.estimated_document_count(
             # self._build_mongo_query({"active": True}),
@@ -313,7 +302,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit = stop - skip
         else:
             limit = None
-        print("keys_slice")
         for doc in self.collection.find(
             # self._build_mongo_query({"active": True}),
             self._build_mongo_query({"data_url": {"$ne": None}}),
@@ -329,7 +317,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit = stop - skip
         else:
             limit = None
-        print("items_slice")
+
         for doc in self.collection.find(
             # self._build_mongo_query({"active": True}),
             self._build_mongo_query({"data_url": {"$ne": None}}),
@@ -340,7 +328,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def _item_by_index(self, index, direction):
         assert direction == 1, "direction=-1 should be handled by the client"
-        print("item_by_index")
         doc = next(
             self.collection.find(
                 # self._build_mongo_query({"active": True}),
