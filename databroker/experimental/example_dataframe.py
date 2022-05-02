@@ -3,9 +3,9 @@ import pandas
 
 from tiled.client import from_uri
 
-from client_ext import submit_df_recon
+from client_ext import submit_dataframe
 
-# from queries import scan_id
+from queries import scan_id
 
 c = from_uri("http://localhost:8000/api")
 
@@ -21,8 +21,14 @@ data = {
 
 dataframe = pandas.DataFrame(data)
 
-meta = {}
-for key, value in dataframe.items():
-    meta[key] = value.dtypes.name
+submit_dataframe(
+    c.context, dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"], "image/png"
+)
 
-submit_df_recon(c.context, dataframe, meta, ["BlueskyNode"], "image/png")
+print("searching for reconstructions corresponding to scan_id 1...")
+results = c.search(scan_id(1))
+print(f"found {len(results)} results")
+print("first result:")
+result = results.values_indexer[0]
+print("dataframe:", result.read())  # dataframe
+print("metadata:", result.metadata)  # dict of metadata

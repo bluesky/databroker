@@ -1,5 +1,8 @@
+import base64
 import time
 from dataclasses import asdict
+
+from io import BytesIO
 
 from tiled.client.utils import handle_error
 from tiled.structures.array import ArrayMacroStructure, ArrayStructure, BuiltinDtype
@@ -9,9 +12,10 @@ from tiled.structures.dataframe import (
     DataFrameMicroStructure,
 )
 from tiled.structures.core import StructureFamily
+from tiled.structures.dataframe import serialize_arrow
 
 
-def submit_arr_recon(context, array, metadata, specs, mimetype):
+def submit_array(context, array, metadata, specs, mimetype):
     structure = ArrayStructure(
         macro=ArrayMacroStructure(
             shape=array.shape,
@@ -34,19 +38,12 @@ def submit_arr_recon(context, array, metadata, specs, mimetype):
     context._client.put(f"/array/full/{uid}", content=array.tobytes())
 
 
-def submit_df_recon(context, dataframe, metadata, specs, mimetype):
-    import dask.dataframe
-
-    if not isinstance(dataframe, dask.dataframe.core.DataFrame):
-        dataframe = dask.dataframe.from_pandas(
-            dataframe, npartitions=len(dataframe.columns)
-        )
+def submit_dataframe(context, dataframe, metadata, specs, mimetype):
+    from dask.dataframe.utils import make_meta
 
     structure = DataFrameStructure(
-        micro=DataFrameMicroStructure(meta=metadata, divisions=dataframe.divisions),
-        macro=DataFrameMacroStructure(
-            npartitions=dataframe.npartitions, columns=list(dataframe.columns)
-        ),
+        micro=DataFrameMicroStructure(meta=make_meta(dataframe), divisions=[]),
+        macro=DataFrameMacroStructure(npartitions=1, columns=list(dataframe.columns)),
     )
 
     data = {
@@ -56,6 +53,16 @@ def submit_df_recon(context, dataframe, metadata, specs, mimetype):
         "specs": specs,
         "mimetype": mimetype,
     }
+
+    data["structure"]["micro"]["meta"] = base64.b64encode(
+        bytes(serialize_arrow(data["structure"]["micro"]["meta"], {}))
+    ).decode()
+
     response = context._client.post("/node/metadata/", json=data)
     handle_error(response)
     uid = response.json()["uid"]
+    time.sleep(0.1)
+
+    write_buffer = BytesIO()
+    dataframe.to_csv(write_buffer)
+    context._client.put(f"/dataframe/full/{uid}", content=write_buffer.getvalue())

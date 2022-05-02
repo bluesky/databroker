@@ -138,7 +138,7 @@ def try_dataframe_schema():
     }
 
     df = pandas.DataFrame(data)
-    ddf = dask.dataframe.from_pandas(df, npartitions=len(df.columns))
+    # ddf = dask.dataframe.from_pandas(df, npartitions=len(df.columns))
 
     meta = {}
     for key, value in df.items():
@@ -148,11 +148,15 @@ def try_dataframe_schema():
 
     # structure = DataFrameStructure(macro=DataFrameMacroStructure.from_dask_dataframe(ddf),
     #                                 micro=DataFrameMicroStructure.from_dask_dataframe(ddf))
+    # structure = DataFrameStructure(
+    #     micro=DataFrameMicroStructure(meta=meta, divisions=ddf.divisions),
+    #     macro=DataFrameMacroStructure(
+    #         npartitions=ddf.npartitions, columns=list(ddf.columns)
+    #     ),
+    # )
     structure = DataFrameStructure(
-        micro=DataFrameMicroStructure(meta=meta, divisions=ddf.divisions),
-        macro=DataFrameMacroStructure(
-            npartitions=ddf.npartitions, columns=list(ddf.columns)
-        ),
+        micro=DataFrameMicroStructure(meta=pandas.DataFrame(meta), divisions=[]),
+        macro=DataFrameMacroStructure(npartitions=1, columns=list(df.columns)),
     )
 
     specs = ["BlueskyNode"]

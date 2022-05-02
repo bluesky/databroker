@@ -1,25 +1,29 @@
+import base64
 import collections.abc
-import json
 import os
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 import dask.array
 import h5py
 import numpy
+import pandas
 import pydantic
 import pymongo
+
 from fastapi import APIRouter, HTTPException, Request, Security
 from tiled.adapters.array import ArrayAdapter
+from tiled.adapters.dataframe import DataFrameAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
 from tiled.server.core import json_or_msgpack
 from tiled.server.dependencies import entry
 from tiled.query_registration import QueryTranslationRegistry
 
-from dataclasses import asdict
+from io import BytesIO
+
 from tiled.structures.core import StructureFamily
-from apischema import deserialize
+from tiled.structures.dataframe import deserialize_arrow, serialize_arrow
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
@@ -57,6 +61,13 @@ def post_metadata(
         raise HTTPException(
             status_code=404, detail="This path cannot accept reconstruction metadata."
         )
+
+    if body.structure_family == StructureFamily.dataframe:
+        # Decode meta for pydantic validation
+        body.structure.micro.meta = deserialize_arrow(
+            base64.b64decode(body.structure.micro.meta)
+        )
+
     uid = entry.post_metadata(
         metadata=body.metadata,
         structure_family=body.structure_family,
@@ -72,7 +83,7 @@ async def put_array_full(
     request: Request,
     entry=Security(entry, scopes=["write:data", "write:metadata"]),
 ):
-    if not isinstance(entry, ReconAdapter):
+    if not isinstance(entry, WritingArrayAdapter):
         raise HTTPException(
             status_code=404, detail="This path cannot accept reconstruction data."
         )
@@ -80,7 +91,20 @@ async def put_array_full(
     entry.put_data(data)
 
 
-def raise_if_inactive(method):
+@router.put("/dataframe/full/{path:path}")
+async def put_dataframe_full(
+    request: Request,
+    entry=Security(entry, scopes=["write:data", "write:metadata"]),
+):
+    if not isinstance(entry, WritingDataFrameAdapter):
+        raise HTTPException(
+            status_code=404, detail="This path cannot accept reconstruction data."
+        )
+    data = await request.body()
+    entry.put_data(data)
+
+
+def array_raise_if_inactive(method):
     def inner(self, *args, **kwargs):
         if self.array_adapter is None:
             raise ValueError("Not active")
@@ -90,7 +114,17 @@ def raise_if_inactive(method):
     return inner
 
 
-class ReconAdapter:
+def dataframe_raise_if_inactive(method):
+    def inner(self, *args, **kwargs):
+        if self.dataframe_adapter is None:
+            raise ValueError("Not active")
+        else:
+            return method(self, *args, **kwargs)
+
+    return inner
+
+
+class WritingArrayAdapter:
     structure_family = "array"
 
     def __init__(self, collection, directory, doc):
@@ -103,9 +137,6 @@ class ReconAdapter:
             path = self.doc.data_url.path
             if platform == "win32" and path[0] == "/":
                 path = path[1:]
-            #     path = str(Path(self.doc.data_url).absolute()).replace(":", ":/")
-            # else:
-            #     path = self.doc.data_url
 
             file = h5py.File(path)
             dataset = file["data"]
@@ -121,11 +152,11 @@ class ReconAdapter:
     def metadata(self):
         return self.doc.metadata
 
-    @raise_if_inactive
+    @array_raise_if_inactive
     def read(self, *args, **kwargs):
         return self.array_adapter.read(*args, **kwargs)
 
-    @raise_if_inactive
+    @array_raise_if_inactive
     def read_block(self, *args, **kwargs):
         return self.array_adapter.read_block(*args, **kwargs)
 
@@ -140,7 +171,6 @@ class ReconAdapter:
         # charcters of the uid to avoid one giant directory.
         path = self.directory / self.doc.uid[:2] / self.doc.uid
         path.parent.mkdir(parents=True, exist_ok=True)
-
         # array = numpy.frombuffer(
         #     body, dtype=self.structure.micro.to_numpy_dtype()
         # ).reshape(self.structure.macro.shape)
@@ -153,7 +183,87 @@ class ReconAdapter:
             {"uid": self.doc.uid},
             {
                 "$set": {
-                    "data_url": "file://localhost/" + str(path).replace(os.sep, "/")
+                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
+                }
+            },
+        )
+
+
+class WritingDataFrameAdapter:
+    structure_family = "dataframe"
+
+    def __init__(self, collection, directory, doc):
+        self.collection = collection
+        self.directory = directory
+        self.doc = Document(**doc)
+        self.dataframe_adapter = None
+
+        if self.doc.data_url is not None:
+            path = self.doc.data_url.path
+            if platform == "win32" and path[0] == "/":
+                path = path[1:]
+
+            # file = h5py.File(path)
+            # dataset = file["data"]
+            # self.dataframe_adapter = ArrayAdapter(dask.array.from_array(dataset))
+            # self.dataframe_adapter = DataFrameAdapter(dask.dataframe.read_parquet(path))
+            self.dataframe_adapter = DataFrameAdapter(
+                dask.dataframe.from_pandas(
+                    pandas.read_parquet(path),
+                    npartitions=self.doc.structure.macro.npartitions,
+                )
+            )  # npartitions=1
+            # self.dataframe_adapter = DataFrameAdapter.from_pandas(pandas.readparquet(path),
+            #                                                       npartitions=self.doc.structure.macro.npartitions) # npartitions=1
+        elif self.doc.data_blob is not None:
+            # self.dataframe_adapter = DataFrameAdapter(dask.dataframe.from_pandas(self.data_blob))
+            self.dataframe_adapter = DataFrameAdapter(
+                dask.dataframe.from_pandas(
+                    pandas.read_csv(BytesIO(self.data_blob)),
+                    npartitions=self.doc.structure.macro.npartitions,
+                )
+            )  # npartitions=1
+            # self.dataframe_adapter = DataFrameAdapter.from_pandas(pandas.read_csv(BytesIO(self.data_blob))),
+            #                                                       npartitions=self.doc.structure.macro.npartitions) # npartitions=1
+
+    @property
+    def structure(self):
+        return DataFrameStructure.from_json(self.doc.structure)
+
+    @property
+    def metadata(self):
+        return self.doc.metadata
+
+    @dataframe_raise_if_inactive
+    def read(self, *args, **kwargs):
+        return self.dataframe_adapter.read(*args, **kwargs)
+
+    @dataframe_raise_if_inactive
+    def read_partition(self, *args, **kwargs):
+        return self.dataframe_adapter.read_partition(*args, **kwargs)
+
+    def microstructure(self):
+        return self.dataframe_adapter.microstructure()
+
+    def macrostructure(self):
+        return self.dataframe_adapter.macrostructure()
+
+    def put_data(self, body):
+        # Organize files into subdirectories with the first two
+        # charcters of the uid to avoid one giant directory.
+        path = self.directory / self.doc.uid[:2] / self.doc.uid
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # array = numpy.frombuffer(
+        #     body, dtype=self.doc.structure.micro.to_numpy_dtype()
+        # ).reshape(self.doc.structure.macro.shape)
+        dataframe = pandas.read_csv(BytesIO(body), index_col=0)
+        dataframe.to_parquet(path)
+        self.collection.update_one(
+            {"uid": self.doc.uid},
+            {
+                "$set": {
+                    "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
                 }
             },
         )
@@ -242,6 +352,13 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             specs=specs,
             mimetype=mimetype,
         )
+
+        # After validating the document must be encoded to bytes again to make it compatible with MongoDB
+        if validated_document.structure_family == StructureFamily.dataframe:
+            validated_document.structure.micro.meta = bytes(
+                serialize_arrow(validated_document.structure.micro.meta, {})
+            )
+
         self.collection.insert_one(validated_document.dict())
         return uid
 
@@ -264,7 +381,13 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         doc = self.collection.find_one(self._build_mongo_query(query), {"_id": False})
         if doc is None:
             raise KeyError(key)
-        return ReconAdapter(self.collection, self.directory, doc)
+
+        if doc["structure_family"] == StructureFamily.array:
+            return WritingArrayAdapter(self.collection, self.directory, doc)
+        elif doc["structure_family"] == StructureFamily.dataframe:
+            return WritingDataFrameAdapter(self.collection, self.directory, doc)
+        else:
+            raise ValueError("Unsupported Structure Family value in the databse")
 
     def __iter__(self):
         # TODO Apply pagination, as we do in Databroker.
@@ -334,7 +457,18 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             skip=skip,
             limit=limit,
         ):
-            yield (doc["uid"], ReconAdapter(self.database, self.directory, doc))
+            if doc["structure_family"] == StructureFamily.array:
+                yield (
+                    doc["uid"],
+                    WritingArrayAdapter(self.database, self.directory, doc),
+                )
+            elif doc["structure_family"] == StructureFamily.dataframe:
+                yield (
+                    doc["uid"],
+                    WritingDataFrameAdapter(self.database, self.directory, doc),
+                )
+            else:
+                raise ValueError("Unsupported Structure Family value in the databse")
 
     def _item_by_index(self, index, direction):
         assert direction == 1, "direction=-1 should be handled by the client"
@@ -346,7 +480,15 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                 limit=1,
             )
         )
-        return (doc["uid"], ReconAdapter(self.database, self.directory, doc))
+        if doc["structure_family"] == StructureFamily.array:
+            return (doc["uid"], WritingArrayAdapter(self.database, self.directory, doc))
+        elif doc["structure_family"] == StructureFamily.dataframe:
+            return (
+                doc["uid"],
+                WritingDataFrameAdapter(self.database, self.directory, doc),
+            )
+        else:
+            raise ValueError("Unsupported Structure Family value in the databse")
 
 
 # def raw_mongo(query, catalog):
