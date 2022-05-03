@@ -22,5 +22,4 @@ print(f"found {len(results)} results")
 print("first result:")
 result = results.values_indexer[0]
 print("array:", result[:])  # numpy array
-breakpoint()
 print("metadata:", result.metadata)  # dict of metadata

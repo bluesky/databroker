@@ -31,11 +31,10 @@ def submit_array(context, array, metadata, specs, mimetype):
         "specs": specs,
         "mimetype": mimetype,
     }
-    response = context._client.post("/node/metadata/", json=data)
-    handle_error(response)
-    uid = response.json()["uid"]
-    time.sleep(0.1)
-    context._client.put(f"/array/full/{uid}", content=array.tobytes())
+    document = context.post_json("/node/metadata/", data)
+    uid = document["uid"]
+    data_response = context._client.put(f"/array/full/{uid}", content=array.tobytes())
+    handle_error(data_response)
 
 
 def submit_dataframe(context, dataframe, metadata, specs, mimetype):
@@ -58,11 +57,12 @@ def submit_dataframe(context, dataframe, metadata, specs, mimetype):
         bytes(serialize_arrow(data["structure"]["micro"]["meta"], {}))
     ).decode()
 
-    response = context._client.post("/node/metadata/", json=data)
-    handle_error(response)
-    uid = response.json()["uid"]
-    time.sleep(0.1)
+    document = context.post_json("/node/metadata/", data)
+    uid = document["uid"]
 
     write_buffer = BytesIO()
     dataframe.to_csv(write_buffer)
-    context._client.put(f"/dataframe/full/{uid}", content=write_buffer.getvalue())
+    data_response = context._client.put(
+        f"/dataframe/full/{uid}", content=write_buffer.getvalue()
+    )
+    handle_error(data_response)
