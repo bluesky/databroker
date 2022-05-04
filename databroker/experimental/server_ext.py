@@ -1,5 +1,6 @@
 import base64
 import collections.abc
+import json
 import os
 import uuid
 from pathlib import Path
@@ -31,7 +32,8 @@ from tiled.utils import UNCHANGED
 
 from typing import Union
 
-from schemas import Document
+from .schemas import Document
+from .queries import RawMongo
 
 from sys import platform
 
@@ -89,6 +91,7 @@ async def put_array_full(
         )
     data = await request.body()
     entry.put_data(data)
+    return json_or_msgpack(request, None)
 
 
 @router.put("/dataframe/full/{path:path}")
@@ -102,6 +105,7 @@ async def put_dataframe_full(
         )
     data = await request.body()
     entry.put_data(data)
+    return json_or_msgpack(request, None)
 
 
 def array_raise_if_inactive(method):
@@ -132,7 +136,6 @@ class WritingArrayAdapter:
         self.directory = directory
         self.doc = Document(**doc)
         self.array_adapter = None
-        # if self.doc.active:
         if self.doc.data_url is not None:
             path = self.doc.data_url.path
             if platform == "win32" and path[0] == "/":
@@ -314,6 +317,16 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         database = client.get_database()
         return cls(database=database, directory=directory, metadata=metadata)
 
+    @classmethod
+    def from_mongomock(cls, directory, *, metadata=None):
+        import mongomock
+
+        db_name = f"temp-{str(uuid.uuid4())}"
+        mongo_client = mongomock.MongoClient()
+        database = mongo_client[db_name]
+
+        return cls(database=database, directory=directory, metadata=metadata)
+
     def new_variation(
         self,
         metadata=UNCHANGED,
@@ -491,11 +504,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             raise ValueError("Unsupported Structure Family value in the databse")
 
 
-# def raw_mongo(query, catalog):
-#     # For now, only handle search on the 'run_start' collection.
-#     return catalog.new_variation(
-#         queries=catalog.queries + [json.loads(query.query)],
-#     )
+def raw_mongo(query, catalog):
+    # For now, only handle search on the 'run_start' collection.
+    return catalog.new_variation(
+        queries=catalog.queries + [json.loads(query.query)],
+    )
 
 
-# MongoAdapter.register_query(RawMongo, raw_mongo)
+MongoAdapter.register_query(RawMongo, raw_mongo)

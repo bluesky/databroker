@@ -5,7 +5,7 @@ import json
 from tiled.queries import register
 
 
-@register(name="raw_mongo")
+@register(name="raw_mongo2", overwrite=True)
 @dataclass
 class RawMongo:
     """
