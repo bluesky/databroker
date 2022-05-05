@@ -60,9 +60,8 @@ def submit_dataframe(context, dataframe, metadata, specs, mimetype):
     document = context.post_json("/node/metadata/", data)
     uid = document["uid"]
 
-    write_buffer = BytesIO()
-    dataframe.to_csv(write_buffer)
+    serilized_data = base64.b64encode(bytes(serialize_arrow(dataframe, {}))).decode()
     data_response = context._client.put(
-        f"/dataframe/full/{uid}", content=write_buffer.getvalue()
+        f"/dataframe/full/{uid}", content=serilized_data
     )
     handle_error(data_response)

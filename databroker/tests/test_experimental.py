@@ -9,7 +9,7 @@ import numpy
 import pandas
 
 
-def test_create_array(tmpdir):
+def test_write_array(tmpdir):
 
     api_key = "secret"
 
@@ -21,7 +21,7 @@ def test_create_array(tmpdir):
 
     test_array = numpy.ones((5, 5))
 
-    client.create_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
+    client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
 
     results = client.search(scan_id(1))
     result_array = results.values_indexer[0].read()
@@ -29,7 +29,7 @@ def test_create_array(tmpdir):
     numpy.testing.assert_equal(result_array, test_array)
 
 
-def test_create_dataframe(tmpdir):
+def test_write_dataframe(tmpdir):
 
     api_key = "secret"
 
@@ -51,7 +51,7 @@ def test_create_dataframe(tmpdir):
 
     test_dataframe = pandas.DataFrame(data)
 
-    client.create_dataframe(
+    client.write_dataframe(
         test_dataframe, {"scan_id": 1, "method": "A"}, ["BlueskyNode"]
     )
 

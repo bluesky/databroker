@@ -21,8 +21,6 @@ from tiled.server.core import json_or_msgpack
 from tiled.server.dependencies import entry
 from tiled.query_registration import QueryTranslationRegistry
 
-from io import BytesIO
-
 from tiled.structures.core import StructureFamily
 from tiled.structures.dataframe import deserialize_arrow, serialize_arrow
 
@@ -174,9 +172,6 @@ class WritingArrayAdapter:
         # charcters of the uid to avoid one giant directory.
         path = self.directory / self.doc.uid[:2] / self.doc.uid
         path.parent.mkdir(parents=True, exist_ok=True)
-        # array = numpy.frombuffer(
-        #     body, dtype=self.structure.micro.to_numpy_dtype()
-        # ).reshape(self.structure.macro.shape)
         array = numpy.frombuffer(
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
         ).reshape(self.doc.structure.macro.shape)
@@ -206,28 +201,20 @@ class WritingDataFrameAdapter:
             if platform == "win32" and path[0] == "/":
                 path = path[1:]
 
-            # file = h5py.File(path)
-            # dataset = file["data"]
-            # self.dataframe_adapter = ArrayAdapter(dask.array.from_array(dataset))
-            # self.dataframe_adapter = DataFrameAdapter(dask.dataframe.read_parquet(path))
             self.dataframe_adapter = DataFrameAdapter(
                 dask.dataframe.from_pandas(
                     pandas.read_parquet(path),
                     npartitions=self.doc.structure.macro.npartitions,
                 )
-            )  # npartitions=1
-            # self.dataframe_adapter = DataFrameAdapter.from_pandas(pandas.readparquet(path),
-            #                                                       npartitions=self.doc.structure.macro.npartitions) # npartitions=1
+            )
+
         elif self.doc.data_blob is not None:
-            # self.dataframe_adapter = DataFrameAdapter(dask.dataframe.from_pandas(self.data_blob))
             self.dataframe_adapter = DataFrameAdapter(
                 dask.dataframe.from_pandas(
-                    pandas.read_csv(BytesIO(self.data_blob)),
+                    deserialize_arrow(base64.b64decode(self.doc.data_blob)),
                     npartitions=self.doc.structure.macro.npartitions,
                 )
-            )  # npartitions=1
-            # self.dataframe_adapter = DataFrameAdapter.from_pandas(pandas.read_csv(BytesIO(self.data_blob))),
-            #                                                       npartitions=self.doc.structure.macro.npartitions) # npartitions=1
+            )
 
     @property
     def structure(self):
@@ -260,7 +247,9 @@ class WritingDataFrameAdapter:
         # array = numpy.frombuffer(
         #     body, dtype=self.doc.structure.micro.to_numpy_dtype()
         # ).reshape(self.doc.structure.macro.shape)
-        dataframe = pandas.read_csv(BytesIO(body), index_col=0)
+        dataframe = deserialize_arrow(base64.b64decode(body))
+
+        # dataframe = pandas.read_csv(BytesIO(body), index_col=0)
         dataframe.to_parquet(path)
         self.collection.update_one(
             {"uid": self.doc.uid},
