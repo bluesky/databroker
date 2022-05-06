@@ -1,4 +1,4 @@
-from apischema import ValidationError, deserialize, validator
+from apischema import ValidationError, validator
 
 from dataclasses import dataclass
 from typing import Dict, Generic, List, Optional, TypeVar
@@ -8,16 +8,8 @@ from tiled.structures.core import StructureFamily
 # from tiled.structures.array import ArrayStructure, ArrayMacroStructure, BuiltinDtype
 from tiled.structures.dataframe import DataFrameStructure
 from tiled.structures.xarray import DataArrayStructure, DatasetStructure
-from tiled.server.pydantic_array import (
-    ArrayStructure,
-    ArrayMacroStructure,
-    BuiltinDtype,
-)
+from tiled.server.pydantic_array import ArrayStructure
 
-from pathlib import Path
-
-import dask.array
-import numpy
 import re
 
 # import pytest
@@ -123,24 +115,3 @@ class Document(Generic[StrucT]):
             raise ValidationError(
                 "the link provided in data_url is not a compatible url"
             )
-
-
-if __name__ == "__main__":
-
-    array = dask.array.from_array(numpy.ones((5, 5)))
-    doc = deserialize(
-        Document,
-        {
-            "id": "Node",
-            "structure_family": StructureFamily.array,
-            "structure": ArrayStructure(
-                macro=ArrayMacroStructure(shape=array.shape, chunks=array.chunks),
-                micro=BuiltinDtype.from_numpy_dtype(array.dtype),
-            ),
-            "metadata": {"element": "Cr"},
-            "specs": ["BlueskyNode"],
-            "mimetype": "image/png",
-            "data_blob": b"1234",
-        },
-        pass_through={bytes},
-    )
