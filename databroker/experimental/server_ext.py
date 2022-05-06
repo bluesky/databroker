@@ -26,7 +26,7 @@ from tiled.structures.dataframe import deserialize_arrow, serialize_arrow
 
 from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
-from tiled.utils import UNCHANGED
+from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED
 
 from typing import Union
 
@@ -41,7 +41,6 @@ class PostMetadataRequest(pydantic.BaseModel):
     structure: Union[ArrayStructure, DataFrameStructure]
     metadata: Dict
     specs: List[str]
-    mimetype: str
 
 
 class PostMetadataResponse(pydantic.BaseModel):
@@ -58,9 +57,7 @@ def post_metadata(
     entry=Security(entry, scopes=["write:data", "write:metadata"]),
 ):
     if not isinstance(entry, MongoAdapter):
-        raise HTTPException(
-            status_code=404, detail="This path cannot accept reconstruction metadata."
-        )
+        raise HTTPException(status_code=404, detail="This node is not writable.")
 
     if body.structure_family == StructureFamily.dataframe:
         # Decode meta for pydantic validation
@@ -73,7 +70,6 @@ def post_metadata(
         structure_family=body.structure_family,
         structure=body.structure,
         specs=body.specs,
-        mimetype=body.mimetype,
     )
     return json_or_msgpack(request, {"uid": uid})
 
@@ -85,7 +81,7 @@ async def put_array_full(
 ):
     if not isinstance(entry, WritingArrayAdapter):
         raise HTTPException(
-            status_code=404, detail="This path cannot accept reconstruction data."
+            status_code=404, detail="This path cannot accept this array."
         )
     data = await request.body()
     entry.put_data(data)
@@ -99,7 +95,7 @@ async def put_dataframe_full(
 ):
     if not isinstance(entry, WritingDataFrameAdapter):
         raise HTTPException(
-            status_code=404, detail="This path cannot accept reconstruction data."
+            status_code=404, detail="This path cannot accept this dataframe."
         )
     data = await request.body()
     entry.put_data(data)
@@ -339,7 +335,13 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             **kwargs,
         )
 
-    def post_metadata(self, metadata, structure_family, structure, specs, mimetype):
+    def post_metadata(self, metadata, structure_family, structure, specs):
+
+        mime_structure_association = {
+            StructureFamily.array: "application/octet-stream",
+            StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
+        }
+
         uid = str(uuid.uuid4())
 
         validated_document = Document(
@@ -348,7 +350,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             structure=structure,
             metadata=metadata,
             specs=specs,
-            mimetype=mimetype,
+            mimetype=mime_structure_association[structure_family],
         )
 
         # After validating the document must be encoded to bytes again to make it compatible with MongoDB
