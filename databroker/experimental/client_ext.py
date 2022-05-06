@@ -60,8 +60,7 @@ def submit_dataframe(context, dataframe, metadata, specs, mimetype):
     document = context.post_json("/node/metadata/", data)
     uid = document["uid"]
 
-    serilized_data = base64.b64encode(bytes(serialize_arrow(dataframe, {}))).decode()
     data_response = context._client.put(
-        f"/dataframe/full/{uid}", content=serilized_data
+        f"/dataframe/full/{uid}", content=bytes(serialize_arrow(dataframe, {}))
     )
     handle_error(data_response)

@@ -244,12 +244,8 @@ class WritingDataFrameAdapter:
         path = self.directory / self.doc.uid[:2] / self.doc.uid
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        # array = numpy.frombuffer(
-        #     body, dtype=self.doc.structure.micro.to_numpy_dtype()
-        # ).reshape(self.doc.structure.macro.shape)
-        dataframe = deserialize_arrow(base64.b64decode(body))
+        dataframe = deserialize_arrow(body)
 
-        # dataframe = pandas.read_csv(BytesIO(body), index_col=0)
         dataframe.to_parquet(path)
         self.collection.update_one(
             {"uid": self.doc.uid},
