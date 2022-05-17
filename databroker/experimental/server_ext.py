@@ -477,7 +477,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def _item_by_index(self, index, direction):
         # This method was redefined based on _item_slice()
-        self._items_slice(start=index, stop=index + 1, direction=direction)
+        return self._items_slice(start=index, stop=index + 1, direction=direction)
 
 
 def raw_mongo(query, catalog):
