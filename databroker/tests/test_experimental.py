@@ -1,12 +1,14 @@
 from tiled.client import from_tree
 
 from ..experimental.server_ext import MongoAdapter
-from ..experimental.queries import scan_id
-
-import pytest
+from ..experimental.queries import RawMongo
 
 import numpy
 import pandas
+
+
+def scan_id(number):
+    return RawMongo({"metadata.scan_id": int(number)})
 
 
 def test_write_array(tmpdir):

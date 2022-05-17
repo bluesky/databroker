@@ -3,27 +3,11 @@ from typing import Dict, List, Optional, Union
 import pydantic
 import pydantic.generics
 
-from tiled.server.pydantic_array import (
-    ArrayStructure,
-    ArrayMacroStructure,
-    BuiltinDtype,
-)
-from tiled.server.pydantic_dataframe import (
-    DataFrameStructure,
-    DataFrameMacroStructure,
-    DataFrameMicroStructure,
-)
+from tiled.server.pydantic_array import ArrayStructure
+from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.structures.core import StructureFamily
 from tiled.structures.xarray import DataArrayStructure, DatasetStructure
 
-
-import dask.array
-import dask.dataframe
-import numpy
-import pandas
-
-
-# StrucT = TypeVar("StrucT")
 
 # Map structure family to the associated
 # structure model. This is used by the validator.
@@ -97,85 +81,3 @@ class Document(pydantic.BaseModel):
         if m_type not in mime_type_list:
             raise ValueError(f"{m_type} is not a valid mime type")
         return v
-
-
-def try_array_schema():
-    name = "TestNode"
-    array = dask.array.from_array(numpy.ones((5, 5)))
-
-    structure_family = StructureFamily.array
-    structure = ArrayStructure(
-        macro=ArrayMacroStructure(shape=array.shape, chunks=array.chunks),
-        micro=BuiltinDtype.from_numpy_dtype(array.dtype),
-    )
-
-    metadata = {"A": 0, "B": 1}
-    specs = ["BlueskyNode"]
-    # data_blob = b'1234'
-    # file:///a/b/c
-    # data_url = 'http://localhost:8000'
-    mimetype = "image/png"
-
-    node = Document(
-        uid=name,
-        structure_family=structure_family,
-        structure=structure,
-        metadata=metadata,
-        specs=specs,
-        mimetype=mimetype,
-    )
-
-
-def try_dataframe_schema():
-    name = "DataFrameNode"
-    array = numpy.ones((5, 5))
-    data = {
-        "Column1": array[0],
-        "Column2": array[1],
-        "Column3": array[2],
-        "Column4": array[3],
-        "Column5": array[4],
-    }
-
-    df = pandas.DataFrame(data)
-    # ddf = dask.dataframe.from_pandas(df, npartitions=len(df.columns))
-
-    meta = {}
-    for key, value in df.items():
-        meta[key] = value.dtypes.name
-
-    structure_family = StructureFamily.dataframe
-
-    # structure = DataFrameStructure(macro=DataFrameMacroStructure.from_dask_dataframe(ddf),
-    #                                 micro=DataFrameMicroStructure.from_dask_dataframe(ddf))
-    # structure = DataFrameStructure(
-    #     micro=DataFrameMicroStructure(meta=meta, divisions=ddf.divisions),
-    #     macro=DataFrameMacroStructure(
-    #         npartitions=ddf.npartitions, columns=list(ddf.columns)
-    #     ),
-    # )
-    structure = DataFrameStructure(
-        micro=DataFrameMicroStructure(meta=pandas.DataFrame(meta), divisions=[]),
-        macro=DataFrameMacroStructure(npartitions=1, columns=list(df.columns)),
-    )
-
-    specs = ["BlueskyNode"]
-    # data_blob = b'1234'
-    # file:///a/b/c
-    # data_url = 'http://localhost:8000'
-    mimetype = "image/png"
-
-    node = Document(
-        uid=name,
-        structure_family=structure_family,
-        structure=structure,
-        metadata=meta,
-        specs=specs,
-        mimetype=mimetype,
-    )
-
-
-if __name__ == "__main__":
-
-    # try_array_schema()
-    try_dataframe_schema()

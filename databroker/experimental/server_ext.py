@@ -56,21 +56,22 @@ def post_metadata(
     body: PostMetadataRequest,
     entry=Security(entry, scopes=["write:data", "write:metadata"]),
 ):
-    if not isinstance(entry, MongoAdapter):
-        raise HTTPException(status_code=404, detail="This node is not writable.")
-
     if body.structure_family == StructureFamily.dataframe:
         # Decode meta for pydantic validation
         body.structure.micro.meta = deserialize_arrow(
             base64.b64decode(body.structure.micro.meta)
         )
 
-    uid = entry.post_metadata(
-        metadata=body.metadata,
-        structure_family=body.structure_family,
-        structure=body.structure,
-        specs=body.specs,
-    )
+    try:
+        uid = entry.post_metadata(
+            metadata=body.metadata,
+            structure_family=body.structure_family,
+            structure=body.structure,
+            specs=body.specs,
+        )
+    except:
+        raise HTTPException(status_code=404, detail="This node is not writable.")
+
     return json_or_msgpack(request, {"uid": uid})
 
 
@@ -79,26 +80,30 @@ async def put_array_full(
     request: Request,
     entry=Security(entry, scopes=["write:data", "write:metadata"]),
 ):
-    if not isinstance(entry, WritingArrayAdapter):
+    data = await request.body()
+
+    try:
+        entry.put_data(data)
+    except:
         raise HTTPException(
             status_code=404, detail="This path cannot accept this array."
         )
-    data = await request.body()
-    entry.put_data(data)
     return json_or_msgpack(request, None)
 
 
-@router.put("/dataframe/full/{path:path}")
+@router.put("/node/full/{path:path}")
 async def put_dataframe_full(
     request: Request,
     entry=Security(entry, scopes=["write:data", "write:metadata"]),
 ):
-    if not isinstance(entry, WritingDataFrameAdapter):
+    data = await request.body()
+
+    try:
+        entry.put_data(data)
+    except:
         raise HTTPException(
             status_code=404, detail="This path cannot accept this dataframe."
         )
-    data = await request.body()
-    entry.put_data(data)
     return json_or_msgpack(request, None)
 
 
@@ -165,15 +170,15 @@ class WritingArrayAdapter:
 
     def put_data(self, body):
         # Organize files into subdirectories with the first two
-        # charcters of the uid to avoid one giant directory.
-        path = self.directory / self.doc.uid[:2] / self.doc.uid
+        # characters of the uid to avoid one giant directory.
+        path = self.directory / self.doc.uid[:2] / (self.doc.uid + ".hdf5")
         path.parent.mkdir(parents=True, exist_ok=True)
         array = numpy.frombuffer(
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
         ).reshape(self.doc.structure.macro.shape)
         with h5py.File(path, "w") as file:
             file.create_dataset("data", data=array)
-        self.collection.update_one(
+        result = self.collection.update_one(
             {"uid": self.doc.uid},
             {
                 "$set": {
@@ -181,6 +186,8 @@ class WritingArrayAdapter:
                 }
             },
         )
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
 
 
 class WritingDataFrameAdapter:
@@ -207,7 +214,7 @@ class WritingDataFrameAdapter:
         elif self.doc.data_blob is not None:
             self.dataframe_adapter = DataFrameAdapter(
                 dask.dataframe.from_pandas(
-                    deserialize_arrow(base64.b64decode(self.doc.data_blob)),
+                    self.doc.data_blob,
                     npartitions=self.doc.structure.macro.npartitions,
                 )
             )
@@ -236,14 +243,14 @@ class WritingDataFrameAdapter:
 
     def put_data(self, body):
         # Organize files into subdirectories with the first two
-        # charcters of the uid to avoid one giant directory.
-        path = self.directory / self.doc.uid[:2] / self.doc.uid
+        # characters of the uid to avoid one giant directory.
+        path = self.directory / self.doc.uid[:2] / (self.doc.uid + ".parquet")
         path.parent.mkdir(parents=True, exist_ok=True)
 
         dataframe = deserialize_arrow(body)
 
         dataframe.to_parquet(path)
-        self.collection.update_one(
+        result = self.collection.update_one(
             {"uid": self.doc.uid},
             {
                 "$set": {
@@ -251,6 +258,9 @@ class WritingDataFrameAdapter:
                 }
             },
         )
+
+        if result.matched_count != result.modified_count:
+            raise ValueError("Error while writing to database")
 
 
 class MongoAdapter(collections.abc.Mapping, IndexersMixin):
@@ -271,7 +281,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         access_policy=None,
     ):
         self.database = database
-        self.collection = database["reconstructions"]
+        self.collection = database["nodes"]
         self.directory = Path(directory).resolve()
         if not self.directory.exists():
             raise ValueError(f"Directory {self.directory} does not exist.")
@@ -338,7 +348,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def post_metadata(self, metadata, structure_family, structure, specs):
 
         mime_structure_association = {
-            StructureFamily.array: "application/octet-stream",
+            StructureFamily.array: "application/x-hdf5",
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
         }
 
@@ -393,7 +403,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         # TODO Apply pagination, as we do in Databroker.
         for doc in list(
             self.collection.find(
-                # self._build_mongo_query({"active": True}), {"uid": True}
                 self._build_mongo_query({"data_url": {"$ne": None}}),
                 {"uid": True},
             )
@@ -402,14 +411,12 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def __len__(self):
         return self.collection.count_documents(
-            # self._build_mongo_query({"active": True})
             self._build_mongo_query({"data_url": {"$ne": None}})
         )
 
     def __length_hint__(self):
         # https://www.python.org/dev/peps/pep-0424/
         return self.collection.estimated_document_count(
-            # self._build_mongo_query({"active": True}),
             self._build_mongo_query({"data_url": {"$ne": None}}),
         )
 
@@ -436,7 +443,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         else:
             limit = None
         for doc in self.collection.find(
-            # self._build_mongo_query({"active": True}),
             self._build_mongo_query({"data_url": {"$ne": None}}),
             skip=skip,
             limit=limit,
@@ -452,7 +458,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             limit = None
 
         for doc in self.collection.find(
-            # self._build_mongo_query({"active": True}),
             self._build_mongo_query({"data_url": {"$ne": None}}),
             skip=skip,
             limit=limit,
@@ -468,27 +473,11 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                     WritingDataFrameAdapter(self.database, self.directory, doc),
                 )
             else:
-                raise ValueError("Unsupported Structure Family value in the databse")
+                raise ValueError("Unsupported Structure Family value in the database")
 
     def _item_by_index(self, index, direction):
-        assert direction == 1, "direction=-1 should be handled by the client"
-        doc = next(
-            self.collection.find(
-                # self._build_mongo_query({"active": True}),
-                self._build_mongo_query({"data_url": {"$ne": None}}),
-                skip=index,
-                limit=1,
-            )
-        )
-        if doc["structure_family"] == StructureFamily.array:
-            return (doc["uid"], WritingArrayAdapter(self.database, self.directory, doc))
-        elif doc["structure_family"] == StructureFamily.dataframe:
-            return (
-                doc["uid"],
-                WritingDataFrameAdapter(self.database, self.directory, doc),
-            )
-        else:
-            raise ValueError("Unsupported Structure Family value in the databse")
+        # This method was redefined based on _item_slice()
+        self._items_slice(start=index, stop=index + 1, direction=direction)
 
 
 def raw_mongo(query, catalog):
