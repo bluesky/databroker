@@ -477,7 +477,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
 
     def _item_by_index(self, index, direction):
         # This method was redefined based on _item_slice()
-        return self._items_slice(start=index, stop=index + 1, direction=direction)[0]
+        try:
+            return self._items_slice(start=index, stop=index + 1, direction=direction)[0]
+        except:
+            raise ValueError("Unsupported Structure Family value in the database")
 
 
 def raw_mongo(query, catalog):
