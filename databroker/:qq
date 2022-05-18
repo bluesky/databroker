@@ -96,13 +96,13 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         macro=ArrayMacroStructure(
             shape=time_shape,
             chunks=time_chunks,
-            dims=["_time_"],
+            dims=["time"],
         ),
         micro=FLOAT_DTYPE,
     )
     time_data_array = DataArrayStructure(
         macro=DataArrayMacroStructure(
-            variable=time_variable, coords={}, coord_names=[], name="_time_"
+            variable=time_variable, coords={}, coord_names=[], name="time"
         ),
         micro=None,
     )
@@ -110,17 +110,17 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         unicode_columns = {}
     dim_counter = itertools.count()
     data_vars = {}
-    metadata = {"data_vars": {}, "coords": {"_time_": {"attrs": {}}}}
+    metadata = {"data_vars": {}, "coords": {"time": {"attrs": {}}}}
 
     for key, field_metadata in descriptor["data_keys"].items():
         # if the EventDescriptor doesn't provide names for the
         # dimensions (it's optional) use the same default dimension
         # names that xarray would.
         try:
-            dims = ["_time_"] + field_metadata["dims"]
+            dims = ["time"] + field_metadata["dims"]
         except KeyError:
             ndim = len(field_metadata["shape"])
-            dims = ["_time_"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
+            dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
         attrs = {}
         # Record which object (i.e. device) this column is associated with,
         # which enables one to find the relevant configuration, if any.
@@ -204,7 +204,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         )
         data_array = DataArrayStructure(
             macro=DataArrayMacroStructure(
-                variable, coords={}, coord_names=["_time_"], name=key
+                variable, coords={}, coord_names=["time"], name=key
             ),
             micro=None,
         )
@@ -212,7 +212,7 @@ def structure_from_descriptor(descriptor, sub_dict, max_seq_num, unicode_columns
         metadata["data_vars"][key] = {"attrs": attrs}
 
     return (
-        DatasetMacroStructure(data_vars=data_vars, coords={"_time_": time_data_array}),
+        DatasetMacroStructure(data_vars=data_vars, coords={"time": time_data_array}),
         metadata,
     )
 
@@ -500,14 +500,13 @@ class TimeArrayFromDocuments:
         return self._data_array_adapter.read(slice)
 
     def read_block(self, block, slice=None):
-        return self._data_array_adapter.read_block(None, block, coord="_time_",
-                                                   slice=slice)
+        return self._data_array_adapter.read_block(None, block, coord="time", slice=slice)
 
     def macrostructure(self):
-        return self._data_array_adapter.macrostructure().coords["_time_"].macro
+        return self._data_array_adapter.macrostructure().coords["time"].macro
 
     def microstructure(self):
-        return self._data_array_adapter.macrostructure().coords["_time_"].micro
+        return self._data_array_adapter.macrostructure().coords["time"].micro
 
 
 class DataArrayFromDocuments:
@@ -535,7 +534,7 @@ class DataArrayFromDocuments:
         if key == "variable":
             return ArrayFromDocuments(self)
         elif key == "coords":
-            return MapAdapter({"_time_": TimeArrayFromDocuments(self)})
+            return MapAdapter({"time": TimeArrayFromDocuments(self)})
         else:
             raise KeyError(key)
 
@@ -623,7 +622,7 @@ class DatasetFromDocuments:
             }
         )
         self._coords = MapAdapter(
-            {"_time_": MapAdapter({"variable": TimeArrayFromDocuments(self)})}
+            {"time": MapAdapter({"variable": TimeArrayFromDocuments(self)})}
         )
 
     def __repr__(self):
@@ -680,10 +679,10 @@ class DatasetFromDocuments:
                 array,
                 attrs=self.metadata["data_vars"][key]["attrs"],
                 dims=variable.macro.dims,
-                coords={"_time_": time_coord},
+                coords={"time": time_coord},
             )
             data_arrays[key] = data_array
-        return xarray.Dataset(data_arrays, coords={"_time_": time_coord})
+        return xarray.Dataset(data_arrays, coords={"time": time_coord})
 
     def __getitem__(self, key):
         if key == "data_vars":
@@ -695,8 +694,8 @@ class DatasetFromDocuments:
 
     def read_block(self, variable, block, coord=None, slice=None):
         structure = self.macrostructure()
-        if coord == "_time_":
-            data_structure = structure.coords["_time_"].macro.variable
+        if coord == "time":
+            data_structure = structure.coords["time"].macro.variable
             chunks = data_structure.macro.chunks
             cumdims = [cached_cumsum(bds, initial_zero=True) for bds in chunks]
             slices_for_chunks = [
@@ -1043,10 +1042,10 @@ def build_config_xarray(
             # dimensions (it's optional) use the same default dimension
             # names that xarray would.
             try:
-                dims = ["_time_"] + field_metadata["dims"]
+                dims = ["time"] + field_metadata["dims"]
             except KeyError:
                 ndim = len(field_metadata["shape"])
-                dims = ["_time_"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
+                dims = ["time"] + [f"dim_{next(dim_counter)}" for _ in range(ndim)]
             units = field_metadata.get("units")
             if units:
                 if isinstance(units, str):
@@ -1054,7 +1053,7 @@ def build_config_xarray(
                 # TODO We may soon add a more structured units type, which
                 # would likely be a dict here.
         else:
-            dims = ["_time_"]
+            dims = ["time"]
         data_array = xarray.DataArray(columns[key], dims=dims, attrs=attrs)
         data_arrays[key] = data_array
     ds = xarray.Dataset(data_arrays)
