@@ -549,7 +549,7 @@ class Broker:
                 applicable_fields = (fields or set(data_keys)) - external_fields
             else:
                 applicable_fields = fields or set(data_keys)
-            applicable_fields.add("time")
+            applicable_fields.add("_time_")
             run = self._catalog[header.start["uid"]]
             dataset = run[stream_name].read(variables=(applicable_fields or None))
             dataset.load()
@@ -561,7 +561,7 @@ class Broker:
                 dict_of_arrays[var_name] = column
             df = pandas.DataFrame(dict_of_arrays)
             # if converting to datetime64 (in utc or 'local' tz)
-            times = dataset["time"].data
+            times = dataset["_time_"].data
             if convert_times or localize_times:
                 times = pandas.to_datetime(times, unit="s")
             # make sure this is a series
@@ -575,7 +575,7 @@ class Broker:
                     .dt.tz_localize(None)  # make naive again
                 )
 
-            df["time"] = times
+            df["_time_"] = times
             dfs.append(df)
         if dfs:
             result = pandas.concat(dfs)
