@@ -23,7 +23,7 @@ structure_association = {
 
 # class Document(pydantic.generics.GenericModel, Generic[StrucT]):
 class Document(pydantic.BaseModel):
-    uid: str
+    key: str
     structure_family: StructureFamily
     structure: Union[ArrayStructure, DataFrameStructure]
     metadata: Dict

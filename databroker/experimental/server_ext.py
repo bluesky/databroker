@@ -44,7 +44,7 @@ class PostMetadataRequest(pydantic.BaseModel):
 
 
 class PostMetadataResponse(pydantic.BaseModel):
-    uid: str
+    key: str
 
 
 router = APIRouter()
@@ -63,7 +63,7 @@ def post_metadata(
         )
 
     try:
-        uid = entry.post_metadata(
+        key = entry.post_metadata(
             metadata=body.metadata,
             structure_family=body.structure_family,
             structure=body.structure,
@@ -72,7 +72,7 @@ def post_metadata(
     except:
         raise HTTPException(status_code=404, detail="This node is not writable.")
 
-    return json_or_msgpack(request, {"uid": uid})
+    return json_or_msgpack(request, {"key": key})
 
 
 @router.put("/array/full/{path:path}")
@@ -170,8 +170,8 @@ class WritingArrayAdapter:
 
     def put_data(self, body):
         # Organize files into subdirectories with the first two
-        # characters of the uid to avoid one giant directory.
-        path = self.directory / self.doc.uid[:2] / (self.doc.uid + ".hdf5")
+        # characters of the key to avoid one giant directory.
+        path = self.directory / self.doc.key[:2] / (self.doc.key + ".hdf5")
         path.parent.mkdir(parents=True, exist_ok=True)
         array = numpy.frombuffer(
             body, dtype=self.doc.structure.micro.to_numpy_dtype()
@@ -179,7 +179,7 @@ class WritingArrayAdapter:
         with h5py.File(path, "w") as file:
             file.create_dataset("data", data=array)
         result = self.collection.update_one(
-            {"uid": self.doc.uid},
+            {"key": self.doc.key},
             {
                 "$set": {
                     "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
@@ -243,15 +243,15 @@ class WritingDataFrameAdapter:
 
     def put_data(self, body):
         # Organize files into subdirectories with the first two
-        # characters of the uid to avoid one giant directory.
-        path = self.directory / self.doc.uid[:2] / (self.doc.uid + ".parquet")
+        # characters of the key to avoid one giant directory.
+        path = self.directory / self.doc.key[:2] / (self.doc.key + ".parquet")
         path.parent.mkdir(parents=True, exist_ok=True)
 
         dataframe = deserialize_arrow(body)
 
         dataframe.to_parquet(path)
         result = self.collection.update_one(
-            {"uid": self.doc.uid},
+            {"key": self.doc.key},
             {
                 "$set": {
                     "data_url": f"file://localhost/{str(path).replace(os.sep, '/')}"
@@ -352,10 +352,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             StructureFamily.dataframe: APACHE_ARROW_FILE_MIME_TYPE,
         }
 
-        uid = str(uuid.uuid4())
+        key = str(uuid.uuid4())
 
         validated_document = Document(
-            uid=uid,
+            key=key,
             structure_family=structure_family,
             structure=structure,
             metadata=metadata,
@@ -370,7 +370,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             )
 
         self.collection.insert_one(validated_document.dict())
-        return uid
+        return key
 
     def authenticated_as(self, identity):
         if self.principal is not None:
@@ -387,7 +387,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             return {}
 
     def __getitem__(self, key):
-        query = {"uid": key}
+        query = {"key": key}
         doc = self.collection.find_one(self._build_mongo_query(query), {"_id": False})
         if doc is None:
             raise KeyError(key)
@@ -404,10 +404,10 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         for doc in list(
             self.collection.find(
                 self._build_mongo_query({"data_url": {"$ne": None}}),
-                {"uid": True},
+                {"key": True},
             )
         ):
-            yield doc["uid"]
+            yield doc["key"]
 
     def __len__(self):
         return self.collection.count_documents(
@@ -447,7 +447,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             skip=skip,
             limit=limit,
         ):
-            yield doc["uid"]
+            yield doc["key"]
 
     def _items_slice(self, start, stop, direction):
         assert direction == 1, "direction=-1 should be handled by the client"
@@ -464,12 +464,12 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
         ):
             if doc["structure_family"] == StructureFamily.array:
                 yield (
-                    doc["uid"],
+                    doc["key"],
                     WritingArrayAdapter(self.database, self.directory, doc),
                 )
             elif doc["structure_family"] == StructureFamily.dataframe:
                 yield (
-                    doc["uid"],
+                    doc["key"],
                     WritingDataFrameAdapter(self.database, self.directory, doc),
                 )
             else:
@@ -478,7 +478,9 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def _item_by_index(self, index, direction):
         # This method was redefined based on _item_slice()
         try:
-            return self._items_slice(start=index, stop=index + 1, direction=direction)[0]
+            return self._items_slice(start=index, stop=index + 1, direction=direction)[
+                0
+            ]
         except:
             raise ValueError("Unsupported Structure Family value in the database")
 
