@@ -1,4 +1,3 @@
-import collections.abc
 from dataclasses import dataclass
 import json
 
