@@ -69,7 +69,7 @@ def post_metadata(
             structure=body.structure,
             specs=body.specs,
         )
-    except:
+    except Exception:
         raise HTTPException(status_code=404, detail="This node is not writable.")
 
     return json_or_msgpack(request, {"key": key})
@@ -84,7 +84,7 @@ async def put_array_full(
 
     try:
         entry.put_data(data)
-    except:
+    except Exception:
         raise HTTPException(
             status_code=404, detail="This path cannot accept this array."
         )
@@ -100,7 +100,7 @@ async def put_dataframe_full(
 
     try:
         entry.put_data(data)
-    except:
+    except Exception:
         raise HTTPException(
             status_code=404, detail="This path cannot accept this dataframe."
         )
@@ -481,7 +481,7 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
             return self._items_slice(start=index, stop=index + 1, direction=direction)[
                 0
             ]
-        except:
+        except Exception:
             raise ValueError("Unsupported Structure Family value in the database")
 
 
