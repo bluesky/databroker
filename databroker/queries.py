@@ -45,12 +45,17 @@ class _ScanID:
     scan_ids: List[int]
     duplicates: Duplicates
 
+    def __init__(self, *, scan_ids, duplicates):
+        self.scan_ids = scan_ids
+        self.duplicates = Duplicates(duplicates)
+
     def encode(self):
         return {
             "scan_ids": ",".join(str(scan_id) for scan_id in self.scan_ids),
             "duplicates": self.duplicates.value,
         }
 
+    @classmethod
     def decode(cls, *, scan_ids, duplicates):
         return cls(
             scan_ids=[int(scan_id) for scan_id in scan_ids.split(",")],
@@ -78,10 +83,11 @@ class _PartialUID:
     partial_uids: List[str]
 
     def encode(self):
-        return {"partial_uids": ",".join(str(scan_id) for scan_id in self.scan_ids)}
+        return {"partial_uids": ",".join(str(uid) for uid in self.partial_uids)}
 
+    @classmethod
     def decode(cls, *, partial_uids):
-        return cls(partial_uids=[int(uid) for uid in partial_uids.split(",")])
+        return cls(partial_uids=partial_uids.split(","))
 
 
 def PartialUID(*partial_uids):
