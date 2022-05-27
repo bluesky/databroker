@@ -283,7 +283,7 @@ def raw_mongo_in_memory(query, catalog):
         for key, value in catalog.items()
         if query_obj.match(value.metadata["start"])
     }
-    return catalog.new_variation(mapping=matches)
+    return BlueskyMapAdapter(mapping=matches)
 
 
 def scan_id(query, catalog):
