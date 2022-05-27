@@ -36,6 +36,7 @@ from tiled.structures.xarray import (
     DatasetMacroStructure,
 )
 from tiled.adapters.mapping import MapAdapter
+from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
 from tiled.queries import FullText
 from tiled.utils import (
@@ -1689,6 +1690,15 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
     def sort(self, sorting):
         return self.new_variation(sorting=sorting)
 
+    def keys(self):
+        return KeysView(lambda: len(self), self._keys_slice)
+
+    def values(self):
+        return ValuesView(lambda: len(self), self._items_slice)
+
+    def items(self):
+        return ItemsView(lambda: len(self), self._items_slice)
+
     def _keys_slice(self, start, stop, direction):
         assert direction == 1, "direction=-1 should be handled by the client"
         skip = start or 0
@@ -1721,20 +1731,6 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
             uid = run_start_doc["uid"]
             run = self._get_run(run_start_doc)
             yield (uid, run)
-
-    def _item_by_index(self, index, direction):
-        assert direction == 1, "direction=-1 should be handled by the client"
-        run_start_doc = next(
-            self._chunked_find(
-                self._run_start_collection,
-                self._build_mongo_query(),
-                skip=index,
-                limit=1,
-            )
-        )
-        uid = run_start_doc["uid"]
-        run = self._get_run(run_start_doc)
-        return (uid, run)
 
 
 def full_text_search(query, catalog):
