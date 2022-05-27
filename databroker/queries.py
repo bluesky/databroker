@@ -1,11 +1,12 @@
 import collections.abc
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import enum
-import json
+import warnings
 from typing import List, Optional
 
 from tiled.adapters.mapping import MapAdapter, full_text_search
-from tiled.queries import FullText, QueryValueError
+from tiled.queries import FullText, Key, QueryValueError
+from tiled.queries import Contains, Comparison, Eq, Key  # noqa: 401
 from tiled.query_registration import QueryTranslationRegistry
 
 # Reimport generic queries for convenience so all can be imported from this module.
@@ -44,6 +45,18 @@ class _ScanID:
     scan_ids: List[int]
     duplicates: Duplicates
 
+    def encode(self):
+        return {
+            "scan_ids": ",".join(str(scan_id) for scan_id in self.scan_ids),
+            "duplicates": self.duplicates.value,
+        }
+
+    def decode(cls, *, scan_ids, duplicates):
+        return cls(
+            scan_ids=[int(scan_id) for scan_id in scan_ids.split(",")],
+            duplicates=Duplicates(duplicates),
+        )
+
 
 def ScanID(*scan_ids, duplicates="latest"):
     # Wrap _ScanID to provide a nice usage for *one or more scan_ids*:
@@ -64,6 +77,12 @@ class _PartialUID:
 
     partial_uids: List[str]
 
+    def encode(self):
+        return {"partial_uids": ",".join(str(scan_id) for scan_id in self.scan_ids)}
+
+    def decode(cls, *, partial_uids):
+        return cls(partial_uids=[int(uid) for uid in partial_uids.split(",")])
+
 
 def PartialUID(*partial_uids):
     # See comment above with ScanID and _ScanID. Same thinking here.
@@ -81,19 +100,29 @@ class Duration:
     greater_than: float
 
 
-@register(name="raw_mongo")
-@dataclass
-class RawMongo:
+def RawMongo(start):
     """
-    Run a MongoDB query against a given collection.
+    DEPRECATED
+
+    Raw MongoDB queries are no longer supported.  If it is possible to express
+    the import as a supported query, we transform it and warn. If not, we raise
+    an error.
     """
 
-    start: str  # We cannot put a dict in a URL, so this a JSON str.
+    if len(start) == 1:
+        ((key, value),) = start.items()
+        if not isinstance(value, dict):
+            # We can transform this into a simple query.
+            warnings.warn(
+                """RawMongo will not be supported
+in a future release of databroker, and its functionality has been limited.
+Instead, use:
 
-    def __init__(self, *, start):
-        if isinstance(start, collections.abc.Mapping):
-            start = json.dumps(start)
-        self.start = start
+    Key("{key}") == {value!r}
+"""
+            )
+            return Key(key) == value
+    raise ValueError("Arbitrary MongoDB queries no longer supported.")
 
 
 # human friendly timestamp formats we'll parse
@@ -230,12 +259,19 @@ class TimeRange:
             f"timezone={self.timezone!r}, since={self._raw_since!r}, until={self._raw_until!r})"
         )
 
+    def encode(self):
+        return asdict(self)
+
+    @classmethod
+    def decode(cls, *, timezone, since=None, until=None):
+        return cls(timezone=timezone, since=since, until=until)
+
 
 def raw_mongo_in_memory(query, catalog):
 
     from mongoquery import Query
 
-    query_obj = Query(json.loads(query.start))
+    query_obj = Query(query)
     matches = {
         key: value
         for key, value in catalog.items()
@@ -245,8 +281,8 @@ def raw_mongo_in_memory(query, catalog):
 
 
 def scan_id(query, catalog):
-    mongo_results = catalog.query_registry(
-        RawMongo(start={"scan_id": {"$in": query.scan_ids}}),
+    mongo_results = raw_mongo_in_memory(
+        {"scan_id": {"$in": query.scan_ids}},
         catalog,
     )
     # Handle duplicates.
@@ -258,7 +294,9 @@ def scan_id(query, catalog):
         results_by_scan_id = {}
         for key, value in mongo_results.items():
             results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
-        results = BlueskyMapAdapter(dict(results_by_scan_id.values()), must_revalidate=False)
+        results = BlueskyMapAdapter(
+            dict(results_by_scan_id.values()), must_revalidate=False
+        )
     elif query.duplicates == "error":
         scan_ids = list(
             value.metadata["start"]["scan_id"] for value in mongo_results.values()
@@ -288,9 +326,7 @@ def partial_uid(query, catalog):
                 f"Partial uid {partial_uid} is too short. "
                 "It must include at least 5 characters."
             )
-        result = catalog.query_registry(
-            RawMongo(start={"uid": {"$regex": f"^{partial_uid}"}}), catalog
-        )
+        result = raw_mongo_in_memory({"uid": {"$regex": f"^{partial_uid}"}}, catalog)
         if len(result) > 1:
             raise QueryValueError(
                 f"Partial uid {partial_uid} has multiple matches, "
@@ -309,11 +345,10 @@ def time_range(query, catalog):
     if not mongo_query["time"]:
         # Neither 'since' nor 'until' are set.
         mongo_query.clear()
-    return catalog.query_registry(RawMongo(start=mongo_query), catalog)
+    return raw_mongo_in_memory(mongo_query, catalog)
 
 
 BlueskyMapAdapter.register_query(_PartialUID, partial_uid)
-BlueskyMapAdapter.register_query(RawMongo, raw_mongo_in_memory)
 BlueskyMapAdapter.register_query(_ScanID, scan_id)
 BlueskyMapAdapter.register_query(TimeRange, time_range)
 BlueskyMapAdapter.register_query(FullText, full_text_search)
