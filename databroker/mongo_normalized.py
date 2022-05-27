@@ -51,7 +51,6 @@ from tiled.utils import import_object, OneShotCachedMap, UNCHANGED
 from .common import BlueskyEventStreamMixin, BlueskyRunMixin, CatalogOfBlueskyRunsMixin
 from .queries import (
     BlueskyMapAdapter,
-    RawMongo,
     _PartialUID,
     _ScanID,
     TimeRange,
@@ -1746,12 +1745,8 @@ def full_text_search(query, catalog):
             # you have made your choices! :-)
             return BlueskyMapAdapter(dict(catalog)).search(query)
 
-    return MongoAdapter.query_registry(
-        RawMongo(
-            start={
-                "$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}
-            }
-        ),
+    return raw_mongo(
+        {"$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}}
         catalog,
     )
 
@@ -1765,8 +1760,6 @@ def raw_mongo(query, catalog):
 
 # These are implementation-specific definitions.
 MongoAdapter.register_query(FullText, full_text_search)
-MongoAdapter.register_query(RawMongo, raw_mongo)
-# These are generic definitions that use RawMongo internally.
 MongoAdapter.register_query(_PartialUID, partial_uid)
 MongoAdapter.register_query(_ScanID, scan_id)
 MongoAdapter.register_query(TimeRange, time_range)
