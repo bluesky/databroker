@@ -1,24 +1,19 @@
-import base64
 import collections.abc
 import json
 import os
 import uuid
 from pathlib import Path
-from typing import Dict, List
 
 import dask.array
 import h5py
 import numpy
 import pandas
-import pydantic
 import pymongo
 
-from fastapi import APIRouter, HTTPException, Request, Security
 from tiled.adapters.array import ArrayAdapter
 from tiled.adapters.dataframe import DataFrameAdapter
 from tiled.adapters.utils import IndexersMixin, tree_repr
-from tiled.server.core import json_or_msgpack
-from tiled.server.dependencies import entry
+from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
 
 from tiled.structures.core import StructureFamily
@@ -28,83 +23,10 @@ from tiled.server.pydantic_array import ArrayStructure
 from tiled.server.pydantic_dataframe import DataFrameStructure
 from tiled.utils import APACHE_ARROW_FILE_MIME_TYPE, UNCHANGED
 
-from typing import Union
-
 from .schemas import Document
 from .queries import RawMongo
 
 from sys import platform
-
-
-class PostMetadataRequest(pydantic.BaseModel):
-    structure_family: StructureFamily
-    structure: Union[ArrayStructure, DataFrameStructure]
-    metadata: Dict
-    specs: List[str]
-
-
-class PostMetadataResponse(pydantic.BaseModel):
-    key: str
-
-
-router = APIRouter()
-
-
-@router.post("/node/metadata/{path:path}", response_model=PostMetadataResponse)
-def post_metadata(
-    request: Request,
-    body: PostMetadataRequest,
-    entry=Security(entry, scopes=["write:data", "write:metadata"]),
-):
-    if body.structure_family == StructureFamily.dataframe:
-        # Decode meta for pydantic validation
-        body.structure.micro.meta = deserialize_arrow(
-            base64.b64decode(body.structure.micro.meta)
-        )
-
-    try:
-        key = entry.post_metadata(
-            metadata=body.metadata,
-            structure_family=body.structure_family,
-            structure=body.structure,
-            specs=body.specs,
-        )
-    except Exception:
-        raise HTTPException(status_code=404, detail="This node is not writable.")
-
-    return json_or_msgpack(request, {"key": key})
-
-
-@router.put("/array/full/{path:path}")
-async def put_array_full(
-    request: Request,
-    entry=Security(entry, scopes=["write:data", "write:metadata"]),
-):
-    data = await request.body()
-
-    try:
-        entry.put_data(data)
-    except Exception:
-        raise HTTPException(
-            status_code=404, detail="This path cannot accept this array."
-        )
-    return json_or_msgpack(request, None)
-
-
-@router.put("/node/full/{path:path}")
-async def put_dataframe_full(
-    request: Request,
-    entry=Security(entry, scopes=["write:data", "write:metadata"]),
-):
-    data = await request.body()
-
-    try:
-        entry.put_data(data)
-    except Exception:
-        raise HTTPException(
-            status_code=404, detail="This path cannot accept this dataframe."
-        )
-    return json_or_msgpack(request, None)
 
 
 def array_raise_if_inactive(method):
@@ -265,7 +187,6 @@ class WritingDataFrameAdapter:
 
 class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     structure_family = "node"
-    include_routers = [router]
     query_registry = QueryTranslationRegistry()
     register_query = query_registry.register
 
@@ -435,6 +356,15 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
     def sort(self, sorting):
         return self.new_variation(sorting=sorting)
 
+    def keys(self):
+        return KeysView(lambda: len(self), self._keys_slice)
+
+    def values(self):
+        return ValuesView(lambda: len(self), self._items_slice)
+
+    def items(self):
+        return ItemsView(lambda: len(self), self._items_slice)
+
     def _keys_slice(self, start, stop, direction):
         assert direction == 1, "direction=-1 should be handled by the client"
         skip = start or 0
@@ -474,15 +404,6 @@ class MongoAdapter(collections.abc.Mapping, IndexersMixin):
                 )
             else:
                 raise ValueError("Unsupported Structure Family value in the database")
-
-    def _item_by_index(self, index, direction):
-        # This method was redefined based on _item_slice()
-        try:
-            return self._items_slice(start=index, stop=index + 1, direction=direction)[
-                0
-            ]
-        except Exception:
-            raise ValueError("Unsupported Structure Family value in the database")
 
 
 def raw_mongo(query, catalog):

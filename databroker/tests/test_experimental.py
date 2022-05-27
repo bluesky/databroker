@@ -25,8 +25,10 @@ def test_write_array(tmpdir):
 
     client.write_array(test_array, {"scan_id": 1, "method": "A"}, ["BlueskyNode"])
 
+    # breakpoint()
     results = client.search(scan_id(1))
-    result_array = results.values_indexer[0].read()
+
+    result_array = results.values()[0].read()
 
     numpy.testing.assert_equal(result_array, test_array)
 
@@ -58,6 +60,6 @@ def test_write_dataframe(tmpdir):
     )
 
     results = client.search(scan_id(1))
-    result_dataframe = results.values_indexer[0].read()
+    result_dataframe = results.values()[0].read()
 
     pandas.testing.assert_frame_equal(result_dataframe, test_dataframe)
