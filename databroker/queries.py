@@ -150,7 +150,15 @@ Instead, use:
 """
             )
             return Key(key) == value
-    raise ValueError("Arbitrary MongoDB queries no longer supported.")
+    raise ValueError(
+        """Arbitrary MongoDB queries no longer supported.
+
+If this is critical to you, please open an issue at
+
+    https://github.com/bluesky/databroker
+
+describing your use case and we will see what we can work out."""
+    )
 
 
 # human friendly timestamp formats we'll parse
