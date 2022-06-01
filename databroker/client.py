@@ -279,7 +279,7 @@ class CatalogOfBlueskyRuns(CatalogOfBlueskyRunsMixin, Node):
             raise KeyError(f"No match for partial_uid {partial_uid}")
         else:
             # By construction there must be only one result. Return it.
-            return results.values.first()
+            return results.values().first()
 
     def get_serializer(self):
         from tiled.server.app import get_root_tree

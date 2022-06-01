@@ -5,8 +5,18 @@ import warnings
 from typing import List, Optional
 
 from tiled.adapters.mapping import MapAdapter, full_text_search
-from tiled.queries import FullText, Key, QueryValueError
-from tiled.queries import Contains, Comparison, Eq, Key  # noqa: 401
+from tiled.queries import (
+    Contains,
+    Comparison,
+    Eq,
+    FullText,
+    Operator,
+    QueryValueError,
+    Regex,
+)
+
+# Import this for user convenience. It isn't used.
+from tiled.queries import Key
 from tiled.query_registration import QueryTranslationRegistry
 
 # Reimport generic queries for convenience so all can be imported from this module.
@@ -27,6 +37,18 @@ class BlueskyMapAdapter(MapAdapter, CatalogOfBlueskyRunsMixin):
     query_registry = QueryTranslationRegistry()
     register_query = query_registry.register
     register_query_lazy = query_registry.register_lazy
+
+    def apply_mongo_query(self, query):
+
+        from mongoquery import Query
+
+        query_obj = Query(query)
+        matches = {
+            key: value
+            for key, value in self.items()
+            if query_obj.match(value.metadata["start"])
+        }
+        return type(self)(mapping=matches)
 
 
 class Duplicates(str, enum.Enum):
@@ -273,24 +295,8 @@ class TimeRange:
         return cls(timezone=timezone, since=since, until=until)
 
 
-def raw_mongo_in_memory(query, catalog):
-
-    from mongoquery import Query
-
-    query_obj = Query(query)
-    matches = {
-        key: value
-        for key, value in catalog.items()
-        if query_obj.match(value.metadata["start"])
-    }
-    return BlueskyMapAdapter(mapping=matches)
-
-
 def scan_id(query, catalog):
-    mongo_results = raw_mongo_in_memory(
-        {"scan_id": {"$in": query.scan_ids}},
-        catalog,
-    )
+    mongo_results = catalog.apply_mongo_query({"scan_id": {"$in": query.scan_ids}})
     # Handle duplicates.
     if query.duplicates == "latest":
         # Convert to a BlueskyMapAdapter to do some filtering in Python
@@ -332,7 +338,7 @@ def partial_uid(query, catalog):
                 f"Partial uid {partial_uid} is too short. "
                 "It must include at least 5 characters."
             )
-        result = raw_mongo_in_memory({"uid": {"$regex": f"^{partial_uid}"}}, catalog)
+        result = catalog.apply_mongo_query({"uid": {"$regex": f"^{partial_uid}"}})
         if len(result) > 1:
             raise QueryValueError(
                 f"Partial uid {partial_uid} has multiple matches, "
@@ -351,10 +357,45 @@ def time_range(query, catalog):
     if not mongo_query["time"]:
         # Neither 'since' nor 'until' are set.
         mongo_query.clear()
-    return raw_mongo_in_memory(mongo_query, catalog)
+    return catalog.apply_mongo_query(mongo_query)
+
+
+def eq(query, catalog):
+    return catalog.apply_mongo_query({query.key: query.value})
+
+
+def contains(query, catalog):
+    # In MongoDB, checking that an item is in an array looks
+    # just like equality.
+    # https://www.mongodb.com/docs/manual/tutorial/query-arrays/
+    return catalog.apply_mongo_query({query.key: query.value})
+
+
+def comparison(query, catalog):
+    OPERATORS = {
+        Operator.lt: "$lt",
+        Operator.le: "$lte",
+        Operator.gt: "$gt",
+        Operator.ge: "$gte",
+    }
+    return catalog.apply_mongo_query(
+        {query.key: {OPERATORS[query.operator]: query.value}}
+    )
+
+
+def regex(query, catalog):
+    options = "" if query.case_sensitive else "i"
+    return catalog.apply_mongo_query(
+        {query.key: {"$regex": query.pattern, "$options": options}}
+    )
 
 
 BlueskyMapAdapter.register_query(_PartialUID, partial_uid)
 BlueskyMapAdapter.register_query(_ScanID, scan_id)
-BlueskyMapAdapter.register_query(TimeRange, time_range)
 BlueskyMapAdapter.register_query(FullText, full_text_search)
+BlueskyMapAdapter.register_query(Contains, contains)
+BlueskyMapAdapter.register_query(Comparison, comparison)
+BlueskyMapAdapter.register_query(Eq, eq)
+BlueskyMapAdapter.register_query(FullText, full_text_search)
+BlueskyMapAdapter.register_query(TimeRange, time_range)
+BlueskyMapAdapter.register_query(Regex, regex)

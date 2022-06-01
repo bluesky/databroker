@@ -22,7 +22,7 @@ from tiled.client import from_profile
 from tiled.client.utils import ClientError
 from tiled.queries import FullText, Key
 
-from .queries import RawMongo, TimeRange
+from .queries import TimeRange
 from .utils import ALL, get_fields, wrap_in_deprecated_doct
 
 

@@ -5,7 +5,6 @@ import copy
 from datetime import datetime, timedelta
 import functools
 import itertools
-import json
 import logging
 import os
 import sys
@@ -38,7 +37,7 @@ from tiled.structures.xarray import (
 from tiled.adapters.mapping import MapAdapter
 from tiled.iterviews import KeysView, ItemsView, ValuesView
 from tiled.query_registration import QueryTranslationRegistry
-from tiled.queries import FullText
+from tiled.queries import Contains, Comparison, Eq, FullText, Regex
 from tiled.utils import (
     SpecialUsers,
 )
@@ -54,9 +53,13 @@ from .queries import (
     _PartialUID,
     _ScanID,
     TimeRange,
+    contains,
+    comparison,
+    eq,
     partial_uid,
     scan_id,
     time_range,
+    regex,
 )
 from .server import router
 
@@ -500,7 +503,9 @@ class TimeArrayFromDocuments:
         return self._data_array_adapter.read(slice)
 
     def read_block(self, block, slice=None):
-        return self._data_array_adapter.read_block(None, block, coord="time", slice=slice)
+        return self._data_array_adapter.read_block(
+            None, block, coord="time", slice=slice
+        )
 
     def macrostructure(self):
         return self._data_array_adapter.macrostructure().coords["time"].macro
@@ -1667,9 +1672,7 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
 
     def authenticated_as(self, identity):
         if self._principal is not None:
-            raise RuntimeError(
-                f"Already authenticated as {self.principal}"
-            )
+            raise RuntimeError(f"Already authenticated as {self.principal}")
         if self._access_policy is not None:
             queries = self._access_policy.modify_queries(
                 self.queries,
@@ -1685,6 +1688,11 @@ class MongoAdapter(collections.abc.Mapping, CatalogOfBlueskyRunsMixin, IndexersM
         Return a MongoAdapter with a subset of the mapping.
         """
         return self.query_registry(query, self)
+
+    def apply_mongo_query(self, query):
+        return self.new_variation(
+            queries=self.queries + [query],
+        )
 
     def sort(self, sorting):
         return self.new_variation(sorting=sorting)
@@ -1745,24 +1753,19 @@ def full_text_search(query, catalog):
             # you have made your choices! :-)
             return BlueskyMapAdapter(dict(catalog)).search(query)
 
-    return raw_mongo(
+    return catalog.apply_mongo_query(
         {"$text": {"$search": query.text, "$caseSensitive": query.case_sensitive}},
-        catalog,
     )
 
 
-def raw_mongo(query, catalog):
-    # For now, only handle search on the 'run_start' collection.
-    return catalog.new_variation(
-        queries=catalog.queries + [json.loads(query.start)],
-    )
-
-
-# These are implementation-specific definitions.
-MongoAdapter.register_query(FullText, full_text_search)
 MongoAdapter.register_query(_PartialUID, partial_uid)
 MongoAdapter.register_query(_ScanID, scan_id)
+MongoAdapter.register_query(FullText, full_text_search)
+MongoAdapter.register_query(Contains, contains)
+MongoAdapter.register_query(Comparison, comparison)
+MongoAdapter.register_query(Eq, eq)
 MongoAdapter.register_query(TimeRange, time_range)
+MongoAdapter.register_query(Regex, regex)
 
 
 class SimpleAccessPolicy:
