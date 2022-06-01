@@ -20,9 +20,9 @@ except ImportError:
 
 from tiled.client import from_profile
 from tiled.client.utils import ClientError
-from tiled.queries import FullText
+from tiled.queries import FullText, Key
 
-from .queries import RawMongo, TimeRange
+from .queries import TimeRange
 from .utils import ALL, get_fields, wrap_in_deprecated_doct
 
 
@@ -254,8 +254,8 @@ class Broker:
             )
         if "data_key" in kwargs:
             raise NotImplementedError("Search by data key is no longer implemented.")
-        if kwargs:
-            results_catalog = results_catalog.search(RawMongo(start=kwargs))
+        for key, value in kwargs.items():
+            results_catalog = results_catalog.search(Key(key) == value)
         if text_search:
             results_catalog = results_catalog.search(FullText(text_search))
         self._patch_state(results_catalog)

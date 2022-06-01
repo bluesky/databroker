@@ -1,11 +1,22 @@
 import collections.abc
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import enum
-import json
+import warnings
 from typing import List, Optional
 
 from tiled.adapters.mapping import MapAdapter, full_text_search
-from tiled.queries import FullText, QueryValueError
+from tiled.queries import (
+    Contains,
+    Comparison,
+    Eq,
+    FullText,
+    Operator,
+    QueryValueError,
+    Regex,
+)
+
+# Import this for user convenience. It isn't used.
+from tiled.queries import Key
 from tiled.query_registration import QueryTranslationRegistry
 
 # Reimport generic queries for convenience so all can be imported from this module.
@@ -27,6 +38,18 @@ class BlueskyMapAdapter(MapAdapter, CatalogOfBlueskyRunsMixin):
     register_query = query_registry.register
     register_query_lazy = query_registry.register_lazy
 
+    def apply_mongo_query(self, query):
+
+        from mongoquery import Query
+
+        query_obj = Query(query)
+        matches = {
+            key: value
+            for key, value in self.items()
+            if query_obj.match(value.metadata["start"])
+        }
+        return type(self)(mapping=matches)
+
 
 class Duplicates(str, enum.Enum):
     latest = "latest"
@@ -43,6 +66,23 @@ class _ScanID:
 
     scan_ids: List[int]
     duplicates: Duplicates
+
+    def __init__(self, *, scan_ids, duplicates):
+        self.scan_ids = scan_ids
+        self.duplicates = Duplicates(duplicates)
+
+    def encode(self):
+        return {
+            "scan_ids": ",".join(str(scan_id) for scan_id in self.scan_ids),
+            "duplicates": self.duplicates.value,
+        }
+
+    @classmethod
+    def decode(cls, *, scan_ids, duplicates):
+        return cls(
+            scan_ids=[int(scan_id) for scan_id in scan_ids.split(",")],
+            duplicates=Duplicates(duplicates),
+        )
 
 
 def ScanID(*scan_ids, duplicates="latest"):
@@ -64,6 +104,13 @@ class _PartialUID:
 
     partial_uids: List[str]
 
+    def encode(self):
+        return {"partial_uids": ",".join(str(uid) for uid in self.partial_uids)}
+
+    @classmethod
+    def decode(cls, *, partial_uids):
+        return cls(partial_uids=partial_uids.split(","))
+
 
 def PartialUID(*partial_uids):
     # See comment above with ScanID and _ScanID. Same thinking here.
@@ -81,19 +128,37 @@ class Duration:
     greater_than: float
 
 
-@register(name="raw_mongo")
-@dataclass
-class RawMongo:
+def RawMongo(start):
     """
-    Run a MongoDB query against a given collection.
+    DEPRECATED
+
+    Raw MongoDB queries are no longer supported.  If it is possible to express
+    the import as a supported query, we transform it and warn. If not, we raise
+    an error.
     """
 
-    start: str  # We cannot put a dict in a URL, so this a JSON str.
+    if len(start) == 1:
+        ((key, value),) = start.items()
+        if not isinstance(value, dict):
+            # We can transform this into a simple query.
+            warnings.warn(
+                """RawMongo will not be supported
+in a future release of databroker, and its functionality has been limited.
+Instead, use:
 
-    def __init__(self, *, start):
-        if isinstance(start, collections.abc.Mapping):
-            start = json.dumps(start)
-        self.start = start
+    Key("{key}") == {value!r}
+"""
+            )
+            return Key(key) == value
+    raise ValueError(
+        """Arbitrary MongoDB queries no longer supported.
+
+If this is critical to you, please open an issue at
+
+    https://github.com/bluesky/databroker
+
+describing your use case and we will see what we can work out."""
+    )
 
 
 # human friendly timestamp formats we'll parse
@@ -230,25 +295,16 @@ class TimeRange:
             f"timezone={self.timezone!r}, since={self._raw_since!r}, until={self._raw_until!r})"
         )
 
+    def encode(self):
+        return asdict(self)
 
-def raw_mongo_in_memory(query, catalog):
-
-    from mongoquery import Query
-
-    query_obj = Query(json.loads(query.start))
-    matches = {
-        key: value
-        for key, value in catalog.items()
-        if query_obj.match(value.metadata["start"])
-    }
-    return catalog.new_variation(mapping=matches)
+    @classmethod
+    def decode(cls, *, timezone, since=None, until=None):
+        return cls(timezone=timezone, since=since, until=until)
 
 
 def scan_id(query, catalog):
-    mongo_results = catalog.query_registry(
-        RawMongo(start={"scan_id": {"$in": query.scan_ids}}),
-        catalog,
-    )
+    mongo_results = catalog.apply_mongo_query({"scan_id": {"$in": query.scan_ids}})
     # Handle duplicates.
     if query.duplicates == "latest":
         # Convert to a BlueskyMapAdapter to do some filtering in Python
@@ -258,7 +314,9 @@ def scan_id(query, catalog):
         results_by_scan_id = {}
         for key, value in mongo_results.items():
             results_by_scan_id[value.metadata["start"]["scan_id"]] = (key, value)
-        results = BlueskyMapAdapter(dict(results_by_scan_id.values()), must_revalidate=False)
+        results = BlueskyMapAdapter(
+            dict(results_by_scan_id.values()), must_revalidate=False
+        )
     elif query.duplicates == "error":
         scan_ids = list(
             value.metadata["start"]["scan_id"] for value in mongo_results.values()
@@ -288,9 +346,7 @@ def partial_uid(query, catalog):
                 f"Partial uid {partial_uid} is too short. "
                 "It must include at least 5 characters."
             )
-        result = catalog.query_registry(
-            RawMongo(start={"uid": {"$regex": f"^{partial_uid}"}}), catalog
-        )
+        result = catalog.apply_mongo_query({"uid": {"$regex": f"^{partial_uid}"}})
         if len(result) > 1:
             raise QueryValueError(
                 f"Partial uid {partial_uid} has multiple matches, "
@@ -309,11 +365,45 @@ def time_range(query, catalog):
     if not mongo_query["time"]:
         # Neither 'since' nor 'until' are set.
         mongo_query.clear()
-    return catalog.query_registry(RawMongo(start=mongo_query), catalog)
+    return catalog.apply_mongo_query(mongo_query)
+
+
+def eq(query, catalog):
+    return catalog.apply_mongo_query({query.key: query.value})
+
+
+def contains(query, catalog):
+    # In MongoDB, checking that an item is in an array looks
+    # just like equality.
+    # https://www.mongodb.com/docs/manual/tutorial/query-arrays/
+    return catalog.apply_mongo_query({query.key: query.value})
+
+
+def comparison(query, catalog):
+    OPERATORS = {
+        Operator.lt: "$lt",
+        Operator.le: "$lte",
+        Operator.gt: "$gt",
+        Operator.ge: "$gte",
+    }
+    return catalog.apply_mongo_query(
+        {query.key: {OPERATORS[query.operator]: query.value}}
+    )
+
+
+def regex(query, catalog):
+    options = "" if query.case_sensitive else "i"
+    return catalog.apply_mongo_query(
+        {query.key: {"$regex": query.pattern, "$options": options}}
+    )
 
 
 BlueskyMapAdapter.register_query(_PartialUID, partial_uid)
-BlueskyMapAdapter.register_query(RawMongo, raw_mongo_in_memory)
 BlueskyMapAdapter.register_query(_ScanID, scan_id)
-BlueskyMapAdapter.register_query(TimeRange, time_range)
 BlueskyMapAdapter.register_query(FullText, full_text_search)
+BlueskyMapAdapter.register_query(Contains, contains)
+BlueskyMapAdapter.register_query(Comparison, comparison)
+BlueskyMapAdapter.register_query(Eq, eq)
+BlueskyMapAdapter.register_query(FullText, full_text_search)
+BlueskyMapAdapter.register_query(TimeRange, time_range)
+BlueskyMapAdapter.register_query(Regex, regex)
